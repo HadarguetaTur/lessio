@@ -26,14 +26,20 @@ Nothing outside this flow is built in Sprint 1.
 | Jira breakdown (DEV-7 through DEV-12) | ✅ Done |
 | Next.js project initialized | ✅ Done |
 | shadcn/ui initialized (Nova preset) | ✅ Done |
+| src/ migration + tsconfig @/* alias | ✅ Done (DEV-7) |
+| Directory skeleton (app, lib, components, supabase/migrations) | ✅ Done (DEV-7) |
+| Supabase clients (client, server, service-role) | ✅ Done (DEV-7) |
+| Middleware (session refresh; /book/* excluded) | ✅ Done (DEV-7) |
+| Vitest configured | ✅ Done (DEV-7) |
+| .env.local.example | ✅ Done (DEV-7) |
 | Supabase project connected | ⬜ Not yet |
-| DB migrations | ⬜ Not yet |
-| RLS policies | ⬜ Not yet |
-| Booking engine (getAvailableSlots, slot locking) | ⬜ Not yet |
-| Booking WebView (/book/[token]) | ⬜ Not yet |
+| DB migrations | ✅ Done (DEV-8) |
+| RLS policies | ✅ Done (DEV-8) |
+| Booking engine (getAvailableSlots, slot locking) | ✅ Done (DEV-9) |
+| Booking WebView (/book/[token]) | ✅ Done (DEV-10) |
 | WhatsApp webhook | ⬜ Not yet |
-| JWT booking link generator | ⬜ Not yet |
-| Seed data | ⬜ Not yet |
+| JWT booking link generator | ⬜ Not yet (signBookingToken stub; verifyBookingToken done DEV-10) |
+| Seed data | ✅ Done (DEV-8) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked ✅.
@@ -74,6 +80,14 @@ The system must prove this path and nothing else:
 - Every implementation decision must trace back to a story in DEV-7 through DEV-12
 - If a Jira story seems to require something not in `/docs`, add a TODO and ask — do not guess
 
+### Jira Update Rules (standing, non-negotiable)
+
+After completing any story or sub-task:
+1. Immediately transition the matching Jira ticket to **Done** — do not wait to be asked
+2. Add a short completion comment to the ticket describing what was implemented
+3. If work is only partially complete, keep the ticket open and add a progress comment instead
+4. Jira project: `hadart20.atlassian.net` | cloudId: `df1530c3-9083-4b16-aa0c-1aa44a24d21d`
+
 ---
 
 ## Technical Stack
@@ -101,6 +115,9 @@ The system must prove this path and nothing else:
 ```
 lessio/
 ├── CLAUDE.md
+├── AGENTS.md
+├── vitest.config.ts
+├── .env.local.example             ← copy to .env.local and fill in values
 ├── docs/
 │   ├── plan.md
 │   ├── schema.md
@@ -108,25 +125,26 @@ lessio/
 │   ├── sprint-1-scope.md
 │   └── security.md
 ├── src/
+│   ├── middleware.ts              ← session refresh; /book/* bypassed entirely
 │   ├── app/
-│   │   ├── (dashboard)/           ← owner/admin/teacher pages (Supabase Auth)
+│   │   ├── (dashboard)/          ← owner/admin/teacher pages (Supabase Auth)
 │   │   ├── book/
-│   │   │   └── [token]/           ← parent booking WebView (JWT auth only)
+│   │   │   └── [token]/          ← parent booking WebView (JWT auth only)
 │   │   └── api/
 │   │       └── whatsapp/
-│   │           └── webhook/       ← POST + GET (Meta verification)
+│   │           └── webhook/      ← POST + GET (Meta verification)
 │   ├── lib/
-│   │   ├── supabase/              ← client.ts, server.ts, service-role.ts
-│   │   ├── booking/               ← getAvailableSlots, createSlotLock, confirmBooking
-│   │   ├── whatsapp/              ← Meta API client, sendBookingLink, sendReply
-│   │   ├── jwt/                   ← signBookingToken, verifyBookingToken
-│   │   └── phone/                 ← normalizePhone (E.164)
+│   │   ├── supabase/             ← client.ts, server.ts, service-role.ts
+│   │   ├── booking/              ← getAvailableSlots, createSlotLock, confirmBooking
+│   │   ├── whatsapp/             ← Meta API client, sendBookingLink, sendReply
+│   │   ├── jwt/                  ← signBookingToken, verifyBookingToken
+│   │   └── phone/                ← normalizePhone (E.164)
 │   └── components/
-│       ├── ui/                    ← shadcn components (do not edit manually)
-│       └── booking/               ← booking WebView step components
+│       ├── ui/                   ← shadcn components (do not edit manually)
+│       └── booking/              ← booking WebView step components
 ├── supabase/
 │   └── migrations/
-└── .env.local
+└── .env.local                    ← git-ignored; never commit
 ```
 
 ---
@@ -203,6 +221,9 @@ WHATSAPP_VERIFY_TOKEN=            # for GET webhook verification
 ```bash
 npm run dev              # starts Next.js at http://localhost:3000
 npx supabase start       # starts local Supabase (requires Docker)
+npm test                 # run all unit tests (vitest)
+npm run test:watch       # vitest watch mode
+npm run test:coverage    # vitest with v8 coverage
 ```
 
 - App runs at `http://localhost:3000`

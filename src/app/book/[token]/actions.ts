@@ -20,6 +20,7 @@ import {
   NoPrimaryParentError,
 } from '@/lib/booking'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { sendBookingConfirmation } from '@/lib/whatsapp'
 
 // ── Teacher list ───────────────────────────────────────────────────────────────
 
@@ -99,8 +100,17 @@ export async function confirmBookingAction(
   teacherId: string
 ): Promise<ConfirmBookingActionResult> {
   try {
-    const { organizationId, studentId } = await verifyBookingToken(token)
+    const { organizationId, parentId, studentId } = await verifyBookingToken(token)
+    const db = createServiceRoleClient()
+
     const result = await confirmBooking({ lockId, studentId, teacherId, organizationId })
+
+    // Sprint 1 flow step 12: send WhatsApp confirmation to parent
+    // Fire-and-forget — a send failure must not roll back a confirmed booking
+    sendWhatsAppConfirmation(db, organizationId, parentId, teacherId, result.startAt).catch(err => {
+      console.error('[confirmBookingAction] Failed to send WhatsApp confirmation', { err })
+    })
+
     return { success: true, result }
   } catch (err) {
     if (err instanceof LockExpiredError) return { success: false, error: 'lock_expired' }
@@ -111,4 +121,35 @@ export async function confirmBookingAction(
     }
     return { success: false, error: 'unknown' }
   }
+}
+
+async function sendWhatsAppConfirmation(
+  db: ReturnType<typeof createServiceRoleClient>,
+  organizationId: string,
+  parentId: string,
+  teacherId: string,
+  startAt: string
+): Promise<void> {
+  const [parentResult, teacherResult, orgResult] = await Promise.all([
+    db.from('parents').select('phone').eq('id', parentId).eq('organization_id', organizationId).single(),
+    db.from('teachers').select('profiles(full_name)').eq('id', teacherId).single(),
+    db.from('organizations').select('whatsapp_token').eq('id', organizationId).single(),
+  ])
+
+  if (parentResult.error || !parentResult.data) {
+    console.warn('[confirmBookingAction] Could not load parent for WhatsApp confirmation')
+    return
+  }
+  if (teacherResult.error || !teacherResult.data) {
+    console.warn('[confirmBookingAction] Could not load teacher for WhatsApp confirmation')
+    return
+  }
+
+  const phone = parentResult.data.phone
+  const profiles = teacherResult.data.profiles as unknown as { full_name: string } | null
+  const teacherName = profiles?.full_name ?? ''
+  const accessToken = (orgResult.data?.whatsapp_token as string | null) ?? process.env.WHATSAPP_ACCESS_TOKEN ?? ''
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? ''
+
+  await sendBookingConfirmation(phone, teacherName, startAt, accessToken, phoneNumberId)
 }

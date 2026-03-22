@@ -51,6 +51,33 @@ export async function sendBookingLink(
 }
 
 /**
+ * Sends the booking confirmation message to the parent after a lesson is created.
+ * Per Sprint 1 success flow step 12.
+ */
+export async function sendBookingConfirmation(
+  to: string,
+  teacherName: string,
+  startAt: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const date = new Date(startAt).toLocaleDateString('he-IL', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+  const time = new Date(startAt).toLocaleTimeString('he-IL', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  })
+  const message = `✅ השיעור נקבע!\nמורה: ${teacherName}\nתאריך: ${date}\nשעה: ${time}`
+  return sendTextMessage(to, message, accessToken, phoneNumberId)
+}
+
+/**
  * Sends the fixed "unrecognized sender" reply.
  * Per /docs/decisions.md #4.
  */

@@ -1,5 +1,3 @@
-'use server'
-
 /**
  * confirmBooking — creates a lesson from a confirmed slot lock.
  * Per /docs/sprint-1-scope.md § Create lesson from confirmed booking.

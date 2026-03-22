@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react'
 import { Button } from '@/components/ui/button'
-import { DAY_NAMES } from '@/lib/availability'
+import { DAY_NAMES } from '@/lib/availability/constants'
 
 type ActionState = { error: string } | null
 type FormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>

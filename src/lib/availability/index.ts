@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+export { DAY_NAMES } from './constants'
 
 export interface AvailabilityWindow {
   id: string
@@ -6,8 +7,6 @@ export interface AvailabilityWindow {
   start_time: string
   end_time: string
 }
-
-export const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
 
 /** Normalize Postgres time "HH:MM:SS" → "HH:MM" for safe comparison */
 function normalizeTime(t: string): string {

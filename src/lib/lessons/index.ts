@@ -12,43 +12,68 @@ export interface Lesson {
   student: { id: string; full_name: string }
 }
 
-/**
- * Calculates start and end UTC ISO strings for "today" in the given IANA timezone.
- * Uses Intl.DateTimeFormat with shortOffset to determine the current UTC offset.
- */
-export function getTodayRange(timezone: string): { gte: string; lt: string } {
-  const now = new Date()
-
-  // Today's date string in org timezone (sv-SE gives "YYYY-MM-DD")
-  const todayDate = now.toLocaleDateString('sv-SE', { timeZone: timezone })
-
-  // Tomorrow's date string
-  const nextDay = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-  const tomorrowDate = nextDay.toLocaleDateString('sv-SE', { timeZone: timezone })
-
-  // Parse the UTC offset from the timezone at this moment ("GMT+3" / "GMT+2" etc.)
+/** Parse UTC offset in milliseconds for a given timezone at a given moment */
+function getOffsetMs(timezone: string, at: Date): number {
   const tzName =
     new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
       timeZoneName: 'shortOffset',
     })
-      .formatToParts(now)
+      .formatToParts(at)
       .find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+0'
-
   const m = tzName.match(/^GMT([+-])(\d+)(?::(\d+))?$/)
   const sign = m?.[1] === '-' ? -1 : 1
   const h = parseInt(m?.[2] ?? '0', 10)
   const min = parseInt(m?.[3] ?? '0', 10)
-  const offsetMs = sign * (h * 60 + min) * 60 * 1000
+  return sign * (h * 60 + min) * 60 * 1000
+}
 
-  // local midnight = UTC midnight - offset
-  const startUTC = new Date(`${todayDate}T00:00:00.000Z`).getTime() - offsetMs
-  const endUTC = new Date(`${tomorrowDate}T00:00:00.000Z`).getTime() - offsetMs
+/** Convert a YYYY-MM-DD local date string to UTC midnight Date */
+export function localMidnightToUTC(dateStr: string, timezone: string): Date {
+  const noon = new Date(`${dateStr}T12:00:00Z`)
+  const offsetMs = getOffsetMs(timezone, noon)
+  return new Date(new Date(`${dateStr}T00:00:00.000Z`).getTime() - offsetMs)
+}
 
+/**
+ * Calculates start and end UTC ISO strings for "today" in the given IANA timezone.
+ */
+export function getTodayRange(timezone: string): { gte: string; lt: string } {
+  const now = new Date()
+  const todayDate = now.toLocaleDateString('sv-SE', { timeZone: timezone })
+  const nextDay = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  const tomorrowDate = nextDay.toLocaleDateString('sv-SE', { timeZone: timezone })
   return {
-    gte: new Date(startUTC).toISOString(),
-    lt: new Date(endUTC).toISOString(),
+    gte: localMidnightToUTC(todayDate, timezone).toISOString(),
+    lt: localMidnightToUTC(tomorrowDate, timezone).toISOString(),
   }
+}
+
+/** Returns the YYYY-MM-DD (in org timezone) for the Sunday of the current week */
+export function getCurrentWeekSunday(timezone: string): string {
+  const now = new Date()
+  const todayStr = now.toLocaleDateString('sv-SE', { timeZone: timezone })
+  const dayAbbr = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'short',
+  }).format(now)
+  const DOW: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  }
+  const dow = DOW[dayAbbr] ?? 0
+  if (dow === 0) return todayStr
+  const base = new Date(`${todayStr}T12:00:00Z`)
+  const sunday = new Date(base.getTime() - dow * 24 * 60 * 60 * 1000)
+  return sunday.toISOString().substring(0, 10)
+}
+
+/** Returns 7 YYYY-MM-DD strings starting from weekSundayStr */
+export function getWeekDays(weekSundayStr: string): string[] {
+  const base = new Date(`${weekSundayStr}T12:00:00Z`)
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(base.getTime() + i * 24 * 60 * 60 * 1000)
+    return d.toISOString().substring(0, 10)
+  })
 }
 
 /** Format a UTC ISO timestamp as HH:MM in the given timezone. */
@@ -61,6 +86,35 @@ export function formatTime(iso: string, timezone: string): string {
   }).format(new Date(iso))
 }
 
+/** Format a UTC ISO timestamp as a full Hebrew date string */
+export function formatDate(iso: string, timezone: string): string {
+  return new Intl.DateTimeFormat('he-IL', {
+    timeZone: timezone,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(iso))
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapLesson(l: any): Lesson {
+  const teacher = l.teachers as unknown as { id: string; profiles: { full_name: string } }
+  const student = l.students as unknown as { id: string; full_name: string }
+  return {
+    id: l.id,
+    start_at: l.start_at,
+    end_at: l.end_at,
+    status: l.status as LessonStatus,
+    cancel_reason: l.cancel_reason,
+    teacher: { id: teacher.id, full_name: teacher.profiles.full_name },
+    student: { id: student.id, full_name: student.full_name },
+  }
+}
+
+const LESSON_SELECT =
+  'id, start_at, end_at, status, cancel_reason, teachers(id, profiles(full_name)), students(id, full_name)'
+
 export async function getTodayLessons(
   organizationId: string,
   timezone: string
@@ -70,63 +124,55 @@ export async function getTodayLessons(
 
   const { data, error } = await supabase
     .from('lessons')
-    .select(
-      'id, start_at, end_at, status, cancel_reason, teachers(id, profiles(full_name)), students(id, full_name)'
-    )
+    .select(LESSON_SELECT)
     .eq('organization_id', organizationId)
     .gte('start_at', gte)
     .lt('start_at', lt)
     .order('start_at', { ascending: true })
 
   if (error) throw new Error(error.message)
-
-  return (data ?? []).map((l) => {
-    const teacher = l.teachers as unknown as { id: string; profiles: { full_name: string } }
-    const student = l.students as unknown as { id: string; full_name: string }
-    return {
-      id: l.id,
-      start_at: l.start_at,
-      end_at: l.end_at,
-      status: l.status as LessonStatus,
-      cancel_reason: l.cancel_reason,
-      teacher: { id: teacher.id, full_name: teacher.profiles.full_name },
-      student: { id: student.id, full_name: student.full_name },
-    }
-  })
+  return (data ?? []).map(mapLesson)
 }
 
 export async function getLessonsForWeek(
   organizationId: string,
   timezone: string,
-  weekStart: Date
+  weekSundayStr: string,
+  teacherId?: string
 ): Promise<Lesson[]> {
   const supabase = await createClient()
+  const weekStartUTC = localMidnightToUTC(weekSundayStr, timezone)
+  const weekEndUTC = new Date(weekStartUTC.getTime() + 7 * 24 * 60 * 60 * 1000)
 
-  const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000)
-
-  const { data, error } = await supabase
+  let query = supabase
     .from('lessons')
-    .select(
-      'id, start_at, end_at, status, cancel_reason, teachers(id, profiles(full_name)), students(id, full_name)'
-    )
+    .select(LESSON_SELECT)
     .eq('organization_id', organizationId)
-    .gte('start_at', weekStart.toISOString())
-    .lt('start_at', weekEnd.toISOString())
+    .gte('start_at', weekStartUTC.toISOString())
+    .lt('start_at', weekEndUTC.toISOString())
     .order('start_at', { ascending: true })
 
-  if (error) throw new Error(error.message)
+  if (teacherId) {
+    query = query.eq('teacher_id', teacherId)
+  }
 
-  return (data ?? []).map((l) => {
-    const teacher = l.teachers as unknown as { id: string; profiles: { full_name: string } }
-    const student = l.students as unknown as { id: string; full_name: string }
-    return {
-      id: l.id,
-      start_at: l.start_at,
-      end_at: l.end_at,
-      status: l.status as LessonStatus,
-      cancel_reason: l.cancel_reason,
-      teacher: { id: teacher.id, full_name: teacher.profiles.full_name },
-      student: { id: student.id, full_name: student.full_name },
-    }
-  })
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(mapLesson)
+}
+
+export async function getLessonById(
+  id: string,
+  organizationId: string
+): Promise<Lesson | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lessons')
+    .select(LESSON_SELECT)
+    .eq('id', id)
+    .eq('organization_id', organizationId)
+    .single()
+
+  if (error || !data) return null
+  return mapLesson(data)
 }

@@ -43,7 +43,7 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | Availability overrides | ✅ Done (Sprint 2) |
 | Today view dashboard | ✅ Done (Sprint 2) |
 | Weekly calendar | ✅ Done (Sprint 2) |
-| Lesson status updates | ⬜ Sprint 2 |
+| Lesson status updates | ✅ Done (Sprint 2) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked ✅.

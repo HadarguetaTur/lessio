@@ -4,6 +4,8 @@ import { ArrowRight } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getLessonById, formatTime, formatDate, LessonStatus } from '@/lib/lessons'
+import { LessonStatusForm } from '@/components/dashboard/lessons/LessonStatusForm'
+import { setLessonStatus } from './actions'
 
 const STATUS_LABELS: Record<LessonStatus, string> = {
   scheduled: 'מתוכנן',
@@ -36,6 +38,8 @@ export default async function LessonDetailPage(props: {
   if (teacher) backParams.set('teacher', teacher)
   const backHref = `/lessons${backParams.size > 0 ? `?${backParams.toString()}` : ''}`
 
+  const boundAction = setLessonStatus.bind(null, id)
+
   return (
     <div className="max-w-lg">
       {/* Breadcrumb */}
@@ -47,8 +51,8 @@ export default async function LessonDetailPage(props: {
         <span className="text-gray-900 font-medium">פרטי שיעור</span>
       </div>
 
+      {/* Lesson details */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
-        {/* Status badge */}
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">פרטי שיעור</h1>
           <span
@@ -86,6 +90,12 @@ export default async function LessonDetailPage(props: {
             </div>
           )}
         </dl>
+      </div>
+
+      {/* Status update */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mt-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">עדכון סטטוס</h2>
+        <LessonStatusForm currentStatus={lesson.status} action={boundAction} />
       </div>
 
       <div className="mt-4">

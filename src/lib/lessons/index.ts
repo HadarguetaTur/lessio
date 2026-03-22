@@ -161,6 +161,40 @@ export async function getLessonsForWeek(
   return (data ?? []).map(mapLesson)
 }
 
+export async function updateLessonStatus(
+  id: string,
+  organizationId: string,
+  status: LessonStatus,
+  cancelReason?: string
+): Promise<void> {
+  const supabase = await createClient()
+
+  const { data: current } = await supabase
+    .from('lessons')
+    .select('status')
+    .eq('id', id)
+    .eq('organization_id', organizationId)
+    .single()
+
+  if (!current) throw new Error('שיעור לא נמצא')
+  if (current.status === 'cancelled') throw new Error('לא ניתן לשנות סטטוס של שיעור שבוטל')
+
+  const update: Record<string, string | null> = { status }
+  if (status === 'cancelled') {
+    update.cancel_reason = cancelReason ?? null
+  } else {
+    update.cancel_reason = null
+  }
+
+  const { error } = await supabase
+    .from('lessons')
+    .update(update)
+    .eq('id', id)
+    .eq('organization_id', organizationId)
+
+  if (error) throw new Error(error.message)
+}
+
 export async function getLessonById(
   id: string,
   organizationId: string

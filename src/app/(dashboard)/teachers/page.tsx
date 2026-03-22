@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, Pencil, Archive, RotateCcw, Mail } from 'lucide-react'
+import { Plus, Pencil, Archive, RotateCcw, Mail, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/auth/session'
 import { getTeachers } from '@/lib/teachers'
@@ -78,6 +78,13 @@ export default async function TeachersPage() {
                         >
                           <Pencil size={13} />
                           עריכה
+                        </Link>
+                        <Link
+                          href={`/teachers/${teacher.id}/availability`}
+                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
+                        >
+                          <CalendarDays size={13} />
+                          זמינות
                         </Link>
                         {teacher.is_active ? (
                           <form action={archiveAction}>

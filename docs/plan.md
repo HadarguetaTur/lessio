@@ -1,8 +1,8 @@
-# LESSIO — Project Plan (v1)
+# LESSIO — Project Plan (v2)
 
 ## Vision
 
-Lessio is a multi-tenant SaaS platform for managing private tutoring businesses and learning centers.  
+Lessio is a multi-tenant SaaS platform for managing private tutoring businesses and learning centers.
 It provides full operational control over scheduling, billing, cancellations, and WhatsApp-based client communication.
 
 **Core problem it solves:** lost revenue from untracked cancellations, scheduling chaos, and manual billing.
@@ -14,14 +14,14 @@ It provides full operational control over scheduling, billing, cancellations, an
 | Layer | Technology |
 |---|---|
 | Frontend | Next.js (App Router) + TypeScript |
-| UI | React, Tailwind CSS, shadcn/ui |
+| UI | React, Tailwind CSS, shadcn/ui (Nova preset) |
 | Backend | Next.js Route Handlers + Server Actions |
 | Database | PostgreSQL via Supabase |
 | Auth | Supabase Auth |
 | File Storage | Supabase Storage |
 | WhatsApp | Meta WhatsApp Cloud API |
 | Payments | External provider via abstraction layer (provider TBD) |
-| Background Jobs | Supabase Edge Functions (scheduled) |
+| Background Jobs | Supabase Edge Functions (scheduled) — Sprint 2+ |
 | Hosting | Vercel (app) + Supabase (backend) |
 
 ---
@@ -46,76 +46,140 @@ It provides full operational control over scheduling, billing, cancellations, an
 |---|---|
 | `owner` | Business-level administrator. Manages org settings, billing config, cancellation policy, integrations, users, roles, full financial visibility |
 | `admin` | Operational role. Manages students, parents, leads, lessons, day-to-day scheduling. Cannot touch org settings, integrations, role management, or core billing config |
-| `teacher` | Receives schedule, views own students, updates lesson status |
+| `teacher` | Receives schedule, views own students, updates lesson status (Sprint 5+) |
 
 ### Domain Entities (no dashboard auth)
 
 | Entity | Description |
 |---|---|
 | `parent` | Billing/contact entity. Interacts via WhatsApp only. Not a Supabase Auth user |
-| `student` | Learning entity. Not an auth user in MVP. Linked to parent via `relationships` table |
+| `student` | Learning entity. Not an auth user. Linked to parent via `relationships` table |
 
 ---
 
 ## Core Modules
 
-| Module | Description |
-|---|---|
-| Scheduling | Teacher availability, slot locking, lesson booking |
-| Billing | Charge generation, payment tracking, reminders, blocking logic |
-| Cancellations | Policy engine, auto-charge on cancel, notifications |
-| WhatsApp Bot | Intent detection, session management, message templates |
-| Dashboard | Owner/Admin operational view |
-| Homework | Templates, assignment, reminders (post-MVP) |
+| Module | Description | Sprint |
+|---|---|---|
+| Scheduling | Teacher availability, slot locking, lesson booking | 1 ✅ |
+| Internal Dashboard | People management, calendar, lesson status | 2 |
+| Billing & Cancellations | Policy engine, auto-charge, payment tracking | 3 |
+| WhatsApp External Flows | Parent cancellation, lead capture, payment requests | 4 |
+| Multi-Role Access | Teacher portal, authorization hardening | 5 |
+| Production Readiness | Security audit, QA, environments, go-live | 6 |
+| Homework | Templates, assignment, reminders | post-MVP |
+
+---
+
+## Sprint Roadmap
+
+| Sprint | Milestone | Goal | Status |
+|---|---|---|---|
+| 1 | Booking Loop | WhatsApp → WebView → lesson created | ✅ Done |
+| 2 | Internal Usable Product | Day-to-day internal operations | 🔄 In Progress |
+| 3 | Business Logic Product | Billing engine — cancellations & charges | Planned |
+| 4 | External Operational | External flows — WhatsApp + leads | Planned |
+| 5 | Multi-Role Product | Permissions, teacher portal, product hardening | Planned |
+| 6 | Production Ready | Security, QA, first customer | Planned |
 
 ---
 
 ## Booking Flow — Token Model
 
 1. Parent sends WhatsApp message with booking intent
-2. System identifies parent by phone number
-3. System generates signed JWT (15-minute expiry) containing tenant + booking context
-4. JWT is embedded in WebView URL and sent to parent via WhatsApp
-5. Parent opens WebView, selects slot
-6. System creates `slot_lock` record (5-minute expiry) on slot selection
-7. Parent confirms booking within 5 minutes
-8. Lesson is created, slot lock is released/consumed
-9. Confirmation sent via WhatsApp
+2. System identifies parent by E.164 phone in `parents` table
+3. If not found → create `leads` record + notify admin + send fixed WhatsApp reply. Stop.
+4. If found → generate signed JWT (15-min expiry): `{ organizationId, parentId, studentId }`
+   - `teacherId` is **never** in the JWT
+5. Send booking link to parent via Meta WhatsApp Cloud API
+6. Parent opens `/book/[token]` — server validates JWT on page load
+7. Parent selects: **teacher → date → duration → slot**
+8. System creates `slot_locks` record (`status: active`, expires in 5 min)
+9. Parent confirms booking within 5 minutes
+10. System creates `lessons` record (`status: scheduled`) via service role
+11. `slot_locks.status` → `consumed`
+12. Confirmation message sent via Meta WhatsApp Cloud API
 
-If JWT expires → parent must request new link from WhatsApp  
+If JWT expires → parent must request a new link from WhatsApp
 If slot lock expires → parent must re-select a slot
 
 ---
 
-## MVP Scope
+## Repository Structure
 
-### Sprint 1 (must ship)
-- DB schema + RLS baseline
-- Teacher availability engine
-- Slot locking
-- Lesson creation
-- WhatsApp webhook (entry point)
-- Signed JWT booking URL generation
-- Booking WebView (basic)
-
-### Sprint 2
-- Billing foundation
-- Cancellation flow
-- Admin dashboard
-
-### Post-MVP
-- Homework module
-- Advanced reporting
-- PDF invoices
-- Multi-provider payment support
+```
+lessio/
+├── CLAUDE.md                      ← Claude operating manual (current sprint)
+├── docs/
+│   ├── plan.md                    ← this file
+│   ├── schema.md                  ← DB schema (source of truth)
+│   ├── decisions.md               ← architectural decisions (all sprints)
+│   ├── security.md                ← RLS policies + auth model
+│   ├── sprint-1-scope.md          ← ✅ completed
+│   ├── sprint-2-scope.md          ← current
+│   ├── sprint-3-scope.md
+│   ├── sprint-4-scope.md
+│   ├── sprint-5-scope.md
+│   └── sprint-6-scope.md
+├── src/
+│   ├── app/
+│   │   ├── (dashboard)/           ← owner/admin/teacher pages (Supabase Auth)
+│   │   │   ├── students/
+│   │   │   ├── parents/
+│   │   │   ├── teachers/
+│   │   │   ├── lessons/
+│   │   │   └── dashboard/
+│   │   ├── book/
+│   │   │   └── [token]/           ← parent booking WebView (JWT auth only)
+│   │   └── api/
+│   │       └── whatsapp/
+│   │           └── webhook/       ← POST + GET (Meta verification)
+│   ├── lib/
+│   │   ├── supabase/              ← client.ts, server.ts, service-role.ts
+│   │   ├── booking/               ← getAvailableSlots, createSlotLock, confirmBooking
+│   │   ├── billing/               ← calculateCancellationCharge (Sprint 3+)
+│   │   ├── whatsapp/              ← Meta API client, sendBookingLink, sendReply
+│   │   ├── jwt/                   ← signBookingToken, verifyBookingToken
+│   │   └── phone/                 ← normalizePhone (E.164)
+│   └── components/
+│       ├── ui/                    ← shadcn components (do not edit manually)
+│       ├── booking/               ← booking WebView step components
+│       └── dashboard/             ← dashboard-specific components
+├── supabase/
+│   └── migrations/
+└── .env.local
+```
 
 ---
 
 ## Key Business Rules
 
-- A parent cannot book a lesson if they have an outstanding debt (configurable threshold)
 - Slot locks expire after **5 minutes**
 - Booking JWT tokens expire after **15 minutes**
-- Cancellation charges are configurable per organization
-- Each organization manages its own WhatsApp number via Meta Embedded Signup
-- One charge per lesson by default; additional charges (cancellation, manual) use `charge_type`
+- Cancellation charges are configurable per organization (`cancellation_policies` table)
+- Each organization manages its own WhatsApp number via Meta Cloud API token
+- One charge per lesson by default; additional charges use `charge_type`
+- All phone numbers stored as E.164 — `normalizePhone()` before every save/lookup
+- All datetimes stored as UTC — display per `organizations.timezone`
+- Archive = `is_active = false` — never hard delete entities
+- Billing parent = `is_primary = true` from `relationships` at lesson creation time
+- Teacher creation = invite flow only (Supabase Auth invite)
+
+---
+
+## Pending Schema Migrations
+
+| Sprint | Table | Change | Status |
+|---|---|---|---|
+| 3 | teachers | + hourly_rate numeric(10,2) | Pending |
+
+---
+
+## Post-MVP (not in any current sprint)
+
+- Homework module (templates, assignment, reminders)
+- Advanced reporting and analytics
+- PDF invoices
+- Multi-provider payment support
+- Multi-language support (beyond Hebrew)
+- Parent web portal

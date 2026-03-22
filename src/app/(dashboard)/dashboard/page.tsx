@@ -35,6 +35,7 @@ export default async function DashboardPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">לוח הבקרה — היום</h1>
 
+
       {/* Counter cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
         <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">

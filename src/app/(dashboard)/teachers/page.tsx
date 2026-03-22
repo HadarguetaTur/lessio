@@ -86,6 +86,12 @@ export default async function TeachersPage() {
                           <CalendarDays size={13} />
                           זמינות
                         </Link>
+                        <Link
+                          href={`/teachers/${teacher.id}/overrides`}
+                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
+                        >
+                          חריגים
+                        </Link>
                         {teacher.is_active ? (
                           <form action={archiveAction}>
                             <button

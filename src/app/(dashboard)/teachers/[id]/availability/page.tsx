@@ -47,6 +47,18 @@ export default async function TeacherAvailabilityPage(props: {
         זמינות שבועית — {teacher.profile.full_name}
       </h1>
 
+      {/* Nav */}
+      <div className="flex gap-3 mb-6 text-sm">
+        <span className="font-medium text-gray-900">זמינות שבועית</span>
+        <span className="text-gray-300">|</span>
+        <Link
+          href={`/teachers/${id}/overrides`}
+          className="text-gray-500 hover:text-gray-800"
+        >
+          חריגים לתאריך ספציפי
+        </Link>
+      </div>
+
       {/* Weekly grid */}
       <div className="space-y-2 mb-6">
         {Array.from(byDay.entries()).map(([day, dayWindows]) => (

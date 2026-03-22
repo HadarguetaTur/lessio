@@ -35,7 +35,7 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | JWT booking link generator | ✅ Done (Sprint 1) |
 | Seed data | ✅ Done (Sprint 1) |
 | Route protection + dashboard shell | ✅ Done (Sprint 2) |
-| Students CRUD | ⬜ Sprint 2 |
+| Students CRUD | ✅ Done (Sprint 2) |
 | Parents CRUD | ⬜ Sprint 2 |
 | Parent-Student relationships | ⬜ Sprint 2 |
 | Teachers CRUD + invite flow | ⬜ Sprint 2 |

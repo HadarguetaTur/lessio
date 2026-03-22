@@ -37,8 +37,8 @@ Nothing outside this flow is built in Sprint 1.
 | RLS policies | ✅ Done (DEV-8) |
 | Booking engine (getAvailableSlots, slot locking) | ✅ Done (DEV-9) |
 | Booking WebView (/book/[token]) | ✅ Done (DEV-10) |
-| WhatsApp webhook | ⬜ Not yet |
-| JWT booking link generator | ⬜ Not yet (signBookingToken stub; verifyBookingToken done DEV-10) |
+| WhatsApp webhook | ✅ Done (DEV-11) |
+| JWT booking link generator | ✅ Done (DEV-11) |
 | Seed data | ✅ Done (DEV-8) |
 
 When starting any task, check this table first.

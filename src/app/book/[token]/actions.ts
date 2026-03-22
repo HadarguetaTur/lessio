@@ -32,15 +32,22 @@ export async function getTeachersAction(token: string): Promise<Teacher[]> {
   const { organizationId } = await verifyBookingToken(token)
   const db = createServiceRoleClient()
 
+  // teachers.display_name does not exist in schema — name comes from profiles.full_name
   const { data, error } = await db
     .from('teachers')
-    .select('id, display_name')
+    .select('id, profiles(full_name)')
     .eq('organization_id', organizationId)
     .eq('is_active', true)
-    .order('display_name')
 
   if (error) throw new Error(`Failed to load teachers: ${error.message}`)
-  return data ?? []
+
+  return (data ?? []).map(t => {
+    const profiles = t.profiles as unknown as { full_name: string } | null
+    return {
+      id: t.id,
+      display_name: profiles?.full_name ?? '',
+    }
+  })
 }
 
 // ── Available slots ────────────────────────────────────────────────────────────

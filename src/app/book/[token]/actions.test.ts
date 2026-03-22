@@ -1,0 +1,159 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// ── Module mocks ──────────────────────────────────────────────────────────────
+
+const mockFrom = vi.fn()
+
+vi.mock('@/lib/supabase/service-role', () => ({
+  createServiceRoleClient: () => ({ from: (t: string) => mockFrom(t) }),
+}))
+
+vi.mock('@/lib/jwt', () => ({
+  verifyBookingToken: vi.fn(),
+  signBookingToken: vi.fn(),
+}))
+
+vi.mock('@/lib/booking', async () => {
+  const actual = await vi.importActual('@/lib/booking')
+  return {
+    ...actual,
+    getAvailableSlots: vi.fn(),
+    createSlotLock: vi.fn(),
+    confirmBooking: vi.fn(),
+  }
+})
+
+vi.mock('@/lib/whatsapp', async () => {
+  const actual = await vi.importActual('@/lib/whatsapp')
+  return {
+    ...actual,
+    sendBookingConfirmation: vi.fn().mockResolvedValue(undefined),
+  }
+})
+
+import { verifyBookingToken } from '@/lib/jwt'
+import { confirmBooking, LockExpiredError, NoPrimaryParentError, InactiveParticipantError } from '@/lib/booking'
+import { sendBookingConfirmation } from '@/lib/whatsapp'
+import { confirmBookingAction } from './actions'
+
+const mockVerify = vi.mocked(verifyBookingToken)
+const mockConfirmBooking = vi.mocked(confirmBooking)
+const mockSendConfirmation = vi.mocked(sendBookingConfirmation)
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const TOKEN = 'valid-jwt-token'
+const LOCK_ID = 'lock-1'
+const TEACHER_ID = 'teacher-1'
+const STUDENT_ID = 'student-1'
+const PARENT_ID = 'parent-1'
+const ORG_ID = 'org-1'
+const START_AT = '2026-03-23T16:00:00.000Z'
+const END_AT = '2026-03-23T17:00:00.000Z'
+const PARENT_PHONE = '+972501234567'
+const TEACHER_NAME = 'ישראל ישראלי'
+
+const BOOKING_RESULT = {
+  lessonId: 'lesson-1',
+  teacherId: TEACHER_ID,
+  studentId: STUDENT_ID,
+  startAt: START_AT,
+  endAt: END_AT,
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function buildChain(result: unknown) {
+  const self: Record<string, unknown> = {}
+  const pass = () => self
+  ;['select', 'eq'].forEach(m => { self[m] = pass })
+  self['single'] = () => Promise.resolve(result)
+  self['maybeSingle'] = () => Promise.resolve(result)
+  return self
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+describe('confirmBookingAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.WHATSAPP_ACCESS_TOKEN = 'test-token'
+    process.env.WHATSAPP_PHONE_NUMBER_ID = 'test-phone-id'
+
+    mockVerify.mockResolvedValue({ organizationId: ORG_ID, parentId: PARENT_ID, studentId: STUDENT_ID })
+  })
+
+  it('returns success and triggers WhatsApp confirmation on successful booking', async () => {
+    mockConfirmBooking.mockResolvedValue(BOOKING_RESULT)
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'parents') return buildChain({ data: { phone: PARENT_PHONE }, error: null })
+      if (table === 'teachers') return buildChain({ data: { profiles: { full_name: TEACHER_NAME } }, error: null })
+      if (table === 'organizations') return buildChain({ data: { whatsapp_token: null }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const result = await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.result.lessonId).toBe('lesson-1')
+    }
+
+    // Wait for fire-and-forget to settle
+    await new Promise(r => setTimeout(r, 10))
+    expect(mockSendConfirmation).toHaveBeenCalledWith(
+      PARENT_PHONE,
+      TEACHER_NAME,
+      START_AT,
+      'test-token',
+      'test-phone-id'
+    )
+  })
+
+  it('returns success even if WhatsApp confirmation send fails', async () => {
+    mockConfirmBooking.mockResolvedValue(BOOKING_RESULT)
+    mockSendConfirmation.mockRejectedValueOnce(new Error('Meta API down'))
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'parents') return buildChain({ data: { phone: PARENT_PHONE }, error: null })
+      if (table === 'teachers') return buildChain({ data: { profiles: { full_name: TEACHER_NAME } }, error: null })
+      if (table === 'organizations') return buildChain({ data: { whatsapp_token: null }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const result = await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
+
+    // Booking must succeed even if WhatsApp fails
+    expect(result.success).toBe(true)
+  })
+
+  it('returns lock_expired error when LockExpiredError is thrown', async () => {
+    mockConfirmBooking.mockRejectedValue(new LockExpiredError('expired'))
+    const result = await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('lock_expired')
+  })
+
+  it('returns inactive_participant error when InactiveParticipantError is thrown', async () => {
+    mockConfirmBooking.mockRejectedValue(new InactiveParticipantError('teacher'))
+    const result = await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('inactive_participant')
+  })
+
+  it('returns no_primary_parent error when NoPrimaryParentError is thrown', async () => {
+    mockConfirmBooking.mockRejectedValue(new NoPrimaryParentError())
+    const result = await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('no_primary_parent')
+  })
+
+  it('does not send WhatsApp confirmation when booking fails', async () => {
+    mockConfirmBooking.mockRejectedValue(new LockExpiredError('expired'))
+    await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
+
+    await new Promise(r => setTimeout(r, 10))
+    expect(mockSendConfirmation).not.toHaveBeenCalled()
+  })
+})

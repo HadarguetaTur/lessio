@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, Pencil, Archive, RotateCcw } from 'lucide-react'
+import { Plus, Pencil, Archive, RotateCcw, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/auth/session'
 import { getStudents } from '@/lib/students'
@@ -68,6 +68,13 @@ export default async function StudentsPage(props: {
                         >
                           <Pencil size={13} />
                           עריכה
+                        </Link>
+                        <Link
+                          href={`/students/${student.id}/parents`}
+                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
+                        >
+                          <Users size={13} />
+                          הורים
                         </Link>
                         {student.is_active ? (
                           <form action={archiveAction}>

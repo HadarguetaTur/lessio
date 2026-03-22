@@ -36,7 +36,7 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | Seed data | ✅ Done (Sprint 1) |
 | Route protection + dashboard shell | ✅ Done (Sprint 2) |
 | Students CRUD | ✅ Done (Sprint 2) |
-| Parents CRUD | ⬜ Sprint 2 |
+| Parents CRUD | ✅ Done (Sprint 2) |
 | Parent-Student relationships | ⬜ Sprint 2 |
 | Teachers CRUD + invite flow | ⬜ Sprint 2 |
 | Teacher availability (weekly) | ⬜ Sprint 2 |

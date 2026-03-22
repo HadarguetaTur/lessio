@@ -161,6 +161,17 @@ export async function getLessonsForWeek(
   return (data ?? []).map(mapLesson)
 }
 
+/**
+ * Returns true if the status transition from current → next is allowed.
+ * Business rule: cancelled is a terminal state — no further transitions permitted.
+ */
+export function isValidStatusTransition(
+  current: LessonStatus,
+  _next: LessonStatus
+): boolean {
+  return current !== 'cancelled'
+}
+
 export async function updateLessonStatus(
   id: string,
   organizationId: string,

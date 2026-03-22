@@ -22,6 +22,17 @@ export interface ParentStudent {
   }
 }
 
+/**
+ * Returns true if the given relationships list contains more than one primary parent.
+ * Business rule: only one parent can be is_primary=true per student.
+ * The setPrimary action enforces this with a two-step update (unset all → set one).
+ */
+export function hasMultiplePrimary(
+  relationships: Array<{ is_primary: boolean }>
+): boolean {
+  return relationships.filter((r) => r.is_primary).length > 1
+}
+
 export async function getStudentParents(
   studentId: string,
   organizationId: string

@@ -15,6 +15,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { signBookingToken } from '@/lib/jwt'
 import { sendBookingLink, sendUnknownParentReply, parseWebhookPayload, hasBookingIntent } from '@/lib/whatsapp'
+import { upsertLead } from '@/lib/leads'
 
 // ── GET — Meta hub verification ───────────────────────────────────────────────
 
@@ -131,13 +132,8 @@ async function processMessage(
   const accessToken = (org.whatsapp_token as string | null) ?? process.env.WHATSAPP_ACCESS_TOKEN ?? ''
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? ''
 
-  // 6. Check booking intent — ignore non-booking messages
-  if (!hasBookingIntent(msg.text)) {
-    // Sprint 1 supports booking-intent entry only. Non-booking messages are ignored.
-    return
-  }
-
-  // 7. Look up parent by phone in this org
+  // 6. Look up parent by phone in this org (before intent check — any message from
+  //    an unrecognized sender must create a lead, regardless of intent)
   const { data: parent, error: parentError } = await db
     .from('parents')
     .select('id')
@@ -152,8 +148,14 @@ async function processMessage(
   }
 
   if (!parent) {
-    // 7a. Unknown parent — create lead record + send fixed reply
-    await handleUnknownParent(db, org.id, senderPhone, msg.text, accessToken, phoneNumberId)
+    // Unknown sender — upsert lead and send fixed reply regardless of message content
+    await handleUnknownSender(org.id, senderPhone, msg.text, accessToken, phoneNumberId)
+    return
+  }
+
+  // 7. Known parent — check booking intent
+  if (!hasBookingIntent(msg.text)) {
+    // Sprint 4: cancellation and payment intent handled in later stories (DEV-102)
     return
   }
 
@@ -201,29 +203,18 @@ async function processMessage(
   console.info('[whatsapp/webhook] Booking link sent', { messageId: msg.messageId })
 }
 
-async function handleUnknownParent(
-  db: ReturnType<typeof createServiceRoleClient>,
+async function handleUnknownSender(
   organizationId: string,
   phone: string,
   rawMessage: string,
   accessToken: string,
   phoneNumberId: string
 ): Promise<void> {
-  // Create lead record — ignore conflict if lead already exists
-  const { error } = await db
-    .from('leads')
-    .insert({ organization_id: organizationId, phone, raw_message: rawMessage })
-    .select('id')
-    .maybeSingle()
+  // Upsert lead — creates on first contact, updates updated_at only on repeat
+  await upsertLead(organizationId, phone, rawMessage).catch(err => {
+    console.error('[whatsapp/webhook] Failed to upsert lead', { phone, err })
+  })
 
-  if (error && error.code !== '23505') {
-    // 23505 = unique constraint violation (lead already exists)
-    console.error('[whatsapp/webhook] Failed to insert lead', { error })
-  }
-
-  // Sprint 1 records the lead and replies to the sender, but does not trigger
-  // an additional admin notification flow yet.
-
-  // Send fixed reply to unknown sender
+  // Send fixed reply to unknown sender (Decision #4)
   await sendUnknownParentReply(phone, accessToken, phoneNumberId)
 }

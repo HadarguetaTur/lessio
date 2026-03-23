@@ -14,7 +14,27 @@ import { createHmac } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { signBookingToken } from '@/lib/jwt'
-import { sendBookingLink, sendUnknownParentReply, parseWebhookPayload, hasBookingIntent } from '@/lib/whatsapp'
+import {
+  sendBookingLink,
+  sendUnknownParentReply,
+  sendCancellationLessonList,
+  sendNoEligibleLessonsReply,
+  sendInvalidSelectionReply,
+  sendCancellationConfirmation,
+  sendCancellationAdminAlert,
+  parseWebhookPayload,
+  hasBookingIntent,
+  hasCancellationIntent,
+} from '@/lib/whatsapp'
+import { upsertLead } from '@/lib/leads'
+import {
+  getEligibleLessons,
+  formatLessonListMessage,
+  upsertCancellationSession,
+  getActiveCancellationSession,
+  deleteCancellationSession,
+  executeCancellation,
+} from '@/lib/cancellation-flow'
 
 // ── GET — Meta hub verification ───────────────────────────────────────────────
 
@@ -42,9 +62,12 @@ export async function POST(request: NextRequest) {
   const appSecret = process.env.WHATSAPP_APP_SECRET
 
   if (!appSecret) {
-    // TODO(LESSIO): Missing WHATSAPP_APP_SECRET env var.
-    // Question: Should signature verification be enforced in development/test environments?
-    // For now, skip verification only when WHATSAPP_APP_SECRET is not set.
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[whatsapp/webhook] WHATSAPP_APP_SECRET not set in production')
+      return new NextResponse('Server Misconfigured', { status: 500 })
+    }
+
+    // Local dev/test fallback only. Production must always verify signatures.
     console.warn('[whatsapp/webhook] WHATSAPP_APP_SECRET not set — skipping signature check')
   } else if (!verifySignature(rawBody, signature, appSecret)) {
     console.error('[whatsapp/webhook] Invalid X-Hub-Signature-256 — rejecting request')
@@ -87,7 +110,13 @@ function verifySignature(rawBody: string, signature: string | null, appSecret: s
 }
 
 async function processMessage(
-  msg: { from: string; messageId: string; text: string; businessPhoneNumber: string },
+  msg: {
+    from: string
+    messageId: string
+    text: string
+    businessPhoneNumber: string
+    phoneNumberId: string
+  },
   request: NextRequest
 ): Promise<void> {
   const db = createServiceRoleClient()
@@ -116,7 +145,7 @@ async function processMessage(
 
   const { data: org, error: orgError } = await db
     .from('organizations')
-    .select('id, whatsapp_token')
+    .select('id, whatsapp_token, timezone')
     .eq('whatsapp_number', orgPhone)
     .maybeSingle()
 
@@ -126,16 +155,10 @@ async function processMessage(
   }
 
   const accessToken = (org.whatsapp_token as string | null) ?? process.env.WHATSAPP_ACCESS_TOKEN ?? ''
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? ''
+  const phoneNumberId = msg.phoneNumberId || (process.env.WHATSAPP_PHONE_NUMBER_ID ?? '')
 
-  // 6. Check booking intent — ignore non-booking messages
-  if (!hasBookingIntent(msg.text)) {
-    // TODO(LESSIO): Missing definition in docs for non-booking messages.
-    // Question: Should the system reply to non-booking messages or silently ignore them?
-    return
-  }
-
-  // 7. Look up parent by phone in this org
+  // 6. Look up parent by phone in this org (before intent check — any message from
+  //    an unrecognized sender must create a lead, regardless of intent)
   const { data: parent, error: parentError } = await db
     .from('parents')
     .select('id')
@@ -150,12 +173,40 @@ async function processMessage(
   }
 
   if (!parent) {
-    // 7a. Unknown parent — create lead record + send fixed reply
-    await handleUnknownParent(db, org.id, senderPhone, msg.text, accessToken, phoneNumberId)
+    // Unknown sender — upsert lead and send fixed reply regardless of message content
+    await handleUnknownSender(org.id, senderPhone, msg.text, accessToken, phoneNumberId)
     return
   }
 
-  // 8. Resolve student for this parent
+  // 7. Known parent — check for active cancellation session first
+  const session = await getActiveCancellationSession(org.id, senderPhone)
+
+  if (session) {
+    await handleCancellationSelection(
+      parent.id, org.id, senderPhone, msg.text,
+      session,
+      (org.timezone as string | null) ?? 'Asia/Jerusalem',
+      accessToken, phoneNumberId
+    )
+    return
+  }
+
+  // 8. Check cancellation intent
+  if (hasCancellationIntent(msg.text)) {
+    await handleCancellationIntent(
+      parent.id, org.id, senderPhone,
+      (org.timezone as string | null) ?? 'Asia/Jerusalem',
+      accessToken, phoneNumberId
+    )
+    return
+  }
+
+  // 9. Check booking intent
+  if (!hasBookingIntent(msg.text)) {
+    return
+  }
+
+  // 10. Resolve student for this parent
   const { data: relationships, error: relError } = await db
     .from('relationships')
     .select('student_id')
@@ -168,17 +219,15 @@ async function processMessage(
   }
 
   if (relationships.length === 0) {
-    // TODO(LESSIO): Missing definition in docs for parents with no students.
-    // Question: Should parents with no students receive a booking link or a different message?
+    // Accepted Sprint 1 limitation: a parent without linked students cannot receive
+    // a booking link because the booking JWT must contain a concrete studentId.
     console.warn('[whatsapp/webhook] Parent has no students — no booking link sent')
     return
   }
 
   if (relationships.length > 1) {
-    // TODO(LESSIO): Multiple students for parent — cannot resolve which student to book for.
-    // Question: How should the system select or prompt for the correct student when a parent
-    // has more than one active student linked?
-    // Per Sprint 1 spec: stop and raise this TODO — do not assume.
+    // Accepted Sprint 1 limitation: when a parent has multiple students, the system
+    // does not guess which student to book for and does not send a link.
     console.warn('[whatsapp/webhook] Parent has multiple students — booking link not sent')
     return
   }
@@ -201,30 +250,140 @@ async function processMessage(
   console.info('[whatsapp/webhook] Booking link sent', { messageId: msg.messageId })
 }
 
-async function handleUnknownParent(
-  db: ReturnType<typeof createServiceRoleClient>,
+async function handleUnknownSender(
   organizationId: string,
   phone: string,
   rawMessage: string,
   accessToken: string,
   phoneNumberId: string
 ): Promise<void> {
-  // Create lead record — ignore conflict if lead already exists
-  const { error } = await db
-    .from('leads')
-    .insert({ organization_id: organizationId, phone, raw_message: rawMessage })
-    .select('id')
-    .maybeSingle()
+  // Upsert lead — creates on first contact, updates updated_at only on repeat
+  await upsertLead(organizationId, phone, rawMessage).catch(err => {
+    console.error('[whatsapp/webhook] Failed to upsert lead', { phone, err })
+  })
 
-  if (error && error.code !== '23505') {
-    // 23505 = unique constraint violation (lead already exists)
-    console.error('[whatsapp/webhook] Failed to insert lead', { error })
+  // Send fixed reply to unknown sender (Decision #4)
+  await sendUnknownParentReply(phone, accessToken, phoneNumberId)
+}
+
+async function handleCancellationIntent(
+  parentId: string,
+  orgId: string,
+  senderPhone: string,
+  timezone: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const lessons = await getEligibleLessons(orgId, parentId)
+
+  if (lessons.length === 0) {
+    await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
+    return
   }
 
-  // TODO(LESSIO): Missing definition in docs for admin alert mechanism.
-  // Question: How should the system notify the org admin of a new lead in Sprint 1?
-  // No dashboard exists yet — decide notification channel before implementing.
+  const message = formatLessonListMessage(lessons, timezone)
+  await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
+  await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId)
+  console.info('[whatsapp/webhook] Cancellation lesson list sent', { senderPhone })
+}
 
-  // Send fixed reply to unknown sender
-  await sendUnknownParentReply(phone, accessToken, phoneNumberId)
+async function handleCancellationSelection(
+  parentId: string,
+  orgId: string,
+  senderPhone: string,
+  text: string,
+  session: { lesson_ids: string[] },
+  timezone: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const num = parseInt(text.trim(), 10)
+  const count = session.lesson_ids.length
+
+  if (isNaN(num) || num < 1 || num > count) {
+    // Invalid input — keep flow open
+    await sendInvalidSelectionReply(senderPhone, accessToken, phoneNumberId)
+
+    // Re-fetch eligible lessons to rebuild the list (lesson may have changed)
+    const lessons = await getEligibleLessons(orgId, parentId)
+    if (lessons.length === 0) {
+      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
+      await deleteCancellationSession(orgId, senderPhone)
+      return
+    }
+    const message = formatLessonListMessage(lessons, timezone)
+    await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
+    await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId)
+    return
+  }
+
+  // Valid selection — execute cancellation
+  const selectedLessonId = session.lesson_ids[num - 1]
+
+  const outcome = await executeCancellation(selectedLessonId, parentId, orgId)
+
+  if (!outcome.success) {
+    if (outcome.error === 'already_cancelled') {
+      // Idempotency: already processed, close flow silently
+      await deleteCancellationSession(orgId, senderPhone)
+      return
+    }
+
+    // Lesson no longer eligible — error + rebuild list
+    const lessons = await getEligibleLessons(orgId, parentId)
+    if (lessons.length === 0) {
+      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
+      await deleteCancellationSession(orgId, senderPhone)
+      return
+    }
+    const errorMsg = 'השיעור שנבחר אינו זמין עוד לביטול.'
+    await sendCancellationLessonList(senderPhone, errorMsg + '\n\n' + formatLessonListMessage(lessons, timezone), accessToken, phoneNumberId)
+    await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
+    return
+  }
+
+  // Success — delete session
+  await deleteCancellationSession(orgId, senderPhone)
+
+  // Notify parent
+  await sendCancellationConfirmation(
+    senderPhone,
+    outcome.studentName,
+    outcome.teacherName,
+    outcome.lessonStartAt,
+    timezone,
+    outcome.chargeResult.amount,
+    outcome.chargeResult.chargeType,
+    accessToken,
+    phoneNumberId
+  )
+
+  // Notify admin (best-effort — do not throw if admin phone missing)
+  const db = createServiceRoleClient()
+  const { data: ownerProfile } = await db
+    .from('profiles')
+    .select('phone')
+    .eq('organization_id', orgId)
+    .eq('role', 'owner')
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (ownerProfile?.phone) {
+    await sendCancellationAdminAlert(
+      ownerProfile.phone,
+      senderPhone,
+      outcome.studentName,
+      outcome.teacherName,
+      outcome.lessonStartAt,
+      timezone,
+      outcome.chargeResult.amount,
+      outcome.chargeResult.chargeType,
+      accessToken,
+      phoneNumberId
+    ).catch(err => {
+      console.error('[whatsapp/webhook] Failed to send admin cancellation alert', err)
+    })
+  }
+
+  console.info('[whatsapp/webhook] Cancellation completed', { selectedLessonId, senderPhone })
 }

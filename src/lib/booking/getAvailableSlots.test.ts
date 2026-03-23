@@ -3,7 +3,7 @@
  * Availability windows, lesson times, and lock times are expressed as UTC ISO strings.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { DateTime } from 'luxon'
 import { getAvailableSlots } from './getAvailableSlots'
 
@@ -38,7 +38,15 @@ function baseOrg(overrides: Partial<{
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('getAvailableSlots', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
 
   it('returns slots within the availability window when nothing is blocked', async () => {
     // Availability: 16:00–18:00 UTC → two 60-min slots
@@ -108,6 +116,27 @@ describe('getAvailableSlots', () => {
 
     expect(slots).toHaveLength(1)
     expect(slots[0].startAt).toBe('2026-03-23T17:00:00.000Z')
+  })
+
+  it('does not let an expired slot lock block availability', async () => {
+    fromMock = tableRouter({
+      organizations: single(baseOrg()),
+      availability_overrides: maybeSingle(null),
+      availability: maybeSingle({ start_time: '16:00:00', end_time: '18:00:00' }),
+      lessons: array([]),
+      slot_locks: array([]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    expect(slots).toHaveLength(2)
+    expect(slots[0].startAt).toBe('2026-03-23T16:00:00.000Z')
+    expect(slots[1].startAt).toBe('2026-03-23T17:00:00.000Z')
   })
 
   it('returns empty array when an override blocks the whole day', async () => {

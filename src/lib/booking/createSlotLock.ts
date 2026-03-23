@@ -1,5 +1,3 @@
-'use server'
-
 /**
  * createSlotLock — reserves a slot for 5 minutes.
  * Per /docs/sprint-1-scope.md § Implement slot locking and /docs/decisions.md #3.

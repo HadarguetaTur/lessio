@@ -91,5 +91,130 @@ export async function sendUnknownParentReply(
   return sendTextMessage(to, message, accessToken, phoneNumberId)
 }
 
-export { parseWebhookPayload, hasBookingIntent } from './parsePayload'
+/**
+ * Sends the numbered lesson list to the parent for cancellation selection.
+ */
+export async function sendCancellationLessonList(
+  to: string,
+  message: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  return sendTextMessage(to, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends "no eligible lessons" reply.
+ */
+export async function sendNoEligibleLessonsReply(
+  to: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const message = 'לא נמצאו שיעורים מתאימים לביטול (שיעורים מתוכננים ב-7 הימים הקרובים).'
+  return sendTextMessage(to, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends an "invalid selection" error + lesson list again.
+ */
+export async function sendInvalidSelectionReply(
+  to: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const message = 'קלט לא תקין. אנא השב/י עם מספר השיעור מהרשימה.'
+  return sendTextMessage(to, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends a cancellation timeout notice.
+ */
+export async function sendCancellationTimeoutReply(
+  to: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const message = 'הזמן לביטול פג. לביטול חדש, שלח/י "ביטול".'
+  return sendTextMessage(to, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends cancellation confirmation to the parent.
+ */
+export async function sendCancellationConfirmation(
+  to: string,
+  studentName: string,
+  teacherName: string,
+  lessonStartAt: string,
+  timezone: string,
+  chargeAmount: number,
+  chargeType: 'full' | 'partial' | null,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const date = new Date(lessonStartAt).toLocaleDateString('he-IL', {
+    timeZone: timezone,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+  const time = new Date(lessonStartAt).toLocaleTimeString('he-IL', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+  let chargeLine = ''
+  if (chargeType && chargeAmount > 0) {
+    const label = chargeType === 'full' ? 'חיוב ביטול מלא' : 'חיוב ביטול חלקי'
+    chargeLine = `\n${label}: ₪${chargeAmount.toFixed(2)}`
+  }
+
+  const message = `✅ השיעור בוטל.\n${studentName} עם ${teacherName}\n${date}, ${time}${chargeLine}`
+  return sendTextMessage(to, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends a cancellation alert to the admin/owner phone.
+ */
+export async function sendCancellationAdminAlert(
+  to: string,
+  parentPhone: string,
+  studentName: string,
+  teacherName: string,
+  lessonStartAt: string,
+  timezone: string,
+  chargeAmount: number,
+  chargeType: 'full' | 'partial' | null,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const date = new Date(lessonStartAt).toLocaleDateString('he-IL', {
+    timeZone: timezone,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+  const time = new Date(lessonStartAt).toLocaleTimeString('he-IL', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+  let chargeLine = ''
+  if (chargeType && chargeAmount > 0) {
+    const label = chargeType === 'full' ? 'חיוב מלא' : 'חיוב חלקי'
+    chargeLine = `\nחיוב: ₪${chargeAmount.toFixed(2)} (${label})`
+  } else {
+    chargeLine = '\nללא חיוב ביטול'
+  }
+
+  const message = `🔔 ביטול שיעור\nתלמיד: ${studentName}\nמורה: ${teacherName}\n${date}, ${time}${chargeLine}\nמבטל/ת: ${parentPhone}`
+  return sendTextMessage(to, message, accessToken, phoneNumberId)
+}
+
+export { parseWebhookPayload, hasBookingIntent, hasCancellationIntent } from './parsePayload'
 export type { WhatsAppMessage, MetaWebhookPayload } from './parsePayload'

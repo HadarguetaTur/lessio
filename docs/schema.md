@@ -213,12 +213,17 @@ status          text not null check (status in ('pending','invoiced','paid'))
 notes           text
 due_date        date
 paid_at         timestamptz
+sent_at         timestamptz                         -- Sprint 4 payment request metadata
+sent_by_profile_id uuid references profiles(id)    -- owner/admin who sent the request
 created_at      timestamptz default now()
 updated_at      timestamptz default now()
 
 index: (organization_id, parent_id, status)
 index: (lesson_id)
 ```
+
+**Sprint 4 rule:** sending a payment request updates metadata on each included charge.
+Minimum logged data = `sent_at` + `sent_by_profile_id`.
 
 ---
 
@@ -250,9 +255,12 @@ notes           text
 created_at      timestamptz default now()
 updated_at      timestamptz default now()
 
+unique: (organization_id, phone)
 index: (organization_id, status)
 index: (phone)
 ```
+
+**Sprint 4 rule:** repeated WhatsApp messages from the same normalized phone must update the existing lead instead of creating a duplicate record.
 
 ---
 

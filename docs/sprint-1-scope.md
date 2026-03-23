@@ -188,12 +188,14 @@ Nothing outside this scope should be built in Sprint 1.
 * Log incoming payload (structured, no PII in logs)
 * Return `200` immediately (async processing)
 * Error logging for malformed payloads
+* Local development may skip signature verification only when `WHATSAPP_APP_SECRET` is unset; production must reject that configuration
 
 ### Story: Parent identification
 
 * Look up the `parents` table by normalized phone + organization context
 * If not found: create lead record or return `"not recognized"` flow (`TBD`)
 * If found with multiple matches: log and flag as an edge case
+* Accepted Sprint 1 limitation: if the matched parent has no linked students or more than one linked student, do not send a booking link and log the case for follow-up
 
 ### Story: Booking link generation and dispatch
 
@@ -207,6 +209,7 @@ Nothing outside this scope should be built in Sprint 1.
 * Build WebView URL with JWT as query param
 * Send the URL back to the parent via Meta Cloud API (text message template)
 * Log the link generation event
+* Accepted Sprint 1 limitation: only booking-intent messages receive a response; other incoming messages are ignored
 
 ---
 

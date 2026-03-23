@@ -3,23 +3,24 @@
 import { useActionState, useState } from 'react'
 import { LessonStatus } from '@/lib/lessons'
 
-const STATUS_LABELS: Record<LessonStatus, string> = {
+// 'cancelled' is excluded — cancellation must go through CancelLessonForm (DEV-58)
+// to ensure the policy engine and charge calculation are applied.
+const STATUS_LABELS: Partial<Record<LessonStatus, string>> = {
   scheduled: 'מתוכנן',
   completed: 'הושלם',
-  cancelled: 'בוטל',
   no_show: 'לא הגיע',
 }
 
 interface Props {
   currentStatus: LessonStatus
   action: (
-    prevState: { error: string | null },
+    prevState: { error: string | null; chargeAlert?: string },
     formData: FormData
-  ) => Promise<{ error: string | null }>
+  ) => Promise<{ error: string | null; chargeAlert?: string }>
 }
 
 export function LessonStatusForm({ currentStatus, action }: Props) {
-  const [state, formAction, pending] = useActionState(action, { error: null })
+  const [state, formAction, pending] = useActionState(action, { error: null, chargeAlert: undefined })
   const [selected, setSelected] = useState<LessonStatus>(currentStatus)
 
   if (currentStatus === 'cancelled') {
@@ -70,6 +71,12 @@ export function LessonStatusForm({ currentStatus, action }: Props) {
 
       {state.error === null && !pending && selected !== currentStatus && (
         <p className="text-sm text-green-600">הסטטוס עודכן בהצלחה.</p>
+      )}
+
+      {state.chargeAlert && (
+        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-md">
+          ⚠️ {state.chargeAlert}
+        </div>
       )}
 
       <button

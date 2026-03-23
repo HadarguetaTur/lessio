@@ -1,0 +1,187 @@
+import { getSession } from '@/lib/auth/session'
+import { getCharges, ChargeStatus } from '@/lib/charges'
+import { getParents } from '@/lib/parents'
+import { MarkAsPaidButton } from '@/components/dashboard/charges/MarkAsPaidButton'
+import { markAsPaid } from './actions'
+
+const STATUS_LABELS: Record<ChargeStatus, string> = {
+  pending: 'ממתין',
+  invoiced: 'חויב',
+  paid: 'שולם',
+}
+
+const STATUS_STYLES: Record<ChargeStatus, string> = {
+  pending: 'bg-yellow-50 text-yellow-700',
+  invoiced: 'bg-blue-50 text-blue-700',
+  paid: 'bg-green-50 text-green-700',
+}
+
+const CHARGE_TYPE_LABELS: Record<string, string> = {
+  lesson: 'שיעור',
+  cancellation: 'ביטול',
+  manual: 'ידני',
+}
+
+export default async function ChargesPage(props: {
+  searchParams: Promise<{ status?: string; parent?: string; from?: string; to?: string }>
+}) {
+  const searchParams = await props.searchParams
+  const { orgId, role } = await getSession()
+
+  const validStatuses: ChargeStatus[] = ['pending', 'invoiced', 'paid']
+  const statusFilter = validStatuses.includes(searchParams.status as ChargeStatus)
+    ? (searchParams.status as ChargeStatus)
+    : undefined
+
+  const [charges, parents] = await Promise.all([
+    getCharges(orgId, {
+      status: statusFilter,
+      parentId: searchParams.parent || undefined,
+      dateFrom: searchParams.from || undefined,
+      dateTo: searchParams.to || undefined,
+    }),
+    getParents(orgId),
+  ])
+
+  const canMarkPaid = role === 'owner' || role === 'admin'
+  const selectedParent = parents.find((parent) => parent.id === searchParams.parent)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">חיובים</h1>
+      </div>
+
+      {/* Filters */}
+      <form method="GET" className="flex flex-wrap gap-3 mb-5">
+        <select
+          name="status"
+          defaultValue={searchParams.status ?? ''}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">כל הסטטוסים</option>
+          {validStatuses.map((s) => (
+            <option key={s} value={s}>
+              {STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
+
+        <select
+          name="parent"
+          defaultValue={searchParams.parent ?? ''}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">כל ההורים</option>
+          {parents.map((parent) => (
+            <option key={parent.id} value={parent.id}>
+              {parent.full_name}
+            </option>
+          ))}
+        </select>
+
+        <input
+          name="from"
+          type="date"
+          defaultValue={searchParams.from ?? ''}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <input
+          name="to"
+          type="date"
+          defaultValue={searchParams.to ?? ''}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <button
+          type="submit"
+          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+        >
+          סנן
+        </button>
+        <a
+          href="/charges"
+          className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+        >
+          איפוס
+        </a>
+      </form>
+
+      {selectedParent && (
+        <p className="mb-4 text-sm text-gray-500">
+          מוצגים חיובים עבור: <span className="font-medium text-gray-700">{selectedParent.full_name}</span>
+        </p>
+      )}
+
+      {charges.length === 0 ? (
+        <p className="mt-10 text-center text-sm text-gray-400">לא נמצאו חיובים</p>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  הורה
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  סוג
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  סכום
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  סטטוס
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  תאריך יצירה
+                </th>
+                {canMarkPaid && (
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    פעולות
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {charges.map((charge) => (
+                <tr key={charge.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    {charge.parent.full_name}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500">
+                    <div>{CHARGE_TYPE_LABELS[charge.charge_type] ?? charge.charge_type}</div>
+                    {charge.notes && (
+                      <div className="mt-1 text-xs text-gray-400">{charge.notes}</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 font-mono" dir="ltr">
+                    ₪{charge.amount.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[charge.status]}`}
+                    >
+                      {STATUS_LABELS[charge.status]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500">
+                    {new Date(charge.created_at).toLocaleDateString('he-IL')}
+                  </td>
+                  {canMarkPaid && (
+                    <td className="px-4 py-3">
+                      {charge.status !== 'paid' ? (
+                        <MarkAsPaidButton chargeId={charge.id} action={markAsPaid} />
+                      ) : (
+                        <span className="text-xs text-gray-400">שולם</span>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}

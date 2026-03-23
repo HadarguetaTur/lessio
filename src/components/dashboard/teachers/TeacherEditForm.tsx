@@ -11,6 +11,7 @@ interface TeacherEditFormProps {
   action: FormAction
   defaultValues?: {
     bio?: string | null
+    hourly_rate?: number | null
   }
 }
 
@@ -24,6 +25,25 @@ export function TeacherEditForm({ action, defaultValues }: TeacherEditFormProps)
           {state.error}
         </div>
       )}
+
+      <div className="space-y-1">
+        <label htmlFor="hourly_rate" className="block text-sm font-medium text-gray-700">
+          תעריף שעתי (₪)
+        </label>
+        <input
+          id="hourly_rate"
+          name="hourly_rate"
+          type="number"
+          min="0"
+          step="0.01"
+          defaultValue={defaultValues?.hourly_rate ?? ''}
+          placeholder="לדוגמה: 150"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {!defaultValues?.hourly_rate && (
+          <p className="text-xs text-amber-600">שימו לב: ללא תעריף שעתי לא ניתן יהיה לייצר חיובים עבור שיעורים של מורה זה</p>
+        )}
+      </div>
 
       <div className="space-y-1">
         <label htmlFor="bio" className="block text-sm font-medium text-gray-700">

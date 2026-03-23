@@ -42,9 +42,12 @@ export async function POST(request: NextRequest) {
   const appSecret = process.env.WHATSAPP_APP_SECRET
 
   if (!appSecret) {
-    // TODO(LESSIO): Missing WHATSAPP_APP_SECRET env var.
-    // Question: Should signature verification be enforced in development/test environments?
-    // For now, skip verification only when WHATSAPP_APP_SECRET is not set.
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[whatsapp/webhook] WHATSAPP_APP_SECRET not set in production')
+      return new NextResponse('Server Misconfigured', { status: 500 })
+    }
+
+    // Local dev/test fallback only. Production must always verify signatures.
     console.warn('[whatsapp/webhook] WHATSAPP_APP_SECRET not set — skipping signature check')
   } else if (!verifySignature(rawBody, signature, appSecret)) {
     console.error('[whatsapp/webhook] Invalid X-Hub-Signature-256 — rejecting request')
@@ -130,8 +133,7 @@ async function processMessage(
 
   // 6. Check booking intent — ignore non-booking messages
   if (!hasBookingIntent(msg.text)) {
-    // TODO(LESSIO): Missing definition in docs for non-booking messages.
-    // Question: Should the system reply to non-booking messages or silently ignore them?
+    // Sprint 1 supports booking-intent entry only. Non-booking messages are ignored.
     return
   }
 
@@ -168,17 +170,15 @@ async function processMessage(
   }
 
   if (relationships.length === 0) {
-    // TODO(LESSIO): Missing definition in docs for parents with no students.
-    // Question: Should parents with no students receive a booking link or a different message?
+    // Accepted Sprint 1 limitation: a parent without linked students cannot receive
+    // a booking link because the booking JWT must contain a concrete studentId.
     console.warn('[whatsapp/webhook] Parent has no students — no booking link sent')
     return
   }
 
   if (relationships.length > 1) {
-    // TODO(LESSIO): Multiple students for parent — cannot resolve which student to book for.
-    // Question: How should the system select or prompt for the correct student when a parent
-    // has more than one active student linked?
-    // Per Sprint 1 spec: stop and raise this TODO — do not assume.
+    // Accepted Sprint 1 limitation: when a parent has multiple students, the system
+    // does not guess which student to book for and does not send a link.
     console.warn('[whatsapp/webhook] Parent has multiple students — booking link not sent')
     return
   }
@@ -221,9 +221,8 @@ async function handleUnknownParent(
     console.error('[whatsapp/webhook] Failed to insert lead', { error })
   }
 
-  // TODO(LESSIO): Missing definition in docs for admin alert mechanism.
-  // Question: How should the system notify the org admin of a new lead in Sprint 1?
-  // No dashboard exists yet — decide notification channel before implementing.
+  // Sprint 1 records the lead and replies to the sender, but does not trigger
+  // an additional admin notification flow yet.
 
   // Send fixed reply to unknown sender
   await sendUnknownParentReply(phone, accessToken, phoneNumberId)

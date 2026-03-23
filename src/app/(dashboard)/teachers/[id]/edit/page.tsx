@@ -19,7 +19,7 @@ export default async function EditTeacherPage(props: {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-1">עריכת מורה</h1>
       <p className="text-sm text-gray-500 mb-6">{teacher.profile.full_name}</p>
-      <TeacherEditForm action={boundUpdateTeacher} defaultValues={{ bio: teacher.bio }} />
+      <TeacherEditForm action={boundUpdateTeacher} defaultValues={{ bio: teacher.bio, hourly_rate: teacher.hourly_rate }} />
     </div>
   )
 }

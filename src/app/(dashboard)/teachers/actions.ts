@@ -72,13 +72,19 @@ export async function updateTeacher(
   formData: FormData
 ): Promise<ActionState> {
   const bio = (formData.get('bio') as string).trim() || null
+  const hourlyRateRaw = (formData.get('hourly_rate') as string).trim()
+  const hourly_rate = hourlyRateRaw ? parseFloat(hourlyRateRaw) : null
+
+  if (hourlyRateRaw && (isNaN(hourly_rate!) || hourly_rate! < 0)) {
+    return { error: 'תעריף שעתי חייב להיות מספר חיובי' }
+  }
 
   const { orgId } = await getSession()
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('teachers')
-    .update({ bio, updated_at: new Date().toISOString() })
+    .update({ bio, hourly_rate, updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('organization_id', orgId)
 

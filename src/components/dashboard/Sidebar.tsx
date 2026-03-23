@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -8,16 +9,20 @@ import {
   Users,
   UserRound,
   BookOpen,
+  Receipt,
+  Settings,
   LogOut,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; roles?: string[] }[] = [
   { href: '/dashboard', label: 'לוח הבקרה', icon: LayoutDashboard },
   { href: '/students', label: 'תלמידים', icon: GraduationCap },
   { href: '/parents', label: 'הורים', icon: Users },
   { href: '/teachers', label: 'מורים', icon: UserRound },
   { href: '/lessons', label: 'שיעורים', icon: BookOpen },
+  { href: '/charges', label: 'חיובים', icon: Receipt, roles: ['owner', 'admin'] },
+  { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings, roles: ['owner'] },
 ]
 
 interface SidebarProps {
@@ -43,7 +48,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {NAV_ITEMS.filter(({ roles }) => !roles || roles.includes(userRole)).map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link

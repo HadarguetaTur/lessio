@@ -130,7 +130,7 @@ Every dashboard user must have a JWT that includes:
 {
   "sub": "uuid",
   "org_id": "uuid",
-  "role": "owner|admin|teacher"
+  "app_role": "owner|admin|teacher"
 }
 ```
 
@@ -138,8 +138,14 @@ Meaning:
 
 * `sub` = `auth.uid()`
 * `org_id` = `organization_id`
+* `app_role` = LESSIO business role used by RLS (`owner` / `admin` / `teacher`)
 
-These claims are defined via Supabase Auth custom claims or a JWT hook.
+Important:
+
+* Supabase's reserved top-level `role` claim must remain `authenticated`
+* LESSIO role-based policies must read the custom `app_role` claim instead
+
+These claims are defined via the Supabase Auth JWT hook.
 
 ---
 

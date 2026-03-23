@@ -1,21 +1,28 @@
-# LESSIO — Claude Operating Manual (Sprint 2)
+# LESSIO — Claude Operating Manual (Sprint 4)
 
 ---
 
 ## Project Overview
 
-LESSIO is a multi-tenant SaaS platform for tutoring businesses and learning centers.
+LESSIO is a multi-tenant SaaS platform for tutoring businesses and learning centers.  
 It replaces manual scheduling, billing, and WhatsApp coordination with a structured, automated system.
 
 **Tech Stack:** Next.js App Router + TypeScript | Supabase (Postgres + Auth) | shadcn/ui (Nova) | Meta WhatsApp Cloud API | Vercel
 
 ---
 
-## Current Sprint: Sprint 2 — Internal Operations MVP
+## Current Sprint: Sprint 4 — External User Workflows
 
-**Branch:** sprint-2
-**Goal:** Owner/admin can fully operate the system day-to-day
-**Users in scope:** owner + admin only. Teacher/parent UI = out of scope.
+**Branch:** sprint-4  
+**Goal:** Expose core external workflows:
+- unrecognized WhatsApp sender becomes a lead
+- lead can be managed and converted
+- parent can cancel via WhatsApp
+- owner/admin can send payment request via WhatsApp
+
+**Users in scope:**
+- Dashboard users: owner + admin
+- External users: parent via WhatsApp, unrecognized sender via WhatsApp
 
 ---
 
@@ -44,55 +51,97 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | Today view dashboard | ✅ Done (Sprint 2) |
 | Weekly calendar | ✅ Done (Sprint 2) |
 | Lesson status updates | ✅ Done (Sprint 2) |
+| teachers.hourly_rate migration + UI | ✅ Done (Sprint 3) |
+| Cancellation policy model + owner UI | ✅ Done (Sprint 3) |
+| calculateCancellationCharge (pure lib + tests) | ✅ Done (Sprint 3) |
+| Billing parent resolution | ✅ Done (Sprint 3) |
+| Manual lesson cancellation from dashboard | ✅ Done (Sprint 3) |
+| Charge engine (idempotent) | ✅ Done (Sprint 3) |
+| Automatic charge on lesson completed | ✅ Done (Sprint 3) |
+| Charges list UI + filters | ✅ Done (Sprint 3) |
+| Mark charge as paid + note | ✅ Done (Sprint 3) |
+| Parent debt summary | ✅ Done (Sprint 3) |
+| Sprint 4 scope defined | ✅ Done |
+| Sprint 4 implementation | ⏳ Not started |
 
-When starting any task, check this table first.
-Do not rebuild what is already marked ✅.
+When starting any task, check this table first.  
+Do not rebuild what is already marked ✅.  
 Update this table after each completed story.
 
 ---
 
-## Sprint 2 — What to Build
+## Sprint 1-3 Closure Gates
 
-See `/docs/sprint-2-scope.md` for full Epics, Stories, and Definition of Done.
+- [x] Automated test suite is green
+- [x] Production build passes
+- [x] Booking availability tests are deterministic and cover expired-lock behavior
+- [x] Charge creation is covered for success, retry/idempotency, missing rate, and missing billing parent
+- [x] Dashboard auth session and route protection have automated coverage
+- [x] Runtime smoke check confirms unauthenticated `/dashboard` requests land on `/login`
+- [x] Runtime auth check confirms Supabase `role=authenticated` and LESSIO `app_role` is present
+- [x] Teacher invite flow has automated coverage
+- [x] Sprint 1 WhatsApp limitations are documented explicitly instead of left as open TODOs
+- [x] Auth / RLS docs reflect the custom `app_role` claim model
+
+---
+
+## Sprint 4 — What to Build
+
+See `/docs/sprint-4-scope.md` for full Epics, Stories, and Definition of Done.
 
 **Execution order:**
-1. Route protection + dashboard shell
-2. Students CRUD
-3. Parents CRUD
-4. Parent-Student relationships
-5. Teachers CRUD + invite flow
-6. Teacher availability (weekly)
-7. Availability overrides
-8. Today view
-9. Weekly calendar
-10. Lesson status updates
-11. RTL + polish
+1. Leads epic
+2. Lead capture + deduplication
+3. Leads management list
+4. Lead conversion to parent + student
+5. WhatsApp cancellation epic
+6. Intent detection + lesson selection
+7. Apply cancellation + charge outcome + notifications
+8. Payment request epic
+9. Build + send payment request
+10. Acceptance + regression
 
 ---
 
-## What NOT to Build in Sprint 2
+## What NOT to Build in Sprint 4
 
-- Billing / charges / charge dashboard
-- PDF invoices
-- Cancellation logic (billing side)
-- Homework module
-- Teacher portal (Sprint 5)
-- Parent portal
-- WhatsApp flows beyond what exists
-- Leads management UI
+- AI/NLP intent detection
 - Payment provider integration
+- Parent portal
+- Teacher portal
+- Automated/scheduled payment reminders
+- Bulk payment requests
+- Waive charge via WhatsApp
+- Leads from sources other than WhatsApp
+- Cancellation beyond 7 days ahead
+- One lead to multiple students conversion
 - Analytics / reports
+- PDF invoices
 
 ---
 
-## Closed Decisions Relevant to Sprint 2
+## Closed Decisions Relevant to Sprint 4
 
-**Decision #12 — Teacher creation:**
-Invite flow only. Owner sends a Supabase Auth invite → teacher registers → owner links the profile to the teacher record.
-No direct user creation.
+**Decision — WhatsApp intent detection:**  
+Keyword matching only. No AI/LLM/NLP.
 
-**Decision #13 — Cancelled in Sprint 2:**
-"cancelled" = status change only. No billing logic, no side effects. Sprint 3 handles that.
+**Decision — Cancellation timeout:**  
+Timeout = 10 minutes.
+
+**Decision — Cancellation engine reuse:**  
+`calculateCancellationCharge()` must be reused from Sprint 3. Never reimplement it.
+
+**Decision — Invalid input behavior:**  
+Invalid input returns error + list again. It does not close the flow.
+
+**Decision — Lead conversion scope:**  
+One lead converts to one parent + one student only in Sprint 4.
+
+**Decision — Payment request scope:**  
+Payment request includes pending charges only. No payment provider integration.
+
+**Decision — Idempotency:**  
+Cancellation and payment request resend behavior must be idempotent.
 
 See `/docs/decisions.md` for all decisions.
 
@@ -116,7 +165,7 @@ See `/docs/decisions.md` for all decisions.
 
 ## Repository Structure
 
-```
+```txt
 lessio/
 ├── CLAUDE.md
 ├── docs/
@@ -132,178 +181,19 @@ lessio/
 │   └── sprint-6-scope.md
 ├── src/
 │   ├── app/
-│   │   ├── (dashboard)/           ← owner/admin pages (Supabase Auth)
-│   │   │   ├── students/
-│   │   │   ├── parents/
-│   │   │   ├── teachers/
-│   │   │   ├── lessons/
-│   │   │   └── dashboard/
+│   │   ├── (dashboard)/
 │   │   ├── book/
-│   │   │   └── [token]/           ← parent booking WebView (JWT auth only)
 │   │   └── api/
 │   │       └── whatsapp/
 │   │           └── webhook/
 │   ├── lib/
-│   │   ├── supabase/              ← client.ts, server.ts, service-role.ts
-│   │   ├── booking/               ← getAvailableSlots, createSlotLock, confirmBooking
-│   │   ├── billing/               ← calculateCancellationCharge (Sprint 3+)
-│   │   ├── whatsapp/              ← Meta API client, sendBookingLink, sendReply
-│   │   ├── jwt/                   ← signBookingToken, verifyBookingToken
-│   │   └── phone/                 ← normalizePhone (E.164)
+│   │   ├── supabase/
+│   │   ├── booking/
+│   │   ├── billing/
+│   │   ├── whatsapp/
+│   │   ├── jwt/
+│   │   └── phone/
 │   └── components/
-│       ├── ui/                    ← shadcn components (do not edit manually)
-│       ├── booking/               ← booking WebView step components
-│       └── dashboard/             ← dashboard-specific components
 ├── supabase/
 │   └── migrations/
 └── .env.local
-```
-
----
-
-## Authentication Model
-
-### Dashboard users (Owner / Admin / Teacher)
-- Supabase Auth session
-- JWT claims must include: `{ sub, org_id, role }`
-- Role determines RLS access — see `/docs/security.md`
-- `/book/*` routes: no Supabase session middleware
-
-### Parent booking WebView (`/book/[token]`)
-- JWT verified in dedicated route-level middleware for `/book/*` only
-- JWT payload: `{ organizationId, parentId, studentId, exp }`
-- JWT is NOT passed to Supabase in any form
-
-### Service role
-- Used for all booking writes (slot_locks, lessons)
-- Imported only from `src/lib/supabase/service-role.ts`
-- Never in client components
-
----
-
-## Environment Variables
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=        # server-side only, never in client bundle
-BOOKING_JWT_SECRET=               # for signing/verifying booking tokens
-WHATSAPP_ACCESS_TOKEN=
-WHATSAPP_PHONE_NUMBER_ID=
-WHATSAPP_VERIFY_TOKEN=
-```
-
----
-
-## Key Business Rules (non-negotiable)
-
-- `slot_locks` expire after **5 minutes**
-- Booking JWT tokens expire after **15 minutes**
-- All phone numbers stored and queried as **E.164** — always call `normalizePhone()` before DB write or lookup
-- All datetimes stored as **UTC**, displayed per `organizations.timezone`
-- Archive = `is_active = false`. Never hard delete.
-- Archived entities must not appear in any booking or assignment flow
-- Teacher creation = invite flow only (Decision #12)
-- "cancelled" in Sprint 2 = status only, no billing (Decision #13)
-- Billing parent = `is_primary = true` from `relationships`
-- If student has no primary parent → lesson creation fails with error
-
-Full schema: `/docs/schema.md` | All decisions: `/docs/decisions.md`
-
----
-
-## Testing Rules
-
-- Unit tests required for: `normalizePhone`, availability overlap validation, is_primary constraint
-- Integration tests required for: dashboard auth flow, lesson status updates, teacher invite flow
-- Manual verification required for: Hebrew RTL on all new screens, mobile viewport
-- Do not claim a story complete without stating what was tested and how
-
----
-
-## Missing or Conflicting Documentation
-
-```
-// TODO(LESSIO): Missing definition in docs for [item].
-// Question: [exact question that needs answering].
-```
-
-Do not resolve conflicts by guessing. Stop and surface the TODO.
-
----
-
-## Task Completion Format
-
-```
-## Task Summary: [Story name]
-
-### What was built
-- [list]
-
-### Files changed
-- [file path] — [what changed]
-
-### Assumptions avoided
-- [list]
-
-### TODOs / Blockers
-- [any TODO(LESSIO) comments added and why]
-
-### Tests added or run
-- [what was tested, how, what passed]
-
-### Sprint 2 scope check
-- [ ] All changes are within Sprint 2 scope
-- [ ] No billing, cancellation logic, teacher portal, or WhatsApp flows added
-- [ ] No new routes created outside dashboard shell
-```
-
----
-
-## Non-Negotiable Rules
-
-1. Do not invent fields, tables, enums, routes, or business rules
-2. Use only schema and naming from `/docs/schema.md`
-3. If something is missing → `TODO(LESSIO)`, do not guess
-4. All booking writes → service role, server-side only
-5. All pages support Hebrew RTL (`dir="rtl"`)
-6. Sprint 2 scope only — see `/docs/sprint-2-scope.md`
-7. Do not build: billing, teacher portal, parent portal, WhatsApp flows, PDF, analytics
-8. Phone numbers stored and queried as E.164 only — always use `normalizePhone()`
-9. Datetimes stored as UTC, displayed per `organizations.timezone`
-10. Archive = `is_active = false`, never hard delete
-11. Business logic lives in `src/lib/*` — never in React components
-12. Teacher creation = invite flow only
-13. "cancelled" = status change only in Sprint 2, no billing side effects
-
----
-
-## Sprint 2 Definition of Done
-
-- [ ] admin/owner can create, edit, and archive a student
-- [ ] admin/owner can create and edit a parent
-- [ ] admin/owner can link a parent to a student
-- [ ] admin/owner can create, edit, and archive a teacher (invite flow)
-- [ ] admin/owner can set weekly availability for a teacher
-- [ ] admin/owner can manage availability overrides
-- [ ] Today view displays today's lessons correctly
-- [ ] Weekly calendar works by week and by teacher filter
-- [ ] Lesson status can be updated manually
-- [ ] All UI in Hebrew RTL
-- [ ] No critical errors in core flows
-- [ ] All non-negotiable tests pass
-
----
-
-## Before Writing Any Code
-
-Read these files in order:
-1. `/docs/plan.md`
-2. `/docs/schema.md`
-3. `/docs/decisions.md`
-4. `/docs/sprint-2-scope.md`
-5. `/docs/security.md`
-
-Then confirm:
-"I have read the docs. Here is my understanding of the current task: [summary].
-Here is what I will build: [list]. Here is what I will not touch: [list]."

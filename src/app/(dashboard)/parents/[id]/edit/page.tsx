@@ -4,6 +4,7 @@ import { Star } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getParentById } from '@/lib/parents'
 import { getParentStudents } from '@/lib/relationships'
+import { getParentDebt } from '@/lib/charges'
 import { ParentForm } from '@/components/dashboard/parents/ParentForm'
 import { updateParent } from '../../actions'
 
@@ -13,9 +14,10 @@ export default async function EditParentPage(props: {
   const { id } = await props.params
   const { orgId } = await getSession()
 
-  const [parent, linkedStudents] = await Promise.all([
+  const [parent, linkedStudents, debt] = await Promise.all([
     getParentById(id, orgId),
     getParentStudents(id, orgId),
+    getParentDebt(id, orgId),
   ])
 
   if (!parent) notFound()
@@ -34,6 +36,21 @@ export default async function EditParentPage(props: {
           notes: parent.notes,
         }}
       />
+
+      {/* Debt summary */}
+      <div className="mt-6 bg-white border border-gray-200 rounded-lg px-5 py-4 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">יתרת חוב פתוחה</span>
+        <span className={`text-base font-bold ${debt > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+          {debt > 0 ? `₪${debt.toFixed(2)}` : 'אין חוב'}
+        </span>
+      </div>
+      {debt > 0 && (
+        <div className="mt-2 text-left">
+          <Link href={`/charges?parent=${id}`} className="text-sm text-blue-600 hover:text-blue-800">
+            צפה בחיובים ←
+          </Link>
+        </div>
+      )}
 
       {/* Linked students — read-only view */}
       <div className="mt-8">

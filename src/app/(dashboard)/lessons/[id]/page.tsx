@@ -5,7 +5,8 @@ import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getLessonById, formatTime, formatDate, LessonStatus } from '@/lib/lessons'
 import { LessonStatusForm } from '@/components/dashboard/lessons/LessonStatusForm'
-import { setLessonStatus } from './actions'
+import { CancelLessonForm } from '@/components/dashboard/lessons/CancelLessonForm'
+import { setLessonStatus, cancelLesson } from './actions'
 
 const STATUS_LABELS: Record<LessonStatus, string> = {
   scheduled: 'מתוכנן',
@@ -27,7 +28,8 @@ export default async function LessonDetailPage(props: {
 }) {
   const { id } = await props.params
   const { week, teacher } = await props.searchParams
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  const canCancel = role === 'owner' || role === 'admin'
   const timezone = await getOrgTimezone(orgId)
 
   const lesson = await getLessonById(id, orgId)
@@ -97,6 +99,12 @@ export default async function LessonDetailPage(props: {
         <h2 className="text-sm font-semibold text-gray-700 mb-3">עדכון סטטוס</h2>
         <LessonStatusForm currentStatus={lesson.status} action={boundAction} />
       </div>
+
+      {canCancel && lesson.status !== 'cancelled' && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mt-4">
+          <CancelLessonForm action={cancelLesson.bind(null, lesson.id)} />
+        </div>
+      )}
 
       <div className="mt-4">
         <Link href={backHref} className="text-sm text-gray-500 hover:text-gray-700">

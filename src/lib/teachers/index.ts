@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 export interface Teacher {
   id: string
   bio: string | null
+  hourly_rate: number | null
   is_active: boolean
   created_at: string
   profile: {
@@ -16,7 +17,7 @@ export async function getTeachers(organizationId: string): Promise<Teacher[]> {
 
   const { data, error } = await supabase
     .from('teachers')
-    .select('id, bio, is_active, created_at, profiles(id, full_name)')
+    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name)')
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: true })
 
@@ -25,6 +26,7 @@ export async function getTeachers(organizationId: string): Promise<Teacher[]> {
   return (data ?? []).map((t) => ({
     id: t.id,
     bio: t.bio,
+    hourly_rate: t.hourly_rate ?? null,
     is_active: t.is_active,
     created_at: t.created_at,
     profile: (t.profiles as unknown) as { id: string; full_name: string },
@@ -39,7 +41,7 @@ export async function getTeacherById(
 
   const { data } = await supabase
     .from('teachers')
-    .select('id, bio, is_active, created_at, profiles(id, full_name)')
+    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name)')
     .eq('id', id)
     .eq('organization_id', organizationId)
     .single()
@@ -49,6 +51,7 @@ export async function getTeacherById(
   return {
     id: data.id,
     bio: data.bio,
+    hourly_rate: data.hourly_rate ?? null,
     is_active: data.is_active,
     created_at: data.created_at,
     profile: (data.profiles as unknown) as { id: string; full_name: string },

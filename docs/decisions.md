@@ -156,18 +156,18 @@ Sprint 3 handles all cancellation and billing logic.
 
 Rules:
 - Invalid input → error message + return to list (not flow termination)
-- Flow closes only on timeout or successful cancellation
+- Flow closes only on timeout, successful cancellation, or no eligible lessons
 
 State machine:
 
 | State | Parent Input | Response | Next State |
 |---|---|---|---|
-| idle | cancel keyword | Numbered lesson list | awaiting_selection |
+| idle | cancel keyword + eligible lessons | Numbered lesson list | awaiting_selection |
+| idle | cancel keyword + no eligible lessons | Message: no lessons to cancel | idle |
 | awaiting_selection | Valid number (1–N) | Cancellation confirmed + charge calc | done |
 | awaiting_selection | Invalid number | Error + return to list | awaiting_selection |
-| awaiting_selection | Lesson no longer exists | Error + return to list | awaiting_selection |
+| awaiting_selection | Lesson no longer eligible | Error + return to list | awaiting_selection |
 | awaiting_selection | Timeout (10 min) | Flow closed | idle |
-| awaiting_selection | No upcoming lessons | Message: no lessons to cancel | idle |
 
 ---
 
@@ -179,4 +179,4 @@ State machine:
 | 1 ✅ | teachers | profile_id → not null | Done |
 | 1 ✅ | slot_locks | + status enum (active/consumed/expired) | Done |
 | 1 ✅ | leads | new table | Done |
-| 3 | teachers | + hourly_rate numeric(10,2) — MIGRATION REQUIRED | Pending |
+| 3 ✅ | teachers | + hourly_rate numeric(10,2) — MIGRATION REQUIRED | Done |

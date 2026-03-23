@@ -62,7 +62,14 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | Mark charge as paid + note | ✅ Done (Sprint 3) |
 | Parent debt summary | ✅ Done (Sprint 3) |
 | Sprint 4 scope defined | ✅ Done |
-| Sprint 4 implementation | ⏳ Not started |
+| Lead capture + deduplication (DEV-99) | ✅ Done (Sprint 4) |
+| Leads management list UI (DEV-100) | ✅ Done (Sprint 4) |
+| Lead conversion to parent + student (DEV-101) | ✅ Done (Sprint 4) |
+| WhatsApp cancellation intent detection + lesson selection (DEV-102) | ✅ Done (Sprint 4) |
+| Apply cancellation + charge outcome + notifications (DEV-103) | ✅ Done (Sprint 4) |
+| Build + send payment request (DEV-104) | ✅ Done (Sprint 4) |
+| Sprint 4 acceptance + regression (DEV-71) | ✅ Done (Sprint 4) |
+| Sprint 4 implementation | ✅ Done (Sprint 4) |
 
 When starting any task, check this table first.  
 Do not rebuild what is already marked ✅.  

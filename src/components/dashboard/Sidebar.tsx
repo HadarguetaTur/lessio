@@ -12,6 +12,7 @@ import {
   Receipt,
   Settings,
   LogOut,
+  UserPlus,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 
@@ -22,6 +23,7 @@ const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; roles?:
   { href: '/teachers', label: 'מורים', icon: UserRound },
   { href: '/lessons', label: 'שיעורים', icon: BookOpen },
   { href: '/charges', label: 'חיובים', icon: Receipt, roles: ['owner', 'admin'] },
+  { href: '/leads', label: 'לידים', icon: UserPlus, roles: ['owner', 'admin'] },
   { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings, roles: ['owner'] },
 ]
 

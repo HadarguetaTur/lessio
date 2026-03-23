@@ -200,12 +200,12 @@ If no eligible lessons exist:
 
 | State | Input | Response | Next State |
 |---|---|---|---|
-| idle | cancellation keyword | Numbered lesson list | awaiting_selection |
+| idle | cancellation keyword + eligible lessons | Numbered lesson list | awaiting_selection |
+| idle | cancellation keyword + no eligible lessons | Message: no lessons | idle |
 | awaiting_selection | Valid number (1–N) | Confirmation + charge calc | done |
 | awaiting_selection | Invalid number | Error + return to list | awaiting_selection |
 | awaiting_selection | Lesson no longer eligible | Error + return to list | awaiting_selection |
 | awaiting_selection | Timeout (10 min) | Flow closed | idle |
-| awaiting_selection | No upcoming lessons | Message: no lessons | idle |
 
 ### State Machine Rules
 

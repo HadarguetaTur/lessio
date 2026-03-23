@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/auth/session'
 import { getParents } from '@/lib/parents'
 import { ParentSearch } from '@/components/dashboard/parents/ParentSearch'
-import { archiveParent, restoreParent } from './actions'
+import { SendPaymentRequestButton } from '@/components/dashboard/parents/SendPaymentRequestButton'
+import { archiveParent, restoreParent, sendPaymentRequestAction } from './actions'
 
 export default async function ParentsPage(props: {
   searchParams: Promise<{ q?: string }>
@@ -12,10 +13,11 @@ export default async function ParentsPage(props: {
   const searchParams = await props.searchParams
   const q = searchParams.q ?? ''
 
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
   // Parents list shows all (active + inactive) — no archive tab needed per sprint scope.
   // Search covers name and phone.
   const parents = await getParents(orgId, { search: q })
+  const canSendPaymentRequest = role === 'owner' || role === 'admin'
 
   return (
     <div>
@@ -84,6 +86,12 @@ export default async function ParentsPage(props: {
                           <Pencil size={13} />
                           עריכה
                         </Link>
+                        {canSendPaymentRequest && parent.is_active && (
+                          <SendPaymentRequestButton
+                            parentId={parent.id}
+                            action={sendPaymentRequestAction}
+                          />
+                        )}
                         {parent.is_active ? (
                           <form action={archiveAction}>
                             <button

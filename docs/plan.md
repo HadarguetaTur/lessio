@@ -62,9 +62,9 @@ It provides full operational control over scheduling, billing, cancellations, an
 | Module | Description | Sprint |
 |---|---|---|
 | Scheduling | Teacher availability, slot locking, lesson booking | 1 ✅ |
-| Internal Dashboard | People management, calendar, lesson status | 2 |
-| Billing & Cancellations | Policy engine, auto-charge, payment tracking | 3 |
-| WhatsApp External Flows | Parent cancellation, lead capture, payment requests | 4 |
+| Internal Dashboard | People management, calendar, lesson status | 2 ✅ |
+| Billing & Cancellations | Policy engine, auto-charge, payment tracking | 3 ✅ |
+| WhatsApp External Flows | Parent cancellation, lead capture, payment requests | 4 ⏳ |
 | Multi-Role Access | Teacher portal, authorization hardening | 5 |
 | Production Readiness | Security audit, QA, environments, go-live | 6 |
 | Homework | Templates, assignment, reminders | post-MVP |
@@ -76,9 +76,9 @@ It provides full operational control over scheduling, billing, cancellations, an
 | Sprint | Milestone | Goal | Status |
 |---|---|---|---|
 | 1 | Booking Loop | WhatsApp → WebView → lesson created | ✅ Done |
-| 2 | Internal Usable Product | Day-to-day internal operations | 🔄 In Progress |
-| 3 | Business Logic Product | Billing engine — cancellations & charges | Planned |
-| 4 | External Operational | External flows — WhatsApp + leads | Planned |
+| 2 | Internal Usable Product | Day-to-day internal operations | ✅ Done |
+| 3 | Business Logic Product | Billing engine — cancellations & charges | ✅ Done |
+| 4 | External Operational | External flows — WhatsApp + leads | ⏳ Current Sprint |
 | 5 | Multi-Role Product | Permissions, teacher portal, product hardening | Planned |
 | 6 | Production Ready | Security, QA, first customer | Planned |
 
@@ -116,9 +116,9 @@ lessio/
 │   ├── decisions.md               ← architectural decisions (all sprints)
 │   ├── security.md                ← RLS policies + auth model
 │   ├── sprint-1-scope.md          ← ✅ completed
-│   ├── sprint-2-scope.md          ← current
-│   ├── sprint-3-scope.md
-│   ├── sprint-4-scope.md
+│   ├── sprint-2-scope.md          ← ✅ completed
+│   ├── sprint-3-scope.md          ← ✅ completed
+│   ├── sprint-4-scope.md          ← current
 │   ├── sprint-5-scope.md
 │   └── sprint-6-scope.md
 ├── src/
@@ -167,11 +167,11 @@ lessio/
 
 ---
 
-## Pending Schema Migrations
+## Schema Migration Status
 
 | Sprint | Table | Change | Status |
 |---|---|---|---|
-| 3 | teachers | + hourly_rate numeric(10,2) | Pending |
+| 3 | teachers | + hourly_rate numeric(10,2) | ✅ Done |
 
 ---
 

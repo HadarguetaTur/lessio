@@ -5,6 +5,7 @@
 * All tables have RLS enabled
 * All access is filtered by `organization_id` — no access to another organization’s data
 * Booking operations (writes to `slot_locks`, `lessons`) are service-role only, server-side
+* WhatsApp webhook processing is server-side only and uses the service role for trusted writes
 * Parents and students are not Supabase Auth users — they do not have RLS policies. Their access is managed through JWT context in application code
 
 ---
@@ -30,6 +31,48 @@
 | slot_locks                     | ✅     | ❌     | ❌             | ✅            |
 | charges                        | ✅     | read  | ❌             | ✅            |
 | leads                          | ✅     | full  | ❌             | ✅            |
+| lead conversion (server action) | ✅    | ✅     | ❌             | ✅            |
+| payment request send (server action) | ✅ | ✅   | ❌             | ✅            |
+
+---
+
+## Sprint 4 Operational Flows
+
+### WhatsApp webhook
+
+The WhatsApp webhook is a trusted server entry point under `src/app/api/whatsapp/webhook/`.
+
+Rules:
+
+* It never relies on client-side authorization.
+* It uses the service role for organization-scoped lookups and writes.
+* Unknown sender → create or deduplicate a `leads` record by normalized phone.
+* Known parent → continue only within that parent's organization scope.
+* Cancellation execution and any resulting charge write remain server-side only.
+
+### Lead conversion
+
+Lead conversion is an owner/admin server action, not a client-trusted mutation.
+
+Rules:
+
+* The acting dashboard user must be authenticated.
+* The server must verify `app_role in ('owner', 'admin')` before converting.
+* The server must validate org scope and all input with Zod before writing.
+* Conversion creates `parent`, `student`, and `relationship` records inside the same `organization_id`.
+* If the phone already belongs to a `parent`, conversion is blocked server-side.
+
+### Payment request send
+
+Payment request sending is also an owner/admin server action.
+
+Rules:
+
+* The acting dashboard user must be authenticated.
+* The server must verify `app_role in ('owner', 'admin')` before sending.
+* The server may read pending charges in org scope and update only send metadata for the included rows.
+* This does not grant admins broad direct write access to arbitrary `charges` fields.
+* Send metadata must record at minimum `sent_at` and sender identity.
 
 ---
 

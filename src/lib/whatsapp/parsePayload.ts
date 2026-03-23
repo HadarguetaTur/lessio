@@ -81,3 +81,13 @@ export function hasBookingIntent(text: string): boolean {
   const lower = text.toLowerCase()
   return lower.includes('קביעה') || lower.includes('שיעור')
 }
+
+/**
+ * Returns true if the message text contains a cancellation intent keyword.
+ * Keywords: "ביטול", "לבטל", "cancel" — case-insensitive contains match.
+ * Per /docs/sprint-4-scope.md § WhatsApp Cancellation — Intent Rules.
+ */
+export function hasCancellationIntent(text: string): boolean {
+  const lower = text.toLowerCase()
+  return lower.includes('ביטול') || lower.includes('לבטל') || lower.includes('cancel')
+}

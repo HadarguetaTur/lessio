@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // All routes under (dashboard)/ that require Supabase session protection.
 // Missing a prefix here does NOT break auth (layout.tsx also protects via getSession),
-// but it means the middleware won't redirect unauthenticated users to /login
+// but it means the proxy won't redirect unauthenticated users to /login
 // before the page even renders — causing a slower round-trip and a missed
 // chance to persist any freshly-rotated session cookies.
 const DASHBOARD_PREFIXES = [
@@ -14,12 +14,21 @@ const DASHBOARD_PREFIXES = [
   '/lessons',
   '/charges',
   '/settings',
+  '/teacher',
 ]
 
 function isDashboardRoute(pathname: string): boolean {
   return DASHBOARD_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
   )
+}
+
+export const PATHNAME_HEADER = 'x-pathname'
+
+export function buildForwardedHeaders(request: NextRequest): Headers {
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set(PATHNAME_HEADER, request.nextUrl.pathname)
+  return requestHeaders
 }
 
 /**
@@ -49,7 +58,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  let supabaseResponse = NextResponse.next({ request })
+  // Forward pathname as x-pathname so server components (e.g. dashboard layout)
+  // can read the current path for role-based redirects without needing the router.
+  const requestHeaders = buildForwardedHeaders(request)
+
+  let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,7 +76,8 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          supabaseResponse = NextResponse.next({ request })
+          // Preserve requestHeaders (including x-pathname) when rebuilding the response
+          supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )

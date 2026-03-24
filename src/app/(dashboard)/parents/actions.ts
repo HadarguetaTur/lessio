@@ -32,7 +32,9 @@ export async function createParent(
     return { error: 'שגיאה בעיבוד מספר הטלפון' }
   }
 
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -71,7 +73,9 @@ export async function updateParent(
     return { error: 'שגיאה בעיבוד מספר הטלפון' }
   }
 
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -91,7 +95,9 @@ export async function updateParent(
 }
 
 export async function archiveParent(id: string): Promise<void> {
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return
+
   const supabase = await createClient()
 
   await supabase
@@ -104,7 +110,9 @@ export async function archiveParent(id: string): Promise<void> {
 }
 
 export async function restoreParent(id: string): Promise<void> {
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return
+
   const supabase = await createClient()
 
   await supabase

@@ -13,18 +13,20 @@ import {
   Settings,
   LogOut,
   UserPlus,
+  CalendarDays,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 
 const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; roles?: string[] }[] = [
-  { href: '/dashboard', label: 'לוח הבקרה', icon: LayoutDashboard },
-  { href: '/students', label: 'תלמידים', icon: GraduationCap },
-  { href: '/parents', label: 'הורים', icon: Users },
-  { href: '/teachers', label: 'מורים', icon: UserRound },
-  { href: '/lessons', label: 'שיעורים', icon: BookOpen },
+  { href: '/dashboard', label: 'לוח הבקרה', icon: LayoutDashboard, roles: ['owner', 'admin'] },
+  { href: '/students', label: 'תלמידים', icon: GraduationCap, roles: ['owner', 'admin'] },
+  { href: '/parents', label: 'הורים', icon: Users, roles: ['owner', 'admin'] },
+  { href: '/teachers', label: 'מורים', icon: UserRound, roles: ['owner', 'admin'] },
+  { href: '/lessons', label: 'שיעורים', icon: BookOpen, roles: ['owner', 'admin'] },
   { href: '/charges', label: 'חיובים', icon: Receipt, roles: ['owner', 'admin'] },
   { href: '/leads', label: 'לידים', icon: UserPlus, roles: ['owner', 'admin'] },
   { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings, roles: ['owner'] },
+  { href: '/teacher/schedule', label: 'השיעורים שלי', icon: CalendarDays, roles: ['teacher'] },
 ]
 
 interface SidebarProps {

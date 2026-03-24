@@ -2,11 +2,9 @@
 
 import { useActionState, useState } from 'react'
 import { LessonStatus } from '@/lib/lessons'
+import type { TeacherOutcomeResult } from '@/app/(dashboard)/teacher/schedule/[id]/actions'
 
-// 'cancelled' is excluded — cancellation must go through CancelLessonForm (DEV-58)
-// to ensure the policy engine and charge calculation are applied.
-const STATUS_LABELS: Partial<Record<LessonStatus, string>> = {
-  scheduled: 'מתוכנן',
+const OUTCOME_LABELS: Record<'completed' | 'no_show', string> = {
   completed: 'הושלם',
   no_show: 'לא הגיע',
 }
@@ -14,14 +12,16 @@ const STATUS_LABELS: Partial<Record<LessonStatus, string>> = {
 interface Props {
   currentStatus: LessonStatus
   action: (
-    prevState: { error: string | null; chargeAlert?: string },
+    prevState: TeacherOutcomeResult,
     formData: FormData
-  ) => Promise<{ error: string | null; chargeAlert?: string }>
+  ) => Promise<TeacherOutcomeResult>
 }
 
-export function LessonStatusForm({ currentStatus, action }: Props) {
-  const [state, formAction, pending] = useActionState(action, { error: null, chargeAlert: undefined })
-  const [selected, setSelected] = useState<LessonStatus>(currentStatus)
+export function TeacherLessonOutcomeForm({ currentStatus, action }: Props) {
+  const [state, formAction, pending] = useActionState(action, { error: null })
+  const [selected, setSelected] = useState<'completed' | 'no_show'>(
+    currentStatus === 'completed' || currentStatus === 'no_show' ? currentStatus : 'completed'
+  )
   const [hasSubmitted, setHasSubmitted] = useState(false)
 
   if (currentStatus === 'cancelled') {
@@ -30,34 +30,38 @@ export function LessonStatusForm({ currentStatus, action }: Props) {
     )
   }
 
-  const showSuccess = hasSubmitted && state.error === null && !pending && !state.chargeAlert
+  function handleSubmit() {
+    setHasSubmitted(true)
+  }
+
+  const showSuccess = hasSubmitted && !pending && state.error === null && !state.chargeAlert
 
   return (
-    <form action={formAction} onSubmit={() => setHasSubmitted(true)} className="space-y-3">
+    <form action={formAction} onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-          שנה סטטוס
+        <label htmlFor="outcome" className="block text-sm font-medium text-gray-700 mb-1">
+          עדכון תוצאת שיעור
         </label>
         <select
-          id="status"
+          id="outcome"
           name="status"
           value={selected}
           onChange={(e) => {
-            setSelected(e.target.value as LessonStatus)
+            setSelected(e.target.value as 'completed' | 'no_show')
             setHasSubmitted(false)
           }}
           className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {(Object.keys(STATUS_LABELS) as LessonStatus[]).map((s) => (
+          {(Object.keys(OUTCOME_LABELS) as Array<'completed' | 'no_show'>).map((s) => (
             <option key={s} value={s}>
-              {STATUS_LABELS[s]}
+              {OUTCOME_LABELS[s]}
             </option>
           ))}
         </select>
       </div>
 
       {state.error && (
-        <p className="text-sm text-red-500">{state.error}</p>
+        <p className="text-sm text-red-500" role="alert">{state.error}</p>
       )}
 
       {showSuccess && (
@@ -65,17 +69,17 @@ export function LessonStatusForm({ currentStatus, action }: Props) {
       )}
 
       {state.chargeAlert && (
-        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-md">
+        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-md" role="status">
           ⚠️ {state.chargeAlert}
         </div>
       )}
 
       <button
         type="submit"
-        disabled={pending || selected === currentStatus}
+        disabled={pending || currentStatus === selected}
         className="w-full bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
-        {pending ? 'מעדכן...' : 'עדכן סטטוס'}
+        {pending ? 'מעדכן...' : 'עדכן תוצאה'}
       </button>
     </form>
   )

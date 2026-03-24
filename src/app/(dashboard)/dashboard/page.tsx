@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getTodayLessons, formatTime, LessonStatus, Lesson } from '@/lib/lessons'
@@ -21,7 +22,11 @@ function countByStatus(lessons: Lesson[], status: LessonStatus) {
 }
 
 export default async function DashboardPage() {
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+
+  if (role === 'teacher') {
+    redirect('/teacher/schedule')
+  }
   const timezone = await getOrgTimezone(orgId)
   const lessons = await getTodayLessons(orgId, timezone)
 

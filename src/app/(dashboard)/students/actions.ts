@@ -17,7 +17,9 @@ export async function createStudent(
 
   if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
 
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -40,7 +42,9 @@ export async function updateStudent(
 
   if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
 
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -55,7 +59,9 @@ export async function updateStudent(
 }
 
 export async function archiveStudent(id: string): Promise<void> {
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return
+
   const supabase = await createClient()
 
   await supabase
@@ -68,7 +74,9 @@ export async function archiveStudent(id: string): Promise<void> {
 }
 
 export async function restoreStudent(id: string): Promise<void> {
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return
+
   const supabase = await createClient()
 
   await supabase

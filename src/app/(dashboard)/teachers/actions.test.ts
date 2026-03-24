@@ -37,7 +37,7 @@ import { inviteTeacher } from './actions'
 describe('inviteTeacher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetSession.mockResolvedValue({ orgId: 'org-1' })
+    mockGetSession.mockResolvedValue({ orgId: 'org-1', role: 'owner' })
   })
 
   it('sends the invite and creates profile and teacher records', async () => {

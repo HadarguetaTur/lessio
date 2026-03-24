@@ -15,11 +15,15 @@ interface Props {
 export function CancelLessonForm({ action }: Props) {
   const [open, setOpen] = useState(false)
   const [state, formAction, pending] = useActionState(action, { error: null })
+  const [hasSubmitted, setHasSubmitted] = useState(false)
 
   if (!open) {
     return (
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setHasSubmitted(false)
+          setOpen(true)
+        }}
         className="text-sm text-red-600 hover:text-red-800 underline underline-offset-2"
       >
         ביטול שיעור
@@ -42,11 +46,11 @@ export function CancelLessonForm({ action }: Props) {
       )}
 
       {/* Success state — lesson cancelled */}
-      {state.error === null && !pending && state.chargeAlert === undefined && (
-        <p className="text-sm text-green-700">השיעור בוטל בהצלחה.</p>
+      {hasSubmitted && state.error === null && !pending && state.chargeAlert === undefined && (
+        <p className="text-sm text-green-700" role="status">השיעור בוטל בהצלחה.</p>
       )}
 
-      <form action={formAction} className="space-y-4">
+      <form action={formAction} onSubmit={() => setHasSubmitted(true)} className="space-y-4">
         <div className="space-y-1">
           <label htmlFor="cancel_reason" className="block text-sm font-medium text-red-800">
             סיבת ביטול <span className="text-red-500">*</span>
@@ -81,7 +85,10 @@ export function CancelLessonForm({ action }: Props) {
           </button>
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setHasSubmitted(false)
+              setOpen(false)
+            }}
             className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
           >
             חזרה

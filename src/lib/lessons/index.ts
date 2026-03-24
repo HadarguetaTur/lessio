@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export type LessonStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show'
 
@@ -10,6 +11,11 @@ export interface Lesson {
   cancel_reason: string | null
   teacher: { id: string; full_name: string }
   student: { id: string; full_name: string }
+}
+
+export interface LessonAccessScope {
+  organizationId: string
+  teacherId: string
 }
 
 /** Parse UTC offset in milliseconds for a given timezone at a given moment */
@@ -167,9 +173,9 @@ export async function getLessonsForWeek(
  */
 export function isValidStatusTransition(
   current: LessonStatus,
-  _next: LessonStatus
+  next: LessonStatus
 ): boolean {
-  return current !== 'cancelled'
+  return current !== 'cancelled' && ['scheduled', 'completed', 'cancelled', 'no_show'].includes(next)
 }
 
 export async function updateLessonStatus(
@@ -188,7 +194,9 @@ export async function updateLessonStatus(
     .single()
 
   if (!current) throw new Error('שיעור לא נמצא')
-  if (current.status === 'cancelled') throw new Error('לא ניתן לשנות סטטוס של שיעור שבוטל')
+  if (!isValidStatusTransition(current.status, status)) {
+    throw new Error('לא ניתן לשנות סטטוס של שיעור שבוטל')
+  }
 
   const update: Record<string, string | null> = { status }
   if (status === 'cancelled') {
@@ -204,6 +212,30 @@ export async function updateLessonStatus(
     .eq('organization_id', organizationId)
 
   if (error) throw new Error(error.message)
+}
+
+/**
+ * Returns lesson ownership metadata regardless of the caller's org/role.
+ * Uses service role to bypass RLS. Used solely for 403 vs 404 distinction.
+ */
+export async function getLessonAccessScope(id: string): Promise<LessonAccessScope | null> {
+  const supabase = createServiceRoleClient()
+  const { data } = await supabase
+    .from('lessons')
+    .select('organization_id, teacher_id')
+    .eq('id', id)
+    .single()
+  if (!data) return null
+
+  return {
+    organizationId: data.organization_id,
+    teacherId: data.teacher_id,
+  }
+}
+
+export async function getLessonOrgId(id: string): Promise<string | null> {
+  const scope = await getLessonAccessScope(id)
+  return scope?.organizationId ?? null
 }
 
 export async function getLessonById(

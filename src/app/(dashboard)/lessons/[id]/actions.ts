@@ -21,7 +21,12 @@ export async function setLessonStatus(
   _prevState: SetLessonStatusResult,
   formData: FormData
 ): Promise<SetLessonStatusResult> {
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+
+  if (role !== 'owner' && role !== 'admin') {
+    return { error: 'אין הרשאה לביצוע פעולה זו' }
+  }
+
   const status = formData.get('status') as LessonStatus
   const cancelReason = (formData.get('cancel_reason') as string) || undefined
 
@@ -34,6 +39,8 @@ export async function setLessonStatus(
     revalidatePath(`/lessons/${lessonId}`)
     revalidatePath('/lessons')
     revalidatePath('/dashboard')
+    revalidatePath('/teacher/schedule')
+    revalidatePath(`/teacher/schedule/${lessonId}`)
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'שגיאה בעדכון הסטטוס' }
   }
@@ -52,6 +59,15 @@ export async function setLessonStatus(
 export type CancelLessonResult = {
   error: string | null
   chargeAlert?: string
+}
+
+type LessonCancellationRecord = {
+  id: string
+  start_at: string
+  end_at: string
+  status: LessonStatus
+  student_id: string
+  teachers: unknown
 }
 
 /**
@@ -90,11 +106,14 @@ export async function cancelLesson(
 
   // Determine charge
   let chargeAlert: string | undefined
+  let cancellationParentId: string | null = null
+  let pendingCancellationCharge:
+    | ReturnType<typeof calculateCancellationCharge>
+    | null = null
 
   if (!waive) {
     const policy = await getCancellationPolicy(orgId)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const teacher = (lesson.teachers as any) as { id: string; hourly_rate: number | null }
+    const teacher = (lesson as LessonCancellationRecord).teachers as { id: string; hourly_rate: number | null }
 
     const chargeResult = calculateCancellationCharge(
       { start_at: lesson.start_at, end_at: lesson.end_at, hourly_rate: teacher.hourly_rate },
@@ -103,10 +122,9 @@ export async function cancelLesson(
     )
 
     if (chargeResult.shouldCharge && chargeResult.amount > 0) {
+      pendingCancellationCharge = chargeResult
       try {
-        const parentId = await resolveBillingParent(lesson.student_id, orgId)
-        const alert = await createCancellationCharge(lessonId, orgId, parentId, chargeResult)
-        if (alert) chargeAlert = alert.message
+        cancellationParentId = await resolveBillingParent(lesson.student_id, orgId)
       } catch (e) {
         if (e instanceof MissingPrimaryParentError) {
           chargeAlert = 'לא ניתן ליצור חיוב ביטול — לתלמיד אין הורה ראשי מוגדר'
@@ -128,10 +146,22 @@ export async function cancelLesson(
 
   if (updateError) return { error: 'שגיאה בביטול השיעור' }
 
+  if (pendingCancellationCharge && cancellationParentId) {
+    const alert = await createCancellationCharge(
+      lessonId,
+      orgId,
+      cancellationParentId,
+      pendingCancellationCharge
+    )
+    if (alert) chargeAlert = alert.message
+  }
+
   revalidatePath(`/lessons/${lessonId}`)
   revalidatePath('/lessons')
   revalidatePath('/dashboard')
   revalidatePath('/charges')
+  revalidatePath('/teacher/schedule')
+  revalidatePath(`/teacher/schedule/${lessonId}`)
 
   return { error: null, chargeAlert }
 }

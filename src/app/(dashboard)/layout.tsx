@@ -1,6 +1,8 @@
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/dashboard/Sidebar'
+import { PATHNAME_HEADER } from '@/proxy'
 
 export default async function DashboardLayout({
   children,
@@ -24,9 +26,14 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single()
 
-  // Teacher portal is out of scope until Sprint 5 (Decision #12).
+  // Teachers may only access /teacher/* routes.
+  // src/proxy.ts forwards the current pathname on every request.
   if (profile?.role === 'teacher') {
-    redirect('/coming-soon')
+    const headersList = await headers()
+    const pathname = headersList.get(PATHNAME_HEADER) ?? '/'
+    if (!pathname.startsWith('/teacher')) {
+      redirect('/teacher/schedule')
+    }
   }
 
   return (

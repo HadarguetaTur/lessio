@@ -26,7 +26,8 @@ export async function createAvailability(
     return { error: 'שעת הסיום חייבת להיות לאחר שעת ההתחלה' }
   }
 
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
 
   // Overlap validation (non-negotiable per sprint-2-scope.md)
   const existing = await getTeacherAvailabilityByDay(teacherId, orgId, day_of_week)
@@ -50,7 +51,8 @@ export async function createAvailability(
 }
 
 export async function deleteAvailability(id: string, teacherId: string): Promise<void> {
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return
   const supabase = await createClient()
 
   await supabase

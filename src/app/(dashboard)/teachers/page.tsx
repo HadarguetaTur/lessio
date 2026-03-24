@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, Pencil, Archive, RotateCcw, Mail, CalendarDays } from 'lucide-react'
+import { Pencil, Archive, RotateCcw, Mail, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/auth/session'
 import { getTeachers } from '@/lib/teachers'

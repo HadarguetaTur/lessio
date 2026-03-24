@@ -25,7 +25,8 @@ export async function inviteTeacher(
   if (!email) return { error: 'אימייל הוא שדה חובה' }
   if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
 
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
   const adminClient = createServiceRoleClient()
 
   // Step 1: Send invite email via Supabase Auth admin API
@@ -79,7 +80,9 @@ export async function updateTeacher(
     return { error: 'תעריף שעתי חייב להיות מספר חיובי' }
   }
 
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -94,7 +97,9 @@ export async function updateTeacher(
 }
 
 export async function archiveTeacher(id: string): Promise<void> {
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return
+
   const supabase = await createClient()
 
   await supabase
@@ -107,7 +112,9 @@ export async function archiveTeacher(id: string): Promise<void> {
 }
 
 export async function restoreTeacher(id: string): Promise<void> {
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role !== 'owner' && role !== 'admin') return
+
   const supabase = await createClient()
 
   await supabase

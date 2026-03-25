@@ -174,10 +174,10 @@ describe('POST /api/whatsapp/webhook', () => {
     expect(res.status).toBe(200)
   })
 
-  it('returns 403 when X-Hub-Signature-256 is invalid', async () => {
+  it('returns 401 when X-Hub-Signature-256 is invalid', async () => {
     const req = makeRequest(makeWebhookPayload('שיעור'), { signed: false })
     const res = await POST(req)
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(401)
   })
 
   it('sends unknown parent reply and creates lead when parent not found', async () => {

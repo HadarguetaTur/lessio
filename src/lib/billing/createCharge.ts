@@ -36,7 +36,7 @@ export async function createLessonCharge(
     .single()
 
   if (lessonError || !lesson) {
-    console.error(`[createLessonCharge] lesson not found: ${lessonId}`)
+    console.error('[createLessonCharge] lesson not found', { lessonId, orgId: organizationId, error: lessonError?.message })
     return { type: 'error', message: 'שיעור לא נמצא' }
   }
 
@@ -44,7 +44,7 @@ export async function createLessonCharge(
   const teacher = (lesson.teachers as any) as { id: string; hourly_rate: number | null }
 
   if (teacher.hourly_rate == null) {
-    console.error(`[createLessonCharge] missing hourly_rate for teacher ${teacher.id}`)
+    console.error('[createLessonCharge] missing hourly_rate', { lessonId, orgId: organizationId, teacherId: teacher.id })
     return {
       type: 'missing_rate',
       message: 'לא ניתן ליצור חיוב — למורה אין תעריף שעתי מוגדר',
@@ -57,7 +57,7 @@ export async function createLessonCharge(
     parentId = await resolveBillingParent(lesson.student_id, organizationId)
   } catch (e) {
     if (e instanceof MissingPrimaryParentError) {
-      console.error(`[createLessonCharge] ${e.message}`)
+      console.error('[createLessonCharge] no primary parent', { lessonId, orgId: organizationId, studentId: lesson.student_id, error: e.message })
       return {
         type: 'missing_parent',
         message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר',
@@ -84,7 +84,7 @@ export async function createLessonCharge(
     if (isDuplicateInsertError(insertError)) {
       return null
     }
-    console.error(`[createLessonCharge] insert error: ${insertError.message}`)
+    console.error('[createLessonCharge] insert error', { lessonId, orgId: organizationId, parentId, amount, error: insertError.message })
     return { type: 'error', message: 'שגיאה ביצירת החיוב' }
   }
 
@@ -120,7 +120,7 @@ export async function createCancellationCharge(
     if (isDuplicateInsertError(error)) {
       return null
     }
-    console.error(`[createCancellationCharge] insert error: ${error.message}`)
+    console.error('[createCancellationCharge] insert error', { lessonId, orgId: organizationId, parentId, amount: chargeResult.amount, error: error.message })
     return { type: 'error', message: 'שגיאה ביצירת חיוב הביטול' }
   }
 

@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     console.warn('[whatsapp/webhook] WHATSAPP_APP_SECRET not set — skipping signature check')
   } else if (!verifySignature(rawBody, signature, appSecret)) {
     console.error('[whatsapp/webhook] Invalid X-Hub-Signature-256 — rejecting request')
-    return new NextResponse('Forbidden', { status: 403 })
+    return new NextResponse('Unauthorized', { status: 401 })
   }
 
   // 3. Parse payload — always return 200 after this point (Meta requires immediate 200)
@@ -277,14 +277,18 @@ async function handleCancellationIntent(
   const lessons = await getEligibleLessons(orgId, parentId)
 
   if (lessons.length === 0) {
-    await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
+    await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId).catch(err => {
+      console.error('[whatsapp/webhook] Failed to send no-eligible-lessons reply', { orgId, senderPhone, err })
+    })
     return
   }
 
   const message = formatLessonListMessage(lessons, timezone)
   await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
-  await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId)
-  console.info('[whatsapp/webhook] Cancellation lesson list sent', { senderPhone })
+  await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId).catch(err => {
+    console.error('[whatsapp/webhook] Failed to send cancellation lesson list', { orgId, senderPhone, err })
+  })
+  console.info('[whatsapp/webhook] Cancellation lesson list sent', { orgId, senderPhone })
 }
 
 async function handleCancellationSelection(
@@ -302,18 +306,24 @@ async function handleCancellationSelection(
 
   if (isNaN(num) || num < 1 || num > count) {
     // Invalid input — keep flow open
-    await sendInvalidSelectionReply(senderPhone, accessToken, phoneNumberId)
+    await sendInvalidSelectionReply(senderPhone, accessToken, phoneNumberId).catch(err => {
+      console.error('[whatsapp/webhook] Failed to send invalid-selection reply', { orgId, senderPhone, err })
+    })
 
     // Re-fetch eligible lessons to rebuild the list (lesson may have changed)
     const lessons = await getEligibleLessons(orgId, parentId)
     if (lessons.length === 0) {
-      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
+      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId).catch(err => {
+        console.error('[whatsapp/webhook] Failed to send no-eligible-lessons reply', { orgId, senderPhone, err })
+      })
       await deleteCancellationSession(orgId, senderPhone)
       return
     }
     const message = formatLessonListMessage(lessons, timezone)
     await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
-    await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId)
+    await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId).catch(err => {
+      console.error('[whatsapp/webhook] Failed to send cancellation lesson list', { orgId, senderPhone, err })
+    })
     return
   }
 
@@ -332,12 +342,16 @@ async function handleCancellationSelection(
     // Lesson no longer eligible — error + rebuild list
     const lessons = await getEligibleLessons(orgId, parentId)
     if (lessons.length === 0) {
-      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
+      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId).catch(err => {
+        console.error('[whatsapp/webhook] Failed to send no-eligible-lessons reply', { orgId, senderPhone, err })
+      })
       await deleteCancellationSession(orgId, senderPhone)
       return
     }
     const errorMsg = 'השיעור שנבחר אינו זמין עוד לביטול.'
-    await sendCancellationLessonList(senderPhone, errorMsg + '\n\n' + formatLessonListMessage(lessons, timezone), accessToken, phoneNumberId)
+    await sendCancellationLessonList(senderPhone, errorMsg + '\n\n' + formatLessonListMessage(lessons, timezone), accessToken, phoneNumberId).catch(err => {
+      console.error('[whatsapp/webhook] Failed to send cancellation lesson list', { orgId, senderPhone, err })
+    })
     await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
     return
   }
@@ -345,7 +359,7 @@ async function handleCancellationSelection(
   // Success — delete session
   await deleteCancellationSession(orgId, senderPhone)
 
-  // Notify parent
+  // Notify parent — WhatsApp failure must not roll back the completed cancellation
   await sendCancellationConfirmation(
     senderPhone,
     outcome.studentName,
@@ -356,7 +370,9 @@ async function handleCancellationSelection(
     outcome.chargeResult.chargeType,
     accessToken,
     phoneNumberId
-  )
+  ).catch(err => {
+    console.error('[whatsapp/webhook] Failed to send cancellation confirmation — cancellation committed', { orgId, senderPhone, lessonId: selectedLessonId, err })
+  })
 
   // Notify admin (best-effort — do not throw if admin phone missing)
   const db = createServiceRoleClient()
@@ -385,5 +401,5 @@ async function handleCancellationSelection(
     })
   }
 
-  console.info('[whatsapp/webhook] Cancellation completed', { selectedLessonId, senderPhone })
+  console.info('[whatsapp/webhook] Cancellation completed', { orgId, selectedLessonId, senderPhone })
 }

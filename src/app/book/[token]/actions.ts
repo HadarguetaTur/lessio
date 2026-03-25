@@ -120,7 +120,7 @@ export async function confirmBookingAction(
     // Sprint 1 flow step 12: send WhatsApp confirmation to parent
     // Fire-and-forget — a send failure must not roll back a confirmed booking
     sendWhatsAppConfirmation(db, organizationId, parentId, teacherId, result.startAt).catch(err => {
-      console.error('[confirmBookingAction] Failed to send WhatsApp confirmation', { err })
+      console.error('[confirmBookingAction] Failed to send WhatsApp confirmation', { orgId: organizationId, lessonId: result.lessonId, parentId, err })
     })
 
     return { success: true, result }

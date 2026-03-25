@@ -79,13 +79,17 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | Archive integrity / duplicate-submit / stale-state hardening (`DEV-83`) | ✅ Done (Sprint 5) |
 | Sprint 5 acceptance + regression (`DEV-72`) | ✅ Done (Sprint 5) |
 | Sprint 6 scope defined | ✅ Done |
-| Secret and access audit (`DEV-68a`) | ⏳ Planned |
-| Structured logging + error visibility (`DEV-68b`) | ⏳ Planned |
-| Environment separation + env validation (`DEV-69a`) | ⏳ Planned |
-| Migration discipline + release checklist (`DEV-69b`) | ⏳ Planned |
-| E2E scenario QA on staging (`DEV-70a`) | ⏳ Planned |
-| Cross-cutting QA + Data Recovery Playbook (`DEV-70b`) | ⏳ Planned |
-| First customer readiness (`DEV-73`) | ⏳ Planned |
+| Secret and access audit (`DEV-84`) | ✅ Done (Sprint 6) |
+| Structured logging + error visibility (`DEV-85`) | ✅ Done (Sprint 6) |
+| Graceful failure handling for external flows (`DEV-92`) | ✅ Done (Sprint 6) |
+| Environment separation + env validation (`DEV-106`) | ✅ Done (Sprint 6) |
+| Migration discipline + release checklist (`DEV-107`) | ✅ Done (Sprint 6) |
+| E2E scenario QA on staging (`DEV-109`) | ✅ Done (Sprint 6) |
+| Cross-cutting QA + Data Recovery Playbook (`DEV-110`) | ✅ Done (Sprint 6) |
+| First customer onboarding checklist (`DEV-88`) | ✅ Done (Sprint 6) |
+| First customer staging validation (`DEV-89`) | ✅ Done (Sprint 6) |
+| Backup and restore validation (`DEV-91`) | ✅ Done (Sprint 6) |
+| First customer readiness (`DEV-73`) | ✅ Done (Sprint 6) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.

@@ -181,12 +181,15 @@ export async function sendPaymentRequestAction(
   })
 
   if (!res.ok) {
-    console.error('[sendPaymentRequestAction] WhatsApp API error', res.status)
+    const detail = await res.text().catch(() => '')
+    console.error('[sendPaymentRequestAction] WhatsApp API error', { orgId, parentId, status: res.status, detail })
     return { error: 'שגיאה בשליחת ההודעה דרך WhatsApp' }
   }
 
   // Log sent metadata on all included charges (idempotent)
-  await logPaymentRequestSent(charges.map(c => c.id), orgId, userId)
+  await logPaymentRequestSent(charges.map(c => c.id), orgId, userId).catch(err => {
+    console.error('[sendPaymentRequestAction] Failed to log payment request metadata', { orgId, parentId, chargeIds: charges.map(c => c.id), err })
+  })
 
   revalidatePath('/charges')
   revalidatePath('/parents')

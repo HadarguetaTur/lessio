@@ -18,6 +18,7 @@ vi.mock('@/lib/booking', async () => {
   return {
     ...actual,
     getAvailableSlots: vi.fn(),
+    getAvailabilitySummary: vi.fn(),
     createSlotLock: vi.fn(),
     confirmBooking: vi.fn(),
   }
@@ -32,12 +33,19 @@ vi.mock('@/lib/whatsapp', async () => {
 })
 
 import { verifyBookingToken } from '@/lib/jwt'
-import { confirmBooking, LockExpiredError, NoPrimaryParentError, InactiveParticipantError } from '@/lib/booking'
+import {
+  confirmBooking,
+  getAvailabilitySummary,
+  LockExpiredError,
+  NoPrimaryParentError,
+  InactiveParticipantError,
+} from '@/lib/booking'
 import { sendBookingConfirmation } from '@/lib/whatsapp'
-import { confirmBookingAction } from './actions'
+import { confirmBookingAction, getAvailabilitySummaryAction } from './actions'
 
 const mockVerify = vi.mocked(verifyBookingToken)
 const mockConfirmBooking = vi.mocked(confirmBooking)
+const mockGetAvailabilitySummary = vi.mocked(getAvailabilitySummary)
 const mockSendConfirmation = vi.mocked(sendBookingConfirmation)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -155,5 +163,31 @@ describe('confirmBookingAction', () => {
 
     await new Promise(r => setTimeout(r, 10))
     expect(mockSendConfirmation).not.toHaveBeenCalled()
+  })
+})
+
+describe('getAvailabilitySummaryAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockVerify.mockResolvedValue({ organizationId: ORG_ID, parentId: PARENT_ID, studentId: STUDENT_ID })
+  })
+
+  it('verifies the token and delegates to the weekly availability summary helper', async () => {
+    mockGetAvailabilitySummary.mockResolvedValue({
+      weekStart: '2026-03-22',
+      timezone: 'UTC',
+      durationMinutes: 60,
+      days: [],
+    })
+
+    const result = await getAvailabilitySummaryAction(TOKEN, TEACHER_ID, 60, '2026-03-24')
+
+    expect(result.weekStart).toBe('2026-03-22')
+    expect(mockGetAvailabilitySummary).toHaveBeenCalledWith({
+      teacherId: TEACHER_ID,
+      organizationId: ORG_ID,
+      durationMinutes: 60,
+      weekStart: '2026-03-24',
+    })
   })
 })

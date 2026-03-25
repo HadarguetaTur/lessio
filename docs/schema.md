@@ -1,9 +1,13 @@
-# LESSIO — Database Schema (v2 Final)
+# LESSIO — Database Schema (v4)
 
 All tables use `uuid` primary keys.
 All tables include `created_at timestamptz default now()`.
 All tenant-scoped tables include `organization_id uuid not null references organizations(id)`.
 RLS is enabled on all tables.
+
+Sprint 6 note:
+Production-readiness work does not require new domain tables by default.
+This schema remains the source of truth unless a narrowly justified regression or release-safety fix requires an explicit update.
 
 ---
 
@@ -52,12 +56,15 @@ id              uuid pk
 organization_id uuid not null references organizations(id)
 profile_id      uuid not null unique references profiles(id)
 bio             text
+hourly_rate     numeric(10,2)
 is_active       boolean default true
 created_at      timestamptz default now()
 updated_at      timestamptz default now()
 
 index: (organization_id)
 ```
+
+`hourly_rate` was added in Sprint 3 and is used by the existing approved charge flow when a lesson is marked `completed`.
 
 ---
 
@@ -220,10 +227,13 @@ updated_at      timestamptz default now()
 
 index: (organization_id, parent_id, status)
 index: (lesson_id)
+partial unique index: (lesson_id) where `charge_type = 'lesson'`
 ```
 
 **Sprint 4 rule:** sending a payment request updates metadata on each included charge.
 Minimum logged data = `sent_at` + `sent_by_profile_id`.
+
+**Idempotency rule:** lesson charges are protected by a partial unique index on `lesson_id` for `charge_type = 'lesson'`, so repeating the completed-lesson charge flow does not create duplicates.
 
 ---
 
@@ -266,7 +276,7 @@ index: (phone)
 
 ## Phone Normalization
 
-All phone numbers are stored as E.164. Logic is in `/lib/utils/phone.ts`:
+All phone numbers are stored as E.164. Logic is in `src/lib/phone/index.ts`:
 
 ```text
 05XXXXXXXX    → +9725XXXXXXXX
@@ -280,18 +290,197 @@ All phone numbers are stored as E.164. Logic is in `/lib/utils/phone.ts`:
 
 | Table                  | Owner | Admin      | Teacher                    | Service Role |
 | ---------------------- | ----- | ---------- | -------------------------- | ------------ |
-| organizations          | full  | read       | read                       | full         |
+| organizations          | full  | read       | read (minimal org context only) | full    |
 | profiles               | full  | read (org) | read (self)                | full         |
-| teachers               | full  | full       | read + update (self)       | full         |
+| teachers               | full  | full       | read (self)                | full         |
 | parents                | full  | full       | —                          | full         |
-| students               | full  | full       | read (linked)              | full         |
-| relationships          | full  | full       | read (linked)              | full         |
-| availability           | full  | full       | full (self)                | full         |
-| availability_overrides | full  | full       | full (self)                | full         |
-| lessons                | full  | full       | read + update status (own) | full         |
+| students               | full  | full       | lesson context only        | full         |
+| relationships          | full  | full       | —                          | full         |
+| availability           | full  | full       | —                          | full         |
+| availability_overrides | full  | full       | —                          | full         |
+| lessons                | full  | full       | read + update own outcome only | full      |
 | slot_locks             | —     | —          | —                          | full only    |
 | charges                | full  | read       | —                          | full         |
 | cancellation_policies  | full  | read       | —                          | full         |
 | leads                  | full  | full       | —                          | full         |
 
 
+---
+
+## Planned Post-Launch Expansion (not part of Sprint 6 baseline)
+
+The following tables are planning targets for future SaaS expansion work.
+They are **not** implemented by the current Sprint 6 schema baseline and must not be treated as live production behavior until explicitly migrated.
+
+### conversation_threads
+
+Per-organization conversation container for official WhatsApp interactions.
+
+```sql
+id                 uuid pk
+organization_id    uuid not null references organizations(id)
+channel            text not null check (channel in ('whatsapp'))
+actor_type         text not null check (actor_type in ('parent','student','teacher','staff'))
+actor_phone        text not null                      -- E.164
+status             text not null check (status in ('active','paused','closed')) default 'active'
+last_message_at    timestamptz
+created_at         timestamptz default now()
+updated_at         timestamptz default now()
+
+index: (organization_id, actor_phone)
+index: (organization_id, status)
+```
+
+### conversation_sessions
+
+Active bot flow state for deterministic WhatsApp journeys.
+
+```sql
+id                 uuid pk
+organization_id    uuid not null references organizations(id)
+thread_id          uuid not null references conversation_threads(id)
+flow_key           text not null                      -- booking, cancel, balance_lookup, homework_lookup
+actor_type         text not null check (actor_type in ('parent','student','teacher','staff'))
+state              text not null
+context_json       jsonb not null default '{}'
+expires_at         timestamptz
+status             text not null check (status in ('active','completed','expired','cancelled')) default 'active'
+created_at         timestamptz default now()
+updated_at         timestamptz default now()
+
+index: (organization_id, status, expires_at)
+index: (thread_id, status)
+```
+
+### teacher_calendar_connections
+
+Teacher-owned external calendar connection. First phase = outbound sync only.
+
+```sql
+id                 uuid pk
+organization_id    uuid not null references organizations(id)
+teacher_id         uuid not null references teachers(id)
+provider           text not null check (provider in ('google'))
+external_calendar_id text not null
+access_token       text                              -- encrypted at rest
+refresh_token      text                              -- encrypted at rest
+token_expires_at   timestamptz
+sync_direction     text not null check (sync_direction in ('outbound_only')) default 'outbound_only'
+status             text not null check (status in ('active','revoked','error')) default 'active'
+last_synced_at     timestamptz
+created_at         timestamptz default now()
+updated_at         timestamptz default now()
+
+unique: (teacher_id, provider)
+index: (organization_id, status)
+```
+
+### calendar_sync_events
+
+Delivery tracking between LESSIO lessons and external calendar events.
+
+```sql
+id                 uuid pk
+organization_id    uuid not null references organizations(id)
+connection_id      uuid not null references teacher_calendar_connections(id)
+lesson_id          uuid not null references lessons(id)
+external_event_id  text
+sync_status        text not null check (sync_status in ('pending','synced','failed','deleted')) default 'pending'
+last_attempt_at    timestamptz
+last_error         text
+created_at         timestamptz default now()
+updated_at         timestamptz default now()
+
+unique: (connection_id, lesson_id)
+index: (organization_id, sync_status)
+```
+
+### homework_templates
+
+Reusable homework library owned by each organization.
+
+```sql
+id                 uuid pk
+organization_id    uuid not null references organizations(id)
+title              text not null
+subject            text
+grade_level        text
+content_markdown   text not null
+tags               text[] default '{}'
+created_by_profile_id uuid references profiles(id)
+is_active          boolean default true
+created_at         timestamptz default now()
+updated_at         timestamptz default now()
+
+index: (organization_id, is_active)
+```
+
+### homework_assignments
+
+Student-facing assignment created from a template or ad-hoc content.
+
+```sql
+id                 uuid pk
+organization_id    uuid not null references organizations(id)
+template_id        uuid references homework_templates(id)
+student_id         uuid not null references students(id)
+teacher_id         uuid references teachers(id)
+lesson_id          uuid references lessons(id)
+title              text not null
+content_markdown   text not null
+due_at             timestamptz
+status             text not null check (status in ('assigned','viewed','submitted','checked','overdue')) default 'assigned'
+assigned_at        timestamptz default now()
+reminder_sent_at   timestamptz
+checked_at         timestamptz
+notes              text
+created_at         timestamptz default now()
+updated_at         timestamptz default now()
+
+index: (organization_id, student_id, status)
+index: (organization_id, due_at)
+index: (lesson_id)
+```
+
+### organization_integrations
+
+Organization-scoped configuration for external providers and automation endpoints.
+
+```sql
+id                 uuid pk
+organization_id    uuid not null references organizations(id)
+provider_type      text not null check (provider_type in ('payment','automation','calendar','messaging'))
+provider_key       text not null                      -- make, google, meta, provider-specific payment adapter
+status             text not null check (status in ('draft','active','disabled','error')) default 'draft'
+config_json        jsonb not null default '{}'
+created_by_profile_id uuid references profiles(id)
+last_tested_at     timestamptz
+created_at         timestamptz default now()
+updated_at         timestamptz default now()
+
+unique: (organization_id, provider_type, provider_key)
+index: (organization_id, status)
+```
+
+### integration_deliveries
+
+Outbound event delivery log for Make and other provider adapters.
+
+```sql
+id                 uuid pk
+organization_id    uuid not null references organizations(id)
+integration_id     uuid not null references organization_integrations(id)
+event_type         text not null
+event_key          text not null
+payload_json       jsonb not null
+status             text not null check (status in ('pending','sent','failed','dead_letter')) default 'pending'
+attempt_count      int not null default 0
+last_attempt_at    timestamptz
+response_code      int
+response_body      text
+created_at         timestamptz default now()
+updated_at         timestamptz default now()
+
+unique: (integration_id, event_key)
+index: (organization_id, status, last_attempt_at)
+```

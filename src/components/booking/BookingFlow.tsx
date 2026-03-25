@@ -11,17 +11,18 @@ import type { BookingTokenPayload } from '@/lib/jwt'
 import type { AvailableSlot, SlotLock } from '@/lib/booking'
 import type { ConfirmBookingResult } from '@/lib/booking'
 import { TeacherSelect } from './TeacherSelect'
-import { DateDurationSelect } from './DateDurationSelect'
-import { SlotSelect } from './SlotSelect'
+import { AvailabilityCalendar, type AvailabilitySelection } from './AvailabilityCalendar'
 import { BookingConfirm } from './BookingConfirm'
 import { BookingSuccess } from './BookingSuccess'
 import { BookingError } from './BookingError'
 
-type Step = 'teacher' | 'date_duration' | 'slot' | 'confirm' | 'success' | 'error'
+type Step = 'teacher' | 'availability' | 'confirm' | 'success' | 'error'
 
 interface FlowState {
   teacherId?: string
   teacherName?: string
+  weekStart?: string
+  timezone?: string
   date?: string
   durationMinutes?: number
   slot?: AvailableSlot
@@ -40,23 +41,30 @@ export function BookingFlow({ token, payload }: BookingFlowProps) {
   const [state, setState] = useState<FlowState>({})
 
   function handleTeacherSelect(teacherId: string, teacherName: string) {
-    setState(s => ({ ...s, teacherId, teacherName }))
-    setStep('date_duration')
+    setState({
+      teacherId,
+      teacherName,
+      durationMinutes: state.durationMinutes ?? 60,
+    })
+    setStep('availability')
   }
 
-  function handleDateDurationSelect(date: string, durationMinutes: number) {
-    setState(s => ({ ...s, date, durationMinutes }))
-    setStep('slot')
-  }
-
-  function handleSlotLocked(slot: AvailableSlot, lock: SlotLock) {
-    setState(s => ({ ...s, slot, lock }))
+  function handleAvailabilityLocked(selection: AvailabilitySelection) {
+    setState((s) => ({
+      ...s,
+      date: selection.date,
+      durationMinutes: selection.durationMinutes,
+      weekStart: selection.weekStart,
+      timezone: selection.timezone,
+      slot: selection.slot,
+      lock: selection.lock,
+    }))
     setStep('confirm')
   }
 
   function handleLockExpired() {
     setState(s => ({ ...s, slot: undefined, lock: undefined }))
-    setStep('slot')
+    setStep('availability')
   }
 
   function handleConfirmed(result: ConfirmBookingResult) {
@@ -78,28 +86,17 @@ export function BookingFlow({ token, payload }: BookingFlowProps) {
     return <TeacherSelect token={token} onSelect={handleTeacherSelect} />
   }
 
-  if (step === 'date_duration') {
+  if (step === 'availability') {
     return (
-      <DateDurationSelect
+      <AvailabilityCalendar
+        token={token}
         teacherId={state.teacherId!}
         teacherName={state.teacherName!}
-        token={token}
-        onSelect={handleDateDurationSelect}
+        initialWeekStart={state.weekStart}
+        initialDate={state.date}
+        initialDurationMinutes={state.durationMinutes}
+        onLocked={handleAvailabilityLocked}
         onBack={() => setStep('teacher')}
-      />
-    )
-  }
-
-  if (step === 'slot') {
-    return (
-      <SlotSelect
-        token={token}
-        teacherId={state.teacherId!}
-        teacherName={state.teacherName!}
-        date={state.date!}
-        durationMinutes={state.durationMinutes!}
-        onLocked={handleSlotLocked}
-        onBack={() => setStep('date_duration')}
         onError={handleError}
       />
     )
@@ -114,6 +111,7 @@ export function BookingFlow({ token, payload }: BookingFlowProps) {
         date={state.date!}
         slot={state.slot!}
         lock={state.lock!}
+        timezone={state.timezone ?? 'UTC'}
         studentId={payload.studentId}
         onConfirmed={handleConfirmed}
         onLockExpired={handleLockExpired}
@@ -123,7 +121,13 @@ export function BookingFlow({ token, payload }: BookingFlowProps) {
   }
 
   if (step === 'success') {
-    return <BookingSuccess result={state.result!} teacherName={state.teacherName!} />
+    return (
+      <BookingSuccess
+        result={state.result!}
+        teacherName={state.teacherName!}
+        timezone={state.timezone ?? 'UTC'}
+      />
+    )
   }
 
   return <BookingError errorCode={state.errorCode ?? 'unknown'} onRestart={handleRestart} />

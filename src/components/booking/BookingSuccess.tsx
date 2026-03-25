@@ -5,13 +5,14 @@ import type { ConfirmBookingResult } from '@/lib/booking'
 interface BookingSuccessProps {
   result: ConfirmBookingResult
   teacherName: string
+  timezone: string
 }
 
-export function BookingSuccess({ result, teacherName }: BookingSuccessProps) {
+export function BookingSuccess({ result, teacherName, timezone }: BookingSuccessProps) {
   const startTime = new Date(result.startAt).toLocaleTimeString('he-IL', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'UTC',
+    timeZone: timezone,
   })
 
   const displayDate = new Date(result.startAt).toLocaleDateString('he-IL', {
@@ -19,19 +20,19 @@ export function BookingSuccess({ result, teacherName }: BookingSuccessProps) {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-    timeZone: 'UTC',
+    timeZone: timezone,
   })
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-background">
       <div className="max-w-sm w-full text-center space-y-5">
         <div className="text-5xl" aria-hidden="true">✅</div>
-        <h1 className="text-xl font-semibold">השיעור נקבע!</h1>
+        <h1 className="text-xl font-semibold">השיעור נקבע בהצלחה</h1>
         <p className="text-muted-foreground text-sm">
           {teacherName} · {displayDate} · {startTime}
         </p>
         <p className="text-sm">
-          תקבל/י אישור ב-WhatsApp בקרוב.
+          אישור יישלח אליכם ב־WhatsApp בעוד רגע.
         </p>
       </div>
     </main>

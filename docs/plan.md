@@ -1,4 +1,4 @@
-# LESSIO — Project Plan (v2)
+# LESSIO — Project Plan (v4)
 
 ## Vision
 
@@ -46,7 +46,7 @@ It provides full operational control over scheduling, billing, cancellations, an
 |---|---|
 | `owner` | Business-level administrator. Manages org settings, billing config, cancellation policy, integrations, users, roles, full financial visibility |
 | `admin` | Operational role. Manages students, parents, leads, lessons, day-to-day scheduling. Cannot touch org settings, integrations, role management, or core billing config |
-| `teacher` | Receives schedule, views own students, updates lesson status (Sprint 5+) |
+| `teacher` | Views own schedule and may update only own lesson outcome to `completed` / `no_show`. No billing, cancellation, or people-management access |
 
 ### Domain Entities (no dashboard auth)
 
@@ -64,10 +64,14 @@ It provides full operational control over scheduling, billing, cancellations, an
 | Scheduling | Teacher availability, slot locking, lesson booking | 1 ✅ |
 | Internal Dashboard | People management, calendar, lesson status | 2 ✅ |
 | Billing & Cancellations | Policy engine, auto-charge, payment tracking | 3 ✅ |
-| WhatsApp External Flows | Parent cancellation, lead capture, payment requests | 4 ⏳ |
-| Multi-Role Access | Teacher portal, authorization hardening | 5 |
-| Production Readiness | Security audit, QA, environments, go-live | 6 |
-| Homework | Templates, assignment, reminders | post-MVP |
+| WhatsApp External Flows | Parent cancellation, lead capture, payment requests | 4 ✅ |
+| Multi-Role Access | Teacher portal, authorization hardening | 5 ✅ |
+| Production Readiness | Security audit, QA, environments, go-live | 6 ⏳ |
+| Tenant Platform & Channel Config | Per-organization channel settings, future package controls, tenant-specific integrations | 7 planned |
+| WhatsApp Bot Platform | Deterministic WhatsApp flows for parents, students, teachers, and staff | 7 planned |
+| Teacher Calendar Sync | Google Calendar connection and lesson sync for teachers | 8 planned |
+| Homework & Learning Ops | Template library, assignment workflow, reminders | 8 planned |
+| Integration Hub | Payment provider configs, outbound webhooks, Make connectivity | 9 planned |
 
 ---
 
@@ -78,9 +82,13 @@ It provides full operational control over scheduling, billing, cancellations, an
 | 1 | Booking Loop | WhatsApp → WebView → lesson created | ✅ Done |
 | 2 | Internal Usable Product | Day-to-day internal operations | ✅ Done |
 | 3 | Business Logic Product | Billing engine — cancellations & charges | ✅ Done |
-| 4 | External Operational | External flows — WhatsApp + leads | ⏳ Current Sprint |
-| 5 | Multi-Role Product | Permissions, teacher portal, product hardening | Planned |
-| 6 | Production Ready | Security, QA, first customer | Planned |
+| 4 | External Operational | External flows — WhatsApp + leads | ✅ Done |
+| 5 | Multi-Role Product | Permissions, teacher portal, product hardening | ✅ Done |
+| 6 | Production Ready | Security, QA, first customer | ⏳ Current Sprint |
+| 7 | Tenant & Bot Foundation | SaaS tenant settings, official WhatsApp bot orchestration, role-safe channel flows | planned |
+| 8 | Teaching Operations | Teacher Google Calendar sync and homework assignment workflows | planned |
+| 9 | Integration Platform | Payment provider abstraction, Make/webhook delivery, operational integrations | planned |
+| 10 | Expansion Hardening | Reporting, automation polish, broader pilot-readiness for multiple customers | planned |
 
 ---
 
@@ -118,9 +126,9 @@ lessio/
 │   ├── sprint-1-scope.md          ← ✅ completed
 │   ├── sprint-2-scope.md          ← ✅ completed
 │   ├── sprint-3-scope.md          ← ✅ completed
-│   ├── sprint-4-scope.md          ← current
-│   ├── sprint-5-scope.md
-│   └── sprint-6-scope.md
+│   ├── sprint-4-scope.md          ← completed
+│   ├── sprint-5-scope.md          ← completed
+│   └── sprint-6-scope.md          ← current source of truth
 ├── src/
 │   ├── app/
 │   │   ├── (dashboard)/           ← owner/admin/teacher pages (Supabase Auth)
@@ -159,11 +167,21 @@ lessio/
 - Cancellation charges are configurable per organization (`cancellation_policies` table)
 - Each organization manages its own WhatsApp number via Meta Cloud API token
 - One charge per lesson by default; additional charges use `charge_type`
+- Teacher scope = own schedule only + own lesson outcome update only (`completed` / `no_show`)
+- `teacher_id` and `organization_id` for dashboard authorization come from trusted auth context, never request body
+- Valid resource access across organizations must return `403`, not `404`
 - All phone numbers stored as E.164 — `normalizePhone()` before every save/lookup
 - All datetimes stored as UTC — display per `organizations.timezone`
 - Archive = `is_active = false` — never hard delete entities
 - Billing parent = `is_primary = true` from `relationships` at lesson creation time
 - Teacher creation = invite flow only (Supabase Auth invite)
+- Sprint 6 scope = audit, hardening, verification, and go-live readiness only
+- `SUPABASE_SERVICE_ROLE_KEY` and `BOOKING_JWT_SECRET` are server-only secrets and must never appear in any client bundle
+- Service role access is isolated to `src/lib/supabase/service-role.ts`
+- Required env vars are validated at startup and fail fast with named errors if missing
+- WhatsApp webhook requests without valid `X-Hub-Signature-256` must return `401`
+- Critical flows must emit structured logs with `org_id` and relevant entity IDs when available
+- Production release is blocked until staging QA and the Data Recovery Playbook are complete
 
 ---
 
@@ -175,11 +193,21 @@ lessio/
 
 ---
 
-## Post-MVP (not in any current sprint)
+## Post-Launch Expansion Direction
 
-- Homework module (templates, assignment, reminders)
+These items are intentionally outside Sprint 6 and should begin only after the first live pilot is stable:
+
+- Formal tenant configuration layer for per-organization channel, billing, and integration settings
+- Official WhatsApp bot flows by actor type: parent, student, teacher, owner/admin staff
+- Teacher Google Calendar sync, starting with one-way lesson sync from LESSIO to Google Calendar
+- Homework domain: template library, assignment tracking, due dates, and WhatsApp reminders
+- Integration hub for payment providers, Make, and outbound organization webhooks
+- Role expansion only where operationally justified, while keeping server-side authorization as the source of truth
+
+## Post-MVP (not in any committed sprint scope yet)
+
 - Advanced reporting and analytics
 - PDF invoices
-- Multi-provider payment support
+- Multi-provider payment support beyond the initial abstraction
 - Multi-language support (beyond Hebrew)
-- Parent web portal
+- Parent or student web portal

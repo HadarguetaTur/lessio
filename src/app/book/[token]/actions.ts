@@ -9,9 +9,11 @@
 import { verifyBookingToken } from '@/lib/jwt'
 import {
   getAvailableSlots,
+  getAvailabilitySummary,
   createSlotLock,
   confirmBooking,
   type AvailableSlot,
+  type AvailabilitySummary,
   type SlotLock,
   type ConfirmBookingResult,
   SlotUnavailableError,
@@ -61,6 +63,16 @@ export async function getAvailableSlotsAction(
 ): Promise<AvailableSlot[]> {
   const { organizationId } = await verifyBookingToken(token)
   return getAvailableSlots({ teacherId, date, durationMinutes, organizationId })
+}
+
+export async function getAvailabilitySummaryAction(
+  token: string,
+  teacherId: string,
+  durationMinutes: number,
+  weekStart?: string
+): Promise<AvailabilitySummary> {
+  const { organizationId } = await verifyBookingToken(token)
+  return getAvailabilitySummary({ teacherId, organizationId, durationMinutes, weekStart })
 }
 
 // ── Slot lock ──────────────────────────────────────────────────────────────────

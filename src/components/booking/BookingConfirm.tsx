@@ -17,6 +17,7 @@ interface BookingConfirmProps {
   date: string
   slot: AvailableSlot
   lock: SlotLock
+  timezone: string
   studentId: string
   onConfirmed: (result: ConfirmBookingResult) => void
   onLockExpired: () => void
@@ -30,6 +31,7 @@ export function BookingConfirm({
   date,
   slot,
   lock,
+  timezone,
   onConfirmed,
   onLockExpired,
   onError,
@@ -65,24 +67,24 @@ export function BookingConfirm({
     }
   }
 
-  const displayDate = new Date(date).toLocaleDateString('he-IL', {
+  const displayDate = new Date(`${date}T12:00:00Z`).toLocaleDateString('he-IL', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-    timeZone: 'UTC',
+    timeZone: timezone,
   })
 
   const startTime = new Date(slot.startAt).toLocaleTimeString('he-IL', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'UTC',
+    timeZone: timezone,
   })
 
   const endTime = new Date(slot.endAt).toLocaleTimeString('he-IL', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'UTC',
+    timeZone: timezone,
   })
 
   const m = Math.floor(secondsLeft / 60)
@@ -92,7 +94,12 @@ export function BookingConfirm({
   return (
     <main className="min-h-screen flex items-start justify-center p-6 bg-background">
       <div className="max-w-sm w-full space-y-6 pt-10">
-        <h1 className="text-lg font-semibold text-center">אישור הזמנה</h1>
+        <div className="space-y-2 text-center">
+          <h1 className="text-lg font-semibold">רגע לפני שמאשרים</h1>
+          <p className="text-sm text-muted-foreground">
+            בדקו שהפרטים נכונים, ואז השלימו את קביעת השיעור.
+          </p>
+        </div>
 
         <div className="rounded-xl border border-border bg-card p-5 space-y-3 text-sm">
           <Row label="מורה" value={teacherName} />
@@ -102,8 +109,8 @@ export function BookingConfirm({
 
         <p className="text-sm text-muted-foreground text-center">
           {secondsLeft > 0
-            ? `נותרו ${countdown} לאישור`
-            : 'פג הזמן לשמירת המקום'}
+            ? `המועד שמור עבורכם לעוד ${countdown}`
+            : 'פג הזמן לשמירת המועד'}
         </p>
 
         <button
@@ -111,7 +118,7 @@ export function BookingConfirm({
           disabled={confirming || secondsLeft === 0}
           className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-semibold disabled:opacity-40 transition-opacity"
         >
-          {confirming ? 'שומר...' : 'אשר/י הזמנה'}
+          {confirming ? 'קובעים את השיעור...' : 'אישור וקביעת שיעור'}
         </button>
       </div>
     </main>

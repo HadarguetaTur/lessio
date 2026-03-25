@@ -14,7 +14,7 @@ vi.mock('./resolveBillingParent', async () => {
   }
 })
 
-import { createLessonCharge } from './createCharge'
+import { createCancellationCharge, createLessonCharge } from './createCharge'
 import { resolveBillingParent, MissingPrimaryParentError } from './resolveBillingParent'
 
 const mockResolveBillingParent = vi.mocked(resolveBillingParent)
@@ -143,5 +143,34 @@ describe('createLessonCharge', () => {
       type: 'missing_parent',
       message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר',
     })
+  })
+})
+
+describe('createCancellationCharge', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('silently ignores duplicate cancellation retries', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'charges') {
+        return {
+          insert: async () => ({
+            error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected table: ${table}`)
+    })
+
+    await expect(
+      createCancellationCharge('lesson-1', 'org-1', 'parent-1', {
+        shouldCharge: true,
+        amount: 120,
+        percentage: 100,
+        reasonCode: 'late_cancel',
+      })
+    ).resolves.toBeNull()
   })
 })

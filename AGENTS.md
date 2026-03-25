@@ -1,4 +1,4 @@
-# LESSIO — Claude Operating Manual (Sprint 5)
+# LESSIO — Claude Operating Manual (Sprint 6)
 
 ---
 
@@ -11,20 +11,21 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 
 ---
 
-## Current Sprint: Sprint 5 — Controlled Multi-Role Product
+## Current Sprint: Sprint 6 — Production Readiness
 
-**Branch:** sprint-5
+**Sprint source of truth:** `/docs/sprint-6-scope.md`
+
 **Goal:**
-- give teacher users a safe view of their own schedule only
-- allow teachers to update only their own lesson outcome to `completed` or `no_show`
-- harden route guards, server actions, and RLS for owner/admin/teacher boundaries
-- validate org isolation and prevent cross-org leakage
-- polish touched operational screens and harden duplicate-submit / archive-integrity paths
+- perform a secrets and privileged-access audit before release
+- add structured logging and graceful failure handling to critical flows
+- separate `dev` / `staging` / `prod` expectations and validate env vars at startup
+- verify end-to-end behavior on staging before any production sign-off
+- document recovery, release, and first-customer onboarding procedures
 
 **Users in scope:**
-- Dashboard users: owner + admin + teacher
-- External users: none new in Sprint 5
-- Sprint 4 external WhatsApp flows remain in regression scope only
+- Dashboard users: owner + admin + teacher (no new permissions)
+- External users: none new in Sprint 6
+- Parent WhatsApp and booking WebView flows remain in regression and readiness scope only
 
 ---
 
@@ -39,7 +40,7 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | DB migrations (all tables) | ✅ Done (Sprint 1) |
 | RLS baseline | ✅ Done (Sprint 1) |
 | Booking engine (getAvailableSlots, slot locking, confirmBooking) | ✅ Done (Sprint 1) |
-| Booking WebView (/book/[token]) | ✅ Done (Sprint 1) |
+| Booking WebView (`/book/[token]`) | ✅ Done (Sprint 1) |
 | WhatsApp webhook | ✅ Done (Sprint 1) |
 | JWT booking link generator | ✅ Done (Sprint 1) |
 | Seed data | ✅ Done (Sprint 1) |
@@ -70,7 +71,6 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | Apply cancellation + charge outcome + notifications | ✅ Done (Sprint 4) |
 | Build + send payment request | ✅ Done (Sprint 4) |
 | Sprint 4 acceptance + regression | ✅ Done (Sprint 4) |
-| Sprint 5 scope defined | ✅ Done |
 | Teacher calendar view (`DEV-78`) | ✅ Done (Sprint 5) |
 | Teacher lesson outcome update (`DEV-79`) | ✅ Done (Sprint 5) |
 | Route guards and server action hardening (`DEV-80`) | ✅ Done (Sprint 5) |
@@ -78,14 +78,22 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | UX polish on touched Sprint 5 flows (`DEV-82`) | ✅ Done (Sprint 5) |
 | Archive integrity / duplicate-submit / stale-state hardening (`DEV-83`) | ✅ Done (Sprint 5) |
 | Sprint 5 acceptance + regression (`DEV-72`) | ✅ Done (Sprint 5) |
+| Sprint 6 scope defined | ✅ Done |
+| Secret and access audit (`DEV-68a`) | ⏳ Planned |
+| Structured logging + error visibility (`DEV-68b`) | ⏳ Planned |
+| Environment separation + env validation (`DEV-69a`) | ⏳ Planned |
+| Migration discipline + release checklist (`DEV-69b`) | ⏳ Planned |
+| E2E scenario QA on staging (`DEV-70a`) | ⏳ Planned |
+| Cross-cutting QA + Data Recovery Playbook (`DEV-70b`) | ⏳ Planned |
+| First customer readiness (`DEV-73`) | ⏳ Planned |
 
 When starting any task, check this table first.
-Do not rebuild what is already marked ✅.
+Do not rebuild what is already marked `✅`.
 Update this table after each completed story.
 
 ---
 
-## Sprint 1-4 Closure Gates
+## Sprint 1-5 Closure Gates
 
 - [x] Automated test suite is green
 - [x] Production build passes
@@ -98,55 +106,55 @@ Update this table after each completed story.
 - [x] Sprint 1 WhatsApp limitations are documented explicitly instead of left as open TODOs
 - [x] Auth / RLS docs reflect the custom `app_role` claim model
 - [x] Sprint 4 acceptance + regression passed
+- [x] Sprint 5 teacher access boundaries are documented and locked
 
 ---
 
-## Sprint 5 — What to Build
+## Sprint 6 — What to Build
 
-See `/docs/sprint-5-scope.md` for full Epics, Stories, and Definition of Done.
+See `/docs/sprint-6-scope.md` for full Epics, Stories, and Definition of Done.
 
 **Execution order:**
-1. Teacher Experience
-2. Authorization Hardening
-3. UX Polish
-4. Data Integrity Hardening
-5. Acceptance + Regression Pass
+1. Security & Reliability
+2. Environments & Release
+3. QA & Go-Live Validation
+4. First Customer Readiness
 
 ---
 
-## What NOT to Build in Sprint 5
+## What NOT to Build in Sprint 6
 
-- Parent portal
-- Advanced analytics
-- Invoices
-- Advanced org settings
-- New roles
-- Multi-language beyond Hebrew
+- New features of any kind
+- New roles or permission expansion
+- Large redesigns
+- Payment provider integration
+- Full analytics suite
+- CI/CD automation
+- External monitoring services
 - Billing rule redesign
 - Booking flow redesign
-- New product features of any kind
 
 ---
 
-## Closed Decisions Relevant to Sprint 5
+## Closed Decisions Relevant to Sprint 6
 
-**Decision — sequencing:**
-Teacher experience must exist before authorization hardening is finalized.
+**Decision — scope boundary:**
+Sprint 6 is for audit, hardening, verification, and launch readiness only. No new product scope.
 
-**Decision — teacher write scope:**
-Teacher can update only `completed` / `no_show` on their own lessons. Nothing else.
+**Decision — secrets boundary:**
+`SUPABASE_SERVICE_ROLE_KEY` and `BOOKING_JWT_SECRET` remain server-only and must never appear in client bundles.
 
-**Decision — teacher access boundaries:**
-Teacher cannot access billing, charges, cancellation logic, people management, or other teachers' data.
+**Decision — privileged import path:**
+Service role usage is isolated to `src/lib/supabase/service-role.ts`.
 
-**Decision — trusted auth context:**
-`teacher_id` and `org_id` must be derived from trusted auth/profile context, never request body or client input.
+**Decision — environment validation:**
+Required env vars are validated at startup and fail fast with named errors if missing.
 
-**Decision — wrong-org behavior:**
-Valid resources from another organization must return `403`, not `404`.
+**Decision — webhook behavior:**
+Requests without valid `X-Hub-Signature-256` must return `401` before processing.
 
-**Decision — regression boundary:**
-Sprint 5 must preserve Sprint 3 charge behavior and Sprint 4 WhatsApp cancellation behavior.
+**Decision — release gate:**
+Nothing ships to production without staging QA, release checklist completion, and a documented Data Recovery Playbook.
 
 See `/docs/decisions.md` for all decisions.
 
@@ -182,8 +190,8 @@ lessio/
 │   ├── sprint-2-scope.md
 │   ├── sprint-3-scope.md
 │   ├── sprint-4-scope.md          ← completed
-│   ├── sprint-5-scope.md          ← current source of truth
-│   └── sprint-6-scope.md
+│   ├── sprint-5-scope.md          ← completed
+│   └── sprint-6-scope.md          ← current source of truth
 ├── src/
 │   ├── app/
 │   │   ├── (dashboard)/
@@ -206,26 +214,26 @@ lessio/
 
 ---
 
-## Ground Rules for Claude Code — Sprint 5
+## Ground Rules for Claude Code — Sprint 6
 
 ```text
-You are building LESSIO Sprint 5 — Controlled Multi-Role Product.
+You are building LESSIO Sprint 6 — Production Readiness.
 
 Rules:
-1. Teacher can only update: completed / no_show on own lessons. Nothing else.
-2. Teacher cannot access: billing, charges, cancellation logic, people management, or other teachers' data.
-3. Teacher isolation must be enforced server-side and validated with URL manipulation tests.
-4. teacher_id is resolved from trusted auth/profile context — never trusted from client input.
-5. Valid resource from another org must return 403, not 404.
-6. org_id must be derived from trusted auth context in every server action — never from request body.
-7. Archive = is_active = false. Archived entities cannot be used in booking, assignment, or active selection flows.
-8. Duplicate-submit protection must exist at server action level where repeated submissions could create duplicates or duplicate side effects.
-9. Marking completed must preserve the existing approved Sprint 3 charge behavior. Do not redefine billing rules.
-10. Do not build: parent portal, advanced analytics, invoices, advanced org settings, multi-language, or any new features.
-11. All user-facing validation/success/error messages in touched Sprint 5 flows must be in Hebrew.
-12. All touched Sprint 5 screens must pass a basic mobile viewport and RTL sanity check.
-13. Before starting any Sprint 5 story, read /docs/schema.md, /docs/decisions.md, /docs/security.md, and /docs/sprint-5-scope.md.
-14. Before coding any story: summarize the task in 3-6 bullets, list exact files likely to change, and list explicit out-of-scope items.
-15. Do not infer missing permissions or business rules. If a rule is missing, stop and add a TODO instead of inventing behavior.
-16. Do not rewrite Sprint 1 booking flow, Sprint 3 billing/charge rules, or Sprint 4 WhatsApp logic unless a specific verified regression fix is required.
+1. No new features. No new UI unless a narrow readiness fix strictly requires it.
+2. Preserve Sprint 1-5 business behavior unless fixing a verified regression or readiness blocker.
+3. SUPABASE_SERVICE_ROLE_KEY must never appear in any client bundle or client component.
+4. BOOKING_JWT_SECRET must never be exposed client-side.
+5. Service role is imported only from src/lib/supabase/service-role.ts.
+6. All required env vars are validated at startup; missing vars fail fast with named errors.
+7. WhatsApp webhook requests without valid X-Hub-Signature-256 must return 401 before processing.
+8. All critical flows must produce structured, actionable logs with org_id and relevant entity IDs when available.
+9. WhatsApp API failures and charge-write failures must be caught and logged; they must not crash the system.
+10. All E2E smoke tests run on staging, not local only.
+11. Nothing ships to production without passing staging first.
+12. Data Recovery Playbook must exist before go-live sign-off.
+13. Do not add external monitoring services, CI/CD automation, or new integrations in Sprint 6.
+14. Before starting any Sprint 6 story, read /docs/schema.md, /docs/decisions.md, /docs/security.md, and /docs/sprint-6-scope.md.
+15. Before coding any story: summarize the task in 3-6 bullets, list exact files likely to change, and list explicit out-of-scope items.
+16. Do not infer missing security, release, or permission rules. If a rule is missing, stop and add a TODO instead of inventing behavior.
 ```

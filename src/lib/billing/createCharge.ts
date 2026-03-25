@@ -7,6 +7,10 @@ export type ChargeAlert = {
   message: string
 }
 
+function isDuplicateInsertError(error: { code?: string } | null): boolean {
+  return error?.code === '23505'
+}
+
 /**
  * Creates a lesson charge when a lesson is marked completed.
  * Idempotent: the unique index on charges(lesson_id) WHERE charge_type='lesson'
@@ -77,7 +81,7 @@ export async function createLessonCharge(
 
   if (insertError) {
     // Unique constraint violation = duplicate call, safe to ignore
-    if (insertError.code === '23505') {
+    if (isDuplicateInsertError(insertError)) {
       return null
     }
     console.error(`[createLessonCharge] insert error: ${insertError.message}`)
@@ -113,6 +117,9 @@ export async function createCancellationCharge(
   })
 
   if (error) {
+    if (isDuplicateInsertError(error)) {
+      return null
+    }
     console.error(`[createCancellationCharge] insert error: ${error.message}`)
     return { type: 'error', message: 'שגיאה ביצירת חיוב הביטול' }
   }

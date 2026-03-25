@@ -23,7 +23,7 @@ export function TeacherSelect({ token, onSelect }: TeacherSelectProps) {
   if (loading) {
     return (
       <PageShell>
-        <p className="text-muted-foreground text-sm text-center">טוען מורים...</p>
+        <p className="text-muted-foreground text-sm text-center">טוענים את רשימת המורים...</p>
       </PageShell>
     )
   }
@@ -38,9 +38,14 @@ export function TeacherSelect({ token, onSelect }: TeacherSelectProps) {
 
   return (
     <PageShell>
-      <h1 className="text-lg font-semibold text-center">בחר/י מורה</h1>
+      <div className="space-y-2 text-center">
+        <h1 className="text-lg font-semibold">עם איזה מורה תרצו לקבוע?</h1>
+        <p className="text-sm text-muted-foreground">
+          אחרי הבחירה נציג לכם את הזמינות הפנויה לשבוע הקרוב.
+        </p>
+      </div>
       {teachers.length === 0 ? (
-        <p className="text-muted-foreground text-sm text-center">אין מורים זמינים כרגע.</p>
+        <p className="text-muted-foreground text-sm text-center">כרגע אין מורים זמינים לקביעת שיעור.</p>
       ) : (
         <ul className="space-y-3">
           {teachers.map(teacher => (

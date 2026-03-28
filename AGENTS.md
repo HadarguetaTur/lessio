@@ -1,4 +1,4 @@
-# LESSIO — Claude Operating Manual (Sprint 6)
+# LESSIO — Claude Operating Manual (Sprint 8)
 
 ---
 
@@ -11,21 +11,20 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 
 ---
 
-## Current Sprint: Sprint 6 — Production Readiness
+## Current Sprint: Sprint 8 — Real Payments (Multi-Provider)
 
-**Sprint source of truth:** `/docs/sprint-6-scope.md`
+**Sprint source of truth:** `/docs/sprint-8-scope.md`
 
 **Goal:**
-- perform a secrets and privileged-access audit before release
-- add structured logging and graceful failure handling to critical flows
-- separate `dev` / `staging` / `prod` expectations and validate env vars at startup
-- verify end-to-end behavior on staging before any production sign-off
-- document recovery, release, and first-customer onboarding procedures
+- Every org configures its own payment provider via `/settings/payment` (owner-only)
+- Provider credentials encrypted at rest (AES-256-GCM, reusing `src/lib/crypto/index.ts`)
+- Payment abstraction layer: `PaymentProvider` interface + `factory.ts` + Cardcom adapter
+- `sendPaymentRequest` generates a real Cardcom payment link and sends it via WhatsApp
+- Cardcom webhook updates `charge.status = 'paid'` automatically after payment
 
 **Users in scope:**
-- Dashboard users: owner + admin + teacher (no new permissions)
-- External users: none new in Sprint 6
-- Parent WhatsApp and booking WebView flows remain in regression and readiness scope only
+- Dashboard users: owner (new payment settings page), admin (send payment request), teacher (no new permissions)
+- External: Cardcom webhook POST `/api/payments/cardcom`
 
 ---
 
@@ -90,6 +89,23 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | First customer staging validation (`DEV-89`) | ✅ Done (Sprint 6) |
 | Backup and restore validation (`DEV-91`) | ✅ Done (Sprint 6) |
 | First customer readiness (`DEV-73`) | ✅ Done (Sprint 6) |
+| lesson_students junction table + lesson_type + group_pricing_mode (pre-S7 migration) | ✅ Done (Sprint 7) |
+| Per-org whatsapp_phone_number_id + encrypted whatsapp_access_token (schema) | ✅ Done (Sprint 7) |
+| AES-256-GCM token encryption utility (`src/lib/crypto/index.ts`) | ✅ Done (Sprint 7) |
+| WHATSAPP_TOKEN_ENCRYPTION_KEY / META_APP_ID / META_APP_SECRET env validation | ✅ Done (Sprint 7) |
+| Owner WhatsApp settings page + Meta Embedded Signup UI | ✅ Done (Sprint 7) |
+| saveWhatsAppConnection + disconnectWhatsApp server actions | ✅ Done (Sprint 7) |
+| Webhook routing cutover: phone_number_id lookup + decrypted token | ✅ Done (Sprint 7) |
+| WhatsApp nav entry in sidebar | ✅ Done (Sprint 7) |
+| Staging QA docs updated with Sprint 7 deferred tests | ✅ Done (Sprint 8) |
+| Schema migration: organizations.payment_provider + payment_config_encrypted + charges columns | ✅ Done (Sprint 8) |
+| Payment abstraction layer: PaymentProvider interface + factory.ts + cardcom.ts | ✅ Done (Sprint 8) |
+| Owner payment settings page + savePaymentProvider + disconnectPayment | ✅ Done (Sprint 8) |
+| sendPaymentRequest updated to use factory + real Cardcom link | ✅ Done (Sprint 8) |
+| Cardcom webhook POST /api/payments/cardcom | ✅ Done (Sprint 8) |
+| PAYMENT_CONFIG_ENCRYPTION_KEY env validation + .env.local.example | ✅ Done (Sprint 8) |
+| Payment nav entry in sidebar (owner) | ✅ Done (Sprint 8) |
+| Charges UI: payment_link + payment_provider display | ✅ Done (Sprint 8) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.
@@ -114,39 +130,47 @@ Update this table after each completed story.
 
 ---
 
-## Sprint 6 — What to Build
+## Sprint 8 — What to Build
 
-See `/docs/sprint-6-scope.md` for full Epics, Stories, and Definition of Done.
+See `/docs/sprint-8-scope.md` for full stories and Definition of Done.
 
-**Execution order:**
-1. Security & Reliability
-2. Environments & Release
-3. QA & Go-Live Validation
-4. First Customer Readiness
-
----
-
-## What NOT to Build in Sprint 6
-
-- New features of any kind
-- New roles or permission expansion
-- Large redesigns
-- Payment provider integration
-- Full analytics suite
-- CI/CD automation
-- External monitoring services
-- Billing rule redesign
-- Booking flow redesign
+**Stories:**
+- Story 0: Update staging QA docs with deferred Sprint 7 tests
+- Story 1: Schema migration (organizations.payment_provider, payment_config_encrypted; charges.payment_link, payment_reference, payment_provider)
+- Story 2: `src/lib/payments/` — PaymentProvider interface + cardcom.ts + factory.ts
+- Story 3: `/settings/payment` page + savePaymentProvider + disconnectPayment server actions
+- Story 4: Update `sendPaymentRequest` to use factory + real payment link
+- Story 5: Cardcom webhook `/api/payments/cardcom`
+- Story 6: `PAYMENT_CONFIG_ENCRYPTION_KEY` env validation + `.env.local.example`
+- Story 7: Sidebar nav item "תשלומים" (owner)
+- Story 8: Charges UI update (payment_link, payment_provider display)
 
 ---
 
-## Closed Decisions Relevant to Sprint 6
+## What NOT to Build in Sprint 8
 
-**Decision — scope boundary:**
-Sprint 6 is for audit, hardening, verification, and launch readiness only. No new product scope.
+- Additional payment providers beyond Cardcom
+- Automatic payment on lesson completion
+- Recurring billing / subscriptions
+- PDF invoices
+- WhatsApp bot platform (Sprint 9)
+- Google Calendar sync (Sprint 9)
+
+---
+
+## Closed Decisions Relevant to Sprint 7
+
+**Decision — routing key:**
+Webhook routing uses `phone_number_id` (Meta internal ID), not the display phone number. The display number can change; the ID is stable.
+
+**Decision — token storage:**
+Access tokens are encrypted at the application layer with AES-256-GCM before being stored in Postgres. The encryption key is a server-only env var; plaintext is never persisted.
+
+**Decision — legacy columns:**
+`organizations.whatsapp_number` and `organizations.whatsapp_token` are kept but deprecated. They are ignored after the routing cutover and will be dropped in a future cleanup migration.
 
 **Decision — secrets boundary:**
-`SUPABASE_SERVICE_ROLE_KEY` and `BOOKING_JWT_SECRET` remain server-only and must never appear in client bundles.
+`SUPABASE_SERVICE_ROLE_KEY`, `BOOKING_JWT_SECRET`, `WHATSAPP_TOKEN_ENCRYPTION_KEY`, `META_APP_SECRET` remain server-only and must never appear in client bundles.
 
 **Decision — privileged import path:**
 Service role usage is isolated to `src/lib/supabase/service-role.ts`.

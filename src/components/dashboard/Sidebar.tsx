@@ -14,6 +14,8 @@ import {
   LogOut,
   UserPlus,
   CalendarDays,
+  MessageCircle,
+  CreditCard,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 
@@ -26,6 +28,8 @@ const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; roles?:
   { href: '/charges', label: 'חיובים', icon: Receipt, roles: ['owner', 'admin'] },
   { href: '/leads', label: 'לידים', icon: UserPlus, roles: ['owner', 'admin'] },
   { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings, roles: ['owner'] },
+  { href: '/settings/whatsapp', label: 'WhatsApp', icon: MessageCircle, roles: ['owner'] },
+  { href: '/settings/payment', label: 'תשלומים', icon: CreditCard, roles: ['owner'] },
   { href: '/teacher/schedule', label: 'השיעורים שלי', icon: CalendarDays, roles: ['teacher'] },
 ]
 

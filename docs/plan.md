@@ -66,12 +66,11 @@ It provides full operational control over scheduling, billing, cancellations, an
 | Billing & Cancellations | Policy engine, auto-charge, payment tracking | 3 ✅ |
 | WhatsApp External Flows | Parent cancellation, lead capture, payment requests | 4 ✅ |
 | Multi-Role Access | Teacher portal, authorization hardening | 5 ✅ |
-| Production Readiness | Security audit, QA, environments, go-live | 6 ⏳ |
-| Tenant Platform & Channel Config | Per-organization channel settings, future package controls, tenant-specific integrations | 7 planned |
-| WhatsApp Bot Platform | Deterministic WhatsApp flows for parents, students, teachers, and staff | 7 planned |
-| Teacher Calendar Sync | Google Calendar connection and lesson sync for teachers | 8 planned |
-| Homework & Learning Ops | Template library, assignment workflow, reminders | 8 planned |
-| Integration Hub | Payment provider configs, outbound webhooks, Make connectivity | 9 planned |
+| Production Readiness | Security audit, QA, environments, go-live | 6 ✅ |
+| WhatsApp Embedded Signup | Per-org WhatsApp channel config, AES-256-GCM token encryption | 7 ✅ |
+| Real Payments | Multi-provider payment abstraction layer, Cardcom adapter, per-org encrypted credentials | 8 ⏳ |
+| Teaching Operations | Teacher Google Calendar sync and homework assignment workflows | 9 planned |
+| Integration Hub | Outbound webhooks, Make connectivity | 10 planned |
 
 ---
 
@@ -84,11 +83,12 @@ It provides full operational control over scheduling, billing, cancellations, an
 | 3 | Business Logic Product | Billing engine — cancellations & charges | ✅ Done |
 | 4 | External Operational | External flows — WhatsApp + leads | ✅ Done |
 | 5 | Multi-Role Product | Permissions, teacher portal, product hardening | ✅ Done |
-| 6 | Production Ready | Security, QA, first customer | ⏳ Current Sprint |
-| 7 | Tenant & Bot Foundation | SaaS tenant settings, official WhatsApp bot orchestration, role-safe channel flows | planned |
-| 8 | Teaching Operations | Teacher Google Calendar sync and homework assignment workflows | planned |
-| 9 | Integration Platform | Payment provider abstraction, Make/webhook delivery, operational integrations | planned |
-| 10 | Expansion Hardening | Reporting, automation polish, broader pilot-readiness for multiple customers | planned |
+| 6 | Production Ready | Security, QA, first customer | ✅ Done |
+| 7 | WhatsApp Embedded Signup | Per-org WhatsApp number via Meta Embedded Signup, AES-256-GCM token encryption | ✅ Done |
+| 8 | Real Payments | Multi-provider payment abstraction, Cardcom adapter, per-org encrypted credentials, payment webhook | ⏳ Current Sprint |
+| 9 | Teaching Operations | Teacher Google Calendar sync and homework assignment workflows | planned |
+| 10 | Integration Platform | Make/webhook delivery, operational integrations | planned |
+| 11 | Expansion Hardening | Reporting, automation polish, broader pilot-readiness for multiple customers | planned |
 
 ---
 

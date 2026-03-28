@@ -2,14 +2,17 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export type LessonStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+export type LessonType = 'individual' | 'pair' | 'group'
 
 export interface Lesson {
   id: string
   start_at: string
   end_at: string
   status: LessonStatus
+  lesson_type: LessonType
   cancel_reason: string | null
   teacher: { id: string; full_name: string }
+  /** Primary (first enrolled) student. For group lessons use a separate query. */
   student: { id: string; full_name: string }
 }
 
@@ -105,21 +108,24 @@ export function formatDate(iso: string, timezone: string): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapLesson(l: any): Lesson {
-  const teacher = l.teachers as unknown as { id: string; profiles: { full_name: string } }
-  const student = l.students as unknown as { id: string; full_name: string }
+  const teacher = l.teachers as { id: string; profiles: { full_name: string } }
+  // lesson_students is an array; take the first enrolled student for display.
+  // For individual lessons there is always exactly one row.
+  const ls = (l.lesson_students as Array<{ student_id: string; students: { id: string; full_name: string } }>)[0]
   return {
     id: l.id,
     start_at: l.start_at,
     end_at: l.end_at,
     status: l.status as LessonStatus,
+    lesson_type: (l.lesson_type ?? 'individual') as LessonType,
     cancel_reason: l.cancel_reason,
     teacher: { id: teacher.id, full_name: teacher.profiles.full_name },
-    student: { id: student.id, full_name: student.full_name },
+    student: ls ? { id: ls.students.id, full_name: ls.students.full_name } : { id: '', full_name: '—' },
   }
 }
 
 const LESSON_SELECT =
-  'id, start_at, end_at, status, cancel_reason, teachers(id, profiles(full_name)), students(id, full_name)'
+  'id, start_at, end_at, status, cancel_reason, lesson_type, teachers(id, profiles(full_name)), lesson_students(student_id, students(id, full_name))'
 
 export async function getTodayLessons(
   organizationId: string,

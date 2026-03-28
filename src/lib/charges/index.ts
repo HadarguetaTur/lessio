@@ -13,6 +13,9 @@ export interface Charge {
   paid_at: string | null
   created_at: string
   lesson_id: string | null
+  payment_link: string | null
+  payment_reference: string | null
+  payment_provider: string | null
   parent: { id: string; full_name: string }
   lesson: { start_at: string } | null
 }
@@ -33,7 +36,7 @@ export async function getCharges(
   let query = supabase
     .from('charges')
     .select(
-      'id, amount, charge_type, status, notes, paid_at, created_at, lesson_id, parents(id, full_name), lessons(start_at)'
+      'id, amount, charge_type, status, notes, paid_at, created_at, lesson_id, payment_link, payment_reference, payment_provider, parents(id, full_name), lessons(start_at)'
     )
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false })
@@ -56,6 +59,9 @@ export async function getCharges(
     paid_at: c.paid_at,
     created_at: c.created_at,
     lesson_id: c.lesson_id,
+    payment_link: c.payment_link ?? null,
+    payment_reference: c.payment_reference ?? null,
+    payment_provider: c.payment_provider ?? null,
     parent: c.parents as { id: string; full_name: string },
     lesson: c.lessons as { start_at: string } | null,
   }))

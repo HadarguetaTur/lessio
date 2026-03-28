@@ -28,6 +28,13 @@ const ALWAYS_REQUIRED: string[] = [
 const REQUIRED_IN_PRODUCTION: string[] = [
   'WHATSAPP_APP_SECRET',
   'WHATSAPP_VERIFY_TOKEN',
+  // Sprint 7: per-org WhatsApp credential encryption
+  'WHATSAPP_TOKEN_ENCRYPTION_KEY',
+  // Sprint 7: Meta Embedded Signup OAuth flow
+  'META_APP_ID',
+  'META_APP_SECRET',
+  // Sprint 8: per-org payment provider credential encryption
+  'PAYMENT_CONFIG_ENCRYPTION_KEY',
 ]
 
 /**

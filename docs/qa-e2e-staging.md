@@ -31,6 +31,7 @@ Before running any scenario:
 | 4 | Charges: mark paid | | | | |
 | 5 | WhatsApp cancellation | | | | |
 | 6 | Payment request | | | | |
+| 7 | WhatsApp Embedded Signup (Sprint 7) | | | | requires HTTPS staging URL |
 
 ---
 
@@ -234,9 +235,41 @@ These checks apply across multiple flows and must be verified once on staging.
 
 ---
 
+---
+
+## Scenario 7 — WhatsApp Embedded Signup (Sprint 7)
+
+**Goal:** Owner connects org WhatsApp number via Meta Embedded Signup on staging (requires HTTPS)
+
+**Preconditions:**
+- Staging app deployed to Vercel (HTTPS URL)
+- `META_APP_ID`, `META_APP_SECRET`, `WHATSAPP_TOKEN_ENCRYPTION_KEY` set in Vercel staging env
+- Meta app in Development mode; tester is admin/developer of the Meta app
+
+### Steps
+
+1. Log in as owner on staging → navigate to `/settings/whatsapp`
+2. Confirm "לא מחובר" state with green Embedded Signup button visible
+3. Click "חבר מספר WhatsApp" → Meta popup opens
+4. Complete the Embedded Signup flow (select test WABA + phone number)
+5. Confirm popup closes and page refreshes to "מחובר" state with `phone_number_id` displayed
+6. In Supabase staging: confirm `organizations.whatsapp_phone_number_id` is set and `whatsapp_access_token` is a non-empty encrypted string (format: `base64:base64:base64`)
+7. Click "נתק" → confirm page returns to "לא מחובר"
+8. In Supabase staging: confirm both columns are NULL
+
+### Pass criteria
+
+- [ ] Embedded Signup popup opens without errors
+- [ ] `phone_number_id` saved to DB after completion
+- [ ] `whatsapp_access_token` stored encrypted (never plaintext)
+- [ ] Disconnect clears both fields
+- [ ] Webhook routes correctly to org after reconnecting (send test WhatsApp message)
+
+---
+
 ## Staging QA Sign-Off
 
-- [ ] All 6 E2E scenarios passed
+- [ ] All 7 E2E scenarios passed
 - [ ] All cross-cutting checks completed
 - [ ] No open blockers
 - [ ] Results documented in this file (or linked issue)

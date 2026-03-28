@@ -8,6 +8,10 @@ vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({ from: (t: string) => mockFrom(t) }),
 }))
 
+vi.mock('@/lib/crypto', () => ({
+  decryptToken: vi.fn().mockReturnValue('test-token'),
+}))
+
 vi.mock('@/lib/jwt', () => ({
   verifyBookingToken: vi.fn(),
   signBookingToken: vi.fn(),
@@ -97,7 +101,10 @@ describe('confirmBookingAction', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'parents') return buildChain({ data: { phone: PARENT_PHONE }, error: null })
       if (table === 'teachers') return buildChain({ data: { profiles: { full_name: TEACHER_NAME } }, error: null })
-      if (table === 'organizations') return buildChain({ data: { whatsapp_token: null }, error: null })
+      if (table === 'organizations') return buildChain({
+        data: { whatsapp_phone_number_id: 'test-phone-id', whatsapp_access_token: 'encrypted-test-token' },
+        error: null,
+      })
       return buildChain({ data: null, error: null })
     })
 
@@ -126,7 +133,10 @@ describe('confirmBookingAction', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'parents') return buildChain({ data: { phone: PARENT_PHONE }, error: null })
       if (table === 'teachers') return buildChain({ data: { profiles: { full_name: TEACHER_NAME } }, error: null })
-      if (table === 'organizations') return buildChain({ data: { whatsapp_token: null }, error: null })
+      if (table === 'organizations') return buildChain({
+        data: { whatsapp_phone_number_id: 'test-phone-id', whatsapp_access_token: 'encrypted-test-token' },
+        error: null,
+      })
       return buildChain({ data: null, error: null })
     })
 

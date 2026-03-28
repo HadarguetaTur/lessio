@@ -61,15 +61,6 @@ export type CancelLessonResult = {
   chargeAlert?: string
 }
 
-type LessonCancellationRecord = {
-  id: string
-  start_at: string
-  end_at: string
-  status: LessonStatus
-  student_id: string
-  teachers: unknown
-}
-
 /**
  * Cancels a lesson from the dashboard (owner/admin only).
  * Calculates charge via policy engine. Charge is skipped if waive=true.
@@ -93,16 +84,19 @@ export async function cancelLesson(
 
   const supabase = createServiceRoleClient()
 
-  // Fetch lesson with teacher hourly_rate and student_id
+  // Fetch lesson with teacher hourly_rate; student resolved via lesson_students
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
-    .select('id, start_at, end_at, status, student_id, teachers(id, hourly_rate)')
+    .select('id, start_at, end_at, status, lesson_students(student_id), teachers(id, hourly_rate)')
     .eq('id', lessonId)
     .eq('organization_id', orgId)
     .single()
 
   if (lessonError || !lesson) return { error: 'שיעור לא נמצא' }
   if (lesson.status === 'cancelled') return { error: 'השיעור כבר בוטל' }
+
+  const lessonStudents = (lesson.lesson_students as Array<{ student_id: string }>)
+  const primaryStudentId = lessonStudents[0]?.student_id
 
   // Determine charge
   let chargeAlert: string | undefined
@@ -113,7 +107,7 @@ export async function cancelLesson(
 
   if (!waive) {
     const policy = await getCancellationPolicy(orgId)
-    const teacher = (lesson as LessonCancellationRecord).teachers as { id: string; hourly_rate: number | null }
+    const teacher = (lesson.teachers as unknown as { id: string; hourly_rate: number | null })
 
     const chargeResult = calculateCancellationCharge(
       { start_at: lesson.start_at, end_at: lesson.end_at, hourly_rate: teacher.hourly_rate },
@@ -123,13 +117,17 @@ export async function cancelLesson(
 
     if (chargeResult.shouldCharge && chargeResult.amount > 0) {
       pendingCancellationCharge = chargeResult
-      try {
-        cancellationParentId = await resolveBillingParent(lesson.student_id, orgId)
-      } catch (e) {
-        if (e instanceof MissingPrimaryParentError) {
-          chargeAlert = 'לא ניתן ליצור חיוב ביטול — לתלמיד אין הורה ראשי מוגדר'
-        } else {
-          chargeAlert = 'שגיאה ביצירת חיוב הביטול'
+      if (!primaryStudentId) {
+        chargeAlert = 'לא ניתן ליצור חיוב ביטול — לשיעור אין תלמידים מקושרים'
+      } else {
+        try {
+          cancellationParentId = await resolveBillingParent(primaryStudentId, orgId)
+        } catch (e) {
+          if (e instanceof MissingPrimaryParentError) {
+            chargeAlert = 'לא ניתן ליצור חיוב ביטול — לתלמיד אין הורה ראשי מוגדר'
+          } else {
+            chargeAlert = 'שגיאה ביצירת חיוב הביטול'
+          }
         }
       }
     } else if (chargeResult.shouldCharge && chargeResult.reasonCode === 'missing_rate') {

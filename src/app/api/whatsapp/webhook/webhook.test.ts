@@ -6,6 +6,10 @@ import { createHmac } from 'crypto'
 
 const mockFrom = vi.fn()
 
+vi.mock('@/lib/crypto', () => ({
+  decryptToken: vi.fn().mockReturnValue('test-access-token'),
+}))
+
 vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({ from: (t: string) => mockFrom(t) }),
 }))
@@ -182,7 +186,7 @@ describe('POST /api/whatsapp/webhook', () => {
 
   it('sends unknown parent reply and creates lead when parent not found', async () => {
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: null, error: null }) // not found
       if (table === 'leads') return buildChain({ data: null, error: null })
       return buildChain({ data: null, error: null })
@@ -202,7 +206,7 @@ describe('POST /api/whatsapp/webhook', () => {
 
   it('sends booking link when parent has exactly one student and message has booking intent', async () => {
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       if (table === 'relationships') {
         const chain = buildChain(null) as Record<string, unknown>
@@ -231,7 +235,7 @@ describe('POST /api/whatsapp/webhook', () => {
   it('does not send booking link when message has no booking intent', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       return buildChain({ data: null, error: null })
     })
@@ -269,7 +273,7 @@ describe('WhatsApp cancellation intent', () => {
   it('starts cancellation flow when parent sends ביטול', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       if (table === 'relationships') return buildChain({ data: [], error: null })
       return buildChain({ data: null, error: null })
@@ -285,7 +289,7 @@ describe('WhatsApp cancellation intent', () => {
   it('does not start cancellation for unrelated message from known parent', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       return buildChain({ data: null, error: null })
     })
@@ -300,7 +304,7 @@ describe('WhatsApp cancellation intent', () => {
   it('does not create lead for recognized parent (converted phone routes as parent, not lead)', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       return buildChain({ data: null, error: null })
     })
@@ -324,7 +328,7 @@ describe('WhatsApp cancellation intent', () => {
       { id: 'lesson-1', start_at: new Date(Date.now() + 86400000).toISOString(), student_name: 'A', teacher_name: 'B' },
     ])
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       return buildChain({ data: null, error: null })
     })
@@ -365,7 +369,7 @@ describe('WhatsApp cancellation intent', () => {
       { id: 'lesson-2', start_at: new Date(Date.now() + 86400000).toISOString(), student_name: 'A', teacher_name: 'B' },
     ])
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       return buildChain({ data: null, error: null })
     })

@@ -1,0 +1,127 @@
+'use server'
+
+/**
+ * Server actions for payment provider settings.
+ * Owner-only. Per /docs/sprint-8-scope.md § Story 3.
+ *
+ * savePaymentProvider — validates provider credentials via the registry,
+ *   encrypts the config, and stores it on the org.
+ *
+ * disconnectPayment — nulls both payment fields so the org has no active provider.
+ *
+ * To add a new provider: update registry.ts + registry-ui.ts only.
+ * This file does not change when new providers are added.
+ */
+
+import { revalidatePath } from 'next/cache'
+import { getSession } from '@/lib/auth/session'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { encryptWithKey } from '@/lib/crypto'
+import { getRegistryEntry } from '@/lib/payments/registry'
+import { getProviderUI } from '@/lib/payments/registry-ui'
+
+// ── Result types ──────────────────────────────────────────────────────────────
+
+export type PaymentActionResult = {
+  error: string | null
+}
+
+// ── savePaymentProvider ───────────────────────────────────────────────────────
+
+export async function savePaymentProvider(
+  _prevState: PaymentActionResult,
+  formData: FormData
+): Promise<PaymentActionResult> {
+  const { orgId, role } = await getSession()
+
+  if (role !== 'owner') {
+    return { error: 'אין הרשאה לביצוע פעולה זו' }
+  }
+
+  const provider = formData.get('provider')
+  if (!provider || typeof provider !== 'string') {
+    return { error: 'ספק תשלום לא נבחר' }
+  }
+
+  const entry = getRegistryEntry(provider)
+  if (!entry) {
+    return { error: `ספק תשלום "${provider}" אינו נתמך` }
+  }
+
+  // Extract all fields defined for this provider from formData
+  const providerUI = getProviderUI(provider)
+  const fieldData: Record<string, string | undefined> = {}
+  for (const field of providerUI?.fields ?? []) {
+    const val = formData.get(field.name)
+    fieldData[field.name] = val ? String(val).trim() : undefined
+  }
+
+  // Validate using the registry entry's validator (Zod under the hood)
+  const validation = entry.validateConfig(fieldData)
+  if (!validation.success) {
+    return { error: validation.error }
+  }
+
+  const encryptionKey = process.env.PAYMENT_CONFIG_ENCRYPTION_KEY
+  if (!encryptionKey) {
+    console.error('[payment/settings] PAYMENT_CONFIG_ENCRYPTION_KEY not set', { orgId })
+    return { error: 'מפתח הצפנה חסר בשרת — פנה למנהל המערכת' }
+  }
+
+  let encryptedConfig: string
+  try {
+    encryptedConfig = encryptWithKey(JSON.stringify(validation.config), encryptionKey)
+  } catch (err) {
+    console.error('[payment/settings] Config encryption failed', { orgId, err })
+    return { error: 'שגיאה בהצפנת הנתונים' }
+  }
+
+  const db = createServiceRoleClient()
+  const { error: updateError } = await db
+    .from('organizations')
+    .update({
+      payment_provider: provider,
+      payment_config_encrypted: encryptedConfig,
+    })
+    .eq('id', orgId)
+
+  if (updateError) {
+    console.error('[payment/settings] DB update failed', { orgId, error: updateError.message })
+    return { error: 'שגיאה בשמירת הנתונים' }
+  }
+
+  console.info('[payment/settings] Payment provider saved', { orgId, provider })
+  revalidatePath('/settings/payment')
+  return { error: null }
+}
+
+// ── disconnectPayment ─────────────────────────────────────────────────────────
+
+export async function disconnectPayment(
+  _prevState: PaymentActionResult,
+  _formData: FormData
+): Promise<PaymentActionResult> {
+  const { orgId, role } = await getSession()
+
+  if (role !== 'owner') {
+    return { error: 'אין הרשאה לביצוע פעולה זו' }
+  }
+
+  const db = createServiceRoleClient()
+  const { error: updateError } = await db
+    .from('organizations')
+    .update({
+      payment_provider: null,
+      payment_config_encrypted: null,
+    })
+    .eq('id', orgId)
+
+  if (updateError) {
+    console.error('[payment/settings] Disconnect DB update failed', { orgId, error: updateError.message })
+    return { error: 'שגיאה בניתוק ספק התשלום' }
+  }
+
+  console.info('[payment/settings] Payment provider disconnected', { orgId })
+  revalidatePath('/settings/payment')
+  return { error: null }
+}

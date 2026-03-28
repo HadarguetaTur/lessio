@@ -20,9 +20,11 @@ Nothing ships to production without passing staging first (Decision #24).
   - [ ] `BOOKING_JWT_SECRET`
   - [ ] `WHATSAPP_APP_SECRET`
   - [ ] `WHATSAPP_VERIFY_TOKEN`
-  - [ ] `WHATSAPP_ACCESS_TOKEN`
-  - [ ] `WHATSAPP_PHONE_NUMBER_ID`
   - [ ] `NEXT_PUBLIC_APP_URL` (set to staging URL)
+  - [ ] `WHATSAPP_TOKEN_ENCRYPTION_KEY` (Sprint 7)
+  - [ ] `META_APP_ID` (Sprint 7)
+  - [ ] `META_APP_SECRET` (Sprint 7)
+  - [ ] `PAYMENT_CONFIG_ENCRYPTION_KEY` (Sprint 8)
 - [ ] App starts cleanly on staging (no startup errors from env validation)
 
 ### 1.2 Migrations
@@ -40,7 +42,7 @@ Nothing ships to production without passing staging first (Decision #24).
 
 ## Phase 2 — Staging E2E Smoke Tests
 
-All 6 scenarios must pass on staging. Mark each as Pass / Fail / Blocked.
+All 7 scenarios must pass on staging. Mark each as Pass / Fail / Blocked.
 
 | # | Scenario | Steps | Result |
 |---|---|---|---|
@@ -49,9 +51,10 @@ All 6 scenarios must pass on staging. Mark each as Pass / Fail / Blocked.
 | 3 | **Dashboard cancellation** | Owner/admin cancels a lesson → cancellation charge calculated → charge appears | |
 | 4 | **Charges** | Completed lesson → charge pending → mark as paid → status updated | |
 | 5 | **WhatsApp cancellation** | Parent sends "ביטול" via WhatsApp → lesson list sent → parent selects lesson → cancellation confirmed → charge applied | |
-| 6 | **Payment request** | Owner/admin sends payment request via dashboard → WhatsApp message sent → `sent_at` logged on charges | |
+| 6 | **Payment request** | Owner configures Cardcom in `/settings/payment` → sends payment request → WhatsApp with Cardcom link sent → `payment_link` + `payment_reference` saved on charge | |
+| 7 | **WhatsApp Embedded Signup** | Owner navigates `/settings/whatsapp` → clicks connect → completes Meta Embedded Signup → `phone_number_id` + encrypted token saved to DB | requires HTTPS staging URL |
 
-**Staging gate:** All 6 must pass. If any fail, fix the regression before proceeding.
+**Staging gate:** All 7 must pass. If any fail, fix the regression before proceeding.
 
 ---
 
@@ -75,9 +78,11 @@ All 6 scenarios must pass on staging. Mark each as Pass / Fail / Blocked.
   - [ ] `BOOKING_JWT_SECRET` — fresh value, not reused from staging
   - [ ] `WHATSAPP_APP_SECRET` — production Meta app secret
   - [ ] `WHATSAPP_VERIFY_TOKEN` — matches what is registered in Meta webhook settings
-  - [ ] `WHATSAPP_ACCESS_TOKEN` — production token
-  - [ ] `WHATSAPP_PHONE_NUMBER_ID` — production phone number ID
   - [ ] `NEXT_PUBLIC_APP_URL` — production URL
+  - [ ] `WHATSAPP_TOKEN_ENCRYPTION_KEY` — 32-byte hex, production value (Sprint 7)
+  - [ ] `META_APP_ID` — production Meta app (Sprint 7)
+  - [ ] `META_APP_SECRET` — production Meta app secret (Sprint 7)
+  - [ ] `PAYMENT_CONFIG_ENCRYPTION_KEY` — 32-byte hex, production value (Sprint 8)
 
 ### 4.2 Migrations
 

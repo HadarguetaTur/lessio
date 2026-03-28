@@ -53,11 +53,15 @@ export async function getPendingChargesForParent(
 /**
  * Builds the WhatsApp payment request message.
  * Pure function — no side effects.
+ *
+ * If paymentUrl is provided (Cardcom link), it is included in the message.
+ * If paymentUrl is null, falls back to the legacy "contact the business owner" text.
  */
 export function buildPaymentRequestMessage(
   parentName: string,
   charges: PaymentRequestCharge[],
-  timezone: string
+  timezone: string,
+  paymentUrl?: string | null
 ): string {
   const lines = charges.map((charge, index) => {
     const label = CHARGE_TYPE_LABELS[charge.charge_type] ?? charge.charge_type
@@ -78,6 +82,10 @@ export function buildPaymentRequestMessage(
 
   const total = charges.reduce((sum, c) => sum + c.amount, 0)
 
+  const paymentLine = paymentUrl
+    ? [`לתשלום לחץ/י על הקישור:`, paymentUrl]
+    : ['לתשלום אנא פנה/י לבעל העסק.']
+
   return [
     `שלום ${parentName},`,
     '',
@@ -87,7 +95,7 @@ export function buildPaymentRequestMessage(
     '',
     `סה״כ לתשלום: ₪${total.toFixed(2)}`,
     '',
-    'לתשלום אנא פנה/י לבעל העסק.',
+    ...paymentLine,
   ].join('\n')
 }
 

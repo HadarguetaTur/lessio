@@ -14,6 +14,7 @@ import { createHmac } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { signBookingToken } from '@/lib/jwt'
+import { decryptToken } from '@/lib/crypto'
 import {
   sendBookingLink,
   sendUnknownParentReply,
@@ -133,29 +134,40 @@ async function processMessage(
     throw err
   }
 
-  // 5. Resolve org by business phone number
-  // The business WhatsApp display_phone_number must match organizations.whatsapp_number
-  let orgPhone: string
-  try {
-    orgPhone = normalizePhone(msg.businessPhoneNumber)
-  } catch {
-    console.warn('[whatsapp/webhook] Could not normalize business phone — ignoring', { businessPhone: msg.businessPhoneNumber })
+  // 5. Resolve org by phone_number_id (Meta internal ID).
+  // Per /docs/sprint-7-scope.md § Story 4 — routing cutover.
+  // phone_number_id is the stable, unique identifier Meta sends on every message.
+  if (!msg.phoneNumberId) {
+    console.warn('[whatsapp/webhook] No phoneNumberId in message — ignoring')
     return
   }
 
   const { data: org, error: orgError } = await db
     .from('organizations')
-    .select('id, whatsapp_token, timezone')
-    .eq('whatsapp_number', orgPhone)
+    .select('id, whatsapp_access_token, timezone')
+    .eq('whatsapp_phone_number_id', msg.phoneNumberId)
     .maybeSingle()
 
   if (orgError || !org) {
-    console.warn('[whatsapp/webhook] No org found for business phone — ignoring')
+    console.warn('[whatsapp/webhook] No org found for phone_number_id — ignoring', { phoneNumberId: msg.phoneNumberId })
     return
   }
 
-  const accessToken = (org.whatsapp_token as string | null) ?? process.env.WHATSAPP_ACCESS_TOKEN ?? ''
-  const phoneNumberId = msg.phoneNumberId || (process.env.WHATSAPP_PHONE_NUMBER_ID ?? '')
+  // Decrypt per-org access token (required in production; no env var fallback)
+  let accessToken: string
+  if (org.whatsapp_access_token) {
+    try {
+      accessToken = decryptToken(org.whatsapp_access_token as string)
+    } catch (err) {
+      console.error('[whatsapp/webhook] Failed to decrypt org access token', { orgId: org.id, err })
+      return
+    }
+  } else {
+    console.warn('[whatsapp/webhook] Org has no whatsapp_access_token — ignoring', { orgId: org.id })
+    return
+  }
+
+  const phoneNumberId = msg.phoneNumberId
 
   // 6. Look up parent by phone in this org (before intent check — any message from
   //    an unrecognized sender must create a lead, regardless of intent)

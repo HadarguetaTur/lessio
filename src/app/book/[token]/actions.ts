@@ -7,6 +7,7 @@
  */
 
 import { verifyBookingToken } from '@/lib/jwt'
+import { decryptToken } from '@/lib/crypto'
 import {
   getAvailableSlots,
   getAvailabilitySummary,
@@ -145,7 +146,7 @@ async function sendWhatsAppConfirmation(
   const [parentResult, teacherResult, orgResult] = await Promise.all([
     db.from('parents').select('phone').eq('id', parentId).eq('organization_id', organizationId).single(),
     db.from('teachers').select('profiles(full_name)').eq('id', teacherId).single(),
-    db.from('organizations').select('whatsapp_token').eq('id', organizationId).single(),
+    db.from('organizations').select('whatsapp_phone_number_id, whatsapp_access_token').eq('id', organizationId).single(),
   ])
 
   if (parentResult.error || !parentResult.data) {
@@ -160,8 +161,23 @@ async function sendWhatsAppConfirmation(
   const phone = parentResult.data.phone
   const profiles = teacherResult.data.profiles as unknown as { full_name: string } | null
   const teacherName = profiles?.full_name ?? ''
-  const accessToken = (orgResult.data?.whatsapp_token as string | null) ?? process.env.WHATSAPP_ACCESS_TOKEN ?? ''
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? ''
+  const orgData = orgResult.data
+
+  const encryptedToken = orgData?.whatsapp_access_token as string | null
+  if (!encryptedToken || !orgData?.whatsapp_phone_number_id) {
+    console.warn('[confirmBookingAction] Org WhatsApp not connected — skipping confirmation', { organizationId })
+    return
+  }
+
+  let accessToken: string
+  try {
+    accessToken = decryptToken(encryptedToken)
+  } catch {
+    console.error('[confirmBookingAction] Failed to decrypt org access token — skipping confirmation', { organizationId })
+    return
+  }
+
+  const phoneNumberId = orgData.whatsapp_phone_number_id as string
 
   await sendBookingConfirmation(phone, teacherName, startAt, accessToken, phoneNumberId)
 }

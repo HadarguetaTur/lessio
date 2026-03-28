@@ -25,11 +25,11 @@ export async function createLessonCharge(
 ): Promise<ChargeAlert | null> {
   const supabase = createServiceRoleClient()
 
-  // Fetch lesson with teacher hourly_rate and student_id
+  // Fetch lesson with teacher hourly_rate; student resolved via lesson_students
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
     .select(
-      'id, start_at, end_at, student_id, teachers(id, hourly_rate)'
+      'id, start_at, end_at, lesson_students(student_id), teachers(id, hourly_rate)'
     )
     .eq('id', lessonId)
     .eq('organization_id', organizationId)
@@ -51,13 +51,21 @@ export async function createLessonCharge(
     }
   }
 
-  // Resolve billing parent
+  // Resolve billing parent via the primary student in lesson_students
+  const lessonStudents = (lesson.lesson_students as Array<{ student_id: string }>)
+  const primaryStudentId = lessonStudents[0]?.student_id
+
+  if (!primaryStudentId) {
+    console.error('[createLessonCharge] no students in lesson_students', { lessonId, orgId: organizationId })
+    return { type: 'missing_parent', message: 'לא ניתן ליצור חיוב — לשיעור אין תלמידים מקושרים' }
+  }
+
   let parentId: string
   try {
-    parentId = await resolveBillingParent(lesson.student_id, organizationId)
+    parentId = await resolveBillingParent(primaryStudentId, organizationId)
   } catch (e) {
     if (e instanceof MissingPrimaryParentError) {
-      console.error('[createLessonCharge] no primary parent', { lessonId, orgId: organizationId, studentId: lesson.student_id, error: e.message })
+      console.error('[createLessonCharge] no primary parent', { lessonId, orgId: organizationId, studentId: primaryStudentId, error: (e as Error).message })
       return {
         type: 'missing_parent',
         message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר',

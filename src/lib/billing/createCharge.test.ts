@@ -44,7 +44,7 @@ describe('createLessonCharge', () => {
           id: 'lesson-1',
           start_at: '2026-04-01T10:00:00.000Z',
           end_at: '2026-04-01T11:30:00.000Z',
-          student_id: 'student-1',
+          lesson_students: [{ student_id: 'student-1' }],
           teachers: { id: 'teacher-1', hourly_rate: 200 },
         })
       }
@@ -83,7 +83,7 @@ describe('createLessonCharge', () => {
           id: 'lesson-1',
           start_at: '2026-04-01T10:00:00.000Z',
           end_at: '2026-04-01T11:00:00.000Z',
-          student_id: 'student-1',
+          lesson_students: [{ student_id: 'student-1' }],
           teachers: { id: 'teacher-1', hourly_rate: 200 },
         })
       }
@@ -109,7 +109,7 @@ describe('createLessonCharge', () => {
           id: 'lesson-1',
           start_at: '2026-04-01T10:00:00.000Z',
           end_at: '2026-04-01T11:00:00.000Z',
-          student_id: 'student-1',
+          lesson_students: [{ student_id: 'student-1' }],
           teachers: { id: 'teacher-1', hourly_rate: null },
         })
       }
@@ -131,7 +131,7 @@ describe('createLessonCharge', () => {
           id: 'lesson-1',
           start_at: '2026-04-01T10:00:00.000Z',
           end_at: '2026-04-01T11:00:00.000Z',
-          student_id: 'student-1',
+          lesson_students: [{ student_id: 'student-1' }],
           teachers: { id: 'teacher-1', hourly_rate: 200 },
         })
       }

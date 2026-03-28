@@ -8,6 +8,9 @@ import { revalidatePath } from 'next/cache'
 import { getPendingChargesForParent, buildPaymentRequestMessage, logPaymentRequestSent } from '@/lib/payment-request'
 import { getParentById } from '@/lib/parents'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getPaymentProvider } from '@/lib/payments/factory'
+import { PaymentProviderNotConfiguredError } from '@/lib/payments'
+import { decryptToken } from '@/lib/crypto'
 
 type ActionState = { error: string } | null
 
@@ -144,29 +147,86 @@ export async function sendPaymentRequestAction(
     return { error: 'אין חיובים פתוחים עבור הורה זה' }
   }
 
-  // Load org WhatsApp config + timezone
+  // Load org config: per-org WhatsApp token (Sprint 7) + timezone
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('whatsapp_token, timezone')
+    .select('whatsapp_phone_number_id, whatsapp_access_token, timezone')
     .eq('id', orgId)
     .single()
 
-  const accessToken = (org?.whatsapp_token as string | null) ?? process.env.WHATSAPP_ACCESS_TOKEN ?? ''
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? ''
+  const encryptedToken = org?.whatsapp_access_token as string | null
+  const phoneNumberId = org?.whatsapp_phone_number_id as string | null
   const timezone = (org?.timezone as string | null) ?? 'Asia/Jerusalem'
 
-  if (!accessToken || !phoneNumberId) {
-    return { error: 'הגדרות WhatsApp חסרות. אנא פנה/י למנהל המערכת.' }
+  if (!encryptedToken || !phoneNumberId) {
+    return { error: 'WhatsApp אינו מחובר. אנא הגדר/י את חיבור WhatsApp בהגדרות.' }
   }
 
-  // Build and send message
-  const message = buildPaymentRequestMessage(parent.full_name, charges, timezone)
+  let accessToken: string
+  try {
+    accessToken = decryptToken(encryptedToken)
+  } catch (err) {
+    console.error('[sendPaymentRequestAction] WhatsApp token decryption failed', { orgId, err })
+    return { error: 'שגיאה בפענוח token של WhatsApp — פנה/י למנהל המערכת' }
+  }
+
+  // Generate Cardcom payment link (fire-and-forget if provider not configured)
+  let paymentUrl: string | null = null
+  let paymentReference: string | null = null
+  let paymentProviderName: string | null = null
+
+  try {
+    const { provider, providerName } = await getPaymentProvider(orgId)
+    const totalAmount = charges.reduce((sum, c) => sum + c.amount, 0)
+    const firstChargeId = charges[0]!.id
+    const description = `חיוב עבור ${parent.full_name}`
+
+    const result = await provider.createPaymentLink({
+      chargeId: firstChargeId,
+      amount: totalAmount,
+      description,
+      orgId,
+    })
+
+    paymentUrl = result.url
+    paymentReference = result.reference
+    paymentProviderName = providerName
+
+    // Save payment link + reference on all pending charges (same link covers the total)
+    await db
+      .from('charges')
+      .update({
+        payment_link: paymentUrl,
+        payment_reference: paymentReference,
+        payment_provider: paymentProviderName,
+        updated_at: new Date().toISOString(),
+      })
+      .in('id', charges.map(c => c.id))
+      .eq('organization_id', orgId)
+
+    console.info('[sendPaymentRequestAction] Payment link created', {
+      orgId,
+      parentId,
+      chargeIds: charges.map(c => c.id),
+      providerName,
+    })
+  } catch (err) {
+    if (err instanceof PaymentProviderNotConfiguredError) {
+      console.info('[sendPaymentRequestAction] No payment provider configured, sending message without link', { orgId })
+    } else {
+      console.error('[sendPaymentRequestAction] Payment link creation failed', { orgId, parentId, err })
+    }
+    // Continue sending the WhatsApp message even if the payment link fails
+  }
+
+  // Build and send WhatsApp message
+  const message = buildPaymentRequestMessage(parent.full_name, charges, timezone, paymentUrl)
 
   const META_API_VERSION = 'v19.0'
-  const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
+  const whatsappUrl = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
 
-  const res = await fetch(url, {
+  const res = await fetch(whatsappUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,

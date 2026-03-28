@@ -112,6 +112,14 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | Charges aging summary bar (pending / invoiced / paid this month) | ✅ Done (Sprint 9) |
 | autoSendPaymentRequest fire-and-forget after lesson completion | ✅ Done (Sprint 9) |
 | Auto payment request toggle in /settings/payment (owner) | ✅ Done (Sprint 9) |
+| Schema migration: organization_holidays table + RLS | ✅ Done (Sprint 10) |
+| src/lib/organizations/holidays.ts — getOrgHolidays | ✅ Done (Sprint 10) |
+| /settings/holidays — holiday management page + actions (owner/admin) | ✅ Done (Sprint 10) |
+| getAvailableSlots: block slots on holiday dates | ✅ Done (Sprint 10) |
+| /teacher/availability — teacher self-service availability page + actions | ✅ Done (Sprint 10) |
+| /teacher/overrides — teacher self-service overrides page + actions | ✅ Done (Sprint 10) |
+| Sidebar: חגים וחופשות (owner/admin), הזמינות שלי + חריגים ביומן (teacher) | ✅ Done (Sprint 10) |
+| Teacher schedule: holiday label in week grid | ✅ Done (Sprint 10) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.
@@ -136,30 +144,29 @@ Update this table after each completed story.
 
 ---
 
-## Current Sprint: Sprint 9 — KPI Dashboard + Auto Payment Request
+## Current Sprint: Sprint 10 — Teacher Self-Service Availability + Org Holidays
 
-See `/docs/sprint-9-scope.md` for full stories and Definition of Done.
+See `/docs/sprint-10-scope.md` for full stories and Definition of Done.
 
 **Stories (all completed):**
-- Story 0: Note on charge auto-creation (already exists in setLessonStatus)
-- Story 1: Schema migration — organizations.auto_send_payment_request
-- Story 2: src/lib/dashboard/stats.ts — KPI stats query
-- Story 3: Dashboard KPI cards (monthlyRevenue, pendingDebt, lessonsThisMonth, activeStudents)
-- Story 4: Charges aging summary bar
-- Story 5: autoSendPaymentRequest fire-and-forget + lessons/[id]/actions.ts wiring
-- Story 6: Auto payment request toggle in /settings/payment
+- Story 1: Schema migration — organization_holidays table + RLS
+- Story 2: Holiday management — /settings/holidays page + actions + getOrgHolidays lib
+- Story 3: getAvailableSlots: block slots on holiday dates
+- Story 4: /teacher/availability — teacher self-service availability page + actions
+- Story 5: /teacher/overrides — teacher self-service overrides page + actions
+- Story 6: Sidebar nav — חגים וחופשות (owner/admin), הזמינות שלי + חריגים ביומן (teacher)
+- Story 7: Teacher schedule — holiday label in week grid
 
 ---
 
-## What NOT to Build in Sprint 9
+## What NOT to Build in Sprint 10
 
-- Monthly revenue chart / trend graph (Sprint 11)
-- Teacher earnings report
-- CSV export
-- Refund flows
+- Teacher requesting time off (approval workflow)
+- Substitute teacher assignment
+- Room/resource scheduling
+- Admin notification when teacher updates availability
 - Recurring lessons (Sprint 11)
 - Automated reminders (Sprint 12)
-- Google Calendar sync (Sprint 13)
 
 ---
 

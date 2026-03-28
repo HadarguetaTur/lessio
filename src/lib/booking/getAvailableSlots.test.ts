@@ -246,37 +246,37 @@ describe('getAvailableSlots', () => {
 function tableRouter(map: Record<string, unknown>) {
   return (table: string) => {
     if (table in map) return map[table]
-    // Default: return empty array for unknown tables
-    return array([])
+    // Default: supports all terminal types; data: null is safe for maybeSingle checks
+    return buildChain({ data: null, error: null })
   }
 }
 
 /** Builds a chainable Supabase-like query stub that resolves via .single() */
 function single(data: unknown) {
-  return buildChain({ data, error: null }, 'single')
+  return buildChain({ data, error: null })
 }
 
 /** Builds a chainable stub that resolves via .maybeSingle() */
 function maybeSingle(data: unknown) {
-  return buildChain({ data, error: null }, 'maybeSingle')
+  return buildChain({ data, error: null })
 }
 
 /** Builds a chainable stub that resolves as an awaited array query */
 function array(data: unknown[]) {
-  return buildChain({ data, error: null }, 'array')
+  return buildChain({ data, error: null })
 }
 
-function buildChain(result: { data: unknown; error: unknown }, terminal: 'single' | 'maybeSingle' | 'array') {
+function buildChain(result: { data: unknown; error: unknown }) {
   const self: Record<string, unknown> = {}
   const passThrough = () => self
   ;['select', 'eq', 'gte', 'lte', 'gt', 'lt', 'neq', 'in'].forEach(m => {
     self[m] = passThrough
   })
 
-  if (terminal === 'single' || terminal === 'maybeSingle') {
-    self['single']     = () => Promise.resolve(result)
-    self['maybeSingle'] = () => Promise.resolve(result)
-  }
+  // Support all terminal types simultaneously
+  self['single']      = () => Promise.resolve(result)
+  self['maybySingle'] = () => Promise.resolve(result)
+  self['maybeSingle'] = () => Promise.resolve(result)
 
   // Make the chain itself awaitable (for array queries)
   self['then'] = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => {

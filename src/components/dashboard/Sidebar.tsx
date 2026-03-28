@@ -16,6 +16,9 @@ import {
   CalendarDays,
   MessageCircle,
   CreditCard,
+  Clock,
+  CalendarX,
+  CalendarOff,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 
@@ -30,7 +33,10 @@ const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; roles?:
   { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings, roles: ['owner'] },
   { href: '/settings/whatsapp', label: 'WhatsApp', icon: MessageCircle, roles: ['owner'] },
   { href: '/settings/payment', label: 'תשלומים', icon: CreditCard, roles: ['owner'] },
+  { href: '/settings/holidays', label: 'חגים וחופשות', icon: CalendarOff, roles: ['owner', 'admin'] },
   { href: '/teacher/schedule', label: 'השיעורים שלי', icon: CalendarDays, roles: ['teacher'] },
+  { href: '/teacher/availability', label: 'הזמינות שלי', icon: Clock, roles: ['teacher'] },
+  { href: '/teacher/overrides', label: 'חריגים ביומן', icon: CalendarX, roles: ['teacher'] },
 ]
 
 interface SidebarProps {

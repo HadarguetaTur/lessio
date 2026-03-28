@@ -49,7 +49,17 @@ export async function getAvailableSlots({
   if (!localDate.isValid) throw new Error(`Invalid date: ${date}`)
   const dayOfWeek = localDate.weekday % 7 // luxon: 1=Mon…7=Sun → 0=Sun, 1=Mon…6=Sat
 
-  // 3. Check for a date-specific override first
+  // 3. Check if requested date is an org-wide holiday — if so, no slots
+  const { data: holiday } = await db
+    .from('organization_holidays')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .eq('date', date)
+    .maybeSingle()
+
+  if (holiday) return []
+
+  // 5. Check for a date-specific override first
   const { data: override } = await db
     .from('availability_overrides')
     .select('is_available, start_time, end_time')

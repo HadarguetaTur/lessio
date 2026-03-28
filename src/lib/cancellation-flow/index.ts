@@ -77,7 +77,7 @@ export async function getEligibleLessons(
 
   // Build a lookup: lesson_id → student name
   const studentNameByLesson = new Map<string, string>()
-  for (const row of lessonStudentRows as Array<{ lesson_id: string; student_id: string; students: { full_name: string } }>) {
+  for (const row of lessonStudentRows as unknown as Array<{ lesson_id: string; student_id: string; students: { full_name: string } }>) {
     if (!studentNameByLesson.has(row.lesson_id)) {
       studentNameByLesson.set(row.lesson_id, row.students.full_name)
     }

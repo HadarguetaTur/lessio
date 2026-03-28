@@ -47,11 +47,28 @@ export default async function ChargesPage(props: {
   const canMarkPaid = role === 'owner' || role === 'admin'
   const selectedParent = parents.find((parent) => parent.id === searchParams.parent)
 
+  // Aging totals — computed from the already-fetched charges array
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  const pendingTotal = charges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
+  const invoicedTotal = charges.filter((c) => c.status === 'invoiced').reduce((sum, c) => sum + c.amount, 0)
+  const paidThisMonth = charges
+    .filter((c) => c.status === 'paid' && c.paid_at && new Date(c.paid_at) >= monthStart)
+    .reduce((sum, c) => sum + c.amount, 0)
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">חיובים</h1>
       </div>
+
+      {/* Aging summary */}
+      {charges.length > 0 && (
+        <div className="flex flex-wrap gap-6 mb-5 text-sm text-gray-600">
+          <span>ממתין: <strong className="text-gray-900">₪{pendingTotal.toFixed(2)}</strong></span>
+          <span>חויב: <strong className="text-gray-900">₪{invoicedTotal.toFixed(2)}</strong></span>
+          <span>שולם החודש: <strong className="text-gray-900">₪{paidThisMonth.toFixed(2)}</strong></span>
+        </div>
+      )}
 
       {/* Filters */}
       <form method="GET" className="flex flex-wrap gap-3 mb-5">

@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getProviderUI } from '@/lib/payments/registry-ui'
 import { PaymentProviderForm } from './PaymentProviderForm'
 import { DisconnectPaymentButton } from './DisconnectPaymentButton'
+import { AutoSendToggle } from './AutoSendToggle'
 
 /**
  * Payment provider settings page — owner only.
@@ -23,11 +24,12 @@ export default async function PaymentSettingsPage() {
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('payment_provider')
+    .select('payment_provider, auto_send_payment_request')
     .eq('id', orgId)
     .single()
 
   const paymentProvider = org?.payment_provider ?? null
+  const autoSend = org?.auto_send_payment_request ?? false
   const isConnected = Boolean(paymentProvider)
   const providerUI = paymentProvider ? getProviderUI(paymentProvider) : null
 
@@ -48,6 +50,11 @@ export default async function PaymentSettingsPage() {
         ) : (
           <DisconnectedState />
         )}
+      </div>
+
+      <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
+        <h2 className="text-sm font-medium text-gray-900 mb-3">אוטומציה</h2>
+        <AutoSendToggle defaultChecked={autoSend} />
       </div>
 
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">

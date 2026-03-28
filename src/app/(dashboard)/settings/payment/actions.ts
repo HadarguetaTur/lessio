@@ -95,6 +95,36 @@ export async function savePaymentProvider(
   return { error: null }
 }
 
+// ── saveAutoSendSetting ───────────────────────────────────────────────────────
+
+export async function saveAutoSendSetting(
+  _prevState: PaymentActionResult,
+  formData: FormData
+): Promise<PaymentActionResult> {
+  const { orgId, role } = await getSession()
+
+  if (role !== 'owner') {
+    return { error: 'אין הרשאה לביצוע פעולה זו' }
+  }
+
+  const autoSend = formData.get('auto_send_payment_request') === 'on'
+
+  const db = createServiceRoleClient()
+  const { error: updateError } = await db
+    .from('organizations')
+    .update({ auto_send_payment_request: autoSend })
+    .eq('id', orgId)
+
+  if (updateError) {
+    console.error('[payment/settings] saveAutoSendSetting DB update failed', { orgId, error: updateError.message })
+    return { error: 'שגיאה בשמירת ההגדרה' }
+  }
+
+  console.info('[payment/settings] auto_send_payment_request updated', { orgId, autoSend })
+  revalidatePath('/settings/payment')
+  return { error: null }
+}
+
 // ── disconnectPayment ─────────────────────────────────────────────────────────
 
 export async function disconnectPayment(

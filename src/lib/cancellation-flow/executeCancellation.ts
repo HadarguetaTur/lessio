@@ -61,7 +61,7 @@ export async function executeCancellation(
   if (lesson.status !== 'scheduled') return { success: false, error: 'not_eligible' }
 
   // Resolve primary student for this lesson
-  const lessonStudents = (lesson.lesson_students as Array<{ student_id: string; students: { full_name: string } }>)
+  const lessonStudents = (lesson.lesson_students as unknown as Array<{ student_id: string; students: { full_name: string } }>)
   const primaryStudentId = lessonStudents[0]?.student_id
 
   if (!primaryStudentId) return { success: false, error: 'not_eligible' }

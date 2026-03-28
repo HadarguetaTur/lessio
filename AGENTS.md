@@ -106,6 +106,12 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | PAYMENT_CONFIG_ENCRYPTION_KEY env validation + .env.local.example | ✅ Done (Sprint 8) |
 | Payment nav entry in sidebar (owner) | ✅ Done (Sprint 8) |
 | Charges UI: payment_link + payment_provider display | ✅ Done (Sprint 8) |
+| Schema migration: organizations.auto_send_payment_request | ✅ Done (Sprint 9) |
+| KPI stats query (src/lib/dashboard/stats.ts) | ✅ Done (Sprint 9) |
+| Dashboard KPI cards (monthlyRevenue, pendingDebt, lessonsThisMonth, activeStudents) | ✅ Done (Sprint 9) |
+| Charges aging summary bar (pending / invoiced / paid this month) | ✅ Done (Sprint 9) |
+| autoSendPaymentRequest fire-and-forget after lesson completion | ✅ Done (Sprint 9) |
+| Auto payment request toggle in /settings/payment (owner) | ✅ Done (Sprint 9) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.
@@ -130,31 +136,30 @@ Update this table after each completed story.
 
 ---
 
-## Sprint 8 — What to Build
+## Current Sprint: Sprint 9 — KPI Dashboard + Auto Payment Request
 
-See `/docs/sprint-8-scope.md` for full stories and Definition of Done.
+See `/docs/sprint-9-scope.md` for full stories and Definition of Done.
 
-**Stories:**
-- Story 0: Update staging QA docs with deferred Sprint 7 tests
-- Story 1: Schema migration (organizations.payment_provider, payment_config_encrypted; charges.payment_link, payment_reference, payment_provider)
-- Story 2: `src/lib/payments/` — PaymentProvider interface + cardcom.ts + factory.ts
-- Story 3: `/settings/payment` page + savePaymentProvider + disconnectPayment server actions
-- Story 4: Update `sendPaymentRequest` to use factory + real payment link
-- Story 5: Cardcom webhook `/api/payments/cardcom`
-- Story 6: `PAYMENT_CONFIG_ENCRYPTION_KEY` env validation + `.env.local.example`
-- Story 7: Sidebar nav item "תשלומים" (owner)
-- Story 8: Charges UI update (payment_link, payment_provider display)
+**Stories (all completed):**
+- Story 0: Note on charge auto-creation (already exists in setLessonStatus)
+- Story 1: Schema migration — organizations.auto_send_payment_request
+- Story 2: src/lib/dashboard/stats.ts — KPI stats query
+- Story 3: Dashboard KPI cards (monthlyRevenue, pendingDebt, lessonsThisMonth, activeStudents)
+- Story 4: Charges aging summary bar
+- Story 5: autoSendPaymentRequest fire-and-forget + lessons/[id]/actions.ts wiring
+- Story 6: Auto payment request toggle in /settings/payment
 
 ---
 
-## What NOT to Build in Sprint 8
+## What NOT to Build in Sprint 9
 
-- Additional payment providers beyond Cardcom
-- Automatic payment on lesson completion
-- Recurring billing / subscriptions
-- PDF invoices
-- WhatsApp bot platform (Sprint 9)
-- Google Calendar sync (Sprint 9)
+- Monthly revenue chart / trend graph (Sprint 11)
+- Teacher earnings report
+- CSV export
+- Refund flows
+- Recurring lessons (Sprint 11)
+- Automated reminders (Sprint 12)
+- Google Calendar sync (Sprint 13)
 
 ---
 

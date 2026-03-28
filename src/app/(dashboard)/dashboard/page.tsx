@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getTodayLessons, formatTime, LessonStatus, Lesson } from '@/lib/lessons'
+import { getDashboardStats } from '@/lib/dashboard/stats'
+import { KpiCard } from '@/components/dashboard/KpiCard'
 
 const STATUS_LABELS: Record<LessonStatus, string> = {
   scheduled: 'מתוכנן',
@@ -28,7 +30,10 @@ export default async function DashboardPage() {
     redirect('/teacher/schedule')
   }
   const timezone = await getOrgTimezone(orgId)
-  const lessons = await getTodayLessons(orgId, timezone)
+  const [lessons, stats] = await Promise.all([
+    getTodayLessons(orgId, timezone),
+    getDashboardStats(orgId, timezone),
+  ])
 
   const total = lessons.length
   const scheduled = countByStatus(lessons, 'scheduled')
@@ -40,6 +45,20 @@ export default async function DashboardPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">לוח הבקרה — היום</h1>
 
+      {/* KPI cards */}
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <KpiCard
+          label="הכנסה החודש"
+          value={`₪${stats.monthlyRevenue.toLocaleString('he-IL')}`}
+        />
+        <KpiCard
+          label="חוב פתוח"
+          value={`₪${stats.pendingDebt.toLocaleString('he-IL')}`}
+          highlight={stats.pendingDebt > 0}
+        />
+        <KpiCard label="שיעורים החודש" value={stats.lessonsThisMonth} />
+        <KpiCard label="תלמידים פעילים" value={stats.activeStudents} />
+      </section>
 
       {/* Counter cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">

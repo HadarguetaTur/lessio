@@ -8,6 +8,7 @@ import { getCancellationPolicy } from '@/lib/cancellation-policy'
 import { calculateCancellationCharge } from '@/lib/billing/calculateCancellationCharge'
 import { resolveBillingParent, MissingPrimaryParentError } from '@/lib/billing/resolveBillingParent'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { autoSendPaymentRequest } from '@/lib/payment-request/autoSend'
 
 const VALID_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
 
@@ -51,6 +52,8 @@ export async function setLessonStatus(
     if (alert) {
       return { error: null, chargeAlert: alert.message }
     }
+    // Fire-and-forget: auto payment request if org has it enabled
+    void autoSendPaymentRequest(lessonId, orgId)
   }
 
   return { error: null }

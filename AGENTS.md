@@ -120,6 +120,13 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | /teacher/overrides — teacher self-service overrides page + actions | ✅ Done (Sprint 10) |
 | Sidebar: חגים וחופשות (owner/admin), הזמינות שלי + חריגים ביומן (teacher) | ✅ Done (Sprint 10) |
 | Teacher schedule: holiday label in week grid | ✅ Done (Sprint 10) |
+| Schema migration: lesson_series table + lessons.series_id + RLS | ✅ Done (Sprint 11) |
+| src/lib/lessons/createSeries.ts — createLessonSeries (conflict detection + partial success) | ✅ Done (Sprint 11) |
+| src/lib/lessons/cancelSeries.ts — cancelLessonSeries (all / from_date scopes) | ✅ Done (Sprint 11) |
+| src/lib/lessons/index.ts — series_id added to LESSON_SELECT + Lesson type | ✅ Done (Sprint 11) |
+| /lessons/new-series — admin form + createSeriesAction + result summary | ✅ Done (Sprint 11) |
+| /lessons/[id] — SeriesBanner + cancelSeriesAction (from_date / all) | ✅ Done (Sprint 11) |
+| /lessons — Repeat badge on series lessons + "יצירת שיעורים קבועים" button (owner/admin) | ✅ Done (Sprint 11) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.

@@ -9,6 +9,7 @@ import { calculateCancellationCharge } from '@/lib/billing/calculateCancellation
 import { resolveBillingParent, MissingPrimaryParentError } from '@/lib/billing/resolveBillingParent'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { autoSendPaymentRequest } from '@/lib/payment-request/autoSend'
+import { cancelLessonSeries, type CancelSeriesScope } from '@/lib/lessons/cancelSeries'
 
 const VALID_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
 
@@ -165,4 +166,66 @@ export async function cancelLesson(
   revalidatePath(`/teacher/schedule/${lessonId}`)
 
   return { error: null, chargeAlert }
+}
+
+export type CancelSeriesActionResult = {
+  error: string | null
+  cancelled?: number
+}
+
+/**
+ * Cancels all or future lessons in a series (owner/admin only).
+ * Does NOT auto-charge cancellation fees.
+ */
+export async function cancelSeriesAction(
+  lessonId: string,
+  _prevState: CancelSeriesActionResult,
+  formData: FormData
+): Promise<CancelSeriesActionResult> {
+  const { orgId, role } = await getSession()
+
+  if (role !== 'owner' && role !== 'admin') {
+    return { error: 'אין הרשאה לביצוע פעולה זו' }
+  }
+
+  const scope = formData.get('scope') as CancelSeriesScope
+  if (scope !== 'all' && scope !== 'from_date') {
+    return { error: 'scope לא תקין' }
+  }
+
+  const supabase = createServiceRoleClient()
+
+  // Fetch series_id and start_at from the lesson (org-scoped)
+  const { data: lesson, error: lessonError } = await supabase
+    .from('lessons')
+    .select('series_id, start_at')
+    .eq('id', lessonId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (lessonError || !lesson) return { error: 'שיעור לא נמצא' }
+  if (!lesson.series_id) return { error: 'שיעור זה אינו חלק מסדרה' }
+
+  const fromDate =
+    scope === 'from_date'
+      ? new Date(lesson.start_at).toISOString().substring(0, 10)
+      : undefined
+
+  try {
+    const { cancelled } = await cancelLessonSeries(
+      lesson.series_id,
+      orgId,
+      scope,
+      fromDate
+    )
+
+    revalidatePath(`/lessons/${lessonId}`)
+    revalidatePath('/lessons')
+    revalidatePath('/dashboard')
+    revalidatePath('/teacher/schedule')
+
+    return { error: null, cancelled }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'שגיאה בביטול הסדרה' }
+  }
 }

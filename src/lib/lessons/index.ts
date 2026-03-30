@@ -11,6 +11,7 @@ export interface Lesson {
   status: LessonStatus
   lesson_type: LessonType
   cancel_reason: string | null
+  series_id: string | null
   teacher: { id: string; full_name: string }
   /** Primary (first enrolled) student. For group lessons use a separate query. */
   student: { id: string; full_name: string }
@@ -119,13 +120,14 @@ function mapLesson(l: any): Lesson {
     status: l.status as LessonStatus,
     lesson_type: (l.lesson_type ?? 'individual') as LessonType,
     cancel_reason: l.cancel_reason,
+    series_id: l.series_id ?? null,
     teacher: { id: teacher.id, full_name: teacher.profiles.full_name },
     student: ls ? { id: ls.students.id, full_name: ls.students.full_name } : { id: '', full_name: '—' },
   }
 }
 
 const LESSON_SELECT =
-  'id, start_at, end_at, status, cancel_reason, lesson_type, teachers(id, profiles(full_name)), lesson_students(student_id, students(id, full_name))'
+  'id, start_at, end_at, status, cancel_reason, lesson_type, series_id, teachers(id, profiles(full_name)), lesson_students(student_id, students(id, full_name))'
 
 export async function getTodayLessons(
   organizationId: string,

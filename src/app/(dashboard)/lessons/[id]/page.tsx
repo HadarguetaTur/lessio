@@ -6,7 +6,8 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { getLessonAccessScope, getLessonById, formatTime, formatDate, LessonStatus } from '@/lib/lessons'
 import { LessonStatusForm } from '@/components/dashboard/lessons/LessonStatusForm'
 import { CancelLessonForm } from '@/components/dashboard/lessons/CancelLessonForm'
-import { setLessonStatus, cancelLesson } from './actions'
+import { SeriesBanner } from '@/components/dashboard/lessons/SeriesBanner'
+import { setLessonStatus, cancelLesson, cancelSeriesAction } from './actions'
 
 const STATUS_LABELS: Record<LessonStatus, string> = {
   scheduled: 'מתוכנן',
@@ -47,6 +48,7 @@ export default async function LessonDetailPage(props: {
   const backHref = `/lessons${backParams.size > 0 ? `?${backParams.toString()}` : ''}`
 
   const boundAction = setLessonStatus.bind(null, id)
+  const boundCancelSeriesAction = cancelSeriesAction.bind(null, id)
 
   return (
     <div className="max-w-lg">
@@ -58,6 +60,11 @@ export default async function LessonDetailPage(props: {
         <ArrowRight size={14} className="rotate-180" />
         <span className="text-gray-900 font-medium">פרטי שיעור</span>
       </div>
+
+      {/* Series banner */}
+      {canCancel && lesson.series_id && (
+        <SeriesBanner cancelSeriesAction={boundCancelSeriesAction} />
+      )}
 
       {/* Lesson details */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">

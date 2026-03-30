@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Repeat } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import {
@@ -25,7 +26,7 @@ export default async function LessonsPage(props: {
   searchParams: Promise<{ week?: string; teacher?: string }>
 }) {
   const { week, teacher } = await props.searchParams
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
   const timezone = await getOrgTimezone(orgId)
 
   const weekStr = week ?? getCurrentWeekSunday(timezone)
@@ -57,7 +58,18 @@ export default async function LessonsPage(props: {
     <div>
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
         <h1 className="text-2xl font-bold text-gray-900">לוח שיעורים שבועי</h1>
-        <WeekNav weekStr={weekStr} teachers={activeTeachers} teacherId={teacher} />
+        <div className="flex items-center gap-3 flex-wrap">
+          {(role === 'owner' || role === 'admin') && (
+            <Link
+              href="/lessons/new-series"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              <Repeat size={14} />
+              יצירת שיעורים קבועים
+            </Link>
+          )}
+          <WeekNav weekStr={weekStr} teachers={activeTeachers} teacherId={teacher} />
+        </div>
       </div>
 
       {/* Calendar grid — 7 columns */}
@@ -107,8 +119,13 @@ export default async function LessonsPage(props: {
                     href={`/lessons/${lesson.id}?week=${weekStr}${teacher ? `&teacher=${teacher}` : ''}`}
                     className={`block rounded px-1.5 py-1 text-xs leading-snug ${STATUS_STYLES[lesson.status]} hover:opacity-75 transition-opacity`}
                   >
-                    <span dir="ltr" className="font-mono block">
-                      {formatTime(lesson.start_at, timezone)}
+                    <span className="flex items-center justify-between gap-1">
+                      <span dir="ltr" className="font-mono">
+                        {formatTime(lesson.start_at, timezone)}
+                      </span>
+                      {lesson.series_id && (
+                        <Repeat size={10} className="shrink-0 opacity-70" />
+                      )}
                     </span>
                     <span className="truncate block">{lesson.student.full_name}</span>
                   </Link>

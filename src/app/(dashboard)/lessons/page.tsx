@@ -9,6 +9,7 @@ import {
   LessonStatus,
 } from '@/lib/lessons'
 import { getTeachers } from '@/lib/teachers'
+import { getOrgHolidays } from '@/lib/organizations/holidays'
 import { WeekNav } from '@/components/dashboard/lessons/WeekNav'
 
 const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
@@ -30,10 +31,13 @@ export default async function LessonsPage(props: {
   const weekStr = week ?? getCurrentWeekSunday(timezone)
   const weekDays = getWeekDays(weekStr)
 
-  const [lessons, teachers] = await Promise.all([
+  const [lessons, teachers, holidays] = await Promise.all([
     getLessonsForWeek(orgId, timezone, weekStr, teacher),
     getTeachers(orgId),
+    getOrgHolidays(orgId),
   ])
+
+  const holidayDates = new Set(holidays.map((h) => h.date))
 
   // Group lessons by local date (YYYY-MM-DD in org timezone)
   const byDay = new Map<string, typeof lessons>()
@@ -87,6 +91,13 @@ export default async function LessonsPage(props: {
                   {dayNum}
                 </p>
               </div>
+
+              {/* Holiday label */}
+              {holidayDates.has(dateStr) && (
+                <div className="px-1.5 py-0.5 mx-1 mt-1 text-xs text-center text-purple-600 bg-purple-50 rounded border border-purple-100 truncate">
+                  {holidays.find((h) => h.date === dateStr)?.name}
+                </div>
+              )}
 
               {/* Lessons */}
               <div className="p-1 space-y-1">

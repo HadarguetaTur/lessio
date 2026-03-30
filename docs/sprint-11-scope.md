@@ -13,7 +13,9 @@ Every lesson is currently created individually — via WhatsApp booking flow or 
 
 ## Story 1 — Schema
 
-**`supabase/migrations/20260330000003_recurring_lessons.sql`**
+**`supabase/migrations/20260330000004_recurring_lessons.sql`**
+
+> Note: `20260330000003` is taken by `fix_holidays_rls.sql` (Sprint 10 hotfix).
 
 ```sql
 -- Represents a recurrence series (one row per series)

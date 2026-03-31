@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -12,9 +13,10 @@ interface WeekNavProps {
   weekStr: string
   teachers: TeacherOption[]
   teacherId?: string
+  currentWeekStr?: string
 }
 
-export function WeekNav({ weekStr, teachers, teacherId }: WeekNavProps) {
+export function WeekNav({ weekStr, teachers, teacherId, currentWeekStr }: WeekNavProps) {
   const router = useRouter()
 
   function navigate(delta: number) {
@@ -47,6 +49,15 @@ export function WeekNav({ weekStr, teachers, teacherId }: WeekNavProps) {
     <div className="flex items-center gap-4 flex-wrap">
       {/* Week navigation — kept LTR so arrow directions stay intuitive */}
       <div className="flex items-center gap-1" dir="ltr">
+        {/* "היום" button — shown only when not on current week */}
+        {currentWeekStr && weekStr !== currentWeekStr && (
+          <Link
+            href={`/lessons${teacherId ? `?teacher=${teacherId}` : ''}`}
+            className="px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors ml-1"
+          >
+            היום
+          </Link>
+        )}
         <button
           onClick={() => navigate(-1)}
           className="p-1.5 rounded hover:bg-gray-100 text-gray-600"

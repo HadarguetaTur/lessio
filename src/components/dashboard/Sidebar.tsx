@@ -20,25 +20,58 @@ import {
   CalendarX,
   CalendarOff,
   Bell,
+  Plus,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 
-const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; roles?: string[] }[] = [
-  { href: '/dashboard', label: 'לוח הבקרה', icon: LayoutDashboard, roles: ['owner', 'admin'] },
-  { href: '/students', label: 'תלמידים', icon: GraduationCap, roles: ['owner', 'admin'] },
-  { href: '/parents', label: 'הורים', icon: Users, roles: ['owner', 'admin'] },
-  { href: '/teachers', label: 'מורים', icon: UserRound, roles: ['owner', 'admin'] },
-  { href: '/lessons', label: 'שיעורים', icon: BookOpen, roles: ['owner', 'admin'] },
-  { href: '/charges', label: 'חיובים', icon: Receipt, roles: ['owner', 'admin'] },
-  { href: '/leads', label: 'לידים', icon: UserPlus, roles: ['owner', 'admin'] },
-  { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings, roles: ['owner'] },
-  { href: '/settings/whatsapp', label: 'WhatsApp', icon: MessageCircle, roles: ['owner'] },
-  { href: '/settings/payment', label: 'תשלומים', icon: CreditCard, roles: ['owner'] },
-  { href: '/settings/holidays', label: 'חגים וחופשות', icon: CalendarOff, roles: ['owner', 'admin'] },
-  { href: '/settings/reminders', label: 'תזכורות', icon: Bell, roles: ['owner'] },
-  { href: '/teacher/schedule', label: 'השיעורים שלי', icon: CalendarDays, roles: ['teacher'] },
-  { href: '/teacher/availability', label: 'הזמינות שלי', icon: Clock, roles: ['teacher'] },
-  { href: '/teacher/overrides', label: 'חריגים ביומן', icon: CalendarX, roles: ['teacher'] },
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ElementType
+  roles?: string[]
+}
+
+interface NavSection {
+  id: string
+  label: string | null
+  items: NavItem[]
+}
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    id: 'ops',
+    label: null,
+    items: [
+      { href: '/dashboard',  label: 'לוח הבקרה', icon: LayoutDashboard, roles: ['owner', 'admin'] },
+      { href: '/students',   label: 'תלמידים',    icon: GraduationCap,   roles: ['owner', 'admin'] },
+      { href: '/parents',    label: 'הורים',       icon: Users,           roles: ['owner', 'admin'] },
+      { href: '/teachers',   label: 'מורים',       icon: UserRound,       roles: ['owner', 'admin'] },
+      { href: '/lessons',    label: 'שיעורים',     icon: BookOpen,        roles: ['owner', 'admin'] },
+      { href: '/charges',    label: 'חיובים',      icon: Receipt,         roles: ['owner', 'admin'] },
+      { href: '/leads',      label: 'לידים',       icon: UserPlus,        roles: ['owner', 'admin'] },
+    ],
+  },
+  {
+    id: 'settings',
+    label: 'הגדרות',
+    items: [
+      { href: '/settings/whatsapp',            label: 'WhatsApp',         icon: MessageCircle, roles: ['owner'] },
+      { href: '/settings/payment',             label: 'תשלומים',          icon: CreditCard,    roles: ['owner'] },
+      { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings,      roles: ['owner'] },
+      { href: '/settings/holidays',            label: 'חגים וחופשות',    icon: CalendarOff,   roles: ['owner', 'admin'] },
+      { href: '/settings/reminders',           label: 'תזכורות',          icon: Bell,          roles: ['owner'] },
+    ],
+  },
+  {
+    id: 'teacher',
+    label: null,
+    items: [
+      { href: '/teacher/schedule',     label: 'השיעורים שלי', icon: CalendarDays, roles: ['teacher'] },
+      { href: '/teacher/new-lesson',   label: 'שיעור חדש',    icon: Plus,         roles: ['teacher'] },
+      { href: '/teacher/availability', label: 'הזמינות שלי',  icon: Clock,        roles: ['teacher'] },
+      { href: '/teacher/overrides',    label: 'חריגים ביומן', icon: CalendarX,    roles: ['teacher'] },
+    ],
+  },
 ]
 
 interface SidebarProps {
@@ -50,8 +83,8 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
   const pathname = usePathname()
 
   const roleLabel: Record<string, string> = {
-    owner: 'בעלים',
-    admin: 'מנהל',
+    owner:   'בעלים',
+    admin:   'מנהל',
     teacher: 'מורה',
   }
 
@@ -63,22 +96,41 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-3 space-y-0.5">
-        {NAV_ITEMS.filter(({ roles }) => !roles || roles.includes(userRole)).map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
+      <nav className="flex-1 p-3">
+        {NAV_SECTIONS.map((section, sectionIdx) => {
+          const visibleItems = section.items.filter(
+            ({ roles }) => !roles || roles.includes(userRole)
+          )
+          if (visibleItems.length === 0) return null
+
           return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <Icon size={17} />
-              {label}
-            </Link>
+            <div key={section.id}>
+              {sectionIdx > 0 && <hr className="my-2 border-gray-100" />}
+              {section.label && (
+                <p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  {section.label}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {visibleItems.map(({ href, label, icon: Icon }) => {
+                  const active = pathname === href || pathname.startsWith(href + '/')
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        active
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                    >
+                      <Icon size={17} />
+                      {label}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
           )
         })}
       </nav>

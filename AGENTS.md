@@ -136,26 +136,26 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | supabase/functions/_shared/whatsapp.ts — sendTextMessage for Deno | ✅ Done (Sprint 12) |
 | Cron registration in config.toml (lesson-reminders + payment-reminders) | ✅ Done (Sprint 12) |
 | Notification log UI — last 20 entries in /settings/reminders (owner) | ✅ Done (Sprint 12) |
-| supabase/migrations/..._portal_otps.sql — portal_otps table + index + RLS | ⬜ Sprint 13 |
-| src/lib/lessons/createLesson.ts — single lesson creation with full conflict checks | ⬜ Sprint 13 |
-| src/lib/portal/session.ts — sign/verify portal JWT, set/get httpOnly cookie | ⬜ Sprint 13 |
-| src/lib/portal/otp.ts — OTP generation, SHA-256 hash, send via WhatsApp, verify | ⬜ Sprint 13 |
-| /lessons/new — admin single lesson creation page + actions + NewLessonForm | ⬜ Sprint 13 |
-| /teacher/new-lesson — teacher single lesson creation page + actions | ⬜ Sprint 13 |
-| /portal/[orgId]/layout.tsx — mobile-first portal shell, top bar, bottom tabs | ⬜ Sprint 13 |
-| /portal/[orgId]/page.tsx — redirect to login or home based on session cookie | ⬜ Sprint 13 |
-| /portal/[orgId]/login — phone entry + OTP verify, set portal_session cookie | ⬜ Sprint 13 |
-| /portal/[orgId]/home — upcoming lessons + outstanding balance (server component) | ⬜ Sprint 13 |
-| /portal/[orgId]/book — PortalBookingFlow + portal-scoped server actions | ⬜ Sprint 13 |
-| /portal/[orgId]/payments — charges history + payment links | ⬜ Sprint 13 |
-| /settings/page.tsx — settings landing page with category cards (owner/admin) | ⬜ Sprint 13 |
-| Sidebar: grouped sections (Operations / Settings / Teacher) with section headers | ⬜ Sprint 13 |
-| /lessons page: two CTA buttons "שיעור חד פעמי" + "שיעורים קבועים" | ⬜ Sprint 13 |
-| WeekNav: "היום" button to jump to current week | ⬜ Sprint 13 |
-| /lessons/loading.tsx + /dashboard/loading.tsx — skeleton loading screens | ⬜ Sprint 13 |
-| proxy.ts: add /portal/* to public bypass (no Supabase session check) | ⬜ Sprint 13 |
-| /settings/whatsapp: add portal URL display + copy button for owner to share | ⬜ Sprint 13 |
-| PORTAL_JWT_SECRET added to .env.local.example + next.config.ts validation | ⬜ Sprint 13 |
+| supabase/migrations/..._portal_otps.sql — portal_otps table + index + RLS | ✅ Done (Sprint 13) |
+| src/lib/lessons/createLesson.ts — single lesson creation with full conflict checks | ✅ Done (Sprint 13) |
+| src/lib/portal/session.ts — sign/verify portal JWT, set/get httpOnly cookie | ✅ Done (Sprint 13) |
+| src/lib/portal/otp.ts — OTP generation, SHA-256 hash, send via WhatsApp, verify | ✅ Done (Sprint 13) |
+| /lessons/new — admin single lesson creation page + actions + NewLessonForm | ✅ Done (Sprint 13) |
+| /teacher/new-lesson — teacher single lesson creation page + actions | ✅ Done (Sprint 13) |
+| /portal/[orgId]/layout.tsx — mobile-first portal shell, top bar, bottom tabs | ✅ Done (Sprint 13) |
+| /portal/[orgId]/page.tsx — redirect to login or home based on session cookie | ✅ Done (Sprint 13) |
+| /portal/[orgId]/login — phone entry + OTP verify, set portal_session cookie | ✅ Done (Sprint 13) |
+| /portal/[orgId]/home — upcoming lessons + outstanding balance (server component) | ✅ Done (Sprint 13) |
+| /portal/[orgId]/book — PortalBookingFlow + portal-scoped server actions | ✅ Done (Sprint 13) |
+| /portal/[orgId]/payments — charges history + payment links | ✅ Done (Sprint 13) |
+| /settings/page.tsx — settings landing page with category cards (owner/admin) | ✅ Done (Sprint 13) |
+| Sidebar: grouped sections (Operations / Settings / Teacher) with section headers | ✅ Done (Sprint 13) |
+| /lessons page: two CTA buttons "שיעור חד פעמי" + "שיעורים קבועים" | ✅ Done (Sprint 13) |
+| WeekNav: "היום" button to jump to current week | ✅ Done (Sprint 13) |
+| /lessons/loading.tsx + /dashboard/loading.tsx — skeleton loading screens | ✅ Done (Sprint 13) |
+| proxy.ts: add /portal/* to public bypass (no Supabase session check) | ✅ Done (Sprint 13) |
+| /settings/whatsapp: add portal URL display + copy button for owner to share | ✅ Done (Sprint 13) |
+| PORTAL_JWT_SECRET added to .env.local.example + next.config.ts validation | ✅ Done (Sprint 13) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.

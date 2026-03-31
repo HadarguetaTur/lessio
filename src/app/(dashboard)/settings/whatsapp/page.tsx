@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { EmbeddedSignupButton } from './EmbeddedSignupButton'
 import { DisconnectButton } from './DisconnectButton'
+import { PortalUrlCopy } from '@/components/dashboard/settings/PortalUrlCopy'
 
 /**
  * WhatsApp Settings page — owner only.
@@ -22,7 +23,7 @@ export default async function WhatsAppSettingsPage() {
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('whatsapp_phone_number_id')
+    .select('id, whatsapp_phone_number_id')
     .eq('id', orgId)
     .single()
 
@@ -46,6 +47,17 @@ export default async function WhatsAppSettingsPage() {
           <DisconnectedState metaAppId={metaAppId} />
         )}
       </div>
+
+      {/* Portal URL — shown when WhatsApp is connected */}
+      {isConnected && org?.id && (
+        <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-1">קישור פורטל להורים</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            שתף/י קישור זה עם ההורים כדי שיוכלו לגשת לפורטל האישי שלהם.
+          </p>
+          <PortalUrlCopy orgId={org.id} />
+        </div>
+      )}
 
       <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
         <p className="font-medium mb-1">דרישות לחיבור</p>

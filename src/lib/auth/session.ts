@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 
 export interface UserSession {
   userId: string
+  profileId: string  // same as userId — profiles.id references auth.users(id)
   orgId: string
   role: string
   fullName: string
@@ -32,6 +33,7 @@ export async function getSession(): Promise<UserSession> {
 
   return {
     userId: user.id,
+    profileId: user.id,
     orgId: profile.organization_id,
     role: profile.role,
     fullName: profile.full_name,

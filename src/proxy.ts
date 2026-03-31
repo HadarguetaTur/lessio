@@ -53,8 +53,12 @@ function redirectWithSession(url: URL, supabaseResponse: NextResponse): NextResp
 
 export async function proxy(request: NextRequest) {
   // /book/* uses signed JWT auth only — no Supabase session middleware.
+  // /portal/* uses httpOnly cookie session — no Supabase session middleware.
   // See AGENTS.md § Authentication Model.
-  if (request.nextUrl.pathname.startsWith('/book/')) {
+  if (
+    request.nextUrl.pathname.startsWith('/book/') ||
+    request.nextUrl.pathname.startsWith('/portal/')
+  ) {
     return NextResponse.next()
   }
 

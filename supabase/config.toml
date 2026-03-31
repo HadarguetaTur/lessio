@@ -366,13 +366,13 @@ inspector_port = 8083
 deno_version = 2
 
 # Sprint 12: Automated reminder cron jobs
-# If cron scheduling via config.toml is not supported on your Supabase version,
-# register these manually in the Supabase Dashboard under Edge Functions → Schedules.
+# The 'schedule' key is not supported by CLI v2.x — register schedules manually
+# in the Supabase Dashboard under Edge Functions → Schedules:
+#   lesson-reminders:  "0 * * * *"   (every hour)
+#   payment-reminders: "0 9 * * *"   (daily at 09:00 UTC)
 [functions.lesson-reminders]
-schedule = "0 * * * *"    # every hour
 
 [functions.payment-reminders]
-schedule = "0 9 * * *"    # daily at 09:00 UTC
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"

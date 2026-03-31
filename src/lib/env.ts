@@ -18,6 +18,8 @@ const ALWAYS_REQUIRED: string[] = [
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
   'BOOKING_JWT_SECRET',
+  // Sprint 13: parent portal session cookies
+  'PORTAL_JWT_SECRET',
 ]
 
 /**

@@ -8,7 +8,7 @@
 
 const META_API_VERSION = 'v19.0'
 
-async function sendTextMessage(
+export async function sendTextMessage(
   to: string,
   text: string,
   accessToken: string,

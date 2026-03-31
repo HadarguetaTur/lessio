@@ -19,6 +19,7 @@ import {
   Clock,
   CalendarX,
   CalendarOff,
+  Bell,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 
@@ -34,6 +35,7 @@ const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; roles?:
   { href: '/settings/whatsapp', label: 'WhatsApp', icon: MessageCircle, roles: ['owner'] },
   { href: '/settings/payment', label: 'תשלומים', icon: CreditCard, roles: ['owner'] },
   { href: '/settings/holidays', label: 'חגים וחופשות', icon: CalendarOff, roles: ['owner', 'admin'] },
+  { href: '/settings/reminders', label: 'תזכורות', icon: Bell, roles: ['owner'] },
   { href: '/teacher/schedule', label: 'השיעורים שלי', icon: CalendarDays, roles: ['teacher'] },
   { href: '/teacher/availability', label: 'הזמינות שלי', icon: Clock, roles: ['teacher'] },
   { href: '/teacher/overrides', label: 'חריגים ביומן', icon: CalendarX, roles: ['teacher'] },

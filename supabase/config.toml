@@ -365,6 +365,15 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+# Sprint 12: Automated reminder cron jobs
+# If cron scheduling via config.toml is not supported on your Supabase version,
+# register these manually in the Supabase Dashboard under Edge Functions → Schedules.
+[functions.lesson-reminders]
+schedule = "0 * * * *"    # every hour
+
+[functions.payment-reminders]
+schedule = "0 9 * * *"    # daily at 09:00 UTC
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

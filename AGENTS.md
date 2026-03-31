@@ -1,4 +1,5 @@
-# LESSIO — Claude Operating Manual (Sprint 8)
+# LESSIO — AI Operating Manual
+*Current Sprint: Sprint 13*
 
 ---
 
@@ -7,24 +8,26 @@
 LESSIO is a multi-tenant SaaS platform for tutoring businesses and learning centers.
 It replaces manual scheduling, billing, and WhatsApp coordination with a structured, automated system.
 
-**Tech Stack:** Next.js App Router + TypeScript | Supabase (Postgres + Auth) | shadcn/ui (Nova) | Meta WhatsApp Cloud API | Vercel
+**Tech Stack:** Next.js 16 App Router + TypeScript (strict) | Supabase (Postgres + Auth + Edge Functions) | shadcn/ui (Nova) | Meta WhatsApp Cloud API | Vercel
 
 ---
 
-## Current Sprint: Sprint 8 — Real Payments (Multi-Provider)
+## Current Sprint: Sprint 13 — Single Lesson Scheduling + Parent Portal + UX/UI Polish
 
-**Sprint source of truth:** `/docs/sprint-8-scope.md`
+**Sprint source of truth:** `/docs/sprint-13-scope.md` (to be created)
 
 **Goal:**
-- Every org configures its own payment provider via `/settings/payment` (owner-only)
-- Provider credentials encrypted at rest (AES-256-GCM, reusing `src/lib/crypto/index.ts`)
-- Payment abstraction layer: `PaymentProvider` interface + `factory.ts` + Cardcom adapter
-- `sendPaymentRequest` generates a real Cardcom payment link and sends it via WhatsApp
-- Cardcom webhook updates `charge.status = 'paid'` automatically after payment
+- Admin and teacher can create single (non-recurring) lessons from the dashboard
+- Parents get a dedicated web portal at `/portal/[orgId]` with WhatsApp OTP login
+- Dashboard UX restructured (sidebar grouping, settings landing, loading states) before i18n work begins
 
 **Users in scope:**
-- Dashboard users: owner (new payment settings page), admin (send payment request), teacher (no new permissions)
-- External: Cardcom webhook POST `/api/payments/cardcom`
+- Dashboard: owner (all) + admin (lesson creation) + teacher (lesson creation for own students)
+- External: parent (portal login via phone + OTP via WhatsApp, booking, view lessons/balance)
+
+**New env vars:**
+- `PORTAL_JWT_SECRET` — signs portal session cookies (min 32 chars)
+- `NEXT_PUBLIC_APP_URL` — used to build portal share URL
 
 ---
 
@@ -70,25 +73,24 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | Apply cancellation + charge outcome + notifications | ✅ Done (Sprint 4) |
 | Build + send payment request | ✅ Done (Sprint 4) |
 | Sprint 4 acceptance + regression | ✅ Done (Sprint 4) |
-| Teacher calendar view (`DEV-78`) | ✅ Done (Sprint 5) |
-| Teacher lesson outcome update (`DEV-79`) | ✅ Done (Sprint 5) |
-| Route guards and server action hardening (`DEV-80`) | ✅ Done (Sprint 5) |
-| Org isolation and RLS validation (`DEV-81`) | ✅ Done (Sprint 5) |
-| UX polish on touched Sprint 5 flows (`DEV-82`) | ✅ Done (Sprint 5) |
-| Archive integrity / duplicate-submit / stale-state hardening (`DEV-83`) | ✅ Done (Sprint 5) |
-| Sprint 5 acceptance + regression (`DEV-72`) | ✅ Done (Sprint 5) |
-| Sprint 6 scope defined | ✅ Done |
-| Secret and access audit (`DEV-84`) | ✅ Done (Sprint 6) |
-| Structured logging + error visibility (`DEV-85`) | ✅ Done (Sprint 6) |
-| Graceful failure handling for external flows (`DEV-92`) | ✅ Done (Sprint 6) |
-| Environment separation + env validation (`DEV-106`) | ✅ Done (Sprint 6) |
-| Migration discipline + release checklist (`DEV-107`) | ✅ Done (Sprint 6) |
-| E2E scenario QA on staging (`DEV-109`) | ✅ Done (Sprint 6) |
-| Cross-cutting QA + Data Recovery Playbook (`DEV-110`) | ✅ Done (Sprint 6) |
-| First customer onboarding checklist (`DEV-88`) | ✅ Done (Sprint 6) |
-| First customer staging validation (`DEV-89`) | ✅ Done (Sprint 6) |
-| Backup and restore validation (`DEV-91`) | ✅ Done (Sprint 6) |
-| First customer readiness (`DEV-73`) | ✅ Done (Sprint 6) |
+| Teacher calendar view | ✅ Done (Sprint 5) |
+| Teacher lesson outcome update | ✅ Done (Sprint 5) |
+| Route guards and server action hardening | ✅ Done (Sprint 5) |
+| Org isolation and RLS validation | ✅ Done (Sprint 5) |
+| UX polish on touched Sprint 5 flows | ✅ Done (Sprint 5) |
+| Archive integrity / duplicate-submit / stale-state hardening | ✅ Done (Sprint 5) |
+| Sprint 5 acceptance + regression | ✅ Done (Sprint 5) |
+| Secret and access audit | ✅ Done (Sprint 6) |
+| Structured logging + error visibility | ✅ Done (Sprint 6) |
+| Graceful failure handling for external flows | ✅ Done (Sprint 6) |
+| Environment separation + env validation | ✅ Done (Sprint 6) |
+| Migration discipline + release checklist | ✅ Done (Sprint 6) |
+| E2E scenario QA on staging | ✅ Done (Sprint 6) |
+| Cross-cutting QA + Data Recovery Playbook | ✅ Done (Sprint 6) |
+| First customer onboarding checklist | ✅ Done (Sprint 6) |
+| First customer staging validation | ✅ Done (Sprint 6) |
+| Backup and restore validation | ✅ Done (Sprint 6) |
+| First customer readiness | ✅ Done (Sprint 6) |
 | lesson_students junction table + lesson_type + group_pricing_mode (pre-S7 migration) | ✅ Done (Sprint 7) |
 | Per-org whatsapp_phone_number_id + encrypted whatsapp_access_token (schema) | ✅ Done (Sprint 7) |
 | AES-256-GCM token encryption utility (`src/lib/crypto/index.ts`) | ✅ Done (Sprint 7) |
@@ -97,12 +99,11 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | saveWhatsAppConnection + disconnectWhatsApp server actions | ✅ Done (Sprint 7) |
 | Webhook routing cutover: phone_number_id lookup + decrypted token | ✅ Done (Sprint 7) |
 | WhatsApp nav entry in sidebar | ✅ Done (Sprint 7) |
-| Staging QA docs updated with Sprint 7 deferred tests | ✅ Done (Sprint 8) |
 | Schema migration: organizations.payment_provider + payment_config_encrypted + charges columns | ✅ Done (Sprint 8) |
-| Payment abstraction layer: PaymentProvider interface + factory.ts + cardcom.ts | ✅ Done (Sprint 8) |
+| Payment abstraction layer: PaymentProvider interface + factory.ts + cardcom.ts + payplus.ts | ✅ Done (Sprint 8) |
 | Owner payment settings page + savePaymentProvider + disconnectPayment | ✅ Done (Sprint 8) |
-| sendPaymentRequest updated to use factory + real Cardcom link | ✅ Done (Sprint 8) |
-| Cardcom webhook POST /api/payments/cardcom | ✅ Done (Sprint 8) |
+| sendPaymentRequest updated to use factory + real payment link | ✅ Done (Sprint 8) |
+| Payment webhook POST /api/payments/[provider] | ✅ Done (Sprint 8) |
 | PAYMENT_CONFIG_ENCRYPTION_KEY env validation + .env.local.example | ✅ Done (Sprint 8) |
 | Payment nav entry in sidebar (owner) | ✅ Done (Sprint 8) |
 | Charges UI: payment_link + payment_provider display | ✅ Done (Sprint 8) |
@@ -123,10 +124,38 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | Schema migration: lesson_series table + lessons.series_id + RLS | ✅ Done (Sprint 11) |
 | src/lib/lessons/createSeries.ts — createLessonSeries (conflict detection + partial success) | ✅ Done (Sprint 11) |
 | src/lib/lessons/cancelSeries.ts — cancelLessonSeries (all / from_date scopes) | ✅ Done (Sprint 11) |
-| src/lib/lessons/index.ts — series_id added to LESSON_SELECT + Lesson type | ✅ Done (Sprint 11) |
 | /lessons/new-series — admin form + createSeriesAction + result summary | ✅ Done (Sprint 11) |
 | /lessons/[id] — SeriesBanner + cancelSeriesAction (from_date / all) | ✅ Done (Sprint 11) |
 | /lessons — Repeat badge on series lessons + "יצירת שיעורים קבועים" button (owner/admin) | ✅ Done (Sprint 11) |
+| Schema migration: organizations reminder columns + notification_log table + RLS | ✅ Done (Sprint 12) |
+| /settings/reminders — reminder settings page + saveReminderSettings action (owner) | ✅ Done (Sprint 12) |
+| Sidebar: תזכורות nav entry (owner) | ✅ Done (Sprint 12) |
+| supabase/functions/lesson-reminders — hourly cron, dedup via notification_log | ✅ Done (Sprint 12) |
+| supabase/functions/payment-reminders — daily 09:00 UTC cron, dedup via notification_log | ✅ Done (Sprint 12) |
+| supabase/functions/_shared/crypto.ts — Deno AES-256-GCM decryption (SubtleCrypto) | ✅ Done (Sprint 12) |
+| supabase/functions/_shared/whatsapp.ts — sendTextMessage for Deno | ✅ Done (Sprint 12) |
+| Cron registration in config.toml (lesson-reminders + payment-reminders) | ✅ Done (Sprint 12) |
+| Notification log UI — last 20 entries in /settings/reminders (owner) | ✅ Done (Sprint 12) |
+| supabase/migrations/..._portal_otps.sql — portal_otps table + index + RLS | ⬜ Sprint 13 |
+| src/lib/lessons/createLesson.ts — single lesson creation with full conflict checks | ⬜ Sprint 13 |
+| src/lib/portal/session.ts — sign/verify portal JWT, set/get httpOnly cookie | ⬜ Sprint 13 |
+| src/lib/portal/otp.ts — OTP generation, SHA-256 hash, send via WhatsApp, verify | ⬜ Sprint 13 |
+| /lessons/new — admin single lesson creation page + actions + NewLessonForm | ⬜ Sprint 13 |
+| /teacher/new-lesson — teacher single lesson creation page + actions | ⬜ Sprint 13 |
+| /portal/[orgId]/layout.tsx — mobile-first portal shell, top bar, bottom tabs | ⬜ Sprint 13 |
+| /portal/[orgId]/page.tsx — redirect to login or home based on session cookie | ⬜ Sprint 13 |
+| /portal/[orgId]/login — phone entry + OTP verify, set portal_session cookie | ⬜ Sprint 13 |
+| /portal/[orgId]/home — upcoming lessons + outstanding balance (server component) | ⬜ Sprint 13 |
+| /portal/[orgId]/book — PortalBookingFlow + portal-scoped server actions | ⬜ Sprint 13 |
+| /portal/[orgId]/payments — charges history + payment links | ⬜ Sprint 13 |
+| /settings/page.tsx — settings landing page with category cards (owner/admin) | ⬜ Sprint 13 |
+| Sidebar: grouped sections (Operations / Settings / Teacher) with section headers | ⬜ Sprint 13 |
+| /lessons page: two CTA buttons "שיעור חד פעמי" + "שיעורים קבועים" | ⬜ Sprint 13 |
+| WeekNav: "היום" button to jump to current week | ⬜ Sprint 13 |
+| /lessons/loading.tsx + /dashboard/loading.tsx — skeleton loading screens | ⬜ Sprint 13 |
+| proxy.ts: add /portal/* to public bypass (no Supabase session check) | ⬜ Sprint 13 |
+| /settings/whatsapp: add portal URL display + copy button for owner to share | ⬜ Sprint 13 |
+| PORTAL_JWT_SECRET added to .env.local.example + next.config.ts validation | ⬜ Sprint 13 |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.
@@ -134,62 +163,16 @@ Update this table after each completed story.
 
 ---
 
-## Sprint 1-5 Closure Gates
-
-- [x] Automated test suite is green
-- [x] Production build passes
-- [x] Booking availability tests are deterministic and cover expired-lock behavior
-- [x] Charge creation is covered for success, retry/idempotency, missing rate, and missing billing parent
-- [x] Dashboard auth session and route protection have automated coverage
-- [x] Runtime smoke check confirms unauthenticated `/dashboard` requests land on `/login`
-- [x] Runtime auth check confirms Supabase `role=authenticated` and LESSIO `app_role` is present
-- [x] Teacher invite flow has automated coverage
-- [x] Sprint 1 WhatsApp limitations are documented explicitly instead of left as open TODOs
-- [x] Auth / RLS docs reflect the custom `app_role` claim model
-- [x] Sprint 4 acceptance + regression passed
-- [x] Sprint 5 teacher access boundaries are documented and locked
-
----
-
-## Current Sprint: Sprint 10 — Teacher Self-Service Availability + Org Holidays
-
-See `/docs/sprint-10-scope.md` for full stories and Definition of Done.
-
-**Stories (all completed):**
-- Story 1: Schema migration — organization_holidays table + RLS
-- Story 2: Holiday management — /settings/holidays page + actions + getOrgHolidays lib
-- Story 3: getAvailableSlots: block slots on holiday dates
-- Story 4: /teacher/availability — teacher self-service availability page + actions
-- Story 5: /teacher/overrides — teacher self-service overrides page + actions
-- Story 6: Sidebar nav — חגים וחופשות (owner/admin), הזמינות שלי + חריגים ביומן (teacher)
-- Story 7: Teacher schedule — holiday label in week grid
-
----
-
-## What NOT to Build in Sprint 10
-
-- Teacher requesting time off (approval workflow)
-- Substitute teacher assignment
-- Room/resource scheduling
-- Admin notification when teacher updates availability
-- Recurring lessons (Sprint 11)
-- Automated reminders (Sprint 12)
-
----
-
-## Closed Decisions Relevant to Sprint 7
+## Closed Decisions
 
 **Decision — routing key:**
-Webhook routing uses `phone_number_id` (Meta internal ID), not the display phone number. The display number can change; the ID is stable.
+Webhook routing uses `phone_number_id` (Meta internal ID), not the display phone number.
 
 **Decision — token storage:**
 Access tokens are encrypted at the application layer with AES-256-GCM before being stored in Postgres. The encryption key is a server-only env var; plaintext is never persisted.
 
-**Decision — legacy columns:**
-`organizations.whatsapp_number` and `organizations.whatsapp_token` are kept but deprecated. They are ignored after the routing cutover and will be dropped in a future cleanup migration.
-
 **Decision — secrets boundary:**
-`SUPABASE_SERVICE_ROLE_KEY`, `BOOKING_JWT_SECRET`, `WHATSAPP_TOKEN_ENCRYPTION_KEY`, `META_APP_SECRET` remain server-only and must never appear in client bundles.
+`SUPABASE_SERVICE_ROLE_KEY`, `BOOKING_JWT_SECRET`, `WHATSAPP_TOKEN_ENCRYPTION_KEY`, `META_APP_SECRET`, `PAYMENT_CONFIG_ENCRYPTION_KEY`, `PORTAL_JWT_SECRET` are server-only and must never appear in client bundles.
 
 **Decision — privileged import path:**
 Service role usage is isolated to `src/lib/supabase/service-role.ts`.
@@ -203,6 +186,12 @@ Requests without valid `X-Hub-Signature-256` must return `401` before processing
 **Decision — release gate:**
 Nothing ships to production without staging QA, release checklist completion, and a documented Data Recovery Playbook.
 
+**Decision — portal auth:**
+Parents authenticate to the portal via phone number + 6-digit OTP delivered via WhatsApp. Session stored as httpOnly cookie (30-day JWT). No Supabase Auth for parents.
+
+**Decision — single lesson creation:**
+Teachers create lessons directly (no admin approval step). Same conflict-check logic as series creation.
+
 See `/docs/decisions.md` for all decisions.
 
 ---
@@ -211,15 +200,20 @@ See `/docs/decisions.md` for all decisions.
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14+ App Router, TypeScript |
-| UI | React, Tailwind CSS, shadcn/ui (Nova preset) |
-| Backend | Next.js Route Handlers + Server Actions |
+| Framework | Next.js 16 App Router, TypeScript (strict) |
+| UI | React 19, Tailwind CSS 4, shadcn/ui (Nova preset) |
+| Backend | Next.js Server Actions + Route Handlers |
 | Database | PostgreSQL via Supabase |
-| Auth (dashboard) | Supabase Auth |
-| Auth (booking WebView) | Signed JWT, not Supabase session |
+| Background Jobs | Supabase Edge Functions (Deno, scheduled cron) |
+| Auth (dashboard) | Supabase Auth (email/password) |
+| Auth (booking WebView) | Signed JWT (jose), not Supabase session |
+| Auth (parent portal) | Phone OTP → httpOnly cookie (jose JWT) |
 | WhatsApp | Meta WhatsApp Cloud API |
-| Icons | Lucide (via shadcn Nova) |
-| Font | Geist (via shadcn Nova) |
+| Payments | Abstraction layer: Cardcom + PayPlus adapters |
+| Validation | Zod 4 |
+| Dates | Luxon 3 |
+| Icons | Lucide React |
+| Testing | Vitest 4 |
 
 ---
 
@@ -227,60 +221,101 @@ See `/docs/decisions.md` for all decisions.
 
 ```txt
 lessio/
-├── CLAUDE.md
+├── AGENTS.md                     ← this file (AI operating manual)
+├── CLAUDE.md                     ← points to AGENTS.md
 ├── docs/
-│   ├── plan.md
-│   ├── schema.md
-│   ├── decisions.md
-│   ├── security.md
-│   ├── sprint-1-scope.md
-│   ├── sprint-2-scope.md
-│   ├── sprint-3-scope.md
-│   ├── sprint-4-scope.md          ← completed
-│   ├── sprint-5-scope.md          ← completed
-│   └── sprint-6-scope.md          ← current source of truth
+│   ├── plan.md                   ← product plan + roadmap
+│   ├── schema.md                 ← DB schema (source of truth)
+│   ├── decisions.md              ← architectural decisions (all sprints)
+│   ├── security.md               ← RLS policies + auth model
+│   ├── sprint-roadmap.md         ← full sprint roadmap (sprints 1–22)
+│   ├── sprint-1-scope.md  through sprint-12-scope.md ← ✅ completed
+│   └── sprint-13-scope.md        ← current sprint (to be written)
 ├── src/
 │   ├── app/
-│   │   ├── (dashboard)/
+│   │   ├── (dashboard)/          ← owner/admin/teacher pages (Supabase Auth)
+│   │   │   ├── dashboard/
+│   │   │   ├── students/
+│   │   │   ├── parents/
+│   │   │   ├── teachers/
+│   │   │   ├── lessons/          ← includes new-series/ + new/ (Sprint 13)
+│   │   │   ├── charges/
+│   │   │   ├── leads/
+│   │   │   ├── settings/         ← whatsapp/ payment/ holidays/ reminders/ page.tsx (Sprint 13)
+│   │   │   └── teacher/          ← schedule/ availability/ overrides/ new-lesson/ (Sprint 13)
 │   │   ├── book/
+│   │   │   └── [token]/          ← parent booking WebView (JWT auth)
+│   │   ├── portal/               ← Sprint 13: parent portal (cookie auth)
+│   │   │   └── [orgId]/
+│   │   │       ├── login/
+│   │   │       ├── home/
+│   │   │       ├── book/
+│   │   │       └── payments/
 │   │   └── api/
-│   │       └── whatsapp/
-│   │           └── webhook/
+│   │       ├── whatsapp/webhook/ ← POST + GET (Meta verification)
+│   │       └── payments/[provider]/
 │   ├── lib/
-│   │   ├── supabase/
-│   │   ├── booking/
-│   │   ├── billing/
-│   │   ├── whatsapp/
-│   │   ├── jwt/
-│   │   └── phone/
+│   │   ├── supabase/             ← client.ts, server.ts, service-role.ts
+│   │   ├── booking/              ← getAvailableSlots, createSlotLock, confirmBooking
+│   │   ├── billing/              ← calculateCancellationCharge, createCharge, autoSend
+│   │   ├── lessons/              ← createSeries, cancelSeries, createLesson (Sprint 13)
+│   │   ├── whatsapp/             ← Meta API client, all send functions
+│   │   ├── cancellation-flow/    ← WhatsApp cancellation state machine
+│   │   ├── payments/             ← registry, cardcom, payplus
+│   │   ├── payment-request/      ← autoSend
+│   │   ├── portal/               ← Sprint 13: session.ts, otp.ts
+│   │   ├── jwt/                  ← signBookingToken, verifyBookingToken
+│   │   ├── crypto/               ← AES-256-GCM encrypt/decrypt
+│   │   ├── auth/                 ← session, actions
+│   │   ├── organizations/        ← getOrgTimezone, holidays
+│   │   ├── dashboard/            ← stats.ts (KPI queries)
+│   │   └── phone/                ← normalizePhone (E.164)
 │   └── components/
+│       ├── ui/                   ← shadcn components (button.tsx, extend as needed)
+│       ├── booking/              ← BookingFlow, AvailabilityCalendar, TeacherSelect, etc.
+│       └── dashboard/            ← Sidebar, KpiCard, lesson/, availability/, etc.
 ├── supabase/
-│   └── migrations/
+│   ├── migrations/               ← forward-only SQL migrations
+│   ├── functions/                ← Edge Functions (lesson-reminders, payment-reminders)
+│   ├── seed.sql
+│   └── config.toml
 └── .env.local
 ```
 
 ---
 
-## Ground Rules for Claude Code — Sprint 6
+## Sprint 13 — What NOT to Build
+
+- Homework module (Sprint 14)
+- WhatsApp intents for balance/schedule queries (Sprint 14)
+- Tax receipts / Bit / PayBox (Sprint 15)
+- Custom message templates (Sprint 16)
+- iCal export (Sprint 16)
+- Analytics & reporting (Sprint 17)
+- AI WhatsApp assistant (Sprint 19)
+- Parent ability to cancel lessons from portal
+- Mobile-responsive collapsible sidebar drawer
+- Toast notification library (keep inline error/success states consistent with existing forms)
+- Multiple reminder sends per charge (Sprint 12 already sends one)
+
+---
+
+## Ground Rules for All Sprints
 
 ```text
-You are building LESSIO Sprint 6 — Production Readiness.
-
-Rules:
-1. No new features. No new UI unless a narrow readiness fix strictly requires it.
-2. Preserve Sprint 1-5 business behavior unless fixing a verified regression or readiness blocker.
-3. SUPABASE_SERVICE_ROLE_KEY must never appear in any client bundle or client component.
-4. BOOKING_JWT_SECRET must never be exposed client-side.
-5. Service role is imported only from src/lib/supabase/service-role.ts.
-6. All required env vars are validated at startup; missing vars fail fast with named errors.
-7. WhatsApp webhook requests without valid X-Hub-Signature-256 must return 401 before processing.
-8. All critical flows must produce structured, actionable logs with org_id and relevant entity IDs when available.
-9. WhatsApp API failures and charge-write failures must be caught and logged; they must not crash the system.
-10. All E2E smoke tests run on staging, not local only.
-11. Nothing ships to production without passing staging first.
-12. Data Recovery Playbook must exist before go-live sign-off.
-13. Do not add external monitoring services, CI/CD automation, or new integrations in Sprint 6.
-14. Before starting any Sprint 6 story, read /docs/schema.md, /docs/decisions.md, /docs/security.md, and /docs/sprint-6-scope.md.
-15. Before coding any story: summarize the task in 3-6 bullets, list exact files likely to change, and list explicit out-of-scope items.
-16. Do not infer missing security, release, or permission rules. If a rule is missing, stop and add a TODO instead of inventing behavior.
+1. TypeScript strict — no `any`. Use unknown + type guards where needed.
+2. SUPABASE_SERVICE_ROLE_KEY, BOOKING_JWT_SECRET, PORTAL_JWT_SECRET, WHATSAPP_TOKEN_ENCRYPTION_KEY,
+   PAYMENT_CONFIG_ENCRYPTION_KEY, META_APP_SECRET must never appear in client bundles.
+3. Service role is imported only from src/lib/supabase/service-role.ts.
+4. All required env vars validated at startup; missing vars fail fast with named errors.
+5. WhatsApp webhook requests without valid X-Hub-Signature-256 must return 401 before processing.
+6. All critical flows emit structured logs with org_id and relevant entity IDs.
+7. WhatsApp API failures and charge-write failures must be caught and logged; must not crash.
+8. Nothing ships to production without passing staging QA first.
+9. All database writes use service role; never the anon key for mutations.
+10. RBAC enforced server-side on every mutation — never trust client-supplied role.
+11. Validate all inputs with Zod schemas on the server before any DB write.
+12. Do not render unsafe HTML. Markdown (Sprint 14+) rendered with sanitization.
+13. Before coding any story: list exact files to change + explicit out-of-scope items.
+14. Do not infer missing security or permission rules — stop and document a TODO instead.
 ```

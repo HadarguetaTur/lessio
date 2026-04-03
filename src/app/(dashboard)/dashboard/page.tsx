@@ -1,9 +1,21 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { TrendingUp, AlertCircle, CalendarDays, GraduationCap } from 'lucide-react'
+import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getTodayLessons, formatTime, LessonStatus, Lesson } from '@/lib/lessons'
 import { getDashboardStats } from '@/lib/dashboard/stats'
 import { KpiCard } from '@/components/dashboard/KpiCard'
+
+const HEBREW_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר']
+const HEBREW_WEEKDAYS = ['שני','שלישי','רביעי','חמישי','שישי','שבת','ראשון'] // Luxon: 1=Mon … 7=Sun
+
+function formatHebrewDate(dt: DateTime): string {
+  const day = HEBREW_WEEKDAYS[dt.weekday - 1]
+  const month = HEBREW_MONTHS[dt.month - 1]
+  return `יום ${day}, ${dt.day} ב${month}`
+}
 
 const STATUS_LABELS: Record<LessonStatus, string> = {
   scheduled: 'מתוכנן',
@@ -30,6 +42,7 @@ export default async function DashboardPage() {
     redirect('/teacher/schedule')
   }
   const timezone = await getOrgTimezone(orgId)
+  const todayLabel = formatHebrewDate(DateTime.now().setZone(timezone))
   const [lessons, stats] = await Promise.all([
     getTodayLessons(orgId, timezone),
     getDashboardStats(orgId, timezone),
@@ -43,84 +56,102 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">לוח הבקרה — היום</h1>
+      {/* Page header */}
+      <div className="mb-7">
+        <h1 className="text-2xl font-bold text-gray-900 leading-none">לוח הבקרה</h1>
+        <p className="text-sm text-gray-400 mt-1">{todayLabel}</p>
+      </div>
 
       {/* KPI cards */}
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <KpiCard
           label="הכנסה החודש"
           value={`₪${stats.monthlyRevenue.toLocaleString('he-IL')}`}
+          icon={TrendingUp}
         />
         <KpiCard
           label="חוב פתוח"
           value={`₪${stats.pendingDebt.toLocaleString('he-IL')}`}
           highlight={stats.pendingDebt > 0}
+          icon={AlertCircle}
         />
-        <KpiCard label="שיעורים החודש" value={stats.lessonsThisMonth} />
-        <KpiCard label="תלמידים פעילים" value={stats.activeStudents} />
+        <KpiCard label="שיעורים החודש" value={stats.lessonsThisMonth} icon={CalendarDays} />
+        <KpiCard label="תלמידים פעילים" value={stats.activeStudents} icon={GraduationCap} />
       </section>
 
-      {/* Counter cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
-        <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
-          <p className="text-2xl font-bold text-gray-900">{total}</p>
-          <p className="text-xs text-gray-500 mt-0.5">סה״כ שיעורים</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
-          <p className="text-2xl font-bold text-blue-600">{scheduled}</p>
-          <p className="text-xs text-gray-500 mt-0.5">מתוכננים</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
-          <p className="text-2xl font-bold text-green-600">{completed}</p>
-          <p className="text-xs text-gray-500 mt-0.5">הושלמו</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
-          <p className="text-2xl font-bold text-yellow-600">{noShow}</p>
-          <p className="text-xs text-gray-500 mt-0.5">לא הגיע</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
-          <p className="text-2xl font-bold text-red-500">{cancelled}</p>
-          <p className="text-xs text-gray-500 mt-0.5">בוטלו</p>
+      {/* Today's status counters */}
+      <div className="mb-2">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">סטטוס היום</p>
+        <div className="grid grid-cols-5 gap-3 mb-8">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-gray-900 leading-none">{total}</p>
+            <p className="text-xs text-gray-500 mt-1.5">סה״כ</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-blue-600 leading-none">{scheduled}</p>
+            <p className="text-xs text-gray-500 mt-1.5">מתוכננים</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-green-600 leading-none">{completed}</p>
+            <p className="text-xs text-gray-500 mt-1.5">הושלמו</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-yellow-600 leading-none">{noShow}</p>
+            <p className="text-xs text-gray-500 mt-1.5">לא הגיע</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-red-500 leading-none">{cancelled}</p>
+            <p className="text-xs text-gray-500 mt-1.5">בוטלו</p>
+          </div>
         </div>
       </div>
 
       {/* Lessons table */}
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">שיעורים — היום</p>
       {lessons.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center mt-16">אין שיעורים להיום.</p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 flex flex-col items-center gap-2">
+          <CalendarDays size={32} className="text-gray-200" />
+          <p className="text-sm text-gray-400">אין שיעורים מתוכננים להיום</p>
+        </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
                   שעה
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
                   תלמיד
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
                   מורה
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
                   סטטוס
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-50">
               {lessons.map((lesson) => (
-                <tr key={lesson.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-mono text-gray-700" dir="ltr">
+                <tr key={lesson.id} className="hover:bg-gray-50/70 transition-colors">
+                  <td className="px-4 py-3.5 text-sm font-mono text-gray-600" dir="ltr">
                     {formatTime(lesson.start_at, timezone)}–{formatTime(lesson.end_at, timezone)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    {lesson.student.full_name}
+                  <td className="px-4 py-3.5 text-sm font-medium">
+                    <Link
+                      href={`/lessons/${lesson.id}`}
+                      className="text-gray-900 hover:text-blue-700 hover:underline underline-offset-2"
+                    >
+                      {lesson.student.full_name}
+                    </Link>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-3.5 text-sm text-gray-500">
                     {lesson.teacher.full_name}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[lesson.status]}`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[lesson.status]}`}
                     >
                       {STATUS_LABELS[lesson.status]}
                     </span>

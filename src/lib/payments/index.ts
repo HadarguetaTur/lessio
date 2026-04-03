@@ -16,7 +16,7 @@ export interface PaymentProvider {
   }): Promise<{ url: string; reference: string }>
 }
 
-export type SupportedProvider = 'cardcom' | 'payplus'
+export type SupportedProvider = 'cardcom' | 'payplus' | 'bit' | 'paybox'
 
 export class PaymentProviderNotConfiguredError extends Error {
   constructor(orgId: string) {

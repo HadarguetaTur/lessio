@@ -19,7 +19,10 @@
 import { z } from 'zod'
 import { CardcomProvider } from './cardcom'
 import { PayPlusProvider } from './payplus'
+import { BitProvider } from './bit'
+import { PayBoxProvider } from './paybox'
 import type { PaymentProvider } from './index'
+import { verifyWebhookHmacSha256Base64 } from './webhook-verify'
 
 // ── Registry entry interface ──────────────────────────────────────────────────
 
@@ -51,6 +54,12 @@ export interface RegistryEntry {
   parseWebhookBody(
     body: Record<string, string>
   ): { reference: string; isSuccess: boolean } | null
+
+  /**
+   * When present, must return true before the webhook mutates DB state.
+   * If verification fails, the route still returns HTTP 200 but skips updates.
+   */
+  verifyWebhookRequest?(headers: Headers, rawBody: string): boolean
 }
 
 // ── Cardcom ───────────────────────────────────────────────────────────────────
@@ -123,9 +132,119 @@ const payPlusEntry: RegistryEntry = {
   },
 }
 
+// ── Bit ───────────────────────────────────────────────────────────────────────
+
+const bitEntry: RegistryEntry = {
+  id: 'bit',
+
+  validateConfig(data) {
+    const schema = z.object({
+      apiKey:     z.string().min(1, 'API Key נדרש'),
+      secret:     z.string().min(1, 'Secret נדרש'),
+      merchantId: z.string().min(1, 'Merchant ID נדרש'),
+    })
+    const result = schema.safeParse(data)
+    if (!result.success) {
+      return { success: false, error: result.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    }
+    return { success: true, config: result.data }
+  },
+
+  createAdapter(config) {
+    return new BitProvider({
+      apiKey:     config.apiKey!,
+      secret:     config.secret!,
+      merchantId: config.merchantId!,
+    })
+  },
+
+  verifyWebhookRequest(headers, rawBody) {
+    return verifyWebhookHmacSha256Base64(
+      rawBody,
+      headers,
+      process.env.BIT_WEBHOOK_HMAC_SECRET,
+      ['x-signature', 'X-Signature', 'x-bit-signature', 'X-Bit-Signature'],
+      '[payments/bit]'
+    )
+  },
+
+  parseWebhookBody(body) {
+    const reference =
+      body.transactionId ||
+      body.TransactionId ||
+      body.paymentId ||
+      body.PaymentId ||
+      body.externalId
+    const status = (body.status || body.Status || '').toLowerCase()
+    const event = (body.event || body.type || '').toLowerCase()
+    if (!reference) return null
+    const isSuccess =
+      status === 'completed' ||
+      status === 'success' ||
+      status === 'paid' ||
+      status === 'succeeded' ||
+      /\b(complete|success|paid|succeeded)\b/.test(event)
+    return { reference, isSuccess }
+  },
+}
+
+// ── PayBox ────────────────────────────────────────────────────────────────────
+
+const payboxEntry: RegistryEntry = {
+  id: 'paybox',
+
+  validateConfig(data) {
+    const schema = z.object({
+      apiKey:     z.string().min(1, 'API Key נדרש'),
+      secret:     z.string().min(1, 'Secret נדרש'),
+      merchantId: z.string().min(1, 'Merchant ID נדרש'),
+    })
+    const result = schema.safeParse(data)
+    if (!result.success) {
+      return { success: false, error: result.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    }
+    return { success: true, config: result.data }
+  },
+
+  createAdapter(config) {
+    return new PayBoxProvider({
+      apiKey:     config.apiKey!,
+      secret:     config.secret!,
+      merchantId: config.merchantId!,
+    })
+  },
+
+  verifyWebhookRequest(headers, rawBody) {
+    return verifyWebhookHmacSha256Base64(
+      rawBody,
+      headers,
+      process.env.PAYBOX_WEBHOOK_HMAC_SECRET,
+      ['x-signature', 'X-Signature', 'x-paybox-signature', 'X-PayBox-Signature'],
+      '[payments/paybox]'
+    )
+  },
+
+  parseWebhookBody(body) {
+    const reference =
+      body.transactionId ||
+      body.TransactionId ||
+      body.paymentId ||
+      body.chargeId ||
+      body.id
+    const result = (body.result || body.status || body.Status || '').toLowerCase()
+    if (!reference) return null
+    const isSuccess =
+      result === 'success' ||
+      result === 'completed' ||
+      result === 'paid' ||
+      result === 'succeeded'
+    return { reference, isSuccess }
+  },
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
-const PROVIDER_REGISTRY: RegistryEntry[] = [cardcomEntry, payPlusEntry]
+const PROVIDER_REGISTRY: RegistryEntry[] = [cardcomEntry, payPlusEntry, bitEntry, payboxEntry]
 
 /**
  * Returns the registry entry for a given provider ID.

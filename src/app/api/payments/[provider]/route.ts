@@ -9,8 +9,8 @@
  * (future): POST /api/payments/<new-provider>
  *
  * To add support for a new provider's webhook:
- *   1. Add an entry to registry.ts with a parseWebhookBody implementation.
- *   2. No changes needed here.
+ *   1. Add an entry to registry.ts (parseWebhookBody + optional verifyWebhookRequest).
+ *   2. Raw body is read once here for optional HMAC verification before JSON parse.
  *
  * All providers receive an HTTP 200 response regardless of outcome.
  * Most providers require a 200 to consider the webhook delivery successful.
@@ -20,6 +20,33 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getRegistryEntry } from '@/lib/payments/registry'
+import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
+
+/**
+ * Flattens JSON webhook payloads: top-level primitives plus one nested object
+ * (e.g. `{ "data": { "transactionId": "..." } }`) into string values for parsers.
+ */
+function webhookBodyFromPayload(
+  rawBody: string,
+  contentType: string
+): Record<string, string> {
+  const ct = contentType.toLowerCase()
+  if (ct.includes('application/json')) {
+    const parsed = JSON.parse(rawBody) as Record<string, unknown>
+    const flat: Record<string, string> = {}
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+        for (const [k2, v2] of Object.entries(v as Record<string, unknown>)) {
+          flat[k2] = v2 === undefined || v2 === null ? '' : String(v2)
+        }
+      } else {
+        flat[k] = v === undefined || v === null ? '' : String(v)
+      }
+    }
+    return flat
+  }
+  return Object.fromEntries(new URLSearchParams(rawBody))
+}
 
 export async function POST(
   req: NextRequest,
@@ -35,17 +62,17 @@ export async function POST(
     return NextResponse.json({ ok: false }, { status: 200 })
   }
 
-  // ── Parse body (JSON or form-encoded) ──────────────────────────────────────
+  const rawBody = await req.text()
+
+  if (entry.verifyWebhookRequest && !entry.verifyWebhookRequest(req.headers, rawBody)) {
+    console.error('[payments/webhook] Webhook verification failed', { provider })
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
 
   let body: Record<string, string>
   try {
     const contentType = req.headers.get('content-type') ?? ''
-    if (contentType.includes('application/json')) {
-      body = (await req.json()) as Record<string, string>
-    } else {
-      const text = await req.text()
-      body = Object.fromEntries(new URLSearchParams(text))
-    }
+    body = webhookBodyFromPayload(rawBody, contentType)
   } catch (err) {
     console.error('[payments/webhook] Failed to parse request body', { provider, err })
     return NextResponse.json({ ok: false }, { status: 200 })
@@ -128,6 +155,18 @@ export async function POST(
     chargeIds,
     paymentReference,
   })
+
+  // Fire-and-forget receipt issuance for each charge — must not block 200 response
+  for (const chargeId of chargeIds) {
+    issueReceiptForCharge(chargeId, orgId).catch((err) => {
+      console.error('[payments/webhook] receipt issuance failed', {
+        provider,
+        orgId,
+        chargeId,
+        err,
+      })
+    })
+  }
 
   return NextResponse.json({ ok: true }, { status: 200 })
 }

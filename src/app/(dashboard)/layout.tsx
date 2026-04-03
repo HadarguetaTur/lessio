@@ -26,12 +26,14 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single()
 
-  // Teachers may only access /teacher/* routes.
+  // Teachers may only access /teacher/* and /homework/* (sidebar links שיעורי בית).
   // src/proxy.ts forwards the current pathname on every request.
   if (profile?.role === 'teacher') {
     const headersList = await headers()
     const pathname = headersList.get(PATHNAME_HEADER) ?? '/'
-    if (!pathname.startsWith('/teacher')) {
+    const allowed =
+      pathname.startsWith('/teacher') || pathname.startsWith('/homework')
+    if (!allowed) {
       redirect('/teacher/schedule')
     }
   }

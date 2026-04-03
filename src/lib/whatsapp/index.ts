@@ -374,6 +374,21 @@ export async function sendPortalReply(
 }
 
 /**
+ * Sends a receipt notification to the parent after a payment is processed.
+ * Per /docs/sprint-15-scope.md § Story 2.
+ */
+export async function sendReceiptMessage(
+  phone: string,
+  amount: number,
+  receiptUrl: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const message = `קבלה על תשלום ₪${amount.toFixed(2)}:\n${receiptUrl}`
+  return sendTextMessage(phone, message, accessToken, phoneNumberId)
+}
+
+/**
  * Sends the unknown intent fallback reply to the parent.
  */
 export async function sendUnknownIntentReply(

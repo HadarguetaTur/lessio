@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
-import { MessageCircle, CreditCard, Settings, CalendarOff, Bell } from 'lucide-react'
+import { MessageCircle, CreditCard, Settings, CalendarOff, Bell, FileText } from 'lucide-react'
 
 /**
  * Settings landing page — owner/admin only.
@@ -22,6 +22,13 @@ const SETTING_CARDS = [
     icon: CreditCard,
     label: 'תשלומים',
     desc: 'ספק תשלומים + שליחה אוטומטית',
+    ownerOnly: true,
+  },
+  {
+    href: '/settings/receipts',
+    icon: FileText,
+    label: 'קבלות',
+    desc: 'חשבוניות ירוקות — הפקת קבלות אוטומטית',
     ownerOnly: true,
   },
   {

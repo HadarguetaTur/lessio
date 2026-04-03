@@ -9,6 +9,7 @@ import {
   Users,
   UserRound,
   BookOpen,
+  ClipboardList,
   Receipt,
   Settings,
   LogOut,
@@ -21,6 +22,7 @@ import {
   CalendarOff,
   Bell,
   Plus,
+  FileText,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 
@@ -40,7 +42,7 @@ interface NavSection {
 const NAV_SECTIONS: NavSection[] = [
   {
     id: 'ops',
-    label: null,
+    label: 'ניהול',
     items: [
       { href: '/dashboard',  label: 'לוח הבקרה', icon: LayoutDashboard, roles: ['owner', 'admin'] },
       { href: '/students',   label: 'תלמידים',    icon: GraduationCap,   roles: ['owner', 'admin'] },
@@ -49,7 +51,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/lessons',    label: 'שיעורים',     icon: BookOpen,        roles: ['owner', 'admin'] },
       { href: '/charges',    label: 'חיובים',      icon: Receipt,         roles: ['owner', 'admin'] },
       { href: '/leads',      label: 'לידים',       icon: UserPlus,        roles: ['owner', 'admin'] },
-      { href: '/homework',   label: 'שיעורי בית',  icon: BookOpen,        roles: ['owner', 'admin', 'teacher'] },
+      { href: '/homework',   label: 'שיעורי בית',  icon: ClipboardList,   roles: ['owner', 'admin', 'teacher'] },
     ],
   },
   {
@@ -58,6 +60,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/settings/whatsapp',            label: 'WhatsApp',         icon: MessageCircle, roles: ['owner'] },
       { href: '/settings/payment',             label: 'תשלומים',          icon: CreditCard,    roles: ['owner'] },
+      { href: '/settings/receipts',            label: 'קבלות',            icon: FileText,      roles: ['owner'] },
       { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings,      roles: ['owner'] },
       { href: '/settings/holidays',            label: 'חגים וחופשות',    icon: CalendarOff,   roles: ['owner', 'admin'] },
       { href: '/settings/reminders',           label: 'תזכורות',          icon: Bell,          roles: ['owner'] },
@@ -89,15 +92,22 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
     teacher: 'מורה',
   }
 
+  const initials = userName
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+
   return (
-    <aside className="w-60 min-h-screen bg-white border-l border-gray-200 flex flex-col shrink-0">
+    <aside className="w-60 min-h-screen bg-white border-l border-gray-100 flex flex-col shrink-0">
       {/* Logo */}
-      <div className="h-16 flex items-center px-5 border-b border-gray-200">
+      <div className="h-16 flex items-center px-5 border-b border-gray-100">
         <span className="text-xl font-bold text-gray-900 tracking-tight">LESSIO</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-3">
+      <nav className="flex-1 px-3 py-4 space-y-5">
         {NAV_SECTIONS.map((section, sectionIdx) => {
           const visibleItems = section.items.filter(
             ({ roles }) => !roles || roles.includes(userRole)
@@ -106,9 +116,8 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
 
           return (
             <div key={section.id}>
-              {sectionIdx > 0 && <hr className="my-2 border-gray-100" />}
               {section.label && (
-                <p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                <p className="px-3 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
                   {section.label}
                 </p>
               )}
@@ -119,13 +128,13 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
                     <Link
                       key={href}
                       href={href}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                         active
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                          ? 'bg-blue-50 text-blue-700 font-semibold'
+                          : 'text-gray-500 font-medium hover:bg-gray-50 hover:text-gray-800'
                       }`}
                     >
-                      <Icon size={17} />
+                      <Icon size={16} className={active ? 'text-blue-600' : 'text-gray-400'} />
                       {label}
                     </Link>
                   )
@@ -137,15 +146,22 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
       </nav>
 
       {/* User + Logout */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="mb-1 text-sm font-medium text-gray-800 truncate">{userName}</div>
-        <div className="mb-3 text-xs text-gray-400">{roleLabel[userRole] ?? userRole}</div>
+      <div className="p-4 border-t border-gray-100">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
+            {initials || '?'}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-800 truncate leading-tight">{userName}</p>
+            <p className="text-xs text-gray-400 leading-tight">{roleLabel[userRole] ?? userRole}</p>
+          </div>
+        </div>
         <form action={signOut}>
           <button
             type="submit"
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 w-full px-2 py-1.5 rounded-md hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-700 w-full px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <LogOut size={15} />
+            <LogOut size={13} />
             יציאה
           </button>
         </form>

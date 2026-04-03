@@ -189,8 +189,8 @@ ALTER TABLE charges ADD COLUMN receipt_issued_at timestamptz;
 
 ---
 
-## Sprint 16 — Custom Message Templates + iCal Export
-**Status:** Planned  
+## Sprint 16 — Custom Message Templates + iCal Export + Portal Receipt View
+**Status:** In Progress
 **Depends on:** Sprint 15 complete
 
 **Goal:** Org owners can customize every WhatsApp message. Teachers get a calendar subscription URL. Both reduce support load and increase retention.
@@ -414,8 +414,8 @@ Currently the system uses "session messages" (valid only if parent messaged with
 | 12 | Automated Reminders | Reduces missed lessons + payment delays |
 | 13 ▶ | Single Scheduling + Parent Portal | Operational completeness; parent self-service |
 | 14 | Homework + WhatsApp Intents | Deepest daily-use differentiator |
-| 15 | Tax Receipts + Bit/PayBox | Israeli legal compliance + payment conversion |
-| 16 | Custom Templates + iCal | Teacher retention + brand customization |
+| 15 | Tax Receipts + Bit/PayBox | Israeli legal compliance + payment conversion | ✅ Done |
+| 16 | Custom Templates + iCal + Portal Receipts | Brand customization + teacher retention + parent UX | ⏳ In Progress |
 | 17 | Analytics & Reporting | Business owner visibility + accountant exports |
 | 18 | Super Admin Dashboard | Platform scalability (5+ customers) |
 | 19 | AI WhatsApp Assistant | Zero-admin parent support |

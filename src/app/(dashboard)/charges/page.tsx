@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
 import { getCharges, ChargeStatus } from '@/lib/charges'
 import { getParents } from '@/lib/parents'
@@ -141,6 +142,9 @@ export default async function ChargesPage(props: {
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
                   הורה
                 </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-24">
+                  פרטים
+                </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
                   סוג
                 </th>
@@ -152,6 +156,9 @@ export default async function ChargesPage(props: {
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
                   קישור תשלום
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  קבלה
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
                   תאריך יצירה
@@ -168,6 +175,14 @@ export default async function ChargesPage(props: {
                 <tr key={charge.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     {charge.parent.full_name}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <Link
+                      href={`/charges/${charge.id}`}
+                      className="text-blue-600 hover:underline text-xs"
+                    >
+                      פתח
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     <div>{CHARGE_TYPE_LABELS[charge.charge_type] ?? charge.charge_type}</div>
@@ -204,6 +219,23 @@ export default async function ChargesPage(props: {
                       >
                         לינק לתשלום ↗
                       </a>
+                    ) : (
+                      <span className="text-gray-300 text-xs">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500">
+                    {charge.receipt_url ? (
+                      <a
+                        href={charge.receipt_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-green-600 hover:underline text-xs"
+                        title="צפה בקבלה"
+                      >
+                        קבלה הופקה ↗
+                      </a>
+                    ) : charge.status === 'paid' ? (
+                      <span className="text-xs text-gray-400">לא הופקה</span>
                     ) : (
                       <span className="text-gray-300 text-xs">—</span>
                     )}

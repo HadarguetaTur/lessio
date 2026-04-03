@@ -88,6 +88,56 @@ export const PROVIDERS_UI: ProviderUIDef[] = [
       },
     ],
   },
+  {
+    id: 'bit',
+    label: 'Bit Business (ביט)',
+    description: 'תשלומים דרך אפליקציית ביט — פופולרי בישראל',
+    docsUrl: 'https://developer.bitpay.co.il',
+    setupHint: 'הפרטים נמצאים בפורטל המפתחים של ביט Business. יש לפתוח חשבון ביט Business תחילה.',
+    fields: [
+      {
+        name: 'apiKey',
+        label: 'API Key',
+        type: 'text',
+      },
+      {
+        name: 'secret',
+        label: 'Secret',
+        type: 'password',
+      },
+      {
+        name: 'merchantId',
+        label: 'Merchant ID',
+        type: 'text',
+        placeholder: 'מזהה בית העסק',
+      },
+    ],
+  },
+  {
+    id: 'paybox',
+    label: 'PayBox (פייבוקס)',
+    description: 'תשלומים דרך אפליקציית PayBox — פופולרי בישראל',
+    docsUrl: 'https://developer.payboxapp.com',
+    setupHint: 'הפרטים נמצאים בפורטל המפתחים של PayBox.',
+    fields: [
+      {
+        name: 'apiKey',
+        label: 'API Key',
+        type: 'text',
+      },
+      {
+        name: 'secret',
+        label: 'Secret',
+        type: 'password',
+      },
+      {
+        name: 'merchantId',
+        label: 'Merchant ID',
+        type: 'text',
+        placeholder: 'מזהה בית העסק',
+      },
+    ],
+  },
 ]
 
 /**

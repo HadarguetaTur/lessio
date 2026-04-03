@@ -15,6 +15,7 @@ const DASHBOARD_PREFIXES = [
   '/charges',
   '/settings',
   '/teacher',
+  '/homework',
 ]
 
 function isDashboardRoute(pathname: string): boolean {

@@ -1,5 +1,5 @@
 # LESSIO — AI Operating Manual
-*Current Sprint: Sprint 14*
+*Current Sprint: Sprint 16*
 
 ---
 
@@ -12,22 +12,23 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 
 ---
 
-## Current Sprint: Sprint 14 — Homework Module + WhatsApp Smart Intents
+## Current Sprint: Sprint 16 — Custom Message Templates + iCal Export + Portal Receipt View
 
-**Sprint source of truth:** `/docs/sprint-14-scope.md`
+**Sprint source of truth:** `/docs/sprint-16-scope.md`
 
 **Goal:**
-- Teachers assign homework to students via dashboard; WhatsApp delivery to student/parent
-- Daily reminder Edge Function (08:00 UTC) for assignments due tomorrow + overdue marking
-- Parents can query balance, schedule, receipt history, and portal link via WhatsApp
-- Unknown-intent fallback reply for all unrecognized parent messages
+- Owners customize every WhatsApp message their org sends (14 message types)
+- Teachers get an iCal subscription URL that syncs to any calendar app
+- Parents see receipt links in the portal payments tab
 
 **Users in scope:**
-- Dashboard: owner + admin + teacher (homework CRUD + assignment)
-- External: parent (WhatsApp self-service intents)
+- Dashboard: owner (message templates, settings)
+- Dashboard: teacher (calendar subscription page)
+- Portal: parent (receipt links in payments tab)
+- Automatic: all WhatsApp send paths (resolveTemplate replaces hardcoded strings)
 
 **New env vars:**
-- None (all existing env vars are sufficient)
+- None (APP_URL already exists; validate in next.config.ts if missing)
 
 ---
 
@@ -169,6 +170,24 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || supabase/config.toml: [functions.homework-reminders] registration | ✅ Done (Sprint 14) |
 || Bug fix: redirect() outside try/catch in lessons/new and teacher/new-lesson actions | ✅ Done (Sprint 14) |
 
+|| supabase/migrations/20260415000001_receipts_and_payment_providers.sql — receipt columns + receipt_config_encrypted + widen payment_provider CHECK | ✅ Done (Sprint 15) |
+|| src/lib/receipts/index.ts — ReceiptProvider interface + ReceiptProviderNotConfiguredError | ✅ Done (Sprint 15) |
+|| src/lib/receipts/green-invoice.ts — Green Invoice adapter (token auth + document type 320) | ✅ Done (Sprint 15) |
+|| src/lib/receipts/factory.ts — decrypt receipt_config_encrypted + return GreenInvoiceProvider | ✅ Done (Sprint 15) |
+|| src/lib/receipts/issueReceiptForCharge.ts — idempotent receipt issuance + WhatsApp send | ✅ Done (Sprint 15) |
+|| src/lib/whatsapp/index.ts — sendReceiptMessage helper | ✅ Done (Sprint 15) |
+|| src/app/(dashboard)/charges/actions.ts — fire-and-forget receipt after markAsPaid | ✅ Done (Sprint 15) |
+|| src/app/api/payments/[provider]/route.ts — fire-and-forget receipt after webhook mark-paid | ✅ Done (Sprint 15) |
+|| src/app/(dashboard)/settings/receipts/ — page + actions + ReceiptSettingsForm + DisconnectReceiptButton | ✅ Done (Sprint 15) |
+|| Sidebar: קבלות nav entry (owner) + settings/page.tsx receipt card | ✅ Done (Sprint 15) |
+|| src/app/(dashboard)/charges/page.tsx — receipt_url column display + badge | ✅ Done (Sprint 15) |
+|| src/lib/charges/index.ts — receipt_url + receipt_issued_at fields in Charge type + query | ✅ Done (Sprint 15) |
+|| src/lib/payments/bit.ts — Bit Business payment adapter | ✅ Done (Sprint 15) |
+|| src/lib/payments/paybox.ts — PayBox payment adapter | ✅ Done (Sprint 15) |
+|| src/lib/payments/index.ts — SupportedProvider union extended with bit + paybox | ✅ Done (Sprint 15) |
+|| src/lib/payments/registry.ts — bitEntry + payboxEntry | ✅ Done (Sprint 15) |
+|| src/lib/payments/registry-ui.ts — Bit + PayBox UI metadata | ✅ Done (Sprint 15) |
+
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.
 Update this table after each completed story.
@@ -296,19 +315,19 @@ lessio/
 
 ---
 
-## Sprint 13 — What NOT to Build
+## Sprint 16 — What NOT to Build
 
-- Homework module (Sprint 14)
-- WhatsApp intents for balance/schedule queries (Sprint 14)
-- Tax receipts / Bit / PayBox (Sprint 15)
-- Custom message templates (Sprint 16)
-- iCal export (Sprint 16)
+- Deleting deprecated WhatsApp send helpers (`sendBookingConfirmation`, etc.) — `@deprecated` now; delete in Sprint 17
+- Per-template A/B testing
+- Multi-language templates (Sprint 20 — i18n)
+- iCal for parents / admin overview
+- WebSub push for calendar refresh (polling is sufficient)
+- WhatsApp Meta-approved template messages (Sprint 22)
+- Backfilling receipt_url on historical paid charges (one-time admin script, future)
+- AI assistant (Sprint 19)
 - Analytics & reporting (Sprint 17)
-- AI WhatsApp assistant (Sprint 19)
-- Parent ability to cancel lessons from portal
 - Mobile-responsive collapsible sidebar drawer
 - Toast notification library (keep inline error/success states consistent with existing forms)
-- Multiple reminder sends per charge (Sprint 12 already sends one)
 
 ---
 

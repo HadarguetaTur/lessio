@@ -26,6 +26,18 @@ import {
   parseWebhookPayload,
   hasBookingIntent,
   hasCancellationIntent,
+  hasHomeworkDoneIntent,
+  hasBalanceIntent,
+  hasScheduleIntent,
+  hasReceiptIntent,
+  hasPortalIntent,
+  sendHomeworkAlert,
+  sendBalanceReply,
+  sendScheduleReply,
+  sendReceiptReply,
+  sendPortalReply,
+  sendUnknownIntentReply,
+  sendTextMessage,
 } from '@/lib/whatsapp'
 import { upsertLead } from '@/lib/leads'
 import {
@@ -36,6 +48,8 @@ import {
   deleteCancellationSession,
   executeCancellation,
 } from '@/lib/cancellation-flow'
+import { markAssignmentDone } from '@/lib/homework'
+import { DateTime } from 'luxon'
 
 // ── GET — Meta hub verification ───────────────────────────────────────────────
 
@@ -213,8 +227,60 @@ async function processMessage(
     return
   }
 
-  // 9. Check booking intent
+  // 9a. Homework done intent
+  if (hasHomeworkDoneIntent(msg.text)) {
+    await handleHomeworkDone(parent.id, org.id, senderPhone, accessToken, phoneNumberId)
+    return
+  }
+
+  // 9b. Balance query
+  if (hasBalanceIntent(msg.text)) {
+    await handleBalanceQuery(parent.id, org.id, senderPhone, accessToken, phoneNumberId)
+    return
+  }
+
+  // 9c. Schedule query
+  if (hasScheduleIntent(msg.text)) {
+    await handleScheduleQuery(
+      parent.id,
+      org.id,
+      senderPhone,
+      (org.timezone as string | null) ?? 'Asia/Jerusalem',
+      accessToken,
+      phoneNumberId
+    )
+    return
+  }
+
+  // 9d. Receipt query
+  if (hasReceiptIntent(msg.text)) {
+    await handleReceiptQuery(
+      parent.id,
+      org.id,
+      senderPhone,
+      (org.timezone as string | null) ?? 'Asia/Jerusalem',
+      accessToken,
+      phoneNumberId
+    )
+    return
+  }
+
+  // 9e. Portal link
+  if (hasPortalIntent(msg.text)) {
+    await handlePortalQuery(org.id, senderPhone, accessToken, phoneNumberId)
+    return
+  }
+
+  // 10. Check booking intent
   if (!hasBookingIntent(msg.text)) {
+    // No recognized intent — send polite fallback
+    await sendUnknownIntentReply(senderPhone, accessToken, phoneNumberId).catch((err) => {
+      console.error('[whatsapp/webhook] Failed to send unknown-intent reply', {
+        orgId: org.id,
+        senderPhone,
+        err,
+      })
+    })
     return
   }
 
@@ -414,4 +480,286 @@ async function handleCancellationSelection(
   }
 
   console.info('[whatsapp/webhook] Cancellation completed', { orgId, selectedLessonId, senderPhone })
+}
+
+// ── Sprint 14: helper ─────────────────────────────────────────────────────────
+
+/**
+ * Returns student IDs for a parent within an org.
+ */
+async function getParentStudentIds(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string,
+  parentId: string
+): Promise<string[]> {
+  const { data, error } = await db
+    .from('relationships')
+    .select('student_id')
+    .eq('organization_id', orgId)
+    .eq('parent_id', parentId)
+
+  if (error) {
+    console.error('[whatsapp/webhook] getParentStudentIds DB error', { orgId, parentId, error })
+    return []
+  }
+  return (data ?? []).map((r: { student_id: string }) => r.student_id)
+}
+
+// ── Sprint 14: new intent handlers ────────────────────────────────────────────
+
+async function handleHomeworkDone(
+  parentId: string,
+  orgId: string,
+  senderPhone: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const db = createServiceRoleClient()
+
+  const studentIds = await getParentStudentIds(db, orgId, parentId)
+  if (studentIds.length === 0) {
+    await sendTextMessage(
+      senderPhone,
+      'לא נמצאו שיעורי בית פתוחים לסימון.',
+      accessToken,
+      phoneNumberId
+    ).catch((err) => {
+      console.error('[whatsapp/webhook] handleHomeworkDone: failed to send reply', { orgId, senderPhone, err })
+    })
+    return
+  }
+
+  // Find most recently created pending assignment for this parent's students
+  const { data: assignments, error: asgError } = await db
+    .from('homework_assignments')
+    .select('id, title, student_id, teacher_id')
+    .in('student_id', studentIds)
+    .eq('organization_id', orgId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (asgError) {
+    console.error('[whatsapp/webhook] handleHomeworkDone: DB error', { orgId, parentId, error: asgError })
+    return
+  }
+
+  if (!assignments || assignments.length === 0) {
+    await sendTextMessage(
+      senderPhone,
+      'לא נמצאו שיעורי בית פתוחים לסימון.',
+      accessToken,
+      phoneNumberId
+    ).catch((err) => {
+      console.error('[whatsapp/webhook] handleHomeworkDone: failed to send reply', { orgId, senderPhone, err })
+    })
+    return
+  }
+
+  type AssignmentRow = { id: string; title: string; student_id: string; teacher_id: string }
+  const assignment = assignments[0] as AssignmentRow
+
+  // Mark as done
+  await markAssignmentDone({ assignmentId: assignment.id, organizationId: orgId }).catch((err) => {
+    console.error('[whatsapp/webhook] handleHomeworkDone: markAssignmentDone failed', { assignmentId: assignment.id, err })
+  })
+
+  // Get student name
+  const { data: student } = await db
+    .from('students')
+    .select('full_name')
+    .eq('id', assignment.student_id)
+    .single()
+
+  const studentName = (student as { full_name: string } | null)?.full_name ?? 'התלמיד'
+
+  // Notify teacher
+  const { data: teacherProfile } = await db
+    .from('teachers')
+    .select('profiles ( phone )')
+    .eq('id', assignment.teacher_id)
+    .single()
+
+  const teacherPhone = (
+    teacherProfile as { profiles: { phone: string | null } | null } | null
+  )?.profiles?.phone
+
+  if (teacherPhone) {
+    await sendHomeworkAlert(teacherPhone, studentName, assignment.title, accessToken, phoneNumberId).catch((err) => {
+      console.error('[whatsapp/webhook] handleHomeworkDone: sendHomeworkAlert failed', { orgId, err })
+    })
+  }
+
+  // Reply to parent
+  await sendTextMessage(
+    senderPhone,
+    `מעולה! שיעורי הבית של ${studentName} סומנו כהושלמו 🎉`,
+    accessToken,
+    phoneNumberId
+  ).catch((err) => {
+    console.error('[whatsapp/webhook] handleHomeworkDone: failed to send parent reply', { orgId, senderPhone, err })
+  })
+
+  console.info('[whatsapp/webhook] Homework marked done', { orgId, assignmentId: assignment.id, senderPhone })
+}
+
+async function handleBalanceQuery(
+  parentId: string,
+  orgId: string,
+  senderPhone: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const db = createServiceRoleClient()
+
+  // Query pending/invoiced charges (charges link to parent_id)
+  const { data: charges, error } = await db
+    .from('charges')
+    .select('amount, payment_link')
+    .eq('organization_id', orgId)
+    .eq('parent_id', parentId)
+    .in('status', ['pending', 'invoiced'])
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[whatsapp/webhook] handleBalanceQuery: DB error', { orgId, parentId, error })
+    return
+  }
+
+  const chargeRows = (charges ?? []) as Array<{ amount: number; payment_link: string | null }>
+  const total = chargeRows.reduce((sum, c) => sum + c.amount, 0)
+  const topCharges = chargeRows.slice(0, 3).map((c) => ({
+    amount: c.amount,
+    paymentLink: c.payment_link,
+  }))
+
+  await sendBalanceReply(senderPhone, total, topCharges, accessToken, phoneNumberId).catch((err) => {
+    console.error('[whatsapp/webhook] handleBalanceQuery: sendBalanceReply failed', { orgId, senderPhone, err })
+  })
+
+  console.info('[whatsapp/webhook] Balance query replied', { orgId, senderPhone, total })
+}
+
+async function handleScheduleQuery(
+  parentId: string,
+  orgId: string,
+  senderPhone: string,
+  timezone: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const db = createServiceRoleClient()
+
+  const studentIds = await getParentStudentIds(db, orgId, parentId)
+  if (studentIds.length === 0) {
+    await sendScheduleReply(senderPhone, [], accessToken, phoneNumberId).catch(() => {})
+    return
+  }
+
+  // Get lesson IDs for these students
+  const { data: lessonStudents, error: lsError } = await db
+    .from('lesson_students')
+    .select('lesson_id')
+    .in('student_id', studentIds)
+    .eq('organization_id', orgId)
+
+  if (lsError || !lessonStudents || lessonStudents.length === 0) {
+    await sendScheduleReply(senderPhone, [], accessToken, phoneNumberId).catch(() => {})
+    return
+  }
+
+  const lessonIds = (lessonStudents as Array<{ lesson_id: string }>).map((r) => r.lesson_id)
+
+  const { data: lessons, error: lessonsError } = await db
+    .from('lessons')
+    .select('start_at, teachers ( profiles ( full_name ) )')
+    .in('id', lessonIds)
+    .eq('organization_id', orgId)
+    .eq('status', 'scheduled')
+    .gt('start_at', new Date().toISOString())
+    .order('start_at', { ascending: true })
+    .limit(3)
+
+  if (lessonsError) {
+    console.error('[whatsapp/webhook] handleScheduleQuery: DB error', { orgId, parentId, error: lessonsError })
+    return
+  }
+
+  type LessonRow = {
+    start_at: string
+    teachers: { profiles: { full_name: string } | null } | null
+  }
+
+  const formatted = (lessons ?? []).map((l) => {
+    const row = l as LessonRow
+    const dt = DateTime.fromISO(row.start_at, { zone: 'utc' }).setZone(timezone)
+    return {
+      date: dt.toFormat('EEEE, d בMMMM', { locale: 'he' }),
+      time: dt.toFormat('HH:mm'),
+      teacherName: (row.teachers?.profiles as { full_name: string } | null)?.full_name ?? 'המורה',
+    }
+  })
+
+  await sendScheduleReply(senderPhone, formatted, accessToken, phoneNumberId).catch((err) => {
+    console.error('[whatsapp/webhook] handleScheduleQuery: sendScheduleReply failed', { orgId, senderPhone, err })
+  })
+
+  console.info('[whatsapp/webhook] Schedule query replied', { orgId, senderPhone })
+}
+
+async function handleReceiptQuery(
+  parentId: string,
+  orgId: string,
+  senderPhone: string,
+  timezone: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const db = createServiceRoleClient()
+
+  const { data: charges, error } = await db
+    .from('charges')
+    .select('amount, updated_at')
+    .eq('organization_id', orgId)
+    .eq('parent_id', parentId)
+    .eq('status', 'paid')
+    .order('updated_at', { ascending: false })
+    .limit(3)
+
+  if (error) {
+    console.error('[whatsapp/webhook] handleReceiptQuery: DB error', { orgId, parentId, error })
+    return
+  }
+
+  type ChargeRow = { amount: number; updated_at: string }
+  const formatted = (charges ?? []).map((c) => {
+    const row = c as ChargeRow
+    const dt = DateTime.fromISO(row.updated_at, { zone: 'utc' }).setZone(timezone)
+    return {
+      date: dt.toFormat('dd/MM/yyyy'),
+      amount: row.amount,
+    }
+  })
+
+  await sendReceiptReply(senderPhone, formatted, accessToken, phoneNumberId).catch((err) => {
+    console.error('[whatsapp/webhook] handleReceiptQuery: sendReceiptReply failed', { orgId, senderPhone, err })
+  })
+
+  console.info('[whatsapp/webhook] Receipt query replied', { orgId, senderPhone })
+}
+
+async function handlePortalQuery(
+  orgId: string,
+  senderPhone: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const portalUrl = `${appUrl}/portal/${orgId}`
+
+  await sendPortalReply(senderPhone, portalUrl, accessToken, phoneNumberId).catch((err) => {
+    console.error('[whatsapp/webhook] handlePortalQuery: sendPortalReply failed', { orgId, senderPhone, err })
+  })
+
+  console.info('[whatsapp/webhook] Portal query replied', { orgId, senderPhone })
 }

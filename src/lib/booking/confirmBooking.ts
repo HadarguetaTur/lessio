@@ -123,7 +123,7 @@ export async function confirmBooking({
   // 5b. Link student via lesson_students junction table
   const { error: lsError } = await db
     .from('lesson_students')
-    .insert({ lesson_id: lesson.id, student_id: studentId, status: 'enrolled' })
+    .insert({ lesson_id: lesson.id, student_id: studentId, organization_id: organizationId, status: 'enrolled' })
 
   if (lsError) {
     throw new Error(`Failed to link student to lesson: ${lsError.message}`)

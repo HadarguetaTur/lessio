@@ -1,5 +1,5 @@
 # LESSIO — AI Operating Manual
-*Current Sprint: Sprint 13*
+*Current Sprint: Sprint 14*
 
 ---
 
@@ -12,22 +12,22 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 
 ---
 
-## Current Sprint: Sprint 13 — Single Lesson Scheduling + Parent Portal + UX/UI Polish
+## Current Sprint: Sprint 14 — Homework Module + WhatsApp Smart Intents
 
-**Sprint source of truth:** `/docs/sprint-13-scope.md` (to be created)
+**Sprint source of truth:** `/docs/sprint-14-scope.md`
 
 **Goal:**
-- Admin and teacher can create single (non-recurring) lessons from the dashboard
-- Parents get a dedicated web portal at `/portal/[orgId]` with WhatsApp OTP login
-- Dashboard UX restructured (sidebar grouping, settings landing, loading states) before i18n work begins
+- Teachers assign homework to students via dashboard; WhatsApp delivery to student/parent
+- Daily reminder Edge Function (08:00 UTC) for assignments due tomorrow + overdue marking
+- Parents can query balance, schedule, receipt history, and portal link via WhatsApp
+- Unknown-intent fallback reply for all unrecognized parent messages
 
 **Users in scope:**
-- Dashboard: owner (all) + admin (lesson creation) + teacher (lesson creation for own students)
-- External: parent (portal login via phone + OTP via WhatsApp, booking, view lessons/balance)
+- Dashboard: owner + admin + teacher (homework CRUD + assignment)
+- External: parent (WhatsApp self-service intents)
 
 **New env vars:**
-- `PORTAL_JWT_SECRET` — signs portal session cookies (min 32 chars)
-- `NEXT_PUBLIC_APP_URL` — used to build portal share URL
+- None (all existing env vars are sufficient)
 
 ---
 
@@ -156,6 +156,18 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 | proxy.ts: add /portal/* to public bypass (no Supabase session check) | ✅ Done (Sprint 13) |
 | /settings/whatsapp: add portal URL display + copy button for owner to share | ✅ Done (Sprint 13) |
 | PORTAL_JWT_SECRET added to .env.local.example + next.config.ts validation | ✅ Done (Sprint 13) |
+
+|| supabase/migrations/20260414000001_homework.sql — homework_templates + homework_assignments + notification_log constraint | ✅ Done (Sprint 14) |
+|| src/lib/homework/ — HomeworkTemplate + HomeworkAssignment types + CRUD + sendHomework | ✅ Done (Sprint 14) |
+|| src/app/(dashboard)/homework/templates/ — template CRUD (list, new, edit, delete, TemplateForm) | ✅ Done (Sprint 14) |
+|| src/app/(dashboard)/homework/page.tsx + loading.tsx — assignment list with status filter + skeleton | ✅ Done (Sprint 14) |
+|| src/app/(dashboard)/homework/assign/ — AssignForm + page + server action | ✅ Done (Sprint 14) |
+|| src/lib/whatsapp/index.ts — 5 intent detectors + 7 send helpers | ✅ Done (Sprint 14) |
+|| src/app/api/whatsapp/webhook/route.ts — 5 new intent handlers + unknown-intent fallback | ✅ Done (Sprint 14) |
+|| supabase/functions/homework-reminders — daily 08:00 UTC cron, overdue marking + reminders | ✅ Done (Sprint 14) |
+|| Sidebar: שיעורי בית nav item (owner/admin/teacher) | ✅ Done (Sprint 14) |
+|| supabase/config.toml: [functions.homework-reminders] registration | ✅ Done (Sprint 14) |
+|| Bug fix: redirect() outside try/catch in lessons/new and teacher/new-lesson actions | ✅ Done (Sprint 14) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.
@@ -318,4 +330,9 @@ lessio/
 12. Do not render unsafe HTML. Markdown (Sprint 14+) rendered with sanitization.
 13. Before coding any story: list exact files to change + explicit out-of-scope items.
 14. Do not infer missing security or permission rules — stop and document a TODO instead.
+15. Never call redirect() inside a try/catch block. Move redirect() after the
+    try/catch, or rethrow isRedirectError(err) explicitly. See Sprint 14 Story 0.
+16. UI components that invoke server actions must receive the action as a prop
+    or be fully reimplemented per context. Never hardcode server action imports
+    into shared UI components.
 ```

@@ -27,6 +27,7 @@ export async function createLessonAction(
 
   const { teacher_id, student_id, date, start_time, duration_minutes } = parsed.data
 
+  let lessonId: string
   try {
     const result = await createLesson({
       orgId,
@@ -37,7 +38,7 @@ export async function createLessonAction(
       durationMinutes: duration_minutes,
       createdByProfileId: profileId,
     })
-    redirect(`/lessons/${result.lessonId}`)
+    lessonId = result.lessonId
   } catch (err) {
     if (err instanceof LessonConflictError) {
       const messages: Record<typeof err.reason, string> = {
@@ -49,4 +50,5 @@ export async function createLessonAction(
     }
     return { error: err instanceof Error ? err.message : 'שגיאה ביצירת השיעור' }
   }
+  redirect(`/lessons/${lessonId}`)
 }

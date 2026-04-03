@@ -49,6 +49,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/lessons',    label: 'שיעורים',     icon: BookOpen,        roles: ['owner', 'admin'] },
       { href: '/charges',    label: 'חיובים',      icon: Receipt,         roles: ['owner', 'admin'] },
       { href: '/leads',      label: 'לידים',       icon: UserPlus,        roles: ['owner', 'admin'] },
+      { href: '/homework',   label: 'שיעורי בית',  icon: BookOpen,        roles: ['owner', 'admin', 'teacher'] },
     ],
   },
   {

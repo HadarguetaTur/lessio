@@ -374,6 +374,10 @@ deno_version = 2
 
 [functions.payment-reminders]
 
+# Sprint 14: Homework reminder cron
+#   homework-reminders: "0 8 * * *"  (daily at 08:00 UTC)
+[functions.homework-reminders]
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

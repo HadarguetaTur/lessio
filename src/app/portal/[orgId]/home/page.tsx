@@ -35,27 +35,9 @@ export default async function PortalHomePage({
 
   const studentIds = (relationships ?? []).map((r) => r.student_id)
 
-  const [parentResult, orgResult, lessonsResult, balanceResult] = await Promise.all([
+  const [parentResult, orgResult, balanceResult] = await Promise.all([
     db.from('parents').select('full_name').eq('id', session.parentId).single(),
     db.from('organizations').select('name').eq('id', orgId).single(),
-    // Upcoming lessons for all students of this parent
-    studentIds.length > 0
-      ? db
-          .from('lesson_students')
-          .select(`
-            lessons (
-              id, start_at, end_at, status,
-              teachers ( profiles ( full_name ) )
-            ),
-            students ( full_name )
-          `)
-          .eq('organization_id', orgId)
-          .in('student_id', studentIds)
-          .eq('lessons.status', 'scheduled')
-          .gte('lessons.start_at', now)
-          .order('lessons.start_at', { ascending: true })
-          .limit(4)
-      : Promise.resolve({ data: [] }),
     // Outstanding balance (pending charges)
     db
       .from('charges')
@@ -64,6 +46,25 @@ export default async function PortalHomePage({
       .eq('organization_id', orgId)
       .eq('status', 'pending'),
   ])
+
+  // Upcoming scheduled lessons for all students of this parent.
+  // Query from lessons with !inner join so filters apply to the lesson row itself —
+  // filtering on embedded resources from lesson_students side silently returns null.
+  const lessonsResult = studentIds.length > 0
+    ? await db
+        .from('lessons')
+        .select(`
+          id, start_at, end_at,
+          teachers ( profiles ( full_name ) ),
+          lesson_students!inner ( student_id, students ( full_name ) )
+        `)
+        .eq('organization_id', orgId)
+        .eq('status', 'scheduled')
+        .gte('start_at', now)
+        .in('lesson_students.student_id', studentIds)
+        .order('start_at', { ascending: true })
+        .limit(4)
+    : { data: [] }
 
   const parentName = parentResult.data?.full_name ?? ''
   const orgName = orgResult.data?.name ?? ''
@@ -100,21 +101,24 @@ export default async function PortalHomePage({
             <p className="text-sm text-gray-400">אין שיעורים מתוכננים</p>
           ) : (
             <div className="space-y-2">
-              {lessons.map((row) => {
-                const lesson = row.lessons as unknown as {
+              {lessons.map((lesson) => {
+                type LessonRow = {
                   id: string
                   start_at: string
                   end_at: string
                   teachers: { profiles: { full_name: string } }
+                  lesson_students: Array<{ student_id: string; students: { full_name: string } }>
                 }
-                const student = row.students as unknown as { full_name: string }
+                const row = lesson as unknown as LessonRow
+                const studentName = row.lesson_students?.[0]?.students?.full_name ?? ''
+                const teacherName = (row.teachers as unknown as { profiles: { full_name: string } })?.profiles?.full_name ?? ''
                 return (
-                  <div key={lesson.id} className="bg-white border border-gray-200 rounded-lg p-3">
-                    <p className="text-sm font-medium text-gray-900">{student.full_name}</p>
+                  <div key={row.id} className="bg-white border border-gray-200 rounded-lg p-3">
+                    <p className="text-sm font-medium text-gray-900">{studentName}</p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {formatDate(lesson.start_at, timezone)} · {formatTime(lesson.start_at, timezone)}–{formatTime(lesson.end_at, timezone)}
+                      {formatDate(row.start_at, timezone)} · {formatTime(row.start_at, timezone)}–{formatTime(row.end_at, timezone)}
                     </p>
-                    <p className="text-xs text-gray-400">{lesson.teachers.profiles.full_name}</p>
+                    <p className="text-xs text-gray-400">{teacherName}</p>
                   </div>
                 )
               })}

@@ -43,7 +43,7 @@ export async function saveReminderSettings(
 
   const parsed = RemindersSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
   }
 
   const db = createServiceRoleClient()

@@ -8,6 +8,11 @@ validateEnv();
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['localhost', '127.0.0.1'],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '11mb', // Homework media uploads: max 10MB file + form fields overhead
+    },
+  },
 };
 
 export default nextConfig;

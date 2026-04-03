@@ -219,3 +219,169 @@ export async function sendCancellationAdminAlert(
 
 export { parseWebhookPayload, hasBookingIntent, hasCancellationIntent } from './parsePayload'
 export type { WhatsAppMessage, MetaWebhookPayload } from './parsePayload'
+
+// ── Intent detectors (Sprint 14) ──────────────────────────────────────────────
+
+/**
+ * Returns true if the message contains a "homework done" intent.
+ * Matches: סיימתי, גמרתי, עשיתי, הכנתי (case-insensitive, anywhere in text)
+ */
+export function hasHomeworkDoneIntent(text: string): boolean {
+  return /סיימתי|גמרתי|עשיתי|הכנתי/i.test(text)
+}
+
+/**
+ * Returns true if the message contains a balance/payment intent.
+ * Matches: חוב, כמה אני חייב, יתרה, תשלום עומד
+ */
+export function hasBalanceIntent(text: string): boolean {
+  return /חוב|כמה אני חייב|יתרה|תשלום עומד/i.test(text)
+}
+
+/**
+ * Returns true if the message contains a schedule query intent.
+ * Matches: שיעורים, מתי שיעור, לוז, לו״ז, לוח זמנים
+ */
+export function hasScheduleIntent(text: string): boolean {
+  return /שיעורים|מתי שיעור|לוז|לו״ז|לוח זמנים/i.test(text)
+}
+
+/**
+ * Returns true if the message contains a receipt/payment history intent.
+ * Matches: קבלה, היסטוריה, מה שילמתי, תשלומים
+ */
+export function hasReceiptIntent(text: string): boolean {
+  return /קבלה|היסטוריה|מה שילמתי|תשלומים/i.test(text)
+}
+
+/**
+ * Returns true if the message contains a portal link intent.
+ * Matches: פורטל, כניסה לפורטל, אזור אישי, לינק, קישור לפורטל
+ */
+export function hasPortalIntent(text: string): boolean {
+  return /פורטל|כניסה לפורטל|אזור אישי|לינק|קישור לפורטל/i.test(text)
+}
+
+// ── Send helpers (Sprint 14) ──────────────────────────────────────────────────
+
+/**
+ * Sends a homework done alert to the teacher.
+ */
+export async function sendHomeworkAlert(
+  teacherPhone: string,
+  studentName: string,
+  homeworkTitle: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const message = `✅ ${studentName} סיים/ה את שיעורי הבית: ${homeworkTitle}`
+  return sendTextMessage(teacherPhone, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends a homework reminder to the parent/student.
+ */
+export async function sendHomeworkReminder(
+  phone: string,
+  title: string,
+  dueDate: string | null,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const message = `📚 תזכורת: שיעורי הבית "${title}" צריכים להיות מוכנים מחר${dueDate ? ` (${dueDate})` : ''}.`
+  return sendTextMessage(phone, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends the outstanding balance reply to the parent.
+ */
+export async function sendBalanceReply(
+  phone: string,
+  total: number,
+  charges: { amount: number; paymentLink: string | null }[],
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  let message: string
+  if (total === 0) {
+    message = 'אין חוב פתוח כרגע 🎉'
+  } else {
+    const lines = [`היתרה שלך: ₪${total.toFixed(2)}`]
+    const topCharges = charges.slice(0, 3)
+    for (const c of topCharges) {
+      let line = `₪${c.amount.toFixed(2)}`
+      if (c.paymentLink) {
+        line += ` — קישור לתשלום: ${c.paymentLink}`
+      }
+      lines.push(line)
+    }
+    message = lines.join('\n')
+  }
+  return sendTextMessage(phone, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends the upcoming schedule reply to the parent.
+ */
+export async function sendScheduleReply(
+  phone: string,
+  lessons: { date: string; time: string; teacherName: string }[],
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  let message: string
+  if (lessons.length === 0) {
+    message = 'אין שיעורים מתוכננים כרגע.'
+  } else {
+    const lines = lessons.map(
+      (l, i) => `${i + 1}. ${l.date} בשעה ${l.time} עם ${l.teacherName}`
+    )
+    message = 'השיעורים הקרובים שלך:\n' + lines.join('\n')
+  }
+  return sendTextMessage(phone, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends the payment receipt history reply to the parent.
+ */
+export async function sendReceiptReply(
+  phone: string,
+  charges: { date: string; amount: number }[],
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  let message: string
+  if (charges.length === 0) {
+    message = 'לא נמצאו תשלומים קודמים.'
+  } else {
+    const lines = charges.map((c) => `${c.date}: ₪${c.amount.toFixed(2)} — שולם`)
+    message = 'תשלומים אחרונים:\n' + lines.join('\n')
+  }
+  return sendTextMessage(phone, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends the portal link to the parent.
+ */
+export async function sendPortalReply(
+  phone: string,
+  portalUrl: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const message = `קישור לאזור האישי שלך:\n${portalUrl}\n\nניתן להתחבר עם מספר הטלפון שלך.`
+  return sendTextMessage(phone, message, accessToken, phoneNumberId)
+}
+
+/**
+ * Sends the unknown intent fallback reply to the parent.
+ */
+export async function sendUnknownIntentReply(
+  phone: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const message =
+    'שלום 👋 לא הצלחתי להבין את הבקשה שלך.\nניתן לשלוח:\n• הזמנה — לקביעת שיעור\n• ביטול — לביטול שיעור\n• חוב — לסגירת יתרה\n• שיעורים — ללוח זמנים\n• פורטל — לגישה לאזור האישי'
+  return sendTextMessage(phone, message, accessToken, phoneNumberId)
+}

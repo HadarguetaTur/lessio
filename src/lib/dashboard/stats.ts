@@ -12,6 +12,13 @@ export type DashboardStats = {
   pendingDebt: number         // SUM(charges.amount) WHERE status='pending'
   lessonsThisMonth: number    // COUNT(lessons) WHERE start_at in current month, status != 'cancelled'
   activeStudents: number      // COUNT(DISTINCT student_id) with lesson in last 30 days
+  cancellationRateThisMonth: number  // % of lessons this month that were cancelled (0-100)
+  atRiskStudents: number      // Active students with no lesson in last 30 days
+  newLeadsThisMonth: number   // COUNT(leads) WHERE created_at in current month
+}
+
+type LessonStudentRow = {
+  lesson_students: { student_id: string }[] | null
 }
 
 export async function getDashboardStats(orgId: string, timezone: string): Promise<DashboardStats> {
@@ -21,49 +28,81 @@ export async function getDashboardStats(orgId: string, timezone: string): Promis
   const monthStart = now.startOf('month').toUTC().toISO()!
   const thirtyDaysAgo = now.minus({ days: 30 }).toUTC().toISO()!
 
-  const [revenueRes, debtRes, lessonsRes, studentsRes] = await Promise.all([
-    // Paid charges this calendar month
-    db
-      .from('charges')
-      .select('amount')
-      .eq('organization_id', orgId)
-      .eq('status', 'paid')
-      .gte('paid_at', monthStart),
+  const [revenueRes, debtRes, allLessonsThisMonthRes, studentsRes, leadsRes, activeStudentsRes] =
+    await Promise.all([
+      // Paid charges this calendar month
+      db
+        .from('charges')
+        .select('amount')
+        .eq('organization_id', orgId)
+        .eq('status', 'paid')
+        .gte('paid_at', monthStart),
 
-    // All pending charges (open debt)
-    db
-      .from('charges')
-      .select('amount')
-      .eq('organization_id', orgId)
-      .eq('status', 'pending'),
+      // All pending charges (open debt)
+      db
+        .from('charges')
+        .select('amount')
+        .eq('organization_id', orgId)
+        .eq('status', 'pending'),
 
-    // Non-cancelled lessons this month
-    db
-      .from('lessons')
-      .select('*', { count: 'exact', head: true })
-      .eq('organization_id', orgId)
-      .neq('status', 'cancelled')
-      .gte('start_at', monthStart),
+      // ALL lessons this month (including cancelled) for cancellation rate
+      db
+        .from('lessons')
+        .select('status')
+        .eq('organization_id', orgId)
+        .gte('start_at', monthStart),
 
-    // Lessons in last 30 days — join to lesson_students to count distinct students
-    db
-      .from('lessons')
-      .select('lesson_students(student_id)')
-      .eq('organization_id', orgId)
-      .neq('status', 'cancelled')
-      .gte('start_at', thirtyDaysAgo),
-  ])
+      // Lessons in last 30 days — join to lesson_students to count distinct students
+      db
+        .from('lessons')
+        .select('lesson_students(student_id)')
+        .eq('organization_id', orgId)
+        .neq('status', 'cancelled')
+        .gte('start_at', thirtyDaysAgo),
+
+      // New leads this calendar month
+      db
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
+        .gte('created_at', monthStart),
+
+      // Active students count
+      db
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
+        .eq('is_active', true),
+    ])
 
   const monthlyRevenue = (revenueRes.data ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
   const pendingDebt = (debtRes.data ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
-  const lessonsThisMonth = lessonsRes.count ?? 0
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const activeStudents = new Set(
-    (studentsRes.data ?? []).flatMap((l: any) =>
-      (l.lesson_students ?? []).map((ls: { student_id: string }) => ls.student_id)
+  const allLessonsThisMonth = allLessonsThisMonthRes.data ?? []
+  const lessonsThisMonth = allLessonsThisMonth.filter(l => l.status !== 'cancelled').length
+  const cancelledThisMonth = allLessonsThisMonth.filter(l => l.status === 'cancelled').length
+  const totalThisMonth = allLessonsThisMonth.length
+  const cancellationRateThisMonth =
+    totalThisMonth > 0 ? Math.round((cancelledThisMonth / totalThisMonth) * 100) : 0
+
+  const studentsWithRecentLesson = new Set(
+    ((studentsRes.data ?? []) as LessonStudentRow[]).flatMap((lesson) =>
+      (lesson.lesson_students ?? []).map((lessonStudent) => lessonStudent.student_id)
     )
-  ).size
+  )
+  const activeStudents = studentsWithRecentLesson.size
+  const totalActiveStudents = activeStudentsRes.count ?? 0
+  const atRiskStudents = Math.max(0, totalActiveStudents - activeStudents)
 
-  return { monthlyRevenue, pendingDebt, lessonsThisMonth, activeStudents }
+  const newLeadsThisMonth = leadsRes.count ?? 0
+
+  return {
+    monthlyRevenue,
+    pendingDebt,
+    lessonsThisMonth,
+    activeStudents,
+    cancellationRateThisMonth,
+    atRiskStudents,
+    newLeadsThisMonth,
+  }
 }

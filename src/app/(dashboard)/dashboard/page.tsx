@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { TrendingUp, AlertCircle, CalendarDays, GraduationCap } from 'lucide-react'
+import { TrendingUp, AlertCircle, CalendarDays, GraduationCap, UserPlus, XCircle, TriangleAlert } from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPI cards */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         <KpiCard
           label="הכנסה החודש"
           value={`₪${stats.monthlyRevenue.toLocaleString('he-IL')}`}
@@ -77,6 +77,21 @@ export default async function DashboardPage() {
         />
         <KpiCard label="שיעורים החודש" value={stats.lessonsThisMonth} icon={CalendarDays} />
         <KpiCard label="תלמידים פעילים" value={stats.activeStudents} icon={GraduationCap} />
+      </section>
+      <section className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+        <KpiCard
+          label="שיעורים שבוטלו"
+          value={`${stats.cancellationRateThisMonth}%`}
+          highlight={stats.cancellationRateThisMonth >= 20}
+          icon={XCircle}
+        />
+        <KpiCard
+          label="תלמידים בסיכון"
+          value={stats.atRiskStudents}
+          highlight={stats.atRiskStudents > 0}
+          icon={TriangleAlert}
+        />
+        <KpiCard label="לידים חדשים החודש" value={stats.newLeadsThisMonth} icon={UserPlus} />
       </section>
 
       {/* Today's status counters — secondary row, visually lighter than KPI cards */}

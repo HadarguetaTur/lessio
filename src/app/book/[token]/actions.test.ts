@@ -32,9 +32,13 @@ vi.mock('@/lib/whatsapp', async () => {
   const actual = await vi.importActual('@/lib/whatsapp')
   return {
     ...actual,
-    sendBookingConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendTextMessage: vi.fn().mockResolvedValue(undefined),
   }
 })
+
+vi.mock('@/lib/whatsapp/templates', () => ({
+  resolveTemplate: vi.fn().mockResolvedValue('מורה: ישראל ישראלי'),
+}))
 
 import { verifyBookingToken } from '@/lib/jwt'
 import {
@@ -44,13 +48,13 @@ import {
   NoPrimaryParentError,
   InactiveParticipantError,
 } from '@/lib/booking'
-import { sendBookingConfirmation } from '@/lib/whatsapp'
+import { sendTextMessage } from '@/lib/whatsapp'
 import { confirmBookingAction, getAvailabilitySummaryAction } from './actions'
 
 const mockVerify = vi.mocked(verifyBookingToken)
 const mockConfirmBooking = vi.mocked(confirmBooking)
 const mockGetAvailabilitySummary = vi.mocked(getAvailabilitySummary)
-const mockSendConfirmation = vi.mocked(sendBookingConfirmation)
+const mockSendTextMessage = vi.mocked(sendTextMessage)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -117,10 +121,9 @@ describe('confirmBookingAction', () => {
 
     // Wait for fire-and-forget to settle
     await new Promise(r => setTimeout(r, 10))
-    expect(mockSendConfirmation).toHaveBeenCalledWith(
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
       PARENT_PHONE,
-      TEACHER_NAME,
-      START_AT,
+      expect.stringContaining('ישראל ישראלי'),
       'test-token',
       'test-phone-id'
     )
@@ -128,7 +131,7 @@ describe('confirmBookingAction', () => {
 
   it('returns success even if WhatsApp confirmation send fails', async () => {
     mockConfirmBooking.mockResolvedValue(BOOKING_RESULT)
-    mockSendConfirmation.mockRejectedValueOnce(new Error('Meta API down'))
+    mockSendTextMessage.mockRejectedValueOnce(new Error('Meta API down'))
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'parents') return buildChain({ data: { phone: PARENT_PHONE }, error: null })
@@ -172,7 +175,7 @@ describe('confirmBookingAction', () => {
     await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
 
     await new Promise(r => setTimeout(r, 10))
-    expect(mockSendConfirmation).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
   })
 })
 

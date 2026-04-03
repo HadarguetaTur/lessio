@@ -1,13 +1,13 @@
 # LESSIO — Project Status
-*Updated: Sprint 13 planning*
+*Updated: Sprint 17 complete*
 
 ---
 
 ## Current State
 
-**Sprints 1–12 complete. Sprint 13 in planning.**
+**Sprints 1–17 complete. Sprint 18 next.**
 
-### What Works End-to-End (Sprints 1–12)
+### What Works End-to-End (Sprints 1–17)
 
 **Scheduling & Booking:**
 - WhatsApp → JWT booking link → WebView → slot lock → lesson created → WhatsApp confirmation
@@ -23,8 +23,10 @@
 - Lesson detail: status update, cancellation with policy-based charge
 - Series management: create series, cancel series from dashboard
 - Charges list: pending / invoiced / paid, mark paid, send payment request
-- KPI dashboard: monthly revenue, pending debt, lessons this month, active students
+- KPI dashboard: monthly revenue, pending debt, lessons this month, active students, cancellation rate, at-risk students, new leads this month
 - Leads list + conversion to parent/student
+- Homework templates + student assignments + WhatsApp delivery
+- Reports section: revenue, lessons, debt, teachers, students — charts + tables + CSV export
 
 **Teacher Portal:**
 - Teacher-only weekly schedule view
@@ -47,16 +49,33 @@
 - Lesson reminders to parents (Edge Function, hourly cron)
 - Payment reminders for overdue charges (Edge Function, daily cron)
 - Notification dedup log (`notification_log`)
+- Balance / schedule / receipt / portal queries via WhatsApp (Sprint 14)
+- Custom message templates per org — 14 types, `{{variable}}` substitution (Sprint 16)
 
 **Payments:**
-- Provider abstraction layer: Cardcom + PayPlus
+- Provider abstraction layer: Cardcom + PayPlus + Bit + PayBox
 - Per-org encrypted provider credentials
 - Inbound payment webhook: `POST /api/payments/[provider]` → marks charge paid
 - Auto-send payment request toggle
+- Tax receipt issuance via Green Invoice (Sprint 15)
+
+**Parent Portal:**
+- WhatsApp OTP login (Sprint 13)
+- Upcoming lessons + balance overview
+- Self-booking flow
+- Payments history with receipt links
+
+**Teacher Features:**
+- Weekly schedule view + lesson outcome update
+- Self-managed availability + overrides
+- iCal subscription URL for calendar sync (Sprint 16)
+- Single lesson creation
 
 **Settings (owner):**
 - WhatsApp connection (Embedded Signup)
 - Payment provider configuration
+- Receipt/invoice configuration (Green Invoice)
+- Custom message templates (14 types)
 - Cancellation policy
 - Org holidays
 - Reminder configuration (timing + master switch)
@@ -169,6 +188,11 @@
 | 10 | Holidays + self-service | Org holidays, teacher-managed availability + overrides |
 | 11 | Recurring lessons | Series create/cancel, conflict detection, series badge |
 | 12 | Automated reminders | Lesson + payment Edge Functions, notification_log dedup |
+| 13 | Single scheduling + parent portal | Single lesson creation, WhatsApp OTP portal, UX polish |
+| 14 | Homework + WhatsApp intents | Homework engine, balance/schedule/receipt/portal intents |
+| 15 | Tax receipts + Bit/PayBox | Green Invoice receipts, Bit + PayBox adapters |
+| 16 | Custom templates + iCal + portal receipts | 14 template types, iCal subscription, receipt links |
+| 17 | Analytics & reporting | 5 report pages, CSV export, 3 new KPI cards, recharts |
 
 ---
 
@@ -176,15 +200,12 @@
 
 | Document | Status | Last Updated |
 |---|---|---|
-| AGENTS.md | ✅ Current (Sprint 13) | Sprint 13 planning |
-| plan.md | ✅ Current (Sprint 13) | Sprint 13 planning |
-| schema.md | ✅ Current (Sprint 12 + Sprint 13 planned) | Sprint 13 planning |
-| sprint-roadmap.md | ✅ Full roadmap Sprints 1–22 | Sprint 13 planning |
-| status.md | ✅ This file | Sprint 13 planning |
-| decisions.md | ✅ 20 decisions (needs +4 new decisions from S13+) | Sprint 12 |
-| security.md | ✅ Up to date through Sprint 7 | Sprint 7 |
-| sprint-1 → sprint-12 scope | ✅ Done | Per sprint |
-| sprint-13-scope.md | ⬜ To be written | — |
-| qa-e2e-staging.md | ⚠️ Needs update for Sprint 13 scenarios | Sprint 8 |
+| AGENTS.md | ✅ Current (Sprint 17) | Sprint 17 |
+| sprint-roadmap.md | ✅ Full roadmap Sprints 1–22 | Sprint 17 |
+| status.md | ✅ This file | Sprint 17 |
+| sprint-1 → sprint-17 scope | ✅ Done | Per sprint |
+| decisions.md | ⚠️ Needs update for Sprints 13–17 decisions | Sprint 12 |
+| security.md | ⚠️ Needs update for Sprint 15–17 (receipts, reports) | Sprint 7 |
+| qa-e2e-staging.md | ⚠️ Needs update for Sprint 13–17 scenarios | Sprint 8 |
 | release-checklist.md | ✅ Current | Sprint 6 |
 | data-recovery-playbook.md | ✅ Current | Sprint 6 |

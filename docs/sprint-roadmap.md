@@ -1,5 +1,5 @@
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprint 13 in progress, Sprints 14–22 planned*
+*Updated: Sprint 17 complete, Sprints 18–22 planned*
 
 ---
 
@@ -190,7 +190,7 @@ ALTER TABLE charges ADD COLUMN receipt_issued_at timestamptz;
 ---
 
 ## Sprint 16 — Custom Message Templates + iCal Export + Portal Receipt View
-**Status:** In Progress
+**Status:** ✅ Done
 **Depends on:** Sprint 15 complete
 
 **Goal:** Org owners can customize every WhatsApp message. Teachers get a calendar subscription URL. Both reduce support load and increase retention.
@@ -226,28 +226,28 @@ ALTER TABLE teachers ADD COLUMN ical_token text; -- signed JWT, regeneratable
 
 ---
 
-## Sprint 17 — Advanced Analytics & Reporting
-**Status:** Planned  
+## Sprint 17 — Analytics & Reporting
+**Status:** ✅ Done
 **Depends on:** Sprint 16 complete
 
-**Goal:** Business owners and admins get data-driven insights. Export capability for accountants.
+**Goal:** Business owners and admins get a full reports section with interactive charts, tabular data, and CSV export. KPI dashboard extended with 3 new indicators. Deprecated WhatsApp helpers deleted.
 
-### Dashboard additions:
-- `/reports/revenue` — monthly revenue chart (per teacher + total), period selector (3/6/12 months)
-- `/reports/lessons` — completion rate, cancellation rate, no-show rate, trend over time
-- `/reports/debt` — outstanding debt by parent (aging: 0-7d / 7-30d / 30d+), risk flag for >30 days
-- `/reports/teachers` — hours taught per teacher per month, utilization rate
-- `/reports/students` — active vs inactive, avg lessons/month, at-risk (no lesson >3 weeks)
+### Delivered:
+- `src/lib/reports/` — data layer: revenue, lessons, debt, teachers, students
+- `/reports` landing page + `דוחות` sidebar section (owner/admin)
+- `/reports/revenue` — bar chart + table, configurable period
+- `/reports/lessons` — grouped bar chart (scheduled vs cancelled) + table
+- `/reports/debt` — tabular debt list sorted by balance desc
+- `/reports/teachers` — horizontal bar chart + table
+- `/reports/students` — at-risk alert block + full activity table
+- `GET /api/reports/[report]` — CSV export with UTF-8 BOM for all 5 reports
+- `CsvDownloadButton` + `PeriodSelector` shared client components
+- KPI dashboard: 3 new cards — cancellation rate, at-risk students, new leads this month
+- Story 0: deleted 11 deprecated WhatsApp send helpers from `src/lib/whatsapp/index.ts`
 
-### Export:
-- All reports exportable to CSV (native `Response` with CSV content-type — no library)
-- Monthly PDF summary (use `@react-pdf/renderer` — add as dependency)
+**New dependency:** `recharts ^3.8.1` (interactive charts)
 
-### KPI dashboard update:
-- Existing 4 KPI cards on `/dashboard` supplemented with: cancellation rate this month, avg lessons per student, new students this month
-
-**Schema additions:**
-- No new tables — all reports built from existing `lessons`, `charges`, `lesson_students` via server-side queries with Supabase `.rpc()` or chained selects + Luxon aggregation
+**Schema additions:** None — all data from existing tables.
 
 ---
 
@@ -415,8 +415,8 @@ Currently the system uses "session messages" (valid only if parent messaged with
 | 13 ▶ | Single Scheduling + Parent Portal | Operational completeness; parent self-service |
 | 14 | Homework + WhatsApp Intents | Deepest daily-use differentiator |
 | 15 | Tax Receipts + Bit/PayBox | Israeli legal compliance + payment conversion | ✅ Done |
-| 16 | Custom Templates + iCal + Portal Receipts | Brand customization + teacher retention + parent UX | ⏳ In Progress |
-| 17 | Analytics & Reporting | Business owner visibility + accountant exports |
+| 16 | Custom Templates + iCal + Portal Receipts | Brand customization + teacher retention + parent UX | ✅ Done |
+| 17 | Analytics & Reporting | Business owner visibility + accountant exports | ✅ Done |
 | 18 | Super Admin Dashboard | Platform scalability (5+ customers) |
 | 19 | AI WhatsApp Assistant | Zero-admin parent support |
 | 20 | i18n + English | Infrastructure + English for international launch prep |

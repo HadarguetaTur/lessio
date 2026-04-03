@@ -18,13 +18,20 @@ vi.mock('@/lib/whatsapp', async () => {
   const actual = await vi.importActual('@/lib/whatsapp')
   return {
     ...actual,
-    sendBookingLink: vi.fn().mockResolvedValue(undefined),
+    sendTextMessage: vi.fn().mockResolvedValue(undefined),
     sendUnknownParentReply: vi.fn().mockResolvedValue(undefined),
     sendCancellationLessonList: vi.fn().mockResolvedValue(undefined),
     sendNoEligibleLessonsReply: vi.fn().mockResolvedValue(undefined),
     sendInvalidSelectionReply: vi.fn().mockResolvedValue(undefined),
   }
 })
+
+vi.mock('@/lib/whatsapp/templates', () => ({
+  resolveTemplate: vi.fn().mockImplementation(
+    (_orgId: string, _type: string, vars: Record<string, string> = {}) =>
+      Promise.resolve(vars['booking_url'] ?? 'mocked-template-body')
+  ),
+}))
 
 vi.mock('@/lib/cancellation-flow', () => ({
   getEligibleLessons: vi.fn().mockResolvedValue([]),
@@ -47,7 +54,7 @@ vi.mock('@/lib/jwt', () => ({
 
 import { GET, POST } from './route'
 import {
-  sendBookingLink,
+  sendTextMessage,
   sendUnknownParentReply,
   sendInvalidSelectionReply,
   sendCancellationLessonList,
@@ -60,7 +67,7 @@ import {
   executeCancellation,
 } from '@/lib/cancellation-flow'
 
-const mockSendBookingLink = vi.mocked(sendBookingLink)
+const mockSendTextMessage = vi.mocked(sendTextMessage)
 const mockSendUnknownParentReply = vi.mocked(sendUnknownParentReply)
 const mockSendInvalidSelectionReply = vi.mocked(sendInvalidSelectionReply)
 const mockSendCancellationLessonList = vi.mocked(sendCancellationLessonList)
@@ -201,7 +208,7 @@ describe('POST /api/whatsapp/webhook', () => {
       'test-access-token',
       'phone-number-id-1'
     )
-    expect(mockSendBookingLink).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
   })
 
   it('sends booking link when parent has exactly one student and message has booking intent', async () => {
@@ -223,7 +230,7 @@ describe('POST /api/whatsapp/webhook', () => {
     const res = await POST(req)
 
     expect(res.status).toBe(200)
-    expect(mockSendBookingLink).toHaveBeenCalledWith(
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
       expect.stringContaining('/book/signed-token-abc'),
       'test-access-token',
@@ -232,7 +239,7 @@ describe('POST /api/whatsapp/webhook', () => {
     expect(mockUpsertLead).not.toHaveBeenCalled()
   })
 
-  it('does not send booking link when message has no booking intent', async () => {
+  it('sends unknown-intent fallback when message has no booking intent', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockFrom.mockImplementation((table: string) => {
       if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
@@ -244,7 +251,12 @@ describe('POST /api/whatsapp/webhook', () => {
     const res = await POST(req)
 
     expect(res.status).toBe(200)
-    expect(mockSendBookingLink).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'mocked-template-body',
+      'test-access-token',
+      'phone-number-id-1'
+    )
     expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
   })
 
@@ -257,7 +269,7 @@ describe('POST /api/whatsapp/webhook', () => {
     const req = makeRequest(makeWebhookPayload('שיעור'))
     const res = await POST(req)
     expect(res.status).toBe(200)
-    expect(mockSendBookingLink).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
   })
 })
 
@@ -283,10 +295,10 @@ describe('WhatsApp cancellation intent', () => {
     const res = await POST(req)
     expect(res.status).toBe(200)
     // No booking link sent
-    expect(mockSendBookingLink).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
   })
 
-  it('does not start cancellation for unrelated message from known parent', async () => {
+  it('sends unknown-intent fallback for unrelated message from known parent', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockFrom.mockImplementation((table: string) => {
       if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
@@ -297,7 +309,12 @@ describe('WhatsApp cancellation intent', () => {
     const req = makeRequest(makeWebhookPayload('תודה רבה'))
     const res = await POST(req)
     expect(res.status).toBe(200)
-    expect(mockSendBookingLink).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'mocked-template-body',
+      'test-access-token',
+      'phone-number-id-1'
+    )
     expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
   })
 
@@ -314,6 +331,12 @@ describe('WhatsApp cancellation intent', () => {
     expect(res.status).toBe(200)
     expect(mockUpsertLead).not.toHaveBeenCalled()
     expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'mocked-template-body',
+      'test-access-token',
+      'phone-number-id-1'
+    )
   })
 
   it('invalid selection input keeps cancellation flow open', async () => {

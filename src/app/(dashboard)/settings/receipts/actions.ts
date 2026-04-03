@@ -6,6 +6,9 @@ import { forbidden } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptWithKey } from '@/lib/crypto'
+import { ICountProvider } from '@/lib/receipts/icount'
+import { SumitProvider } from '@/lib/receipts/sumit'
+import type { ReceiptProviderType } from '@/lib/receipts/factory'
 
 function getEncryptionKey(): string {
   const key = process.env.PAYMENT_CONFIG_ENCRYPTION_KEY
@@ -15,14 +18,85 @@ function getEncryptionKey(): string {
   return key
 }
 
-const GREEN_INVOICE_BASE = 'https://api.greeninvoice.co.il/api/v1'
+// ── Per-provider credential schemas ──────────────────────────────────────────
 
 const GreenInvoiceSchema = z.object({
-  id:     z.string().min(1, 'API ID נדרש'),
-  secret: z.string().min(1, 'Secret נדרש'),
+  provider: z.literal('green-invoice'),
+  id:       z.string().min(1, 'API ID נדרש'),
+  secret:   z.string().min(1, 'Secret נדרש'),
 })
 
+const ICountSchema = z.object({
+  provider: z.literal('icount'),
+  cid:      z.string().min(1, 'מזהה חברה (CID) נדרש'),
+  user:     z.string().min(1, 'שם משתמש נדרש'),
+  pass:     z.string().min(1, 'סיסמה נדרשת'),
+})
+
+const SumitSchema = z.object({
+  provider:  z.literal('sumit'),
+  companyId: z.string().min(1, 'Company ID נדרש'),
+  apiKey:    z.string().min(1, 'API Key נדרש'),
+})
+
+const ReceiptConfigSchema = z.discriminatedUnion('provider', [
+  GreenInvoiceSchema,
+  ICountSchema,
+  SumitSchema,
+])
+
 export type ReceiptActionState = { success: boolean; error?: string }
+
+// ── Validate credentials against the selected provider ───────────────────────
+
+async function testCredentials(
+  data: z.infer<typeof ReceiptConfigSchema>
+): Promise<string | null> {
+  try {
+    switch (data.provider) {
+      case 'green-invoice': {
+        const res = await fetch('https://api.greeninvoice.co.il/api/v1/account/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: data.id, secret: data.secret }),
+        })
+        if (!res.ok) {
+          return 'פרטי ה-API שגויים — לא ניתן להתחבר לחשבוניות ירוקות (Morning)'
+        }
+        return null
+      }
+
+      case 'icount': {
+        const provider = new ICountProvider({ cid: data.cid, user: data.user, pass: data.pass })
+        await provider.validateCredentials()
+        return null
+      }
+
+      case 'sumit': {
+        const provider = new SumitProvider({ companyId: data.companyId, apiKey: data.apiKey })
+        await provider.validateCredentials()
+        return null
+      }
+    }
+  } catch {
+    return 'שגיאת רשת — לא ניתן לאמת מול הספק'
+  }
+}
+
+// ── Credential payload to encrypt (exclude discriminant for cleanliness) ──────
+
+function buildCredentialPayload(
+  data: z.infer<typeof ReceiptConfigSchema>
+): Record<string, string> {
+  switch (data.provider) {
+    case 'green-invoice':
+      return { id: data.id, secret: data.secret }
+    case 'icount':
+      return { cid: data.cid, user: data.user, pass: data.pass }
+    case 'sumit':
+      return { companyId: data.companyId, apiKey: data.apiKey }
+  }
+}
 
 export async function saveReceiptConfigAction(
   _prev: ReceiptActionState,
@@ -35,37 +109,42 @@ export async function saveReceiptConfigAction(
   }
 
   const raw = {
-    id:     formData.get('id')     as string,
-    secret: formData.get('secret') as string,
+    provider:  formData.get('provider'),
+    // green-invoice fields
+    id:        formData.get('id')        ?? '',
+    secret:    formData.get('secret')    ?? '',
+    // icount fields
+    cid:       formData.get('cid')       ?? '',
+    user:      formData.get('user')      ?? '',
+    pass:      formData.get('pass')      ?? '',
+    // sumit fields
+    companyId: formData.get('companyId') ?? '',
+    apiKey:    formData.get('apiKey')    ?? '',
   }
 
-  const parsed = GreenInvoiceSchema.safeParse(raw)
+  const parsed = ReceiptConfigSchema.safeParse(raw)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
   }
 
-  // ── Test credentials against Green Invoice token endpoint ─────────────────
-  try {
-    const res = await fetch(`${GREEN_INVOICE_BASE}/account/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: parsed.data.id, secret: parsed.data.secret }),
-    })
-    if (!res.ok) {
-      return { success: false, error: 'פרטי ה-API שגויים — לא ניתן להתחבר ל-חשבוניות ירוקות' }
-    }
-  } catch {
-    return { success: false, error: 'שגיאת רשת — לא ניתן לאמת מול חשבוניות ירוקות' }
+  // ── Test credentials against the provider ────────────────────────────────
+  const testError = await testCredentials(parsed.data)
+  if (testError) {
+    return { success: false, error: testError }
   }
 
-  // ── Encrypt and persist ────────────────────────────────────────────────────
+  // ── Encrypt credential payload + persist provider type ───────────────────
   const encryptionKey = getEncryptionKey()
-  const encrypted = encryptWithKey(JSON.stringify(parsed.data), encryptionKey)
+  const credentialPayload = buildCredentialPayload(parsed.data)
+  const encrypted = encryptWithKey(JSON.stringify(credentialPayload), encryptionKey)
 
   const db = createServiceRoleClient()
   const { error } = await db
     .from('organizations')
-    .update({ receipt_config_encrypted: encrypted })
+    .update({
+      receipt_provider:          parsed.data.provider as ReceiptProviderType,
+      receipt_config_encrypted:  encrypted,
+    })
     .eq('id', orgId)
 
   if (error) {
@@ -86,11 +165,14 @@ export async function disconnectReceiptAction(): Promise<{ error?: string }> {
   const db = createServiceRoleClient()
   const { error } = await db
     .from('organizations')
-    .update({ receipt_config_encrypted: null })
+    .update({
+      receipt_provider:         null,
+      receipt_config_encrypted: null,
+    })
     .eq('id', orgId)
 
   if (error) {
-    return { error: 'שגיאה בניתוק חשבוניות ירוקות' }
+    return { error: 'שגיאה בניתוק ספק הקבלות' }
   }
 
   revalidatePath('/settings/receipts')

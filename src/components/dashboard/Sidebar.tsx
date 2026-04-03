@@ -24,6 +24,7 @@ import {
   Bell,
   Plus,
   FileText,
+  BarChart2,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 
@@ -53,6 +54,17 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/charges',    label: 'חיובים',      icon: Receipt,         roles: ['owner', 'admin'] },
       { href: '/leads',      label: 'לידים',       icon: UserPlus,        roles: ['owner', 'admin'] },
       { href: '/homework',   label: 'שיעורי בית',  icon: ClipboardList,   roles: ['owner', 'admin', 'teacher'] },
+    ],
+  },
+  {
+    id: 'reports',
+    label: 'דוחות',
+    items: [
+      { href: '/reports/revenue',  label: 'הכנסות',   icon: BarChart2,     roles: ['owner', 'admin'] },
+      { href: '/reports/lessons',  label: 'שיעורים',  icon: BookOpen,      roles: ['owner', 'admin'] },
+      { href: '/reports/debt',     label: 'חובות',    icon: Receipt,       roles: ['owner', 'admin'] },
+      { href: '/reports/teachers', label: 'מורים',    icon: UserRound,     roles: ['owner', 'admin'] },
+      { href: '/reports/students', label: 'תלמידים',  icon: GraduationCap, roles: ['owner', 'admin'] },
     ],
   },
   {
@@ -111,7 +123,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-5">
-        {NAV_SECTIONS.map((section, sectionIdx) => {
+        {NAV_SECTIONS.map((section) => {
           const visibleItems = section.items.filter(
             ({ roles }) => !roles || roles.includes(userRole)
           )

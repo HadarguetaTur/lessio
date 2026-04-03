@@ -1,5 +1,5 @@
 # LESSIO — AI Operating Manual
-*Current Sprint: Sprint 16*
+*Current Sprint: Sprint 17 — Done*
 
 ---
 
@@ -12,23 +12,20 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 
 ---
 
-## Current Sprint: Sprint 16 — Custom Message Templates + iCal Export + Portal Receipt View
+## Current Sprint: Sprint 17 — Analytics & Reporting
 
-**Sprint source of truth:** `/docs/sprint-16-scope.md`
+**Sprint source of truth:** `/docs/sprint-17-scope.md`
 
 **Goal:**
-- Owners customize every WhatsApp message their org sends (14 message types)
-- Teachers get an iCal subscription URL that syncs to any calendar app
-- Parents see receipt links in the portal payments tab
+- Owners and admins get a full reports section with 5 report pages and CSV export
+- KPI dashboard extended with 3 new indicators (cancellation rate, at-risk students, new leads)
+- Deprecated WhatsApp send helpers from Sprint 15–16 are deleted
 
 **Users in scope:**
-- Dashboard: owner (message templates, settings)
-- Dashboard: teacher (calendar subscription page)
-- Portal: parent (receipt links in payments tab)
-- Automatic: all WhatsApp send paths (resolveTemplate replaces hardcoded strings)
+- Dashboard: owner, admin (all reports, enhanced KPIs)
 
-**New env vars:**
-- None (APP_URL already exists; validate in next.config.ts if missing)
+**New dependencies:**
+- `recharts ^3.8.1` — interactive bar charts for revenue, lessons, teachers reports
 
 ---
 
@@ -210,6 +207,27 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || src/components/dashboard/Sidebar.tsx — added הודעות (owner) + מנוי ליומן (teacher) nav items | ✅ Done (Sprint 16) |
 || src/app/(dashboard)/settings/page.tsx — added "הודעות WhatsApp" settings card | ✅ Done (Sprint 16) |
 || src/app/portal/[orgId]/payments/page.tsx — receipt_url in query + receipt link in paid charges list | ✅ Done (Sprint 16) |
+
+|| src/lib/whatsapp/index.ts — deleted 11 deprecated send helpers (sendBookingLink, etc.) | ✅ Done (Sprint 17) |
+|| src/app/api/whatsapp/webhook/webhook.test.ts + actions.test.ts — updated mocks from old helpers to resolveTemplate + sendTextMessage | ✅ Done (Sprint 17) |
+|| src/lib/reports/revenue.ts — getRevenueReport: paid charges by calendar month | ✅ Done (Sprint 17) |
+|| src/lib/reports/lessons.ts — getLessonsReport: lessons + cancellations by calendar month | ✅ Done (Sprint 17) |
+|| src/lib/reports/debt.ts — getDebtReport: parents with pending charges sorted by debt | ✅ Done (Sprint 17) |
+|| src/lib/reports/teachers.ts — getTeachersReport: lessons count + revenue per teacher | ✅ Done (Sprint 17) |
+|| src/lib/reports/students.ts — getStudentsReport: active students + at-risk detection | ✅ Done (Sprint 17) |
+|| src/lib/reports/index.ts — barrel export | ✅ Done (Sprint 17) |
+|| src/components/dashboard/Sidebar.tsx — added דוחות section (revenue/lessons/debt/teachers/students) | ✅ Done (Sprint 17) |
+|| src/app/(dashboard)/reports/page.tsx — reports landing page | ✅ Done (Sprint 17) |
+|| src/app/(dashboard)/reports/revenue/page.tsx + RevenueChart.tsx — bar chart + table (12m default) | ✅ Done (Sprint 17) |
+|| src/app/(dashboard)/reports/lessons/page.tsx + LessonsChart.tsx — grouped bar chart + table | ✅ Done (Sprint 17) |
+|| src/app/(dashboard)/reports/debt/page.tsx — tabular debt report | ✅ Done (Sprint 17) |
+|| src/app/(dashboard)/reports/teachers/page.tsx + TeachersChart.tsx — horizontal bar chart + table | ✅ Done (Sprint 17) |
+|| src/app/(dashboard)/reports/students/page.tsx — at-risk block + full table | ✅ Done (Sprint 17) |
+|| src/app/api/reports/[report]/route.ts — CSV export for all 5 reports (UTF-8 BOM) | ✅ Done (Sprint 17) |
+|| src/components/reports/CsvDownloadButton.tsx — client download trigger | ✅ Done (Sprint 17) |
+|| src/components/reports/PeriodSelector.tsx — months selector writing ?months= query param | ✅ Done (Sprint 17) |
+|| src/lib/dashboard/stats.ts — added cancellationRateThisMonth + atRiskStudents + newLeadsThisMonth | ✅ Done (Sprint 17) |
+|| src/app/(dashboard)/dashboard/page.tsx — second KPI row (3 new cards) | ✅ Done (Sprint 17) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.

@@ -40,6 +40,7 @@ export async function sendTextMessage(
 /**
  * Sends the booking link to the parent via WhatsApp.
  * The URL is the full WebView booking URL including the JWT token.
+ * @deprecated Use resolveTemplate('booking_link', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendBookingLink(
   to: string,
@@ -54,6 +55,7 @@ export async function sendBookingLink(
 /**
  * Sends the booking confirmation message to the parent after a lesson is created.
  * Per Sprint 1 success flow step 12.
+ * @deprecated Use resolveTemplate('booking_confirmation', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendBookingConfirmation(
   to: string,
@@ -142,6 +144,7 @@ export async function sendCancellationTimeoutReply(
 
 /**
  * Sends cancellation confirmation to the parent.
+ * @deprecated Use resolveTemplate('cancellation_confirmation', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendCancellationConfirmation(
   to: string,
@@ -179,6 +182,7 @@ export async function sendCancellationConfirmation(
 
 /**
  * Sends a cancellation alert to the admin/owner phone.
+ * @deprecated Use resolveTemplate('cancellation_admin_alert', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendCancellationAdminAlert(
   to: string,
@@ -280,6 +284,7 @@ export async function sendHomeworkAlert(
 
 /**
  * Sends a homework reminder to the parent/student.
+ * @deprecated Use resolveTemplate('homework_reminder', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendHomeworkReminder(
   phone: string,
@@ -294,6 +299,7 @@ export async function sendHomeworkReminder(
 
 /**
  * Sends the outstanding balance reply to the parent.
+ * @deprecated Use resolveTemplate('balance_reply', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendBalanceReply(
   phone: string,
@@ -322,6 +328,7 @@ export async function sendBalanceReply(
 
 /**
  * Sends the upcoming schedule reply to the parent.
+ * @deprecated Use resolveTemplate('schedule_reply', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendScheduleReply(
   phone: string,
@@ -343,6 +350,7 @@ export async function sendScheduleReply(
 
 /**
  * Sends the payment receipt history reply to the parent.
+ * @deprecated Use resolveTemplate('balance_reply', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendReceiptReply(
   phone: string,
@@ -362,6 +370,7 @@ export async function sendReceiptReply(
 
 /**
  * Sends the portal link to the parent.
+ * @deprecated Use resolveTemplate('portal_link_reply', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendPortalReply(
   phone: string,
@@ -376,6 +385,7 @@ export async function sendPortalReply(
 /**
  * Sends a receipt notification to the parent after a payment is processed.
  * Per /docs/sprint-15-scope.md § Story 2.
+ * @deprecated Use resolveTemplate('receipt_notification', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendReceiptMessage(
   phone: string,
@@ -390,6 +400,7 @@ export async function sendReceiptMessage(
 
 /**
  * Sends the unknown intent fallback reply to the parent.
+ * @deprecated Use resolveTemplate('unknown_intent_fallback', ...) + sendTextMessage. Deletion in Sprint 17.
  */
 export async function sendUnknownIntentReply(
   phone: string,

@@ -23,7 +23,8 @@ import {
   NoPrimaryParentError,
 } from '@/lib/booking'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { sendBookingConfirmation } from '@/lib/whatsapp'
+import { sendTextMessage } from '@/lib/whatsapp'
+import { resolveTemplate } from '@/lib/whatsapp/templates'
 
 // ── Teacher list ───────────────────────────────────────────────────────────────
 
@@ -179,5 +180,16 @@ async function sendWhatsAppConfirmation(
 
   const phoneNumberId = orgData.whatsapp_phone_number_id as string
 
-  await sendBookingConfirmation(phone, teacherName, startAt, accessToken, phoneNumberId)
+  const date = new Date(startAt).toLocaleDateString('he-IL', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
+  })
+  const time = new Date(startAt).toLocaleTimeString('he-IL', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
+  })
+  const body = await resolveTemplate(organizationId, 'booking_confirmation', {
+    teacher_name: teacherName,
+    date,
+    time,
+  })
+  await sendTextMessage(phone, body, accessToken, phoneNumberId)
 }

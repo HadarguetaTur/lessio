@@ -19,6 +19,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendTextMessage } from '../_shared/whatsapp.ts'
+import { resolveTemplate } from '../_shared/templates.ts'
 
 Deno.serve(async (_req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -154,7 +155,11 @@ async function processOrg(db: any, org: any): Promise<void> {
     }
 
     // ── Send reminder ─────────────────────────────────────────────────────────
-    const message = `📚 תזכורת: שיעורי הבית "${assignment.title}" צריכים להיות מוכנים מחר (${assignment.due_date}).`
+    const dueDateSuffix = assignment.due_date ? ` (${assignment.due_date})` : ''
+    const message = await resolveTemplate(db, orgId, 'homework_reminder', {
+      title: assignment.title,
+      due_date_suffix: dueDateSuffix,
+    })
 
     let sendError: string | null = null
     try {

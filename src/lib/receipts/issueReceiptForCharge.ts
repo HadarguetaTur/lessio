@@ -17,7 +17,8 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { getReceiptProvider } from './factory'
 import { ReceiptProviderNotConfiguredError } from './index'
-import { sendReceiptMessage } from '@/lib/whatsapp'
+import { sendTextMessage } from '@/lib/whatsapp'
+import { resolveTemplate } from '@/lib/whatsapp/templates'
 
 /**
  * Issues a receipt for a paid charge and updates the charge row.
@@ -136,7 +137,11 @@ export async function issueReceiptForCharge(
   if (parentPhone && phoneNumberId && encryptedToken) {
     try {
       const accessToken = decryptToken(encryptedToken)
-      await sendReceiptMessage(parentPhone, charge.amount, receiptUrl, accessToken, phoneNumberId)
+      const receiptBody = await resolveTemplate(orgId, 'receipt_notification', {
+        amount: charge.amount.toFixed(2),
+        receipt_url: receiptUrl,
+      })
+      await sendTextMessage(parentPhone, receiptBody, accessToken, phoneNumberId)
     } catch (err) {
       console.error('[receipts] Failed to send WhatsApp receipt message', {
         chargeId,

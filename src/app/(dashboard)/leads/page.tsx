@@ -1,3 +1,4 @@
+import { UserPlus } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getLeads, LeadStatus } from '@/lib/leads'
 import { LeadStatusSelect } from '@/components/dashboard/leads/LeadStatusSelect'
@@ -45,7 +46,7 @@ export default async function LeadsPage(props: {
       </div>
 
       {/* Filters */}
-      <form method="GET" className="flex flex-wrap gap-3 mb-5">
+      <form method="GET" className="bg-white rounded-lg border border-gray-100 p-4 mb-5 flex flex-wrap gap-3 items-end">
         <select
           name="status"
           defaultValue={searchParams.status ?? ''}
@@ -74,31 +75,35 @@ export default async function LeadsPage(props: {
       </form>
 
       {leads.length === 0 ? (
-        <p className="mt-10 text-center text-sm text-gray-400">לא נמצאו לידים</p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 flex flex-col items-center gap-2">
+          <UserPlus size={32} className="text-gray-200" />
+          <p className="text-sm text-gray-400">לא נמצאו לידים</p>
+          <p className="text-xs text-gray-300">לידים נוצרים אוטומטית מהודעות WhatsApp</p>
+        </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   טלפון
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   הודעה ראשונה
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   סטטוס
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   תאריך יצירה
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   הערות
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   שינוי סטטוס
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   המרה
                 </th>
               </tr>
@@ -118,7 +123,7 @@ export default async function LeadsPage(props: {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[lead.status]}`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[lead.status]}`}
                     >
                       {STATUS_LABELS[lead.status]}
                     </span>

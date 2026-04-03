@@ -55,10 +55,12 @@ function redirectWithSession(url: URL, supabaseResponse: NextResponse): NextResp
 export async function proxy(request: NextRequest) {
   // /book/* uses signed JWT auth only — no Supabase session middleware.
   // /portal/* uses httpOnly cookie session — no Supabase session middleware.
+  // /api/calendar/* is public — UUID token is the auth mechanism (Sprint 16).
   // See AGENTS.md § Authentication Model.
   if (
     request.nextUrl.pathname.startsWith('/book/') ||
-    request.nextUrl.pathname.startsWith('/portal/')
+    request.nextUrl.pathname.startsWith('/portal/') ||
+    request.nextUrl.pathname.startsWith('/api/calendar/')
   ) {
     return NextResponse.next()
   }

@@ -188,6 +188,29 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || src/lib/payments/registry.ts — bitEntry + payboxEntry | ✅ Done (Sprint 15) |
 || src/lib/payments/registry-ui.ts — Bit + PayBox UI metadata | ✅ Done (Sprint 15) |
 
+|| supabase/migrations/20260416000001_message_templates_and_ical.sql — message_templates table + RLS + teachers.ical_token + index | ✅ Done (Sprint 16) |
+|| src/lib/whatsapp/templates.ts — MessageTemplateType + DEFAULT_TEMPLATES + resolveTemplate + substituteVars + TEMPLATE_VARIABLES + TEMPLATE_LABELS + TEMPLATE_PREVIEW_VARS | ✅ Done (Sprint 16) |
+|| supabase/functions/_shared/templates.ts — Deno resolveTemplate + substituteVars (mirrors Next.js version) | ✅ Done (Sprint 16) |
+|| src/app/api/whatsapp/webhook/route.ts — migrated booking_link, cancellation_confirmation, cancellation_admin_alert, balance_reply, schedule_reply, portal_link_reply, unknown_intent_fallback to resolveTemplate | ✅ Done (Sprint 16) |
+|| src/app/book/[token]/actions.ts — migrated booking_confirmation to resolveTemplate | ✅ Done (Sprint 16) |
+|| src/lib/receipts/issueReceiptForCharge.ts — migrated receipt_notification to resolveTemplate | ✅ Done (Sprint 16) |
+|| src/lib/whatsapp/index.ts — @deprecated JSDoc on 10 old send helpers (not deleted) | ✅ Done (Sprint 16) |
+|| supabase/functions/lesson-reminders/index.ts — migrated lesson_reminder to resolveTemplate | ✅ Done (Sprint 16) |
+|| supabase/functions/payment-reminders/index.ts — migrated payment_reminder to resolveTemplate | ✅ Done (Sprint 16) |
+|| supabase/functions/homework-reminders/index.ts — migrated homework_reminder to resolveTemplate | ✅ Done (Sprint 16) |
+|| src/app/(dashboard)/settings/message-templates/page.tsx — template list + edit UI (owner only) | ✅ Done (Sprint 16) |
+|| src/app/(dashboard)/settings/message-templates/actions.ts — saveTemplateAction + resetTemplateAction | ✅ Done (Sprint 16) |
+|| src/components/dashboard/settings/MessageTemplateCard.tsx — client component with live preview | ✅ Done (Sprint 16) |
+|| src/lib/ical/index.ts — RFC 5545 iCal generator (no external lib, line folding, CRLF) | ✅ Done (Sprint 16) |
+|| src/app/api/calendar/[token]/route.ts — public iCal endpoint (past 4 weeks + next 6 months) | ✅ Done (Sprint 16) |
+|| src/proxy.ts — /api/calendar/* added to public bypass list | ✅ Done (Sprint 16) |
+|| src/app/(dashboard)/teacher/calendar/page.tsx — iCal subscription URL page (teacher only) | ✅ Done (Sprint 16) |
+|| src/app/(dashboard)/teacher/calendar/actions.ts — regenerateCalendarTokenAction | ✅ Done (Sprint 16) |
+|| src/components/dashboard/CalendarSubscribeSection.tsx — copy button + regenerate + Google/Apple/Outlook instructions | ✅ Done (Sprint 16) |
+|| src/components/dashboard/Sidebar.tsx — added הודעות (owner) + מנוי ליומן (teacher) nav items | ✅ Done (Sprint 16) |
+|| src/app/(dashboard)/settings/page.tsx — added "הודעות WhatsApp" settings card | ✅ Done (Sprint 16) |
+|| src/app/portal/[orgId]/payments/page.tsx — receipt_url in query + receipt link in paid charges list | ✅ Done (Sprint 16) |
+
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.
 Update this table after each completed story.

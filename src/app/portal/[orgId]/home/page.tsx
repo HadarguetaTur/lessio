@@ -74,9 +74,9 @@ export default async function PortalHomePage({
   return (
     <div className="flex flex-col flex-1 pb-16">
       {/* Top bar */}
-      <header className="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-        <span className="font-bold text-gray-900">{orgName}</span>
-        <span className="text-sm text-gray-500">{parentName}</span>
+      <header className="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+        <span className="font-semibold text-gray-900">{orgName}</span>
+        <span className="text-sm text-gray-500">שלום, {parentName}</span>
       </header>
 
       <main className="flex-1 p-4 space-y-6">
@@ -96,9 +96,9 @@ export default async function PortalHomePage({
 
         {/* Upcoming lessons */}
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 mb-3">שיעורים קרובים</h2>
+          <h2 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">שיעורים קרובים</h2>
           {lessons.length === 0 ? (
-            <p className="text-sm text-gray-400">אין שיעורים מתוכננים</p>
+            <p className="text-sm text-gray-400 py-4 text-center">אין שיעורים מתוכננים</p>
           ) : (
             <div className="space-y-2">
               {lessons.map((lesson) => {
@@ -113,12 +113,14 @@ export default async function PortalHomePage({
                 const studentName = row.lesson_students?.[0]?.students?.full_name ?? ''
                 const teacherName = (row.teachers as unknown as { profiles: { full_name: string } })?.profiles?.full_name ?? ''
                 return (
-                  <div key={row.id} className="bg-white border border-gray-200 rounded-lg p-3">
-                    <p className="text-sm font-medium text-gray-900">{studentName}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {formatDate(row.start_at, timezone)} · {formatTime(row.start_at, timezone)}–{formatTime(row.end_at, timezone)}
-                    </p>
-                    <p className="text-xs text-gray-400">{teacherName}</p>
+                  <div key={row.id} className="bg-white border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 leading-tight">{studentName}</p>
+                      <p className="text-xs text-gray-500 mt-0.5" dir="ltr">
+                        {formatDate(row.start_at, timezone)} &middot; {formatTime(row.start_at, timezone)}–{formatTime(row.end_at, timezone)}
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-400 shrink-0 mt-0.5">{teacherName}</p>
                   </div>
                 )
               })}

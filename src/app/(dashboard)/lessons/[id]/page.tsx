@@ -67,7 +67,7 @@ export default async function LessonDetailPage(props: {
       )}
 
       {/* Lesson details */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-lg border border-gray-100 p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">פרטי שיעור</h1>
           <span
@@ -107,22 +107,18 @@ export default async function LessonDetailPage(props: {
         </dl>
       </div>
 
-      {/* Status update */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mt-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">עדכון סטטוס</h2>
-        <LessonStatusForm currentStatus={lesson.status} action={boundAction} />
-      </div>
-
-      {canCancel && lesson.status !== 'cancelled' && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mt-4">
-          <CancelLessonForm action={cancelLesson.bind(null, lesson.id)} />
+      {/* Actions card — status update + optional cancel */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mt-4 space-y-5">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">עדכון סטטוס</h2>
+          <LessonStatusForm currentStatus={lesson.status} action={boundAction} />
         </div>
-      )}
 
-      <div className="mt-4">
-        <Link href={backHref} className="text-sm text-gray-500 hover:text-gray-700">
-          ← חזרה ללוח
-        </Link>
+        {canCancel && lesson.status !== 'cancelled' && (
+          <div className="border-t border-gray-100 pt-5">
+            <CancelLessonForm action={cancelLesson.bind(null, lesson.id)} />
+          </div>
+        )}
       </div>
     </div>
   )

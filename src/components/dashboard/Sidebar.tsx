@@ -16,6 +16,7 @@ import {
   UserPlus,
   CalendarDays,
   MessageCircle,
+  MessageSquare,
   CreditCard,
   Clock,
   CalendarX,
@@ -58,22 +59,24 @@ const NAV_SECTIONS: NavSection[] = [
     id: 'settings',
     label: 'הגדרות',
     items: [
-      { href: '/settings/whatsapp',            label: 'WhatsApp',         icon: MessageCircle, roles: ['owner'] },
-      { href: '/settings/payment',             label: 'תשלומים',          icon: CreditCard,    roles: ['owner'] },
-      { href: '/settings/receipts',            label: 'קבלות',            icon: FileText,      roles: ['owner'] },
-      { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings,      roles: ['owner'] },
-      { href: '/settings/holidays',            label: 'חגים וחופשות',    icon: CalendarOff,   roles: ['owner', 'admin'] },
-      { href: '/settings/reminders',           label: 'תזכורות',          icon: Bell,          roles: ['owner'] },
+      { href: '/settings/whatsapp',              label: 'WhatsApp',         icon: MessageCircle,  roles: ['owner'] },
+      { href: '/settings/message-templates',   label: 'הודעות',           icon: MessageSquare,  roles: ['owner'] },
+      { href: '/settings/payment',             label: 'תשלומים',          icon: CreditCard,     roles: ['owner'] },
+      { href: '/settings/receipts',            label: 'קבלות',            icon: FileText,       roles: ['owner'] },
+      { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings,       roles: ['owner'] },
+      { href: '/settings/holidays',            label: 'חגים וחופשות',    icon: CalendarOff,    roles: ['owner', 'admin'] },
+      { href: '/settings/reminders',           label: 'תזכורות',          icon: Bell,           roles: ['owner'] },
     ],
   },
   {
     id: 'teacher',
     label: null,
     items: [
-      { href: '/teacher/schedule',     label: 'השיעורים שלי', icon: CalendarDays, roles: ['teacher'] },
-      { href: '/teacher/new-lesson',   label: 'שיעור חדש',    icon: Plus,         roles: ['teacher'] },
-      { href: '/teacher/availability', label: 'הזמינות שלי',  icon: Clock,        roles: ['teacher'] },
-      { href: '/teacher/overrides',    label: 'חריגים ביומן', icon: CalendarX,    roles: ['teacher'] },
+      { href: '/teacher/schedule',     label: 'השיעורים שלי', icon: CalendarDays,  roles: ['teacher'] },
+      { href: '/teacher/calendar',     label: 'מנוי ליומן',   icon: CalendarDays,  roles: ['teacher'] },
+      { href: '/teacher/new-lesson',   label: 'שיעור חדש',    icon: Plus,          roles: ['teacher'] },
+      { href: '/teacher/availability', label: 'הזמינות שלי',  icon: Clock,         roles: ['teacher'] },
+      { href: '/teacher/overrides',    label: 'חריגים ביומן', icon: CalendarX,     roles: ['teacher'] },
     ],
   },
 ]
@@ -117,11 +120,11 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
           return (
             <div key={section.id}>
               {section.label && (
-                <p className="px-3 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
+                <p className="px-3 pb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
                   {section.label}
                 </p>
               )}
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {visibleItems.map(({ href, label, icon: Icon }) => {
                   const active = pathname === href || pathname.startsWith(href + '/')
                   return (

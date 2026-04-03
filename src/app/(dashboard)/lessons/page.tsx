@@ -57,29 +57,32 @@ export default async function LessonsPage(props: {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+      {/* Row 1: Title + action buttons */}
+      <div className="flex items-center justify-between mb-3 gap-4">
         <h1 className="text-2xl font-bold text-gray-900">לוח שיעורים שבועי</h1>
-        <div className="flex items-center gap-3 flex-wrap">
-          {(role === 'owner' || role === 'admin') && (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/lessons/new"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                <Plus size={14} />
-                שיעור חד פעמי
-              </Link>
-              <Link
-                href="/lessons/new-series"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                <Repeat size={14} />
-                שיעורים קבועים
-              </Link>
-            </div>
-          )}
-          <WeekNav weekStr={weekStr} teachers={activeTeachers} teacherId={teacher} currentWeekStr={currentWeekStr} />
-        </div>
+        {(role === 'owner' || role === 'admin') && (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/lessons/new"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={14} />
+              שיעור חד פעמי
+            </Link>
+            <Link
+              href="/lessons/new-series"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              <Repeat size={14} />
+              שיעורים קבועים
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Row 2: Week navigation + teacher filter */}
+      <div className="mb-5">
+        <WeekNav weekStr={weekStr} teachers={activeTeachers} teacherId={teacher} currentWeekStr={currentWeekStr} />
       </div>
 
       {/* Calendar grid — 7 columns */}

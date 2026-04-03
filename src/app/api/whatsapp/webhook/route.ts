@@ -16,13 +16,12 @@ import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { signBookingToken } from '@/lib/jwt'
 import { decryptToken } from '@/lib/crypto'
 import {
-  sendBookingLink,
   sendUnknownParentReply,
   sendCancellationLessonList,
   sendNoEligibleLessonsReply,
   sendInvalidSelectionReply,
-  sendCancellationConfirmation,
-  sendCancellationAdminAlert,
+  sendHomeworkAlert,
+  sendTextMessage,
   parseWebhookPayload,
   hasBookingIntent,
   hasCancellationIntent,
@@ -31,14 +30,8 @@ import {
   hasScheduleIntent,
   hasReceiptIntent,
   hasPortalIntent,
-  sendHomeworkAlert,
-  sendBalanceReply,
-  sendScheduleReply,
-  sendReceiptReply,
-  sendPortalReply,
-  sendUnknownIntentReply,
-  sendTextMessage,
 } from '@/lib/whatsapp'
+import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { upsertLead } from '@/lib/leads'
 import {
   getEligibleLessons,
@@ -274,7 +267,8 @@ async function processMessage(
   // 10. Check booking intent
   if (!hasBookingIntent(msg.text)) {
     // No recognized intent — send polite fallback
-    await sendUnknownIntentReply(senderPhone, accessToken, phoneNumberId).catch((err) => {
+    const unknownBody = await resolveTemplate(org.id, 'unknown_intent_fallback', {})
+    await sendTextMessage(senderPhone, unknownBody, accessToken, phoneNumberId).catch((err) => {
       console.error('[whatsapp/webhook] Failed to send unknown-intent reply', {
         orgId: org.id,
         senderPhone,
@@ -324,7 +318,8 @@ async function processMessage(
   const bookingUrl = `${origin}/book/${token}`
 
   // 11. Send booking link via WhatsApp
-  await sendBookingLink(senderPhone, bookingUrl, accessToken, phoneNumberId)
+  const bookingLinkBody = await resolveTemplate(org.id, 'booking_link', { booking_url: bookingUrl })
+  await sendTextMessage(senderPhone, bookingLinkBody, accessToken, phoneNumberId)
   console.info('[whatsapp/webhook] Booking link sent', { messageId: msg.messageId })
 }
 
@@ -438,17 +433,25 @@ async function handleCancellationSelection(
   await deleteCancellationSession(orgId, senderPhone)
 
   // Notify parent — WhatsApp failure must not roll back the completed cancellation
-  await sendCancellationConfirmation(
-    senderPhone,
-    outcome.studentName,
-    outcome.teacherName,
-    outcome.lessonStartAt,
-    timezone,
-    outcome.chargeResult.amount,
-    outcome.chargeResult.chargeType,
-    accessToken,
-    phoneNumberId
-  ).catch(err => {
+  const ccDate = new Date(outcome.lessonStartAt).toLocaleDateString('he-IL', {
+    timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long',
+  })
+  const ccTime = new Date(outcome.lessonStartAt).toLocaleTimeString('he-IL', {
+    timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+  let ccChargeLine = ''
+  if (outcome.chargeResult.chargeType && outcome.chargeResult.amount > 0) {
+    const label = outcome.chargeResult.chargeType === 'full' ? 'חיוב ביטול מלא' : 'חיוב ביטול חלקי'
+    ccChargeLine = `\n${label}: ₪${outcome.chargeResult.amount.toFixed(2)}`
+  }
+  const ccBody = await resolveTemplate(orgId, 'cancellation_confirmation', {
+    student_name: outcome.studentName,
+    teacher_name: outcome.teacherName,
+    date: ccDate,
+    time: ccTime,
+    charge_line: ccChargeLine,
+  })
+  await sendTextMessage(senderPhone, ccBody, accessToken, phoneNumberId).catch(err => {
     console.error('[whatsapp/webhook] Failed to send cancellation confirmation — cancellation committed', { orgId, senderPhone, lessonId: selectedLessonId, err })
   })
 
@@ -463,18 +466,22 @@ async function handleCancellationSelection(
     .maybeSingle()
 
   if (ownerProfile?.phone) {
-    await sendCancellationAdminAlert(
-      ownerProfile.phone,
-      senderPhone,
-      outcome.studentName,
-      outcome.teacherName,
-      outcome.lessonStartAt,
-      timezone,
-      outcome.chargeResult.amount,
-      outcome.chargeResult.chargeType,
-      accessToken,
-      phoneNumberId
-    ).catch(err => {
+    let caChargeLine = ''
+    if (outcome.chargeResult.chargeType && outcome.chargeResult.amount > 0) {
+      const label = outcome.chargeResult.chargeType === 'full' ? 'חיוב מלא' : 'חיוב חלקי'
+      caChargeLine = `\nחיוב: ₪${outcome.chargeResult.amount.toFixed(2)} (${label})`
+    } else {
+      caChargeLine = '\nללא חיוב ביטול'
+    }
+    const caBody = await resolveTemplate(orgId, 'cancellation_admin_alert', {
+      student_name: outcome.studentName,
+      teacher_name: outcome.teacherName,
+      date: ccDate,
+      time: ccTime,
+      charge_line: caChargeLine,
+      parent_phone: senderPhone,
+    })
+    await sendTextMessage(ownerProfile.phone, caBody, accessToken, phoneNumberId).catch(err => {
       console.error('[whatsapp/webhook] Failed to send admin cancellation alert', err)
     })
   }
@@ -628,13 +635,18 @@ async function handleBalanceQuery(
 
   const chargeRows = (charges ?? []) as Array<{ amount: number; payment_link: string | null }>
   const total = chargeRows.reduce((sum, c) => sum + c.amount, 0)
-  const topCharges = chargeRows.slice(0, 3).map((c) => ({
-    amount: c.amount,
-    paymentLink: c.payment_link,
-  }))
+  const chargeLines = chargeRows.slice(0, 3).map(c => {
+    let line = `\n₪${c.amount.toFixed(2)}`
+    if (c.payment_link) line += ` — קישור לתשלום: ${c.payment_link}`
+    return line
+  }).join('')
 
-  await sendBalanceReply(senderPhone, total, topCharges, accessToken, phoneNumberId).catch((err) => {
-    console.error('[whatsapp/webhook] handleBalanceQuery: sendBalanceReply failed', { orgId, senderPhone, err })
+  const balanceBody = await resolveTemplate(orgId, 'balance_reply', {
+    total: total.toFixed(2),
+    charge_lines: chargeLines,
+  })
+  await sendTextMessage(senderPhone, balanceBody, accessToken, phoneNumberId).catch((err) => {
+    console.error('[whatsapp/webhook] handleBalanceQuery: send failed', { orgId, senderPhone, err })
   })
 
   console.info('[whatsapp/webhook] Balance query replied', { orgId, senderPhone, total })
@@ -652,7 +664,8 @@ async function handleScheduleQuery(
 
   const studentIds = await getParentStudentIds(db, orgId, parentId)
   if (studentIds.length === 0) {
-    await sendScheduleReply(senderPhone, [], accessToken, phoneNumberId).catch(() => {})
+    const emptyBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: 'אין שיעורים מתוכננים כרגע.' })
+    await sendTextMessage(senderPhone, emptyBody, accessToken, phoneNumberId).catch(() => {})
     return
   }
 
@@ -664,7 +677,8 @@ async function handleScheduleQuery(
     .eq('organization_id', orgId)
 
   if (lsError || !lessonStudents || lessonStudents.length === 0) {
-    await sendScheduleReply(senderPhone, [], accessToken, phoneNumberId).catch(() => {})
+    const emptyBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: 'אין שיעורים מתוכננים כרגע.' })
+    await sendTextMessage(senderPhone, emptyBody, accessToken, phoneNumberId).catch(() => {})
     return
   }
 
@@ -700,8 +714,12 @@ async function handleScheduleQuery(
     }
   })
 
-  await sendScheduleReply(senderPhone, formatted, accessToken, phoneNumberId).catch((err) => {
-    console.error('[whatsapp/webhook] handleScheduleQuery: sendScheduleReply failed', { orgId, senderPhone, err })
+  const lessonLines = formatted.length === 0
+    ? 'אין שיעורים מתוכננים כרגע.'
+    : formatted.map((l, i) => `${i + 1}. ${l.date} בשעה ${l.time} עם ${l.teacherName}`).join('\n')
+  const scheduleBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: lessonLines })
+  await sendTextMessage(senderPhone, scheduleBody, accessToken, phoneNumberId).catch((err) => {
+    console.error('[whatsapp/webhook] handleScheduleQuery: send failed', { orgId, senderPhone, err })
   })
 
   console.info('[whatsapp/webhook] Schedule query replied', { orgId, senderPhone })
@@ -741,8 +759,16 @@ async function handleReceiptQuery(
     }
   })
 
-  await sendReceiptReply(senderPhone, formatted, accessToken, phoneNumberId).catch((err) => {
-    console.error('[whatsapp/webhook] handleReceiptQuery: sendReceiptReply failed', { orgId, senderPhone, err })
+  const receiptLines = formatted.length === 0
+    ? '\nלא נמצאו תשלומים קודמים.'
+    : '\n' + formatted.map(c => `${c.date}: ₪${c.amount.toFixed(2)} — שולם`).join('\n')
+  const receiptTotal = formatted.reduce((sum, c) => sum + c.amount, 0)
+  const receiptBody = await resolveTemplate(orgId, 'balance_reply', {
+    total: receiptTotal.toFixed(2),
+    charge_lines: receiptLines,
+  })
+  await sendTextMessage(senderPhone, receiptBody, accessToken, phoneNumberId).catch((err) => {
+    console.error('[whatsapp/webhook] handleReceiptQuery: send failed', { orgId, senderPhone, err })
   })
 
   console.info('[whatsapp/webhook] Receipt query replied', { orgId, senderPhone })
@@ -757,8 +783,9 @@ async function handlePortalQuery(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const portalUrl = `${appUrl}/portal/${orgId}`
 
-  await sendPortalReply(senderPhone, portalUrl, accessToken, phoneNumberId).catch((err) => {
-    console.error('[whatsapp/webhook] handlePortalQuery: sendPortalReply failed', { orgId, senderPhone, err })
+  const portalBody = await resolveTemplate(orgId, 'portal_link_reply', { portal_url: portalUrl })
+  await sendTextMessage(senderPhone, portalBody, accessToken, phoneNumberId).catch((err) => {
+    console.error('[whatsapp/webhook] handlePortalQuery: send failed', { orgId, senderPhone, err })
   })
 
   console.info('[whatsapp/webhook] Portal query replied', { orgId, senderPhone })

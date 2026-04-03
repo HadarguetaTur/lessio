@@ -21,6 +21,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendTextMessage } from '../_shared/whatsapp.ts'
+import { resolveTemplate } from '../_shared/templates.ts'
 
 Deno.serve(async (_req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -122,8 +123,10 @@ async function processOrg(db: any, org: any, now: Date) {
     }
 
     const amount = Number(charge.amount).toFixed(2)
-    const message =
-      `תזכורת: יש לך חיוב פתוח בסך ₪${amount}. ניתן לשלם בקישור: ${charge.payment_link}`
+    const message = await resolveTemplate(db, org.id, 'payment_reminder', {
+      amount,
+      payment_link: charge.payment_link ?? '',
+    })
 
     // ── 5. Send WhatsApp message ──────────────────────────────────────────────
     let sendError: string | null = null

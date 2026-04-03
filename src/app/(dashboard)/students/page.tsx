@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, Pencil, Archive, RotateCcw, Users } from 'lucide-react'
+import { Plus, Pencil, Archive, RotateCcw, Users, GraduationCap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/auth/session'
 import { getStudents } from '@/lib/students'
@@ -31,19 +31,29 @@ export default async function StudentsPage(props: {
       <StudentSearch q={q} isActive={isActive} />
 
       {students.length === 0 ? (
-        <p className="mt-10 text-center text-sm text-gray-400">לא נמצאו תלמידים</p>
+        <div className="mt-6 bg-white rounded-xl border border-gray-100 shadow-sm py-16 flex flex-col items-center gap-2">
+          <GraduationCap size={32} className="text-gray-200" />
+          <p className="text-sm text-gray-400">
+            {q ? 'לא נמצאו תלמידים התואמים לחיפוש' : 'עדיין אין תלמידים'}
+          </p>
+          {!q && (
+            <Link href="/students/new" className="mt-1 text-sm text-blue-600 hover:underline">
+              הוסף תלמיד ראשון
+            </Link>
+          )}
+        </div>
       ) : (
-        <div className="mt-4 bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="mt-4 bg-white rounded-lg border border-gray-100 overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   שם
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   כיתה
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   פעולות
                 </th>
               </tr>

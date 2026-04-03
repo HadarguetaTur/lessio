@@ -23,7 +23,7 @@ export default async function PortalPaymentsPage({
 
   const { data: charges } = await db
     .from('charges')
-    .select('id, amount, status, charge_type, payment_link, created_at, paid_at')
+    .select('id, amount, status, charge_type, payment_link, receipt_url, created_at, paid_at')
     .eq('parent_id', session.parentId)
     .eq('organization_id', orgId)
     .order('created_at', { ascending: false })
@@ -103,7 +103,19 @@ export default async function PortalPaymentsPage({
                       {chargeTypeLabel[c.charge_type] ?? c.charge_type} · {c.paid_at ? formatDate(c.paid_at) : formatDate(c.created_at)}
                     </p>
                   </div>
-                  <span className="text-xs text-green-600 font-medium">שולם</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-green-600 font-medium">שולם</span>
+                    {(c as { receipt_url?: string | null }).receipt_url && (
+                      <a
+                        href={(c as { receipt_url: string }).receipt_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 underline"
+                      >
+                        קבלה
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

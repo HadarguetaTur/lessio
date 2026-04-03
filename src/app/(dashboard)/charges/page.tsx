@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Receipt } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getCharges, ChargeStatus } from '@/lib/charges'
 import { getParents } from '@/lib/parents'
@@ -64,15 +65,24 @@ export default async function ChargesPage(props: {
 
       {/* Aging summary */}
       {charges.length > 0 && (
-        <div className="flex flex-wrap gap-6 mb-5 text-sm text-gray-600">
-          <span>ממתין: <strong className="text-gray-900">₪{pendingTotal.toFixed(2)}</strong></span>
-          <span>חויב: <strong className="text-gray-900">₪{invoicedTotal.toFixed(2)}</strong></span>
-          <span>שולם החודש: <strong className="text-gray-900">₪{paidThisMonth.toFixed(2)}</strong></span>
+        <div className="bg-white rounded-lg border border-gray-100 p-4 mb-4 flex flex-wrap gap-6">
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">ממתין לתשלום</p>
+            <p className="text-base font-semibold text-gray-900">₪{pendingTotal.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">חויב</p>
+            <p className="text-base font-semibold text-gray-900">₪{invoicedTotal.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">שולם החודש</p>
+            <p className="text-base font-semibold text-green-700">₪{paidThisMonth.toFixed(2)}</p>
+          </div>
         </div>
       )}
 
       {/* Filters */}
-      <form method="GET" className="flex flex-wrap gap-3 mb-5">
+      <form method="GET" className="bg-white rounded-lg border border-gray-100 p-4 mb-5 flex flex-wrap gap-3 items-end">
         <select
           name="status"
           defaultValue={searchParams.status ?? ''}
@@ -133,38 +143,41 @@ export default async function ChargesPage(props: {
       )}
 
       {charges.length === 0 ? (
-        <p className="mt-10 text-center text-sm text-gray-400">לא נמצאו חיובים</p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 flex flex-col items-center gap-2">
+          <Receipt size={32} className="text-gray-200" />
+          <p className="text-sm text-gray-400">לא נמצאו חיובים</p>
+        </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   הורה
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-24">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">
                   פרטים
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   סוג
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   סכום
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   סטטוס
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   קישור תשלום
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   קבלה
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   תאריך יצירה
                 </th>
                 {canMarkPaid && (
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                     פעולות
                   </th>
                 )}
@@ -179,9 +192,9 @@ export default async function ChargesPage(props: {
                   <td className="px-4 py-3 text-sm">
                     <Link
                       href={`/charges/${charge.id}`}
-                      className="text-blue-600 hover:underline text-xs"
+                      className="text-blue-600 hover:underline text-xs font-medium"
                     >
-                      פתח
+                      פרטים
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
@@ -195,7 +208,7 @@ export default async function ChargesPage(props: {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[charge.status]}`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[charge.status]}`}
                     >
                       {STATUS_LABELS[charge.status]}
                     </span>

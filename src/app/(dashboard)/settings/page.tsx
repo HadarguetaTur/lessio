@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
-import { MessageCircle, CreditCard, Settings, CalendarOff, Bell, FileText } from 'lucide-react'
+import { MessageCircle, MessageSquare, CreditCard, Settings, CalendarOff, Bell, FileText } from 'lucide-react'
 
 /**
  * Settings landing page — owner/admin only.
@@ -15,6 +15,13 @@ const SETTING_CARDS = [
     icon: MessageCircle,
     label: 'WhatsApp',
     desc: 'חיבור מספר WhatsApp של הארגון',
+    ownerOnly: true,
+  },
+  {
+    href: '/settings/message-templates',
+    icon: MessageSquare,
+    label: 'הודעות WhatsApp',
+    desc: 'התאמה אישית של הודעות אוטומטיות',
     ownerOnly: true,
   },
   {

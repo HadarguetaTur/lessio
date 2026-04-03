@@ -79,8 +79,8 @@ export default async function HomeworkPage({
               href={value ? `/homework?status=${value}` : '/homework'}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                 active
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-blue-50 text-blue-700 font-medium border border-blue-200'
+                  : 'text-gray-600 hover:bg-gray-100 border border-transparent'
               }`}
             >
               {label}
@@ -97,16 +97,16 @@ export default async function HomeworkPage({
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">תלמיד</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">כותרת</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">תאריך הגשה</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">סטטוס</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">נשלח</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">הושלם</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">תלמיד</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">כותרת</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">תאריך הגשה</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">סטטוס</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">נשלח</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">הושלם</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

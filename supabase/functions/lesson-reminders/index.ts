@@ -18,6 +18,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendTextMessage } from '../_shared/whatsapp.ts'
+import { resolveTemplate } from '../_shared/templates.ts'
 
 Deno.serve(async (_req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -151,7 +152,11 @@ async function processOrg(db: any, org: any, now: Date) {
       month: 'long',
     })
 
-    const message = `תזכורת: יש לך שיעור עם ${teacherName} בשעה ${timeStr} (${dateStr}).`
+    const message = await resolveTemplate(db, org.id, 'lesson_reminder', {
+      teacher_name: teacherName,
+      date: dateStr,
+      time: timeStr,
+    })
 
     // ── 5. Send WhatsApp message ──────────────────────────────────────────────
     let sendError: string | null = null

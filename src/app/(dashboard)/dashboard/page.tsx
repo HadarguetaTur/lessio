@@ -79,35 +79,35 @@ export default async function DashboardPage() {
         <KpiCard label="תלמידים פעילים" value={stats.activeStudents} icon={GraduationCap} />
       </section>
 
-      {/* Today's status counters */}
+      {/* Today's status counters — secondary row, visually lighter than KPI cards */}
       <div className="mb-2">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">סטטוס היום</p>
-        <div className="grid grid-cols-5 gap-3 mb-8">
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
-            <p className="text-2xl font-bold text-gray-900 leading-none">{total}</p>
-            <p className="text-xs text-gray-500 mt-1.5">סה״כ</p>
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">סטטוס היום</p>
+        <div className="grid grid-cols-5 gap-2 mb-6">
+          <div className="bg-gray-50 rounded-lg border border-gray-100 px-3 py-2.5 text-center">
+            <p className="text-xl font-bold text-gray-800 leading-none">{total}</p>
+            <p className="text-xs text-gray-400 mt-1.5">סה״כ</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
-            <p className="text-2xl font-bold text-blue-600 leading-none">{scheduled}</p>
-            <p className="text-xs text-gray-500 mt-1.5">מתוכננים</p>
+          <div className="bg-gray-50 rounded-lg border border-gray-100 px-3 py-2.5 text-center">
+            <p className="text-xl font-bold text-blue-600 leading-none">{scheduled}</p>
+            <p className="text-xs text-gray-400 mt-1.5">מתוכננים</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
-            <p className="text-2xl font-bold text-green-600 leading-none">{completed}</p>
-            <p className="text-xs text-gray-500 mt-1.5">הושלמו</p>
+          <div className="bg-gray-50 rounded-lg border border-gray-100 px-3 py-2.5 text-center">
+            <p className="text-xl font-bold text-green-600 leading-none">{completed}</p>
+            <p className="text-xs text-gray-400 mt-1.5">הושלמו</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
-            <p className="text-2xl font-bold text-yellow-600 leading-none">{noShow}</p>
-            <p className="text-xs text-gray-500 mt-1.5">לא הגיע</p>
+          <div className="bg-gray-50 rounded-lg border border-gray-100 px-3 py-2.5 text-center">
+            <p className="text-xl font-bold text-yellow-600 leading-none">{noShow}</p>
+            <p className="text-xs text-gray-400 mt-1.5">לא הגיע</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
-            <p className="text-2xl font-bold text-red-500 leading-none">{cancelled}</p>
-            <p className="text-xs text-gray-500 mt-1.5">בוטלו</p>
+          <div className="bg-gray-50 rounded-lg border border-gray-100 px-3 py-2.5 text-center">
+            <p className="text-xl font-bold text-red-500 leading-none">{cancelled}</p>
+            <p className="text-xs text-gray-400 mt-1.5">בוטלו</p>
           </div>
         </div>
       </div>
 
       {/* Lessons table */}
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">שיעורים — היום</p>
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">שיעורים — היום</p>
       {lessons.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 flex flex-col items-center gap-2">
           <CalendarDays size={32} className="text-gray-200" />

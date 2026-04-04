@@ -66,3 +66,9 @@ Live in `supabase/functions/`. Shared utilities in `supabase/functions/_shared/`
 
 **Migration discipline:**
 All schema changes are forward-only SQL files in `supabase/migrations/`. Filename format: `YYYYMMDDHHMMSS_<description>.sql`. Never edit an applied migration.
+
+**`redirect()` rule:**
+Never call `redirect()` inside a `try/catch` block. Place `redirect()` after the try/catch, or rethrow `isRedirectError(err)` explicitly. Violating this silently swallows the redirect.
+
+**Zod version:**
+This project uses **Zod 4** (`zod@^4.x`). The API differs from Zod 3 — use `z.string().min(1)` not `.nonempty()`, `z.object({}).strict()` not `.strict()` chained after parse, etc.

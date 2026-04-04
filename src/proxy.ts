@@ -16,6 +16,9 @@ const DASHBOARD_PREFIXES = [
   '/settings',
   '/teacher',
   '/homework',
+  '/reports',
+  // Sprint 18: superadmin platform shell
+  '/admin',
 ]
 
 function isDashboardRoute(pathname: string): boolean {

@@ -1,5 +1,5 @@
 # LESSIO — AI Operating Manual
-*Current Sprint: Sprint 17 — Done*
+*Current Sprint: Sprint 18 — Done*
 
 ---
 
@@ -228,6 +228,33 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || src/components/reports/PeriodSelector.tsx — months selector writing ?months= query param | ✅ Done (Sprint 17) |
 || src/lib/dashboard/stats.ts — added cancellationRateThisMonth + atRiskStudents + newLeadsThisMonth | ✅ Done (Sprint 17) |
 || src/app/(dashboard)/dashboard/page.tsx — second KPI row (3 new cards) | ✅ Done (Sprint 17) |
+
+|| supabase/migrations/20260417000001_superadmin_dashboard.sql — superadmin role + nullable org_id + invariant constraint | ✅ Done (Sprint 18) |
+|| src/lib/auth/session.ts — requireDashboardSession / requireSuperAdminSession / requireMutation / support-mode session | ✅ Done (Sprint 18) |
+|| src/lib/superadmin/session.ts — thin re-export | ✅ Done (Sprint 18) |
+|| src/lib/support-session/index.ts — JWT sign/verify/cookie helpers (TTL 30m) | ✅ Done (Sprint 18) |
+|| src/proxy.ts — added /admin + /reports to DASHBOARD_PREFIXES | ✅ Done (Sprint 18) |
+|| src/app/(dashboard)/layout.tsx — support mode branch + superadmin redirect | ✅ Done (Sprint 18) |
+|| src/lib/env.ts — SUPPORT_SESSION_SECRET added to ALWAYS_REQUIRED | ✅ Done (Sprint 18) |
+|| src/app/(admin)/admin/layout.tsx — superadmin-only admin shell | ✅ Done (Sprint 18) |
+|| src/components/admin/AdminSidebar.tsx + AdminHeader.tsx — dark sidebar, Platform Admin label | ✅ Done (Sprint 18) |
+|| src/lib/superadmin/dashboard.ts — getPlatformDashboard: KPIs + needsSetup + recentOrgs | ✅ Done (Sprint 18) |
+|| src/app/(admin)/admin/dashboard/page.tsx — platform KPI dashboard | ✅ Done (Sprint 18) |
+|| src/components/admin/PlatformKpiGrid.tsx + NeedsSetupList.tsx + RecentOrgsList.tsx | ✅ Done (Sprint 18) |
+|| src/lib/superadmin/organizations.ts — getOrganizationsList (with filters + derived status) + getOrganizationDetail | ✅ Done (Sprint 18) |
+|| src/app/(admin)/admin/orgs/page.tsx — organizations list with search/status/missingSetup filters | ✅ Done (Sprint 18) |
+|| src/components/admin/OrganizationsTable.tsx + OrganizationStatusBadge.tsx + OrganizationFilters.tsx | ✅ Done (Sprint 18) |
+|| src/lib/superadmin/createOrganization.ts — 7-step resilient org creation with compensating rollback | ✅ Done (Sprint 18) |
+|| src/app/(admin)/admin/orgs/new/page.tsx + actions.ts — create org flow | ✅ Done (Sprint 18) |
+|| src/components/admin/NewOrganizationForm.tsx — client form with useActionState | ✅ Done (Sprint 18) |
+|| src/app/(admin)/admin/orgs/[id]/page.tsx + actions.ts — org detail + edit settings | ✅ Done (Sprint 18) |
+|| src/components/admin/OrganizationDetailCard.tsx + OrganizationSettingsForm.tsx | ✅ Done (Sprint 18) |
+|| src/lib/superadmin/billing.ts — getBillingReadiness: per-org payment/receipt/revenue data | ✅ Done (Sprint 18) |
+|| src/app/(admin)/admin/billing/page.tsx — billing readiness page | ✅ Done (Sprint 18) |
+|| src/components/admin/BillingReadinessTable.tsx | ✅ Done (Sprint 18) |
+|| src/app/(admin)/admin/orgs/[id]/StartSupportModeButton.tsx + actions.ts — start/exit support mode | ✅ Done (Sprint 18) |
+|| src/components/dashboard/SupportModeBanner.tsx — amber banner with org name + time remaining + exit | ✅ Done (Sprint 18) |
+|| Tests: session.test.ts (6 tests) + createOrganization.test.ts (3) + organizations.test.ts (5) + support-session/index.test.ts (5) | ✅ Done (Sprint 18) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.

@@ -20,6 +20,8 @@ const ALWAYS_REQUIRED: string[] = [
   'BOOKING_JWT_SECRET',
   // Sprint 13: parent portal session cookies
   'PORTAL_JWT_SECRET',
+  // Sprint 18: superadmin read-only support mode cookie signing
+  'SUPPORT_SESSION_SECRET',
 ]
 
 /**

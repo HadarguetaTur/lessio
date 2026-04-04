@@ -1,28 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockCreateClient, mockRedirect } = vi.hoisted(() => ({
+const { mockCreateClient, mockCreateServiceRoleClient, mockRedirect, mockGetSupportSession } = vi.hoisted(() => ({
   mockCreateClient: vi.fn(),
+  mockCreateServiceRoleClient: vi.fn(),
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`REDIRECT:${path}`)
   }),
+  mockGetSupportSession: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: mockCreateClient,
 }))
 
+vi.mock('@/lib/supabase/service-role', () => ({
+  createServiceRoleClient: mockCreateServiceRoleClient,
+}))
+
 vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
 }))
 
-import { getSession } from './session'
+vi.mock('@/lib/support-session', () => ({
+  getSupportSession: mockGetSupportSession,
+}))
+
+import { getSession, requireSuperAdminSession } from './session'
 
 function createSupabaseClient({
   user,
   profile,
 }: {
   user: { id: string } | null
-  profile?: { organization_id: string; role: string; full_name: string } | null
+  profile?: { organization_id: string | null; role: string; full_name: string } | null
 }) {
   return {
     auth: {
@@ -41,6 +51,8 @@ function createSupabaseClient({
 describe('getSession', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default: no active support session
+    mockGetSupportSession.mockResolvedValue(null)
   })
 
   it('returns the dashboard session when user and profile exist', async () => {
@@ -55,7 +67,7 @@ describe('getSession', () => {
       })
     )
 
-    await expect(getSession()).resolves.toEqual({
+    await expect(getSession()).resolves.toMatchObject({
       userId: 'user-1',
       orgId: 'org-1',
       role: 'admin',
@@ -84,5 +96,87 @@ describe('getSession', () => {
 
     await expect(getSession()).rejects.toThrow('REDIRECT:/login')
     expect(mockRedirect).toHaveBeenCalledWith('/login')
+  })
+
+  it('redirects to /admin/dashboard when user is a superadmin', async () => {
+    mockCreateClient.mockResolvedValue(
+      createSupabaseClient({
+        user: { id: 'sa-1' },
+        profile: {
+          organization_id: null,
+          role: 'superadmin',
+          full_name: 'Platform Admin',
+        },
+      })
+    )
+
+    await expect(getSession()).rejects.toThrow('REDIRECT:/admin/dashboard')
+    expect(mockRedirect).toHaveBeenCalledWith('/admin/dashboard')
+  })
+
+  it('returns support-mode session when support cookie is active', async () => {
+    const supportSession = {
+      superAdminId: 'sa-1',
+      targetOrgId: 'org-2',
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    }
+    mockGetSupportSession.mockResolvedValue(supportSession)
+
+    const adminProfileClient = createSupabaseClient({
+      user: { id: 'sa-1' },
+      profile: { organization_id: null, role: 'superadmin', full_name: 'Platform Admin' },
+    })
+    mockCreateServiceRoleClient.mockReturnValue(adminProfileClient)
+
+    const session = await getSession()
+    expect(session.orgId).toBe('org-2')
+    expect(session.isSupportMode).toBe(true)
+    expect(session.role).toBe('owner')
+  })
+})
+
+describe('requireSuperAdminSession', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetSupportSession.mockResolvedValue(null)
+  })
+
+  it('returns superadmin session when role is superadmin', async () => {
+    mockCreateClient.mockResolvedValue(
+      createSupabaseClient({
+        user: { id: 'sa-1' },
+        profile: {
+          organization_id: null,
+          role: 'superadmin',
+          full_name: 'Platform Admin',
+        },
+      })
+    )
+
+    await expect(requireSuperAdminSession()).resolves.toMatchObject({
+      userId: 'sa-1',
+      fullName: 'Platform Admin',
+    })
+  })
+
+  it('redirects to /login when not authenticated', async () => {
+    mockCreateClient.mockResolvedValue(
+      createSupabaseClient({ user: null })
+    )
+
+    await expect(requireSuperAdminSession()).rejects.toThrow('REDIRECT:/login')
+    expect(mockRedirect).toHaveBeenCalledWith('/login')
+  })
+
+  it('redirects to /dashboard when user is not a superadmin', async () => {
+    mockCreateClient.mockResolvedValue(
+      createSupabaseClient({
+        user: { id: 'user-1' },
+        profile: { organization_id: 'org-1', role: 'owner', full_name: 'Owner' },
+      })
+    )
+
+    await expect(requireSuperAdminSession()).rejects.toThrow('REDIRECT:/dashboard')
+    expect(mockRedirect).toHaveBeenCalledWith('/dashboard')
   })
 })

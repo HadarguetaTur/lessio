@@ -1,5 +1,5 @@
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprint 17 complete, Sprints 18–22 planned*
+*Updated: Sprint 18 complete, Sprints 19–22 planned*
 
 ---
 
@@ -252,29 +252,27 @@ ALTER TABLE teachers ADD COLUMN ical_token text; -- signed JWT, regeneratable
 ---
 
 ## Sprint 18 — Super Admin Dashboard
-**Status:** Planned  
-**Depends on:** Sprint 17 complete + at least 3 paying customers
+**Status:** ✅ Done
+**Branch:** `sprint-18`
 
-**Goal:** Platform owner manages all organizations from a single view. Essential for scaling beyond 5 customers.
-
-### Features:
-- Separate auth: super admin role (new `profiles.role = 'superadmin'`) — can only be set directly in DB
-- Route group: `/admin/` (separate from `(dashboard)`) — protected by superadmin role check
-- `/admin/dashboard` — platform KPIs: total orgs, total lessons this month, total revenue (platform-wide)
-- `/admin/orgs` — list all orgs with status, last activity, WhatsApp connected (Y/N), payment connected (Y/N)
-- `/admin/orgs/new` — create new org: name, timezone, owner email (triggers Supabase invite)
-- `/admin/orgs/[id]` — org detail: edit settings, view subscription status, impersonate owner (for support)
-- `/admin/billing` — subscription status per org (see Sprint 21)
-
-**Schema changes:**
-```sql
-ALTER TYPE profile_role ADD VALUE 'superadmin'; -- or update CHECK constraint
-```
+### Delivered:
+- Schema: `superadmin` role, `profiles.organization_id` nullable, invariant CHECK constraint
+- Session: `requireDashboardSession()` / `requireSuperAdminSession()` / `requireMutation()`
+- Support mode: signed httpOnly cookie (30m TTL), `SupportModeBanner`, `StartSupportModeButton`
+- Admin shell: `(admin)` route group, dark `AdminSidebar`, `AdminHeader` with Platform Admin label
+- `/admin/dashboard` — platform KPIs, needs-setup list, recently-active orgs
+- `/admin/orgs` — list with search/status/missingSetup filters, derived status (`needs_setup / active / inactive`)
+- `/admin/orgs/new` — 7-step resilient org creation with compensating rollback
+- `/admin/orgs/[id]` — org detail view + settings edit form
+- `/admin/billing` — billing readiness table (per-org payment/receipt/revenue data)
+- `SUPPORT_SESSION_SECRET` env var added to `ALWAYS_REQUIRED`
+- Tests: 227/227 passing (19 new tests added)
 
 ---
 
 ## Sprint 19 — AI WhatsApp Assistant
-**Status:** Planned  
+**Status:** Planned
+**Branch:** `sprint-19`
 **Depends on:** Sprint 18 complete
 
 **Goal:** When no known intent is matched in the WhatsApp webhook, an AI assistant answers contextually and naturally, dramatically reducing admin support overhead.
@@ -417,7 +415,7 @@ Currently the system uses "session messages" (valid only if parent messaged with
 | 15 | Tax Receipts + Bit/PayBox | Israeli legal compliance + payment conversion | ✅ Done |
 | 16 | Custom Templates + iCal + Portal Receipts | Brand customization + teacher retention + parent UX | ✅ Done |
 | 17 | Analytics & Reporting | Business owner visibility + accountant exports | ✅ Done |
-| 18 | Super Admin Dashboard | Platform scalability (5+ customers) |
+| 18 | Super Admin Dashboard | Platform scalability (5+ customers) | ✅ Done |
 | 19 | AI WhatsApp Assistant | Zero-admin parent support |
 | 20 | i18n + English | Infrastructure + English for international launch prep |
 | 21 | SaaS Billing | Automated revenue from your own customers |

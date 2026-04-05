@@ -277,16 +277,17 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || src/app/(dashboard)/settings/page.tsx — AI Assistant settings card | ✅ Done (Sprint 19) |
 || Tests: buildSystemPrompt snapshot + aiAssistant safety cap + webhook error fallback | ✅ Done (Sprint 19) |
 
-|| src/app/api/whatsapp/webhook/route.ts — call claimIncomingMessage at entry; releaseIncomingMessageClaim on retryable failure; 200 on duplicate | ⬜ Sprint 20 |
-|| src/lib/ai-assistant/conversationLog.ts — appendTurn() write helper (fire-and-forget, logs on DB error) | ⬜ Sprint 20 |
-|| src/app/api/whatsapp/webhook/route.ts — call appendTurn after AI reply; silent dead-ends → unknown_intent template | ⬜ Sprint 20 |
-|| src/app/(dashboard)/settings/ai-assistant/actions.ts — reject enable when OPENAI_API_KEY absent | ⬜ Sprint 20 |
-|| src/lib/ai-assistant/index.ts — classify OpenAI APIError with HTTP status before rethrowing | ⬜ Sprint 20 |
-|| src/app/(dashboard)/settings/ai-assistant/page.tsx — amber warning when key absent + AI enabled | ⬜ Sprint 20 |
-|| src/lib/whatsapp/idempotency.test.ts — unit tests for claim/release helpers | ⬜ Sprint 20 |
-|| src/lib/ai-assistant/conversationLog.test.ts — unit tests for appendTurn, countAssistantReplies, getRecentHistory | ⬜ Sprint 20 |
-|| src/app/api/whatsapp/webhook/webhook.test.ts — duplicate / retry / decrypt-failure regression tests | ⬜ Sprint 20 |
-|| src/lib/ai-assistant/aiAssistant.test.ts — key-absent guard + OpenAI error classification tests | ⬜ Sprint 20 |
+|| src/app/api/whatsapp/webhook/route.ts — claimIncomingMessage at entry; releaseIncomingMessageClaim on retryable failure; 200 on duplicate | ✅ Done (Sprint 20) |
+|| src/lib/ai-assistant/conversationLog.ts — appendTurn() write helper (fire-and-forget, logs on DB error) | ✅ Done (Sprint 20) |
+|| src/app/api/whatsapp/webhook/route.ts — logExchange after AI reply; silent dead-ends → unknown_intent template | ✅ Done (Sprint 20) |
+|| src/app/(dashboard)/settings/ai-assistant/actions.ts — reject enable when OPENAI_API_KEY absent | ✅ Done (Sprint 20) |
+|| src/lib/ai-assistant/index.ts — classify OpenAI APIError with HTTP status before rethrowing | ✅ Done (Sprint 20) |
+|| src/app/(dashboard)/settings/ai-assistant/page.tsx + AiAssistantForm.tsx — amber warning when key absent + AI enabled | ✅ Done (Sprint 20) |
+|| src/lib/whatsapp/idempotency.test.ts — unit tests for claim/release helpers | ✅ Done (Sprint 20) |
+|| src/lib/ai-assistant/conversationLog.test.ts — unit tests for appendTurn, countAssistantReplies, getRecentHistory | ✅ Done (Sprint 20) |
+|| src/app/api/whatsapp/webhook/webhook.test.ts — duplicate / retry / decrypt-failure / happy-path-no-release regression tests | ✅ Done (Sprint 20) |
+|| src/app/(dashboard)/settings/ai-assistant/actions.test.ts — key-absent guard + 4 other action tests | ✅ Done (Sprint 20) |
+|| src/lib/ai-assistant/aiAssistant.test.ts — OpenAI APIError classification test + extended mock | ✅ Done (Sprint 20) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.

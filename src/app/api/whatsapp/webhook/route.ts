@@ -42,7 +42,7 @@ import {
   executeCancellation,
 } from '@/lib/cancellation-flow'
 import { markAssignmentDone } from '@/lib/homework'
-import { aiAssistant } from '@/lib/ai-assistant'
+import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { DateTime } from 'luxon'
 import { claimIncomingMessage, releaseIncomingMessageClaim } from '@/lib/whatsapp/idempotency'
@@ -201,10 +201,10 @@ async function processMessage(
     .eq('is_active', true)
     .maybeSingle()
 
-  if (parentError) {
-    console.error('[whatsapp/webhook] DB error looking up parent', { error: parentError })
-    return
-  }
+    if (parentError) {
+      console.error('[whatsapp/webhook] DB error looking up parent', { error: parentError })
+      throw new Error('Failed to look up parent for inbound WhatsApp message')
+    }
 
   if (!parent) {
     // Unknown sender — upsert lead and send fixed reply regardless of message content
@@ -282,7 +282,7 @@ async function processMessage(
   // 10. Check booking intent
   if (!hasBookingIntent(msg.text)) {
     // No recognized intent — try AI assistant if enabled, else polite fallback
-    if (org.ai_assistant_enabled) {
+    if (org.ai_assistant_enabled && isAiAssistantConfigured()) {
       let reply: string
       let shouldLogExchange = false
 
@@ -309,14 +309,13 @@ async function processMessage(
         })
       }
     } else {
-      const unknownBody = await resolveTemplate(org.id, 'unknown_intent_fallback', {})
-      await sendTextMessage(senderPhone, unknownBody, accessToken, phoneNumberId).catch((err) => {
-        console.error('[whatsapp/webhook] Failed to send unknown-intent reply', {
+      if (org.ai_assistant_enabled && !isAiAssistantConfigured()) {
+        console.warn('[whatsapp/webhook] AI assistant enabled but OPENAI_API_KEY is missing — using fallback reply', {
           orgId: org.id,
-          senderPhone,
-          err,
         })
-      })
+      }
+      const unknownBody = await resolveTemplate(org.id, 'unknown_intent_fallback', {})
+      await sendTextMessage(senderPhone, unknownBody, accessToken, phoneNumberId)
     }
     return
   }
@@ -328,24 +327,39 @@ async function processMessage(
     .eq('organization_id', org.id)
     .eq('parent_id', parent.id)
 
-  if (relError || !relationships) {
-    console.error('[whatsapp/webhook] DB error looking up students', { error: relError })
-    return
-  }
+    if (relError || !relationships) {
+      console.error('[whatsapp/webhook] DB error looking up students', { error: relError })
+      throw new Error('Failed to look up parent students for booking flow')
+    }
 
-  if (relationships.length === 0) {
-    // Accepted Sprint 1 limitation: a parent without linked students cannot receive
-    // a booking link because the booking JWT must contain a concrete studentId.
-    console.warn('[whatsapp/webhook] Parent has no students — no booking link sent')
-    return
-  }
+    if (relationships.length === 0) {
+      console.warn('[whatsapp/webhook] Parent has no students — sending explanatory reply', {
+        orgId: org.id,
+        parentId: parent.id,
+      })
+      await sendBookingUnavailableReply(
+        senderPhone,
+        'לא הצלחתי ליצור קישור לקביעת שיעור כי אין תלמיד מקושר לחשבון. אנא פנה/י לצוות לסיוע.',
+        accessToken,
+        phoneNumberId
+      )
+      return
+    }
 
-  if (relationships.length > 1) {
-    // Accepted Sprint 1 limitation: when a parent has multiple students, the system
-    // does not guess which student to book for and does not send a link.
-    console.warn('[whatsapp/webhook] Parent has multiple students — booking link not sent')
-    return
-  }
+    if (relationships.length > 1) {
+      console.warn('[whatsapp/webhook] Parent has multiple students — sending explanatory reply', {
+        orgId: org.id,
+        parentId: parent.id,
+        studentCount: relationships.length,
+      })
+      await sendBookingUnavailableReply(
+        senderPhone,
+        'לא הצלחתי ליצור קישור לקביעת שיעור כי לחשבון מקושרים כמה תלמידים. אנא פנה/י לצוות ונשמח לעזור.',
+        accessToken,
+        phoneNumberId
+      )
+      return
+    }
 
   const studentId = relationships[0].student_id
 
@@ -386,6 +400,15 @@ async function handleUnknownSender(
   await sendUnknownParentReply(phone, accessToken, phoneNumberId)
 }
 
+async function sendBookingUnavailableReply(
+  phone: string,
+  body: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  await sendTextMessage(phone, body, accessToken, phoneNumberId)
+}
+
 async function handleCancellationIntent(
   parentId: string,
   orgId: string,
@@ -397,17 +420,13 @@ async function handleCancellationIntent(
   const lessons = await getEligibleLessons(orgId, parentId)
 
   if (lessons.length === 0) {
-    await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId).catch(err => {
-      console.error('[whatsapp/webhook] Failed to send no-eligible-lessons reply', { orgId, senderPhone, err })
-    })
+    await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
     return
   }
 
   const message = formatLessonListMessage(lessons, timezone)
   await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
-  await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId).catch(err => {
-    console.error('[whatsapp/webhook] Failed to send cancellation lesson list', { orgId, senderPhone, err })
-  })
+  await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId)
   console.info('[whatsapp/webhook] Cancellation lesson list sent', { orgId, senderPhone })
 }
 
@@ -426,24 +445,18 @@ async function handleCancellationSelection(
 
   if (isNaN(num) || num < 1 || num > count) {
     // Invalid input — keep flow open
-    await sendInvalidSelectionReply(senderPhone, accessToken, phoneNumberId).catch(err => {
-      console.error('[whatsapp/webhook] Failed to send invalid-selection reply', { orgId, senderPhone, err })
-    })
+    await sendInvalidSelectionReply(senderPhone, accessToken, phoneNumberId)
 
     // Re-fetch eligible lessons to rebuild the list (lesson may have changed)
     const lessons = await getEligibleLessons(orgId, parentId)
     if (lessons.length === 0) {
-      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId).catch(err => {
-        console.error('[whatsapp/webhook] Failed to send no-eligible-lessons reply', { orgId, senderPhone, err })
-      })
+      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
       await deleteCancellationSession(orgId, senderPhone)
       return
     }
     const message = formatLessonListMessage(lessons, timezone)
     await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
-    await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId).catch(err => {
-      console.error('[whatsapp/webhook] Failed to send cancellation lesson list', { orgId, senderPhone, err })
-    })
+    await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId)
     return
   }
 
@@ -462,16 +475,17 @@ async function handleCancellationSelection(
     // Lesson no longer eligible — error + rebuild list
     const lessons = await getEligibleLessons(orgId, parentId)
     if (lessons.length === 0) {
-      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId).catch(err => {
-        console.error('[whatsapp/webhook] Failed to send no-eligible-lessons reply', { orgId, senderPhone, err })
-      })
+      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
       await deleteCancellationSession(orgId, senderPhone)
       return
     }
     const errorMsg = 'השיעור שנבחר אינו זמין עוד לביטול.'
-    await sendCancellationLessonList(senderPhone, errorMsg + '\n\n' + formatLessonListMessage(lessons, timezone), accessToken, phoneNumberId).catch(err => {
-      console.error('[whatsapp/webhook] Failed to send cancellation lesson list', { orgId, senderPhone, err })
-    })
+    await sendCancellationLessonList(
+      senderPhone,
+      errorMsg + '\n\n' + formatLessonListMessage(lessons, timezone),
+      accessToken,
+      phoneNumberId
+    )
     await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
     return
   }
@@ -479,57 +493,66 @@ async function handleCancellationSelection(
   // Success — delete session
   await deleteCancellationSession(orgId, senderPhone)
 
-  // Notify parent — WhatsApp failure must not roll back the completed cancellation
-  const ccDate = new Date(outcome.lessonStartAt).toLocaleDateString('he-IL', {
-    timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long',
-  })
-  const ccTime = new Date(outcome.lessonStartAt).toLocaleTimeString('he-IL', {
-    timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false,
-  })
-  let ccChargeLine = ''
-  if (outcome.chargeResult.chargeType && outcome.chargeResult.amount > 0) {
-    const label = outcome.chargeResult.chargeType === 'full' ? 'חיוב ביטול מלא' : 'חיוב ביטול חלקי'
-    ccChargeLine = `\n${label}: ₪${outcome.chargeResult.amount.toFixed(2)}`
-  }
-  const ccBody = await resolveTemplate(orgId, 'cancellation_confirmation', {
-    student_name: outcome.studentName,
-    teacher_name: outcome.teacherName,
-    date: ccDate,
-    time: ccTime,
-    charge_line: ccChargeLine,
-  })
-  await sendTextMessage(senderPhone, ccBody, accessToken, phoneNumberId).catch(err => {
-    console.error('[whatsapp/webhook] Failed to send cancellation confirmation — cancellation committed', { orgId, senderPhone, lessonId: selectedLessonId, err })
-  })
-
-  // Notify admin (best-effort — do not throw if admin phone missing)
-  const db = createServiceRoleClient()
-  const { data: ownerProfile } = await db
-    .from('profiles')
-    .select('phone')
-    .eq('organization_id', orgId)
-    .eq('role', 'owner')
-    .eq('is_active', true)
-    .maybeSingle()
-
-  if (ownerProfile?.phone) {
-    let caChargeLine = ''
+  try {
+    // Notify parent — WhatsApp failure must not roll back the completed cancellation
+    const ccDate = new Date(outcome.lessonStartAt).toLocaleDateString('he-IL', {
+      timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long',
+    })
+    const ccTime = new Date(outcome.lessonStartAt).toLocaleTimeString('he-IL', {
+      timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false,
+    })
+    let ccChargeLine = ''
     if (outcome.chargeResult.chargeType && outcome.chargeResult.amount > 0) {
-      const label = outcome.chargeResult.chargeType === 'full' ? 'חיוב מלא' : 'חיוב חלקי'
-      caChargeLine = `\nחיוב: ₪${outcome.chargeResult.amount.toFixed(2)} (${label})`
-    } else {
-      caChargeLine = '\nללא חיוב ביטול'
+      const label = outcome.chargeResult.chargeType === 'full' ? 'חיוב ביטול מלא' : 'חיוב ביטול חלקי'
+      ccChargeLine = `\n${label}: ₪${outcome.chargeResult.amount.toFixed(2)}`
     }
-    const caBody = await resolveTemplate(orgId, 'cancellation_admin_alert', {
+    const ccBody = await resolveTemplate(orgId, 'cancellation_confirmation', {
       student_name: outcome.studentName,
       teacher_name: outcome.teacherName,
       date: ccDate,
       time: ccTime,
-      charge_line: caChargeLine,
-      parent_phone: senderPhone,
+      charge_line: ccChargeLine,
     })
-    await sendTextMessage(ownerProfile.phone, caBody, accessToken, phoneNumberId).catch(err => {
-      console.error('[whatsapp/webhook] Failed to send admin cancellation alert', err)
+    await sendTextMessage(senderPhone, ccBody, accessToken, phoneNumberId).catch(err => {
+      console.error('[whatsapp/webhook] Failed to send cancellation confirmation — cancellation committed', { orgId, senderPhone, lessonId: selectedLessonId, err })
+    })
+
+    // Notify admin (best-effort — do not throw if admin phone missing)
+    const db = createServiceRoleClient()
+    const { data: ownerProfile } = await db
+      .from('profiles')
+      .select('phone')
+      .eq('organization_id', orgId)
+      .eq('role', 'owner')
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (ownerProfile?.phone) {
+      let caChargeLine = ''
+      if (outcome.chargeResult.chargeType && outcome.chargeResult.amount > 0) {
+        const label = outcome.chargeResult.chargeType === 'full' ? 'חיוב מלא' : 'חיוב חלקי'
+        caChargeLine = `\nחיוב: ₪${outcome.chargeResult.amount.toFixed(2)} (${label})`
+      } else {
+        caChargeLine = '\nללא חיוב ביטול'
+      }
+      const caBody = await resolveTemplate(orgId, 'cancellation_admin_alert', {
+        student_name: outcome.studentName,
+        teacher_name: outcome.teacherName,
+        date: ccDate,
+        time: ccTime,
+        charge_line: caChargeLine,
+        parent_phone: senderPhone,
+      })
+      await sendTextMessage(ownerProfile.phone, caBody, accessToken, phoneNumberId).catch(err => {
+        console.error('[whatsapp/webhook] Failed to send admin cancellation alert', err)
+      })
+    }
+  } catch (err) {
+    console.error('[whatsapp/webhook] Post-cancellation notification flow failed after commit', {
+      orgId,
+      senderPhone,
+      lessonId: selectedLessonId,
+      err,
     })
   }
 
@@ -554,7 +577,7 @@ async function getParentStudentIds(
 
   if (error) {
     console.error('[whatsapp/webhook] getParentStudentIds DB error', { orgId, parentId, error })
-    return []
+    throw new Error('Failed to load student relationships for parent')
   }
   return (data ?? []).map((r: { student_id: string }) => r.student_id)
 }
@@ -577,9 +600,7 @@ async function handleHomeworkDone(
       'לא נמצאו שיעורי בית פתוחים לסימון.',
       accessToken,
       phoneNumberId
-    ).catch((err) => {
-      console.error('[whatsapp/webhook] handleHomeworkDone: failed to send reply', { orgId, senderPhone, err })
-    })
+    )
     return
   }
 
@@ -595,7 +616,7 @@ async function handleHomeworkDone(
 
   if (asgError) {
     console.error('[whatsapp/webhook] handleHomeworkDone: DB error', { orgId, parentId, error: asgError })
-    return
+    throw new Error('Failed to load homework assignments for parent')
   }
 
   if (!assignments || assignments.length === 0) {
@@ -604,9 +625,7 @@ async function handleHomeworkDone(
       'לא נמצאו שיעורי בית פתוחים לסימון.',
       accessToken,
       phoneNumberId
-    ).catch((err) => {
-      console.error('[whatsapp/webhook] handleHomeworkDone: failed to send reply', { orgId, senderPhone, err })
-    })
+    )
     return
   }
 
@@ -614,9 +633,7 @@ async function handleHomeworkDone(
   const assignment = assignments[0] as AssignmentRow
 
   // Mark as done
-  await markAssignmentDone({ assignmentId: assignment.id, organizationId: orgId }).catch((err) => {
-    console.error('[whatsapp/webhook] handleHomeworkDone: markAssignmentDone failed', { assignmentId: assignment.id, err })
-  })
+  await markAssignmentDone({ assignmentId: assignment.id, organizationId: orgId })
 
   // Get student name
   const { data: student } = await db
@@ -677,7 +694,7 @@ async function handleBalanceQuery(
 
   if (error) {
     console.error('[whatsapp/webhook] handleBalanceQuery: DB error', { orgId, parentId, error })
-    return
+    throw new Error('Failed to load balance data for parent')
   }
 
   const chargeRows = (charges ?? []) as Array<{ amount: number; payment_link: string | null }>
@@ -692,9 +709,7 @@ async function handleBalanceQuery(
     total: total.toFixed(2),
     charge_lines: chargeLines,
   })
-  await sendTextMessage(senderPhone, balanceBody, accessToken, phoneNumberId).catch((err) => {
-    console.error('[whatsapp/webhook] handleBalanceQuery: send failed', { orgId, senderPhone, err })
-  })
+  await sendTextMessage(senderPhone, balanceBody, accessToken, phoneNumberId)
 
   console.info('[whatsapp/webhook] Balance query replied', { orgId, senderPhone, total })
 }
@@ -712,7 +727,7 @@ async function handleScheduleQuery(
   const studentIds = await getParentStudentIds(db, orgId, parentId)
   if (studentIds.length === 0) {
     const emptyBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: 'אין שיעורים מתוכננים כרגע.' })
-    await sendTextMessage(senderPhone, emptyBody, accessToken, phoneNumberId).catch(() => {})
+    await sendTextMessage(senderPhone, emptyBody, accessToken, phoneNumberId)
     return
   }
 
@@ -723,9 +738,14 @@ async function handleScheduleQuery(
     .in('student_id', studentIds)
     .eq('organization_id', orgId)
 
-  if (lsError || !lessonStudents || lessonStudents.length === 0) {
+  if (lsError) {
+    console.error('[whatsapp/webhook] handleScheduleQuery: lesson_students DB error', { orgId, parentId, error: lsError })
+    throw new Error('Failed to load lesson relationships for schedule query')
+  }
+
+  if (!lessonStudents || lessonStudents.length === 0) {
     const emptyBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: 'אין שיעורים מתוכננים כרגע.' })
-    await sendTextMessage(senderPhone, emptyBody, accessToken, phoneNumberId).catch(() => {})
+    await sendTextMessage(senderPhone, emptyBody, accessToken, phoneNumberId)
     return
   }
 
@@ -743,7 +763,7 @@ async function handleScheduleQuery(
 
   if (lessonsError) {
     console.error('[whatsapp/webhook] handleScheduleQuery: DB error', { orgId, parentId, error: lessonsError })
-    return
+    throw new Error('Failed to load scheduled lessons for parent')
   }
 
   type LessonRow = {
@@ -765,9 +785,7 @@ async function handleScheduleQuery(
     ? 'אין שיעורים מתוכננים כרגע.'
     : formatted.map((l, i) => `${i + 1}. ${l.date} בשעה ${l.time} עם ${l.teacherName}`).join('\n')
   const scheduleBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: lessonLines })
-  await sendTextMessage(senderPhone, scheduleBody, accessToken, phoneNumberId).catch((err) => {
-    console.error('[whatsapp/webhook] handleScheduleQuery: send failed', { orgId, senderPhone, err })
-  })
+  await sendTextMessage(senderPhone, scheduleBody, accessToken, phoneNumberId)
 
   console.info('[whatsapp/webhook] Schedule query replied', { orgId, senderPhone })
 }
@@ -793,7 +811,7 @@ async function handleReceiptQuery(
 
   if (error) {
     console.error('[whatsapp/webhook] handleReceiptQuery: DB error', { orgId, parentId, error })
-    return
+    throw new Error('Failed to load receipt history for parent')
   }
 
   type ChargeRow = { amount: number; updated_at: string }
@@ -814,9 +832,7 @@ async function handleReceiptQuery(
     total: receiptTotal.toFixed(2),
     charge_lines: receiptLines,
   })
-  await sendTextMessage(senderPhone, receiptBody, accessToken, phoneNumberId).catch((err) => {
-    console.error('[whatsapp/webhook] handleReceiptQuery: send failed', { orgId, senderPhone, err })
-  })
+  await sendTextMessage(senderPhone, receiptBody, accessToken, phoneNumberId)
 
   console.info('[whatsapp/webhook] Receipt query replied', { orgId, senderPhone })
 }
@@ -831,9 +847,7 @@ async function handlePortalQuery(
   const portalUrl = `${appUrl}/portal/${orgId}`
 
   const portalBody = await resolveTemplate(orgId, 'portal_link_reply', { portal_url: portalUrl })
-  await sendTextMessage(senderPhone, portalBody, accessToken, phoneNumberId).catch((err) => {
-    console.error('[whatsapp/webhook] handlePortalQuery: send failed', { orgId, senderPhone, err })
-  })
+  await sendTextMessage(senderPhone, portalBody, accessToken, phoneNumberId)
 
   console.info('[whatsapp/webhook] Portal query replied', { orgId, senderPhone })
 }

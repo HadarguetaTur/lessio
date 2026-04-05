@@ -5,11 +5,13 @@ const {
   mockGetSession,
   mockRequireMutation,
   mockCreateServiceRoleClient,
+  mockIsAiAssistantConfigured,
 } = vi.hoisted(() => ({
   mockRevalidatePath: vi.fn(),
   mockGetSession: vi.fn(),
   mockRequireMutation: vi.fn(),
   mockCreateServiceRoleClient: vi.fn(),
+  mockIsAiAssistantConfigured: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
@@ -23,6 +25,10 @@ vi.mock('@/lib/auth/session', () => ({
 
 vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: mockCreateServiceRoleClient,
+}))
+
+vi.mock('@/lib/ai-assistant', () => ({
+  isAiAssistantConfigured: mockIsAiAssistantConfigured,
 }))
 
 import { saveAiAssistantSettings } from './actions'
@@ -47,6 +53,7 @@ describe('saveAiAssistantSettings', () => {
       isSupportMode: false,
     })
     mockRequireMutation.mockImplementation(() => {})
+    mockIsAiAssistantConfigured.mockReturnValue(true)
   })
 
   it('saves the enabled flag for an owner session', async () => {
@@ -98,6 +105,18 @@ describe('saveAiAssistantSettings', () => {
     const result = await saveAiAssistantSettings({ error: null }, formData)
 
     expect(result.error).toBe('נתונים לא תקינים')
+    expect(mockCreateServiceRoleClient).not.toHaveBeenCalled()
+  })
+
+  it('blocks enabling AI when OPENAI_API_KEY is missing', async () => {
+    mockIsAiAssistantConfigured.mockReturnValue(false)
+
+    const formData = new FormData()
+    formData.set('ai_assistant_enabled', 'on')
+
+    const result = await saveAiAssistantSettings({ error: null }, formData)
+
+    expect(result.error).toContain('OPENAI_API_KEY')
     expect(mockCreateServiceRoleClient).not.toHaveBeenCalled()
   })
 })

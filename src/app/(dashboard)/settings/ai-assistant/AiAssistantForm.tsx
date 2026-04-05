@@ -10,15 +10,24 @@ import { saveAiAssistantSettings, type AiAssistantActionState } from './actions'
 
 interface Props {
   defaultEnabled: boolean
+  isConfigured: boolean
 }
 
 const initialState: AiAssistantActionState = { error: null }
 
-export function AiAssistantForm({ defaultEnabled }: Props) {
+export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
   const [state, formAction, isPending] = useActionState(saveAiAssistantSettings, initialState)
+  const canToggle = isConfigured || defaultEnabled
 
   return (
     <form key={String(defaultEnabled)} action={formAction}>
+      {!isConfigured && (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          `OPENAI_API_KEY` לא מוגדר כרגע בשרת. אפשר להשאיר את הפיצ&#39;ר כבוי, או לכבות אותו אם הופעל
+          בעבר, אבל לא ניתן להפעיל אותו מחדש עד להשלמת ההגדרה.
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-6">
         <div>
           <p className="text-sm font-semibold text-gray-900">עוזר AI ב-WhatsApp</p>
@@ -32,6 +41,7 @@ export function AiAssistantForm({ defaultEnabled }: Props) {
             type="checkbox"
             name="ai_assistant_enabled"
             defaultChecked={defaultEnabled}
+            disabled={!canToggle}
             className="sr-only peer"
             onChange={(e) => {
               // Auto-submit on toggle change

@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export type AiAssistantActionState = {
@@ -46,6 +47,10 @@ export async function saveAiAssistantSettings(
   }
 
   const { ai_assistant_enabled } = parsed.data
+
+  if (ai_assistant_enabled && !isAiAssistantConfigured()) {
+    return { error: 'לא ניתן להפעיל את עוזר ה-AI לפני שמוגדר OPENAI_API_KEY בשרת.' }
+  }
 
   const db = createServiceRoleClient()
   const { error: updateError } = await db

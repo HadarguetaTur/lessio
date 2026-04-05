@@ -7,7 +7,11 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
-export async function buildSystemPrompt(orgId: string, phone: string): Promise<string> {
+export async function buildSystemPrompt(
+  orgId: string,
+  phone: string,
+  parentIdOverride: string | null = null
+): Promise<string> {
   const db = createServiceRoleClient()
 
   // Fetch org
@@ -21,12 +25,14 @@ export async function buildSystemPrompt(orgId: string, phone: string): Promise<s
   const timezone = (org?.timezone as string | null) ?? 'Asia/Jerusalem'
 
   // Fetch parent
-  const { data: parent } = await db
+  const parentQuery = db
     .from('parents')
     .select('id, full_name')
     .eq('organization_id', orgId)
-    .eq('phone', phone)
-    .maybeSingle()
+
+  const { data: parent } = parentIdOverride
+    ? await parentQuery.eq('id', parentIdOverride).maybeSingle()
+    : await parentQuery.eq('phone', phone).maybeSingle()
 
   const parentName = (parent as { id: string; full_name: string } | null)?.full_name ?? 'הלקוח'
   const parentId = (parent as { id: string; full_name: string } | null)?.id ?? null

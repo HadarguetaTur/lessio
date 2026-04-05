@@ -17,7 +17,15 @@ export const HUMAN_REDIRECT_MESSAGE =
 
 let _openai: OpenAI | null = null
 
+export function isAiAssistantConfigured(): boolean {
+  return Boolean(process.env.OPENAI_API_KEY)
+}
+
 function getOpenAI(): OpenAI {
+  if (!isAiAssistantConfigured()) {
+    throw new Error('OPENAI_API_KEY is not configured')
+  }
+
   if (!_openai) {
     _openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -37,7 +45,7 @@ function getOpenAI(): OpenAI {
 export async function aiAssistant(
   orgId: string,
   phone: string,
-  _parentId: string | null,
+  parentId: string | null,
   incomingMessage: string
 ): Promise<string> {
   // 1. Safety cap — prevent runaway spend
@@ -63,23 +71,38 @@ export async function aiAssistant(
   }
 
   // 2. Build system prompt with live context
-  const systemPrompt = await buildSystemPrompt(orgId, phone)
+  const systemPrompt = await buildSystemPrompt(orgId, phone, parentId)
 
   // 3. Fetch recent conversation history (last 10 turns, past 24h)
   const history = await getRecentHistory(orgId, phone)
 
   // 4. Call OpenAI
   const openai = getOpenAI()
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      ...history,
-      { role: 'user', content: incomingMessage },
-    ],
-    max_tokens: 300,
-    temperature: 0.3,
-  })
+  let response: Awaited<ReturnType<typeof openai.chat.completions.create>>
+  try {
+    response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...history,
+        { role: 'user', content: incomingMessage },
+      ],
+      max_tokens: 300,
+      temperature: 0.3,
+    })
+  } catch (err) {
+    if (err instanceof OpenAI.APIError) {
+      console.error('[ai-assistant] OpenAI API error', {
+        orgId,
+        phone,
+        status: err.status,
+        message: err.message,
+      })
+    } else {
+      console.error('[ai-assistant] Unexpected error', { orgId, phone, err })
+    }
+    throw err
+  }
 
   const reply = response.choices[0]?.message?.content?.trim() ?? HUMAN_REDIRECT_MESSAGE
 

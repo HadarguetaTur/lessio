@@ -64,6 +64,33 @@ export async function countAssistantReplies(orgId: string, phone: string): Promi
   return count ?? 0
 }
 
+/**
+ * Inserts a single conversation turn (user or assistant).
+ * Fire-and-forget contract: DB errors are logged but never thrown.
+ */
+export async function appendTurn(
+  orgId: string,
+  phone: string,
+  parentId: string | null,
+  role: ConversationRole,
+  content: string
+): Promise<void> {
+  const db = createServiceRoleClient()
+
+  const { error } = await db.from('conversation_log').insert({
+    organization_id: orgId,
+    phone,
+    parent_id: parentId,
+    role,
+    content,
+  })
+
+  if (error) {
+    console.error('[conversation-log] appendTurn error', { orgId, phone, role, error })
+    // Do not throw — fire-and-forget contract
+  }
+}
+
 /** Inserts a user + assistant turn pair for the given exchange. */
 export async function logExchange(
   orgId: string,

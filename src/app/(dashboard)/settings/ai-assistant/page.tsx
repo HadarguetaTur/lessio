@@ -1,5 +1,6 @@
 import { forbidden } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
+import { isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { AiAssistantForm } from './AiAssistantForm'
 import { ConversationLogTable } from '@/components/dashboard/settings/ConversationLogTable'
@@ -12,6 +13,7 @@ import { ConversationLogTable } from '@/components/dashboard/settings/Conversati
 
 export default async function AiAssistantSettingsPage() {
   const { orgId, role } = await getSession()
+  const isConfigured = isAiAssistantConfigured()
 
   if (role !== 'owner') {
     forbidden()
@@ -44,7 +46,10 @@ export default async function AiAssistantSettingsPage() {
 
       {/* Toggle */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-        <AiAssistantForm defaultEnabled={org?.ai_assistant_enabled ?? false} />
+        <AiAssistantForm
+          defaultEnabled={org?.ai_assistant_enabled ?? false}
+          isConfigured={isConfigured}
+        />
       </div>
 
       {/* Conversation log */}

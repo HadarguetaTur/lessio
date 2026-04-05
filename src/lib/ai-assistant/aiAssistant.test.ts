@@ -19,17 +19,30 @@ vi.mock('./buildSystemPrompt', () => ({
 
 const mockCreate = vi.fn()
 
-vi.mock('openai', () => ({
-  default: class MockOpenAI {
-    chat = { completions: { create: mockCreate } }
-  },
-}))
+vi.mock('openai', () => {
+  class MockAPIError extends Error {
+    status: number
+    constructor(message: string, status: number) {
+      super(message)
+      this.name = 'APIError'
+      this.status = status
+    }
+  }
+
+  return {
+    default: class MockOpenAI {
+      chat = { completions: { create: mockCreate } }
+      static APIError = MockAPIError
+    },
+  }
+})
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('aiAssistant()', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    process.env.OPENAI_API_KEY = 'test-openai-key'
   })
 
   it('returns human-redirect when safety cap (≥3 replies) is reached', async () => {
@@ -105,5 +118,38 @@ describe('aiAssistant()', () => {
 
     const result = await aiAssistant('org-1', '+972501234567', 'parent-2', 'שאלה')
     expect(result).toBe('תשובה')
+  })
+
+  it('rethrows when the OpenAI request fails', async () => {
+    const { countAssistantReplies } = await import('./conversationLog')
+    vi.mocked(countAssistantReplies).mockResolvedValue(1)
+    mockCreate.mockRejectedValue(new Error('openai down'))
+
+    await expect(
+      aiAssistant('org-1', '+972501234567', 'parent-1', 'שאלה')
+    ).rejects.toThrow('openai down')
+  })
+
+  it('logs the HTTP status when OpenAI throws an APIError and rethrows', async () => {
+    const { countAssistantReplies } = await import('./conversationLog')
+    vi.mocked(countAssistantReplies).mockResolvedValue(1)
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const { default: MockOpenAI } = await import('openai')
+    type WithAPIError = { APIError: new (m: string, s: number) => Error }
+    const apiError = new (MockOpenAI as unknown as WithAPIError).APIError('rate limited', 429)
+    mockCreate.mockRejectedValue(apiError)
+
+    await expect(
+      aiAssistant('org-1', '+972501234567', null, 'שאלה')
+    ).rejects.toThrow()
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[ai-assistant] OpenAI API error',
+      expect.objectContaining({ status: 429 })
+    )
+
+    consoleSpy.mockRestore()
   })
 })

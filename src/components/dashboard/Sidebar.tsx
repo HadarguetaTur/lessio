@@ -25,6 +25,7 @@ import {
   Plus,
   FileText,
   BarChart2,
+  Bot,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 
@@ -78,6 +79,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/settings/cancellation-policy', label: 'מדיניות ביטולים', icon: Settings,       roles: ['owner'] },
       { href: '/settings/holidays',            label: 'חגים וחופשות',    icon: CalendarOff,    roles: ['owner', 'admin'] },
       { href: '/settings/reminders',           label: 'תזכורות',          icon: Bell,           roles: ['owner'] },
+      { href: '/settings/ai-assistant',        label: 'עוזר AI',          icon: Bot,            roles: ['owner'] },
     ],
   },
   {

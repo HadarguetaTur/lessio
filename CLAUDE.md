@@ -72,3 +72,15 @@ Never call `redirect()` inside a `try/catch` block. Place `redirect()` after the
 
 **Zod version:**
 This project uses **Zod 4** (`zod@^4.x`). The API differs from Zod 3 — use `z.string().min(1)` not `.nonempty()`, `z.object({}).strict()` not `.strict()` chained after parse, etc.
+
+**Test file convention:**
+Tests are co-located with source as `*.test.ts` (e.g. `src/lib/billing/calculateCancellationCharge.test.ts`). No separate `__tests__` directory.
+
+**Env var validation:**
+All required env vars are declared in `src/lib/env.ts` (`ALWAYS_REQUIRED` vs `REQUIRED_IN_PRODUCTION`). Add new env vars there — they are validated at startup and fail fast with a named error if missing.
+
+**Public route bypass:**
+`src/proxy.ts` holds the list of path prefixes that bypass Supabase Auth checks. When adding a new unauthenticated route (webhooks, portal, public APIs), add its prefix there or requests will get a 401.
+
+**Multi-tenant isolation:**
+`org_id` is always resolved server-side from the authenticated session via `src/lib/auth/session.ts`. It is never accepted from the client. All DB queries are scoped to the resolved org — treat any client-supplied `org_id` as untrusted.

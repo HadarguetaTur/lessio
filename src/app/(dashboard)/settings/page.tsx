@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
-import { MessageCircle, MessageSquare, CreditCard, Settings, CalendarOff, Bell, FileText } from 'lucide-react'
+import { MessageCircle, MessageSquare, CreditCard, Settings, CalendarOff, Bell, FileText, Bot } from 'lucide-react'
 
 /**
  * Settings landing page — owner/admin only.
@@ -57,6 +57,13 @@ const SETTING_CARDS = [
     icon: Bell,
     label: 'תזכורות',
     desc: 'תזכורות שיעורים ותשלומים אוטומטיות',
+    ownerOnly: true,
+  },
+  {
+    href: '/settings/ai-assistant',
+    icon: Bot,
+    label: 'עוזר AI',
+    desc: 'מענה אוטומטי לשאלות הורים ב-WhatsApp',
     ownerOnly: true,
   },
 ]

@@ -42,6 +42,19 @@ vi.mock('@/lib/cancellation-flow', () => ({
   executeCancellation: vi.fn().mockResolvedValue({ success: false, error: 'not_found' }),
 }))
 
+vi.mock('@/lib/ai-assistant', () => ({
+  aiAssistant: vi.fn().mockResolvedValue('ai-reply'),
+}))
+
+vi.mock('@/lib/ai-assistant/conversationLog', () => ({
+  logExchange: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/lib/whatsapp/idempotency', () => ({
+  claimIncomingMessage: vi.fn().mockResolvedValue(true),
+  releaseIncomingMessageClaim: vi.fn().mockResolvedValue(undefined),
+}))
+
 const mockUpsertLead = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/lib/leads', () => ({
   upsertLead: (...args: unknown[]) => mockUpsertLead(...args),
@@ -66,6 +79,9 @@ import {
   getEligibleLessons,
   executeCancellation,
 } from '@/lib/cancellation-flow'
+import { aiAssistant } from '@/lib/ai-assistant'
+import { logExchange } from '@/lib/ai-assistant/conversationLog'
+import { claimIncomingMessage, releaseIncomingMessageClaim } from '@/lib/whatsapp/idempotency'
 
 const mockSendTextMessage = vi.mocked(sendTextMessage)
 const mockSendUnknownParentReply = vi.mocked(sendUnknownParentReply)
@@ -76,6 +92,10 @@ const mockDeleteCancellationSession = vi.mocked(deleteCancellationSession)
 const mockUpsertCancellationSession = vi.mocked(upsertCancellationSession)
 const mockGetEligibleLessons = vi.mocked(getEligibleLessons)
 const mockExecuteCancellation = vi.mocked(executeCancellation)
+const mockAiAssistant = vi.mocked(aiAssistant)
+const mockLogExchange = vi.mocked(logExchange)
+const mockClaimIncomingMessage = vi.mocked(claimIncomingMessage)
+const mockReleaseIncomingMessageClaim = vi.mocked(releaseIncomingMessageClaim)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -176,6 +196,10 @@ describe('POST /api/whatsapp/webhook', () => {
     process.env.WHATSAPP_APP_SECRET = APP_SECRET
     process.env.WHATSAPP_ACCESS_TOKEN = 'test-access-token'
     process.env.WHATSAPP_PHONE_NUMBER_ID = 'test-phone-number-id'
+    mockClaimIncomingMessage.mockResolvedValue(true)
+    mockReleaseIncomingMessageClaim.mockResolvedValue(undefined)
+    mockAiAssistant.mockResolvedValue('ai-reply')
+    mockLogExchange.mockResolvedValue(undefined)
   })
 
   it('returns 200 for a valid signed request', async () => {
@@ -226,7 +250,7 @@ describe('POST /api/whatsapp/webhook', () => {
       return buildChain({ data: null, error: null })
     })
 
-    const req = makeRequest(makeWebhookPayload('אני רוצה שיעור'))
+    const req = makeRequest(makeWebhookPayload('אני רוצה לקבוע שיעור'))
     const res = await POST(req)
 
     expect(res.status).toBe(200)
@@ -258,6 +282,128 @@ describe('POST /api/whatsapp/webhook', () => {
       'phone-number-id-1'
     )
     expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
+  })
+
+  it('sends an AI reply and logs the exchange when AI assistant is enabled', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('אפשר עזרה עם התשלום?'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockAiAssistant).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164, PARENT_ID, 'אפשר עזרה עם התשלום?')
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'ai-reply',
+      'test-access-token',
+      'phone-number-id-1'
+    )
+    expect(mockLogExchange).toHaveBeenCalledWith(
+      ORG_ID,
+      SENDER_PHONE_E164,
+      PARENT_ID,
+      'אפשר עזרה עם התשלום?',
+      'ai-reply'
+    )
+  })
+
+  it('falls back to the generic template when the AI assistant throws', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockAiAssistant.mockRejectedValueOnce(new Error('openai down'))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('אפשר עזרה עם התשלום?'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'mocked-template-body',
+      'test-access-token',
+      'phone-number-id-1'
+    )
+    expect(mockLogExchange).not.toHaveBeenCalled()
+  })
+
+  it('ignores duplicate webhook deliveries for the same message id', async () => {
+    mockClaimIncomingMessage.mockResolvedValueOnce(false)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('אפשר עזרה עם התשלום?'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockAiAssistant).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
+  })
+
+  it('releases the inbound claim when sending the AI reply fails', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockSendTextMessage.mockRejectedValueOnce(new Error('send failed'))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('אפשר עזרה עם התשלום?'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockReleaseIncomingMessageClaim).toHaveBeenCalledWith(ORG_ID, 'msg-1')
+    expect(mockLogExchange).not.toHaveBeenCalled()
   })
 
   it('returns 200 even when no org matches the business phone', async () => {

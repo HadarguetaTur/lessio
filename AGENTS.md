@@ -260,18 +260,18 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || src/components/dashboard/SupportModeBanner.tsx — amber banner with org name + time remaining + exit | ✅ Done (Sprint 18) |
 || Tests: session.test.ts (6 tests) + createOrganization.test.ts (3) + organizations.test.ts (5) + support-session/index.test.ts (5) | ✅ Done (Sprint 18) |
 
-|| supabase/migrations/20260418000001_ai_assistant.sql — conversation_log table + RLS + organizations.ai_assistant_enabled | 🔲 Sprint 19 |
-|| src/lib/ai-assistant/buildSystemPrompt.ts — context-rich Hebrew system prompt builder | 🔲 Sprint 19 |
-|| src/lib/ai-assistant/conversationLog.ts — DB read/write helpers for conversation_log | 🔲 Sprint 19 |
-|| src/lib/ai-assistant/index.ts — aiAssistant(): safety cap + system prompt + OpenAI call + log | 🔲 Sprint 19 |
-|| src/lib/env.ts — OPENAI_API_KEY added to REQUIRED_IN_PRODUCTION | 🔲 Sprint 19 |
-|| src/app/api/whatsapp/webhook/route.ts — fallback path calls aiAssistant() when enabled | 🔲 Sprint 19 |
-|| src/app/(dashboard)/settings/ai-assistant/page.tsx — enable toggle + conversation log table | 🔲 Sprint 19 |
-|| src/app/(dashboard)/settings/ai-assistant/actions.ts — saveAiAssistantSettings | 🔲 Sprint 19 |
-|| src/components/dashboard/settings/ConversationLogTable.tsx — masked phone + expand per row | 🔲 Sprint 19 |
-|| src/components/dashboard/Sidebar.tsx — "עוזר AI" nav item (owner) | 🔲 Sprint 19 |
-|| src/app/(dashboard)/settings/page.tsx — AI Assistant settings card | 🔲 Sprint 19 |
-|| Tests: buildSystemPrompt snapshot + aiAssistant safety cap + webhook error fallback | 🔲 Sprint 19 |
+|| supabase/migrations/20260418000001_ai_assistant.sql — conversation_log table + RLS + organizations.ai_assistant_enabled | ✅ Done (Sprint 19) |
+|| src/lib/ai-assistant/buildSystemPrompt.ts — context-rich Hebrew system prompt builder | ✅ Done (Sprint 19) |
+|| src/lib/ai-assistant/conversationLog.ts — DB read/write helpers for conversation_log | ✅ Done (Sprint 19) |
+|| src/lib/ai-assistant/index.ts — aiAssistant(): safety cap + system prompt + OpenAI call + log | ✅ Done (Sprint 19) |
+|| src/lib/env.ts — OPENAI_API_KEY added to REQUIRED_IN_PRODUCTION | ✅ Done (Sprint 19) |
+|| src/app/api/whatsapp/webhook/route.ts — fallback path calls aiAssistant() when enabled | ✅ Done (Sprint 19) |
+|| src/app/(dashboard)/settings/ai-assistant/page.tsx — enable toggle + conversation log table | ✅ Done (Sprint 19) |
+|| src/app/(dashboard)/settings/ai-assistant/actions.ts — saveAiAssistantSettings | ✅ Done (Sprint 19) |
+|| src/components/dashboard/settings/ConversationLogTable.tsx — masked phone + expand per row | ✅ Done (Sprint 19) |
+|| src/components/dashboard/Sidebar.tsx — "עוזר AI" nav item (owner) | ✅ Done (Sprint 19) |
+|| src/app/(dashboard)/settings/page.tsx — AI Assistant settings card | ✅ Done (Sprint 19) |
+|| Tests: buildSystemPrompt snapshot + aiAssistant safety cap + webhook error fallback | ✅ Done (Sprint 19) |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.

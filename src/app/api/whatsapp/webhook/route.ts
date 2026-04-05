@@ -42,7 +42,10 @@ import {
   executeCancellation,
 } from '@/lib/cancellation-flow'
 import { markAssignmentDone } from '@/lib/homework'
+import { aiAssistant } from '@/lib/ai-assistant'
+import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { DateTime } from 'luxon'
+import { claimIncomingMessage, releaseIncomingMessageClaim } from '@/lib/whatsapp/idempotency'
 
 // ── GET — Meta hub verification ───────────────────────────────────────────────
 
@@ -151,7 +154,7 @@ async function processMessage(
 
   const { data: org, error: orgError } = await db
     .from('organizations')
-    .select('id, whatsapp_access_token, timezone')
+    .select('id, whatsapp_access_token, timezone, ai_assistant_enabled')
     .eq('whatsapp_phone_number_id', msg.phoneNumberId)
     .maybeSingle()
 
@@ -175,6 +178,18 @@ async function processMessage(
   }
 
   const phoneNumberId = msg.phoneNumberId
+
+  const claimed = await claimIncomingMessage(org.id, msg.messageId, senderPhone)
+  if (!claimed) {
+    console.info('[whatsapp/webhook] Duplicate inbound message ignored', {
+      orgId: org.id,
+      messageId: msg.messageId,
+      senderPhone,
+    })
+    return
+  }
+
+  try {
 
   // 6. Look up parent by phone in this org (before intent check — any message from
   //    an unrecognized sender must create a lead, regardless of intent)
@@ -266,15 +281,43 @@ async function processMessage(
 
   // 10. Check booking intent
   if (!hasBookingIntent(msg.text)) {
-    // No recognized intent — send polite fallback
-    const unknownBody = await resolveTemplate(org.id, 'unknown_intent_fallback', {})
-    await sendTextMessage(senderPhone, unknownBody, accessToken, phoneNumberId).catch((err) => {
-      console.error('[whatsapp/webhook] Failed to send unknown-intent reply', {
-        orgId: org.id,
-        senderPhone,
-        err,
+    // No recognized intent — try AI assistant if enabled, else polite fallback
+    if (org.ai_assistant_enabled) {
+      let reply: string
+      let shouldLogExchange = false
+
+      try {
+        reply = await aiAssistant(org.id, senderPhone, parent.id, msg.text)
+        shouldLogExchange = true
+      } catch (err) {
+        console.error('[whatsapp/webhook] aiAssistant failed — falling back to template', {
+          orgId: org.id,
+          err,
+        })
+        reply = await resolveTemplate(org.id, 'unknown_intent_fallback', {})
+      }
+
+      await sendTextMessage(senderPhone, reply, accessToken, phoneNumberId)
+
+      if (shouldLogExchange) {
+        await logExchange(org.id, senderPhone, parent.id, msg.text, reply).catch((err) => {
+          console.error('[whatsapp/webhook] Failed to persist AI exchange after send', {
+            orgId: org.id,
+            senderPhone,
+            err,
+          })
+        })
+      }
+    } else {
+      const unknownBody = await resolveTemplate(org.id, 'unknown_intent_fallback', {})
+      await sendTextMessage(senderPhone, unknownBody, accessToken, phoneNumberId).catch((err) => {
+        console.error('[whatsapp/webhook] Failed to send unknown-intent reply', {
+          orgId: org.id,
+          senderPhone,
+          err,
+        })
       })
-    })
+    }
     return
   }
 
@@ -321,6 +364,10 @@ async function processMessage(
   const bookingLinkBody = await resolveTemplate(org.id, 'booking_link', { booking_url: bookingUrl })
   await sendTextMessage(senderPhone, bookingLinkBody, accessToken, phoneNumberId)
   console.info('[whatsapp/webhook] Booking link sent', { messageId: msg.messageId })
+  } catch (error) {
+    await releaseIncomingMessageClaim(org.id, msg.messageId)
+    throw error
+  }
 }
 
 async function handleUnknownSender(

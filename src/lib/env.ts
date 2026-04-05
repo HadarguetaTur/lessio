@@ -39,6 +39,8 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   'META_APP_SECRET',
   // Sprint 8: per-org payment provider credential encryption
   'PAYMENT_CONFIG_ENCRYPTION_KEY',
+  // Sprint 19: platform-wide AI API key; validated for every production deploy
+  'OPENAI_API_KEY',
 ]
 
 /**

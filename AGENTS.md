@@ -1,5 +1,5 @@
 # LESSIO — AI Operating Manual
-*Current Sprint: Sprint 19 — AI WhatsApp Assistant*
+*Current Sprint: Sprint 20 — AI Assistant + WhatsApp Hardening*
 
 ---
 
@@ -12,24 +12,26 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 
 ---
 
-## Current Sprint: Sprint 19 — AI WhatsApp Assistant
+## Current Sprint: Sprint 20 — AI Assistant + WhatsApp Hardening
 
-**Sprint source of truth:** `/docs/sprint-19-scope.md`
+**Sprint source of truth:** `/docs/sprint-20-scope.md`
 
 **Goal:**
-- When no known intent is matched in the webhook, an AI assistant (OpenAI gpt-4o-mini) answers the parent contextually
-- Safety cap: max 3 AI replies per 24h window per phone number, then human-redirect
-- Owner can enable/disable per org and view conversation log
+- Wire idempotency layer (`claimIncomingMessage` / `releaseIncomingMessageClaim`) into the webhook handler
+- Complete conversation log write path (user + assistant turns)
+- Remove silent dead-ends in the webhook (no-student, unresolvable parent, token decryption failure)
+- Harden AI runtime: API key guard in settings action + OpenAI error classification
+- Regression tests: idempotency helpers, retry/duplicate webhook paths, conversation log, fallback
 
 **Users in scope:**
-- WhatsApp: parents (receive AI replies)
-- Dashboard: owner (enable toggle + conversation log)
+- WhatsApp: parents (receive reliable replies, no silent drops)
+- Dashboard: owner (AI enable guard, key-absent warning)
 
-**New dependencies:**
-- `openai ^4.x` — OpenAI Node SDK
+**New dependencies:** none
 
-**New env vars:**
-- `OPENAI_API_KEY` — platform-level, added to `REQUIRED_IN_PRODUCTION`
+**New env vars:** none
+
+**Schema changes:** none (all tables built in Sprint 19)
 
 ---
 
@@ -261,17 +263,30 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || Tests: session.test.ts (6 tests) + createOrganization.test.ts (3) + organizations.test.ts (5) + support-session/index.test.ts (5) | ✅ Done (Sprint 18) |
 
 || supabase/migrations/20260418000001_ai_assistant.sql — conversation_log table + RLS + organizations.ai_assistant_enabled | ✅ Done (Sprint 19) |
+|| supabase/migrations/20260418000002_ai_assistant_hardening.sql — RLS tightened to owner-only + whatsapp_processed_messages table | ✅ Done (Sprint 19) |
 || src/lib/ai-assistant/buildSystemPrompt.ts — context-rich Hebrew system prompt builder | ✅ Done (Sprint 19) |
-|| src/lib/ai-assistant/conversationLog.ts — DB read/write helpers for conversation_log | ✅ Done (Sprint 19) |
-|| src/lib/ai-assistant/index.ts — aiAssistant(): safety cap + system prompt + OpenAI call + log | ✅ Done (Sprint 19) |
+|| src/lib/ai-assistant/conversationLog.ts — DB read helpers: countAssistantReplies + getRecentHistory | ✅ Done (Sprint 19) |
+|| src/lib/ai-assistant/index.ts — aiAssistant(): safety cap + system prompt + OpenAI gpt-4o-mini call + token logging | ✅ Done (Sprint 19) |
+|| src/lib/whatsapp/idempotency.ts — claimIncomingMessage + releaseIncomingMessageClaim | ✅ Done (Sprint 19) |
 || src/lib/env.ts — OPENAI_API_KEY added to REQUIRED_IN_PRODUCTION | ✅ Done (Sprint 19) |
-|| src/app/api/whatsapp/webhook/route.ts — fallback path calls aiAssistant() when enabled | ✅ Done (Sprint 19) |
+|| src/app/api/whatsapp/webhook/route.ts — fallback path calls aiAssistant() when enabled; error → template fallback | ✅ Done (Sprint 19) |
 || src/app/(dashboard)/settings/ai-assistant/page.tsx — enable toggle + conversation log table | ✅ Done (Sprint 19) |
 || src/app/(dashboard)/settings/ai-assistant/actions.ts — saveAiAssistantSettings | ✅ Done (Sprint 19) |
 || src/components/dashboard/settings/ConversationLogTable.tsx — masked phone + expand per row | ✅ Done (Sprint 19) |
 || src/components/dashboard/Sidebar.tsx — "עוזר AI" nav item (owner) | ✅ Done (Sprint 19) |
 || src/app/(dashboard)/settings/page.tsx — AI Assistant settings card | ✅ Done (Sprint 19) |
 || Tests: buildSystemPrompt snapshot + aiAssistant safety cap + webhook error fallback | ✅ Done (Sprint 19) |
+
+|| src/app/api/whatsapp/webhook/route.ts — call claimIncomingMessage at entry; releaseIncomingMessageClaim on retryable failure; 200 on duplicate | ⬜ Sprint 20 |
+|| src/lib/ai-assistant/conversationLog.ts — appendTurn() write helper (fire-and-forget, logs on DB error) | ⬜ Sprint 20 |
+|| src/app/api/whatsapp/webhook/route.ts — call appendTurn after AI reply; silent dead-ends → unknown_intent template | ⬜ Sprint 20 |
+|| src/app/(dashboard)/settings/ai-assistant/actions.ts — reject enable when OPENAI_API_KEY absent | ⬜ Sprint 20 |
+|| src/lib/ai-assistant/index.ts — classify OpenAI APIError with HTTP status before rethrowing | ⬜ Sprint 20 |
+|| src/app/(dashboard)/settings/ai-assistant/page.tsx — amber warning when key absent + AI enabled | ⬜ Sprint 20 |
+|| src/lib/whatsapp/idempotency.test.ts — unit tests for claim/release helpers | ⬜ Sprint 20 |
+|| src/lib/ai-assistant/conversationLog.test.ts — unit tests for appendTurn, countAssistantReplies, getRecentHistory | ⬜ Sprint 20 |
+|| src/app/api/whatsapp/webhook/webhook.test.ts — duplicate / retry / decrypt-failure regression tests | ⬜ Sprint 20 |
+|| src/lib/ai-assistant/aiAssistant.test.ts — key-absent guard + OpenAI error classification tests | ⬜ Sprint 20 |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.

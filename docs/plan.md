@@ -75,16 +75,17 @@ It provides holistic operational control: scheduling, billing, cancellations, ho
 | Org Holidays + Teacher Self-Service | Block slots on holidays, teacher-managed availability | 10 | ✅ Done |
 | Recurring Lessons | Lesson series: create, cancel, conflict detection | 11 | ✅ Done |
 | Automated Reminders | Lesson + payment reminders via Edge Functions + cron | 12 | ✅ Done |
-| Single Scheduling + Parent Portal | Admin/teacher single lesson creation; parent portal with OTP login | 13 | ⏳ In Progress |
-| Homework + WhatsApp Intents | Homework module, parent self-service queries via WhatsApp | 14 | Planned |
-| Tax Receipts + Israeli Payments | חשבוניות ירוקות integration, Bit + PayBox providers | 15 | Planned |
-| Custom Templates + iCal | Custom WhatsApp message templates, iCal calendar subscription | 16 | Planned |
-| Analytics & Reporting | Revenue, debt aging, cancellation rates, CSV/PDF export | 17 | Planned |
-| Super Admin Dashboard | Platform-level org management, subscription oversight | 18 | Planned |
-| AI WhatsApp Assistant | OpenAI-powered fallback for unrecognized parent queries | 19 | Planned |
-| i18n Infrastructure | next-intl, locale routing, Hebrew string extraction, English | 20 | Planned |
-| SaaS Billing | Stripe Billing for charging your own customers | 21 | Planned |
-| International Launch | GDPR, Stripe payment provider, global payment methods | 22 | Planned |
+| Single Scheduling + Parent Portal | Admin/teacher single lesson creation; parent portal with OTP login | 13 | ✅ Done |
+| Homework + WhatsApp Intents | Homework module, parent self-service queries via WhatsApp | 14 | ✅ Done |
+| Tax Receipts + Israeli Payments | חשבוניות ירוקות integration, Bit + PayBox providers | 15 | ✅ Done |
+| Custom Templates + iCal | Custom WhatsApp message templates, iCal calendar subscription | 16 | ✅ Done |
+| Analytics & Reporting | Revenue, debt aging, cancellation rates, CSV/PDF export | 17 | ✅ Done |
+| Super Admin Dashboard | Platform-level org management, subscription oversight | 18 | ✅ Done |
+| AI WhatsApp Assistant | OpenAI-powered fallback for unrecognized parent queries | 19 | ✅ Done |
+| AI Assistant + WhatsApp Hardening | Idempotency wiring, conversation log write, dead-end removal, runtime guards | 20 | ⏳ In Progress |
+| i18n Infrastructure + English | next-intl cookie-based locale, Hebrew extraction, English translation, locale switcher | 21 | Planned |
+| SaaS Billing | Stripe Billing for charging your own customers | 22 | Planned |
+| International Launch | GDPR, URL locale routing, Arabic, Stripe payment provider, global payment methods | 23 | Planned |
 
 ---
 
@@ -104,16 +105,17 @@ It provides holistic operational control: scheduling, billing, cancellations, ho
 | 10 | Org Holidays + Teacher Self-Service — availability, overrides | ✅ Done |
 | 11 | Recurring Lessons — series: create, cancel, conflict detection | ✅ Done |
 | 12 | Automated Reminders — lesson + payment Edge Functions + cron | ✅ Done |
-| 13 | Single Scheduling + Parent Portal + UX/UI Polish | ⏳ In Progress |
-| 14 | Homework Module + WhatsApp Smart Intents | Planned |
-| 15 | Tax Receipts + Bit/PayBox | Planned |
-| 16 | Custom Message Templates + iCal Export | Planned |
-| 17 | Analytics & Reporting | Planned |
-| 18 | Super Admin Dashboard | Planned |
-| 19 | AI WhatsApp Assistant | Planned |
-| 20 | i18n Infrastructure + English | Planned |
-| 21 | SaaS Billing (Stripe) | Planned |
-| 22 | International Launch — GDPR + global payments | Planned |
+| 13 | Single Scheduling + Parent Portal + UX/UI Polish | ✅ Done |
+| 14 | Homework Module + WhatsApp Smart Intents | ✅ Done |
+| 15 | Tax Receipts + Bit/PayBox | ✅ Done |
+| 16 | Custom Message Templates + iCal Export | ✅ Done |
+| 17 | Analytics & Reporting | ✅ Done |
+| 18 | Super Admin Dashboard | ✅ Done |
+| 19 | AI WhatsApp Assistant | ✅ Done |
+| 20 | AI Assistant + WhatsApp Hardening | ⏳ In Progress |
+| 21 | i18n Infrastructure + English | Planned |
+| 22 | SaaS Billing (Stripe) | Planned |
+| 23 | International Launch — GDPR + global payments | Planned |
 
 Full sprint detail: see `/docs/sprint-roadmap.md`
 
@@ -236,11 +238,11 @@ lessio/
 
 | Document | Status |
 |---|---|
-| decisions.md | ✅ 20 decisions, up to date through Sprint 12 |
-| schema.md | ✅ Updated through Sprint 12 + Sprint 13 planned tables |
-| plan.md | ✅ This file — updated Sprint 13 |
-| sprint-roadmap.md | ✅ Full roadmap Sprints 1–22 |
-| AGENTS.md | ✅ Updated Sprint 13 |
-| sprint-1-scope.md → sprint-12-scope.md | ✅ Done |
-| sprint-13-scope.md | ⬜ To be written |
-| sprint-14-scope.md → sprint-22-scope.md | ⬜ Written per sprint |
+| decisions.md | ✅ Up to date through Sprint 19 |
+| schema.md | ✅ Updated through Sprint 19 |
+| plan.md | ✅ This file — updated Sprint 20 planning |
+| sprint-roadmap.md | ✅ Full roadmap Sprints 1–23 (Sprint 19 ✅, Sprint 20 planned) |
+| AGENTS.md | ✅ Updated Sprint 20 |
+| sprint-1-scope.md → sprint-19-scope.md | ✅ Done |
+| sprint-20-scope.md | ✅ Written |
+| sprint-21-scope.md → sprint-23-scope.md | ⬜ Written per sprint |

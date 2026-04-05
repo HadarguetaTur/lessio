@@ -1,5 +1,5 @@
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprint 18 complete, Sprints 19–22 planned*
+*Updated: Sprint 19 complete, Sprint 20 planned*
 
 ---
 
@@ -271,72 +271,106 @@ ALTER TABLE teachers ADD COLUMN ical_token text; -- signed JWT, regeneratable
 ---
 
 ## Sprint 19 — AI WhatsApp Assistant
-**Status:** Planned
+**Status:** ✅ Done
 **Branch:** `sprint-19`
-**Depends on:** Sprint 18 complete
 
-**Goal:** When no known intent is matched in the WhatsApp webhook, an AI assistant answers contextually and naturally, dramatically reducing admin support overhead.
+### Delivered:
+- Schema: `conversation_log` table + RLS (owner-only) + `organizations.ai_assistant_enabled`
+- Schema: `whatsapp_processed_messages` table + index (idempotency dedup)
+- `src/lib/ai-assistant/buildSystemPrompt.ts` — context-rich Hebrew system prompt builder
+- `src/lib/ai-assistant/conversationLog.ts` — DB read helpers (`countAssistantReplies`, `getRecentHistory`)
+- `src/lib/ai-assistant/index.ts` — `aiAssistant()`: safety cap (3/24h) + OpenAI gpt-4o-mini call + token logging
+- `src/lib/whatsapp/idempotency.ts` — `claimIncomingMessage` + `releaseIncomingMessageClaim`
+- `src/app/api/whatsapp/webhook/route.ts` — unknown-intent fallback calls `aiAssistant()` when enabled; error → falls back to template
+- `src/app/(dashboard)/settings/ai-assistant/` — enable toggle + conversation log viewer (last 50 rows)
+- Sidebar: "עוזר AI" nav item (owner) + settings card
+- `OPENAI_API_KEY` added to `REQUIRED_IN_PRODUCTION`
+- Tests: `buildSystemPrompt` snapshot + safety cap unit test + webhook error fallback
+
+**Not completed in Sprint 19 (deferred to Sprint 20):**
+- Webhook does not yet call `claimIncomingMessage` / `releaseIncomingMessageClaim`
+- `conversation_log` write (user + assistant turns) not yet called from webhook handler
+- AI key-absent guard in `saveAiAssistantSettings`
+- Silent dead-ends in webhook (no-student path, unresolvable parent in self-service intents)
+- Idempotency regression tests
+
+---
+
+## Sprint 20 — AI Assistant + WhatsApp Hardening
+**Status:** Planned
+**Branch:** `sprint-20`
+**Depends on:** Sprint 19 complete
+
+**Goal:** Close the AI assistant release safely before internationalization begins. Wire the idempotency layer into the webhook handler, complete the conversation log write path, remove silent dead-ends, add runtime guardrails on the AI assistant, and add targeted regression tests for all failure branches.
+
+### Stories:
+1. **Webhook idempotency wiring** — call `claimIncomingMessage` at handler entry; call `releaseIncomingMessageClaim` on retryable failures; return `200` on duplicate without re-processing
+2. **Conversation log write** — add `appendTurn()` helper; call it from the AI fallback path in the webhook after a successful AI reply; catch and log any write failure without crashing
+3. **Silent dead-end removal** — when parent is found but has no linked student → send `unknown_intent` template instead of silently returning; same for unresolvable parent in balance/schedule intents; token decryption failure → log + `200`, do not release claim
+4. **AI runtime hardening** — `saveAiAssistantSettings` rejects enabling AI when `OPENAI_API_KEY` is absent; settings page shows amber banner when key is missing but AI is enabled; OpenAI `APIError` logged with HTTP status code before rethrowing
+5. **Regression tests** — idempotency helpers unit tests; webhook duplicate/retry/decrypt-failure paths; `appendTurn` fire-and-forget contract; AI key-absent guard
+
+### Retention policy for MVP:
+- `conversation_log` and `whatsapp_processed_messages` kept indefinitely for Sprint 20
+- Automated pruning deferred to data-retention workstream before international launch
+
+### Exit criteria:
+- All unknown-intent and self-service WhatsApp flows either reply or remain retryable
+- Duplicate Meta retries return `200` without double-processing
+- AI cannot be newly enabled when `OPENAI_API_KEY` is absent
+- `conversation_log` populated for every AI exchange
+- `npm test` passes 100%
+- Manual QA on staging complete
+
+**Key files:**
+- `src/app/api/whatsapp/webhook/route.ts` (update: idempotency + log write + dead-end removal)
+- `src/lib/ai-assistant/conversationLog.ts` (update: add `appendTurn`)
+- `src/lib/ai-assistant/index.ts` (update: OpenAI error classification)
+- `src/app/(dashboard)/settings/ai-assistant/actions.ts` (update: key guard)
+- `src/app/(dashboard)/settings/ai-assistant/page.tsx` (update: key-absent warning)
+- `src/lib/whatsapp/idempotency.test.ts` (new)
+- `src/lib/ai-assistant/conversationLog.test.ts` (new)
+
+---
+
+## Sprint 21 — i18n Infrastructure + English
+**Status:** Planned
+**Depends on:** Sprint 20 complete
+
+**Goal:** Lay multilingual infrastructure before international expansion. Extract all Hebrew dashboard strings to translation keys, add English as the first additional language. Hebrew users see zero visible change.
 
 ### Architecture:
-- After existing intent checks all return false → call `aiAssistant(orgId, parentId, message)`
-- OpenAI GPT-4o-mini (cheap, fast) with system prompt including:
-  - Org name, timezone, teacher names
-  - Parent's name, their students, upcoming lessons, outstanding balance
-  - Allowed actions: answer questions, give lesson schedule, give balance, redirect to portal
-  - Forbidden actions: cannot create/cancel lessons, cannot process payments, cannot make promises
-- Response sent back via WhatsApp
-- Log conversation in `conversation_log` table (for review + training)
-- Safety: max 3 AI replies per conversation window; after 3 → "לפרטים נוספים, פנה/י לבית הספר ישירות"
-- Owner dashboard: `/settings/ai-assistant` — toggle on/off, view conversation logs
+- `next-intl ^3.x` in cookie-based locale mode (no URL-path prefix — dashboard is auth-gated, no SEO value)
+- Locales: `['he', 'en']`, default `'he'`
+- `messages/he.json` — all dashboard Hebrew strings
+- `messages/en.json` — full English translation
+- `profiles.preferred_locale` column — persists user choice across devices
+- Locale switcher component in dashboard header
+- `dir="rtl"` for Hebrew, `dir="ltr"` for English via root layout
 
-**New env vars:**
-- `OPENAI_API_KEY` (per platform — not per org in MVP)
+### Scope:
+- `next-intl` config (`src/i18n/routing.ts`, `src/i18n/request.ts`, `next.config.ts`)
+- Hebrew string extraction from all ~60 dashboard pages + components
+- English translation (`messages/en.json`)
+- Locale switcher (`LocaleSwitcher` component + `saveLocaleAction`)
+- RTL/LTR layout polish
 
-**Schema additions:**
+**Not in scope:** Arabic support (Sprint 23), portal/booking WebView i18n (deferred), URL-based locale routing (deferred to Sprint 23 for public-facing pages)
+
+**New dependency:** `next-intl ^3.x`
+
+**Schema:**
 ```sql
-CREATE TABLE conversation_log (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  parent_id       uuid REFERENCES parents(id),
-  phone           text NOT NULL,
-  role            text NOT NULL CHECK (role IN ('parent', 'assistant')),
-  content         text NOT NULL,
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE organizations ADD COLUMN ai_assistant_enabled boolean NOT NULL DEFAULT false;
+ALTER TABLE profiles
+  ADD COLUMN preferred_locale text NOT NULL DEFAULT 'he'
+    CHECK (preferred_locale IN ('he', 'en'));
 ```
 
 ---
 
-## Sprint 20 — i18n Infrastructure + English
-**Status:** Planned  
-**Depends on:** Sprint 19 complete
-
-**Goal:** Lay the infrastructure for multi-language before international expansion. Extract all Hebrew strings to translation keys, add English as the first additional language.
-
-### Architecture:
-- Adopt `next-intl` (standard for Next.js App Router i18n)
-- Route structure: `/[locale]/(dashboard)/...` — locale prefix in URL
-- Translation files: `messages/he.json`, `messages/en.json`
-- All hardcoded Hebrew strings extracted to translation keys
-- RTL/LTR: `dir` attribute set per locale in layout (`he` → RTL, `en` → LTR)
-- WhatsApp messages: `message_templates` (Sprint 16) already supports custom per-org text; system defaults also move to locale-aware strings
-- Locale selector in user settings
-
-### Scope of this sprint:
-- i18n infrastructure setup (next-intl, locale routing, `[locale]` segments)
-- Hebrew string extraction to `messages/he.json` (no visible change for Hebrew users)
-- English translation (`messages/en.json`) — full UI coverage
-- **Not in this sprint:** Arabic (deferred — add only when there is a concrete customer requirement)
-
-**New dependency:** `next-intl`
-
----
-
-## Sprint 21 — SaaS Billing (Charging Your Customers)
-**Status:** Planned  
-**Depends on:** Sprint 20 complete
+## Sprint 22 — SaaS Billing (Charging Your Customers)
+**Status:** Planned
+**Depends on:** Sprint 21 complete
 
 **Goal:** LESSIO itself has a subscription engine. Customers pay you automatically. Replaces manual invoicing.
 
@@ -372,9 +406,9 @@ CREATE TABLE subscription_plans (
 
 ---
 
-## Sprint 22 — International Launch Readiness
-**Status:** Planned  
-**Depends on:** Sprint 21 complete
+## Sprint 23 — International Launch Readiness
+**Status:** Planned
+**Depends on:** Sprint 22 complete
 
 **Goal:** Everything needed to legally and technically operate in the EU and English-speaking markets (UK, Australia, US).
 
@@ -383,15 +417,16 @@ CREATE TABLE subscription_plans (
 - Cookie consent banner (non-EU users exempt)
 - Right to deletion: parent can request data deletion from portal → creates deletion request ticket in admin
 - Data export: admin can export all data for a parent (JSON)
-- Data retention policy: `organization.data_retention_days` — auto-anonymize old lessons after N days (Edge Function)
+- Data retention policy: `organization.data_retention_days` — auto-anonymize old lessons + `conversation_log` + `whatsapp_processed_messages` after N days (Edge Function)
 
-### Story 2 — English Translation + Locale Routing
-- Complete `messages/en.json` (using Sprint 20 infrastructure)
+### Story 2 — URL-Based Locale Routing + Arabic
+- Add URL prefix routing for portal + booking WebView (public-facing, SEO matters here)
 - Locale auto-detection from browser `Accept-Language` header on first visit
+- Arabic support (`messages/ar.json`, RTL same as Hebrew)
 - English becomes default for non-IL orgs
 
 ### Story 3 — International Payment Methods
-- Stripe provider (Sprint 21 adds billing; this sprint adds Stripe as a payment provider for lesson charges)
+- Stripe provider (Sprint 22 adds billing; this sprint adds Stripe as a payment provider for lesson charges)
   - `src/lib/payments/stripe.ts` implementing `PaymentProvider` interface
   - Stripe Checkout or Payment Links for parent payments
 - SEPA Direct Debit support via Stripe (EU market)
@@ -410,25 +445,26 @@ Currently the system uses "session messages" (valid only if parent messaged with
 | Sprint | Theme | Primary Value |
 |--------|-------|---------------|
 | 12 | Automated Reminders | Reduces missed lessons + payment delays |
-| 13 ▶ | Single Scheduling + Parent Portal | Operational completeness; parent self-service |
+| 13 | Single Scheduling + Parent Portal | Operational completeness; parent self-service |
 | 14 | Homework + WhatsApp Intents | Deepest daily-use differentiator |
-| 15 | Tax Receipts + Bit/PayBox | Israeli legal compliance + payment conversion | ✅ Done |
-| 16 | Custom Templates + iCal + Portal Receipts | Brand customization + teacher retention + parent UX | ✅ Done |
-| 17 | Analytics & Reporting | Business owner visibility + accountant exports | ✅ Done |
-| 18 | Super Admin Dashboard | Platform scalability (5+ customers) | ✅ Done |
-| 19 | AI WhatsApp Assistant | Zero-admin parent support |
-| 20 | i18n + English | Infrastructure + English for international launch prep |
-| 21 | SaaS Billing | Automated revenue from your own customers |
-| 22 | International Launch | EU + English-speaking markets |
+| 15 | Tax Receipts + Bit/PayBox | Israeli legal compliance + payment conversion |
+| 16 | Custom Templates + iCal + Portal Receipts | Brand customization + teacher retention + parent UX |
+| 17 | Analytics & Reporting | Business owner visibility + accountant exports |
+| 18 | Super Admin Dashboard | Platform scalability (5+ customers) |
+| 19 | AI WhatsApp Assistant ✅ | Zero-admin parent support |
+| 20 | AI Assistant + WhatsApp Hardening | Production reliability for AI + webhook |
+| 21 | i18n Infrastructure + English | English UI for international market entry |
+| 22 | SaaS Billing | Automated revenue from your own customers |
+| 23 | International Launch | EU + English-speaking markets |
 
 ---
 
 ## Competitive Moat (by sprint)
 
-After Sprint 14: **No Israeli competitor offers WhatsApp-native scheduling + homework + payment in one system.**  
-After Sprint 15: **Full legal compliance + Bit support = enterprise sales-ready.**  
-After Sprint 19: **AI assistant eliminates admin overhead — parents never need to call.**  
-After Sprint 22: **International-grade product, ready for UK/AU tutoring market.**
+After Sprint 14: **No Israeli competitor offers WhatsApp-native scheduling + homework + payment in one system.**
+After Sprint 15: **Full legal compliance + Bit support = enterprise sales-ready.**
+After Sprint 19: **AI assistant eliminates admin overhead — parents never need to call.**
+After Sprint 23: **International-grade product, ready for UK/AU tutoring market.**
 
 ---
 

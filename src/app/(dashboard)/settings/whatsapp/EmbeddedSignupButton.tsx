@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useRef, useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { saveWhatsAppConnection, type WhatsAppActionResult } from './actions'
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
 const initialState: WhatsAppActionResult = { error: null }
 
 export function EmbeddedSignupButton({ metaAppId }: Props) {
+  const t = useTranslations('settings.whatsapp')
+  const tCommon = useTranslations('common')
   const formRef = useRef<HTMLFormElement>(null)
   const [state, formAction, isPending] = useActionState(saveWhatsAppConnection, initialState)
 
@@ -112,7 +115,7 @@ export function EmbeddedSignupButton({ metaAppId }: Props) {
         disabled={isPending}
         className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'מחבר…' : 'חבר מספר WhatsApp'}
+        {isPending ? `${tCommon('actions.connect')}…` : t('connect')}
       </button>
 
       <p className="text-xs text-gray-500 mt-2">

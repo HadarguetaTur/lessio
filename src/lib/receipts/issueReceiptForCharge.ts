@@ -36,7 +36,7 @@ export async function issueReceiptForCharge(
   const { data: charge, error: chargeError } = await db
     .from('charges')
     .select(
-      'id, amount, status, receipt_issued_at, parent_id, parents(full_name, phone), organizations(name, timezone, whatsapp_phone_number_id, whatsapp_access_token)'
+      'id, amount, charge_type, billing_month, notes, status, receipt_issued_at, parent_id, parents(full_name, phone), organizations(name, timezone, whatsapp_phone_number_id, whatsapp_access_token)'
     )
     .eq('id', chargeId)
     .eq('organization_id', orgId)
@@ -88,15 +88,26 @@ export async function issueReceiptForCharge(
   const parentName = parent?.full_name ?? 'לקוח'
   const orgName = org?.name ?? ''
   const tz = org?.timezone ?? 'Asia/Jerusalem'
+  const chargeType = charge.charge_type as string
+  const billingMonth = (charge.billing_month as string | null) ?? null
   const today =
     DateTime.now().setZone(tz).toISODate() ??
     new Date().toISOString().slice(0, 10)
+
+  const description =
+    chargeType === 'monthly'
+      ? ((charge.notes as string | null) ?? `חיוב חודשי ${billingMonth ?? ''}`).trim()
+      : chargeType === 'cancellation'
+        ? `תשלום ביטול — ${parentName}`
+        : chargeType === 'manual'
+          ? ((charge.notes as string | null) ?? `חיוב ידני — ${parentName}`).trim()
+          : `תשלום שיעור — ${parentName}`
 
   const { receiptUrl } = await provider.issueReceipt({
     chargeId,
     amount: charge.amount,
     parentName,
-    description: `תשלום שיעור — ${parentName}`,
+    description,
     orgName,
     date: today,
   })

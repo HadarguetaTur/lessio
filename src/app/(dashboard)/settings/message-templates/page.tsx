@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { MessageTemplateCard } from '@/components/dashboard/settings/MessageTemplateCard'
@@ -37,6 +38,7 @@ const ALL_TYPES: MessageTemplateType[] = [
 
 export default async function MessageTemplatesPage() {
   const { orgId, role } = await getSession()
+  const t = await getTranslations('settings.messageTemplates')
 
   if (role !== 'owner') redirect('/settings')
 
@@ -53,7 +55,7 @@ export default async function MessageTemplatesPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">הודעות WhatsApp</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-sm text-gray-500 mt-1">
           התאם את הטקסט של כל הודעה שנשלחת אוטומטית דרך WhatsApp. שינויים ייכנסו לתוקף מיד.
         </p>

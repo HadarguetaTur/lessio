@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 
 type ActionState = { error: string } | null
@@ -23,12 +24,13 @@ export function LinkParentForm({
   availableParents,
   hasExistingParents,
 }: LinkParentFormProps) {
+  const t = useTranslations('students')
   const [state, formAction, pending] = useActionState(action, null)
 
   if (availableParents.length === 0) {
     return (
       <p className="text-sm text-gray-400 mt-2">
-        כל ההורים הפעילים כבר מקושרים לתלמיד זה.
+        {t('parents.allLinked')}
       </p>
     )
   }
@@ -43,7 +45,7 @@ export function LinkParentForm({
 
       <div className="space-y-1">
         <label htmlFor="parent_id" className="block text-sm font-medium text-gray-700">
-          בחר הורה
+          {t('parents.selectParent')}
         </label>
         <select
           id="parent_id"
@@ -51,7 +53,7 @@ export function LinkParentForm({
           required
           className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-48"
         >
-          <option value="">— בחר הורה —</option>
+          <option value="">{t('parents.selectParentOption')}</option>
           {availableParents.map((p) => (
             <option key={p.id} value={p.id}>
               {p.full_name} ({p.phone})
@@ -69,12 +71,12 @@ export function LinkParentForm({
           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
         <label htmlFor="is_primary" className="text-sm font-medium text-gray-700">
-          הורה עיקרי (לחיוב)
+          {t('parents.primaryBilling')}
         </label>
       </div>
 
       <Button type="submit" disabled={pending} className="mb-0">
-        {pending ? 'מקשר...' : 'קשר הורה'}
+        {pending ? t('parents.linking') : t('parents.linkButton')}
       </Button>
     </form>
   )

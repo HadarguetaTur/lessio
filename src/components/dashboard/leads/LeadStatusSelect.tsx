@@ -1,13 +1,8 @@
 'use client'
 
 import { useTransition, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { LeadStatus } from '@/lib/leads'
-
-const STATUS_LABELS: Record<Exclude<LeadStatus, 'converted'>, string> = {
-  new: 'חדש',
-  contacted: 'נוצר קשר',
-  irrelevant: 'לא רלוונטי',
-}
 
 interface Props {
   leadId: string
@@ -16,6 +11,7 @@ interface Props {
 }
 
 export function LeadStatusSelect({ leadId, currentStatus, action }: Props) {
+  const t = useTranslations('leads')
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -39,15 +35,15 @@ export function LeadStatusSelect({ leadId, currentStatus, action }: Props) {
         className="border border-gray-300 rounded-md px-2 py-1 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {currentStatus === 'converted' ? (
-          <option value="converted">הומר</option>
+          <option value="converted">{t('statusConverted')}</option>
         ) : (
-          (Object.entries(STATUS_LABELS) as [Exclude<LeadStatus, 'converted'>, string][]).map(
-            ([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            )
-          )
+          ([
+            ['new', t('statusNew')],
+            ['contacted', t('statusContacted')],
+            ['irrelevant', t('statusIrrelevant')],
+          ] as [Exclude<LeadStatus, 'converted'>, string][]).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))
         )}
       </select>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}

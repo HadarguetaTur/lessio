@@ -7,11 +7,14 @@
  */
 
 import { useActionState, useEffect, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { saveAutoSendSetting, type PaymentActionResult } from './actions'
 
 const initialState: PaymentActionResult = { error: null }
 
 export function AutoSendToggle({ defaultChecked }: { defaultChecked: boolean }) {
+  const t = useTranslations('settings.payment')
+  const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(saveAutoSendSetting, initialState)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -31,10 +34,10 @@ export function AutoSendToggle({ defaultChecked }: { defaultChecked: boolean }) 
           className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
         />
         <span className="text-sm text-gray-700">
-          שלח בקשת תשלום אוטומטית בסיום שיעור
+          {t('autoSend')}
         </span>
         {isPending && (
-          <span className="text-xs text-gray-400">שומר…</span>
+          <span className="text-xs text-gray-400">{tCommon('actions.save')}…</span>
         )}
       </label>
       {state.error && (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import type { CancelLessonResult } from '@/app/(dashboard)/lessons/[id]/actions'
 
 type FormAction = (
@@ -13,6 +14,8 @@ interface Props {
 }
 
 export function CancelLessonForm({ action }: Props) {
+  const t = useTranslations('lessons')
+  const tCommon = useTranslations('common')
   const [open, setOpen] = useState(false)
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [hasSubmitted, setHasSubmitted] = useState(false)
@@ -26,14 +29,14 @@ export function CancelLessonForm({ action }: Props) {
         }}
         className="text-sm text-red-600 hover:text-red-800 underline underline-offset-2"
       >
-        ביטול שיעור
+        {t('cancel.cancelLesson')}
       </button>
     )
   }
 
   return (
     <div className="bg-red-50 border border-red-200 rounded-lg p-5 space-y-4">
-      <h3 className="text-sm font-semibold text-red-800">ביטול שיעור</h3>
+      <h3 className="text-sm font-semibold text-red-800">{t('cancel.cancelLesson')}</h3>
 
       {state.error && (
         <p className="text-sm text-red-600">{state.error}</p>
@@ -47,20 +50,20 @@ export function CancelLessonForm({ action }: Props) {
 
       {/* Success state — lesson cancelled */}
       {hasSubmitted && state.error === null && !pending && state.chargeAlert === undefined && (
-        <p className="text-sm text-green-700" role="status">השיעור בוטל בהצלחה.</p>
+        <p className="text-sm text-green-700" role="status">{t('cancel.cancelled')}</p>
       )}
 
       <form action={formAction} onSubmit={() => setHasSubmitted(true)} className="space-y-4">
         <div className="space-y-1">
           <label htmlFor="cancel_reason" className="block text-sm font-medium text-red-800">
-            סיבת ביטול <span className="text-red-500">*</span>
+            {t('cancel.reason')} <span className="text-red-500">*</span>
           </label>
           <textarea
             id="cancel_reason"
             name="cancel_reason"
             rows={2}
             required
-            placeholder="הזן סיבת ביטול..."
+            placeholder={t('cancel.reasonPlaceholder')}
             className="w-full border border-red-200 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400 resize-none bg-white"
           />
         </div>
@@ -72,7 +75,7 @@ export function CancelLessonForm({ action }: Props) {
             value="true"
             className="rounded border-gray-300 text-red-600 focus:ring-red-400"
           />
-          <span className="text-sm text-gray-700">ויתור על חיוב (לא יישלח חיוב לביטול זה)</span>
+          <span className="text-sm text-gray-700">{t('cancel.waiveCharge')}</span>
         </label>
 
         <div className="flex gap-3">
@@ -81,7 +84,7 @@ export function CancelLessonForm({ action }: Props) {
             disabled={pending}
             className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {pending ? 'מבטל...' : 'אישור ביטול'}
+            {pending ? t('cancel.cancelling') : t('cancel.confirm')}
           </button>
           <button
             type="button"
@@ -91,7 +94,7 @@ export function CancelLessonForm({ action }: Props) {
             }}
             className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
           >
-            חזרה
+            {tCommon('actions.back')}
           </button>
         </div>
       </form>

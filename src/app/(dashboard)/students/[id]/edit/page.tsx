@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth/session'
 import { getStudentById } from '@/lib/students'
 import { StudentForm } from '@/components/dashboard/students/StudentForm'
 import { updateStudent } from '../../actions'
+import { getTranslations } from 'next-intl/server'
 
 export default async function EditStudentPage(props: {
   params: Promise<{ id: string }>
@@ -15,9 +16,11 @@ export default async function EditStudentPage(props: {
 
   const boundUpdateStudent = updateStudent.bind(null, student.id)
 
+  const t = await getTranslations('students')
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">עריכת תלמיד</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('editStudent')}</h1>
       <StudentForm
         action={boundUpdateStudent}
         defaultValues={{

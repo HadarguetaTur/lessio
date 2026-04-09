@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { Trash2 } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
@@ -12,6 +13,7 @@ function fmt(t: string) {
 
 export default async function TeacherAvailabilityPage() {
   const { userId, orgId, role } = await getSession()
+  const t = await getTranslations('teacherSelf.availability')
 
   if (role !== 'teacher') {
     redirect('/dashboard')
@@ -34,7 +36,7 @@ export default async function TeacherAvailabilityPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">הזמינות שלי</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('title')}</h1>
       <p className="text-sm text-gray-500 mb-6">
         הגדר את החלונות השבועיים בהם תלמידים יוכלו להזמין שיעורים.
       </p>

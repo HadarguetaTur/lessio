@@ -1,7 +1,20 @@
 import { redirect } from 'next/navigation'
+import { Receipt } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getDebtReport } from '@/lib/reports/debt'
 import { CsvDownloadButton } from '@/components/reports/CsvDownloadButton'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { PageHeader } from '@/components/ui/page-header'
+import { EmptyState } from '@/components/ui/empty-state'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 /**
  * Debt report page — parents with pending charges.
@@ -14,52 +27,54 @@ export default async function DebtReportPage() {
   if (!['owner', 'admin'].includes(session.role)) redirect('/dashboard')
 
   const { rows, totalDebt } = await getDebtReport(session.orgId)
+  const [locale, t] = await Promise.all([getLocale(), getTranslations('reports')])
+  const intlLoc = toIntlLocale(parseAppLocale(locale))
+  const amountStr = `₪${totalDebt.toLocaleString(intlLoc)}`
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">חובות</h1>
-          <p className="text-gray-500 text-sm mt-0.5">
-            סה״כ חוב: <span className="font-semibold text-gray-800">₪{totalDebt.toLocaleString('he-IL')}</span>
-            {' '}· {rows.length} הורים
-          </p>
-        </div>
-        <CsvDownloadButton report="debt" />
-      </div>
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      <PageHeader
+        title={t('debt.title')}
+        subtitle={t('debt.pageSubtitle', { amount: amountStr, parentCount: rows.length })}
+        actions={<CsvDownloadButton report="debt" />}
+      />
 
       {rows.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
-          אין חובות פתוחים 🎉
-        </div>
+        <EmptyState
+          icon={Receipt}
+          title={t('debt.emptyTitle')}
+          subtitle={t('debt.emptySubtitle')}
+        />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-right px-4 py-3 font-medium text-gray-500">הורה</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-500">טלפון</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">חוב</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">תאריך יעד</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(r => (
-                <tr key={r.parentId} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-900 font-medium">{r.parentName}</td>
-                  <td className="px-4 py-3 text-gray-500 tabular-nums" dir="ltr">{r.phone}</td>
-                  <td className="px-4 py-3 font-semibold text-red-600 tabular-nums">
-                    ₪{r.totalDebt.toLocaleString('he-IL')}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">
-                    {r.oldestDueDate
-                      ? new Date(r.oldestDueDate).toLocaleDateString('he-IL')
-                      : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="h-full min-h-0 min-w-0 overflow-auto overscroll-x-contain -mx-4 px-4 sm:mx-0 sm:px-0">
+            <Table className="min-w-[640px] w-full">
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-muted-foreground backdrop-blur">{t('debt.parent')}</TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('debt.phone')}</TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('debt.balance')}</TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('debt.dueDate')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map(r => (
+                  <TableRow key={r.parentId} className="hover:bg-muted/20">
+                    <TableCell className="px-4 py-3 font-medium text-foreground">{r.parentName}</TableCell>
+                    <TableCell className="px-4 py-3 tabular-nums text-muted-foreground text-end" dir="ltr">{r.phone}</TableCell>
+                    <TableCell className="px-4 py-3 font-semibold tabular-nums text-destructive text-end">
+                      ₪{r.totalDebt.toLocaleString(intlLoc)}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-muted-foreground text-end">
+                      {r.oldestDueDate
+                        ? new Date(r.oldestDueDate).toLocaleDateString(intlLoc)
+                        : t('dash')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>

@@ -22,6 +22,22 @@ describe('normalizePhone', () => {
     it('trims leading/trailing whitespace before normalizing', () => {
       expect(normalizePhone('  0521234567  ')).toBe('+972521234567')
     })
+
+    it('strips dashes and normalizes', () => {
+      expect(normalizePhone('052-123-4567')).toBe('+972521234567')
+    })
+
+    it('strips parentheses, spaces, and dashes', () => {
+      expect(normalizePhone('(054) 693-0333')).toBe('+972546930333')
+    })
+
+    it('strips dots', () => {
+      expect(normalizePhone('054.693.0333')).toBe('+972546930333')
+    })
+
+    it('handles E.164 with spaces', () => {
+      expect(normalizePhone('+972 52 123 4567')).toBe('+972521234567')
+    })
   })
 
   describe('invalid inputs → PhoneNormalizationError', () => {
@@ -35,10 +51,6 @@ describe('normalizePhone', () => {
 
     it('throws for landline (02/03/04 prefix)', () => {
       expect(() => normalizePhone('0212345678')).toThrow(PhoneNormalizationError)
-    })
-
-    it('throws for number with dashes', () => {
-      expect(() => normalizePhone('052-123-4567')).toThrow(PhoneNormalizationError)
     })
 
     it('throws for random string', () => {

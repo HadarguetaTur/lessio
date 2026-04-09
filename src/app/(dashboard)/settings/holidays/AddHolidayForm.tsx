@@ -1,11 +1,14 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { addHoliday, addHolidayRange, type HolidayActionState } from './actions'
 
 const initialState: HolidayActionState = null
 
 export function AddHolidayForm() {
+  const t = useTranslations('settings.holidays')
+  const tCommon = useTranslations('common')
   const [isRange, setIsRange] = useState(false)
 
   const [singleState, singleAction, singlePending] = useActionState(addHoliday, initialState)
@@ -17,7 +20,7 @@ export function AddHolidayForm() {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-900">הוסף חג או חופשה</h2>
+        <h2 className="text-sm font-semibold text-gray-900">{t('addHoliday')}</h2>
         <div className="flex items-center gap-1 bg-gray-100 rounded-md p-0.5 text-xs font-medium">
           <button
             type="button"
@@ -44,7 +47,7 @@ export function AddHolidayForm() {
         <form action={singleAction} className="flex flex-wrap gap-3 items-end">
           <div>
             <label htmlFor="date" className="block text-xs font-medium text-gray-700 mb-1">
-              תאריך
+              {t('fields.date')}
             </label>
             <input
               id="date"
@@ -56,7 +59,7 @@ export function AddHolidayForm() {
           </div>
           <div className="flex-1 min-w-40">
             <label htmlFor="name-single" className="block text-xs font-medium text-gray-700 mb-1">
-              שם החג / החופשה
+              {t('fields.name')}
             </label>
             <input
               id="name-single"
@@ -73,7 +76,7 @@ export function AddHolidayForm() {
             disabled={isPending}
             className="px-4 py-2 rounded-md bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'שומר…' : 'הוסף'}
+            {isPending ? `${tCommon('actions.save')}…` : tCommon('actions.add')}
           </button>
         </form>
       ) : (
@@ -104,7 +107,7 @@ export function AddHolidayForm() {
           </div>
           <div className="flex-1 min-w-40">
             <label htmlFor="name-range" className="block text-xs font-medium text-gray-700 mb-1">
-              שם החופשה
+              {t('fields.name')}
             </label>
             <input
               id="name-range"
@@ -121,7 +124,7 @@ export function AddHolidayForm() {
             disabled={isPending}
             className="px-4 py-2 rounded-md bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'שומר…' : 'הוסף טווח'}
+            {isPending ? `${tCommon('actions.save')}…` : tCommon('actions.add')}
           </button>
         </form>
       )}

@@ -2,29 +2,29 @@
 
 import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
+import { useTranslations } from 'next-intl'
+import { useDebouncedSearchParam } from '@/lib/hooks/useDebouncedSearchParam'
 
 interface StudentSearchProps {
   q: string
   isActive: boolean
 }
 
+function studentsFilterHref(qLocal: string, active: boolean) {
+  const params = new URLSearchParams()
+  if (qLocal) params.set('q', qLocal)
+  if (!active) params.set('status', 'inactive')
+  const qs = params.toString()
+  return qs ? `/students?${qs}` : '/students'
+}
+
 export function StudentSearch({ q, isActive }: StudentSearchProps) {
+  const t = useTranslations('students')
   const router = useRouter()
 
-  function buildUrl(overrides: { q?: string; isActive?: boolean }) {
-    const params = new URLSearchParams()
-    const nextQ = overrides.q ?? q
-    const nextActive = overrides.isActive ?? isActive
-    if (nextQ) params.set('q', nextQ)
-    if (!nextActive) params.set('status', 'inactive')
-    return `/students?${params.toString()}`
-  }
-
-  function handleSearch(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const input = e.currentTarget.elements.namedItem('q') as HTMLInputElement
-    router.push(buildUrl({ q: input.value }))
-  }
+  const [draft, setDraft] = useDebouncedSearchParam(q, (d) =>
+    studentsFilterHref(d, isActive)
+  )
 
   const tabBase =
     'px-4 py-2 text-sm font-medium border transition-colors first:rounded-r-md last:rounded-l-md'
@@ -33,28 +33,32 @@ export function StudentSearch({ q, isActive }: StudentSearchProps) {
 
   return (
     <div className="flex gap-3 items-center">
-      <form onSubmit={handleSearch} className="relative flex-1 max-w-sm">
+      <div className="relative flex-1 max-w-sm">
         <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         <input
-          name="q"
-          defaultValue={q}
-          placeholder="חיפוש לפי שם..."
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={t('searchPlaceholder')}
+          type="search"
+          autoComplete="off"
           className="w-full pr-9 pl-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-      </form>
+      </div>
 
       <div className="flex">
         <button
-          onClick={() => router.push(buildUrl({ isActive: true }))}
+          type="button"
+          onClick={() => router.push(studentsFilterHref(draft, true))}
           className={isActive ? tabActive : tabInactive}
         >
-          פעיל
+          {t('filterActive')}
         </button>
         <button
-          onClick={() => router.push(buildUrl({ isActive: false }))}
+          type="button"
+          onClick={() => router.push(studentsFilterHref(draft, false))}
           className={!isActive ? tabActive : tabInactive}
         >
-          לא פעיל
+          {t('filterInactive')}
         </button>
       </div>
     </div>

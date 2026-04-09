@@ -1,35 +1,21 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { TrendingUp, AlertCircle, CalendarDays, GraduationCap, UserPlus, XCircle, TriangleAlert } from 'lucide-react'
+import { CalendarDays, GraduationCap, UserPlus, XCircle, TriangleAlert, TrendingUp, AlertCircle } from 'lucide-react'
 import { DateTime } from 'luxon'
+import { getTranslations, getLocale } from 'next-intl/server'
+import { formatCurrency } from '@/lib/i18n/formatCurrency'
+import { parseAppLocale } from '@/lib/i18n/locale'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getTodayLessons, formatTime, LessonStatus, Lesson } from '@/lib/lessons'
 import { getDashboardStats } from '@/lib/dashboard/stats'
 import { KpiCard } from '@/components/dashboard/KpiCard'
+import { PageHeader } from '@/components/ui/page-header'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { EmptyState } from '@/components/ui/empty-state'
+import { UserAvatar } from '@/components/ui/user-avatar'
 
-const HEBREW_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר']
-const HEBREW_WEEKDAYS = ['שני','שלישי','רביעי','חמישי','שישי','שבת','ראשון'] // Luxon: 1=Mon … 7=Sun
-
-function formatHebrewDate(dt: DateTime): string {
-  const day = HEBREW_WEEKDAYS[dt.weekday - 1]
-  const month = HEBREW_MONTHS[dt.month - 1]
-  return `יום ${day}, ${dt.day} ב${month}`
-}
-
-const STATUS_LABELS: Record<LessonStatus, string> = {
-  scheduled: 'מתוכנן',
-  completed: 'הושלם',
-  cancelled: 'בוטל',
-  no_show: 'לא הגיע',
-}
-
-const STATUS_STYLES: Record<LessonStatus, string> = {
-  scheduled: 'bg-blue-50 text-blue-700',
-  completed: 'bg-green-50 text-green-700',
-  cancelled: 'bg-red-50 text-red-500',
-  no_show: 'bg-yellow-50 text-yellow-700',
-}
+const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
 function countByStatus(lessons: Lesson[], status: LessonStatus) {
   return lessons.filter((l) => l.status === status).length
@@ -41,8 +27,21 @@ export default async function DashboardPage() {
   if (role === 'teacher') {
     redirect('/teacher/schedule')
   }
-  const timezone = await getOrgTimezone(orgId)
-  const todayLabel = formatHebrewDate(DateTime.now().setZone(timezone))
+
+  const [timezone, locale, t, tc] = await Promise.all([
+    getOrgTimezone(orgId),
+    getLocale(),
+    getTranslations('dashboard'),
+    getTranslations('common'),
+  ])
+
+  const appLocale = parseAppLocale(locale)
+  const dt = DateTime.now().setZone(timezone)
+  const weekdayKey = WEEKDAY_KEYS[dt.weekday - 1]
+  const todayLabel = locale === 'he'
+    ? `יום ${tc(`days.${weekdayKey}`)}, ${dt.day} ב${tc(`months.${dt.month}`)}`
+    : dt.setLocale('en').toFormat('cccc, LLLL d')
+
   const [lessons, stats] = await Promise.all([
     getTodayLessons(orgId, timezone),
     getDashboardStats(orgId, timezone),
@@ -54,129 +53,162 @@ export default async function DashboardPage() {
   const noShow = countByStatus(lessons, 'no_show')
   const cancelled = countByStatus(lessons, 'cancelled')
 
+  const statusCounters = [
+    { label: t('statusCounters.total'),     value: total,     color: 'text-foreground' },
+    { label: t('statusCounters.scheduled'), value: scheduled, color: 'text-primary' },
+    { label: t('statusCounters.completed'), value: completed, color: 'text-emerald-600' },
+    { label: t('statusCounters.noShow'),    value: noShow,    color: 'text-amber-600' },
+    { label: t('statusCounters.cancelled'), value: cancelled, color: 'text-red-500' },
+  ]
+
   return (
-    <div>
-      {/* Page header */}
-      <div className="mb-7">
-        <h1 className="text-2xl font-bold text-gray-900 leading-none">לוח הבקרה</h1>
-        <p className="text-sm text-gray-400 mt-1">{todayLabel}</p>
-      </div>
+    <div className="flex flex-col">
+      <PageHeader title={t('title')} subtitle={todayLabel} />
 
-      {/* KPI cards */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+      {/* Primary KPI cards */}
+      <section className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
         <KpiCard
-          label="הכנסה החודש"
-          value={`₪${stats.monthlyRevenue.toLocaleString('he-IL')}`}
+          label={t('kpi.monthlyRevenue')}
+          value={formatCurrency(stats.monthlyRevenue, locale)}
           icon={TrendingUp}
+          variant="revenue"
         />
         <KpiCard
-          label="חוב פתוח"
-          value={`₪${stats.pendingDebt.toLocaleString('he-IL')}`}
-          highlight={stats.pendingDebt > 0}
+          label={t('kpi.monthlyBilling')}
+          value={formatCurrency(stats.monthlyBillingTotal, locale)}
+          subLabel={t('kpi.monthlyBillingPaid', {
+            amount: formatCurrency(stats.monthlyBillingPaid, locale),
+          })}
+          icon={TrendingUp}
+          variant={stats.monthlyBillingOpen > 0 ? 'warning' : 'default'}
+        />
+        <KpiCard
+          label={t('kpi.pendingDebt')}
+          value={formatCurrency(stats.pendingDebt, locale)}
           icon={AlertCircle}
-        />
-        <KpiCard label="שיעורים החודש" value={stats.lessonsThisMonth} icon={CalendarDays} />
-        <KpiCard label="תלמידים פעילים" value={stats.activeStudents} icon={GraduationCap} />
-      </section>
-      <section className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-        <KpiCard
-          label="שיעורים שבוטלו"
-          value={`${stats.cancellationRateThisMonth}%`}
-          highlight={stats.cancellationRateThisMonth >= 20}
-          icon={XCircle}
+          variant={stats.pendingDebt > 0 ? 'debt' : 'default'}
+          highlight={stats.pendingDebt > 0}
         />
         <KpiCard
-          label="תלמידים בסיכון"
-          value={stats.atRiskStudents}
-          highlight={stats.atRiskStudents > 0}
-          icon={TriangleAlert}
+          label={t('kpi.lessonsThisMonth')}
+          value={stats.lessonsThisMonth}
+          icon={CalendarDays}
+          variant="lessons"
         />
-        <KpiCard label="לידים חדשים החודש" value={stats.newLeadsThisMonth} icon={UserPlus} />
+        <KpiCard
+          label={t('kpi.activeStudents')}
+          value={stats.activeStudents}
+          icon={GraduationCap}
+          variant="students"
+        />
       </section>
 
-      {/* Today's status counters — secondary row, visually lighter than KPI cards */}
-      <div className="mb-2">
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">סטטוס היום</p>
-        <div className="grid grid-cols-5 gap-2 mb-6">
-          <div className="bg-gray-50 rounded-lg border border-gray-100 px-3 py-2.5 text-center">
-            <p className="text-xl font-bold text-gray-800 leading-none">{total}</p>
-            <p className="text-xs text-gray-400 mt-1.5">סה״כ</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg border border-gray-100 px-3 py-2.5 text-center">
-            <p className="text-xl font-bold text-blue-600 leading-none">{scheduled}</p>
-            <p className="text-xs text-gray-400 mt-1.5">מתוכננים</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg border border-gray-100 px-3 py-2.5 text-center">
-            <p className="text-xl font-bold text-green-600 leading-none">{completed}</p>
-            <p className="text-xs text-gray-400 mt-1.5">הושלמו</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg border border-gray-100 px-3 py-2.5 text-center">
-            <p className="text-xl font-bold text-yellow-600 leading-none">{noShow}</p>
-            <p className="text-xs text-gray-400 mt-1.5">לא הגיע</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg border border-gray-100 px-3 py-2.5 text-center">
-            <p className="text-xl font-bold text-red-500 leading-none">{cancelled}</p>
-            <p className="text-xs text-gray-400 mt-1.5">בוטלו</p>
-          </div>
+      {/* Secondary KPI cards */}
+      <section className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <KpiCard
+          label={t('kpi.cancellationRate')}
+          value={`${stats.cancellationRateThisMonth}%`}
+          icon={XCircle}
+          highlight={stats.cancellationRateThisMonth >= 20}
+          variant={stats.cancellationRateThisMonth >= 20 ? 'warning' : 'default'}
+        />
+        <KpiCard
+          label={t('kpi.atRiskStudents')}
+          value={stats.atRiskStudents}
+          icon={TriangleAlert}
+          highlight={stats.atRiskStudents > 0}
+          variant={stats.atRiskStudents > 0 ? 'warning' : 'default'}
+        />
+        <KpiCard
+          label={t('kpi.newLeads')}
+          value={stats.newLeadsThisMonth}
+          icon={UserPlus}
+          variant="default"
+        />
+      </section>
+
+      {/* Today status row */}
+      <div className="mb-6">
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+          {t('todayStatus')}
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          {statusCounters.map(({ label, value, color }) => (
+            <div
+              key={label}
+              className="bg-card rounded-lg border border-border px-3 py-3 text-center"
+            >
+              <p className={`text-xl font-bold leading-none ${color}`}>{value}</p>
+              <p className="text-[11px] text-muted-foreground mt-1.5">{label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Lessons table */}
-      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">שיעורים — היום</p>
-      {lessons.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 flex flex-col items-center gap-2">
-          <CalendarDays size={32} className="text-gray-200" />
-          <p className="text-sm text-gray-400">אין שיעורים מתוכננים להיום</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  שעה
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  תלמיד
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  מורה
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  סטטוס
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {lessons.map((lesson) => (
-                <tr key={lesson.id} className="hover:bg-gray-50/70 transition-colors">
-                  <td className="px-4 py-3.5 text-sm font-mono text-gray-600" dir="ltr">
-                    {formatTime(lesson.start_at, timezone)}–{formatTime(lesson.end_at, timezone)}
-                  </td>
-                  <td className="px-4 py-3.5 text-sm font-medium">
-                    <Link
-                      href={`/lessons/${lesson.id}`}
-                      className="text-gray-900 hover:text-blue-700 hover:underline underline-offset-2"
-                    >
-                      {lesson.student.full_name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3.5 text-sm text-gray-500">
-                    {lesson.teacher.full_name}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[lesson.status]}`}
-                    >
-                      {STATUS_LABELS[lesson.status]}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Today's lessons */}
+      <div>
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+          {t('todayLessons')}
+        </p>
+        {lessons.length === 0 ? (
+          <EmptyState
+            icon={CalendarDays}
+            title={tc('emptyStates.noLessonsToday')}
+          />
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-[600px] w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-end text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                    {tc('table.time')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-end text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                    {tc('table.student')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-end text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                    {tc('table.teacher')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-end text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                    {tc('table.status')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {lessons.map((lesson) => (
+                    <tr key={lesson.id} className="transition-colors hover:bg-muted/20">
+                      <td className="px-5 py-3.5 font-mono text-sm text-muted-foreground" dir="ltr">
+                        {formatTime(lesson.start_at, timezone, appLocale)}–{formatTime(lesson.end_at, timezone, appLocale)}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <Link
+                          href={`/lessons/${lesson.id}`}
+                          className="group flex items-center gap-2.5"
+                        >
+                          <UserAvatar name={lesson.student.full_name} />
+                          <span className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
+                            {lesson.student.full_name}
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <UserAvatar name={lesson.teacher.full_name} />
+                          <span className="text-sm text-muted-foreground">{lesson.teacher.full_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <StatusBadge status={lesson.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -4,20 +4,11 @@ import { getLeads, LeadStatus } from '@/lib/leads'
 import { LeadStatusSelect } from '@/components/dashboard/leads/LeadStatusSelect'
 import { LeadNotesButton } from '@/components/dashboard/leads/LeadNotesButton'
 import { updateLeadStatus, saveLeadNotes } from './actions'
-
-const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: 'חדש',
-  contacted: 'נוצר קשר',
-  converted: 'הומר',
-  irrelevant: 'לא רלוונטי',
-}
-
-const STATUS_STYLES: Record<LeadStatus, string> = {
-  new: 'bg-yellow-50 text-yellow-700',
-  contacted: 'bg-blue-50 text-blue-700',
-  converted: 'bg-green-50 text-green-700',
-  irrelevant: 'bg-gray-100 text-gray-500',
-}
+import { PageHeader } from '@/components/ui/page-header'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { EmptyState } from '@/components/ui/empty-state'
+import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 
 const validStatuses: LeadStatus[] = ['new', 'contacted', 'converted', 'irrelevant']
 
@@ -26,10 +17,12 @@ export default async function LeadsPage(props: {
 }) {
   const searchParams = await props.searchParams
   const { orgId, role } = await getSession()
+  const t = await getTranslations('leads')
+  const tCommon = await getTranslations('common')
 
   if (role !== 'owner' && role !== 'admin') {
     return (
-      <div className="mt-10 text-center text-sm text-gray-400">אין הרשאה לצפות בדף זה</div>
+      <div className="mt-10 text-center text-sm text-muted-foreground">{t('noPermission')}</div>
     )
   }
 
@@ -39,20 +32,25 @@ export default async function LeadsPage(props: {
 
   const leads = await getLeads(orgId, { status: statusFilter })
 
+  const STATUS_LABELS: Record<LeadStatus, string> = {
+    new: tCommon('leadStatus.new'),
+    contacted: tCommon('leadStatus.contacted'),
+    converted: tCommon('leadStatus.converted'),
+    irrelevant: t('statusIrrelevant'),
+  }
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">לידים</h1>
-      </div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <PageHeader title={t('title')} />
 
       {/* Filters */}
-      <form method="GET" className="bg-white rounded-lg border border-gray-100 p-4 mb-5 flex flex-wrap gap-3 items-end">
+      <form method="GET" className="bg-card rounded-xl border border-border p-4 mb-5 flex flex-wrap gap-3 items-end">
         <select
           name="status"
           defaultValue={searchParams.status ?? ''}
-          className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="">כל הסטטוסים</option>
+          <option value="">{t('allStatuses')}</option>
           {validStatuses.map((s) => (
             <option key={s} value={s}>
               {STATUS_LABELS[s]}
@@ -62,103 +60,101 @@ export default async function LeadsPage(props: {
 
         <button
           type="submit"
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 transition-colors"
         >
-          סנן
+          {t('filter')}
         </button>
         <a
           href="/leads"
-          className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-foreground border border-border rounded-md hover:bg-muted transition-colors"
         >
-          איפוס
+          {t('reset')}
         </a>
       </form>
 
       {leads.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 flex flex-col items-center gap-2">
-          <UserPlus size={32} className="text-gray-200" />
-          <p className="text-sm text-gray-400">לא נמצאו לידים</p>
-          <p className="text-xs text-gray-300">לידים נוצרים אוטומטית מהודעות WhatsApp</p>
-        </div>
+        <EmptyState
+          icon={UserPlus}
+          title={t('noLeads')}
+          subtitle={t('autoCreated')}
+        />
       ) : (
-        <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  טלפון
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  הודעה ראשונה
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  סטטוס
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  תאריך יצירה
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  הערות
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  שינוי סטטוס
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  המרה
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {leads.map((lead) => (
-                <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900" dir="ltr">
-                    {lead.phone}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 max-w-xs">
-                    <span title={lead.raw_message}>
-                      {lead.raw_message.length > 60
-                        ? lead.raw_message.slice(0, 60) + '…'
-                        : lead.raw_message}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[lead.status]}`}
-                    >
-                      {STATUS_LABELS[lead.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {new Date(lead.created_at).toLocaleDateString('he-IL')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <LeadNotesButton
-                      leadId={lead.id}
-                      initialNotes={lead.notes}
-                      action={saveLeadNotes}
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <LeadStatusSelect
-                      leadId={lead.id}
-                      currentStatus={lead.status}
-                      action={updateLeadStatus}
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    {lead.status !== 'converted' && (
-                      <a
-                        href={`/leads/${lead.id}/convert`}
-                        className="text-sm text-green-700 hover:text-green-900"
-                      >
-                        המר
-                      </a>
-                    )}
-                  </td>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="h-full overflow-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                  {tCommon('table.phone')}
+                  </th>
+                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                  {t('firstMessage')}
+                  </th>
+                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                  {tCommon('table.status')}
+                  </th>
+                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                  {tCommon('table.date')}
+                  </th>
+                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                  {t('fields.notes')}
+                  </th>
+                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                  {t('changeStatus')}
+                  </th>
+                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                  {t('convert')}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {leads.map((lead) => (
+                  <tr key={lead.id} className="transition-colors hover:bg-muted/20">
+                    <td className="px-5 py-3.5 font-mono text-sm font-medium text-foreground" dir="ltr">
+                      {lead.phone}
+                    </td>
+                    <td className="max-w-xs px-5 py-3.5 text-sm text-muted-foreground">
+                      <span title={lead.raw_message}>
+                        {lead.raw_message.length > 60
+                          ? lead.raw_message.slice(0, 60) + '…'
+                          : lead.raw_message}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusBadge status={lead.status} label={STATUS_LABELS[lead.status as LeadStatus]} />
+                    </td>
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground">
+                      {new Date(lead.created_at).toLocaleDateString('he-IL')}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <LeadNotesButton
+                        leadId={lead.id}
+                        initialNotes={lead.notes}
+                        action={saveLeadNotes}
+                      />
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <LeadStatusSelect
+                        leadId={lead.id}
+                        currentStatus={lead.status}
+                        action={updateLeadStatus}
+                      />
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {lead.status !== 'converted' && (
+                        <Link
+                          href={`/leads/${lead.id}/convert`}
+                          className="text-sm font-medium text-primary hover:underline"
+                        >
+                          {t('convertLink')}
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

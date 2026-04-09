@@ -1,15 +1,17 @@
+import { getTranslations } from 'next-intl/server'
 import type { PlatformStats } from '@/lib/superadmin/dashboard'
 
 interface Props {
   stats: PlatformStats
 }
 
-export function PlatformKpiGrid({ stats }: Props) {
+export async function PlatformKpiGrid({ stats }: Props) {
+  const t = await getTranslations('admin')
   const cards = [
-    { label: 'ארגונים סה״כ',         value: stats.totalOrganizations.toLocaleString('he-IL'),           sub: null },
-    { label: 'פעילים (30 יום)',        value: stats.activeOrganizationsLast30Days.toLocaleString('he-IL'), sub: null },
-    { label: 'שיעורים החודש',          value: stats.platformLessonsThisMonth.toLocaleString('he-IL'),      sub: null },
-    { label: 'הכנסות החודש',           value: `₪${stats.platformRevenueThisMonth.toLocaleString('he-IL')}`, sub: 'תשלומים שהתקבלו' },
+    { label: t('dashboard.kpi.totalOrgs'),       value: stats.totalOrganizations.toLocaleString('he-IL'),            sub: null },
+    { label: t('dashboard.kpi.activeOrgs'),       value: stats.activeOrganizationsLast30Days.toLocaleString('he-IL'), sub: null },
+    { label: t('dashboard.kpi.lessonsThisMonth'), value: stats.platformLessonsThisMonth.toLocaleString('he-IL'),       sub: null },
+    { label: t('dashboard.kpi.revenueThisMonth'), value: `₪${stats.platformRevenueThisMonth.toLocaleString('he-IL')}`, sub: t('dashboard.kpi.paymentsReceived') },
   ]
 
   return (

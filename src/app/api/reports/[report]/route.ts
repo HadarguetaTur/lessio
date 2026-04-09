@@ -8,7 +8,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth/session'
+import { parseAppLocale } from '@/lib/i18n/locale'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getRevenueReport } from '@/lib/reports/revenue'
 import { getLessonsReport } from '@/lib/reports/lessons'
@@ -43,6 +45,8 @@ export async function GET(request: NextRequest, { params }: Context) {
   const { searchParams } = request.nextUrl
   const orgId = session.orgId
   const timezone = await getOrgTimezone(orgId)
+  const cookieStore = await cookies()
+  const appLocale = parseAppLocale(cookieStore.get('locale')?.value)
 
   let csv: string
   let filename: string
@@ -54,10 +58,16 @@ export async function GET(request: NextRequest, { params }: Context) {
           defaultValue: 12,
           maxValue: 24,
         })
-        const { buckets } = await getRevenueReport(orgId, timezone, months)
+        const { buckets } = await getRevenueReport(orgId, timezone, months, appLocale)
         csv = toCsv(
-          ['חודש', 'הכנסות (₪)'],
-          buckets.map(b => [b.label, b.revenue.toFixed(2)])
+          ['חודש', 'הכנסות ששולמו (₪)', 'חיוב חודשי (₪)', 'חיוב חודשי ששולם (₪)', 'חיוב חודשי פתוח (₪)'],
+          buckets.map(b => [
+            b.label,
+            b.revenue.toFixed(2),
+            b.billingTotal.toFixed(2),
+            b.billingPaid.toFixed(2),
+            (b.billingTotal - b.billingPaid).toFixed(2),
+          ])
         )
         filename = 'revenue.csv'
         break
@@ -67,7 +77,7 @@ export async function GET(request: NextRequest, { params }: Context) {
           defaultValue: 12,
           maxValue: 24,
         })
-        const { buckets } = await getLessonsReport(orgId, timezone, months)
+        const { buckets } = await getLessonsReport(orgId, timezone, months, appLocale)
         csv = toCsv(
           ['חודש', 'שיעורים', 'ביטולים'],
           buckets.map(b => [b.label, String(b.count), String(b.cancelled)])

@@ -84,3 +84,12 @@ All required env vars are declared in `src/lib/env.ts` (`ALWAYS_REQUIRED` vs `RE
 
 **Multi-tenant isolation:**
 `org_id` is always resolved server-side from the authenticated session via `src/lib/auth/session.ts`. It is never accepted from the client. All DB queries are scoped to the resolved org — treat any client-supplied `org_id` as untrusted.
+
+**RBAC roles and mutation guard:**
+Four roles: `owner`, `admin`, `teacher`, `superadmin`. Superadmins have no `org_id` and use a separate shell at `/app/(admin)/admin/` with `requireSuperAdminSession()`. Org users (owner/admin/teacher) use `getSession()` (aliased as `requireDashboardSession()`). Every mutating Server Action must call `requireMutation(session)` immediately after `getSession()` — this blocks writes while a superadmin is in support mode (read-only).
+
+**WhatsApp message send pattern:**
+All outbound WhatsApp messages go through `resolveTemplate(orgId, templateType, vars)` + `sendTextMessage(...)`. Never call old send helpers (all are deleted since Sprint 17). Template types are defined in `src/lib/whatsapp/templates.ts`. The same template resolver is mirrored for Deno Edge Functions in `supabase/functions/_shared/templates.ts`.
+
+**Superadmin support mode:**
+A superadmin can impersonate an org via a short-lived JWT cookie (30-min TTL, `src/lib/support-session/`). While in support mode, `getSession()` returns the org's data with `isSupportMode: true`. Mutations are blocked by `requireMutation()`. The support mode banner is rendered in `/app/(dashboard)/layout.tsx`.

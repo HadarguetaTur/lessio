@@ -1,4 +1,5 @@
 import { forbidden } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { RemindersForm } from './RemindersForm'
@@ -24,18 +25,19 @@ function fmtDateTime(ts: string) {
   })
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  lesson_reminder: 'תזכורת שיעור',
-  payment_reminder: 'תזכורת תשלום',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  sent: 'נשלח',
-  failed: 'נכשל',
-}
-
 export default async function RemindersSettingsPage() {
   const { orgId, role } = await getSession()
+  const t = await getTranslations('settings.reminders')
+
+  const TYPE_LABELS: Record<string, string> = {
+    lesson_reminder: t('lessonReminder'),
+    payment_reminder: t('paymentReminder'),
+  }
+
+  const STATUS_LABELS: Record<string, string> = {
+    sent: 'נשלח',
+    failed: 'נכשל',
+  }
 
   if (role !== 'owner') {
     forbidden()
@@ -58,8 +60,8 @@ export default async function RemindersSettingsPage() {
   ])
 
   return (
-    <div className="max-w-xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">הגדרות תזכורות</h1>
+    <div className="flex h-full min-h-0 w-full max-w-xl flex-col overflow-hidden">
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
       <p className="text-sm text-gray-500 mb-8">
         הגדר תזכורות WhatsApp אוטומטיות להורים לפני שיעורים ועל חיובים פתוחים.
       </p>
@@ -74,70 +76,72 @@ export default async function RemindersSettingsPage() {
       </div>
 
       {/* Notification log */}
-      <div>
+      <div className="min-h-0 flex flex-1 flex-col">
         <h2 className="text-base font-semibold text-gray-900 mb-3">
-          לוג שליחות אחרונות
+          {t('notificationLog')}
         </h2>
 
         {!logs || logs.length === 0 ? (
-          <p className="text-sm text-gray-400">לא נשלחו תזכורות עדיין.</p>
+          <p className="text-sm text-gray-400">{t('noLog')}</p>
         ) : (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    תאריך
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    סוג
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <div className="h-full overflow-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                    {t('logHeaders.sentAt')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                    {t('logHeaders.type')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
                     ישות
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    סטטוס
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                      {fmtDateTime(log.sent_at)}
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">
-                      {TYPE_LABELS[log.type] ?? log.type}
-                    </td>
-                    <td
-                      className="px-4 py-3 text-gray-500 font-mono text-xs max-w-[120px] truncate"
-                      title={log.entity_id}
-                    >
-                      {log.entity_id.slice(0, 8)}…
-                    </td>
-                    <td className="px-4 py-3">
-                      {log.status === 'sent' ? (
-                        <span className="text-green-600 font-medium">
-                          {STATUS_LABELS.sent}
-                        </span>
-                      ) : (
-                        <span
-                          className="text-red-500 font-medium"
-                          title={log.error_message ?? undefined}
-                        >
-                          {STATUS_LABELS.failed}
-                          {log.error_message && (
-                            <span className="text-xs font-normal text-gray-400 block">
-                              {log.error_message.slice(0, 60)}
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </td>
+                    </th>
+                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                    {t('logHeaders.recipient')}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {logs.map((log) => (
+                    <tr key={log.id} className="transition-colors hover:bg-gray-50">
+                      <td className="whitespace-nowrap px-4 py-3 text-gray-700">
+                        {fmtDateTime(log.sent_at)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {TYPE_LABELS[log.type] ?? log.type}
+                      </td>
+                      <td
+                        className="max-w-[120px] truncate px-4 py-3 font-mono text-xs text-gray-500"
+                        title={log.entity_id}
+                      >
+                        {log.entity_id.slice(0, 8)}…
+                      </td>
+                      <td className="px-4 py-3">
+                        {log.status === 'sent' ? (
+                          <span className="font-medium text-green-600">
+                            {STATUS_LABELS.sent}
+                          </span>
+                        ) : (
+                          <span
+                            className="font-medium text-red-500"
+                            title={log.error_message ?? undefined}
+                          >
+                            {STATUS_LABELS.failed}
+                            {log.error_message && (
+                              <span className="block text-xs font-normal text-gray-400">
+                                {log.error_message.slice(0, 60)}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

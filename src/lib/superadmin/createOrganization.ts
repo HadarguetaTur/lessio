@@ -77,6 +77,7 @@ export async function createOrganization(
       break_duration_minutes: 0,
       min_booking_notice_hours: 0,
       billing_mode: 'monthly',
+      onboarding_completed: false,
     })
     .select('id')
     .single()
@@ -91,9 +92,9 @@ export async function createOrganization(
   // Step 4 — default cancellation policy
   await db.from('cancellation_policies').insert({
     organization_id: orgId,
-    notice_hours: 24,
-    max_free_per_month: 2,
-    charge_percent: 50,
+    notice_hours_full: 24,
+    notice_hours_partial: 2,
+    partial_charge_percent: 50,
   })
 
   // Step 5 — invite owner via Auth Admin API

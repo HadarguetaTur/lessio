@@ -7,6 +7,7 @@
 
 import { useActionState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import type { ActionState } from '@/app/(dashboard)/homework/templates/actions'
 
 interface TemplateFormProps {
@@ -22,6 +23,7 @@ interface TemplateFormProps {
 const initialState: ActionState = { error: null, success: false }
 
 export function TemplateForm({ action, initialValues, submitLabel }: TemplateFormProps) {
+  const t = useTranslations('homework')
   const router = useRouter()
   const [state, formAction, isPending] = useActionState(action, initialState)
 
@@ -36,7 +38,7 @@ export function TemplateForm({ action, initialValues, submitLabel }: TemplateFor
       {/* Title */}
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-          כותרת <span className="text-red-500">*</span>
+          {t('fields.title')} <span className="text-red-500">*</span>
         </label>
         <input
           id="title"
@@ -46,14 +48,14 @@ export function TemplateForm({ action, initialValues, submitLabel }: TemplateFor
           maxLength={200}
           defaultValue={initialValues?.title ?? ''}
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="כותרת שיעורי הבית"
+          placeholder={t('titlePlaceholder')}
         />
       </div>
 
       {/* Subject (optional) */}
       <div>
         <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
-          מקצוע <span className="text-gray-400 text-xs">(אופציונלי)</span>
+          {t('fields.subject')} <span className="text-gray-400 text-xs">{t('subjectOptional')}</span>
         </label>
         <input
           id="subject"
@@ -62,14 +64,14 @@ export function TemplateForm({ action, initialValues, submitLabel }: TemplateFor
           maxLength={100}
           defaultValue={initialValues?.subject ?? ''}
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="מתמטיקה, אנגלית, ..."
+          placeholder={t('subjectPlaceholder')}
         />
       </div>
 
       {/* Body */}
       <div>
         <label htmlFor="body" className="block text-sm font-medium text-gray-700 mb-1">
-          תוכן <span className="text-red-500">*</span>
+          {t('fields.body')} <span className="text-red-500">*</span>
         </label>
         <textarea
           id="body"
@@ -79,7 +81,7 @@ export function TemplateForm({ action, initialValues, submitLabel }: TemplateFor
           maxLength={2000}
           defaultValue={initialValues?.body ?? ''}
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
-          placeholder="תיאור שיעורי הבית..."
+          placeholder={t('bodyPlaceholder')}
         />
       </div>
 
@@ -96,7 +98,7 @@ export function TemplateForm({ action, initialValues, submitLabel }: TemplateFor
         disabled={isPending}
         className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'שומר...' : submitLabel}
+        {isPending ? t('saving') : submitLabel}
       </button>
     </form>
   )

@@ -1,4 +1,5 @@
 import { forbidden } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -13,6 +14,7 @@ import { ConversationLogTable } from '@/components/dashboard/settings/Conversati
 
 export default async function AiAssistantSettingsPage() {
   const { orgId, role } = await getSession()
+  const t = await getTranslations('settings.aiAssistant')
   const isConfigured = isAiAssistantConfigured()
 
   if (role !== 'owner') {
@@ -39,7 +41,7 @@ export default async function AiAssistantSettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">עוזר AI</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
       <p className="text-sm text-gray-500 mb-8">
         עוזר AI עונה להורים על שאלות נפוצות ישירות ב-WhatsApp בהתבסס על המידע בחשבון.
       </p>
@@ -54,7 +56,7 @@ export default async function AiAssistantSettingsPage() {
 
       {/* Conversation log */}
       <div>
-        <h2 className="text-base font-semibold text-gray-900 mb-3">לוג שיחות אחרונות</h2>
+        <h2 className="text-base font-semibold text-gray-900 mb-3">{t('conversationLog')}</h2>
         <ConversationLogTable rows={(logs ?? []) as LogRow[]} />
       </div>
     </div>

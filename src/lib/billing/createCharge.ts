@@ -68,7 +68,7 @@ export async function createLessonCharge(
       console.error('[createLessonCharge] no primary parent', { lessonId, orgId: organizationId, studentId: primaryStudentId, error: (e as Error).message })
       return {
         type: 'missing_parent',
-        message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר',
+        message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר. יש לקשר הורה לתלמיד דרך עמוד התלמיד > הורים.',
       }
     }
     throw e

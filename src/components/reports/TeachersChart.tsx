@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import {
   BarChart,
   Bar,
@@ -16,14 +17,15 @@ interface TeachersChartProps {
 }
 
 export function TeachersChart({ rows }: TeachersChartProps) {
+  const t = useTranslations('reports.teachers')
   const data = rows.map(r => ({
     name: r.teacherName,
-    שיעורים: r.lessonsCount,
+    lessons: r.lessonsCount,
   }))
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 64 }}>
+    <ResponsiveContainer width="100%" height={200}>
+      <BarChart data={data} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 64 }}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
         <XAxis
           type="number"
@@ -42,9 +44,9 @@ export function TeachersChart({ rows }: TeachersChartProps) {
         />
         <Tooltip
           contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-          formatter={(v: number) => [v, 'שיעורים']}
+          formatter={(value) => [Number(value ?? 0), t('lessons')]}
         />
-        <Bar dataKey="שיעורים" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={28} />
+        <Bar dataKey="lessons" name={t('lessons')} fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={28} />
       </BarChart>
     </ResponsiveContainer>
   )

@@ -48,6 +48,7 @@ export default async function PortalPaymentsPage({
     lesson: 'שיעור',
     cancellation: 'ביטול',
     manual: 'ידני',
+    monthly: 'חודשי',
   }
 
   return (

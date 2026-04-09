@@ -6,6 +6,17 @@ import { parseReportMonths } from '@/lib/reports/params'
 import { RevenueChart } from '@/components/reports/RevenueChart'
 import { CsvDownloadButton } from '@/components/reports/CsvDownloadButton'
 import { PeriodSelector } from '@/components/reports/PeriodSelector'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { PageHeader } from '@/components/ui/page-header'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 /**
  * Revenue report page.
@@ -24,46 +35,66 @@ export default async function RevenueReportPage({ searchParams }: Props) {
   const months = parseReportMonths(monthsParam, { defaultValue: 12, maxValue: 24 })
 
   const timezone = await getOrgTimezone(session.orgId)
-  const { buckets, total } = await getRevenueReport(session.orgId, timezone, months)
+  const [locale, t] = await Promise.all([getLocale(), getTranslations('reports')])
+  const appLocale = parseAppLocale(locale)
+  const intlLoc = toIntlLocale(appLocale)
+  const { buckets, total, billingTotal, billingPaid } = await getRevenueReport(
+    session.orgId,
+    timezone,
+    months,
+    appLocale
+  )
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">הכנסות</h1>
-          <p className="text-gray-500 text-sm mt-0.5">
-            סה״כ: <span className="font-semibold text-gray-800">₪{total.toLocaleString('he-IL')}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      <PageHeader
+        title={t('revenue.title')}
+        subtitle={`${t('revenue.revenue')}: ₪${total.toLocaleString(intlLoc)} · ${t('revenue.monthlyBilling')}: ₪${billingTotal.toLocaleString(intlLoc)} · ${t('revenue.monthlyBillingPaid')}: ₪${billingPaid.toLocaleString(intlLoc)}`}
+        actions={
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <PeriodSelector current={months} />
           <CsvDownloadButton report="revenue" params={{ months: String(months) }} />
-        </div>
-      </div>
+          </div>
+        }
+      />
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+      <div className="mb-6 rounded-xl border border-border bg-card p-6">
         <RevenueChart buckets={buckets} />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-right px-4 py-3 font-medium text-gray-500">חודש</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">הכנסות</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...buckets].reverse().map(b => (
-              <tr key={b.month} className="border-b border-gray-50 hover:bg-gray-50">
-                <td className="px-4 py-3 text-gray-700">{b.label}</td>
-                <td className="px-4 py-3 font-medium text-gray-900 tabular-nums">
-                  ₪{b.revenue.toLocaleString('he-IL')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="h-full min-h-0 min-w-0 overflow-auto overscroll-x-contain -mx-4 px-4 sm:mx-0 sm:px-0">
+          <Table className="min-w-[720px] w-full">
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-muted-foreground backdrop-blur">{t('revenue.month')}</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('revenue.revenue')}</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('revenue.monthlyBilling')}</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('revenue.monthlyBillingPaid')}</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('revenue.monthlyBillingOpen')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...buckets].reverse().map(b => (
+                <TableRow key={b.month} className="hover:bg-muted/20">
+                  <TableCell className="px-4 py-3 text-foreground">{b.label}</TableCell>
+                  <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
+                    ₪{b.revenue.toLocaleString(intlLoc)}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
+                    ₪{b.billingTotal.toLocaleString(intlLoc)}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
+                    ₪{b.billingPaid.toLocaleString(intlLoc)}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
+                    ₪{(b.billingTotal - b.billingPaid).toLocaleString(intlLoc)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   )

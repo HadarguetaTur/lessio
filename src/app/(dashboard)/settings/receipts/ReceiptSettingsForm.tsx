@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { saveReceiptConfigAction, type ReceiptActionState } from './actions'
 import type { ReceiptProviderType } from '@/lib/receipts/factory'
 
@@ -17,6 +18,8 @@ const INPUT_CLS =
 const LABEL_CLS = 'block text-sm font-medium text-gray-700 mb-1'
 
 export function ReceiptSettingsForm() {
+  const t = useTranslations('settings.receipts')
+  const tCommon = useTranslations('common')
   const [provider, setProvider] = useState<ReceiptProviderType>('green-invoice')
   const [state, formAction, isPending] = useActionState(saveReceiptConfigAction, initialState)
 
@@ -25,7 +28,7 @@ export function ReceiptSettingsForm() {
       {/* Provider selector */}
       <div>
         <label htmlFor="receipt-provider" className={LABEL_CLS}>
-          ספק קבלות
+          {t('provider')}
         </label>
         <select
           id="receipt-provider"
@@ -203,7 +206,7 @@ export function ReceiptSettingsForm() {
         disabled={isPending}
         className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'מתחבר…' : 'שמור וחבר'}
+        {isPending ? `${tCommon('actions.connect')}…` : tCommon('actions.connect')}
       </button>
     </form>
   )

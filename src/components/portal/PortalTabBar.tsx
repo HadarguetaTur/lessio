@@ -11,21 +11,25 @@ const TABS = [
 
 export function PortalTabBar({ orgId, active }: { orgId: string; active: string }) {
   return (
-    <nav className="fixed bottom-0 right-0 left-0 max-w-[480px] mx-auto border-t border-gray-200 bg-white flex">
+    <nav className="fixed bottom-0 right-0 left-0 max-w-[480px] mx-auto border-t border-border bg-card flex safe-bottom">
       {TABS.map(({ id, label, href, icon: Icon }) => {
         const isActive = active === id
         return (
           <Link
             key={id}
             href={href(orgId)}
-            className={`flex-1 flex flex-col items-center py-3 text-xs gap-1 transition-colors border-t-2 ${
+            className={`flex-1 flex flex-col items-center py-3 text-xs gap-1 transition-colors ${
               isActive
-                ? 'text-blue-600 border-blue-600'
-                : 'text-gray-500 border-transparent'
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Icon size={isActive ? 22 : 20} />
-            {label}
+            <div className={`p-1.5 rounded-lg transition-colors ${isActive ? 'bg-primary/10' : ''}`}>
+              <Icon size={18} />
+            </div>
+            <span className={`leading-none ${isActive ? 'font-semibold' : 'font-normal'}`}>
+              {label}
+            </span>
           </Link>
         )
       })}

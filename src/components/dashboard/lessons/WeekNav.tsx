@@ -1,8 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatWeekRangeLabel, parseAppLocale } from '@/lib/i18n/locale'
 
 interface TeacherOption {
   id: string
@@ -18,6 +20,9 @@ interface WeekNavProps {
 
 export function WeekNav({ weekStr, teachers, teacherId, currentWeekStr }: WeekNavProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const t = useTranslations('lessons')
+  const uiLocale = parseAppLocale(useLocale())
 
   function navigate(delta: number) {
     const base = new Date(`${weekStr}T12:00:00Z`)
@@ -25,25 +30,20 @@ export function WeekNav({ weekStr, teachers, teacherId, currentWeekStr }: WeekNa
     const nextStr = next.toISOString().substring(0, 10)
     const params = new URLSearchParams({ week: nextStr })
     if (teacherId) params.set('teacher', teacherId)
+    const student = searchParams.get('student')
+    if (student) params.set('student', student)
     router.push(`/lessons?${params.toString()}`)
   }
 
   function onTeacherChange(val: string) {
     const params = new URLSearchParams({ week: weekStr })
     if (val) params.set('teacher', val)
+    const student = searchParams.get('student')
+    if (student) params.set('student', student)
     router.push(`/lessons?${params.toString()}`)
   }
 
-  // Week range label: "22–28 במרץ 2026"
-  const startDate = new Date(`${weekStr}T12:00:00Z`)
-  const endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000)
-  const startDay = startDate.getUTCDate()
-  const endDay = endDate.getUTCDate()
-  const monthYear = new Intl.DateTimeFormat('he-IL', {
-    month: 'long',
-    year: 'numeric',
-  }).format(endDate)
-  const label = `${startDay}–${endDay} ${monthYear}`
+  const label = formatWeekRangeLabel(weekStr, uiLocale)
 
   return (
     <div className="flex items-center gap-4 flex-wrap">
@@ -52,24 +52,31 @@ export function WeekNav({ weekStr, teachers, teacherId, currentWeekStr }: WeekNa
         {/* "היום" button — shown only when not on current week */}
         {currentWeekStr && weekStr !== currentWeekStr && (
           <Link
-            href={`/lessons${teacherId ? `?teacher=${teacherId}` : ''}`}
+            href={(() => {
+              const p = new URLSearchParams()
+              if (teacherId) p.set('teacher', teacherId)
+              const student = searchParams.get('student')
+              if (student) p.set('student', student)
+              const q = p.toString()
+              return q ? `/lessons?${q}` : '/lessons'
+            })()}
             className="px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors ml-1"
           >
-            היום
+            {t('today')}
           </Link>
         )}
         <button
           onClick={() => navigate(-1)}
           className="p-1.5 rounded hover:bg-gray-100 text-gray-600"
-          title="שבוע קודם"
+          title={t('series.prevWeek')}
         >
           <ChevronLeft size={18} />
         </button>
-        <span className="text-sm font-medium text-gray-800 min-w-44 text-center">{label}</span>
+        <span className="text-sm font-medium text-gray-800 min-w-28 sm:min-w-44 text-center">{label}</span>
         <button
           onClick={() => navigate(1)}
           className="p-1.5 rounded hover:bg-gray-100 text-gray-600"
-          title="שבוע הבא"
+          title={t('series.nextWeek')}
         >
           <ChevronRight size={18} />
         </button>
@@ -81,7 +88,7 @@ export function WeekNav({ weekStr, teachers, teacherId, currentWeekStr }: WeekNa
         onChange={(e) => onTeacherChange(e.target.value)}
         className="text-sm border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-700"
       >
-        <option value="">כל המורים</option>
+        <option value="">{t('allTeachers')}</option>
         {teachers.map((t) => (
           <option key={t.id} value={t.id}>
             {t.full_name}

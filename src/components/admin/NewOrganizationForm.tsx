@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import type { ActionState } from '@/app/(admin)/admin/orgs/actions'
 
 const TIMEZONES = [
@@ -19,6 +20,7 @@ interface Props {
 
 export function NewOrganizationForm({ action }: Props) {
   const [state, formAction, isPending] = useActionState(action, null)
+  const t = useTranslations('admin')
 
   return (
     <form action={formAction} className="space-y-5 max-w-lg">
@@ -29,17 +31,17 @@ export function NewOrganizationForm({ action }: Props) {
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">שם הארגון</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.fields.name')}</label>
         <input
           name="name"
           required
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          placeholder="לדוגמה: מרכז לימוד רמת גן"
+          placeholder={t('orgs.fields.namePlaceholder')}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">אזור זמן</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.fields.timezone')}</label>
         <select
           name="timezone"
           defaultValue="Asia/Jerusalem"
@@ -54,7 +56,7 @@ export function NewOrganizationForm({ action }: Props) {
       <hr className="border-gray-100" />
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">אימייל הבעלים</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.fields.ownerEmail')}</label>
         <input
           name="owner_email"
           type="email"
@@ -66,7 +68,7 @@ export function NewOrganizationForm({ action }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">שם מלא של הבעלים</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.fields.ownerFullName')}</label>
         <input
           name="owner_full_name"
           required
@@ -80,7 +82,7 @@ export function NewOrganizationForm({ action }: Props) {
         disabled={isPending}
         className="bg-indigo-600 text-white text-sm font-medium px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'יוצר...' : 'צור ארגון'}
+        {isPending ? t('orgs.creating') : t('orgs.create')}
       </button>
     </form>
   )

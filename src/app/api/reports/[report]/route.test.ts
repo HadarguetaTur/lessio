@@ -54,8 +54,10 @@ describe('GET /api/reports/[report]', () => {
 
   it('falls back to the default revenue period when months is invalid', async () => {
     mockGetRevenueReport.mockResolvedValue({
-      buckets: [{ month: '2026-04', label: 'אפריל 2026', revenue: 1250 }],
+      buckets: [{ month: '2026-04', label: 'אפריל 2026', revenue: 1250, billingTotal: 300, billingPaid: 120 }],
       total: 1250,
+      billingTotal: 300,
+      billingPaid: 120,
     })
 
     const request = new NextRequest('https://example.com/api/reports/revenue?months=abc')
@@ -67,6 +69,10 @@ describe('GET /api/reports/[report]', () => {
     expect(mockGetRevenueReport).toHaveBeenCalledWith('org-1', 'UTC', 12)
     const bytes = new Uint8Array(await response.arrayBuffer())
     expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
+    const csv = new TextDecoder().decode(bytes)
+    expect(csv).toContain('חיוב חודשי (₪)')
+    expect(csv).toContain('300.00')
+    expect(csv).toContain('120.00')
   })
 
   it('clamps the teachers CSV export period to 12 months', async () => {

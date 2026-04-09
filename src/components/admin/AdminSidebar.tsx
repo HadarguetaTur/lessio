@@ -3,6 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   LayoutDashboard,
   Building2,
@@ -11,25 +12,23 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
-
-interface NavItem {
-  href: string
-  label: string
-  icon: React.ElementType
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { href: '/admin/dashboard', label: 'לוח בקרה',     icon: LayoutDashboard },
-  { href: '/admin/orgs',      label: 'ארגונים',       icon: Building2       },
-  { href: '/admin/billing',   label: 'בילינג',        icon: CreditCard      },
-]
+import { cn } from '@/lib/utils'
 
 interface AdminSidebarProps {
   userName: string
+  mobile?: boolean
 }
 
-export function AdminSidebar({ userName }: AdminSidebarProps) {
+export function AdminSidebar({ userName, mobile = false }: AdminSidebarProps) {
   const pathname = usePathname()
+  const t = useTranslations('admin')
+  const tCommon = useTranslations('common')
+
+  const NAV_ITEMS = [
+    { href: '/admin/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { href: '/admin/orgs',      label: t('nav.orgs'),      icon: Building2       },
+    { href: '/admin/billing',   label: t('nav.billing'),   icon: CreditCard      },
+  ]
 
   const initials = userName
     .split(' ')
@@ -39,15 +38,20 @@ export function AdminSidebar({ userName }: AdminSidebarProps) {
     .toUpperCase()
 
   return (
-    <aside className="w-56 min-h-screen bg-gray-900 text-gray-100 flex flex-col shrink-0">
+    <aside
+      className={cn(
+        'bg-gray-900 text-gray-100 flex flex-col shrink-0',
+        mobile ? 'h-full w-full' : 'hidden lg:flex w-56 min-h-screen'
+      )}
+    >
       {/* Logo */}
       <div className="h-16 flex items-center gap-2 px-5 border-b border-gray-800">
         <ShieldCheck size={18} className="text-indigo-400" />
-        <span className="text-sm font-bold tracking-tight">LESSIO Admin</span>
+        <span className="text-sm font-bold tracking-tight">{t('nav.title')}</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
@@ -84,7 +88,7 @@ export function AdminSidebar({ userName }: AdminSidebarProps) {
             className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 w-full px-2 py-1.5 rounded-lg hover:bg-gray-800 transition-colors"
           >
             <LogOut size={13} />
-            יציאה
+            {tCommon('logout')}
           </button>
         </form>
       </div>

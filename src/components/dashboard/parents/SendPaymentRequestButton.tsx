@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { MessageSquare } from 'lucide-react'
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function SendPaymentRequestButton({ parentId, action }: Props) {
+  const t = useTranslations('parents')
   const [isPending, startTransition] = useTransition()
   const [result, setResult] = useState<{ error: string | null } | null>(null)
 
@@ -21,7 +23,7 @@ export function SendPaymentRequestButton({ parentId, action }: Props) {
   }
 
   if (result?.error === null) {
-    return <span className="text-xs text-green-600">נשלח ✓</span>
+    return <span className="text-xs text-green-600">{t('paymentSentMark')}</span>
   }
 
   return (
@@ -32,7 +34,7 @@ export function SendPaymentRequestButton({ parentId, action }: Props) {
         className="flex items-center gap-1 text-sm text-purple-600 hover:text-purple-800 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <MessageSquare size={13} />
-        {isPending ? 'שולח...' : 'בקשת תשלום'}
+        {isPending ? t('paymentSending') : t('sendPaymentRequest')}
       </button>
       {result?.error && (
         <p className="mt-1 text-xs text-red-600">{result.error}</p>

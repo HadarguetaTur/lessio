@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import { getTranslations } from 'next-intl/server'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { OrganizationDetailCard } from '@/components/admin/OrganizationDetailCard'
 import { OrganizationSettingsForm } from '@/components/admin/OrganizationSettingsForm'
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default async function AdminOrgDetailPage({ params }: Props) {
+  const t = await getTranslations('common')
   const { id } = await params
   const org = await getOrganizationDetail(id)
   if (!org) notFound()
@@ -29,7 +31,7 @@ export default async function AdminOrgDetailPage({ params }: Props) {
         className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 mb-4"
       >
         <ArrowRight size={13} />
-        חזרה לרשימה
+        {t('actions.back')}
       </Link>
 
       <div className="flex items-start justify-between mb-6">

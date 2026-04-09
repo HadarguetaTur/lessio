@@ -1,121 +1,136 @@
-import Link from 'next/link'
-import { Plus, Pencil, Archive, RotateCcw, Users, GraduationCap } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { GraduationCap, Users, Upload } from 'lucide-react'
+import { z } from 'zod'
 import { getSession } from '@/lib/auth/session'
-import { getStudents } from '@/lib/students'
+import { getStudentById, getStudents } from '@/lib/students'
+import { getTeachers } from '@/lib/teachers'
+import { getGroups } from '@/lib/groups'
 import { StudentSearch } from '@/components/dashboard/students/StudentSearch'
-import { archiveStudent, restoreStudent } from './actions'
+import { createStudent } from './actions'
+import { createGroup } from './group-actions'
+import { PageHeader } from '@/components/ui/page-header'
+import { EmptyState } from '@/components/ui/empty-state'
+import { NewStudentSheet } from '@/components/dashboard/students/StudentSheet'
+import { StudentsTable } from '@/components/dashboard/students/StudentsTable'
+import { GroupsTable } from '@/components/dashboard/students/GroupsTable'
+import { NewGroupSheet } from '@/components/dashboard/students/GroupFormSheet'
+import { getTranslations } from 'next-intl/server'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
+type Tab = 'students' | 'groups'
 
 export default async function StudentsPage(props: {
-  searchParams: Promise<{ q?: string; status?: string }>
+  searchParams: Promise<{ q?: string; status?: string; tab?: string; openStudent?: string }>
 }) {
   const searchParams = await props.searchParams
+  const tab: Tab = searchParams.tab === 'groups' ? 'groups' : 'students'
   const isActive = searchParams.status !== 'inactive'
   const q = searchParams.q ?? ''
+  const openStudentParsed = z.string().uuid().safeParse(searchParams.openStudent)
 
   const { orgId } = await getSession()
-  const students = await getStudents(orgId, { search: q, isActive })
+  const t = await getTranslations('students')
+  const tCommon = await getTranslations('common')
+
+  const [students, teachers, groups, initialSheetStudent] = await Promise.all([
+    getStudents(orgId, { search: q, isActive }),
+    getTeachers(orgId),
+    tab === 'groups' ? getGroups(orgId) : Promise.resolve([]),
+    tab === 'students' && openStudentParsed.success
+      ? getStudentById(openStudentParsed.data, orgId)
+      : Promise.resolve(null),
+  ])
+
+  // For the group form we always need the full active student list
+  const allActiveStudents = isActive && tab === 'groups'
+    ? students
+    : (tab === 'groups' ? await getStudents(orgId, { isActive: true }) : students)
+
+  const activeTeachers = teachers
+    .filter((t) => t.is_active)
+    .map((t) => ({ id: t.id, full_name: t.profile.full_name }))
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">תלמידים</h1>
-        <Link href="/students/new">
-          <Button>
-            <Plus size={16} className="ml-1" />
-            תלמיד חדש
-          </Button>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <PageHeader
+        title={t('title')}
+        actions={
+          tab === 'groups' ? (
+            <NewGroupSheet students={allActiveStudents} action={createGroup} />
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link href="/students/import">
+                <Button variant="outline" size="sm">
+                  <Upload size={14} className="ml-1.5" />
+                  {tCommon('actions.import')}
+                </Button>
+              </Link>
+              <NewStudentSheet action={createStudent} />
+            </div>
+          )
+        }
+      />
+
+      {/* Tab bar */}
+      <div className="flex gap-1 mb-4 border-b border-border">
+        <Link
+          href="/students?tab=students"
+          className={cn(
+            'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+            tab === 'students'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <GraduationCap size={15} />
+          {t('title')}
+        </Link>
+        <Link
+          href="/students?tab=groups"
+          className={cn(
+            'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+            tab === 'groups'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Users size={15} />
+          {t('groups.tab')}
         </Link>
       </div>
 
-      <StudentSearch q={q} isActive={isActive} />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {tab === 'students' && (
+          <>
+            <StudentSearch q={q} isActive={isActive} />
 
-      {students.length === 0 ? (
-        <div className="mt-6 bg-white rounded-xl border border-gray-100 shadow-sm py-16 flex flex-col items-center gap-2">
-          <GraduationCap size={32} className="text-gray-200" />
-          <p className="text-sm text-gray-400">
-            {q ? 'לא נמצאו תלמידים התואמים לחיפוש' : 'עדיין אין תלמידים'}
-          </p>
-          {!q && (
-            <Link href="/students/new" className="mt-1 text-sm text-blue-600 hover:underline">
-              הוסף תלמיד ראשון
-            </Link>
-          )}
-        </div>
-      ) : (
-        <div className="mt-4 bg-white rounded-lg border border-gray-100 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  שם
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  כיתה
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  פעולות
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {students.map((student) => {
-                const archiveAction = archiveStudent.bind(null, student.id)
-                const restoreAction = restoreStudent.bind(null, student.id)
-                return (
-                  <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {student.full_name}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {student.grade ?? '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Link
-                          href={`/students/${student.id}/edit`}
-                          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          <Pencil size={13} />
-                          עריכה
-                        </Link>
-                        <Link
-                          href={`/students/${student.id}/parents`}
-                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
-                        >
-                          <Users size={13} />
-                          הורים
-                        </Link>
-                        {student.is_active ? (
-                          <form action={archiveAction}>
-                            <button
-                              type="submit"
-                              className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700"
-                            >
-                              <Archive size={13} />
-                              ארכיב
-                            </button>
-                          </form>
-                        ) : (
-                          <form action={restoreAction}>
-                            <button
-                              type="submit"
-                              className="flex items-center gap-1 text-sm text-green-600 hover:text-green-800"
-                            >
-                              <RotateCcw size={13} />
-                              שחזור
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+            {students.length === 0 ? (
+              <div className="mt-4">
+                <EmptyState
+                  icon={GraduationCap}
+                  title={q ? tCommon('emptyStates.noResults') : t('title')}
+                  subtitle={!q ? t('newStudent') : undefined}
+                  action={!q ? <NewStudentSheet action={createStudent} /> : undefined}
+                />
+              </div>
+            ) : (
+              <StudentsTable
+                students={students}
+                teachers={activeTeachers}
+                tStudent={tCommon('table.student')}
+                tGrade={t('fields.grade')}
+                tStatus={tCommon('table.status')}
+                initialSheetStudent={initialSheetStudent}
+              />
+            )}
+          </>
+        )}
+
+        {tab === 'groups' && (
+          <GroupsTable groups={groups} students={allActiveStudents} />
+        )}
+      </div>
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { forbidden } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { CheckCircle, AlertCircle } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -15,6 +16,7 @@ import { DisconnectReceiptButton } from './DisconnectReceiptButton'
  */
 export default async function ReceiptSettingsPage() {
   const { orgId, role } = await getSession()
+  const t = await getTranslations('settings.receipts')
 
   if (role !== 'owner') {
     forbidden()
@@ -33,7 +35,7 @@ export default async function ReceiptSettingsPage() {
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">קבלות</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
       <p className="text-sm text-gray-500 mb-8">
         חבר את מערכת החשבוניות שלך כדי להפיק קבלה אוטומטית לכל תשלום ולשלוח אותה להורה ב-WhatsApp.
         הפרטים מוצפנים ומאוחסנים בצורה מאובטחת.
@@ -41,7 +43,7 @@ export default async function ReceiptSettingsPage() {
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {isConnected
-          ? <ConnectedState providerLabel={providerLabel} />
+          ? <ConnectedState providerLabel={providerLabel} connected={t('connected')} disconnect={t('disconnect')} />
           : <DisconnectedState />}
       </div>
 
@@ -57,12 +59,12 @@ export default async function ReceiptSettingsPage() {
   )
 }
 
-function ConnectedState({ providerLabel }: { providerLabel: string }) {
+function ConnectedState({ providerLabel, connected, disconnect }: { providerLabel: string; connected: string; disconnect: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-green-700">
         <CheckCircle size={20} />
-        <span className="font-medium text-sm">מחובר — {providerLabel}</span>
+        <span className="font-medium text-sm">{connected} — {providerLabel}</span>
       </div>
 
       <dl className="text-sm space-y-2">

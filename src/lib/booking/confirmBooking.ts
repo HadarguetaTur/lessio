@@ -13,6 +13,7 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { LessonConflictError } from '@/lib/lessons/createLesson'
 import { validateSlotLock } from './validateSlotLock'
 
 export class LockExpiredError extends Error {
@@ -101,7 +102,20 @@ export async function confirmBooking({
 
   if (!relationship) throw new NoPrimaryParentError()
 
-  // 5. Create lesson (student_id removed — students live in lesson_students)
+  // 5. Re-check teacher overlap — guards against a lesson being manually created
+  // after the lock was taken (createLesson ignores locks; this closes that race).
+  const { data: teacherConflict } = await db
+    .from('lessons')
+    .select('id')
+    .eq('teacher_id', teacherId)
+    .eq('organization_id', organizationId)
+    .neq('status', 'cancelled')
+    .lt('start_at', lock.end_at)
+    .gt('end_at', lock.start_at)
+    .limit(1)
+  if (teacherConflict?.length) throw new LessonConflictError('teacher_conflict')
+
+  // 5b. Create lesson (student_id removed — students live in lesson_students)
   const { data: lesson, error: lessonError } = await db
     .from('lessons')
     .insert({
@@ -120,7 +134,7 @@ export async function confirmBooking({
     throw new Error(`Failed to create lesson: ${lessonError?.message}`)
   }
 
-  // 5b. Link student via lesson_students junction table
+  // 5c. Link student via lesson_students junction table
   const { error: lsError } = await db
     .from('lesson_students')
     .insert({ lesson_id: lesson.id, student_id: studentId, organization_id: organizationId, status: 'enrolled' })

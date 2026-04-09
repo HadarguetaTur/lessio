@@ -1,17 +1,10 @@
 import Link from 'next/link'
 import { DateTime } from 'luxon'
+import { getTranslations } from 'next-intl/server'
 import type { OrgBillingRow } from '@/lib/superadmin/billing'
 
 interface Props {
   rows: OrgBillingRow[]
-}
-
-function Yn({ value }: { value: boolean }) {
-  return (
-    <span className={value ? 'text-green-600 font-medium' : 'text-gray-400'}>
-      {value ? 'כן' : 'לא'}
-    </span>
-  )
 }
 
 function Fmt({ iso }: { iso: string | null }) {
@@ -19,18 +12,30 @@ function Fmt({ iso }: { iso: string | null }) {
   return <>{DateTime.fromISO(iso).toFormat('dd/MM/yyyy')}</>
 }
 
-export function BillingReadinessTable({ rows }: Props) {
+export async function BillingReadinessTable({ rows }: Props) {
+  const t = await getTranslations('admin')
+  const yesLabel = t('orgs.table.yes')
+  const noLabel = t('orgs.table.no')
+
+  function Yn({ value }: { value: boolean }) {
+    return (
+      <span className={value ? 'text-green-600 font-medium' : 'text-gray-400'}>
+        {value ? yesLabel : noLabel}
+      </span>
+    )
+  }
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
       <table className="w-full text-sm min-w-[760px]">
         <thead>
-          <tr className="border-b border-gray-100 bg-gray-50 text-right">
-            <th className="px-4 py-3 font-medium text-gray-500">ארגון</th>
-            <th className="px-4 py-3 font-medium text-gray-500 text-center">תשלומים</th>
-            <th className="px-4 py-3 font-medium text-gray-500 text-center">קבלות</th>
-            <th className="px-4 py-3 font-medium text-gray-500">תשלום ראשון</th>
-            <th className="px-4 py-3 font-medium text-gray-500">סה״כ הכנסות</th>
-            <th className="px-4 py-3 font-medium text-gray-500">תשלום אחרון</th>
+          <tr className="border-b border-gray-100 bg-gray-50 text-start">
+            <th className="px-4 py-3 font-medium text-gray-500">{t('billing.headers.org')}</th>
+            <th className="px-4 py-3 font-medium text-gray-500 text-center">{t('billing.headers.paymentProvider')}</th>
+            <th className="px-4 py-3 font-medium text-gray-500 text-center">{t('billing.headers.receipts')}</th>
+            <th className="px-4 py-3 font-medium text-gray-500">{t('billing.headers.firstPayment')}</th>
+            <th className="px-4 py-3 font-medium text-gray-500">{t('billing.headers.totalRevenue')}</th>
+            <th className="px-4 py-3 font-medium text-gray-500">{t('billing.headers.lastPayment')}</th>
           </tr>
         </thead>
         <tbody>

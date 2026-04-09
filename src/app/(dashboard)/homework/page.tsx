@@ -1,6 +1,19 @@
 import Link from 'next/link'
+import { BookOpen } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getAssignments } from '@/lib/homework'
+import { getTranslations } from 'next-intl/server'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 /**
  * Homework list page — shows all assignments for the org.
@@ -9,24 +22,11 @@ import { getAssignments } from '@/lib/homework'
 
 type Status = 'pending' | 'done' | 'overdue'
 
-const STATUS_LABELS: Record<Status, string> = {
-  pending: 'ממתין',
-  done:    'הושלם',
-  overdue: 'באיחור',
-}
-
 const STATUS_CLASSES: Record<Status, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   done:    'bg-green-100 text-green-800',
   overdue: 'bg-red-100 text-red-800',
 }
-
-const FILTERS: Array<{ label: string; value: Status | undefined }> = [
-  { label: 'הכל',     value: undefined },
-  { label: 'ממתין',   value: 'pending' },
-  { label: 'הושלם',   value: 'done' },
-  { label: 'באיחור',  value: 'overdue' },
-]
 
 export default async function HomeworkPage({
   searchParams,
@@ -34,9 +34,11 @@ export default async function HomeworkPage({
   searchParams: Promise<{ status?: string }>
 }) {
   const { orgId, role } = await getSession()
+  const t = await getTranslations('homework')
+  const tCommon = await getTranslations('common')
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
-    return <div className="text-sm text-red-600">אין הרשאה</div>
+    return <div className="text-sm text-red-600">{t('noPermission')}</div>
   }
 
   const { status: rawStatus } = await searchParams
@@ -46,31 +48,38 @@ export default async function HomeworkPage({
 
   const assignments = await getAssignments(orgId, { status: statusFilter })
 
+  const STATUS_LABELS: Record<Status, string> = {
+    pending: tCommon('homeworkStatus.pending'),
+    done:    tCommon('homeworkStatus.done'),
+    overdue: tCommon('homeworkStatus.overdue'),
+  }
+
+  const FILTERS: Array<{ label: string; value: Status | undefined }> = [
+    { label: t('filterAll'),     value: undefined },
+    { label: STATUS_LABELS.pending,   value: 'pending' },
+    { label: STATUS_LABELS.done,   value: 'done' },
+    { label: STATUS_LABELS.overdue,  value: 'overdue' },
+  ]
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">שיעורי בית</h1>
-          <p className="text-sm text-gray-500 mt-1">מעקב אחר שיעורי בית שהוקצו לתלמידים</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/homework/templates"
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            תבניות
-          </Link>
-          <Link
-            href="/homework/assign"
-            className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            + הקצה שיעורי בית
-          </Link>
-        </div>
-      </div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <PageHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        actions={
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+            <Button asChild variant="outline">
+              <Link href="/homework/templates">{t('templates')}</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/homework/assign">+ {t('assign')}</Link>
+            </Button>
+          </div>
+        }
+      />
 
       {/* Status filter tabs */}
-      <div className="flex gap-2 mb-5">
+      <div className="mb-5 flex flex-wrap gap-2">
         {FILTERS.map(({ label, value }) => {
           const active = statusFilter === value
           return (
@@ -79,8 +88,8 @@ export default async function HomeworkPage({
               href={value ? `/homework?status=${value}` : '/homework'}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                 active
-                  ? 'bg-blue-50 text-blue-700 font-medium border border-blue-200'
-                  : 'text-gray-600 hover:bg-gray-100 border border-transparent'
+                  ? 'border border-primary/20 bg-primary/10 font-medium text-primary'
+                  : 'border border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               {label}
@@ -90,52 +99,59 @@ export default async function HomeworkPage({
       </div>
 
       {assignments.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <p className="text-gray-500 text-sm mb-3">אין שיעורי בית.</p>
-          <Link href="/homework/assign" className="text-sm text-blue-600 hover:underline">
-            הקצה שיעורי בית ראשונים
-          </Link>
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          title={t('noAssignments')}
+          action={
+            <Button asChild>
+              <Link href="/homework/assign">{t('assign')}</Link>
+            </Button>
+          }
+        />
       ) : (
-        <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">תלמיד</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">כותרת</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">תאריך הגשה</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">סטטוס</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">נשלח</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">הושלם</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {assignments.map((a) => (
-                <tr key={a.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-gray-900">{a.studentName}</td>
-                  <td className="px-4 py-3 text-gray-900 max-w-xs truncate">{a.title}</td>
-                  <td className="px-4 py-3 text-gray-500">{a.dueDate ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CLASSES[a.status]}`}
-                    >
-                      {STATUS_LABELS[a.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
-                    {a.sentAt
-                      ? new Date(a.sentAt).toLocaleDateString('he-IL')
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
-                    {a.completedAt
-                      ? new Date(a.completedAt).toLocaleDateString('he-IL')
-                      : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="h-full overflow-auto">
+            <Table className="min-w-[760px]">
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">{tCommon('table.student')}</TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">{t('fields.title')}</TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">{t('fields.dueDate')}</TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">{tCommon('table.status')}</TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">{t('columnSent')}</TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">{t('columnCompleted')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assignments.map((a) => (
+                  <TableRow key={a.id} className="hover:bg-muted/20">
+                    <TableCell className="px-4 py-3 text-foreground">{a.studentName}</TableCell>
+                    <TableCell className="max-w-xs px-4 py-3 text-foreground">
+                      <div className="truncate">{a.title}</div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-muted-foreground">{a.dueDate ?? '—'}</TableCell>
+                    <TableCell className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CLASSES[a.status]}`}
+                      >
+                        {STATUS_LABELS[a.status]}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-xs text-muted-foreground">
+                      {a.sentAt
+                        ? new Date(a.sentAt).toLocaleDateString('he-IL')
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-xs text-muted-foreground">
+                      {a.completedAt
+                        ? new Date(a.completedAt).toLocaleDateString('he-IL')
+                        : '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>

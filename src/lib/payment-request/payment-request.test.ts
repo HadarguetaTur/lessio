@@ -82,6 +82,19 @@ describe('buildPaymentRequestMessage', () => {
     expect(msg).toContain('חיוב ידני')
     expect(msg).toContain('₪200.00')
   })
+
+  it('labels monthly charges correctly', () => {
+    const monthlyCharge: PaymentRequestCharge[] = [{
+      id: 'charge-4',
+      amount: 320,
+      charge_type: 'monthly',
+      lesson_start_at: null,
+      student_name: null,
+    }]
+    const msg = buildPaymentRequestMessage('אבי לוי', monthlyCharge, 'Asia/Jerusalem')
+    expect(msg).toContain('חיוב חודשי')
+    expect(msg).toContain('₪320.00')
+  })
 })
 
 // ── logPaymentRequestSent ─────────────────────────────────────────────────────

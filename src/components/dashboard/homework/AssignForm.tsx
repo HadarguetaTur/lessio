@@ -7,6 +7,7 @@
 
 import { useActionState, useState } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import type { AssignActionState } from '@/app/(dashboard)/homework/assign/actions'
 
 interface Template {
@@ -30,6 +31,7 @@ interface AssignFormProps {
 const initialState: AssignActionState = { error: null }
 
 export function AssignForm({ templates, students, action }: AssignFormProps) {
+  const t = useTranslations('homework')
   const [state, formAction, isPending] = useActionState(action, initialState)
   const [mode, setMode] = useState<'template' | 'adhoc'>('template')
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
@@ -40,13 +42,13 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
         <p className="text-green-800 font-medium text-sm">
-          ✅ שיעורי הבית נשלחו בהצלחה ל-{state.count} תלמידים
+          ✅ {t('assignedCount', { count: state.count ?? 0 })}
         </p>
         <Link
           href="/homework"
           className="mt-3 inline-block text-sm text-blue-600 hover:underline"
         >
-          ← חזרה לשיעורי בית
+          {t('backToHomework')}
         </Link>
       </div>
     )
@@ -56,7 +58,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
     <form action={formAction} className="space-y-6">
       {/* Mode toggle */}
       <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">סוג שיעורי הבית</p>
+        <p className="text-sm font-medium text-gray-700 mb-2">{t('type')}</p>
         <div className="flex rounded-md border border-gray-300 overflow-hidden w-fit">
           <button
             type="button"
@@ -67,7 +69,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            מתבנית
+            {t('fromTemplate')}
           </button>
           <button
             type="button"
@@ -78,7 +80,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            ידנית
+            {t('adhoc')}
           </button>
         </div>
       </div>
@@ -88,13 +90,13 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
         <div className="space-y-3">
           <div>
             <label htmlFor="templateId" className="block text-sm font-medium text-gray-700 mb-1">
-              תבנית <span className="text-red-500">*</span>
+              {t('fields.template')} <span className="text-red-500">*</span>
             </label>
             {templates.length === 0 ? (
               <p className="text-sm text-gray-500">
-                אין תבניות עדיין.{' '}
+                {t('noTemplatesList')}{' '}
                 <Link href="/homework/templates/new" className="text-blue-600 hover:underline">
-                  צור תבנית ראשונה
+                  {t('createFirstTemplate')}
                 </Link>
               </p>
             ) : (
@@ -105,7 +107,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
                 onChange={(e) => setSelectedTemplateId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">בחר תבנית...</option>
+                <option value="">{t('selectTemplate')}</option>
                 {templates.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.title}
@@ -118,7 +120,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
 
           {selectedTemplate && (
             <div className="bg-gray-50 rounded-md border border-gray-200 p-3">
-              <p className="text-xs font-medium text-gray-500 mb-1">תוכן התבנית:</p>
+              <p className="text-xs font-medium text-gray-500 mb-1">{t('templateContent')}</p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedTemplate.body}</p>
             </div>
           )}
@@ -133,7 +135,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
 
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-              כותרת <span className="text-red-500">*</span>
+              {t('fields.title')} <span className="text-red-500">*</span>
             </label>
             <input
               id="title"
@@ -142,13 +144,13 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
               maxLength={200}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="כותרת שיעורי הבית"
+              placeholder={t('titlePlaceholder')}
             />
           </div>
 
           <div>
             <label htmlFor="body" className="block text-sm font-medium text-gray-700 mb-1">
-              תוכן <span className="text-red-500">*</span>
+              {t('fields.body')} <span className="text-red-500">*</span>
             </label>
             <textarea
               id="body"
@@ -157,7 +159,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
               maxLength={2000}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
-              placeholder="תיאור שיעורי הבית..."
+              placeholder={t('bodyPlaceholder')}
             />
           </div>
         </div>
@@ -166,10 +168,10 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
       {/* Students multi-select */}
       <div>
         <p className="text-sm font-medium text-gray-700 mb-2">
-          תלמידים <span className="text-red-500">*</span>
+          {t('fields.students')} <span className="text-red-500">*</span>
         </p>
         {students.length === 0 ? (
-          <p className="text-sm text-gray-500">אין תלמידים פעילים בארגון.</p>
+          <p className="text-sm text-gray-500">{t('noStudents')}</p>
         ) : (
           <div className="border border-gray-200 rounded-md divide-y divide-gray-100 max-h-64 overflow-y-auto">
             {students.map((s) => (
@@ -193,8 +195,8 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
       {/* Due date */}
       <div>
         <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-1">
-          תאריך הגשה{' '}
-          <span className="text-gray-400 text-xs">(אופציונלי)</span>
+          {t('fields.dueDate')}{' '}
+          <span className="text-gray-400 text-xs">{t('dueDateOptional')}</span>
         </label>
         <input
           id="dueDate"
@@ -217,7 +219,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
         disabled={isPending || (mode === 'template' && !selectedTemplateId)}
         className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'שולח...' : 'הקצה ושלח'}
+        {isPending ? t('assignSending') : t('assignAndSend')}
       </button>
     </form>
   )

@@ -4,6 +4,7 @@ import { getTemplates } from '@/lib/homework'
 import { getStudents } from '@/lib/students'
 import { AssignForm } from '@/components/dashboard/homework/AssignForm'
 import { assignHomeworkAction } from './actions'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * Assign homework page — assign a template or ad-hoc homework to one or more students.
@@ -21,6 +22,8 @@ export default async function AssignHomeworkPage() {
     getStudents(orgId),
   ])
 
+  const t = await getTranslations('homework')
+
   return (
     <div className="max-w-xl">
       <div className="flex items-center gap-3 mb-6">
@@ -28,11 +31,11 @@ export default async function AssignHomeworkPage() {
           href="/homework"
           className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
         >
-          ← חזרה לשיעורי בית
+          ← {t('title')}
         </Link>
       </div>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">הקצאת שיעורי בית</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('assign')}</h1>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <AssignForm

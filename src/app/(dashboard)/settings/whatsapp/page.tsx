@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { EmbeddedSignupButton } from './EmbeddedSignupButton'
 import { DisconnectButton } from './DisconnectButton'
 import { PortalUrlCopy } from '@/components/dashboard/settings/PortalUrlCopy'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * WhatsApp Settings page — owner only.
@@ -32,9 +33,11 @@ export default async function WhatsAppSettingsPage() {
 
   const metaAppId = process.env.META_APP_ID ?? ''
 
+  const t = await getTranslations('settings')
+
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">הגדרות WhatsApp</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('whatsapp.title')}</h1>
       <p className="text-sm text-gray-500 mb-8">
         חבר את מספר ה-WhatsApp של הארגון שלך כדי לשלוח ולקבל הודעות.
         כל ארגון מחובר למספר משלו.
@@ -42,7 +45,7 @@ export default async function WhatsAppSettingsPage() {
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {isConnected ? (
-          <ConnectedState phoneNumberId={phoneNumberId!} />
+          <ConnectedState phoneNumberId={phoneNumberId!} connectedLabel={t('whatsapp.connected')} />
         ) : (
           <DisconnectedState metaAppId={metaAppId} />
         )}
@@ -51,7 +54,7 @@ export default async function WhatsAppSettingsPage() {
       {/* Portal URL — shown when WhatsApp is connected */}
       {isConnected && org?.id && (
         <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-1">קישור פורטל להורים</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-1">{t('whatsapp.portalUrl')}</h2>
           <p className="text-xs text-gray-500 mb-3">
             שתף/י קישור זה עם ההורים כדי שיוכלו לגשת לפורטל האישי שלהם.
           </p>
@@ -71,12 +74,12 @@ export default async function WhatsAppSettingsPage() {
   )
 }
 
-function ConnectedState({ phoneNumberId }: { phoneNumberId: string }) {
+function ConnectedState({ phoneNumberId, connectedLabel }: { phoneNumberId: string; connectedLabel: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-green-700">
         <CheckCircle size={20} />
-        <span className="font-medium text-sm">מחובר</span>
+        <span className="font-medium text-sm">{connectedLabel}</span>
       </div>
 
       <dl className="text-sm space-y-2">

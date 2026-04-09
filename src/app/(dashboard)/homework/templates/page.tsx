@@ -3,6 +3,7 @@ import { Pencil } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getTemplates } from '@/lib/homework'
 import { DeleteTemplateButton } from './DeleteTemplateButton'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * Homework templates list page.
@@ -16,12 +17,14 @@ export default async function HomeworkTemplatesPage() {
   }
 
   const templates = await getTemplates(orgId)
+  const t = await getTranslations('homework')
+  const tCommon = await getTranslations('common')
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">תבניות שיעורי בית</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('templates')}</h1>
           <p className="text-sm text-gray-500 mt-1">תבניות לשימוש חוזר בהקצאת שיעורי בית</p>
         </div>
         <div className="flex items-center gap-3">
@@ -29,25 +32,25 @@ export default async function HomeworkTemplatesPage() {
             href="/homework"
             className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
-            ← חזרה לשיעורי בית
+            ← {t('title')}
           </Link>
           <Link
             href="/homework/templates/new"
             className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
           >
-            + הוסף תבנית
+            + {t('newTemplate')}
           </Link>
         </div>
       </div>
 
       {templates.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <p className="text-gray-500 text-sm mb-3">אין תבניות עדיין.</p>
+          <p className="text-gray-500 text-sm mb-3">{tCommon('emptyStates.noResults')}</p>
           <Link
             href="/homework/templates/new"
             className="text-sm text-blue-600 hover:underline"
           >
-            צור תבנית ראשונה
+            {t('newTemplate')}
           </Link>
         </div>
       ) : (
@@ -76,7 +79,7 @@ export default async function HomeworkTemplatesPage() {
                   className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 border border-gray-200 rounded hover:bg-gray-50 transition-colors"
                 >
                   <Pencil size={12} />
-                  עריכה
+                  {tCommon('actions.edit')}
                 </Link>
                 <DeleteTemplateButton templateId={tmpl.id} />
               </div>

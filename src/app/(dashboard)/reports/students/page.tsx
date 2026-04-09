@@ -4,6 +4,17 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { getStudentsReport } from '@/lib/reports/students'
 import { CsvDownloadButton } from '@/components/reports/CsvDownloadButton'
 import { DateTime } from 'luxon'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale, toLuxonLocale } from '@/lib/i18n/locale'
+import { PageHeader } from '@/components/ui/page-header'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 /**
  * Students report page — activity overview and at-risk detection.
@@ -18,38 +29,37 @@ export default async function StudentsReportPage() {
   const timezone = await getOrgTimezone(session.orgId)
   const { rows, atRiskCount } = await getStudentsReport(session.orgId, timezone)
 
+  const [locale, t] = await Promise.all([getLocale(), getTranslations('reports')])
+  const appLocale = parseAppLocale(locale)
+  const luxonLoc = toLuxonLocale(appLocale)
+
   function formatDate(iso: string | null): string {
-    if (!iso) return '—'
-    return DateTime.fromISO(iso, { zone: 'utc' })
-      .setZone(timezone)
-      .setLocale('he')
-      .toFormat('d בLLLL yyyy')
+    if (!iso) return t('dash')
+    const dt = DateTime.fromISO(iso, { zone: 'utc' }).setZone(timezone).setLocale(luxonLoc)
+    return appLocale === 'he'
+      ? dt.toFormat('d בLLLL yyyy')
+      : dt.toFormat('LLLL d, yyyy')
   }
 
+  const subtitle =
+    atRiskCount > 0
+      ? t('students.pageSubtitleWithRisk', { count: rows.length, atRisk: atRiskCount })
+      : t('students.pageSubtitle', { count: rows.length })
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">תלמידים</h1>
-          <p className="text-gray-500 text-sm mt-0.5">
-            <span className="font-semibold text-gray-800">{rows.length}</span> תלמידים פעילים
-            {atRiskCount > 0 && (
-              <>
-                {' '}·{' '}
-                <span className="font-semibold text-red-500">{atRiskCount}</span> בסיכון (אין שיעור ב-30 יום)
-              </>
-            )}
-          </p>
-        </div>
-        <CsvDownloadButton report="students" />
-      </div>
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      <PageHeader
+        title={t('students.title')}
+        subtitle={subtitle}
+        actions={<CsvDownloadButton report="students" />}
+      />
 
       {atRiskCount > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <p className="text-sm font-semibold text-red-700 mb-2">⚠️ תלמידים בסיכון</p>
+        <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+          <p className="mb-2 text-sm font-semibold text-destructive">{t('students.atRiskBannerTitle')}</p>
           <div className="flex flex-wrap gap-2">
             {rows.filter(r => r.isAtRisk).map(r => (
-              <span key={r.studentId} className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">
+              <span key={r.studentId} className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
                 {r.studentName}
               </span>
             ))}
@@ -57,37 +67,53 @@ export default async function StudentsReportPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-right px-4 py-3 font-medium text-gray-500">תלמיד</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">שיעורים ב-30 יום</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">שיעור אחרון</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">סטטוס</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.studentId} className="border-b border-gray-50 hover:bg-gray-50">
-                <td className="px-4 py-3 text-gray-900 font-medium">{r.studentName}</td>
-                <td className="px-4 py-3 tabular-nums text-gray-700">{r.lessonsLast30Days}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(r.lastLessonAt)}</td>
-                <td className="px-4 py-3">
-                  {r.isAtRisk ? (
-                    <span className="bg-red-50 text-red-600 text-xs px-2 py-0.5 rounded-full font-medium">
-                      בסיכון
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="h-full min-h-0 min-w-0 overflow-auto overscroll-x-contain -mx-4 px-4 sm:mx-0 sm:px-0">
+          <Table className="min-w-[600px] w-full table-fixed">
+            <colgroup>
+              <col className="w-1/4" />
+              <col className="w-1/4" />
+              <col className="w-1/4" />
+              <col className="w-1/4" />
+            </colgroup>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-3 text-start text-muted-foreground backdrop-blur sm:px-4">{t('students.nameColumn')}</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-3 text-end text-muted-foreground backdrop-blur sm:px-4">{t('students.totalLessons')}</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-3 text-end text-muted-foreground backdrop-blur sm:px-4">{t('students.lastLesson')}</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-3 text-end text-muted-foreground backdrop-blur sm:px-4">{t('students.columnStatus')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map(r => (
+                <TableRow key={r.studentId} className="hover:bg-muted/20">
+                  <TableCell className="max-w-0 px-3 py-3 text-start font-medium text-foreground sm:px-4">
+                    <span className="block truncate" title={r.studentName}>
+                      {r.studentName}
                     </span>
-                  ) : (
-                    <span className="bg-green-50 text-green-600 text-xs px-2 py-0.5 rounded-full font-medium">
-                      פעיל
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-end tabular-nums text-foreground sm:px-4">{r.lessonsLast30Days}</TableCell>
+                  <TableCell className="max-w-0 px-3 py-3 text-end text-xs text-muted-foreground sm:px-4">
+                    <span className="block truncate" title={formatDate(r.lastLessonAt)}>
+                      {formatDate(r.lastLessonAt)}
                     </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-end sm:px-4">
+                    {r.isAtRisk ? (
+                      <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                        {t('students.statusAtRisk')}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
+                        {t('students.statusActive')}
+                      </span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   )

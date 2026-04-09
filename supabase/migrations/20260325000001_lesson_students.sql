@@ -48,7 +48,7 @@ ALTER TABLE lesson_students ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "lesson_students_owner_full" ON lesson_students
   FOR ALL
   USING (
-    (auth.jwt() ->> 'role') = 'owner'
+    (auth.jwt() ->> 'app_role') = 'owner'
     AND EXISTS (
       SELECT 1 FROM lessons l
       WHERE l.id = lesson_students.lesson_id
@@ -56,7 +56,7 @@ CREATE POLICY "lesson_students_owner_full" ON lesson_students
     )
   )
   WITH CHECK (
-    (auth.jwt() ->> 'role') = 'owner'
+    (auth.jwt() ->> 'app_role') = 'owner'
     AND EXISTS (
       SELECT 1 FROM lessons l
       WHERE l.id = lesson_students.lesson_id
@@ -68,7 +68,7 @@ CREATE POLICY "lesson_students_owner_full" ON lesson_students
 CREATE POLICY "lesson_students_admin_full" ON lesson_students
   FOR ALL
   USING (
-    (auth.jwt() ->> 'role') = 'admin'
+    (auth.jwt() ->> 'app_role') = 'admin'
     AND EXISTS (
       SELECT 1 FROM lessons l
       WHERE l.id = lesson_students.lesson_id
@@ -76,7 +76,7 @@ CREATE POLICY "lesson_students_admin_full" ON lesson_students
     )
   )
   WITH CHECK (
-    (auth.jwt() ->> 'role') = 'admin'
+    (auth.jwt() ->> 'app_role') = 'admin'
     AND EXISTS (
       SELECT 1 FROM lessons l
       WHERE l.id = lesson_students.lesson_id
@@ -88,7 +88,7 @@ CREATE POLICY "lesson_students_admin_full" ON lesson_students
 CREATE POLICY "lesson_students_teacher_read_own" ON lesson_students
   FOR SELECT
   USING (
-    (auth.jwt() ->> 'role') = 'teacher'
+    (auth.jwt() ->> 'app_role') = 'teacher'
     AND EXISTS (
       SELECT 1 FROM lessons l
       WHERE l.id = lesson_students.lesson_id

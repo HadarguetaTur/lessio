@@ -1,11 +1,23 @@
-import Link from 'next/link'
-import { Plus, Pencil, Archive, RotateCcw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Users, Upload } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getParents } from '@/lib/parents'
 import { ParentSearch } from '@/components/dashboard/parents/ParentSearch'
-import { SendPaymentRequestButton } from '@/components/dashboard/parents/SendPaymentRequestButton'
-import { archiveParent, restoreParent, sendPaymentRequestAction } from './actions'
+import { createParent, updateParent, archiveParent, restoreParent, sendPaymentRequestAction } from './actions'
+import { PageHeader } from '@/components/ui/page-header'
+import { EmptyState } from '@/components/ui/empty-state'
+import { UserAvatar } from '@/components/ui/user-avatar'
+import { NewParentSheet, ParentRowActions } from '@/components/dashboard/parents/ParentSheet'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 export default async function ParentsPage(props: {
   searchParams: Promise<{ q?: string }>
@@ -14,112 +26,99 @@ export default async function ParentsPage(props: {
   const q = searchParams.q ?? ''
 
   const { orgId, role } = await getSession()
-  // Parents list shows all (active + inactive) — no archive tab needed per sprint scope.
-  // Search covers name and phone.
   const parents = await getParents(orgId, { search: q })
   const canSendPaymentRequest = role === 'owner' || role === 'admin'
+  const t = await getTranslations('parents')
+  const tCommon = await getTranslations('common')
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">הורים</h1>
-        <Link href="/parents/new">
-          <Button>
-            <Plus size={16} className="ml-1" />
-            הורה חדש
-          </Button>
-        </Link>
-      </div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <PageHeader
+        title={t('title')}
+        actions={
+          <div className="flex items-center gap-2">
+            <Link href="/parents/import">
+              <Button variant="outline" size="sm">
+                <Upload size={14} className="ml-1.5" />
+                יבוא
+              </Button>
+            </Link>
+            <NewParentSheet action={createParent} />
+          </div>
+        }
+      />
 
       <ParentSearch q={q} />
 
       {parents.length === 0 ? (
-        <p className="mt-10 text-center text-sm text-gray-400">לא נמצאו הורים</p>
+        <div className="mt-4">
+          <EmptyState
+            icon={Users}
+            title={q ? tCommon('emptyStates.noResults') : t('title')}
+            subtitle={!q ? t('newParent') : undefined}
+          />
+        </div>
       ) : (
-        <div className="mt-4 bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  שם
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  טלפון
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  סטטוס
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  פעולות
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {parents.map((parent) => {
-                const archiveAction = archiveParent.bind(null, parent.id)
-                const restoreAction = restoreParent.bind(null, parent.id)
-                return (
-                  <tr key={parent.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {parent.full_name}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 font-mono" dir="ltr">
-                      {parent.phone}
-                    </td>
-                    <td className="px-4 py-3">
-                      {parent.is_active ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
-                          פעיל
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
-                          לא פעיל
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Link
-                          href={`/parents/${parent.id}/edit`}
-                          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+        <div className="mt-4 min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="h-full overflow-auto">
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                    {t('title')}
+                  </TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                    {tCommon('table.phone')}
+                  </TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                    {tCommon('table.status')}
+                  </TableHead>
+                  <TableHead className="sticky top-0 z-10 w-12 bg-muted/95 px-5 backdrop-blur" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {parents.map((parent) => {
+                  const updateAction = updateParent.bind(null, parent.id)
+                  const archiveAction = archiveParent.bind(null, parent.id)
+                  const restoreAction = restoreParent.bind(null, parent.id)
+                  return (
+                    <TableRow key={parent.id} className="hover:bg-muted/20">
+                      <TableCell className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <UserAvatar name={parent.full_name} />
+                          <span className="text-sm font-medium text-foreground">{parent.full_name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-5 py-3.5 text-sm text-muted-foreground font-mono" dir="ltr">
+                        {parent.phone}
+                      </TableCell>
+                      <TableCell className="px-5 py-3.5">
+                        <span
+                          className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
+                            parent.is_active
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-muted text-muted-foreground border-border'
+                          }`}
                         >
-                          <Pencil size={13} />
-                          עריכה
-                        </Link>
-                        {canSendPaymentRequest && parent.is_active && (
-                          <SendPaymentRequestButton
-                            parentId={parent.id}
-                            action={sendPaymentRequestAction}
-                          />
-                        )}
-                        {parent.is_active ? (
-                          <form action={archiveAction}>
-                            <button
-                              type="submit"
-                              className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700"
-                            >
-                              <Archive size={13} />
-                              ארכיב
-                            </button>
-                          </form>
-                        ) : (
-                          <form action={restoreAction}>
-                            <button
-                              type="submit"
-                              className="flex items-center gap-1 text-sm text-green-600 hover:text-green-800"
-                            >
-                              <RotateCcw size={13} />
-                              שחזור
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                          {parent.is_active ? 'פעיל' : 'לא פעיל'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-5 py-3.5">
+                        <ParentRowActions
+                          parent={parent}
+                          updateAction={updateAction}
+                          archiveAction={archiveAction}
+                          restoreAction={restoreAction}
+                          paymentAction={sendPaymentRequestAction}
+                          canSendPaymentRequest={canSendPaymentRequest}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>

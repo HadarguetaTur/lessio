@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export type ChargeStatus = 'pending' | 'invoiced' | 'paid'
-export type ChargeType = 'lesson' | 'cancellation' | 'manual'
+export type ChargeType = 'lesson' | 'cancellation' | 'manual' | 'monthly'
+
+export const OPEN_CHARGE_STATUSES = ['pending', 'invoiced'] as const
 
 export interface Charge {
   id: string
@@ -82,7 +84,7 @@ export async function getParentDebt(
     .select('amount')
     .eq('parent_id', parentId)
     .eq('organization_id', organizationId)
-    .in('status', ['pending', 'invoiced'])
+    .in('status', [...OPEN_CHARGE_STATUSES])
 
   if (error) throw new Error(error.message)
   return (data ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
@@ -133,21 +135,42 @@ export async function markChargeAsPaid(
   notes?: string | null
 ): Promise<void> {
   const supabase = createServiceRoleClient()
+  const paidAt = new Date().toISOString()
 
   const payload: Record<string, unknown> = {
     status: 'paid',
-    paid_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    paid_at: paidAt,
+    updated_at: paidAt,
   }
   if (notes !== undefined) {
     payload.notes = notes || null
   }
 
-  const { error } = await supabase
+  const { data: updatedCharge, error } = await supabase
     .from('charges')
     .update(payload)
     .eq('id', chargeId)
     .eq('organization_id', organizationId)
+    .select('charge_type, billing_record_id')
+    .single()
 
   if (error) throw new Error(error.message)
+
+  if (
+    updatedCharge?.charge_type === 'monthly' &&
+    typeof updatedCharge.billing_record_id === 'string'
+  ) {
+    const { error: billingError } = await supabase
+      .from('student_monthly_billing')
+      .update({
+        is_paid: true,
+        updated_at: paidAt,
+      })
+      .eq('id', updatedCharge.billing_record_id)
+      .eq('organization_id', organizationId)
+
+    if (billingError) {
+      throw new Error(billingError.message)
+    }
+  }
 }

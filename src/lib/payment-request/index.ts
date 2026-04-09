@@ -10,7 +10,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 export interface PaymentRequestCharge {
   id: string
   amount: number
-  charge_type: 'lesson' | 'cancellation' | 'manual'
+  charge_type: 'lesson' | 'cancellation' | 'manual' | 'monthly'
   lesson_start_at: string | null
   student_name: string | null
 }
@@ -19,6 +19,7 @@ const CHARGE_TYPE_LABELS: Record<string, string> = {
   lesson: 'שיעור',
   cancellation: 'חיוב ביטול',
   manual: 'חיוב ידני',
+  monthly: 'חיוב חודשי',
 }
 
 /**

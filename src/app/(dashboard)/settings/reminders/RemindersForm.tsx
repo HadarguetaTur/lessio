@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { saveReminderSettings, type ReminderActionState } from './actions'
 
 interface RemindersFormProps {
@@ -18,6 +19,8 @@ export function RemindersForm({
   defaultLessonHours,
   defaultPaymentDays,
 }: RemindersFormProps) {
+  const t = useTranslations('settings.reminders')
+  const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(
     saveReminderSettings,
     initialState
@@ -28,7 +31,7 @@ export function RemindersForm({
       {/* Master switch */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-gray-900">תזכורות מופעלות</p>
+          <p className="text-sm font-medium text-gray-900">{t('lessonReminder')}</p>
           <p className="text-xs text-gray-500 mt-0.5">
             כאשר מכובה — לא ישלחו תזכורות אוטומטיות כלל לארגון זה
           </p>
@@ -49,7 +52,7 @@ export function RemindersForm({
           htmlFor="lesson_reminder_hours"
           className="block text-sm font-medium text-gray-900 mb-1"
         >
-          שעות לפני שיעור לתזכורת
+          {t('hoursBeforeLesson')}
         </label>
         <p className="text-xs text-gray-500 mb-2">
           ההורה יקבל הודעת WhatsApp X שעות לפני תחילת השיעור.
@@ -75,7 +78,7 @@ export function RemindersForm({
           htmlFor="payment_reminder_days"
           className="block text-sm font-medium text-gray-900 mb-1"
         >
-          ימי פיגור לתזכורת תשלום
+          {t('daysAfterInvoice')}
         </label>
         <p className="text-xs text-gray-500 mb-2">
           חיוב פתוח עם קישור תשלום שלא שולם אחרי X ימים יקבל תזכורת אחת.
@@ -105,7 +108,7 @@ export function RemindersForm({
         disabled={isPending}
         className="inline-flex items-center px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'שומר...' : 'שמור הגדרות'}
+        {isPending ? `${tCommon('actions.save')}…` : tCommon('actions.save')}
       </button>
     </form>
   )

@@ -1,15 +1,14 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { CalendarDays, AlertCircle, Plus } from 'lucide-react'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getOrgTimezone } from '@/lib/organizations'
+import { getLocale } from 'next-intl/server'
 import { formatTime, formatDate } from '@/lib/lessons'
+import { parseAppLocale } from '@/lib/i18n/locale'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
 
-/**
- * Portal home — upcoming lessons + outstanding balance.
- * Per /docs/sprint-13-scope.md § Story 7.
- */
 export default async function PortalHomePage({
   params,
 }: {
@@ -23,10 +22,10 @@ export default async function PortalHomePage({
   }
 
   const db = createServiceRoleClient()
-  const timezone = await getOrgTimezone(orgId)
+  const [timezone, locale] = await Promise.all([getOrgTimezone(orgId), getLocale()])
+  const appLocale = parseAppLocale(locale)
   const now = new Date().toISOString()
 
-  // Fetch student IDs for this parent first — .in() requires an array, not a subquery
   const { data: relationships } = await db
     .from('relationships')
     .select('student_id')
@@ -38,7 +37,6 @@ export default async function PortalHomePage({
   const [parentResult, orgResult, balanceResult] = await Promise.all([
     db.from('parents').select('full_name').eq('id', session.parentId).single(),
     db.from('organizations').select('name').eq('id', orgId).single(),
-    // Outstanding balance (pending charges)
     db
       .from('charges')
       .select('amount')
@@ -47,9 +45,6 @@ export default async function PortalHomePage({
       .eq('status', 'pending'),
   ])
 
-  // Upcoming scheduled lessons for all students of this parent.
-  // Query from lessons with !inner join so filters apply to the lesson row itself —
-  // filtering on embedded resources from lesson_students side silently returns null.
   const lessonsResult = studentIds.length > 0
     ? await db
         .from('lessons')
@@ -72,33 +67,51 @@ export default async function PortalHomePage({
   const balance = (balanceResult.data ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
 
   return (
-    <div className="flex flex-col flex-1 pb-16">
+    <div className="flex flex-col flex-1 pb-20">
       {/* Top bar */}
-      <header className="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-        <span className="font-semibold text-gray-900">{orgName}</span>
-        <span className="text-sm text-gray-500">שלום, {parentName}</span>
+      <header className="px-4 py-3.5 border-b border-border flex justify-between items-center bg-card">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
+            <span className="text-primary-foreground text-[10px] font-bold leading-none">L</span>
+          </div>
+          <span className="font-semibold text-foreground text-sm">{orgName}</span>
+        </div>
+        <span className="text-sm text-muted-foreground">שלום, {parentName}</span>
       </header>
 
-      <main className="flex-1 p-4 space-y-6">
-        {/* Balance */}
+      <main className="flex-1 p-4 space-y-5">
+        {/* Balance card */}
         {balance > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <p className="text-sm text-amber-800 font-medium">יתרה לתשלום</p>
-            <p className="text-2xl font-bold text-amber-700 mt-1">₪{balance.toFixed(2)}</p>
-            <Link
-              href={`/portal/${orgId}/payments`}
-              className="mt-2 inline-block text-sm text-amber-700 underline"
-            >
-              לפרטים ותשלום →
-            </Link>
+          <div className="rounded-xl overflow-hidden border border-amber-200">
+            <div className="bg-amber-50 px-4 py-4">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertCircle size={15} className="text-amber-600" />
+                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">יתרה לתשלום</p>
+              </div>
+              <p className="text-3xl font-bold text-amber-700 mb-3">₪{balance.toFixed(2)}</p>
+              <Link
+                href={`/portal/${orgId}/payments`}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                לפרטים ותשלום ←
+              </Link>
+            </div>
           </div>
         )}
 
         {/* Upcoming lessons */}
         <div>
-          <h2 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">שיעורים קרובים</h2>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+              שיעורים קרובים
+            </p>
+          </div>
+
           {lessons.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">אין שיעורים מתוכננים</p>
+            <div className="bg-muted/40 rounded-xl border border-border py-10 flex flex-col items-center gap-2 text-center">
+              <CalendarDays size={24} className="text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">אין שיעורים מתוכננים</p>
+            </div>
           ) : (
             <div className="space-y-2">
               {lessons.map((lesson) => {
@@ -113,14 +126,22 @@ export default async function PortalHomePage({
                 const studentName = row.lesson_students?.[0]?.students?.full_name ?? ''
                 const teacherName = (row.teachers as unknown as { profiles: { full_name: string } })?.profiles?.full_name ?? ''
                 return (
-                  <div key={row.id} className="bg-white border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
+                  <div
+                    key={row.id}
+                    className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-3"
+                  >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 leading-tight">{studentName}</p>
-                      <p className="text-xs text-gray-500 mt-0.5" dir="ltr">
-                        {formatDate(row.start_at, timezone)} &middot; {formatTime(row.start_at, timezone)}–{formatTime(row.end_at, timezone)}
+                      <p className="text-sm font-semibold text-foreground leading-tight">{studentName}</p>
+                      <p className="text-xs text-muted-foreground mt-1" dir="ltr">
+                        {formatDate(row.start_at, timezone, appLocale)} · {formatTime(row.start_at, timezone, appLocale)}–{formatTime(row.end_at, timezone, appLocale)}
                       </p>
                     </div>
-                    <p className="text-xs text-gray-400 shrink-0 mt-0.5">{teacherName}</p>
+                    <div className="shrink-0 text-right">
+                      <p className="text-xs text-muted-foreground">{teacherName}</p>
+                      <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                        מתוכנן
+                      </div>
+                    </div>
                   </div>
                 )
               })}
@@ -131,8 +152,9 @@ export default async function PortalHomePage({
         {/* Book CTA */}
         <Link
           href={`/portal/${orgId}/book`}
-          className="block w-full text-center py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
         >
+          <Plus size={16} />
           קבע שיעור חדש
         </Link>
       </main>

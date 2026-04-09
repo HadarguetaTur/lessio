@@ -5,6 +5,8 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { DateTime } from 'luxon'
+import type { AppLocale } from '@/lib/i18n/locale'
+import { toLuxonLocale } from '@/lib/i18n/locale'
 import { getRollingMonthsStart } from './params'
 
 export type MonthlyLessonBucket = {
@@ -23,7 +25,8 @@ export type LessonsReportData = {
 export async function getLessonsReport(
   orgId: string,
   timezone: string,
-  months = 12
+  months = 12,
+  locale: AppLocale = 'he'
 ): Promise<LessonsReportData> {
   const db = createServiceRoleClient()
   const now = DateTime.now().setZone(timezone)
@@ -59,10 +62,11 @@ export async function getLessonsReport(
     }
   }
 
+  const luxonLoc = toLuxonLocale(locale)
   const buckets: MonthlyLessonBucket[] = [...bucketMap.entries()].map(([month, b]) => ({
     month,
     label: DateTime.fromFormat(month, 'yyyy-MM', { zone: timezone })
-      .setLocale('he')
+      .setLocale(luxonLoc)
       .toFormat('LLLL yyyy'),
     count: b.count,
     cancelled: b.cancelled,

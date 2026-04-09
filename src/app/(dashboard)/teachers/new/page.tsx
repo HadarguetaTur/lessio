@@ -1,12 +1,14 @@
 import { TeacherInviteForm } from '@/components/dashboard/teachers/TeacherInviteForm'
 import { inviteTeacher } from '../actions'
+import { getTranslations } from 'next-intl/server'
 
-export default function InviteTeacherPage() {
+export default async function InviteTeacherPage() {
+  const t = await getTranslations('teachers')
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">הזמנת מורה</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('invite')}</h1>
       <p className="text-sm text-gray-500 mb-6">
-        המורה יקבל אימייל עם קישור להרשמה. לאחר ההרשמה, פרופיל המורה יהיה פעיל במערכת.
+        {t('inviteDescription')}
       </p>
       <TeacherInviteForm action={inviteTeacher} />
     </div>

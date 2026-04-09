@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface PeriodSelectorProps {
   current: number
@@ -18,6 +19,7 @@ export function PeriodSelector({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const t = useTranslations('reports')
 
   const handleChange = useCallback(
     (months: string) => {
@@ -28,23 +30,16 @@ export function PeriodSelector({
     [router, pathname, searchParams]
   )
 
-  const labels: Record<number, string> = {
-    1: 'חודש',
-    3: '3 חודשים',
-    6: '6 חודשים',
-    12: '12 חודשים',
-  }
-
   return (
     <select
       value={current}
       onChange={e => handleChange(e.target.value)}
       className="text-sm rounded-lg border border-gray-200 px-3 py-1.5 text-gray-600 hover:border-gray-300 transition-colors bg-white"
-      aria-label="בחר תקופה"
+      aria-label={t('period')}
     >
       {options.map(m => (
         <option key={m} value={m}>
-          {labels[m] ?? `${m} חודשים`}
+          {t('months', { count: m })}
         </option>
       ))}
     </select>

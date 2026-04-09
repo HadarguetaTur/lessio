@@ -4,6 +4,7 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { OPEN_CHARGE_STATUSES } from '@/lib/charges'
 
 export type DebtRow = {
   parentId: string
@@ -25,7 +26,7 @@ export async function getDebtReport(orgId: string): Promise<DebtReportData> {
     .from('charges')
     .select('parent_id, amount, due_date, parents(id, full_name, phone)')
     .eq('organization_id', orgId)
-    .eq('status', 'pending')
+    .in('status', [...OPEN_CHARGE_STATUSES])
 
   if (error) throw new Error(`Debt report query failed: ${error.message}`)
 

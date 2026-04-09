@@ -8,6 +8,7 @@
  */
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface LogRow {
   id: string
@@ -43,6 +44,8 @@ function fmtDateTime(ts: string) {
 const TRUNCATE_AT = 100
 
 function LogRow({ row }: { row: LogRow }) {
+  const t = useTranslations('settings.aiAssistant')
+  const tCommon = useTranslations('common')
   const [expanded, setExpanded] = useState(false)
   const isLong = row.content.length > TRUNCATE_AT
   const displayText = expanded || !isLong ? row.content : row.content.slice(0, TRUNCATE_AT) + '…'
@@ -63,7 +66,7 @@ function LogRow({ row }: { row: LogRow }) {
               : 'bg-gray-100 text-gray-600'
           }`}
         >
-          {row.role === 'assistant' ? 'עוזר AI' : 'הורה'}
+          {row.role === 'assistant' ? t('title') : t('roleParent')}
         </span>
       </td>
       <td className="px-4 py-3 text-gray-700 text-sm max-w-xs">
@@ -73,7 +76,7 @@ function LogRow({ row }: { row: LogRow }) {
             onClick={() => setExpanded((v) => !v)}
             className="mr-1 text-xs text-blue-600 hover:underline"
           >
-            {expanded ? 'הסתר' : 'הצג הכל'}
+            {expanded ? tCommon('actions.hide') : tCommon('actions.showAll')}
           </button>
         )}
       </td>
@@ -82,8 +85,10 @@ function LogRow({ row }: { row: LogRow }) {
 }
 
 export function ConversationLogTable({ rows }: Props) {
+  const t = useTranslations('settings.aiAssistant')
+
   if (rows.length === 0) {
-    return <p className="text-sm text-gray-400">אין שיחות עדיין.</p>
+    return <p className="text-sm text-gray-400">{t('noLog')}</p>
   }
 
   return (
@@ -91,17 +96,17 @@ export function ConversationLogTable({ rows }: Props) {
       <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-              זמן
+            <th className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wide">
+              {t('logHeaders.time')}
             </th>
-            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-              טלפון
+            <th className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wide">
+              {t('logHeaders.phone')}
             </th>
-            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-              תפקיד
+            <th className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wide">
+              {t('logHeaders.aiReply')}
             </th>
-            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-              הודעה
+            <th className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wide">
+              {t('logHeaders.parentMessage')}
             </th>
           </tr>
         </thead>

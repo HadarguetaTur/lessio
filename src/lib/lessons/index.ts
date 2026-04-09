@@ -1,26 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import type { Lesson, LessonAccessScope, LessonStatus, LessonType } from '@/lib/lessons/types'
 
-export type LessonStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show'
-export type LessonType = 'individual' | 'pair' | 'group'
-
-export interface Lesson {
-  id: string
-  start_at: string
-  end_at: string
-  status: LessonStatus
-  lesson_type: LessonType
-  cancel_reason: string | null
-  series_id: string | null
-  teacher: { id: string; full_name: string }
-  /** Primary (first enrolled) student. For group lessons use a separate query. */
-  student: { id: string; full_name: string }
-}
-
-export interface LessonAccessScope {
-  organizationId: string
-  teacherId: string
-}
+export type { Lesson, LessonAccessScope, LessonStatus, LessonType } from '@/lib/lessons/types'
+export { formatTime, formatDate } from '@/lib/lessons/format'
 
 /** Parse UTC offset in milliseconds for a given timezone at a given moment */
 function getOffsetMs(timezone: string, at: Date): number {
@@ -86,27 +69,6 @@ export function getWeekDays(weekSundayStr: string): string[] {
   })
 }
 
-/** Format a UTC ISO timestamp as HH:MM in the given timezone. */
-export function formatTime(iso: string, timezone: string): string {
-  return new Intl.DateTimeFormat('he-IL', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(iso))
-}
-
-/** Format a UTC ISO timestamp as a full Hebrew date string */
-export function formatDate(iso: string, timezone: string): string {
-  return new Intl.DateTimeFormat('he-IL', {
-    timeZone: timezone,
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(iso))
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapLesson(l: any): Lesson {
   const teacher = l.teachers as { id: string; profiles: { full_name: string } }
@@ -129,6 +91,16 @@ function mapLesson(l: any): Lesson {
 const LESSON_SELECT =
   'id, start_at, end_at, status, cancel_reason, lesson_type, series_id, teachers(id, profiles(full_name)), lesson_students(student_id, students(id, full_name))'
 
+async function getLessonIdsForStudent(studentId: string): Promise<string[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lesson_students')
+    .select('lesson_id')
+    .eq('student_id', studentId)
+  if (error) throw new Error(error.message)
+  return [...new Set((data ?? []).map((r) => r.lesson_id as string))]
+}
+
 export async function getTodayLessons(
   organizationId: string,
   timezone: string
@@ -148,15 +120,110 @@ export async function getTodayLessons(
   return (data ?? []).map(mapLesson)
 }
 
+/** Returns today's date as YYYY-MM-DD in the given timezone */
+export function getCurrentDayStr(timezone: string): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: timezone })
+}
+
+/**
+ * Returns an array of day cells for a month calendar grid (7 cols).
+ * Includes padding days from prev/next month to fill the first and last weeks.
+ */
+export function getMonthDays(
+  monthStr: string, // "YYYY-MM"
+): Array<{ dateStr: string; isCurrentMonth: boolean }> {
+  const [year, month] = monthStr.split('-').map(Number)
+  const firstDay = new Date(Date.UTC(year, month - 1, 1))
+  const lastDay = new Date(Date.UTC(year, month, 0))
+
+  // Sunday = 0; pad from previous month
+  const startDow = firstDay.getUTCDay()
+  const endDow = lastDay.getUTCDay()
+
+  const days: Array<{ dateStr: string; isCurrentMonth: boolean }> = []
+
+  // Padding from previous month
+  for (let i = startDow - 1; i >= 0; i--) {
+    const d = new Date(firstDay.getTime() - (i + 1) * 24 * 60 * 60 * 1000)
+    days.push({ dateStr: d.toISOString().substring(0, 10), isCurrentMonth: false })
+  }
+
+  // Current month days
+  const daysInMonth = lastDay.getUTCDate()
+  for (let i = 0; i < daysInMonth; i++) {
+    const d = new Date(firstDay.getTime() + i * 24 * 60 * 60 * 1000)
+    days.push({ dateStr: d.toISOString().substring(0, 10), isCurrentMonth: true })
+  }
+
+  // Padding from next month to complete the last row
+  const remaining = (7 - ((endDow + 1) % 7)) % 7
+  for (let i = 1; i <= remaining; i++) {
+    const d = new Date(lastDay.getTime() + i * 24 * 60 * 60 * 1000)
+    days.push({ dateStr: d.toISOString().substring(0, 10), isCurrentMonth: false })
+  }
+
+  return days
+}
+
+/** Fetch lessons between two YYYY-MM-DD dates (inclusive) in the org timezone */
+export async function getLessonsForRange(
+  organizationId: string,
+  timezone: string,
+  fromDateStr: string,
+  toDateStr: string,
+  teacherId?: string,
+  studentId?: string
+): Promise<Lesson[]> {
+  const supabase = await createClient()
+  const fromUTC = localMidnightToUTC(fromDateStr, timezone)
+  // end = midnight of the day after toDateStr
+  const toBase = new Date(`${toDateStr}T12:00:00Z`)
+  const nextDay = new Date(toBase.getTime() + 24 * 60 * 60 * 1000)
+  const nextDayStr = nextDay.toISOString().substring(0, 10)
+  const toUTC = localMidnightToUTC(nextDayStr, timezone)
+
+  let lessonIds: string[] | undefined
+  if (studentId) {
+    lessonIds = await getLessonIdsForStudent(studentId)
+    if (lessonIds.length === 0) return []
+  }
+
+  let query = supabase
+    .from('lessons')
+    .select(LESSON_SELECT)
+    .eq('organization_id', organizationId)
+    .gte('start_at', fromUTC.toISOString())
+    .lt('start_at', toUTC.toISOString())
+    .order('start_at', { ascending: true })
+
+  if (teacherId) {
+    query = query.eq('teacher_id', teacherId)
+  }
+  if (lessonIds) {
+    query = query.in('id', lessonIds)
+  }
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(mapLesson)
+}
+
 export async function getLessonsForWeek(
   organizationId: string,
   timezone: string,
   weekSundayStr: string,
-  teacherId?: string
+  teacherId?: string,
+  studentId?: string
 ): Promise<Lesson[]> {
   const supabase = await createClient()
   const weekStartUTC = localMidnightToUTC(weekSundayStr, timezone)
   const weekEndUTC = new Date(weekStartUTC.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+  let lessonIds: string[] | undefined
+  if (studentId) {
+    lessonIds = await getLessonIdsForStudent(studentId)
+    if (lessonIds.length === 0) return []
+  }
 
   let query = supabase
     .from('lessons')
@@ -168,6 +235,9 @@ export async function getLessonsForWeek(
 
   if (teacherId) {
     query = query.eq('teacher_id', teacherId)
+  }
+  if (lessonIds) {
+    query = query.in('id', lessonIds)
   }
 
   const { data, error } = await query

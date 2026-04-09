@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Download } from 'lucide-react'
 
 interface CsvDownloadButtonProps {
@@ -14,8 +15,10 @@ interface CsvDownloadButtonProps {
 export function CsvDownloadButton({
   report,
   params = {},
-  label = 'יצוא CSV',
+  label,
 }: CsvDownloadButtonProps) {
+  const tCommon = useTranslations('common')
+  const resolvedLabel = label ?? tCommon('actions.export')
   function handleDownload() {
     const qs = new URLSearchParams(params).toString()
     const url = `/api/reports/${report}${qs ? `?${qs}` : ''}`
@@ -31,7 +34,7 @@ export function CsvDownloadButton({
       className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600 transition-colors"
     >
       <Download size={14} />
-      {label}
+      {resolvedLabel}
     </button>
   )
 }

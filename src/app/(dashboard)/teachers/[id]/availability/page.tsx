@@ -6,6 +6,7 @@ import { getTeacherById } from '@/lib/teachers'
 import { getTeacherAvailability, DAY_NAMES, AvailabilityWindow } from '@/lib/availability'
 import { AddAvailabilityForm } from '@/components/dashboard/availability/AddAvailabilityForm'
 import { createAvailability, deleteAvailability } from './actions'
+import { getTranslations } from 'next-intl/server'
 
 /** Format Postgres time "HH:MM:SS" to "HH:MM" for display */
 function fmt(t: string) {
@@ -28,6 +29,7 @@ export default async function TeacherAvailabilityPage(props: {
   for (let d = 0; d <= 6; d++) byDay.set(d, [])
   windows.forEach((w) => byDay.get(w.day_of_week)!.push(w))
 
+  const t = await getTranslations('teachers')
   const boundCreate = createAvailability.bind(null, id)
 
   return (
@@ -35,27 +37,27 @@ export default async function TeacherAvailabilityPage(props: {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6 text-sm text-gray-500">
         <Link href="/teachers" className="hover:text-gray-700">
-          מורים
+          {t('title')}
         </Link>
         <ArrowRight size={14} className="rotate-180" />
         <span className="text-gray-900 font-medium">{teacher.profile.full_name}</span>
         <ArrowRight size={14} className="rotate-180" />
-        <span>זמינות</span>
+        <span>{t('availability')}</span>
       </div>
 
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
-        זמינות שבועית — {teacher.profile.full_name}
+        {t('availability')} — {teacher.profile.full_name}
       </h1>
 
       {/* Nav */}
       <div className="flex gap-3 mb-6 text-sm">
-        <span className="font-medium text-gray-900">זמינות שבועית</span>
+        <span className="font-medium text-gray-900">{t('availability')}</span>
         <span className="text-gray-300">|</span>
         <Link
           href={`/teachers/${id}/overrides`}
           className="text-gray-500 hover:text-gray-800"
         >
-          חריגים לתאריך ספציפי
+          {t('overrides')}
         </Link>
       </div>
 

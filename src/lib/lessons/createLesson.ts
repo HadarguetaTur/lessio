@@ -4,11 +4,15 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 export type CreateLessonParams = {
   orgId: string
   teacherId: string
-  studentId: string
+  /** One or more student IDs (1 for individual, multiple for group/pair) */
+  studentIds: string[]
+  lessonType?: 'individual' | 'pair' | 'group'
   date: string            // YYYY-MM-DD in org timezone
   startTime: string       // HH:MM in org timezone
   durationMinutes: number
   createdByProfileId: string
+  /** Optional per-student override price for pair/group lessons */
+  pricePerStudent?: number | null
 }
 
 export type CreateLessonResult = {
@@ -29,17 +33,29 @@ export class LessonConflictError extends Error {
 
 /**
  * Creates a single (non-recurring) lesson with full conflict checks.
- * Same validation rules as createLessonSeries:
+ * Supports individual and group lesson types via studentIds array.
+ * Validation rules:
  *   - holiday block
  *   - teacher overlap (non-cancelled lessons)
- *   - student overlap (via lesson_students junction)
- *
- * Per /docs/sprint-13-scope.md § Story 2.
+ *   - student overlap (via lesson_students junction) for each student
  */
 export async function createLesson(
   params: CreateLessonParams
 ): Promise<CreateLessonResult> {
-  const { orgId, teacherId, studentId, date, startTime, durationMinutes, createdByProfileId } = params
+  const {
+    orgId,
+    teacherId,
+    studentIds,
+    lessonType = 'individual',
+    date,
+    startTime,
+    durationMinutes,
+    createdByProfileId,
+    pricePerStudent,
+  } = params
+
+  if (studentIds.length === 0) throw new Error('At least one student is required')
+
   const db = createServiceRoleClient()
 
   // 1. Fetch org timezone
@@ -77,55 +93,75 @@ export async function createLesson(
     .limit(1)
   if (teacherConflict?.length) throw new LessonConflictError('teacher_conflict')
 
-  // 5. Student overlap check via lesson_students
-  const { data: studentLessonIds } = await db
-    .from('lesson_students')
-    .select('lesson_id')
-    .eq('student_id', studentId)
-  if (studentLessonIds?.length) {
-    const ids = studentLessonIds.map((r) => r.lesson_id)
-    const { data: studentConflict } = await db
-      .from('lessons')
-      .select('id')
-      .in('id', ids)
-      .eq('organization_id', orgId)
-      .neq('status', 'cancelled')
-      .lt('start_at', endUtc)
-      .gt('end_at', startUtc)
-      .limit(1)
-    if (studentConflict?.length) throw new LessonConflictError('student_conflict')
+  // 4b. Active slot_lock check — prevent scheduling over a slot a parent is currently holding
+  const { data: lockConflict } = await db
+    .from('slot_locks')
+    .select('id')
+    .eq('teacher_id', teacherId)
+    .eq('status', 'active')
+    .gt('expires_at', new Date().toISOString())
+    .lt('start_at', endUtc)
+    .gt('end_at', startUtc)
+    .limit(1)
+  if (lockConflict?.length) throw new LessonConflictError('teacher_conflict')
+
+  // 5. Student overlap check via lesson_students for each student
+  for (const studentId of studentIds) {
+    const { data: studentLessonIds } = await db
+      .from('lesson_students')
+      .select('lesson_id')
+      .eq('student_id', studentId)
+    if (studentLessonIds?.length) {
+      const ids = studentLessonIds.map((r) => r.lesson_id)
+      const { data: studentConflict } = await db
+        .from('lessons')
+        .select('id')
+        .in('id', ids)
+        .eq('organization_id', orgId)
+        .neq('status', 'cancelled')
+        .lt('start_at', endUtc)
+        .gt('end_at', startUtc)
+        .limit(1)
+      if (studentConflict?.length) throw new LessonConflictError('student_conflict')
+    }
   }
 
   // 6. Insert lesson
+  const insertPayload: Record<string, unknown> = {
+    organization_id: orgId,
+    teacher_id: teacherId,
+    start_at: startUtc,
+    end_at: endUtc,
+    status: 'scheduled',
+    lesson_type: lessonType,
+    max_students: studentIds.length,
+  }
+  if (pricePerStudent != null) insertPayload.price_per_student = pricePerStudent
   const { data: lesson, error: lessonError } = await db
     .from('lessons')
-    .insert({
-      organization_id: orgId,
-      teacher_id: teacherId,
-      start_at: startUtc,
-      end_at: endUtc,
-      status: 'scheduled',
-      lesson_type: 'individual',
-      max_students: 1,
-    })
+    .insert(insertPayload)
     .select('id, start_at, end_at')
     .single()
   if (lessonError || !lesson) throw new Error(`Failed to create lesson: ${lessonError?.message}`)
 
   // 7. Insert lesson_students — rollback lesson on failure
-  const { error: lsError } = await db
-    .from('lesson_students')
-    .insert({ lesson_id: lesson.id, student_id: studentId, organization_id: orgId })
+  const lessonStudentsRows = studentIds.map((sid) => ({
+    lesson_id: lesson.id,
+    student_id: sid,
+    organization_id: orgId,
+  }))
+  const { error: lsError } = await db.from('lesson_students').insert(lessonStudentsRows)
   if (lsError) {
     await db.from('lessons').delete().eq('id', lesson.id)
-    throw new Error(`Failed to link student: ${lsError.message}`)
+    throw new Error(`Failed to link students: ${lsError.message}`)
   }
 
   console.log('[createLesson] created', {
     org_id: orgId,
     lesson_id: lesson.id,
+    lesson_type: lessonType,
     teacher_id: teacherId,
-    student_id: studentId,
+    student_ids: studentIds,
     created_by: createdByProfileId,
   })
 

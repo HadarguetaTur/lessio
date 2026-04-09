@@ -1,5 +1,5 @@
 # LESSIO — AI Operating Manual
-*Current Sprint: Sprint 20 — AI Assistant + WhatsApp Hardening*
+*Current Sprint: Sprint 22 — Billing Cycle Completion + Subscription Management + i18n Cleanup*
 
 ---
 
@@ -12,26 +12,25 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 
 ---
 
-## Current Sprint: Sprint 20 — AI Assistant + WhatsApp Hardening
+## Current Sprint: Sprint 22 — Billing Cycle Completion + Subscription Management + i18n Cleanup
 
-**Sprint source of truth:** `/docs/sprint-20-scope.md`
+**Sprint source of truth:** `/docs/sprint-22-scope.md`
 
 **Goal:**
-- Wire idempotency layer (`claimIncomingMessage` / `releaseIncomingMessageClaim`) into the webhook handler
-- Complete conversation log write path (user + assistant turns)
-- Remove silent dead-ends in the webhook (no-student, unresolvable parent, token decryption failure)
-- Harden AI runtime: API key guard in settings action + OpenAI error classification
-- Regression tests: idempotency helpers, retry/duplicate webhook paths, conversation log, fallback
+- Billing approval workflow: generate → approve → auto-send WhatsApp payment request → mark paid
+- Subscription management page (`/subscriptions`) + form in student detail sheet
+- i18n cleanup: replace all remaining hardcoded Hebrew in charges, billing, leads, homework pages
+- Onboarding wizard + import flow translation
 
 **Users in scope:**
-- WhatsApp: parents (receive reliable replies, no silent drops)
-- Dashboard: owner (AI enable guard, key-absent warning)
+- Dashboard: owner, admin (billing workflow + subscriptions)
+- All dashboard users (i18n cleanup)
 
 **New dependencies:** none
 
 **New env vars:** none
 
-**Schema changes:** none (all tables built in Sprint 19)
+**Schema changes:** none (all tables already in place)
 
 ---
 
@@ -288,6 +287,44 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || src/app/api/whatsapp/webhook/webhook.test.ts — duplicate / retry / decrypt-failure / happy-path-no-release regression tests | ✅ Done (Sprint 20) |
 || src/app/(dashboard)/settings/ai-assistant/actions.test.ts — key-absent guard + 4 other action tests | ✅ Done (Sprint 20) |
 || src/lib/ai-assistant/aiAssistant.test.ts — OpenAI APIError classification test + extended mock | ✅ Done (Sprint 20) |
+
+|| next-intl@4.9.0 installed + `src/i18n/request.ts` (cookie-based locale config) + `next.config.ts` wrapped | ✅ Done (Sprint 21) |
+|| `supabase/migrations/20260419000001_profiles_locale.sql` — `profiles.preferred_locale` column | ✅ Done (Sprint 21) |
+|| `src/app/(dashboard)/settings/locale/actions.ts` — saveLocaleAction (cookie + DB) | ✅ Done (Sprint 21) |
+|| `src/components/dashboard/LocaleSwitcher.tsx` — locale toggle in sidebar user dropdown | ✅ Done (Sprint 21) |
+|| `messages/he.json` — all Hebrew dashboard strings extracted | ✅ Done (Sprint 21) |
+|| `messages/en.json` — full English translation | ✅ Done (Sprint 21) |
+|| `src/app/(dashboard)/layout.tsx` — dynamic `dir` attribute from locale | ✅ Done (Sprint 21) |
+|| `src/app/login/actions.ts` — sync locale cookie from `profiles.preferred_locale` on sign-in | ✅ Done (Sprint 21) |
+|| All ~65 dashboard pages + components wired with `useTranslations` / `getTranslations` | ✅ Done (Sprint 21) |
+|| All ~12 admin shell files wired with `useTranslations` | ✅ Done (Sprint 21) |
+|| `src/lib/i18n/formatCurrency.ts` — locale-aware currency formatter | ✅ Done (Sprint 21) |
+|| RTL/LTR layout polish (logical Tailwind properties for direction-sensitive borders/padding) | ✅ Done (Sprint 21) |
+|| `src/app/(dashboard)/settings/locale/actions.test.ts` — saveLocaleAction unit tests | ✅ Done (Sprint 21) |
+
+|| **Pre-Sprint-22 context (built outside sprint cycle):** ||
+|| `supabase/migrations/20260424000001_subscription_billing.sql` — subscriptions + student_monthly_billing + student_cancellation_events + lessons.price_per_student | ✅ Done |
+|| `supabase/migrations/20260427000001_monthly_charge_ledger.sql` — charges.billing_record_id + charges.billing_month + monthly charge type | ✅ Done |
+|| `src/lib/billing/monthly/` — full billing engine (buildStudentMonth, buildMonthForAllStudents, syncMonthlyCharge, types) | ✅ Done |
+|| `src/lib/subscriptions/index.ts` — subscription CRUD lib | ✅ Done |
+|| `src/app/(dashboard)/billing/` — billing list page + detail page + all actions (generate, recalculate, mark-paid, manual adjustment, subscription CRUD) | ✅ Done |
+|| `src/app/(dashboard)/billing/[studentId]/` — breakdown by lessons/subscriptions/cancellations + ManualAdjustmentForm + CancellationEventRow + RecalculateButton | ✅ Done |
+|| Student groups — DB + lib + GroupsTable + GroupFormSheet + students page tab | ✅ Done |
+|| Onboarding wizard — /onboarding multi-step (WelcomeStep, TeachersStep, SettingsStep, ImportStudentsStep, ImportLessonsStep, CompleteStep) + organizations.onboarding_completed | ✅ Done |
+|| `src/components/import/` — FileUploadZone + ImportFlow + ImportPreviewTable + ImportResultsSummary | ✅ Done |
+
+|| **Sprint 22 stories:** ||
+|| `billing/actions.ts` — approveBillingAction + sendBillingPaymentRequestAction | ⬜ Todo |
+|| `/billing` page — approve button per row + i18n fix | ⬜ Todo |
+|| `/billing/[studentId]` — approve + send payment request buttons | ⬜ Todo |
+|| `src/app/(dashboard)/subscriptions/page.tsx` — subscriptions list page (owner/admin) | ⬜ Todo |
+|| `src/components/dashboard/billing/SubscriptionForm.tsx` — add/edit subscription form in student detail sheet | ⬜ Todo |
+|| `src/components/dashboard/Sidebar.tsx` — מנויים nav entry (owner/admin) | ⬜ Todo |
+|| i18n cleanup: charges/page.tsx + charges/[id]/page.tsx — all hardcoded Hebrew replaced | ⬜ Todo |
+|| i18n cleanup: billing/page.tsx + billing/[studentId]/*.tsx | ⬜ Todo |
+|| i18n cleanup: leads/page.tsx + leads/[id]/convert/page.tsx | ⬜ Todo |
+|| i18n cleanup: homework/page.tsx + assign/page.tsx + templates/ | ⬜ Todo |
+|| Onboarding wizard + import flow translation (new `onboarding` + `import` namespaces) | ⬜ Todo |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.

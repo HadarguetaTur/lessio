@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { PlatformKpiGrid } from '@/components/admin/PlatformKpiGrid'
 import { NeedsSetupList } from '@/components/admin/NeedsSetupList'
@@ -11,11 +12,12 @@ import { getPlatformDashboard } from '@/lib/superadmin/dashboard'
  * Per /docs/sprint-18-scope.md § Story 2.
  */
 export default async function AdminDashboardPage() {
+  const t = await getTranslations('admin')
   const { stats, needsSetup, recentOrgs } = await getPlatformDashboard()
 
   return (
     <div className="max-w-5xl mx-auto">
-      <AdminHeader title="לוח בקרה" description="מצב הפלטפורמה בזמן אמת" />
+      <AdminHeader title={t('dashboard.title')} />
       <PlatformKpiGrid stats={stats} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <NeedsSetupList orgs={needsSetup} />

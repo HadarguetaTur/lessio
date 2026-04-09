@@ -1,18 +1,20 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 
 type ActionState = { error: string } | null
 type FormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
 
 export function AddOverrideForm({ action }: { action: FormAction }) {
+  const t = useTranslations('teacherSelf.overrides')
   const [state, formAction, pending] = useActionState(action, null)
   const [type, setType] = useState<'block' | 'available'>('block')
 
   return (
     <form action={formAction} className="bg-white rounded-lg border border-gray-200 p-4">
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">הוסף חריג</h2>
+      <h2 className="text-sm font-semibold text-gray-700 mb-3">{t('addOverrideTitle')}</h2>
 
       {state?.error && (
         <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-2 rounded-md mb-3">
@@ -27,7 +29,7 @@ export function AddOverrideForm({ action }: { action: FormAction }) {
         {/* Date */}
         <div className="space-y-1">
           <label htmlFor="override_date" className="block text-sm font-medium text-gray-700">
-            תאריך
+            {t('date')}
           </label>
           <input
             id="override_date"
@@ -41,7 +43,7 @@ export function AddOverrideForm({ action }: { action: FormAction }) {
 
         {/* Type toggle */}
         <div className="space-y-1">
-          <span className="block text-sm font-medium text-gray-700">סוג</span>
+          <span className="block text-sm font-medium text-gray-700">{t('type')}</span>
           <div className="flex border border-gray-300 rounded-md overflow-hidden text-sm">
             <button
               type="button"
@@ -52,7 +54,7 @@ export function AddOverrideForm({ action }: { action: FormAction }) {
                   : 'bg-white text-gray-600 hover:bg-gray-50'
               }`}
             >
-              חסום יום
+              {t('blockDay')}
             </button>
             <button
               type="button"
@@ -63,7 +65,7 @@ export function AddOverrideForm({ action }: { action: FormAction }) {
                   : 'bg-white text-gray-600 hover:bg-gray-50'
               }`}
             >
-              זמינות מיוחדת
+              {t('specialAvailability')}
             </button>
           </div>
         </div>
@@ -73,7 +75,7 @@ export function AddOverrideForm({ action }: { action: FormAction }) {
           <>
             <div className="space-y-1">
               <label htmlFor="start_time" className="block text-sm font-medium text-gray-700">
-                משעה
+                {t('from')}
               </label>
               <input
                 id="start_time"
@@ -86,7 +88,7 @@ export function AddOverrideForm({ action }: { action: FormAction }) {
             </div>
             <div className="space-y-1">
               <label htmlFor="end_time" className="block text-sm font-medium text-gray-700">
-                עד שעה
+                {t('to')}
               </label>
               <input
                 id="end_time"
@@ -103,7 +105,7 @@ export function AddOverrideForm({ action }: { action: FormAction }) {
         {/* Reason */}
         <div className="space-y-1">
           <label htmlFor="reason" className="block text-sm font-medium text-gray-700">
-            סיבה (אופציונלי)
+            {t('reason')}
           </label>
           <input
             id="reason"
@@ -114,7 +116,7 @@ export function AddOverrideForm({ action }: { action: FormAction }) {
         </div>
 
         <Button type="submit" disabled={pending} className="mb-0">
-          {pending ? 'שומר...' : 'הוסף'}
+          {pending ? t('saving') : t('add')}
         </Button>
       </div>
     </form>

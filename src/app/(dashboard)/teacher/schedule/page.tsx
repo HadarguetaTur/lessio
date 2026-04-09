@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale } from '@/lib/i18n/locale'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import {
@@ -13,7 +15,7 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { TeacherWeekNav } from '@/components/dashboard/lessons/TeacherWeekNav'
 import { getOrgHolidays } from '@/lib/organizations/holidays'
 
-const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+// Day names resolved at render time using translations
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-50 text-blue-700 border border-blue-100',
@@ -27,6 +29,12 @@ export default async function TeacherSchedulePage(props: {
 }) {
   const { week } = await props.searchParams
   const { userId, orgId, role } = await getSession()
+  const [t, tCommon, locale] = await Promise.all([
+    getTranslations('teacherSelf.schedule'),
+    getTranslations('common'),
+    getLocale(),
+  ])
+  const appLocale = parseAppLocale(locale)
 
   if (role !== 'teacher') {
     redirect('/dashboard')
@@ -60,11 +68,20 @@ export default async function TeacherSchedulePage(props: {
   })
 
   const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: timezone })
+  const DAY_NAMES = [
+    tCommon('days.sun'),
+    tCommon('days.mon'),
+    tCommon('days.tue'),
+    tCommon('days.wed'),
+    tCommon('days.thu'),
+    tCommon('days.fri'),
+    tCommon('days.sat'),
+  ]
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <h1 className="text-2xl font-bold text-gray-900">השיעורים שלי</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <TeacherWeekNav weekStr={weekStr} />
       </div>
 
@@ -112,7 +129,7 @@ export default async function TeacherSchedulePage(props: {
                       className={`block rounded px-1.5 py-1 text-xs leading-snug ${STATUS_STYLES[lesson.status]} hover:opacity-75 transition-opacity`}
                     >
                       <span dir="ltr" className="font-mono block">
-                        {formatTime(lesson.start_at, timezone)}
+                        {formatTime(lesson.start_at, timezone, appLocale)}
                       </span>
                       <span className="truncate block">{lesson.student.full_name}</span>
                     </Link>
@@ -127,26 +144,26 @@ export default async function TeacherSchedulePage(props: {
 
       {/* Empty state */}
       {lessons.length === 0 && (
-        <p className="text-center text-sm text-gray-400 mt-10">אין שיעורים בשבוע זה.</p>
+        <p className="text-center text-sm text-gray-400 mt-10">{t('noLessons')}</p>
       )}
 
       {/* Legend */}
       <div className="flex items-center gap-4 mt-4 text-xs text-gray-500 flex-wrap">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-blue-100 border border-blue-200 inline-block" />
-          מתוכנן
+          {tCommon('status.scheduled')}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-green-100 border border-green-200 inline-block" />
-          הושלם
+          {tCommon('status.completed')}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-yellow-100 border border-yellow-200 inline-block" />
-          לא הגיע
+          {tCommon('status.no_show')}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-gray-100 border border-gray-200 inline-block" />
-          בוטל
+          {tCommon('status.cancelled')}
         </span>
       </div>
     </div>

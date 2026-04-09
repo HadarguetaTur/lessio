@@ -12,6 +12,7 @@
  */
 
 import React, { useActionState, useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { saveTemplateAction, resetTemplateAction, type ActionState } from '@/app/(dashboard)/settings/message-templates/actions'
 import { substituteVars } from '@/lib/whatsapp/templates'
 import type { MessageTemplateType } from '@/lib/whatsapp/templates'
@@ -35,6 +36,8 @@ export function MessageTemplateCard({
   variables,
   previewVars,
 }: MessageTemplateCardProps) {
+  const t = useTranslations('settings.messageTemplates')
+  const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(saveTemplateAction, initialState)
   const [body, setBody] = useState(customBody ?? defaultBody)
   const [resetError, setResetError] = useState<string | null>(null)
@@ -67,7 +70,7 @@ export function MessageTemplateCard({
         <h3 className="text-sm font-semibold text-gray-900">{label}</h3>
         {isCustom && (
           <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5 font-medium">
-            מותאם אישית
+            {t('saved')}
           </span>
         )}
       </div>
@@ -75,7 +78,7 @@ export function MessageTemplateCard({
       {/* Variable hint */}
       {variables.length > 0 && (
         <div className="text-xs text-gray-500">
-          <span className="font-medium">משתנים זמינים: </span>
+          <span className="font-medium">{t('variables')}: </span>
           {variables.map((v, i) => (
             <span key={v}>
               <code className="bg-gray-100 text-gray-700 px-1 rounded font-mono">{`{{${v}}}`}</code>
@@ -104,7 +107,7 @@ export function MessageTemplateCard({
           <p className="text-xs text-red-600">{state.error}</p>
         )}
         {state.success && (
-          <p className="text-xs text-green-600">התבנית נשמרה בהצלחה</p>
+          <p className="text-xs text-green-600">{t('saved')}</p>
         )}
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -113,7 +116,7 @@ export function MessageTemplateCard({
             disabled={isPending}
             className="px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'שומר...' : 'שמור'}
+            {isPending ? `${tCommon('actions.save')}…` : tCommon('actions.save')}
           </button>
 
           {isCustom && (
@@ -123,7 +126,7 @@ export function MessageTemplateCard({
               disabled={resetPending}
               className="px-4 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
-              {resetPending ? 'מאפס...' : 'איפוס לברירת מחדל'}
+              {resetPending ? `${t('reset')}…` : t('reset')}
             </button>
           )}
 
@@ -132,7 +135,7 @@ export function MessageTemplateCard({
             onClick={() => setShowPreview(p => !p)}
             className="px-4 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors underline"
           >
-            {showPreview ? 'הסתר תצוגה מקדימה' : 'תצוגה מקדימה'}
+            {showPreview ? tCommon('actions.close') : t('preview')}
           </button>
         </div>
 
@@ -144,7 +147,7 @@ export function MessageTemplateCard({
       {/* Live preview */}
       {showPreview && (
         <div className="border border-gray-200 rounded-md bg-gray-50 p-3">
-          <p className="text-xs font-medium text-gray-500 mb-2">תצוגה מקדימה (עם ערכים לדוגמה):</p>
+          <p className="text-xs font-medium text-gray-500 mb-2">{t('preview')}:</p>
           <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed" dir="rtl">
             {preview}
           </pre>

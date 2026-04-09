@@ -6,15 +6,20 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { DateTime } from 'luxon'
+import { OPEN_CHARGE_STATUSES } from '@/lib/charges'
+import { getCurrentBillingMonth } from '@/lib/billing/monthly/month'
 
 export type DashboardStats = {
   monthlyRevenue: number      // SUM(charges.amount) WHERE status='paid', paid_at in current calendar month
-  pendingDebt: number         // SUM(charges.amount) WHERE status='pending'
+  pendingDebt: number         // SUM(charges.amount) WHERE status in ('pending', 'invoiced')
   lessonsThisMonth: number    // COUNT(lessons) WHERE start_at in current month, status != 'cancelled'
   activeStudents: number      // COUNT(DISTINCT student_id) with lesson in last 30 days
   cancellationRateThisMonth: number  // % of lessons this month that were cancelled (0-100)
   atRiskStudents: number      // Active students with no lesson in last 30 days
   newLeadsThisMonth: number   // COUNT(leads) WHERE created_at in current month
+  monthlyBillingTotal: number // SUM(student_monthly_billing.total_amount) for current billing month
+  monthlyBillingPaid: number  // SUM where is_paid=true
+  monthlyBillingOpen: number  // SUM where is_paid=false
 }
 
 type LessonStudentRow = {
@@ -28,7 +33,9 @@ export async function getDashboardStats(orgId: string, timezone: string): Promis
   const monthStart = now.startOf('month').toUTC().toISO()!
   const thirtyDaysAgo = now.minus({ days: 30 }).toUTC().toISO()!
 
-  const [revenueRes, debtRes, allLessonsThisMonthRes, studentsRes, leadsRes, activeStudentsRes] =
+  const currentBillingMonth = getCurrentBillingMonth(timezone, now)
+
+  const [revenueRes, debtRes, allLessonsThisMonthRes, studentsRes, leadsRes, activeStudentsRes, billingRes] =
     await Promise.all([
       // Paid charges this calendar month
       db
@@ -43,7 +50,7 @@ export async function getDashboardStats(orgId: string, timezone: string): Promis
         .from('charges')
         .select('amount')
         .eq('organization_id', orgId)
-        .eq('status', 'pending'),
+        .in('status', [...OPEN_CHARGE_STATUSES]),
 
       // ALL lessons this month (including cancelled) for cancellation rate
       db
@@ -73,6 +80,13 @@ export async function getDashboardStats(orgId: string, timezone: string): Promis
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', orgId)
         .eq('is_active', true),
+
+      // Monthly billing totals for current month
+      db
+        .from('student_monthly_billing')
+        .select('total_amount, is_paid')
+        .eq('organization_id', orgId)
+        .eq('billing_month', currentBillingMonth),
     ])
 
   const monthlyRevenue = (revenueRes.data ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
@@ -96,6 +110,15 @@ export async function getDashboardStats(orgId: string, timezone: string): Promis
 
   const newLeadsThisMonth = leadsRes.count ?? 0
 
+  const billingRows = billingRes.data ?? []
+  const monthlyBillingTotal = billingRows.reduce((sum, r) => sum + Number(r.total_amount), 0)
+  const monthlyBillingPaid = billingRows
+    .filter((r) => r.is_paid)
+    .reduce((sum, r) => sum + Number(r.total_amount), 0)
+  const monthlyBillingOpen = billingRows
+    .filter((r) => !r.is_paid)
+    .reduce((sum, r) => sum + Number(r.total_amount), 0)
+
   return {
     monthlyRevenue,
     pendingDebt,
@@ -104,5 +127,8 @@ export async function getDashboardStats(orgId: string, timezone: string): Promis
     cancellationRateThisMonth,
     atRiskStudents,
     newLeadsThisMonth,
+    monthlyBillingTotal,
+    monthlyBillingPaid,
+    monthlyBillingOpen,
   }
 }

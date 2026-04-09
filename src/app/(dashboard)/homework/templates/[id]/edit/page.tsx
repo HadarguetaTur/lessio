@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth/session'
 import { getTemplate } from '@/lib/homework'
 import { TemplateForm } from '@/components/dashboard/homework/TemplateForm'
 import { updateTemplateAction } from '../../actions'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * Edit homework template page.
@@ -23,9 +24,12 @@ export default async function EditTemplatePage(props: {
 
   const boundAction = updateTemplateAction.bind(null, id)
 
+  const t = await getTranslations('homework')
+  const tCommon = await getTranslations('common')
+
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">עריכת תבנית</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('editTemplate')}</h1>
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <TemplateForm
           action={boundAction}
@@ -34,7 +38,7 @@ export default async function EditTemplatePage(props: {
             subject: template.subject ?? undefined,
             body:    template.body,
           }}
-          submitLabel="שמור שינויים"
+          submitLabel={tCommon('actions.save')}
         />
       </div>
     </div>

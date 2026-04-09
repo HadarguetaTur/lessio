@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 
 type ActionState = { error: string } | { success: true } | null
@@ -21,6 +22,7 @@ export function CancellationPolicyForm({
   defaultValues,
   readOnly = false,
 }: CancellationPolicyFormProps) {
+  const t = useTranslations('settings.cancellationPolicy')
   const [state, formAction, pending] = useActionState(action, null)
 
   return (
@@ -32,16 +34,16 @@ export function CancellationPolicyForm({
       )}
       {'success' in (state ?? {}) && (
         <div className="text-sm text-green-700 bg-green-50 border border-green-200 p-3 rounded-md">
-          המדיניות נשמרה בהצלחה
+          {t('saved')}
         </div>
       )}
 
       <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-5">
         <div className="space-y-1">
           <label htmlFor="notice_hours_full" className="block text-sm font-medium text-gray-700">
-            שעות הודעה מוקדמת לביטול ללא חיוב
+            {t('noticeHoursFull')}
           </label>
-          <p className="text-xs text-gray-500">ביטול מעל X שעות לפני השיעור — אין חיוב</p>
+          <p className="text-xs text-gray-500">{t('noticeHoursFullHint')}</p>
           <input
             id="notice_hours_full"
             name="notice_hours_full"
@@ -56,11 +58,9 @@ export function CancellationPolicyForm({
 
         <div className="space-y-1">
           <label htmlFor="notice_hours_partial" className="block text-sm font-medium text-gray-700">
-            שעות הודעה מוקדמת לחיוב חלקי
+            {t('noticeHoursPartial')}
           </label>
-          <p className="text-xs text-gray-500">
-            ביטול בין X לבין הסף המלא — חיוב חלקי. ביטול פחות מ-X שעות — חיוב מלא
-          </p>
+          <p className="text-xs text-gray-500">{t('noticeHoursPartialHint')}</p>
           <input
             id="notice_hours_partial"
             name="notice_hours_partial"
@@ -75,9 +75,9 @@ export function CancellationPolicyForm({
 
         <div className="space-y-1">
           <label htmlFor="partial_charge_percent" className="block text-sm font-medium text-gray-700">
-            אחוז חיוב חלקי (%)
+            {t('partialChargePercent')}
           </label>
-          <p className="text-xs text-gray-500">אחוז מסכום השיעור שייגבה בחיוב חלקי (0–100)</p>
+          <p className="text-xs text-gray-500">{t('partialChargePercentHint')}</p>
           <input
             id="partial_charge_percent"
             name="partial_charge_percent"
@@ -93,20 +93,17 @@ export function CancellationPolicyForm({
       </div>
 
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600 space-y-1">
-        <p className="font-medium text-gray-700">כיצד פועלת המדיניות:</p>
+        <p className="font-medium text-gray-700">{t('howItWorks')}</p>
         <ul className="list-disc list-inside space-y-1 text-xs">
-          <li>ביטול מעל {defaultValues.notice_hours_full} שעות לפני השיעור — אין חיוב</li>
-          <li>
-            ביטול בין {defaultValues.notice_hours_partial} ל-{defaultValues.notice_hours_full} שעות — חיוב{' '}
-            {defaultValues.partial_charge_percent}%
-          </li>
-          <li>ביטול פחות מ-{defaultValues.notice_hours_partial} שעות לפני — חיוב מלא</li>
+          <li>{t('ruleNoCharge', { hours: defaultValues.notice_hours_full })}</li>
+          <li>{t('rulePartial', { partialHours: defaultValues.notice_hours_partial, fullHours: defaultValues.notice_hours_full, percent: defaultValues.partial_charge_percent })}</li>
+          <li>{t('ruleFull', { hours: defaultValues.notice_hours_partial })}</li>
         </ul>
       </div>
 
       {!readOnly && (
         <Button type="submit" disabled={pending}>
-          {pending ? 'שומר...' : 'שמירת מדיניות'}
+          {pending ? t('saving') : t('saveButton')}
         </Button>
       )}
     </form>

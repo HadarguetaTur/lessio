@@ -6,6 +6,7 @@
  */
 
 import { useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { saveAiAssistantSettings, type AiAssistantActionState } from './actions'
 
 interface Props {
@@ -16,6 +17,8 @@ interface Props {
 const initialState: AiAssistantActionState = { error: null }
 
 export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
+  const t = useTranslations('settings.aiAssistant')
+  const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(saveAiAssistantSettings, initialState)
   const canToggle = isConfigured || defaultEnabled
 
@@ -23,14 +26,13 @@ export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
     <form key={String(defaultEnabled)} action={formAction}>
       {!isConfigured && (
         <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          `OPENAI_API_KEY` לא מוגדר כרגע בשרת. אפשר להשאיר את הפיצ&#39;ר כבוי, או לכבות אותו אם הופעל
-          בעבר, אבל לא ניתן להפעיל אותו מחדש עד להשלמת ההגדרה.
+          {t('keyMissingWarning')}
         </div>
       )}
 
       <div className="flex items-start justify-between gap-6">
         <div>
-          <p className="text-sm font-semibold text-gray-900">עוזר AI ב-WhatsApp</p>
+          <p className="text-sm font-semibold text-gray-900">{t('enable')}</p>
           <p className="text-xs text-gray-500 mt-1 max-w-sm">
             כשמופעל, הודעות שלא מזוהות כפקודה ידועה (ביטול / יתרה / לוח זמנים) יענו אוטומטית
             על-ידי AI על בסיס המידע בחשבון. מוגבל ל-3 תגובות ל-24 שעות לכל מספר טלפון.
@@ -53,7 +55,7 @@ export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
       </div>
 
       {isPending && (
-        <p className="text-xs text-gray-400 mt-3">שומר…</p>
+        <p className="text-xs text-gray-400 mt-3">{tCommon('actions.save')}…</p>
       )}
 
       {state.success && (

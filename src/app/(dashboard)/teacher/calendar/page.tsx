@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { CalendarSubscribeSection } from '@/components/dashboard/CalendarSubscribeSection'
@@ -11,6 +12,7 @@ import { CalendarDays } from 'lucide-react'
  */
 export default async function TeacherCalendarPage() {
   const { userId, orgId, role } = await getSession()
+  const t = await getTranslations('teacherSelf.calendar')
 
   if (role !== 'teacher') redirect('/dashboard')
 
@@ -41,9 +43,9 @@ export default async function TeacherCalendarPage() {
       <div className="flex items-center gap-3">
         <CalendarDays size={24} className="text-blue-600 shrink-0" />
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">מנוי ליומן</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            הוסף/י את לוח הזמנים שלך לגוגל קלנדר, אפל קלנדר, או Outlook
+            {t('description')}
           </p>
         </div>
       </div>

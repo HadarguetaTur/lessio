@@ -6,6 +6,17 @@ import { parseReportMonths } from '@/lib/reports/params'
 import { TeachersChart } from '@/components/reports/TeachersChart'
 import { CsvDownloadButton } from '@/components/reports/CsvDownloadButton'
 import { PeriodSelector } from '@/components/reports/PeriodSelector'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { PageHeader } from '@/components/ui/page-header'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 /**
  * Teachers report page.
@@ -26,53 +37,58 @@ export default async function TeachersReportPage({ searchParams }: Props) {
   const timezone = await getOrgTimezone(session.orgId)
   const { rows } = await getTeachersReport(session.orgId, timezone, months)
 
+  const [locale, t] = await Promise.all([getLocale(), getTranslations('reports')])
+  const intlLoc = toIntlLocale(parseAppLocale(locale))
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">מורים</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{rows.length} מורים פעילים</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <PeriodSelector current={months} options={[1, 3, 6, 12]} />
-          <CsvDownloadButton report="teachers" params={{ months: String(months) }} />
-        </div>
-      </div>
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      <PageHeader
+        title={t('teachers.title')}
+        subtitle={t('teachers.pageSubtitle', { count: rows.length })}
+        actions={
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+            <PeriodSelector current={months} options={[1, 3, 6, 12]} />
+            <CsvDownloadButton report="teachers" params={{ months: String(months) }} />
+          </div>
+        }
+      />
 
       {rows.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div className="mb-6 rounded-xl border border-border bg-card p-6">
           <TeachersChart rows={rows} />
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-right px-4 py-3 font-medium text-gray-500">מורה</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">שיעורים</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">הכנסות</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.teacherId} className="border-b border-gray-50 hover:bg-gray-50">
-                <td className="px-4 py-3 text-gray-900 font-medium">{r.teacherName}</td>
-                <td className="px-4 py-3 text-gray-700 tabular-nums">{r.lessonsCount}</td>
-                <td className="px-4 py-3 font-medium text-gray-900 tabular-nums">
-                  ₪{r.revenue.toLocaleString('he-IL')}
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                  אין נתונים לתקופה זו
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="h-full min-h-0 min-w-0 overflow-auto overscroll-x-contain -mx-4 px-4 sm:mx-0 sm:px-0">
+          <Table className="min-w-[480px] w-full">
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-muted-foreground backdrop-blur">{t('teachers.nameColumn')}</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('teachers.lessons')}</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('teachers.revenue')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map(r => (
+                <TableRow key={r.teacherId} className="hover:bg-muted/20">
+                  <TableCell className="px-4 py-3 font-medium text-foreground">{r.teacherName}</TableCell>
+                  <TableCell className="px-4 py-3 tabular-nums text-foreground text-end">{r.lessonsCount}</TableCell>
+                  <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
+                    ₪{r.revenue.toLocaleString(intlLoc)}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                    {t('teachers.emptyPeriod')}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   )

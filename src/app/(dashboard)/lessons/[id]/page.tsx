@@ -8,13 +8,8 @@ import { LessonStatusForm } from '@/components/dashboard/lessons/LessonStatusFor
 import { CancelLessonForm } from '@/components/dashboard/lessons/CancelLessonForm'
 import { SeriesBanner } from '@/components/dashboard/lessons/SeriesBanner'
 import { setLessonStatus, cancelLesson, cancelSeriesAction } from './actions'
-
-const STATUS_LABELS: Record<LessonStatus, string> = {
-  scheduled: 'מתוכנן',
-  completed: 'הושלם',
-  cancelled: 'בוטל',
-  no_show: 'לא הגיע',
-}
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale } from '@/lib/i18n/locale'
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-50 text-blue-700',
@@ -42,6 +37,20 @@ export default async function LessonDetailPage(props: {
     notFound()
   }
 
+  const [t, tCommon, locale] = await Promise.all([
+    getTranslations('lessons'),
+    getTranslations('common'),
+    getLocale(),
+  ])
+  const appLocale = parseAppLocale(locale)
+
+  const STATUS_LABELS: Record<LessonStatus, string> = {
+    scheduled: tCommon('status.scheduled'),
+    completed: tCommon('status.completed'),
+    cancelled: tCommon('status.cancelled'),
+    no_show: tCommon('status.no_show'),
+  }
+
   const backParams = new URLSearchParams()
   if (week) backParams.set('week', week)
   if (teacher) backParams.set('teacher', teacher)
@@ -55,7 +64,7 @@ export default async function LessonDetailPage(props: {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6 text-sm text-gray-500">
         <Link href={backHref} className="hover:text-gray-700">
-          שיעורים
+          {t('title')}
         </Link>
         <ArrowRight size={14} className="rotate-180" />
         <span className="text-gray-900 font-medium">פרטי שיעור</span>
@@ -81,26 +90,26 @@ export default async function LessonDetailPage(props: {
 
         <dl className="space-y-3 text-sm">
           <div className="flex justify-between">
-            <dt className="text-gray-500">תאריך</dt>
-            <dd className="text-gray-900 font-medium">{formatDate(lesson.start_at, timezone)}</dd>
+            <dt className="text-gray-500">{tCommon('table.date')}</dt>
+            <dd className="text-gray-900 font-medium">{formatDate(lesson.start_at, timezone, appLocale)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-500">שעה</dt>
+            <dt className="text-gray-500">{tCommon('table.time')}</dt>
             <dd className="text-gray-900 font-medium font-mono" dir="ltr">
-              {formatTime(lesson.start_at, timezone)}–{formatTime(lesson.end_at, timezone)}
+              {formatTime(lesson.start_at, timezone, appLocale)}–{formatTime(lesson.end_at, timezone, appLocale)}
             </dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-500">תלמיד</dt>
+            <dt className="text-gray-500">{tCommon('table.student')}</dt>
             <dd className="text-gray-900 font-medium">{lesson.student.full_name}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-500">מורה</dt>
+            <dt className="text-gray-500">{tCommon('table.teacher')}</dt>
             <dd className="text-gray-900 font-medium">{lesson.teacher.full_name}</dd>
           </div>
           {lesson.cancel_reason && (
             <div className="flex justify-between">
-              <dt className="text-gray-500">סיבת ביטול</dt>
+              <dt className="text-gray-500">{t('cancel.reason')}</dt>
               <dd className="text-gray-900">{lesson.cancel_reason}</dd>
             </div>
           )}
@@ -110,7 +119,7 @@ export default async function LessonDetailPage(props: {
       {/* Actions card — status update + optional cancel */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mt-4 space-y-5">
         <div>
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">עדכון סטטוס</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">{t('statusUpdate')}</h2>
           <LessonStatusForm currentStatus={lesson.status} action={boundAction} />
         </div>
 

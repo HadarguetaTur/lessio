@@ -35,7 +35,7 @@ export async function createTeacherLessonAction(
     const result = await createLesson({
       orgId,
       teacherId: teacher.id,
-      studentId: student_id,
+      studentIds: [student_id],
       date,
       startTime: start_time,
       durationMinutes: duration_minutes,

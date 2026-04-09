@@ -7,6 +7,7 @@ import { getParentStudents } from '@/lib/relationships'
 import { getParentDebt } from '@/lib/charges'
 import { ParentForm } from '@/components/dashboard/parents/ParentForm'
 import { updateParent } from '../../actions'
+import { getTranslations } from 'next-intl/server'
 
 export default async function EditParentPage(props: {
   params: Promise<{ id: string }>
@@ -22,11 +23,13 @@ export default async function EditParentPage(props: {
 
   if (!parent) notFound()
 
+  const t = await getTranslations('parents')
+  const tStudents = await getTranslations('students')
   const boundUpdateParent = updateParent.bind(null, parent.id)
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">עריכת הורה</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('editParent')}</h1>
 
       <ParentForm
         action={boundUpdateParent}
@@ -39,7 +42,7 @@ export default async function EditParentPage(props: {
 
       {/* Debt summary */}
       <div className="mt-6 bg-white border border-gray-200 rounded-lg px-5 py-4 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">יתרת חוב פתוחה</span>
+        <span className="text-sm font-medium text-gray-700">{t('balance')}</span>
         <span className={`text-base font-bold ${debt > 0 ? 'text-red-600' : 'text-gray-400'}`}>
           {debt > 0 ? `₪${debt.toFixed(2)}` : 'אין חוב'}
         </span>
@@ -54,9 +57,9 @@ export default async function EditParentPage(props: {
 
       {/* Linked students — read-only view */}
       <div className="mt-8">
-        <h2 className="text-base font-semibold text-gray-800 mb-3">תלמידים מקושרים</h2>
+        <h2 className="text-base font-semibold text-gray-800 mb-3">{tStudents('parents.title')}</h2>
         {linkedStudents.length === 0 ? (
-          <p className="text-sm text-gray-400">הורה זה אינו מקושר לאף תלמיד.</p>
+          <p className="text-sm text-gray-400">{tStudents('parents.noParents')}</p>
         ) : (
           <ul className="space-y-2">
             {linkedStudents.map((rel) => (

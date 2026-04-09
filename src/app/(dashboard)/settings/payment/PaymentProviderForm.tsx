@@ -9,6 +9,7 @@
  */
 
 import { useActionState, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ExternalLink } from 'lucide-react'
 import { PROVIDERS_UI, type ProviderUIDef } from '@/lib/payments/registry-ui'
 import { savePaymentProvider, type PaymentActionResult } from './actions'
@@ -16,6 +17,8 @@ import { savePaymentProvider, type PaymentActionResult } from './actions'
 const initialState: PaymentActionResult = { error: null }
 
 export function PaymentProviderForm() {
+  const t = useTranslations('settings.payment')
+  const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(savePaymentProvider, initialState)
   const [selectedId, setSelectedId] = useState<string>(PROVIDERS_UI[0]?.id ?? '')
 
@@ -32,7 +35,7 @@ export function PaymentProviderForm() {
       {/* Provider selector */}
       <div>
         <label htmlFor="provider" className="block text-sm font-medium text-gray-700 mb-1">
-          ספק תשלום
+          {t('provider')}
         </label>
         <select
           id="provider"
@@ -59,7 +62,7 @@ export function PaymentProviderForm() {
         disabled={isPending}
         className="inline-flex items-center px-4 py-2 rounded-md bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'שומר…' : 'שמור פרטי תשלום'}
+        {isPending ? `${tCommon('actions.save')}…` : tCommon('actions.save')}
       </button>
     </form>
   )

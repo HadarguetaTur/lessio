@@ -1,5 +1,5 @@
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprint 19 complete, Sprint 20 planned*
+*Updated: Sprint 21 complete, Sprint 22 in progress*
 
 ---
 
@@ -297,7 +297,7 @@ ALTER TABLE teachers ADD COLUMN ical_token text; -- signed JWT, regeneratable
 ---
 
 ## Sprint 20 — AI Assistant + WhatsApp Hardening
-**Status:** Planned
+**Status:** ✅ Done
 **Branch:** `sprint-20`
 **Depends on:** Sprint 19 complete
 
@@ -334,7 +334,8 @@ ALTER TABLE teachers ADD COLUMN ical_token text; -- signed JWT, regeneratable
 ---
 
 ## Sprint 21 — i18n Infrastructure + English
-**Status:** Planned
+**Status:** ✅ Done
+**Branch:** `sprint-21`
 **Depends on:** Sprint 20 complete
 
 **Goal:** Lay multilingual infrastructure before international expansion. Extract all Hebrew dashboard strings to translation keys, add English as the first additional language. Hebrew users see zero visible change.
@@ -368,41 +369,23 @@ ALTER TABLE profiles
 
 ---
 
-## Sprint 22 — SaaS Billing (Charging Your Customers)
-**Status:** Planned
+## Sprint 22 — Billing Cycle Completion + Subscription Management + i18n Cleanup
+**Status:** In Progress
+**Branch:** `sprint-22`
 **Depends on:** Sprint 21 complete
 
-**Goal:** LESSIO itself has a subscription engine. Customers pay you automatically. Replaces manual invoicing.
+**Sprint source of truth:** `/docs/sprint-22-scope.md`
 
-### Features:
-- Stripe Billing integration (Stripe is the standard for SaaS)
-- Plans: Basic (1 teacher, up to 50 lessons/month), Pro (unlimited teachers + lessons), Enterprise (custom)
-- Per-org subscription tracked in `subscriptions` table
-- Super Admin (`/admin/billing`) sees subscription status per org
-- Stripe webhook: update subscription status on payment failure/success
-- Trial period: 14 days (new org gets `trial_ends_at` in `organizations`)
-- Paywall: when trial expired and no active subscription → dashboard shows upgrade prompt, booking WebView still works (don't break parents mid-lesson)
-- Receipts to org owners via Stripe (automatic)
+**Goal:** Close the three visible gaps left after Sprint 21:
+1. Billing approval + auto WhatsApp payment request (the generate→approve→collect step was missing)
+2. Subscription management UI (backend was fully built but no dashboard page)
+3. i18n cleanup for charges, billing, leads, homework, and onboarding wizard pages
 
-**Schema additions:**
-```sql
-ALTER TABLE organizations
-  ADD COLUMN trial_ends_at      timestamptz,
-  ADD COLUMN stripe_customer_id text,
-  ADD COLUMN subscription_status text
-    CHECK (subscription_status IN ('trial', 'active', 'past_due', 'cancelled'))
-    NOT NULL DEFAULT 'trial';
+**Context:** Monthly billing engine, subscriptions lib, groups, and onboarding wizard were built outside the sprint cycle and are fully functional at the data layer. Sprint 22 surfaces these in the UI and closes the billing workflow end-to-end.
 
-CREATE TABLE subscription_plans (
-  id           text PRIMARY KEY, -- 'basic', 'pro', 'enterprise'
-  name         text NOT NULL,
-  price_monthly numeric NOT NULL,
-  stripe_price_id text NOT NULL
-);
-```
+**Schema changes:** None — all tables already exist.
 
-**New env vars:**
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`
+**New dependencies:** None.
 
 ---
 
@@ -453,9 +436,10 @@ Currently the system uses "session messages" (valid only if parent messaged with
 | 18 | Super Admin Dashboard | Platform scalability (5+ customers) |
 | 19 | AI WhatsApp Assistant ✅ | Zero-admin parent support |
 | 20 | AI Assistant + WhatsApp Hardening | Production reliability for AI + webhook |
-| 21 | i18n Infrastructure + English | English UI for international market entry |
-| 22 | SaaS Billing | Automated revenue from your own customers |
-| 23 | International Launch | EU + English-speaking markets |
+| 21 | i18n Infrastructure + English ✅ | English UI for international market entry |
+| 22 | Billing Cycle + Subscriptions + i18n Cleanup | End-to-end billing workflow + subscription management |
+| 23 | SaaS Billing (Stripe) | Automated revenue from LESSIO's own customers |
+| 24 | International Launch | EU + English-speaking markets |
 
 ---
 

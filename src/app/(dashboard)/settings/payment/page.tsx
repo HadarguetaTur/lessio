@@ -6,6 +6,7 @@ import { getProviderUI } from '@/lib/payments/registry-ui'
 import { PaymentProviderForm } from './PaymentProviderForm'
 import { DisconnectPaymentButton } from './DisconnectPaymentButton'
 import { AutoSendToggle } from './AutoSendToggle'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * Payment provider settings page — owner only.

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
+import { getTranslations } from 'next-intl/server'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { OrganizationsTable } from '@/components/admin/OrganizationsTable'
 import { OrganizationFilters } from '@/components/admin/OrganizationFilters'
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default async function AdminOrgsPage({ searchParams }: Props) {
+  const t = await getTranslations('admin')
   const { search, status, missingSetup } = await searchParams
 
   const validStatuses: OrgStatus[] = ['needs_setup', 'active', 'inactive']
@@ -30,18 +32,18 @@ export default async function AdminOrgsPage({ searchParams }: Props) {
   })
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col overflow-hidden">
       <div className="flex items-start justify-between mb-6">
         <AdminHeader
-          title="ארגונים"
-          description={`${orgs.length} ארגונים`}
+          title={t('orgs.title')}
+          description={`${orgs.length} ${t('orgs.title')}`}
         />
         <Link
           href="/admin/orgs/new"
           className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
         >
           <Plus size={15} />
-          ארגון חדש
+          {t('orgs.newOrg')}
         </Link>
       </div>
 

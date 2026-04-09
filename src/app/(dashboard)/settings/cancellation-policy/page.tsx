@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { getCancellationPolicyOrDefaults } from '@/lib/cancellation-policy'
 import { CancellationPolicyForm } from '@/components/dashboard/settings/CancellationPolicyForm'
@@ -5,12 +6,13 @@ import { updateCancellationPolicy } from './actions'
 
 export default async function CancellationPolicyPage() {
   const { orgId, role } = await getSession()
+  const t = await getTranslations('settings.cancellationPolicy')
   const { policy, values } = await getCancellationPolicyOrDefaults(orgId)
   const isOwner = role === 'owner'
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">מדיניות ביטולים</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
       <p className="text-sm text-gray-500 mb-6">
         הגדרת כללי חיוב בעת ביטול שיעור — תקף לכל הארגון
       </p>

@@ -1,15 +1,8 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { LessonStatus } from '@/lib/lessons'
-
-// 'cancelled' is excluded — cancellation must go through CancelLessonForm (DEV-58)
-// to ensure the policy engine and charge calculation are applied.
-const STATUS_LABELS: Partial<Record<LessonStatus, string>> = {
-  scheduled: 'מתוכנן',
-  completed: 'הושלם',
-  no_show: 'לא הגיע',
-}
+import { useTranslations } from 'next-intl'
+import type { LessonStatus } from '@/lib/lessons/types'
 
 interface Props {
   currentStatus: LessonStatus
@@ -20,13 +13,22 @@ interface Props {
 }
 
 export function LessonStatusForm({ currentStatus, action }: Props) {
+  const t = useTranslations('lessons')
+  const tCommon = useTranslations('common')
   const [state, formAction, pending] = useActionState(action, { error: null, chargeAlert: undefined })
   const [selected, setSelected] = useState<LessonStatus>(currentStatus)
   const [hasSubmitted, setHasSubmitted] = useState(false)
 
+  // 'cancelled' is excluded — cancellation must go through CancelLessonForm (DEV-58)
+  const STATUS_LABELS: Partial<Record<LessonStatus, string>> = {
+    scheduled: tCommon('status.scheduled'),
+    completed: tCommon('status.completed'),
+    no_show: tCommon('status.no_show'),
+  }
+
   if (currentStatus === 'cancelled') {
     return (
-      <p className="text-sm text-gray-400 italic">שיעור בוטל — לא ניתן לשנות סטטוס.</p>
+      <p className="text-sm text-gray-400 italic">{t('cancelledStatus')}</p>
     )
   }
 
@@ -36,7 +38,7 @@ export function LessonStatusForm({ currentStatus, action }: Props) {
     <form action={formAction} onSubmit={() => setHasSubmitted(true)} className="space-y-3">
       <div>
         <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-          שנה סטטוס
+          {t('changeStatus')}
         </label>
         <select
           id="status"
@@ -63,7 +65,7 @@ export function LessonStatusForm({ currentStatus, action }: Props) {
       )}
 
       {showSuccess && (
-        <p className="text-sm text-green-600" role="status">הסטטוס עודכן בהצלחה.</p>
+        <p className="text-sm text-green-600" role="status">{t('statusUpdated')}</p>
       )}
 
       {state.chargeAlert && (
@@ -77,7 +79,7 @@ export function LessonStatusForm({ currentStatus, action }: Props) {
         disabled={pending || selected === currentStatus}
         className="w-full bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
-        {pending ? 'מעדכן...' : 'עדכן סטטוס'}
+        {pending ? t('updating') : t('updateStatus')}
       </button>
     </form>
   )

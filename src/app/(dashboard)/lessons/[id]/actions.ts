@@ -10,6 +10,7 @@ import { resolveBillingParent, MissingPrimaryParentError } from '@/lib/billing/r
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { autoSendPaymentRequest } from '@/lib/payment-request/autoSend'
 import { cancelLessonSeries, type CancelSeriesScope } from '@/lib/lessons/cancelSeries'
+import { createCancellationEvent } from '@/lib/billing/monthly/cancellationEvents'
 
 const VALID_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
 
@@ -128,7 +129,7 @@ export async function cancelLesson(
           cancellationParentId = await resolveBillingParent(primaryStudentId, orgId)
         } catch (e) {
           if (e instanceof MissingPrimaryParentError) {
-            chargeAlert = 'לא ניתן ליצור חיוב ביטול — לתלמיד אין הורה ראשי מוגדר'
+            chargeAlert = 'לא ניתן ליצור חיוב ביטול — לתלמיד אין הורה ראשי מוגדר. יש לקשר הורה לתלמיד דרך עמוד התלמיד > הורים.'
           } else {
             chargeAlert = 'שגיאה ביצירת חיוב הביטול'
           }
@@ -158,10 +159,26 @@ export async function cancelLesson(
     if (alert) chargeAlert = alert.message
   }
 
+  // Create cancellation events for the monthly billing engine (all enrolled students).
+  // Fire-and-forget: failures here must not block the cancellation response.
+  const orgTz = await getOrgTimezone(orgId)
+  for (const ls of lessonStudents) {
+    createCancellationEvent({
+      organizationId: orgId,
+      lessonId,
+      studentId: ls.student_id,
+      lessonStartAt: lesson.start_at,
+      timezone: orgTz,
+    }).catch((err) =>
+      console.error('[cancelLesson] cancellation event creation failed', { lessonId, studentId: ls.student_id, err })
+    )
+  }
+
   revalidatePath(`/lessons/${lessonId}`)
   revalidatePath('/lessons')
   revalidatePath('/dashboard')
   revalidatePath('/charges')
+  revalidatePath('/billing')
   revalidatePath('/teacher/schedule')
   revalidatePath(`/teacher/schedule/${lessonId}`)
 
@@ -228,4 +245,14 @@ export async function cancelSeriesAction(
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'שגיאה בביטול הסדרה' }
   }
+}
+
+async function getOrgTimezone(orgId: string): Promise<string> {
+  const supabase = createServiceRoleClient()
+  const { data } = await supabase
+    .from('organizations')
+    .select('timezone')
+    .eq('id', orgId)
+    .single()
+  return data?.timezone ?? 'Asia/Jerusalem'
 }

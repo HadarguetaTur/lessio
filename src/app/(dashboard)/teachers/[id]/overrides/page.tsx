@@ -6,6 +6,7 @@ import { getTeacherById } from '@/lib/teachers'
 import { getTeacherOverrides } from '@/lib/availability-overrides'
 import { AddOverrideForm } from '@/components/dashboard/availability/AddOverrideForm'
 import { createOverride, deleteOverride } from './actions'
+import { getTranslations } from 'next-intl/server'
 
 function fmt(t: string) {
   return t.substring(0, 5)
@@ -27,23 +28,25 @@ export default async function TeacherOverridesPage(props: {
   if (!teacher) notFound()
 
   const overrides = await getTeacherOverrides(id, orgId)
+  const t = await getTranslations('teachers')
+  const tCommon = await getTranslations('common')
   const boundCreate = createOverride.bind(null, id)
 
   return (
-    <div className="max-w-2xl">
+    <div className="flex h-full min-h-0 w-full max-w-2xl flex-col overflow-hidden">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6 text-sm text-gray-500">
         <Link href="/teachers" className="hover:text-gray-700">
-          מורים
+          {t('title')}
         </Link>
         <ArrowRight size={14} className="rotate-180" />
         <span className="text-gray-900 font-medium">{teacher.profile.full_name}</span>
         <ArrowRight size={14} className="rotate-180" />
-        <span>חריגים</span>
+        <span>{t('overrides')}</span>
       </div>
 
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
-        חריגי זמינות — {teacher.profile.full_name}
+        {t('overrides')} — {teacher.profile.full_name}
       </h1>
 
       {/* Nav between availability and overrides */}
@@ -52,80 +55,82 @@ export default async function TeacherOverridesPage(props: {
           href={`/teachers/${id}/availability`}
           className="text-gray-500 hover:text-gray-800"
         >
-          זמינות שבועית
+          {t('availability')}
         </Link>
         <span className="text-gray-300">|</span>
-        <span className="font-medium text-gray-900">חריגים לתאריך ספציפי</span>
+        <span className="font-medium text-gray-900">{t('overrides')}</span>
       </div>
 
       {/* Overrides list */}
       {overrides.length === 0 ? (
         <p className="text-sm text-gray-400 mb-6">אין חריגים מוגדרים.</p>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  תאריך
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+        <div className="mb-6 min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div className="h-full overflow-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                  {tCommon('table.date')}
+                  </th>
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
                   סוג
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  </th>
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
                   שעות
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  </th>
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
                   סיבה
-                </th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {overrides.map((o) => {
-                const delAction = deleteOverride.bind(null, o.id, id)
-                return (
-                  <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 font-mono" dir="ltr">
-                      {fmtDate(o.override_date)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {o.is_available ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
-                          <Clock size={11} />
-                          זמינות מיוחדת
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600">
-                          <Ban size={11} />
-                          חסום
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 font-mono" dir="ltr">
-                      {o.is_available && o.start_time && o.end_time
-                        ? `${fmt(o.start_time)}–${fmt(o.end_time)}`
-                        : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {o.reason ?? '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <form action={delAction}>
-                        <button
-                          type="submit"
-                          className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 size={13} />
-                          מחק
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                  </th>
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {overrides.map((o) => {
+                  const delAction = deleteOverride.bind(null, o.id, id)
+                  return (
+                    <tr key={o.id} className="transition-colors hover:bg-gray-50">
+                      <td className="px-4 py-3 font-mono text-sm font-medium text-gray-900" dir="ltr">
+                        {fmtDate(o.override_date)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {o.is_available ? (
+                          <span className="inline-flex items-center gap-1 rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                            <Clock size={11} />
+                            זמינות מיוחדת
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
+                            <Ban size={11} />
+                            {tCommon('status.cancelled')}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-sm text-gray-500" dir="ltr">
+                        {o.is_available && o.start_time && o.end_time
+                          ? `${fmt(o.start_time)}–${fmt(o.end_time)}`
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {o.reason ?? '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <form action={delAction}>
+                          <button
+                            type="submit"
+                            className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 size={13} />
+                            {tCommon('actions.delete')}
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -141,7 +141,7 @@ describe('createLessonCharge', () => {
 
     await expect(createLessonCharge('lesson-1', 'org-1')).resolves.toEqual({
       type: 'missing_parent',
-      message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר',
+      message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר. יש לקשר הורה לתלמיד דרך עמוד התלמיד > הורים.',
     })
   })
 })

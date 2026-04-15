@@ -41,6 +41,8 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   'PAYMENT_CONFIG_ENCRYPTION_KEY',
   // Sprint 19: platform-wide AI API key; validated for every production deploy
   'OPENAI_API_KEY',
+  // Sprint 22: HMAC secret for Sumit SaaS billing webhook signature verification
+  'SUMIT_WEBHOOK_SECRET',
 ]
 
 /**

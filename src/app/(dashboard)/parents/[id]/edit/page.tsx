@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { Star } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getParentById } from '@/lib/parents'
@@ -13,7 +13,8 @@ export default async function EditParentPage(props: {
   params: Promise<{ id: string }>
 }) {
   const { id } = await props.params
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
+  if (role === 'teacher') redirect('/parents')
 
   const [parent, linkedStudents, debt] = await Promise.all([
     getParentById(id, orgId),

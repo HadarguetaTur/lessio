@@ -10,8 +10,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import type { LessonStatus } from '@/lib/lessons/types'
 
 const DURATION_VALUES = [30, 45, 60, 90]
+
+const LESSON_FORM_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
 
 const selectClassName = cn(
   'h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground',
@@ -26,7 +29,8 @@ interface Props {
   action: (prev: NewLessonState, formData: FormData) => Promise<NewLessonState>
   teachers?: { id: string; full_name: string }[]
   fixedTeacherId?: string
-  /** Minimum selectable date YYYY-MM-DD (org-local today) */
+  allowGroupLessons?: boolean
+  /** Minimum selectable date YYYY-MM-DD (e.g. backdating / history) */
   minDateStr: string
   initialDate?: string
   defaultTeacherId?: string
@@ -44,6 +48,7 @@ export function NewLessonForm({
   action,
   teachers,
   fixedTeacherId,
+  allowGroupLessons = true,
   minDateStr,
   initialDate,
   defaultTeacherId,
@@ -56,6 +61,7 @@ export function NewLessonForm({
   const tCommon = useTranslations('common')
   const [state, formAction, pending] = useActionState(action, initialState)
   const [lessonType, setLessonType] = useState<'individual' | 'group'>('individual')
+  const effectiveLessonType = allowGroupLessons ? lessonType : 'individual'
   const [selectedGroupId, setSelectedGroupId] = useState('')
   const [groupStudentIds, setGroupStudentIds] = useState<string[]>([])
   const onSuccessRef = useRef(onSuccess)
@@ -111,25 +117,29 @@ export function NewLessonForm({
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label htmlFor="lesson_type">{t('lessonType')}</Label>
-        <select
-          id="lesson_type"
-          name="lesson_type"
-          value={lessonType}
-          onChange={(e) => {
-            setLessonType(e.target.value as 'individual' | 'group')
-            setSelectedGroupId('')
-            setGroupStudentIds([])
-          }}
-          className={selectClassName}
-        >
-          <option value="individual">{t('typeIndividual')}</option>
-          <option value="group">{t('typeGroup')}</option>
-        </select>
-      </div>
+      {allowGroupLessons ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="lesson_type">{t('lessonType')}</Label>
+          <select
+            id="lesson_type"
+            name="lesson_type"
+            value={lessonType}
+            onChange={(e) => {
+              setLessonType(e.target.value as 'individual' | 'group')
+              setSelectedGroupId('')
+              setGroupStudentIds([])
+            }}
+            className={selectClassName}
+          >
+            <option value="individual">{t('typeIndividual')}</option>
+            <option value="group">{t('typeGroup')}</option>
+          </select>
+        </div>
+      ) : (
+        <input type="hidden" name="lesson_type" value="individual" />
+      )}
 
-      {lessonType === 'individual' ? (
+      {effectiveLessonType === 'individual' ? (
         <div className="space-y-1.5">
           <Label htmlFor="student_id">
             {t('fields.student')} <span className="text-destructive">*</span>
@@ -188,7 +198,26 @@ export function NewLessonForm({
         </select>
       </div>
 
-      {lessonType === 'group' && (
+      <div className="space-y-1.5">
+        <Label htmlFor="status">
+          {t('fields.status')} <span className="text-destructive">*</span>
+        </Label>
+        <select
+          id="status"
+          name="status"
+          required
+          className={selectClassName}
+          defaultValue="scheduled"
+        >
+          {LESSON_FORM_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {tCommon(`status.${s}`)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {effectiveLessonType === 'group' && (
         <div className="space-y-1.5">
           <Label htmlFor="price_per_student">{t('pricePerStudent')}</Label>
           <Input

@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { getTranslations } from 'next-intl/server'
+import { getOrgSubscriptionState } from '@/lib/saas/subscriptions'
 
 async function getOrgSession() {
   const supabase = await createClient()
@@ -26,8 +28,9 @@ export async function updateOrgSettings(
   _prevState: { error: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  const t = await getTranslations('onboarding')
   const { orgId, role } = await getOrgSession()
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה' }
+  if (role !== 'owner' && role !== 'admin') return { error: t('errors.noPermission') }
 
   const timezone = (formData.get('timezone') as string)?.trim() || 'Asia/Jerusalem'
   const billingMode = (formData.get('billing_mode') as string) || 'monthly'
@@ -38,7 +41,7 @@ export async function updateOrgSettings(
     .update({ timezone, billing_mode: billingMode })
     .eq('id', orgId)
 
-  if (error) return { error: 'שגיאה בעדכון ההגדרות' }
+  if (error) return { error: t('errors.settingsUpdateFailed') }
   revalidatePath('/onboarding')
   return null
 }
@@ -47,13 +50,14 @@ export async function addTeacher(
   _prevState: { error: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  const t = await getTranslations('onboarding')
   const { orgId, role } = await getOrgSession()
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה' }
+  if (role !== 'owner' && role !== 'admin') return { error: t('errors.noPermission') }
 
   const fullName = (formData.get('full_name') as string)?.trim()
   const email = (formData.get('email') as string)?.trim()
 
-  if (!fullName || !email) return { error: 'שם מלא ואימייל הם שדות חובה' }
+  if (!fullName || !email) return { error: t('errors.fullNameEmailRequired') }
 
   const db = createServiceRoleClient()
 
@@ -65,9 +69,9 @@ export async function addTeacher(
   if (inviteError || !inviteData?.user) {
     const msg = inviteError?.message ?? ''
     if (msg.includes('already been registered') || msg.includes('already exists')) {
-      return { error: 'אימייל זה כבר רשום במערכת' }
+      return { error: t('errors.emailAlreadyRegistered') }
     }
-    return { error: `שליחת ההזמנה נכשלה: ${msg}` }
+    return { error: t('errors.inviteFailed', { message: msg }) }
   }
 
   const teacherUserId = inviteData.user.id
@@ -83,7 +87,7 @@ export async function addTeacher(
 
   if (profileError) {
     await db.auth.admin.deleteUser(teacherUserId)
-    return { error: 'שגיאה ביצירת פרופיל המורה' }
+    return { error: t('errors.teacherProfileError') }
   }
 
   // Create teacher record
@@ -94,7 +98,7 @@ export async function addTeacher(
 
   if (teacherError) {
     await db.auth.admin.deleteUser(teacherUserId)
-    return { error: 'שגיאה ביצירת רשומת המורה' }
+    return { error: t('errors.teacherRecordError') }
   }
 
   revalidatePath('/onboarding')
@@ -102,8 +106,9 @@ export async function addTeacher(
 }
 
 export async function createOwnerTeacher(): Promise<{ error: string } | null> {
+  const t = await getTranslations('onboarding')
   const { userId, orgId, role } = await getOrgSession()
-  if (role !== 'owner') return { error: 'אין הרשאה' }
+  if (role !== 'owner') return { error: t('errors.noPermission') }
 
   const db = createServiceRoleClient()
 
@@ -122,7 +127,7 @@ export async function createOwnerTeacher(): Promise<{ error: string } | null> {
     profile_id: userId,
   })
 
-  if (error) return { error: 'שגיאה ביצירת רשומת המורה' }
+  if (error) return { error: t('errors.teacherRecordError') }
   revalidatePath('/onboarding')
   return null
 }
@@ -131,8 +136,9 @@ export async function updateBasicSettings(
   _prevState: { error: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  const t = await getTranslations('onboarding')
   const { orgId, role } = await getOrgSession()
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה' }
+  if (role !== 'owner' && role !== 'admin') return { error: t('errors.noPermission') }
 
   const noticeHoursFull = parseInt(formData.get('notice_hours') as string) || 24
   const chargePercent = parseInt(formData.get('charge_percent') as string) || 50
@@ -151,7 +157,7 @@ export async function updateBasicSettings(
     })
     .eq('organization_id', orgId)
 
-  if (policyError) return { error: 'שגיאה בעדכון מדיניות הביטולים' }
+  if (policyError) return { error: t('errors.cancellationPolicyUpdateFailed') }
 
   // Update reminders
   const { error: orgError } = await db
@@ -162,7 +168,7 @@ export async function updateBasicSettings(
     })
     .eq('id', orgId)
 
-  if (orgError) return { error: 'שגיאה בעדכון הגדרות התזכורות' }
+  if (orgError) return { error: t('errors.remindersUpdateFailed') }
 
   revalidatePath('/onboarding')
   return null
@@ -171,6 +177,19 @@ export async function updateBasicSettings(
 export async function completeOnboarding(): Promise<void> {
   const { orgId } = await getOrgSession()
   const db = createServiceRoleClient()
+
+  const state = await getOrgSubscriptionState(orgId)
+  if (state?.status === 'pending_payment') {
+    redirect('/onboarding')
+  }
+  if (
+    state &&
+    state.status !== 'trial' &&
+    state.status !== 'active' &&
+    state.status !== 'read_only'
+  ) {
+    redirect('/onboarding')
+  }
 
   await db
     .from('organizations')

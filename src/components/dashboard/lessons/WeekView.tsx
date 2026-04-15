@@ -17,10 +17,21 @@ export async function buildWeekCalendarPayload(input: {
   timezone: string
   todayStr: string
   weekStr: string
+  scheduleBasePath?: string
   teacherId?: string
   studentId?: string
 }): Promise<WeekCalendarPayload> {
-  const { weekDays, lessons, holidays, timezone, todayStr, weekStr, teacherId, studentId } = input
+  const {
+    weekDays,
+    lessons,
+    holidays,
+    timezone,
+    todayStr,
+    weekStr,
+    scheduleBasePath,
+    teacherId,
+    studentId,
+  } = input
   const [tCommon, locale] = await Promise.all([getTranslations('common'), getLocale()])
   const appLocale = parseAppLocale(locale)
 
@@ -41,6 +52,7 @@ export async function buildWeekCalendarPayload(input: {
     timezone,
     todayStr,
     weekStr,
+    scheduleBasePath,
     teacherId,
     studentId,
     dayNames,

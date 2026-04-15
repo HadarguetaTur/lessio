@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
 import { getTemplates } from '@/lib/homework'
 import { getStudents } from '@/lib/students'
+import { getTeacherByProfileId } from '@/lib/teachers'
 import { AssignForm } from '@/components/dashboard/homework/AssignForm'
 import { assignHomeworkAction } from './actions'
 import { getTranslations } from 'next-intl/server'
@@ -11,15 +12,21 @@ import { getTranslations } from 'next-intl/server'
  * Per /docs/sprint-14-scope.md § Story 4.
  */
 export default async function AssignHomeworkPage() {
-  const { orgId, role } = await getSession()
+  const { orgId, role, userId } = await getSession()
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return <div className="text-sm text-red-600">אין הרשאה</div>
   }
 
+  let teacherId: string | undefined
+  if (role === 'teacher') {
+    const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
+    teacherId = teacher?.id
+  }
+
   const [templates, students] = await Promise.all([
     getTemplates(orgId),
-    getStudents(orgId),
+    getStudents(orgId, teacherId ? { teacherId } : {}),
   ])
 
   const t = await getTranslations('homework')

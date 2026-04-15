@@ -8,6 +8,10 @@ export interface ImportResult {
   updated: number
   skipped: number
   errors: { row: number; message: string }[]
+  /** Number of parent–student relationships created (parents and family-list imports) */
+  linkedRelationships?: number
+  /** Student names that could not be linked because they don't exist in the DB */
+  failedLinks?: { row: number; name: string }[]
 }
 
 type NameIdMap = Map<string, string>
@@ -32,11 +36,18 @@ function findInMap(map: NameIdMap, name: string | null | undefined): string | nu
 
 const BATCH_SIZE = 50
 
+/** Translator scoped to `import` namespace (e.g. `executeErrors.invalidPhone`). */
+export type ImportTranslateFn = (
+  key: string,
+  values?: Record<string, string | number | Date>
+) => string
+
 export async function executeImport(
   orgId: string,
   entityType: EntityType,
   validRows: ValidatedRow[],
-  timezone: string
+  timezone: string,
+  tImport: ImportTranslateFn
 ): Promise<ImportResult> {
   const db = createServiceRoleClient()
   const result: ImportResult = { inserted: 0, updated: 0, skipped: 0, errors: [] }
@@ -47,15 +58,17 @@ export async function executeImport(
 
   switch (entityType) {
     case 'students':
-      return importStudents(db, orgId, rows, result)
+      return importStudents(db, orgId, rows, result, tImport)
     case 'parents':
-      return importParents(db, orgId, rows, result)
+      return importParents(db, orgId, rows, result, tImport)
     case 'teachers':
-      return importTeachers(db, orgId, rows, result)
+      return importTeachers(db, orgId, rows, result, tImport)
     case 'lessons-schedule':
-      return importLessonSchedule(db, orgId, rows, result, timezone)
+      return importLessonSchedule(db, orgId, rows, result, timezone, tImport)
     case 'lessons-history':
-      return importLessonHistory(db, orgId, rows, result, timezone)
+      return importLessonHistory(db, orgId, rows, result, timezone, tImport)
+    case 'family-list':
+      return importFamilyList(db, orgId, rows, result, tImport)
   }
 }
 
@@ -63,7 +76,8 @@ async function importStudents(
   db: ReturnType<typeof createServiceRoleClient>,
   orgId: string,
   rows: ValidatedRow[],
-  result: ImportResult
+  result: ImportResult,
+  t: ImportTranslateFn
 ): Promise<ImportResult> {
   // Pre-fetch teachers for name matching
   const { data: teachers } = await db
@@ -73,9 +87,9 @@ async function importStudents(
     .eq('is_active', true)
 
   const teacherMap = buildNameLookup(
-    (teachers ?? []).map((t) => ({
-      id: t.id,
-      name: (t.profile as unknown as { full_name: string } | null)?.full_name ?? '',
+    (teachers ?? []).map((row) => ({
+      id: row.id,
+      name: (row.profile as unknown as { full_name: string } | null)?.full_name ?? '',
     }))
   )
 
@@ -105,7 +119,10 @@ async function importStudents(
 
     if (error) {
       for (const row of batch) {
-        result.errors.push({ row: row.rowIndex + 2, message: error.message })
+        result.errors.push({
+          row: row.rowIndex + 2,
+          message: t('executeErrors.dbError', { message: error.message }),
+        })
       }
       result.skipped += batch.length
     } else {
@@ -131,7 +148,10 @@ async function importStudents(
       .eq('id', row.existingId!)
 
     if (error) {
-      result.errors.push({ row: row.rowIndex + 2, message: error.message })
+      result.errors.push({
+        row: row.rowIndex + 2,
+        message: t('executeErrors.dbError', { message: error.message }),
+      })
       result.skipped++
     } else {
       result.updated++
@@ -145,7 +165,8 @@ async function importParents(
   db: ReturnType<typeof createServiceRoleClient>,
   orgId: string,
   rows: ValidatedRow[],
-  result: ImportResult
+  result: ImportResult,
+  t: ImportTranslateFn
 ): Promise<ImportResult> {
   // Pre-fetch students for student_names linking
   const { data: students } = await db
@@ -163,7 +184,7 @@ async function importParents(
       phone = normalizePhone(row.data.phone ?? '')
     } catch (e) {
       if (e instanceof PhoneNormalizationError) {
-        result.errors.push({ row: row.rowIndex + 2, message: 'מספר טלפון לא תקין' })
+        result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidPhone') })
         result.skipped++
         continue
       }
@@ -182,7 +203,10 @@ async function importParents(
         .eq('id', row.existingId)
 
       if (error) {
-        result.errors.push({ row: row.rowIndex + 2, message: error.message })
+        result.errors.push({
+          row: row.rowIndex + 2,
+          message: t('executeErrors.dbError', { message: error.message }),
+        })
         result.skipped++
         continue
       }
@@ -210,9 +234,12 @@ async function importParents(
 
       if (error) {
         if (error.code === '23505') {
-          result.errors.push({ row: row.rowIndex + 2, message: 'מספר טלפון כפול' })
+          result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.duplicatePhone') })
         } else {
-          result.errors.push({ row: row.rowIndex + 2, message: error.message })
+          result.errors.push({
+            row: row.rowIndex + 2,
+            message: t('executeErrors.dbError', { message: error.message }),
+          })
         }
         result.skipped++
         continue
@@ -235,6 +262,10 @@ async function importParents(
             student_id: studentId,
             is_primary: true,
           })
+          result.linkedRelationships = (result.linkedRelationships ?? 0) + 1
+        } else {
+          result.failedLinks = result.failedLinks ?? []
+          result.failedLinks.push({ row: row.rowIndex + 2, name })
         }
       }
     }
@@ -247,7 +278,8 @@ async function importTeachers(
   db: ReturnType<typeof createServiceRoleClient>,
   orgId: string,
   rows: ValidatedRow[],
-  result: ImportResult
+  result: ImportResult,
+  t: ImportTranslateFn
 ): Promise<ImportResult> {
   for (const row of rows) {
     const fullName = row.data.full_name!.trim()
@@ -260,7 +292,7 @@ async function importTeachers(
         .eq('id', row.existingId)
 
       if (profileError) {
-        result.errors.push({ row: row.rowIndex + 2, message: 'שגיאה בעדכון פרופיל' })
+        result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.profileUpdateFailed') })
         result.skipped++
         continue
       }
@@ -275,7 +307,10 @@ async function importTeachers(
         .eq('organization_id', orgId)
 
       if (teacherError) {
-        result.errors.push({ row: row.rowIndex + 2, message: 'שגיאה בעדכון רשומת מורה' })
+        result.errors.push({
+          row: row.rowIndex + 2,
+          message: t('executeErrors.teacherRecordUpdateFailed'),
+        })
         result.skipped++
         continue
       }
@@ -291,9 +326,15 @@ async function importTeachers(
     if (inviteError || !inviteData?.user) {
       const msg = inviteError?.message ?? ''
       if (msg.includes('already been registered') || msg.includes('already exists')) {
-        result.errors.push({ row: row.rowIndex + 2, message: `אימייל ${email} כבר רשום במערכת` })
+        result.errors.push({
+          row: row.rowIndex + 2,
+          message: t('executeErrors.emailAlreadyRegistered', { email }),
+        })
       } else {
-        result.errors.push({ row: row.rowIndex + 2, message: `שליחת הזמנה נכשלה: ${msg}` })
+        result.errors.push({
+          row: row.rowIndex + 2,
+          message: t('executeErrors.inviteFailed', { message: msg }),
+        })
       }
       result.skipped++
       continue
@@ -311,7 +352,7 @@ async function importTeachers(
 
     if (profileError) {
       await db.auth.admin.deleteUser(userId)
-      result.errors.push({ row: row.rowIndex + 2, message: 'שגיאה ביצירת פרופיל' })
+      result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.profileCreateFailed') })
       result.skipped++
       continue
     }
@@ -325,7 +366,10 @@ async function importTeachers(
 
     if (teacherError) {
       await db.auth.admin.deleteUser(userId)
-      result.errors.push({ row: row.rowIndex + 2, message: 'שגיאה ביצירת רשומת מורה' })
+      result.errors.push({
+        row: row.rowIndex + 2,
+        message: t('executeErrors.teacherRecordCreateFailed'),
+      })
       result.skipped++
       continue
     }
@@ -341,7 +385,8 @@ async function importLessonSchedule(
   orgId: string,
   rows: ValidatedRow[],
   result: ImportResult,
-  timezone: string
+  _timezone: string,
+  t: ImportTranslateFn
 ): Promise<ImportResult> {
   // Pre-fetch teachers and students
   const { data: teachers } = await db
@@ -351,9 +396,9 @@ async function importLessonSchedule(
     .eq('is_active', true)
 
   const teacherMap = buildNameLookup(
-    (teachers ?? []).map((t) => ({
-      id: t.id,
-      name: (t.profile as unknown as { full_name: string } | null)?.full_name ?? '',
+    (teachers ?? []).map((row) => ({
+      id: row.id,
+      name: (row.profile as unknown as { full_name: string } | null)?.full_name ?? '',
     }))
   )
 
@@ -373,19 +418,25 @@ async function importLessonSchedule(
     const studentId = findInMap(studentMap, row.data.student_name)
 
     if (!teacherId) {
-      result.errors.push({ row: row.rowIndex + 2, message: `מורה "${row.data.teacher_name}" לא נמצא` })
+      result.errors.push({
+        row: row.rowIndex + 2,
+        message: t('executeErrors.teacherNotFound', { name: row.data.teacher_name ?? '' }),
+      })
       result.skipped++
       continue
     }
     if (!studentId) {
-      result.errors.push({ row: row.rowIndex + 2, message: `תלמיד "${row.data.student_name}" לא נמצא` })
+      result.errors.push({
+        row: row.rowIndex + 2,
+        message: t('executeErrors.studentNotFound', { name: row.data.student_name ?? '' }),
+      })
       result.skipped++
       continue
     }
 
     const dayOfWeek = normalizeDayOfWeek(row.data.day_of_week)
     if (dayOfWeek === null) {
-      result.errors.push({ row: row.rowIndex + 2, message: 'יום בשבוע לא תקין' })
+      result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidDayOfWeek') })
       result.skipped++
       continue
     }
@@ -413,7 +464,10 @@ async function importLessonSchedule(
       .single()
 
     if (seriesError) {
-      result.errors.push({ row: row.rowIndex + 2, message: seriesError.message })
+      result.errors.push({
+        row: row.rowIndex + 2,
+        message: t('executeErrors.dbError', { message: seriesError.message }),
+      })
       result.skipped++
       continue
     }
@@ -468,7 +522,8 @@ async function importLessonHistory(
   orgId: string,
   rows: ValidatedRow[],
   result: ImportResult,
-  timezone: string
+  timezone: string,
+  t: ImportTranslateFn
 ): Promise<ImportResult> {
   const { data: teachers } = await db
     .from('teachers')
@@ -477,9 +532,9 @@ async function importLessonHistory(
     .eq('is_active', true)
 
   const teacherMap = buildNameLookup(
-    (teachers ?? []).map((t) => ({
-      id: t.id,
-      name: (t.profile as unknown as { full_name: string } | null)?.full_name ?? '',
+    (teachers ?? []).map((teacherRow) => ({
+      id: teacherRow.id,
+      name: (teacherRow.profile as unknown as { full_name: string } | null)?.full_name ?? '',
     }))
   )
 
@@ -497,12 +552,18 @@ async function importLessonHistory(
     const studentId = findInMap(studentMap, row.data.student_name)
 
     if (!teacherId) {
-      result.errors.push({ row: row.rowIndex + 2, message: `מורה "${row.data.teacher_name}" לא נמצא` })
+      result.errors.push({
+        row: row.rowIndex + 2,
+        message: t('executeErrors.teacherNotFound', { name: row.data.teacher_name ?? '' }),
+      })
       result.skipped++
       continue
     }
     if (!studentId) {
-      result.errors.push({ row: row.rowIndex + 2, message: `תלמיד "${row.data.student_name}" לא נמצא` })
+      result.errors.push({
+        row: row.rowIndex + 2,
+        message: t('executeErrors.studentNotFound', { name: row.data.student_name ?? '' }),
+      })
       result.skipped++
       continue
     }
@@ -542,7 +603,10 @@ async function importLessonHistory(
       .single()
 
     if (error) {
-      result.errors.push({ row: row.rowIndex + 2, message: error.message })
+      result.errors.push({
+        row: row.rowIndex + 2,
+        message: t('executeErrors.dbError', { message: error.message }),
+      })
       result.skipped++
       continue
     }
@@ -557,6 +621,171 @@ async function importLessonHistory(
     }
 
     result.inserted++
+  }
+
+  return result
+}
+
+async function upsertParent(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string,
+  name: string,
+  phone: string,
+  notes: string | null,
+  existingId: string | null | undefined,
+  phoneToParentId: Map<string, string>,
+  result: ImportResult,
+  rowIndex: number,
+  t: ImportTranslateFn
+): Promise<string | null> {
+  const cached = phoneToParentId.get(phone)
+  if (cached) return cached
+
+  if (existingId) {
+    await db.from('parents').update({ full_name: name, notes }).eq('id', existingId)
+    result.updated++
+    phoneToParentId.set(phone, existingId)
+    return existingId
+  }
+
+  const { data: parent, error } = await db
+    .from('parents')
+    .insert({ organization_id: orgId, full_name: name, phone, notes })
+    .select('id')
+    .single()
+
+  if (error) {
+    if (error.code === '23505') {
+      // Concurrent insert: try to fetch the existing parent
+      const { data: existing } = await db
+        .from('parents')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('phone', phone)
+        .single()
+      if (existing) {
+        result.updated++
+        phoneToParentId.set(phone, existing.id)
+        return existing.id
+      }
+    }
+    result.errors.push({ row: rowIndex, message: t('executeErrors.dbError', { message: error.message }) })
+    result.skipped++
+    return null
+  }
+
+  result.inserted++
+  phoneToParentId.set(phone, parent.id)
+  return parent.id
+}
+
+async function importFamilyList(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string,
+  rows: ValidatedRow[],
+  result: ImportResult,
+  t: ImportTranslateFn
+): Promise<ImportResult> {
+  result.linkedRelationships = 0
+
+  // phone → parentId accumulator: ensures same parent is only inserted once across rows
+  const phoneToParentId = new Map<string, string>()
+
+  for (const row of rows) {
+    // --- Primary parent ---
+    let phone: string
+    try {
+      phone = normalizePhone(row.data.parent_phone ?? '')
+    } catch {
+      result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidPhone') })
+      result.skipped++
+      continue
+    }
+
+    const parentId = await upsertParent(
+      db, orgId,
+      row.data.parent_name!,
+      phone,
+      row.data.parent_notes || null,
+      row.existingParentId,
+      phoneToParentId,
+      result,
+      row.rowIndex + 2,
+      t
+    )
+    if (!parentId) continue
+
+    // --- Second parent (optional) ---
+    if (row.data.parent_phone_2 && row.data.parent_name_2) {
+      try {
+        const phone2 = normalizePhone(row.data.parent_phone_2)
+        await upsertParent(
+          db, orgId,
+          row.data.parent_name_2,
+          phone2,
+          null,
+          null,
+          phoneToParentId,
+          result,
+          row.rowIndex + 2,
+          t
+        )
+      } catch { /* invalid phone2 — skip silently, primary parent still processes */ }
+    }
+
+    // --- Student ---
+    let studentId: string
+
+    if (row.existingStudentId) {
+      studentId = row.existingStudentId
+    } else {
+      const { data: student, error } = await db
+        .from('students')
+        .insert({
+          organization_id: orgId,
+          full_name: row.data.student_name!,
+          grade: row.data.grade || null,
+          notes: row.data.student_notes || null,
+          status: 'active',
+        })
+        .select('id')
+        .single()
+
+      if (error) {
+        result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.dbError', { message: error.message }) })
+        result.skipped++
+        continue
+      }
+      studentId = student.id
+      result.inserted++
+    }
+
+    // --- Relationship: primary parent → student ---
+    const { error: relError } = await db.from('relationships').insert({
+      organization_id: orgId,
+      parent_id: parentId,
+      student_id: studentId,
+      is_primary: true,
+    })
+    if (!relError || relError.code === '23505') {
+      result.linkedRelationships!++
+    }
+
+    // --- Relationship: second parent → student ---
+    if (row.data.parent_phone_2 && row.data.parent_name_2) {
+      try {
+        const phone2 = normalizePhone(row.data.parent_phone_2)
+        const parent2Id = phoneToParentId.get(phone2)
+        if (parent2Id) {
+          await db.from('relationships').insert({
+            organization_id: orgId,
+            parent_id: parent2Id,
+            student_id: studentId,
+            is_primary: false,
+          })
+        }
+      } catch { /* skip */ }
+    }
   }
 
   return result

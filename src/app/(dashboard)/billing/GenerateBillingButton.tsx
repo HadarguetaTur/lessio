@@ -31,16 +31,16 @@ export function GenerateBillingButton({ billingMonth }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
       {result && (
-        <span className="text-xs text-muted-foreground max-w-xs truncate">
+        <span className="text-center text-xs text-muted-foreground sm:max-w-xs sm:truncate sm:text-start">
           {result}
         </span>
       )}
       <button
         onClick={handleClick}
         disabled={isPending}
-        className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+        className="w-full px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 sm:w-auto"
       >
         {isPending ? t('generating') : t('generateBilling')}
       </button>

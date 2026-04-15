@@ -1,5 +1,7 @@
 'use server'
 
+import { getTranslations } from 'next-intl/server'
+
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { cookies } from 'next/headers'
@@ -16,7 +18,8 @@ export async function signIn(
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    return { error: 'אימייל או סיסמה שגויים' }
+    const t = await getTranslations('auth.errors')
+    return { error: t('invalidCredentials') }
   }
 
   // Sync locale cookie from the user's saved preference so the UI

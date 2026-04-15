@@ -2,15 +2,23 @@ import Link from 'next/link'
 import { Receipt } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
-import { getCurrentBillingMonth } from '@/lib/billing/monthly/month'
+import {
+  formatBillingMonthLabel,
+  getBillingMonthSelectOptionValues,
+  getCurrentBillingMonth,
+} from '@/lib/billing/monthly/month'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { getLocale } from 'next-intl/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { BillingRecordsMobileList } from '@/components/dashboard/billing/BillingRecordsMobileList'
 import { getTranslations } from 'next-intl/server'
 import { GenerateBillingButton } from './GenerateBillingButton'
 import { MarkPaidButton } from './MarkPaidButton'
+import { ApproveBillingButton } from './ApproveBillingButton'
 
 function getBillingStatus(row: { is_paid: boolean; is_approved: boolean }): string {
   if (row.is_paid) return 'paid'
@@ -23,13 +31,16 @@ export default async function BillingPage(props: {
 }) {
   const searchParams = await props.searchParams
   const { orgId, role } = await getSession()
-  const [timezone, t, tCommon] = await Promise.all([
+  const [timezone, t, tCommon, locale] = await Promise.all([
     getOrgTimezone(orgId),
     getTranslations('billing'),
     getTranslations('common'),
+    getLocale(),
   ])
 
   const billingMonth = searchParams.month || getCurrentBillingMonth(timezone)
+  const intlLocale = toIntlLocale(parseAppLocale(locale))
+  const billingMonthOptions = getBillingMonthSelectOptionValues(timezone, billingMonth)
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
 
   const supabase = createServiceRoleClient()
@@ -61,9 +72,10 @@ export default async function BillingPage(props: {
   const pendingApproval = records.filter((r) => !r.is_approved && !r.is_paid).length
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="flex w-full min-h-0 flex-col md:h-full md:overflow-hidden">
       <PageHeader
         title={t('title')}
+        mobileCentered
         actions={
           isOwnerOrAdmin ? (
             <GenerateBillingButton billingMonth={billingMonth} />
@@ -71,50 +83,60 @@ export default async function BillingPage(props: {
         }
       />
 
-      {/* Month selector */}
-      <form method="GET" className="bg-card rounded-xl border border-border p-4 mb-5 flex items-end gap-3">
-        <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+      <form
+        method="GET"
+        className="mb-5 flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-end"
+      >
+        <div className="w-full min-w-0 sm:flex-1">
+          <label
+            htmlFor="billing-month-select"
+            className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          >
             {t('monthLabel')}
           </label>
-          <input
+          <select
+            id="billing-month-select"
             name="month"
-            type="month"
             defaultValue={billingMonth}
-            className="border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:max-w-xs"
+          >
+            {billingMonthOptions.map((ym) => (
+              <option key={ym} value={ym}>
+                {formatBillingMonthLabel(ym, timezone, intlLocale)}
+              </option>
+            ))}
+          </select>
         </div>
         <button
           type="submit"
-          className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 transition-colors"
+          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto"
         >
           {tCommon('actions.search')}
         </button>
       </form>
 
-      {/* Summary cards */}
       {records.length > 0 && (
-        <div className="bg-card rounded-xl border border-border p-5 mb-5 grid grid-cols-4 gap-6">
+        <div className="mb-5 grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-4 sm:gap-6">
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t('summary.totalBilled')}
             </p>
             <p className="text-lg font-bold text-foreground">₪{totalBilled.toFixed(2)}</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t('summary.totalPaid')}
             </p>
             <p className="text-lg font-bold text-emerald-600">₪{totalPaid.toFixed(2)}</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t('summary.totalPending')}
             </p>
             <p className="text-lg font-bold text-amber-600">{pendingApproval}</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t('summary.studentsProcessed')}
             </p>
             <p className="text-lg font-bold text-foreground">{records.length}</p>
@@ -122,108 +144,131 @@ export default async function BillingPage(props: {
         </div>
       )}
 
-      {/* Billing table */}
       {records.length === 0 ? (
         <EmptyState icon={Receipt} title={t('noBillingRecords')} />
       ) : (
-        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <div className="h-full overflow-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                  {t('table.student')}
-                  </th>
-                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                  {t('table.lessons')}
-                  </th>
-                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                  {t('table.subscriptions')}
-                  </th>
-                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                  {t('table.cancellations')}
-                  </th>
-                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                  {t('table.adjustment')}
-                  </th>
-                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                  {t('table.total')}
-                  </th>
-                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                  {t('table.status')}
-                  </th>
-                {isOwnerOrAdmin && (
-                  <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                    {tCommon('table.actions')}
-                  </th>
-                )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {records.map((record) => {
-                  const status = getBillingStatus(record)
-                  const studentName = record.students?.full_name ?? '—'
-                  return (
-                    <tr key={record.id} className="transition-colors hover:bg-muted/20">
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <UserAvatar name={studentName} />
-                          <div>
-                            <p className="text-sm font-medium text-foreground">{studentName}</p>
-                            <Link
-                              href={`/billing/${record.student_id}?month=${billingMonth}`}
-                              className="text-xs text-primary hover:underline"
-                            >
-                              {tCommon('actions.edit')} ↗
-                            </Link>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
-                        ₪{Number(record.lessons_amount).toFixed(2)}
-                        <span className="mr-1 text-xs text-muted-foreground">
-                          ({record.lessons_count})
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
-                        ₪{Number(record.subscriptions_amount).toFixed(2)}
-                      </td>
-                      <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
-                        ₪{Number(record.cancellations_amount).toFixed(2)}
-                      </td>
-                      <td className="px-5 py-3.5 text-sm font-mono" dir="ltr">
-                        {record.manual_adjustment_amount != null ? (
-                          <span className={Number(record.manual_adjustment_amount) < 0 ? 'text-red-600' : 'text-foreground'}>
-                            ₪{Number(record.manual_adjustment_amount).toFixed(2)}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground/30">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 font-mono text-sm font-semibold text-foreground" dir="ltr">
-                        ₪{Number(record.total_amount).toFixed(2)}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <StatusBadge status={status} />
-                      </td>
-                      {isOwnerOrAdmin && (
+        <>
+          <BillingRecordsMobileList
+            records={records}
+            billingMonth={billingMonth}
+            isOwnerOrAdmin={isOwnerOrAdmin}
+            labels={{
+              lessons: t('table.lessons'),
+              subscriptions: t('table.subscriptions'),
+              cancellations: t('table.cancellations'),
+              adjustment: t('table.adjustment'),
+              total: t('table.total'),
+              paid: t('status.paid'),
+              edit: tCommon('actions.edit'),
+            }}
+          />
+          <div className="hidden min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm md:flex md:flex-col">
+            <div className="min-h-0 flex-1 overflow-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+              <table className="min-w-[900px] w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                      {t('table.student')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                      {t('table.lessons')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                      {t('table.subscriptions')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                      {t('table.cancellations')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                      {t('table.adjustment')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                      {t('table.total')}
+                    </th>
+                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                      {t('table.status')}
+                    </th>
+                    {isOwnerOrAdmin && (
+                      <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                        {tCommon('table.actions')}
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {records.map((record) => {
+                    const status = getBillingStatus(record)
+                    const studentName = record.students?.full_name ?? '—'
+                    return (
+                      <tr key={record.id} className="transition-colors hover:bg-muted/20">
                         <td className="px-5 py-3.5">
-                          {!record.is_paid ? (
-                            <MarkPaidButton billingId={record.id} />
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              {t('status.paid')}
+                          <div className="flex items-center gap-2.5">
+                            <UserAvatar name={studentName} />
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{studentName}</p>
+                              <Link
+                                href={`/billing/${record.student_id}?month=${billingMonth}`}
+                                className="text-xs text-primary hover:underline"
+                              >
+                                {tCommon('actions.edit')} ↗
+                              </Link>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
+                          ₪{Number(record.lessons_amount).toFixed(2)}
+                          <span className="mr-1 text-xs text-muted-foreground">
+                            ({record.lessons_count})
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
+                          ₪{Number(record.subscriptions_amount).toFixed(2)}
+                        </td>
+                        <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
+                          ₪{Number(record.cancellations_amount).toFixed(2)}
+                        </td>
+                        <td className="px-5 py-3.5 font-mono text-sm" dir="ltr">
+                          {record.manual_adjustment_amount != null ? (
+                            <span
+                              className={
+                                Number(record.manual_adjustment_amount) < 0
+                                  ? 'text-red-600'
+                                  : 'text-foreground'
+                              }
+                            >
+                              ₪{Number(record.manual_adjustment_amount).toFixed(2)}
                             </span>
+                          ) : (
+                            <span className="text-muted-foreground/30">—</span>
                           )}
                         </td>
-                      )}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        <td className="px-5 py-3.5 font-mono text-sm font-semibold text-foreground" dir="ltr">
+                          ₪{Number(record.total_amount).toFixed(2)}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <StatusBadge status={status} />
+                        </td>
+                        {isOwnerOrAdmin && (
+                          <td className="px-5 py-3.5">
+                            {record.is_paid ? (
+                              <span className="text-xs text-muted-foreground">
+                                {t('status.paid')}
+                              </span>
+                            ) : !record.is_approved ? (
+                              <ApproveBillingButton billingId={record.id} />
+                            ) : (
+                              <MarkPaidButton billingId={record.id} />
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   )

@@ -24,6 +24,9 @@ npm test
 # Run tests in watch mode
 npm run test:watch
 
+# Run tests with coverage
+npm run test:coverage
+
 # Run a single test file
 npx vitest run src/lib/billing/calculateCancellationCharge.test.ts
 
@@ -48,7 +51,7 @@ npx supabase functions deploy <function-name>
 ## Key Architectural Notes
 
 **Three auth contexts — never mix them:**
-- Dashboard (`/app/(dashboard)/`): Supabase Auth session, checked via `src/middleware.ts` + `src/proxy.ts`
+- Dashboard (`/app/(dashboard)/`): Supabase Auth session, checked via `src/proxy.ts` (Next.js middleware entry point)
 - Booking WebView (`/book/[token]`): signed JWT via `src/lib/jwt/`
 - Parent Portal (`/portal/[orgId]/`): phone OTP → httpOnly cookie JWT via `src/lib/portal/`
 
@@ -93,3 +96,27 @@ All outbound WhatsApp messages go through `resolveTemplate(orgId, templateType, 
 
 **Superadmin support mode:**
 A superadmin can impersonate an org via a short-lived JWT cookie (30-min TTL, `src/lib/support-session/`). While in support mode, `getSession()` returns the org's data with `isSupportMode: true`. Mutations are blocked by `requireMutation()`. The support mode banner is rendered in `/app/(dashboard)/layout.tsx`.
+
+**i18n (next-intl):**
+Locale is stored as a cookie (`NEXT_LOCALE`) and optionally in `profiles.preferred_locale`. Translation strings live in `messages/he.json` and `messages/en.json`. Server components use `getTranslations()`, client components use `useTranslations()`. The locale config is in `src/i18n/request.ts`. Dashboard layout sets `dir` (rtl/ltr) dynamically from the locale. Currency formatting is locale-aware via `src/lib/i18n/formatCurrency.ts`.
+
+**Monthly billing engine (`src/lib/billing/monthly/`):**
+`buildStudentMonth(studentId, month, orgId)` computes a student's bill from subscriptions + per-lesson charges + cancellation events. `syncMonthlyCharge(...)` is idempotent — call it to upsert the charge record for a billing period. The workflow is: generate → approve → send WhatsApp payment request → mark paid. Approval and send are separate Server Actions in `src/app/(dashboard)/billing/actions.ts`.
+
+**Payment and receipt provider abstraction:**
+`src/lib/payments/factory.ts` decrypts `payment_config_encrypted` and returns the correct `PaymentProvider` (Cardcom, PayPlus, Bit, PayBox). `src/lib/receipts/factory.ts` does the same for `receipt_config_encrypted` → `ReceiptProvider` (Green Invoice). Always go through the factory; never instantiate adapters directly.
+
+**Server Action prop rule:**
+UI components that invoke server actions must receive the action as a prop — never import server actions directly inside shared UI components. This prevents cross-context contamination between dashboard, admin, and portal shells.
+
+**SaaS platform layer (distinct from org-level billing):**
+Organizations themselves are tenants on the Lessio SaaS platform. Platform billing (plan selection, payment for Lessio itself) lives in `src/lib/saas/` and `src/app/(dashboard)/subscriptions/`. This is entirely separate from the org-level billing engine (`src/lib/billing/monthly/`) that bills *students*. The superadmin shell (`/admin/`) manages the platform; org owners manage their own org's student billing.
+
+**Teacher sub-shell (`/teacher/`):**
+Teachers access a scoped subset of the dashboard: `/teacher/schedule`, `/teacher/new-lesson`, `/teacher/dashboard`, `/teacher/reports`. These share the same Supabase Auth session but data queries are filtered by the authenticated teacher's `teacher_id`. Teachers cannot access billing, students, or parents pages.
+
+**Student groups:**
+`student_groups` and `student_group_members` tables allow grouping students for shared pricing. Groups are managed via `GroupFormSheet` in the students page. The billing engine reads group membership when computing `price_per_student` for group lessons.
+
+**Onboarding wizard:**
+New orgs are redirected to `/onboarding` after signup if `organizations.onboarding_completed` is false. The wizard steps: Welcome → Teachers → Settings → Import Students → Import Lessons → Complete. The import flow (`src/components/import/`) is reused inside onboarding and standalone. After completing onboarding, `onboarding_completed` is set to `true` and the org is redirected to `/dashboard`.

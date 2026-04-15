@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { Upload, FileSpreadsheet, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -15,6 +16,7 @@ export function FileUploadZone({
   accept = '.xlsx,.xls,.csv',
   maxSizeMb = 5,
 }: FileUploadZoneProps) {
+  const t = useTranslations('import')
   const [dragActive, setDragActive] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -27,19 +29,19 @@ export function FileUploadZone({
       const validExtensions = ['.xlsx', '.xls', '.csv']
       const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
       if (!validExtensions.includes(ext)) {
-        setError('פורמט קובץ לא נתמך. יש להעלות XLSX, XLS או CSV')
+        setError(t('fileErrors.unsupportedFormat'))
         return
       }
 
       if (file.size > maxSizeMb * 1024 * 1024) {
-        setError(`הקובץ גדול מדי (מקסימום ${maxSizeMb}MB)`)
+        setError(t('fileErrors.fileTooLarge', { maxSize: maxSizeMb }))
         return
       }
 
       setSelectedFile(file)
       onFileSelect(file)
     },
-    [maxSizeMb, onFileSelect]
+    [maxSizeMb, onFileSelect, t]
   )
 
   const handleDrop = useCallback(
@@ -94,11 +96,9 @@ export function FileUploadZone({
           <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto mb-3">
             <Upload size={22} className="text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium text-foreground mb-1">
-            גרור קובץ לכאן או לחץ לבחירה
-          </p>
+          <p className="text-sm font-medium text-foreground mb-1">{t('dropzone.title')}</p>
           <p className="text-xs text-muted-foreground">
-            XLSX, XLS, CSV — עד {maxSizeMb}MB
+            {t('dropzone.formats', { maxSize: maxSizeMb })}
           </p>
         </div>
       ) : (

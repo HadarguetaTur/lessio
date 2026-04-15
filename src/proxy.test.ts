@@ -53,6 +53,34 @@ describe('proxy', () => {
     expect(response.headers.get('location')).toBe('http://localhost:3000/dashboard')
   })
 
+  it('allows unauthenticated requests to / through the proxy', async () => {
+    const request = new NextRequest('http://localhost:3000/')
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(200)
+  })
+
+  it('redirects authenticated users from / to /dashboard', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+    const request = new NextRequest('http://localhost:3000/')
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toBe('http://localhost:3000/dashboard')
+  })
+
+  it('redirects authenticated users from /signup to /dashboard', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+    const request = new NextRequest('http://localhost:3000/signup')
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toBe('http://localhost:3000/dashboard')
+  })
+
   it('redirects unauthenticated /teacher/schedule requests to /login', async () => {
     const request = new NextRequest('http://localhost:3000/teacher/schedule')
 

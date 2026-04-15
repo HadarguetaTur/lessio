@@ -1,25 +1,15 @@
 import type { EntityType } from './validators'
 
-const ENTITY_TITLES: Record<EntityType, string> = {
-  students: 'תלמידים',
-  parents: 'הורים',
-  teachers: 'מורים',
-  'lessons-schedule': 'מערכת שעות חוזרת',
-  'lessons-history': 'היסטוריית שיעורים',
+/** Internal field keys for required-columns display (labels via `import.fields.{key}`). */
+export const ENTITY_REQUIRED_FIELD_KEYS: Record<EntityType, string[]> = {
+  students: ['full_name'],
+  parents: ['full_name', 'phone'],
+  teachers: ['full_name', 'email'],
+  'lessons-schedule': ['teacher_name', 'student_name', 'day_of_week', 'start_time', 'duration_minutes'],
+  'lessons-history': ['teacher_name', 'student_name', 'date', 'start_time', 'end_time'],
+  'family-list': ['student_name', 'parent_name', 'parent_phone'],
 }
 
-const REQUIRED_FIELDS: Record<EntityType, string[]> = {
-  students: ['שם מלא'],
-  parents: ['שם מלא', 'טלפון'],
-  teachers: ['שם מלא', 'אימייל'],
-  'lessons-schedule': ['שם מורה', 'שם תלמיד', 'יום בשבוע', 'שעת התחלה', 'משך (דקות)'],
-  'lessons-history': ['שם מורה', 'שם תלמיד', 'תאריך', 'שעת התחלה', 'שעת סיום'],
-}
-
-export function getEntityTitle(entityType: EntityType): string {
-  return ENTITY_TITLES[entityType]
-}
-
-export function getRequiredFields(entityType: EntityType): string[] {
-  return REQUIRED_FIELDS[entityType]
+export function getRequiredFieldKeys(entityType: EntityType): string[] {
+  return ENTITY_REQUIRED_FIELD_KEYS[entityType]
 }

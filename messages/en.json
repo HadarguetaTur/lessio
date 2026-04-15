@@ -136,13 +136,21 @@
     "settingsReminders": "Reminders",
     "settingsAiAssistant": "AI Assistant",
     "settingsLocale": "Language & Display",
+    "accountBilling": "Account & billing",
     "teacherSection": "My Workspace",
+    "teacherDashboard": "Dashboard",
+    "teacherStudents": "My Students",
+    "teacherParents": "My Parents",
+    "teacherHomework": "Homework",
+    "teacherReportsLessons": "Lessons by Month",
+    "teacherReportsStudents": "Student Attendance",
     "teacherSchedule": "My Lessons",
     "teacherCalendar": "Calendar Feed",
     "teacherNewLesson": "New Lesson",
     "teacherAvailability": "My Availability",
     "teacherOverrides": "Schedule Exceptions",
     "billing": "Monthly Billing",
+    "subscriptions": "Subscriptions",
     "globalSearch": {
       "placeholder": "Search students, parents, lessons…",
       "ariaLabel": "Global search",
@@ -155,6 +163,13 @@
         "lessons": "Lessons",
         "charges": "Open charges"
       }
+    },
+    "mobileQuickMenu": {
+      "triggerAria": "Open quick actions",
+      "title": "Quick actions",
+      "scheduleLesson": "Schedule a lesson",
+      "openDebt": "Open debts",
+      "dailySchedule": "Daily lesson schedule"
     }
   },
   "dashboard": {
@@ -343,6 +358,7 @@
     "archive": "Archive",
     "restore": "Restore",
     "edit": "Edit",
+    "teacherNotes": "Notes",
     "deleteConfirm": "Delete this parent?",
     "saved": "Parent saved successfully",
     "phoneHint": "International format, e.g. +972501234567"
@@ -390,6 +406,7 @@
       "date": "Date",
       "time": "Start Time",
       "duration": "Duration",
+      "status": "Lesson status",
       "dayOfWeek": "Day of Week",
       "startDate": "Start Date",
       "endDate": "End Date",
@@ -583,8 +600,14 @@
       "cancellationApproved": "Approved",
       "cancellationPending": "Pending",
       "invalidAmount": "Invalid amount",
-      "reasonRequired": "Reason is required"
+      "reasonRequired": "Reason is required",
+      "actionsMenuAria": "Billing actions"
     },
+    "approve": "Approve",
+    "approving": "Approving...",
+    "sendPaymentRequest": "Send Payment Request",
+    "sendingPaymentRequest": "Sending...",
+    "paymentRequestSent": "Sent ✓",
     "generateSuccess": "Processed {success} students, {errors} errors, {skipped} skipped",
     "noBillingRecords": "No billing records for this month"
   },
@@ -902,6 +925,20 @@
     }
   },
   "teacherSelf": {
+    "dashboard": {
+      "title": "Dashboard",
+      "kpi": {
+        "lessonsToday": "Lessons Today",
+        "lessonsThisWeek": "Lessons This Week",
+        "completedThisMonth": "Completed This Month",
+        "activeStudents": "Active Students"
+      },
+      "todayLessons": "Today's Lessons",
+      "actions": {
+        "newLesson": "New Lesson",
+        "viewSchedule": "Schedule"
+      }
+    },
     "schedule": {
       "title": "My Lessons",
       "noLessons": "No lessons this week"
@@ -964,10 +1001,44 @@
       "outlookStep1": "Open Outlook in a browser (outlook.com or Office 365)",
       "outlookStep2": "Click 'Add calendar' → 'From the internet'",
       "outlookStep3": "Paste the URL in the URL field and click Import"
+    },
+    "reports": {
+      "title": "Reports",
+      "lessonsTitle": "Lessons by Month",
+      "lessonsDesc": "Summary of completed, cancelled, and no-show lessons",
+      "lessonsSubtitle": "Completed {completed} · Cancelled {cancelled} · No-show {noShow}",
+      "studentsTitle": "Student Attendance",
+      "studentsDesc": "Attendance rate per student over recent months",
+      "studentsSubtitle": "Data from the last {months} months",
+      "tableMonth": "Month",
+      "tableCompleted": "Completed",
+      "tableCancelled": "Cancelled",
+      "tableNoShow": "No-show",
+      "tableStudent": "Student",
+      "tableLessons": "Lessons",
+      "tableAttendance": "Attendance",
+      "atRiskAlert": "{count} students with attendance below 70%",
+      "noStudents": "No active students",
+      "lessonsChart": {
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "noShow": "No-show"
+      }
     }
   },
   "admin": {
-    "nav": { "title": "LESSIO Admin", "dashboard": "Dashboard", "orgs": "Organizations", "billing": "Billing" },
+    "nav": { "title": "LESSIO Admin", "dashboard": "Dashboard", "orgs": "Organizations", "billing": "Billing", "saasInquiries": "Plan inquiries" },
+    "saasInquiries": {
+      "title": "Custom plan inquiries",
+      "description": "Organizations that requested a custom plan",
+      "empty": "No open inquiries",
+      "org": "Organization",
+      "contact": "Contact",
+      "phone": "Phone",
+      "message": "Note",
+      "actions": "Actions",
+      "resolve": "Approve & grant access"
+    },
     "readOnly": "(read-only)",
     "dashboard": {
       "title": "Platform Dashboard",
@@ -1068,7 +1139,145 @@
     },
     "supportBanner": "Support mode: {orgName} — {timeRemaining} minutes remaining"
   },
+  "auth": {
+    "common": {
+      "backToHome": "Back to home",
+      "backToHomeShort": "Home"
+    },
+    "login": {
+      "title": "Welcome back",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign in",
+      "submitting": "Signing in...",
+      "divider": "or",
+      "noAccount": "Don't have an account?",
+      "signupLink": "Sign up"
+    },
+    "signup": {
+      "title": "Create an account",
+      "orgName": "Business / organization name",
+      "orgNamePlaceholder": "e.g. Dana's Math Studio",
+      "fullName": "Full name",
+      "fullNamePlaceholder": "Jane Doe",
+      "email": "Email",
+      "password": "Password",
+      "passwordPlaceholder": "At least 6 characters",
+      "confirmPassword": "Confirm password",
+      "confirmPasswordPlaceholder": "Re-enter your password",
+      "submit": "Create account",
+      "submitting": "Creating account...",
+      "divider": "or",
+      "socialHelper": "Social sign-up coming soon",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Sign in"
+    },
+    "forgotPassword": {
+      "title": "Reset password",
+      "body": "This screen is under development — soon you'll be able to receive a password reset link by email.",
+      "backToLogin": "Back to sign in",
+      "remember": "Remember your password?",
+      "loginLink": "Sign in"
+    },
+    "social": {
+      "continueGoogle": "Continue with Google",
+      "continueFacebook": "Continue with Facebook",
+      "helperLogin": "Social sign-in coming soon",
+      "helperSignup": "Social sign-up coming soon"
+    },
+    "trust": {
+      "secure": "Secure",
+      "ssl": "SSL"
+    },
+    "brand": {
+      "subtitle": "Lesson management",
+      "simple": "Simple",
+      "fast": "Fast",
+      "focused": "Focused",
+      "tagline": "Smart lessons · Automatic billing · AI assistant · Smart WhatsApp flows",
+      "feature1": "Smart lesson calendar",
+      "feature2": "Automatic billing",
+      "feature3": "Smart AI assistant",
+      "feature4": "Smart WhatsApp workflows",
+      "statusLive": "System live"
+    },
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "passwordsMismatch": "Passwords do not match",
+      "invalidData": "Invalid data"
+    },
+    "validation": {
+      "orgNameMin": "Organization name must be at least 2 characters",
+      "fullNameMin": "Full name must be at least 2 characters",
+      "emailInvalid": "Invalid email address",
+      "passwordMin": "Password must be at least 6 characters"
+    },
+    "signupServerErrors": {
+      "emailTaken": "This email is already registered",
+      "accountFailed": "Could not create account. Please try again.",
+      "orgFailed": "Could not create organization. Please try again.",
+      "profileFailed": "Could not create profile. Please try again."
+    }
+  },
+  "legal": {
+    "backHome": "Back to home",
+    "privacy": {
+      "title": "Privacy policy",
+      "metaDescription": "Lessio privacy policy (coming soon).",
+      "placeholder": "We are preparing this page. The full privacy policy will appear here soon."
+    },
+    "terms": {
+      "title": "Terms of use",
+      "metaDescription": "Lessio terms of use (coming soon).",
+      "placeholder": "We are preparing this page. The full terms of use will appear here soon."
+    }
+  },
+  "saas": {
+    "trialBanner": "{days} days left on your free trial.",
+    "readOnlyBanner": "Your plan is view-only. Upgrade to keep editing.",
+    "manageBilling": "Manage billing",
+    "accountBilling": {
+      "title": "Account & billing",
+      "subtitle": "LESSIO subscription, invoices, and payments",
+      "currentPlan": "Current plan",
+      "status": "Status",
+      "statusTrial": "Trial",
+      "statusActive": "Active",
+      "statusPending": "Awaiting payment",
+      "statusReadOnly": "View only",
+      "renewsAt": "Renews on",
+      "card": "Payment method",
+      "cardLastFour": "Card ending in {digits}",
+      "cardUnknown": "Not stored in app",
+      "invoices": "Invoices",
+      "invoiceAmount": "Amount",
+      "invoicePeriod": "Period",
+      "invoiceStatus": "Status",
+      "invoicePaid": "Paid",
+      "invoicePending": "Pending",
+      "invoiceLink": "Document",
+      "openPdf": "Open",
+      "cancelAtEnd": "Cancel subscription (end of period)",
+      "cancelPending": "Cancellation scheduled for period end",
+      "upgradeHint": "To upgrade or change plans, contact support.",
+      "ownerOnly": "Only the business owner can view this page.",
+      "legacyNoSubscription": "No platform subscription record (org created before SaaS plans). You can keep using the product as usual."
+    }
+  },
   "onboarding": {
+    "errors": {
+      "noPermission": "You don't have permission",
+      "settingsUpdateFailed": "Failed to update settings",
+      "fullNameEmailRequired": "Full name and email are required",
+      "emailAlreadyRegistered": "This email is already registered",
+      "inviteFailed": "Failed to send invitation: {message}",
+      "teacherProfileError": "Failed to create teacher profile",
+      "teacherRecordError": "Failed to create teacher record",
+      "cancellationPolicyUpdateFailed": "Failed to update cancellation policy",
+      "remindersUpdateFailed": "Failed to update reminder settings",
+      "saasPlansMissing": "We’re having a temporary issue loading subscription options. Please try again in a few minutes."
+    },
     "welcome": {
       "title": "Welcome, {name}!",
       "subtitle": "Let's set up the basics for {orgName}",
@@ -1077,7 +1286,14 @@
       "monthly": "Monthly",
       "monthlyDesc": "Fixed monthly payment",
       "perLesson": "Per Lesson",
-      "perLessonDesc": "Pay per lesson"
+      "perLessonDesc": "Pay per lesson",
+      "timezones": {
+        "Asia/Jerusalem": "Israel (Asia/Jerusalem)",
+        "Europe/London": "London (Europe/London)",
+        "America/New_York": "New York (America/New_York)",
+        "America/Los_Angeles": "Los Angeles (America/Los_Angeles)",
+        "Europe/Berlin": "Berlin (Europe/Berlin)"
+      }
     },
     "teachers": {
       "title": "Add Teachers",
@@ -1091,11 +1307,18 @@
       "importFromFile": "Import from file",
       "importFromFileDesc": "Import teacher list from an Excel or CSV file",
       "importTitle": "Import teachers from file",
-      "importSubtitle": "Upload an Excel or CSV file with your teachers. Each teacher will receive an invitation."
+      "importSubtitle": "Upload an Excel or CSV file with your teachers. Each teacher will receive an invitation.",
+      "fullName": "Full Name",
+      "emailLabel": "Email",
+      "namePlaceholder": "Teacher name",
+      "manualSubtitle": "Enter the name and email for each teacher. They will receive an invitation."
     },
     "importStudents": {
       "title": "Import Students & Parents",
-      "subtitle": "Upload an Excel or CSV file with your existing data"
+      "subtitle": "Upload an Excel or CSV file with your existing data",
+      "hint": "Download the template to see the required format.",
+      "studentsTab": "Students",
+      "parentsTab": "Parents"
     },
     "importLessons": {
       "title": "Import Lessons",
@@ -1111,13 +1334,160 @@
       "chargePercent": "Late cancellation charge %",
       "reminders": "Reminders",
       "lessonReminder": "Lesson reminder (hours before)",
-      "paymentReminder": "Payment reminder (days)"
+      "paymentReminder": "Payment reminder (days)",
+      "unitHours": "{count} hours",
+      "unitDays": "{count} days",
+      "unitPercent": "{n}%"
     },
     "complete": {
       "title": "All Set!",
       "subtitle": "Your system is ready to use. Here's a summary of what you've set up:",
       "goToDashboard": "Go to Dashboard",
-      "loading": "Loading dashboard..."
+      "loading": "Loading dashboard...",
+      "stats": {
+        "teachers": "Teachers",
+        "students": "Students",
+        "parents": "Parents",
+        "lessons": "Lessons"
+      }
+    },
+    "planSelection": {
+      "title": "Choose a plan for your stage",
+      "subtitle": "Whether you’re a private teacher on your own or run a large learning center - there’s a plan that brings more order, full control over cancellations and scheduling, and a calmer day-to-day.",
+      "popularBadge": "Most popular",
+      "growthPickLine": "What most active businesses choose",
+      "bestForLabel": "Best for ",
+      "outcomesIntro": "",
+      "outcomes": [
+        "Less chaos between WhatsApp and the calendar",
+        "Fewer lessons falling through the cracks",
+        "More order, control, and a professional service experience"
+      ],
+      "pricingSectionAria": "Subscription plans compared",
+      "billingMonthly": "Monthly",
+      "billingYearly": "Yearly",
+      "perMonth": "/mo",
+      "perYear": "/yr",
+      "freePrice": "₪0",
+      "freePriceCaption": "No card required",
+      "continueToPay": "Continue to payment",
+      "contactName": "Name",
+      "phone": "Phone",
+      "message": "Notes (optional)",
+      "submitInquiry": "Send request",
+      "back": "Back",
+      "paymentStubTitle": "Checkout is not connected yet",
+      "paymentStubBody": "Your payment page will be wired here later. For now you can start a free trial or continue to the final step without charging.",
+      "paymentStubClose": "Close",
+      "paymentStubContinue": "Continue to final step",
+      "faqTitle": "Quick answers",
+      "faq": {
+        "upgrade": {
+          "q": "Can I change plans later?",
+          "a": "Yes — anytime from your account. Billing updates on the next cycle."
+        },
+        "trial": {
+          "q": "What’s in the free trial?",
+          "a": "No charge while you try: students, lessons, and calendar at a basic level. Full automation, advanced reports, parent portal, and AI are on Growth and above."
+        },
+        "choose": {
+          "q": "Starter or Growth?",
+          "a": "Starter — solo or very small ops, structure and basic reminders. Growth — steady volume, full automation, reports, parent portal, and AI. Unsure? Start free or Starter and upgrade when you’re ready."
+        },
+        "cancel": {
+          "q": "How do I cancel?",
+          "a": "Per the service terms, you manage billing from your account. Support can help with plan changes."
+        }
+      },
+      "plans": {
+        "free": {
+          "title": "Free trial",
+          "tagline": "Try the product — no charge, no card.",
+          "bestFor": "Solo teachers evaluating Lessio before paying.",
+          "cta": "Start free",
+          "bullets": [
+            "Up to 30 days",
+            "Students, lessons, and calendar — essentials",
+            "Quick status at a glance",
+            "No full automation stack, advanced reports, or AI"
+          ]
+        },
+        "starter": {
+          "title": "Starter",
+          "tagline": "Day-to-day order instead of WhatsApp and spreadsheets.",
+          "bestFor": "Private teachers or a very small operation.",
+          "cta": "Choose Starter",
+          "bullets": [
+            "Students and lessons in one place",
+            "Lesson notes and history",
+            "Basic WhatsApp reminders",
+            "Attendance, cancellations, and billing rhythm",
+            "Light homework"
+          ]
+        },
+        "growth": {
+          "title": "Growth",
+          "tagline": "Automation, reports, parent portal, and AI — less manual chasing.",
+          "bestFor": "An active workload that needs serious time savings.",
+          "cta": "Choose Growth",
+          "bullets": [
+            "Everything in Starter",
+            "Full WhatsApp automation",
+            "Advanced reports",
+            "Parent portal and homework",
+            "AI for routine messaging and ops",
+            "Priority support"
+          ]
+        },
+        "center": {
+          "title": "Center",
+          "tagline": "Tailored rollout, teams, integrations, and support — not “just another seat.”",
+          "bestFor": "Learning centers, multi-teacher setups, or special requirements.",
+          "cta": "Talk to us",
+          "ctaOpen": "Leave your details",
+          "bullets": [
+            "Staff, roles, and branches",
+            "Process fit and guided onboarding",
+            "Integrations (API, CRM, billing — phased)",
+            "Expanded support as you scale"
+          ]
+        }
+      }
+    },
+    "paymentCallback": {
+      "processing": "Confirming payment…",
+      "hint": "If you finished paying, you’ll be redirected to the dashboard automatically.",
+      "slow": "This is taking longer than expected. You can refresh or try again later.",
+      "failedTitle": "Payment not completed",
+      "failedBody": "You were not charged. You can choose a plan again from onboarding.",
+      "backToOnboarding": "Back to setup"
+    },
+    "checkoutPreview": {
+      "title": "Confirm before payment",
+      "plan": "Plan",
+      "amount": "Amount due",
+      "externalNote": "You’ll be redirected to your payment provider’s secure checkout (outside this app).",
+      "continuePay": "Continue to payment",
+      "cancel": "Back to plan selection"
+    },
+    "mockPayment": {
+      "title": "Checkout (test mode)",
+      "subtitle": "Test environment — no real charge.",
+      "plan": "Plan",
+      "billing": "Billing",
+      "intervalMonthly": "Monthly",
+      "intervalYearly": "Yearly",
+      "amount": "Amount",
+      "hint": "In production this step is replaced by your payment provider’s hosted page (e.g. Sumit).",
+      "payNow": "Complete payment (simulated)",
+      "back": "Cancel and return to plans",
+      "testBadge": "Test mode only"
+    },
+    "pendingCustom": {
+      "title": "We received your request",
+      "body": "We’ll contact you shortly. Your account stays on hold until then.",
+      "footer": "After approval you’ll have full dashboard access.",
+      "logoutHint": "Sign out"
     },
     "steps": {
       "welcome": "Welcome",
@@ -1125,7 +1495,12 @@
       "importStudents": "Students & Parents",
       "importLessons": "Lessons",
       "settings": "Settings",
+      "planSelection": "Plan",
       "complete": "Done"
+    },
+    "stepIndicator": {
+      "progress": "Step {current} of {total}",
+      "navAria": "Onboarding progress"
     },
     "nav": {
       "next": "Continue",
@@ -1148,27 +1523,128 @@
       "valid": "{count} valid",
       "warnings": "{count} warnings",
       "errors": "{count} errors",
+      "duplicates": "{count} duplicates",
       "total": "out of {count} rows",
-      "import": "Import {count} rows"
+      "import": "Import {count} rows",
+      "duplicateHint": "Check the box next to duplicate rows to overwrite the existing record."
     },
     "importing": "Importing data...",
     "processing": "Processing file...",
     "results": {
       "title": "Import Results",
       "inserted": "Successfully imported",
+      "updated": "Updated",
       "skipped": "Skipped",
       "errors": "Errors",
       "errorDetails": "Error details:",
       "row": "Row {row}",
-      "importMore": "Import More"
+      "importMore": "Import More",
+      "linkedRelationships": "Relationships linked",
+      "failedLinks": "Failed links (student not found):",
+      "failedLinkDetail": "Link to \"{name}\" failed — student not found in the system"
     },
     "entities": {
       "students": "Students",
       "parents": "Parents",
       "teachers": "Teachers",
       "lessonsSchedule": "Recurring Schedule",
-      "lessonsHistory": "Lesson History"
+      "lessonsHistory": "Lesson History",
+      "familyList": "Family list"
     },
-    "button": "Import"
+    "button": "Import",
+    "table": {
+      "status": "Status",
+      "duplicate": "Duplicate"
+    },
+    "fileErrors": {
+      "unsupportedFormat": "Unsupported file format. Upload XLSX, XLS, or CSV.",
+      "fileTooLarge": "File is too large (max {maxSize}MB)"
+    },
+    "flowErrors": {
+      "parseFailed": "Failed to process file",
+      "parseFailedRetry": "Failed to process file. Please try again.",
+      "executeFailed": "Import failed",
+      "executeFailedRetry": "Import failed. Please try again."
+    },
+    "apiErrors": {
+      "noPermission": "You don't have permission",
+      "noFile": "No file uploaded",
+      "invalidEntity": "Invalid entity type",
+      "fileTooLarge": "File is too large (max 5MB)",
+      "unsupportedFormat": "Unsupported file format. Upload XLSX, XLS, or CSV.",
+      "emptyFile": "The file is empty or has no data",
+      "parseError": "Failed to process file. Make sure it is valid and try again.",
+      "noRowsToImport": "No rows to import",
+      "executeError": "Import failed. Please try again."
+    },
+    "warnings": {
+      "existingRecord": "Record already exists in the system",
+      "studentNotFound": "Student \"{name}\" was not found — the link will not be created"
+    },
+    "fields": {
+      "full_name": "Full name",
+      "phone": "Phone",
+      "email": "Email",
+      "teacher_name": "Teacher name",
+      "student_name": "Student name",
+      "day_of_week": "Day of week",
+      "start_time": "Start time",
+      "end_time": "End time",
+      "duration_minutes": "Duration (minutes)",
+      "date": "Date",
+      "grade": "Grade",
+      "level": "Level",
+      "focused_subject": "Subject",
+      "weekly_quota": "Weekly quota",
+      "notes": "Notes",
+      "status": "Status",
+      "student_names": "Student names",
+      "bio": "Bio",
+      "hourly_rate": "Hourly rate",
+      "lesson_type": "Lesson type",
+      "cancel_reason": "Cancellation reason",
+      "parent_name": "Parent name",
+      "parent_phone": "Parent phone",
+      "parent_name_2": "Parent 2 name",
+      "parent_phone_2": "Parent 2 phone",
+      "student_notes": "Student notes",
+      "parent_notes": "Parent notes"
+    },
+    "validation": {
+      "fullNameRequired": "Full name is required",
+      "weeklyQuotaInvalid": "Weekly quota must be a number from 1 to 20",
+      "studentStatusInvalid": "Invalid status",
+      "phoneRequired": "Phone number is required",
+      "emailRequired": "Email is required",
+      "invalidEmail": "Invalid email address",
+      "hourlyRateInvalid": "Hourly rate must be a positive number",
+      "teacherNameRequired": "Teacher name is required",
+      "studentNameRequired": "Student name is required",
+      "dayOfWeekRequired": "Day of week is required",
+      "startTimeRequired": "Start time is required",
+      "timeFormatInvalid": "Invalid time format (HH:MM)",
+      "durationRequired": "Lesson duration is required",
+      "durationInvalid": "Duration must be a number from 1 to 480",
+      "lessonTypeInvalid": "Invalid lesson type",
+      "dateRequired": "Date is required",
+      "endTimeRequired": "End time is required",
+      "lessonStatusInvalid": "Invalid lesson status",
+      "parentNameRequired": "Parent name is required",
+      "parent2NameRequired": "Parent 2 name is required when Parent 2 phone is provided"
+    },
+    "executeErrors": {
+      "invalidPhone": "Invalid phone number",
+      "duplicatePhone": "Duplicate phone number",
+      "profileUpdateFailed": "Failed to update profile",
+      "teacherRecordUpdateFailed": "Failed to update teacher record",
+      "emailAlreadyRegistered": "Email {email} is already registered",
+      "inviteFailed": "Invitation failed: {message}",
+      "profileCreateFailed": "Failed to create profile",
+      "teacherRecordCreateFailed": "Failed to create teacher record",
+      "teacherNotFound": "Teacher \"{name}\" was not found",
+      "studentNotFound": "Student \"{name}\" was not found",
+      "invalidDayOfWeek": "Invalid day of week",
+      "dbError": "{message}"
+    }
   }
 }

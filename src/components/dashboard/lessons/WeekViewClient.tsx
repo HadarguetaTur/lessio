@@ -26,6 +26,8 @@ export interface WeekViewClientProps {
   timezone: string
   todayStr: string
   weekStr: string
+  /** `/lessons` (admin) or `/teacher/schedule` (self) — controls lesson detail links. */
+  scheduleBasePath?: string
   teacherId?: string
   studentId?: string
   dayNames: string[]
@@ -48,6 +50,7 @@ export function WeekViewClient({
   timezone,
   todayStr,
   weekStr,
+  scheduleBasePath = '/lessons',
   teacherId,
   studentId,
   dayNames,
@@ -69,6 +72,9 @@ export function WeekViewClient({
   const studentQs = studentId ? `&student=${encodeURIComponent(studentId)}` : ''
 
   function lessonHref(lessonId: string) {
+    if (scheduleBasePath === '/teacher/schedule') {
+      return `/teacher/schedule/${lessonId}?week=${weekStr}`
+    }
     return `/lessons/${lessonId}?week=${weekStr}${teacherQs}${studentQs}`
   }
 
@@ -86,35 +92,40 @@ export function WeekViewClient({
       </>
     )
 
+    const pickable = Boolean(pickDayEnabled && onPickDay)
+
     return (
       <div
         key={dateStr}
+        role={pickable ? 'button' : undefined}
+        tabIndex={pickable ? 0 : undefined}
+        onClick={pickable ? () => onPickDay!(dateStr) : undefined}
+        onKeyDown={
+          pickable
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onPickDay!(dateStr)
+                }
+              }
+            : undefined
+        }
+        aria-label={pickable ? dateStr : undefined}
         className={cn(
-          'rounded-lg border min-h-36 min-w-0',
-          isToday ? 'border-primary/30 bg-primary/5' : 'border-border bg-card'
+          'rounded-lg border min-h-36 min-w-0 text-start',
+          isToday ? 'border-primary/30 bg-primary/5' : 'border-border bg-card',
+          pickable &&
+            'cursor-pointer transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
         )}
       >
-        {pickDayEnabled && onPickDay ? (
-          <button
-            type="button"
-            onClick={() => onPickDay(dateStr)}
-            className={cn(
-              'w-full px-2 py-1.5 text-center border-b transition-colors hover:bg-muted/40',
-              isToday ? 'border-primary/20' : 'border-border'
-            )}
-          >
-            {headerInner}
-          </button>
-        ) : (
-          <div
-            className={cn(
-              'px-2 py-1.5 text-center border-b',
-              isToday ? 'border-primary/20' : 'border-border'
-            )}
-          >
-            {headerInner}
-          </div>
-        )}
+        <div
+          className={cn(
+            'px-2 py-1.5 text-center border-b',
+            isToday ? 'border-primary/20' : 'border-border'
+          )}
+        >
+          {headerInner}
+        </div>
 
         {holidayDates.has(dateStr) && (
           <div className="px-1.5 py-0.5 mx-1 mt-1 text-xs text-center text-purple-600 bg-purple-50 rounded border border-purple-100 truncate">
@@ -128,6 +139,7 @@ export function WeekViewClient({
               key={lesson.id}
               href={lessonHref(lesson.id)}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
               className={`block rounded px-1.5 py-1 text-xs leading-snug ${STATUS_STYLES[lesson.status]} hover:opacity-75 transition-opacity`}
             >
               <span className="flex items-center justify-between gap-1">

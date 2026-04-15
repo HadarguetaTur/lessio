@@ -1,6 +1,3 @@
-import Link from 'next/link'
-import { Repeat, Plus, Upload } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import {
@@ -26,10 +23,14 @@ import {
   LessonsScheduleSection,
   type ScheduleFormResources,
 } from '@/components/dashboard/lessons/LessonsScheduleSection'
+import { LessonScheduleSheetProvider } from '@/components/dashboard/lessons/LessonScheduleSheetProvider'
+import { LessonsScheduleHeaderActions } from '@/components/dashboard/lessons/LessonsScheduleHeaderActions'
 import { DayView } from '@/components/dashboard/lessons/DayView'
 import { PageHeader } from '@/components/ui/page-header'
 import { getTranslations } from 'next-intl/server'
+import { Suspense } from 'react'
 import { z } from 'zod'
+import { LessonsNewLessonFromQuery } from '@/components/dashboard/lessons/LessonsNewLessonFromQuery'
 
 type CalendarView = 'day' | 'week' | 'month'
 
@@ -89,32 +90,19 @@ export default async function LessonsPage(props: {
   }
 
   const headerActions = isAdmin ? (
-    <div className="flex items-center gap-2">
-      <Link href="/lessons/import">
-        <Button variant="outline" size="sm">
-          <Upload size={14} className="ml-1.5" />
-          {tCommon('actions.import')}
-        </Button>
-      </Link>
-      <Link href="/lessons/new-series">
-        <Button variant="outline" size="sm">
-          <Repeat size={14} className="ml-1.5" />
-          {t('newSeries')}
-        </Button>
-      </Link>
-      <Link href="/lessons/new">
-        <Button size="sm">
-          <Plus size={14} className="ml-1.5" />
-          {t('newLesson')}
-        </Button>
-      </Link>
-    </div>
+    <LessonsScheduleHeaderActions
+      labels={{
+        import: tCommon('actions.import'),
+        newSeries: t('newSeries'),
+        newLesson: t('newLesson'),
+      }}
+    />
   ) : undefined
 
   // ─── WEEK VIEW ─────────────────────────────────────────────────────────────
   if (view === 'week') {
     const weekStr = week ?? currentWeekStr
-    const weekDays = getWeekDays(weekStr)
+    const weekDays = getWeekDays(weekStr, timezone)
     const lessons = await getLessonsForWeek(orgId, timezone, weekStr, teacher, studentFilter)
 
     const weekCalendar = await buildWeekCalendarPayload({
@@ -129,32 +117,44 @@ export default async function LessonsPage(props: {
     })
 
     return (
-      <div>
-        <PageHeader title={VIEW_TITLES.week} actions={headerActions} />
-        <div className="mb-5 flex items-center gap-3 flex-wrap">
-          <ViewToggle
-            currentView="week"
-            currentDate={todayStr}
-            currentWeek={weekStr}
-            currentMonth={currentMonthStr}
-            teacherId={teacher}
-          />
-          <WeekNav
-            weekStr={weekStr}
-            teachers={activeTeachers}
-            teacherId={teacher}
-            currentWeekStr={currentWeekStr}
+      <LessonScheduleSheetProvider
+        headerDefaultDate={todayStr}
+        scheduleForm={scheduleForm}
+        defaultTeacherId={teacher}
+      >
+        <Suspense fallback={null}>
+          <LessonsNewLessonFromQuery />
+        </Suspense>
+        <div>
+          <PageHeader title={VIEW_TITLES.week} actions={headerActions} mobileCentered />
+          <div className="mb-5 flex min-w-0 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-3 sm:overflow-x-hidden">
+            <div className="w-full shrink-0 sm:w-auto">
+              <ViewToggle
+                currentView="week"
+                currentDate={todayStr}
+                currentWeek={weekStr}
+                currentMonth={currentMonthStr}
+                teacherId={teacher}
+              />
+            </div>
+            <div className="flex w-full min-w-0 justify-center sm:block sm:flex-1 sm:min-w-0 sm:justify-start">
+              <WeekNav
+                weekStr={weekStr}
+                teachers={activeTeachers}
+                teacherId={teacher}
+                currentWeekStr={currentWeekStr}
+              />
+            </div>
+          </div>
+          <LessonsScheduleSection
+            variant="week"
+            todayStr={todayStr}
+            calendar={weekCalendar}
+            scheduleForm={scheduleForm}
+            defaultTeacherId={teacher}
           />
         </div>
-        <LessonsScheduleSection
-          variant="week"
-          todayStr={todayStr}
-          calendar={weekCalendar}
-          isAdmin={isAdmin}
-          scheduleForm={scheduleForm}
-          defaultTeacherId={teacher}
-        />
-      </div>
+      </LessonScheduleSheetProvider>
     )
   }
 
@@ -178,34 +178,51 @@ export default async function LessonsPage(props: {
     )
 
     return (
-      <div>
-        <PageHeader title={VIEW_TITLES.day} actions={headerActions} />
-        <div className="mb-5 flex items-center gap-3 flex-wrap">
-          <ViewToggle
-            currentView="day"
-            currentDate={dateStr}
-            currentWeek={currentWeekStr}
-            currentMonth={currentMonthStr}
-            teacherId={teacher}
-          />
-          <DayNav dateStr={dateStr} todayStr={todayStr} teacherId={teacher} />
-          <CalendarTeacherSelect
-            teachers={activeTeachers}
-            teacherId={teacher}
-            view="day"
+      <LessonScheduleSheetProvider
+        headerDefaultDate={dateStr}
+        scheduleForm={scheduleForm}
+        defaultTeacherId={teacher}
+      >
+        <Suspense fallback={null}>
+          <LessonsNewLessonFromQuery />
+        </Suspense>
+        <div>
+          <PageHeader title={VIEW_TITLES.day} actions={headerActions} mobileCentered />
+          <div className="mb-5 flex min-w-0 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-3 sm:overflow-x-hidden">
+            <div className="w-full shrink-0 sm:w-auto">
+              <ViewToggle
+                currentView="day"
+                currentDate={dateStr}
+                currentWeek={currentWeekStr}
+                currentMonth={currentMonthStr}
+                teacherId={teacher}
+              />
+            </div>
+            <div className="flex w-full min-w-0 flex-col items-center gap-3 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-3 sm:overflow-x-auto sm:overflow-y-hidden sm:overscroll-x-contain sm:touch-pan-x sm:scrollbar-hide sm:py-1 sm:min-w-0 sm:flex-1">
+              <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
+                <DayNav dateStr={dateStr} todayStr={todayStr} teacherId={teacher} />
+              </div>
+              <div className="flex w-full shrink-0 justify-center sm:w-auto sm:min-w-0 sm:justify-start">
+                <CalendarTeacherSelect
+                  teachers={activeTeachers}
+                  teacherId={teacher}
+                  view="day"
+                  dateStr={dateStr}
+                />
+              </div>
+            </div>
+          </div>
+          <DayView
             dateStr={dateStr}
+            lessons={lessons}
+            holidays={holidays}
+            timezone={timezone}
+            weekStr={weekStr}
+            teacherId={teacher}
+            studentId={studentFilter}
           />
         </div>
-        <DayView
-          dateStr={dateStr}
-          lessons={lessons}
-          holidays={holidays}
-          timezone={timezone}
-          weekStr={weekStr}
-          teacherId={teacher}
-          studentId={studentFilter}
-        />
-      </div>
+      </LessonScheduleSheetProvider>
     )
   }
 
@@ -244,36 +261,52 @@ export default async function LessonsPage(props: {
   })
 
   return (
-    <div>
-      <PageHeader title={VIEW_TITLES.month} actions={headerActions} />
-      <div className="mb-5 flex items-center gap-3 flex-wrap">
-        <ViewToggle
-          currentView="month"
-          currentDate={todayStr}
-          currentWeek={currentWeekStr}
-          currentMonth={monthStr}
-          teacherId={teacher}
-        />
-        <MonthNav
-          monthStr={monthStr}
-          currentMonthStr={currentMonthStr}
-          teacherId={teacher}
-        />
-        <CalendarTeacherSelect
-          teachers={activeTeachers}
-          teacherId={teacher}
-          view="month"
-          monthStr={monthStr}
+    <LessonScheduleSheetProvider
+      headerDefaultDate={todayStr}
+      scheduleForm={scheduleForm}
+      defaultTeacherId={teacher}
+    >
+      <Suspense fallback={null}>
+        <LessonsNewLessonFromQuery />
+      </Suspense>
+      <div>
+        <PageHeader title={VIEW_TITLES.month} actions={headerActions} mobileCentered />
+        <div className="mb-5 flex min-w-0 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-3 sm:overflow-x-hidden">
+          <div className="w-full shrink-0 sm:w-auto">
+            <ViewToggle
+              currentView="month"
+              currentDate={todayStr}
+              currentWeek={currentWeekStr}
+              currentMonth={monthStr}
+              teacherId={teacher}
+            />
+          </div>
+          <div className="flex w-full min-w-0 flex-col items-center gap-3 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-3 sm:overflow-x-auto sm:overflow-y-hidden sm:overscroll-x-contain sm:touch-pan-x sm:scrollbar-hide sm:py-1 sm:min-w-0 sm:flex-1">
+            <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
+              <MonthNav
+                monthStr={monthStr}
+                currentMonthStr={currentMonthStr}
+                teacherId={teacher}
+              />
+            </div>
+            <div className="flex w-full shrink-0 justify-center sm:w-auto sm:min-w-0 sm:justify-start">
+              <CalendarTeacherSelect
+                teachers={activeTeachers}
+                teacherId={teacher}
+                view="month"
+                monthStr={monthStr}
+              />
+            </div>
+          </div>
+        </div>
+        <LessonsScheduleSection
+          variant="month"
+          todayStr={todayStr}
+          calendar={monthCalendar}
+          scheduleForm={scheduleForm}
+          defaultTeacherId={teacher}
         />
       </div>
-      <LessonsScheduleSection
-        variant="month"
-        todayStr={todayStr}
-        calendar={monthCalendar}
-        isAdmin={isAdmin}
-        scheduleForm={scheduleForm}
-        defaultTeacherId={teacher}
-      />
-    </div>
+    </LessonScheduleSheetProvider>
   )
 }

@@ -44,6 +44,17 @@ const LESSON_SCHEDULE_COLUMNS: ColumnDef[] = [
   { headerHe: 'סוג שיעור', headerEn: 'lesson_type', required: false, description: 'individual / pair / group (ברירת מחדל: individual)', exampleValues: ['individual', 'individual'] },
 ]
 
+const FAMILY_LIST_COLUMNS: ColumnDef[] = [
+  { headerHe: 'שם תלמיד', headerEn: 'student_name', required: true, description: 'שם מלא של התלמיד', exampleValues: ['יוסי כהן', 'שרה לוי'] },
+  { headerHe: 'כיתה', headerEn: 'grade', required: false, description: 'כיתה (לדוגמה: ז, ח, י)', exampleValues: ['ח', 'י'] },
+  { headerHe: 'שם הורה', headerEn: 'parent_name', required: true, description: 'שם מלא של ההורה', exampleValues: ['רחל כהן', 'דוד לוי'] },
+  { headerHe: 'טלפון הורה', headerEn: 'parent_phone', required: true, description: 'מספר טלפון של ההורה', exampleValues: ['0501234567', '0521234567'] },
+  { headerHe: 'שם הורה 2', headerEn: 'parent_name_2', required: false, description: 'הורה שני (אופציונלי)', exampleValues: ['', 'מירה לוי'] },
+  { headerHe: 'טלפון הורה 2', headerEn: 'parent_phone_2', required: false, description: 'טלפון הורה שני (אופציונלי)', exampleValues: ['', '0531234567'] },
+  { headerHe: 'הערות תלמיד', headerEn: 'student_notes', required: false, description: 'הערות על התלמיד', exampleValues: ['', ''] },
+  { headerHe: 'הערות הורה', headerEn: 'parent_notes', required: false, description: 'הערות על ההורה', exampleValues: ['', ''] },
+]
+
 const LESSON_HISTORY_COLUMNS: ColumnDef[] = [
   { headerHe: 'שם מורה', headerEn: 'teacher_name', required: true, description: 'שם המורה', exampleValues: ['דנה כהן', 'דנה כהן'] },
   { headerHe: 'שם תלמיד', headerEn: 'student_name', required: true, description: 'שם התלמיד', exampleValues: ['יוסי כהן', 'שרה לוי'] },
@@ -61,6 +72,7 @@ function getColumns(entityType: EntityType): ColumnDef[] {
     case 'teachers': return TEACHER_COLUMNS
     case 'lessons-schedule': return LESSON_SCHEDULE_COLUMNS
     case 'lessons-history': return LESSON_HISTORY_COLUMNS
+    case 'family-list': return FAMILY_LIST_COLUMNS
   }
 }
 

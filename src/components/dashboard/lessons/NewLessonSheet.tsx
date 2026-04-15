@@ -18,6 +18,7 @@ export interface NewLessonSheetProps {
   students: { id: string; full_name: string }[]
   groups: StudentGroup[]
   defaultTeacherId?: string
+  allowGroupLessons?: boolean
 }
 
 export function NewLessonSheet({
@@ -29,6 +30,7 @@ export function NewLessonSheet({
   students,
   groups,
   defaultTeacherId,
+  allowGroupLessons = true,
 }: NewLessonSheetProps) {
   const router = useRouter()
   const t = useTranslations('lessons')
@@ -51,12 +53,12 @@ export function NewLessonSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full max-w-full sm:max-w-none sm:w-[580px] h-[100dvh] max-h-[100dvh] sm:h-full sm:max-h-none p-0 flex flex-col gap-0 rounded-none border-0 sm:border-l"
+        className="w-full max-w-full sm:max-w-none sm:w-[580px] h-[100dvh] max-h-[100dvh] sm:h-full sm:max-h-none p-0 flex min-w-0 flex-col gap-0 overflow-x-hidden rounded-none border-0 sm:border-l"
         dir="rtl"
       >
         <SheetTitle className="sr-only">{t('newLessonTitle')}</SheetTitle>
 
-        <div className="shrink-0 px-6 pt-6 pb-4 border-b border-border bg-muted/20">
+        <div className="shrink-0 px-6 pt-6 pb-4 sm:px-8 border-b border-border bg-muted/20">
           <div className="flex items-start gap-3">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
               <CalendarPlus className="size-7" />
@@ -68,17 +70,19 @@ export function NewLessonSheet({
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+        <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-5 sm:px-8">
           {open ? (
             <NewLessonForm
               key={`${initialDate}-${defaultTeacherId ?? ''}`}
               students={students}
               groups={groups}
               teachers={teachers}
+              fixedTeacherId={allowGroupLessons ? undefined : defaultTeacherId}
               action={createLessonAction}
               minDateStr={minDateStr}
               initialDate={initialDate}
               defaultTeacherId={defaultTeacherId}
+              allowGroupLessons={allowGroupLessons}
               calendarFlow
               variant="sheet"
               onCancel={() => onOpenChange(false)}

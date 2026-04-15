@@ -1,64 +1,50 @@
 import Link from 'next/link'
+
+import { getTranslations } from 'next-intl/server'
+
+import { AuthEntryColumn } from '@/components/auth/AuthEntryColumn'
+import { AuthSplitShell } from '@/components/auth/AuthSplitShell'
+import { LoginSocialButtons } from '@/components/auth/LoginSocialButtons'
 import { LoginForm } from './LoginForm'
+
+async function FormColumn() {
+  const t = await getTranslations('auth.login')
+
+  return (
+    <AuthEntryColumn
+      title={t('title')}
+      card={<LoginForm />}
+      afterCard={
+        <>
+          <div className="relative my-9 mx-auto flex w-full max-w-sm items-center gap-3">
+            <span className="h-px flex-1 bg-border/90" />
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">{t('divider')}</span>
+            <span className="h-px flex-1 bg-border/90" />
+          </div>
+          <div className="mx-auto w-full max-w-sm">
+            <LoginSocialButtons />
+          </div>
+        </>
+      }
+      footer={
+        <p className="mt-8 text-sm leading-relaxed text-muted-foreground">
+          {t('noAccount')}{' '}
+          <Link
+            href="/signup"
+            className="font-semibold text-violet-600 underline-offset-4 transition-colors hover:text-violet-500 hover:underline dark:text-violet-400 dark:hover:text-violet-300"
+          >
+            {t('signupLink')}
+          </Link>
+        </p>
+      }
+    />
+  )
+}
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen flex" dir="rtl">
-      {/* Brand panel */}
-      <div className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 bg-primary p-10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-            <span className="text-white text-sm font-bold leading-none">L</span>
-          </div>
-          <span className="text-white text-lg font-semibold tracking-tight">LESSIO</span>
-        </div>
-
-        <div>
-          <blockquote className="text-white/90 text-xl font-medium leading-snug mb-3">
-            &quot;הכל במקום אחד — שיעורים, גבייה, הורים, ו-WhatsApp.&quot;
-          </blockquote>
-          <p className="text-white/60 text-sm">מערכת ניהול שיעורים לעסקי הוראה</p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-            <span className="text-white text-xs font-bold">ד</span>
-          </div>
-          <div>
-            <p className="text-white text-sm font-medium">מנהל מערכת</p>
-            <p className="text-white/60 text-xs">lessio.app</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Form panel */}
-      <div className="flex-1 flex items-center justify-center bg-background px-6 py-12">
-        <div className="w-full max-w-sm">
-          {/* Mobile logo */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground text-sm font-bold leading-none">L</span>
-            </div>
-            <span className="text-lg font-semibold tracking-tight">LESSIO</span>
-          </div>
-
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-foreground">ברוכים הבאים</h1>
-            <p className="mt-1 text-sm text-muted-foreground">הכנס את פרטי ההתחברות שלך</p>
-          </div>
-
-          <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
-            <LoginForm />
-          </div>
-
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            עוד אין לך חשבון?{' '}
-            <Link href="/signup" className="text-primary font-medium hover:underline">
-              הרשמה
-            </Link>
-          </p>
-        </div>
-      </div>
-    </main>
+    <AuthSplitShell>
+      <FormColumn />
+    </AuthSplitShell>
   )
 }

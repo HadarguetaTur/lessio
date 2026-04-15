@@ -60,21 +60,30 @@ export function getCurrentWeekSunday(timezone: string): string {
   return sunday.toISOString().substring(0, 10)
 }
 
-/** Returns 7 YYYY-MM-DD strings starting from weekSundayStr */
-export function getWeekDays(weekSundayStr: string): string[] {
+/**
+ * Returns 7 YYYY-MM-DD strings (sv-SE) for Sun→Sat starting from weekSundayStr,
+ * each interpreted in `timezone` so they match lesson bucketing and getCurrentDayStr.
+ */
+export function getWeekDays(weekSundayStr: string, timezone: string): string[] {
   const base = new Date(`${weekSundayStr}T12:00:00Z`)
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(base.getTime() + i * 24 * 60 * 60 * 1000)
-    return d.toISOString().substring(0, 10)
+    return d.toLocaleDateString('sv-SE', { timeZone: timezone })
   })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapLesson(l: any): Lesson {
-  const teacher = l.teachers as { id: string; profiles: { full_name: string } }
-  // lesson_students is an array; take the first enrolled student for display.
-  // For individual lessons there is always exactly one row.
-  const ls = (l.lesson_students as Array<{ student_id: string; students: { id: string; full_name: string } }>)[0]
+  const rawTeacher = l.teachers as
+    | { id: string; profiles: { full_name: string } | null }
+    | { id: string; profiles: { full_name: string } | null }[]
+    | null
+  const teacherRow = Array.isArray(rawTeacher) ? rawTeacher[0] ?? null : rawTeacher
+  // lesson_students is an array; prefer a row with a resolved student join (FK can be null if orphaned).
+  type LsRow = { student_id: string; students: { id: string; full_name: string } | null }
+  const rows = l.lesson_students as LsRow[] | undefined
+  const ls = rows?.find((r) => r.students != null) ?? rows?.[0]
+  const st = ls?.students
   return {
     id: l.id,
     start_at: l.start_at,
@@ -83,8 +92,13 @@ function mapLesson(l: any): Lesson {
     lesson_type: (l.lesson_type ?? 'individual') as LessonType,
     cancel_reason: l.cancel_reason,
     series_id: l.series_id ?? null,
-    teacher: { id: teacher.id, full_name: teacher.profiles.full_name },
-    student: ls ? { id: ls.students.id, full_name: ls.students.full_name } : { id: '', full_name: '—' },
+    teacher: {
+      id: teacherRow?.id ?? '',
+      full_name: teacherRow?.profiles?.full_name ?? '—',
+    },
+    student: st
+      ? { id: st.id, full_name: st.full_name }
+      : { id: (ls?.student_id as string | undefined) ?? '', full_name: '—' },
   }
 }
 

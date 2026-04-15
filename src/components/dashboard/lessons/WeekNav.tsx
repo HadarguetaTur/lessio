@@ -16,9 +16,19 @@ interface WeekNavProps {
   teachers: TeacherOption[]
   teacherId?: string
   currentWeekStr?: string
+  scheduleBasePath?: string
+  /** When false, hide the teacher filter (e.g. teacher viewing only their own schedule). */
+  showTeacherFilter?: boolean
 }
 
-export function WeekNav({ weekStr, teachers, teacherId, currentWeekStr }: WeekNavProps) {
+export function WeekNav({
+  weekStr,
+  teachers,
+  teacherId,
+  currentWeekStr,
+  scheduleBasePath = '/lessons',
+  showTeacherFilter = true,
+}: WeekNavProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const t = useTranslations('lessons')
@@ -29,10 +39,10 @@ export function WeekNav({ weekStr, teachers, teacherId, currentWeekStr }: WeekNa
     const next = new Date(base.getTime() + delta * 7 * 24 * 60 * 60 * 1000)
     const nextStr = next.toISOString().substring(0, 10)
     const params = new URLSearchParams({ week: nextStr })
-    if (teacherId) params.set('teacher', teacherId)
+    if (scheduleBasePath === '/lessons' && teacherId) params.set('teacher', teacherId)
     const student = searchParams.get('student')
     if (student) params.set('student', student)
-    router.push(`/lessons?${params.toString()}`)
+    router.push(`${scheduleBasePath}?${params.toString()}`)
   }
 
   function onTeacherChange(val: string) {
@@ -40,25 +50,28 @@ export function WeekNav({ weekStr, teachers, teacherId, currentWeekStr }: WeekNa
     if (val) params.set('teacher', val)
     const student = searchParams.get('student')
     if (student) params.set('student', student)
-    router.push(`/lessons?${params.toString()}`)
+    router.push(`${scheduleBasePath}?${params.toString()}`)
   }
 
   const label = formatWeekRangeLabel(weekStr, uiLocale)
 
   return (
-    <div className="flex items-center gap-4 flex-wrap">
+    <div className="flex w-full max-w-sm flex-col items-center gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
       {/* Week navigation — kept LTR so arrow directions stay intuitive */}
-      <div className="flex items-center gap-1" dir="ltr">
+      <div className="flex min-w-0 items-center justify-center gap-1 sm:justify-start" dir="ltr">
         {/* "היום" button — shown only when not on current week */}
         {currentWeekStr && weekStr !== currentWeekStr && (
           <Link
             href={(() => {
               const p = new URLSearchParams()
-              if (teacherId) p.set('teacher', teacherId)
+              if (scheduleBasePath === '/lessons' && teacherId) p.set('teacher', teacherId)
               const student = searchParams.get('student')
               if (student) p.set('student', student)
+              if (scheduleBasePath === '/teacher/schedule' && currentWeekStr) {
+                p.set('week', currentWeekStr)
+              }
               const q = p.toString()
-              return q ? `/lessons?${q}` : '/lessons'
+              return q ? `${scheduleBasePath}?${q}` : scheduleBasePath
             })()}
             className="px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors ml-1"
           >
@@ -83,18 +96,20 @@ export function WeekNav({ weekStr, teachers, teacherId, currentWeekStr }: WeekNa
       </div>
 
       {/* Teacher filter */}
-      <select
-        value={teacherId ?? ''}
-        onChange={(e) => onTeacherChange(e.target.value)}
-        className="text-sm border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-700"
-      >
-        <option value="">{t('allTeachers')}</option>
-        {teachers.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.full_name}
-          </option>
-        ))}
-      </select>
+      {showTeacherFilter ? (
+        <select
+          value={teacherId ?? ''}
+          onChange={(e) => onTeacherChange(e.target.value)}
+          className="w-full min-w-0 text-sm border border-gray-200 rounded-md px-2 py-1.5 text-center bg-white text-gray-700 sm:w-auto sm:max-w-xs sm:text-start"
+        >
+          <option value="">{t('allTeachers')}</option>
+          {teachers.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.full_name}
+            </option>
+          ))}
+        </select>
+      ) : null}
     </div>
   )
 }

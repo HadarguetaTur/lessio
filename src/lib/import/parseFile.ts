@@ -56,6 +56,12 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   email: ['אימייל', 'email', 'דוא"ל', 'מייל'],
   bio: ['ביוגרפיה', 'bio', 'אודות', 'תיאור'],
   hourly_rate: ['תעריף שעתי', 'hourly_rate', 'rate', 'תעריף', 'מחיר לשעה'],
+  parent_name: ['שם הורה', 'parent_name', 'parent', 'הורה'],
+  parent_phone: ['טלפון הורה', 'parent_phone', 'phone_parent'],
+  parent_name_2: ['שם הורה 2', 'parent_name_2', 'שם הורה שני'],
+  parent_phone_2: ['טלפון הורה 2', 'parent_phone_2', 'טלפון הורה שני'],
+  student_notes: ['הערות תלמיד', 'student_notes'],
+  parent_notes: ['הערות הורה', 'parent_notes'],
 }
 
 /**

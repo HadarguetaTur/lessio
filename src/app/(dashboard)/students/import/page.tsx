@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { PageHeader } from '@/components/ui/page-header'
 import { ImportFlow } from '@/components/import/ImportFlow'
@@ -7,6 +8,9 @@ import { ArrowRight } from 'lucide-react'
 
 export default async function StudentsImportPage() {
   const { orgId, role } = await getSession()
+  if (role === 'teacher') {
+    redirect('/students')
+  }
   if (role !== 'owner' && role !== 'admin') {
     return <p>אין הרשאה</p>
   }

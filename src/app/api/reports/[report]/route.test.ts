@@ -6,6 +6,10 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { getRevenueReport } from '@/lib/reports/revenue'
 import { getTeachersReport } from '@/lib/reports/teachers'
 
+vi.mock('next/headers', () => ({
+  cookies: vi.fn().mockResolvedValue({ get: () => undefined }),
+}))
+
 vi.mock('@/lib/auth/session', () => ({
   getSession: vi.fn(),
 }))
@@ -66,7 +70,7 @@ describe('GET /api/reports/[report]', () => {
     })
 
     expect(response.status).toBe(200)
-    expect(mockGetRevenueReport).toHaveBeenCalledWith('org-1', 'UTC', 12)
+    expect(mockGetRevenueReport).toHaveBeenCalledWith('org-1', 'UTC', 12, expect.any(String))
     const bytes = new Uint8Array(await response.arrayBuffer())
     expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
     const csv = new TextDecoder().decode(bytes)

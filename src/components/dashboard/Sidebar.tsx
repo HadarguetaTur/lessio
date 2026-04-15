@@ -30,8 +30,10 @@ import {
   ChevronDown,
   Banknote,
   Languages,
+  Wallet,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
+import type { SaasFeatures } from '@/lib/saas/types'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -147,16 +149,24 @@ function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathnam
   )
 }
 
+function hasSaasNav(features: SaasFeatures | undefined, key: keyof SaasFeatures): boolean {
+  if (!features) return true
+  return features[key]
+}
+
 interface SidebarProps {
   userName: string
   userRole: string
   mobile?: boolean
+  /** When set (owner/admin), hides nav entries not included in the org SaaS plan. */
+  saasFeatures?: SaasFeatures
 }
 
 export function Sidebar({
   userName,
   userRole,
   mobile = false,
+  saasFeatures,
 }: SidebarProps) {
   const pathname = usePathname()
   const t = useTranslations('nav')
@@ -166,13 +176,14 @@ export function Sidebar({
 
   const mainItems: NavItem[] = [
     { href: '/dashboard',  label: t('dashboard'),  icon: LayoutDashboard, roles: ['owner', 'admin'] },
-    { href: '/students',   label: t('students'),   icon: GraduationCap,   roles: ['owner', 'admin'] },
-    { href: '/parents',    label: t('parents'),    icon: Users,           roles: ['owner', 'admin'] },
+    { href: '/students',   label: t('students'),   icon: GraduationCap,   roles: ['owner', 'admin', 'teacher'] },
+    { href: '/parents',    label: t('parents'),    icon: Users,           roles: ['owner', 'admin', 'teacher'] },
     { href: '/teachers',   label: t('teachers'),   icon: UserRound,       roles: ['owner', 'admin'] },
     { href: '/lessons',    label: t('lessons'),    icon: BookOpen,        roles: ['owner', 'admin'] },
     { href: '/charges',    label: t('charges'),    icon: Receipt,         roles: ['owner', 'admin'] },
-    { href: '/billing',    label: t('billing'),    icon: Banknote,        roles: ['owner', 'admin'] },
-    { href: '/leads',      label: t('leads'),      icon: UserPlus,        roles: ['owner', 'admin'] },
+    { href: '/billing',        label: t('billing'),        icon: Banknote,     roles: ['owner', 'admin'] },
+    { href: '/subscriptions',  label: t('subscriptions'),  icon: CreditCard,   roles: ['owner', 'admin'] },
+    { href: '/leads',          label: t('leads'),          icon: UserPlus,     roles: ['owner', 'admin'] },
     { href: '/homework',   label: t('homework'),   icon: ClipboardList,   roles: ['owner', 'admin', 'teacher'] },
   ]
 
@@ -185,6 +196,7 @@ export function Sidebar({
   ]
 
   const settingsItems: NavItem[] = [
+    { href: '/account/billing',              label: t('accountBilling'),      icon: Wallet,           roles: ['owner'] },
     { href: '/settings/whatsapp',            label: t('settingsWhatsApp'),    icon: MessageCircle,  roles: ['owner'] },
     { href: '/settings/message-templates',   label: t('settingsMessages'),    icon: MessageSquare,  roles: ['owner'] },
     { href: '/settings/payment',             label: t('settingsPayment'),     icon: CreditCard,     roles: ['owner'] },
@@ -197,6 +209,10 @@ export function Sidebar({
   ]
 
   const teacherItems: NavItem[] = [
+    { href: '/teacher/dashboard',    label: t('teacherDashboard'),    icon: LayoutDashboard, roles: ['teacher'] },
+    { href: '/students',             label: t('teacherStudents'),     icon: GraduationCap,   roles: ['teacher'] },
+    { href: '/parents',              label: t('teacherParents'),      icon: Users,           roles: ['teacher'] },
+    { href: '/homework',             label: t('teacherHomework'),     icon: ClipboardList,   roles: ['teacher'] },
     { href: '/teacher/schedule',     label: t('teacherSchedule'),     icon: CalendarDays, roles: ['teacher'] },
     { href: '/teacher/calendar',     label: t('teacherCalendar'),     icon: CalendarDays, roles: ['teacher'] },
     { href: '/teacher/new-lesson',   label: t('teacherNewLesson'),    icon: Plus,         roles: ['teacher'] },
@@ -204,7 +220,28 @@ export function Sidebar({
     { href: '/teacher/overrides',    label: t('teacherOverrides'),    icon: CalendarX,    roles: ['teacher'] },
   ]
 
-  const visibleMainItems = mainItems.filter(({ roles }) => !roles || roles.includes(userRole))
+  const visibleMainItems = mainItems
+    .filter(({ roles }) => !roles || roles.includes(userRole))
+    .filter(({ href }) => {
+      if (href === '/leads') return hasSaasNav(saasFeatures, 'leads')
+      if (href === '/homework') return hasSaasNav(saasFeatures, 'homework')
+      return true
+    })
+
+  const visibleReportItems = reportsItems.filter(({ roles, href }) => {
+    if (roles && !roles.includes(userRole)) return false
+    if (href === '/reports/revenue') return true
+    return hasSaasNav(saasFeatures, 'full_reports')
+  })
+
+  const visibleSettingsItems = settingsItems.filter(({ roles, href }) => {
+    if (roles && !roles.includes(userRole)) return false
+    if (href === '/settings/whatsapp' || href === '/settings/message-templates') {
+      return hasSaasNav(saasFeatures, 'whatsapp_automation')
+    }
+    if (href === '/settings/ai-assistant') return hasSaasNav(saasFeatures, 'ai_assistant')
+    return true
+  })
 
   return (
     <aside
@@ -215,12 +252,15 @@ export function Sidebar({
       }`}
     >
       {/* Logo */}
-      <div className="h-14 flex items-center px-4 gap-2.5 shrink-0 border-b border-sidebar-border">
+      <Link
+        href={isTeacher ? '/teacher/dashboard' : '/dashboard'}
+        className="h-14 flex items-center px-4 gap-2.5 shrink-0 border-b border-sidebar-border hover:opacity-80 transition-opacity"
+      >
         <div className="w-7 h-7 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
           <span className="text-white text-xs font-bold leading-none">L</span>
         </div>
         <span className="text-[15px] font-semibold text-white tracking-tight">LESSIO</span>
-      </div>
+      </Link>
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin">
@@ -251,13 +291,30 @@ export function Sidebar({
           </div>
         )}
 
-        {/* Collapsible: Reports */}
+        {/* Collapsible: Reports (owner/admin) */}
         {!isTeacher && (
           <div className="pt-1">
             <CollapsibleSection
               label={t('sections.reports')}
               icon={BarChart2}
-              items={reportsItems}
+              items={visibleReportItems}
+              userRole={userRole}
+              pathname={pathname}
+              defaultOpen={false}
+            />
+          </div>
+        )}
+
+        {/* Collapsible: Reports (teacher) */}
+        {isTeacher && (
+          <div className="pt-1">
+            <CollapsibleSection
+              label={t('sections.reports')}
+              icon={BarChart2}
+              items={[
+                { href: '/teacher/reports/lessons',  label: t('teacherReportsLessons'),  icon: BarChart2,     roles: ['teacher'] },
+                { href: '/teacher/reports/students', label: t('teacherReportsStudents'), icon: GraduationCap, roles: ['teacher'] },
+              ]}
               userRole={userRole}
               pathname={pathname}
               defaultOpen={false}
@@ -271,7 +328,7 @@ export function Sidebar({
             <CollapsibleSection
               label={t('sections.settings')}
               icon={Settings}
-              items={settingsItems}
+              items={visibleSettingsItems}
               userRole={userRole}
               pathname={pathname}
               defaultOpen={false}

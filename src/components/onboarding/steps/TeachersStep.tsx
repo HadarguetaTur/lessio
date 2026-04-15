@@ -1,12 +1,20 @@
 'use client'
 
 import { useState, useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle, User, Users, Plus, Check, ArrowRight, FileUp } from 'lucide-react'
 import { addTeacher, createOwnerTeacher } from '@/app/(onboarding)/onboarding/actions'
 import { ImportFlow } from '@/components/import/ImportFlow'
+import {
+  onboardingChoiceCard,
+  onboardingGradientCta,
+  onboardingPanelCard,
+  onboardingPanelPadding,
+  onboardingStepTitle,
+} from '@/components/onboarding/onboardingVisual'
 
 type Mode = 'choose' | 'manual' | 'import'
 
@@ -25,9 +33,11 @@ export function TeachersStep({
   onBack,
   onCountChange,
 }: TeachersStepProps) {
+  const t = useTranslations('onboarding.teachers')
+  const tNav = useTranslations('onboarding.nav')
   const [mode, setMode] = useState<Mode>('choose')
   const [addedTeachers, setAddedTeachers] = useState<string[]>(
-    initialTeachers.map((t) => t.full_name)
+    initialTeachers.map((row) => row.full_name)
   )
 
   const [addState, addAction, addPending] = useActionState(
@@ -53,62 +63,63 @@ export function TeachersStep({
 
   if (mode === 'choose') {
     return (
-      <div className="max-w-lg mx-auto">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-foreground">הוספת מורים</h2>
-          <p className="text-muted-foreground mt-2">
-            האם יש מורים נוספים שעובדים איתך?
-          </p>
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="mb-8 text-center">
+          <h2 className={onboardingStepTitle}>{t('title')}</h2>
+          <p className="mt-2 text-muted-foreground">{t('subtitle')}</p>
         </div>
 
         <div className="space-y-3">
           <button
+            type="button"
             onClick={handleSoloTeacher}
-            className="w-full flex items-center gap-4 rounded-xl border border-border p-5 hover:bg-muted/50 transition-colors text-right"
+            className={onboardingChoiceCard}
           >
-            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-              <User size={20} className="text-blue-600" />
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/15 ring-1 ring-teal-400/25">
+              <User size={20} className="text-teal-600 dark:text-teal-400" />
             </div>
             <div>
-              <div className="font-medium text-foreground">אני המורה היחיד</div>
-              <div className="text-sm text-muted-foreground">אני מלמד/ת לבד ואין לי צוות</div>
+              <div className="font-medium text-foreground">{t('soloTeacher')}</div>
+              <div className="text-sm text-muted-foreground">{t('soloTeacherDesc')}</div>
             </div>
           </button>
 
           <button
+            type="button"
             onClick={() => setMode('manual')}
-            className="w-full flex items-center gap-4 rounded-xl border border-border p-5 hover:bg-muted/50 transition-colors text-right"
+            className={onboardingChoiceCard}
           >
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-              <Users size={20} className="text-emerald-600" />
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/25">
+              <Users size={20} className="text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <div className="font-medium text-foreground">הוסף מורים</div>
-              <div className="text-sm text-muted-foreground">הוספת מורים ידנית בשם ואימייל</div>
+              <div className="font-medium text-foreground">{t('addTeachers')}</div>
+              <div className="text-sm text-muted-foreground">{t('addTeachersDesc')}</div>
             </div>
           </button>
 
           <button
+            type="button"
             onClick={() => setMode('import')}
-            className="w-full flex items-center gap-4 rounded-xl border border-border p-5 hover:bg-muted/50 transition-colors text-right"
+            className={onboardingChoiceCard}
           >
-            <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-              <FileUp size={20} className="text-violet-600" />
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 ring-1 ring-violet-400/25">
+              <FileUp size={20} className="text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <div className="font-medium text-foreground">ייבוא מקובץ</div>
-              <div className="text-sm text-muted-foreground">ייבוא רשימת מורים מקובץ Excel או CSV</div>
+              <div className="font-medium text-foreground">{t('importFromFile')}</div>
+              <div className="text-sm text-muted-foreground">{t('importFromFileDesc')}</div>
             </div>
           </button>
         </div>
 
         <div className="flex justify-between mt-8">
           <Button variant="outline" onClick={onBack}>
-            <ArrowRight size={14} className="ml-1.5" />
-            חזרה
+            <ArrowRight size={14} className="ms-1.5" />
+            {tNav('back')}
           </Button>
           <Button variant="ghost" onClick={onNext}>
-            דלג
+            {tNav('skip')}
           </Button>
         </div>
       </div>
@@ -117,12 +128,10 @@ export function TeachersStep({
 
   if (mode === 'import') {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-foreground">ייבוא מורים מקובץ</h2>
-          <p className="text-muted-foreground mt-2">
-            העלה קובץ Excel או CSV עם רשימת המורים. כל מורה יקבל הזמנה למערכת.
-          </p>
+      <div className="mx-auto w-full max-w-4xl">
+        <div className="mb-8 text-center">
+          <h2 className={onboardingStepTitle}>{t('importTitle')}</h2>
+          <p className="mt-2 text-muted-foreground">{t('importSubtitle')}</p>
         </div>
 
         <ImportFlow
@@ -135,11 +144,11 @@ export function TeachersStep({
 
         <div className="flex justify-between mt-8">
           <Button variant="outline" onClick={() => setMode('choose')}>
-            <ArrowRight size={14} className="ml-1.5" />
-            חזרה
+            <ArrowRight size={14} className="ms-1.5" />
+            {tNav('back')}
           </Button>
-          <Button onClick={onNext}>
-            המשך
+          <Button className={`h-11 px-6 font-semibold ${onboardingGradientCta}`} onClick={onNext}>
+            {tNav('next')}
           </Button>
         </div>
       </div>
@@ -147,24 +156,21 @@ export function TeachersStep({
   }
 
   return (
-    <div className="max-w-lg mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-foreground">הוספת מורים</h2>
-        <p className="text-muted-foreground mt-2">
-          הזן שם ואימייל לכל מורה. הם יקבלו הזמנה למערכת.
-        </p>
+    <div className="mx-auto w-full max-w-3xl">
+      <div className="mb-8 text-center">
+        <h2 className={onboardingStepTitle}>{t('title')}</h2>
+        <p className="mt-2 text-muted-foreground">{t('manualSubtitle')}</p>
       </div>
 
-      {/* Added teachers list */}
       {addedTeachers.length > 0 && (
         <div className="mb-6 space-y-2">
           {addedTeachers.map((name, i) => (
             <div
               key={i}
-              className="flex items-center gap-3 rounded-lg border border-border p-3 bg-muted/20"
+              className="flex items-center gap-3 rounded-xl border border-border/70 bg-card/50 p-3 ring-1 ring-foreground/[0.03]"
             >
-              <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
-                <Check size={14} className="text-emerald-600" />
+              <div className="flex size-7 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-emerald-400/30">
+                <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
               </div>
               <span className="text-sm font-medium">{name}</span>
             </div>
@@ -172,28 +178,31 @@ export function TeachersStep({
         </div>
       )}
 
-      {/* Add teacher form */}
-      <form action={addAction} className="bg-card rounded-xl border border-border p-6 shadow-sm space-y-4">
+      <form
+        action={addAction}
+        className={`${onboardingPanelCard} ${onboardingPanelPadding} space-y-4`}
+      >
         {addState?.error && (
-          <div className="flex items-start gap-2.5 text-sm text-destructive bg-destructive/5 border border-destructive/20 p-3 rounded-lg">
-            <AlertCircle size={15} className="shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-sm text-destructive">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden />
             <span>{addState.error}</span>
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="teacher_name">שם מלא</Label>
+            <Label htmlFor="teacher_name">{t('fullName')}</Label>
             <Input
               id="teacher_name"
               name="full_name"
               type="text"
               required
-              placeholder="שם המורה"
+              placeholder={t('namePlaceholder')}
+              className="h-11 bg-background/50 px-3.5"
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="teacher_email">אימייל</Label>
+            <Label htmlFor="teacher_email">{t('emailLabel')}</Label>
             <Input
               id="teacher_email"
               name="email"
@@ -201,23 +210,24 @@ export function TeachersStep({
               required
               placeholder="teacher@example.com"
               dir="ltr"
+              className="h-11 bg-background/50 px-3.5"
             />
           </div>
         </div>
 
         <Button type="submit" variant="outline" disabled={addPending} className="w-full">
-          <Plus size={14} className="ml-1.5" />
-          {addPending ? 'מוסיף...' : 'הוסף מורה'}
+          <Plus size={14} className="ms-1.5" />
+          {addPending ? t('adding') : t('addTeacher')}
         </Button>
       </form>
 
       <div className="flex justify-between mt-8">
         <Button variant="outline" onClick={() => setMode('choose')}>
-          <ArrowRight size={14} className="ml-1.5" />
-          חזרה
+          <ArrowRight size={14} className="ms-1.5" />
+          {tNav('back')}
         </Button>
-        <Button onClick={onNext}>
-          המשך
+        <Button className={`h-11 px-6 font-semibold ${onboardingGradientCta}`} onClick={onNext}>
+          {tNav('next')}
         </Button>
       </div>
     </div>

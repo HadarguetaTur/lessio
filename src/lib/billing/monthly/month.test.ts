@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { DateTime } from 'luxon'
-import { getBillingMonthRange, getCurrentBillingMonth } from './month'
+import {
+  formatBillingMonthLabel,
+  getBillingMonthRange,
+  getBillingMonthSelectOptionValues,
+  getCurrentBillingMonth,
+} from './month'
 
 describe('billing month helpers', () => {
   it('uses the organization timezone when formatting the current billing month', () => {
@@ -15,5 +20,16 @@ describe('billing month helpers', () => {
 
     expect(range.monthStartUTC).toBe('2026-04-30T21:00:00.000Z')
     expect(range.monthEndUTC).toBe('2026-05-31T21:00:00.000Z')
+  })
+
+  it('formats billing month labels with the requested Intl locale', () => {
+    expect(formatBillingMonthLabel('2026-04', 'Asia/Jerusalem', 'en-US')).toMatch(/April 2026/)
+    expect(formatBillingMonthLabel('2026-04', 'Asia/Jerusalem', 'he-IL')).toContain('אפריל')
+  })
+
+  it('includes an out-of-range selected month in select options', () => {
+    const opts = getBillingMonthSelectOptionValues('UTC', '2030-01', 2, 2)
+    expect(opts).toContain('2030-01')
+    expect(opts.length).toBeGreaterThan(4)
   })
 })

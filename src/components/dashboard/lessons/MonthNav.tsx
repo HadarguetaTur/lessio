@@ -9,10 +9,16 @@ import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 interface MonthNavProps {
   monthStr: string       // "YYYY-MM"
   currentMonthStr: string // "YYYY-MM" for today
+  scheduleBasePath?: string
   teacherId?: string
 }
 
-export function MonthNav({ monthStr, currentMonthStr, teacherId }: MonthNavProps) {
+export function MonthNav({
+  monthStr,
+  currentMonthStr,
+  scheduleBasePath = '/lessons',
+  teacherId,
+}: MonthNavProps) {
   const t = useTranslations('lessons')
   const uiLocale = parseAppLocale(useLocale())
   const intlLocale = toIntlLocale(uiLocale)
@@ -24,10 +30,10 @@ export function MonthNav({ monthStr, currentMonthStr, teacherId }: MonthNavProps
     const next = new Date(Date.UTC(year, month - 1 + delta, 1))
     const nextStr = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`
     const params = new URLSearchParams({ view: 'month', month: nextStr })
-    if (teacherId) params.set('teacher', teacherId)
+    if (scheduleBasePath === '/lessons' && teacherId) params.set('teacher', teacherId)
     const student = searchParams.get('student')
     if (student) params.set('student', student)
-    router.push(`/lessons?${params.toString()}`)
+    router.push(`${scheduleBasePath}?${params.toString()}`)
   }
 
   const isCurrentMonth = monthStr === currentMonthStr
@@ -39,15 +45,15 @@ export function MonthNav({ monthStr, currentMonthStr, teacherId }: MonthNavProps
   }).format(new Date(Date.UTC(year, month - 1, 15)))
 
   return (
-    <div className="flex items-center gap-1" dir="ltr">
+    <div className="flex w-full max-w-md items-center justify-center gap-1 sm:w-auto sm:max-w-none sm:justify-start" dir="ltr">
       {!isCurrentMonth && (
         <Link
           href={(() => {
             const p = new URLSearchParams({ view: 'month', month: currentMonthStr })
-            if (teacherId) p.set('teacher', teacherId)
+            if (scheduleBasePath === '/lessons' && teacherId) p.set('teacher', teacherId)
             const student = searchParams.get('student')
             if (student) p.set('student', student)
-            return `/lessons?${p.toString()}`
+            return `${scheduleBasePath}?${p.toString()}`
           })()}
           className="px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors ml-1"
         >

@@ -4,6 +4,12 @@ import { Button } from '@/components/ui/button'
 import { CheckCircle2, GraduationCap, Users, BookOpen, UserCheck } from 'lucide-react'
 import { completeOnboarding } from '@/app/(onboarding)/onboarding/actions'
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
+import {
+  onboardingGradientCta,
+  onboardingPanelCard,
+  onboardingStepTitle,
+} from '@/components/onboarding/onboardingVisual'
 
 interface CompleteStepProps {
   counts: {
@@ -15,6 +21,7 @@ interface CompleteStepProps {
 }
 
 export function CompleteStep({ counts }: CompleteStepProps) {
+  const t = useTranslations('onboarding.complete')
   const [pending, setPending] = useState(false)
 
   const handleComplete = async () => {
@@ -23,33 +30,51 @@ export function CompleteStep({ counts }: CompleteStepProps) {
   }
 
   const stats = [
-    { label: 'מורים', value: counts.teachers, icon: UserCheck, color: 'text-blue-600 bg-blue-50' },
-    { label: 'תלמידים', value: counts.students, icon: GraduationCap, color: 'text-emerald-600 bg-emerald-50' },
-    { label: 'הורים', value: counts.parents, icon: Users, color: 'text-purple-600 bg-purple-50' },
-    { label: 'שיעורים', value: counts.lessons, icon: BookOpen, color: 'text-amber-600 bg-amber-50' },
+    {
+      label: t('stats.teachers'),
+      value: counts.teachers,
+      icon: UserCheck,
+      color: 'text-teal-700 bg-teal-500/15 ring-1 ring-teal-400/25 dark:text-teal-300',
+    },
+    {
+      label: t('stats.students'),
+      value: counts.students,
+      icon: GraduationCap,
+      color: 'text-emerald-700 bg-emerald-500/15 ring-1 ring-emerald-400/25 dark:text-emerald-300',
+    },
+    {
+      label: t('stats.parents'),
+      value: counts.parents,
+      icon: Users,
+      color: 'text-violet-700 bg-violet-500/15 ring-1 ring-violet-400/25 dark:text-violet-300',
+    },
+    {
+      label: t('stats.lessons'),
+      value: counts.lessons,
+      icon: BookOpen,
+      color: 'text-amber-700 bg-amber-500/15 ring-1 ring-amber-400/30 dark:text-amber-300',
+    },
   ]
 
   return (
-    <div className="max-w-lg mx-auto text-center">
-      <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
-        <CheckCircle2 size={40} className="text-emerald-600" />
+    <div className="mx-auto w-full max-w-3xl text-center">
+      <div className="mx-auto mb-6 flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-600/25 shadow-md ring-4 ring-emerald-400/20">
+        <CheckCircle2 size={40} className="text-emerald-600 dark:text-emerald-400" aria-hidden />
       </div>
 
-      <h2 className="text-2xl font-bold text-foreground mb-2">הכל מוכן!</h2>
-      <p className="text-muted-foreground mb-8">
-        המערכת שלך מוכנה לשימוש. הנה סיכום של מה שהגדרת:
-      </p>
+      <h2 className={`${onboardingStepTitle} mb-2`}>{t('title')}</h2>
+      <p className="text-muted-foreground mb-8">{t('subtitle')}</p>
 
-      <div className="grid grid-cols-2 gap-3 mb-8">
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="bg-card rounded-xl border border-border p-4 flex items-center gap-3"
+            className={`${onboardingPanelCard} flex items-center gap-3 p-4`}
           >
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stat.color}`}>
+            <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${stat.color}`}>
               <stat.icon size={20} />
             </div>
-            <div className="text-right">
+            <div className="text-start">
               <div className="text-2xl font-bold text-foreground">{stat.value}</div>
               <div className="text-xs text-muted-foreground">{stat.label}</div>
             </div>
@@ -60,9 +85,9 @@ export function CompleteStep({ counts }: CompleteStepProps) {
       <Button
         onClick={handleComplete}
         disabled={pending}
-        className="w-full h-12 text-base"
+        className={`h-12 w-full text-base font-semibold ${onboardingGradientCta}`}
       >
-        {pending ? 'עובר לדשבורד...' : 'כניסה לדשבורד'}
+        {pending ? t('loading') : t('goToDashboard')}
       </Button>
     </div>
   )

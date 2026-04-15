@@ -39,6 +39,7 @@ export interface MonthViewClientProps {
   todayStr: string
   monthStr: string
   weekStr: string
+  scheduleBasePath?: string
   teacherId?: string
   studentId?: string
   dayHeaders: string[]
@@ -55,6 +56,7 @@ export function MonthViewClient({
   todayStr,
   monthStr,
   weekStr,
+  scheduleBasePath = '/lessons',
   teacherId,
   studentId,
   dayHeaders,
@@ -80,7 +82,21 @@ export function MonthViewClient({
   const studentQs = studentId ? `&student=${encodeURIComponent(studentId)}` : ''
 
   function lessonHref(lessonId: string) {
+    if (scheduleBasePath === '/teacher/schedule') {
+      return `/teacher/schedule/${lessonId}?week=${weekStr}`
+    }
     return `/lessons/${lessonId}?week=${weekStr}${teacherQs}${studentQs}`
+  }
+
+  function dayViewMoreHref(dateStr: string) {
+    const p = new URLSearchParams({ view: 'day', date: dateStr })
+    if (scheduleBasePath === '/lessons') {
+      if (teacherId) p.set('teacher', teacherId)
+      if (studentId) p.set('student', studentId)
+    } else if (studentId) {
+      p.set('student', studentId)
+    }
+    return `${scheduleBasePath}?${p.toString()}`
   }
 
   return (
@@ -120,33 +136,40 @@ export function MonthViewClient({
               </span>
             )
 
+            const pickable = Boolean(pickDayEnabled && onPickDay)
+
             return (
               <div
                 key={dateStr}
+                role={pickable ? 'button' : undefined}
+                tabIndex={pickable ? 0 : undefined}
+                onClick={pickable ? () => onPickDay!(dateStr) : undefined}
+                onKeyDown={
+                  pickable
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          onPickDay!(dateStr)
+                        }
+                      }
+                    : undefined
+                }
+                aria-label={pickable ? dateStr : undefined}
                 className={cn(
-                  'min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 flex flex-col gap-0.5 sm:gap-1 min-w-0',
+                  'min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 flex flex-col gap-0.5 sm:gap-1 min-w-0 text-start',
                   isToday
                     ? 'bg-primary/5'
                     : isCurrentMonth && isThisMonth
                       ? 'bg-card'
-                      : 'bg-muted/30'
+                      : 'bg-muted/30',
+                  pickable &&
+                    'cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10'
                 )}
               >
                 <div className="flex items-start justify-between gap-0.5 min-w-0">
-                  {pickDayEnabled && onPickDay ? (
-                    <button
-                      type="button"
-                      onClick={() => onPickDay(dateStr)}
-                      className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      aria-label={String(dayNum)}
-                    >
-                      {dayLink}
-                    </button>
-                  ) : (
-                    <span className="shrink-0">{dayLink}</span>
-                  )}
+                  <span className="shrink-0 pointer-events-none">{dayLink}</span>
                   {holiday && (
-                    <span className="text-[8px] sm:text-[9px] text-purple-600 truncate max-w-[min(100%,4.5rem)] sm:max-w-[60px] leading-tight text-start">
+                    <span className="text-[8px] sm:text-[9px] text-purple-600 truncate max-w-[min(100%,4.5rem)] sm:max-w-[60px] leading-tight text-start pointer-events-none">
                       {holiday}
                     </span>
                   )}
@@ -172,6 +195,7 @@ export function MonthViewClient({
                       key={lesson.id}
                       href={lessonHref(lesson.id)}
                       onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
                       className={cn(
                         'text-[10px] px-1.5 py-0.5 rounded truncate leading-tight',
                         STATUS_CHIP[lesson.status],
@@ -189,7 +213,9 @@ export function MonthViewClient({
 
                 {dayLessons.length > 3 && (
                   <Link
-                    href={`/lessons?view=day&date=${dateStr}${teacherId ? `&teacher=${teacherId}` : ''}${studentId ? `&student=${encodeURIComponent(studentId)}` : ''}`}
+                    href={dayViewMoreHref(dateStr)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
                     className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground transition-colors truncate"
                   >
                     {t('moreCount', { count: dayLessons.length - 3 })}

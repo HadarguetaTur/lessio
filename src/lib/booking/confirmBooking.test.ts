@@ -38,7 +38,7 @@ const validLock = {
 function buildChain(result: unknown) {
   const self: Record<string, unknown> = {}
   const pass = () => self
-  ;['select', 'eq', 'maybeSingle', 'update', 'insert', 'neq'].forEach(m => { self[m] = pass })
+  ;['select', 'eq', 'maybeSingle', 'update', 'insert', 'neq', 'lt', 'gt', 'limit'].forEach(m => { self[m] = pass })
   self['single']      = () => Promise.resolve(result)
   self['maybeSingle'] = () => Promise.resolve(result)
   self['then'] = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>

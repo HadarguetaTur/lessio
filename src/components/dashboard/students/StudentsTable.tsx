@@ -31,6 +31,9 @@ interface StudentsTableProps {
   tStatus: string
   /** When set (e.g. from ?openStudent=), opens the detail sheet for this student even if not in the current table rows. */
   initialSheetStudent?: Student | null
+  canManage?: boolean
+  sheetVariant?: 'admin' | 'teacher'
+  showArchiveActions?: boolean
 }
 
 export function StudentsTable({
@@ -40,6 +43,9 @@ export function StudentsTable({
   tGrade,
   tStatus,
   initialSheetStudent = null,
+  canManage,
+  sheetVariant = 'admin',
+  showArchiveActions = true,
 }: StudentsTableProps) {
   const t = useTranslations('students')
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
@@ -120,7 +126,7 @@ export function StudentsTable({
                       className="px-5 py-3.5"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <RowActions student={student} />
+                      {showArchiveActions ? <RowActions student={student} /> : null}
                     </TableCell>
                   </TableRow>
                 )
@@ -135,6 +141,8 @@ export function StudentsTable({
         teachers={teachers}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        canManage={canManage}
+        variant={sheetVariant}
       />
     </>
   )

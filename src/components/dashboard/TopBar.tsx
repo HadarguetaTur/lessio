@@ -24,6 +24,7 @@ const ROUTE_KEY_MAP: Record<string, string> = {
   '/lessons':                     'lessons',
   '/charges':                     'charges',
   '/billing':                     'billing',
+  '/subscriptions':               'subscriptions',
   '/leads':                       'leads',
   '/homework':                    'homework',
   '/reports':                     'sections.reports',
@@ -93,6 +94,7 @@ interface TopBarProps {
 export function TopBar({ currentLocale, userRole, mobileNavigation }: TopBarProps) {
   const pathname = usePathname()
   const t = useTranslations('nav')
+  const tc = useTranslations('common')
   const { sectionKey, pageKey } = getBreadcrumbKeys(pathname)
   const section = sectionKey ? t(sectionKey as Parameters<typeof t>[0]) : null
   const page = pageKey ? t(pageKey as Parameters<typeof t>[0]) : (pathname.split('/').pop() ?? '')
@@ -115,7 +117,8 @@ export function TopBar({ currentLocale, userRole, mobileNavigation }: TopBarProp
             <SheetContent
               side={currentLocale === 'he' ? 'right' : 'left'}
               className="w-[280px] p-0 sm:max-w-[280px]"
-              showCloseButton={false}
+              closeAriaLabel={tc('actions.close')}
+              closeButtonClassName="text-sidebar-primary hover:bg-sidebar-accent hover:text-sidebar-primary-foreground"
             >
               <SheetHeader className="sr-only">
                 <SheetTitle>{page}</SheetTitle>

@@ -1,9 +1,10 @@
+
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprint 21 complete, Sprint 22 in progress*
+*Updated: Sprint 22 complete, Sprint 23 planned*
 
 ---
 
-## Completed Sprints (1–11)
+## Completed Sprints (1–22)
 
 | Sprint | Theme | Status |
 |--------|-------|--------|
@@ -18,374 +19,17 @@
 | 9 | KPI dashboard + auto payment request after lesson | ✅ Done |
 | 10 | Org holidays + teacher self-service availability/overrides | ✅ Done |
 | 11 | Recurring lesson series (create/cancel, UI) | ✅ Done |
-
----
-
-## Sprint 12 — Automated WhatsApp Reminders
-**Status:** Done  
-**Branch:** `sprint-12`
-
-**Goal:** Proactive outreach — lesson reminders to parents before a lesson, and payment follow-ups on overdue charges. Both configurable per org, idempotent.
-
-**Deliverables:**
-- DB: `reminders_enabled`, `lesson_reminder_hours`, `payment_reminder_days` on `organizations`
-- DB: `notification_log` table (dedup log for all automated sends)
-- Supabase Edge Function: `lesson-reminders` (cron: every hour)
-- Supabase Edge Function: `payment-reminders` (cron: daily 09:00 UTC)
-- Dashboard: `/settings/reminders` — owner toggle + timing config + last 20 log entries
-
-**Key files:**
-- `supabase/migrations/20260330000004_reminders.sql`
-- `supabase/functions/lesson-reminders/index.ts`
-- `supabase/functions/payment-reminders/index.ts`
-- `src/app/(dashboard)/settings/reminders/page.tsx`
-- `src/app/(dashboard)/settings/reminders/actions.ts`
-
----
-
-## Sprint 13 — Single Lesson Scheduling + Parent Portal + UX/UI Polish
-**Status:** In Progress  
-**Depends on:** Sprint 12 complete
-
-**Goal:** Admin, teacher, and parent can all create single lessons (not just recurring series). Parents get a dedicated web portal with WhatsApp OTP login. The dashboard UX is restructured before i18n work begins.
-
-### Story 1 — Admin: Single Lesson Creation
-- New page: `/lessons/new` with form (teacher, student, date, time, duration)
-- Server action validates conflicts (same checks as series: teacher overlap, student overlap, holiday, slot lock)
-- `/lessons` page gets two buttons: "שיעור חד פעמי" + "שיעורים קבועים"
-- New lib: `src/lib/lessons/createLesson.ts`
-
-### Story 2 — Teacher: Single Lesson Creation
-- New page: `/teacher/new-lesson` (teacher from session, selects student + date + time)
-- Lesson created immediately (no approval step)
-- Sidebar gains "שיעור חדש" link for teacher role
-
-### Story 3 — Parent Portal (phone OTP)
-- New DB table: `portal_otps` (phone, org_id, otp_hash, expires_at, used)
-- Route group: `/portal/[orgId]/` — outside `(dashboard)`, no Supabase auth
-- Login flow: phone entry → OTP sent via WhatsApp → verify → httpOnly cookie (30 days)
-- Portal home: upcoming lessons + outstanding balance
-- Portal book: reuses `AvailabilityCalendar` + booking lib with portal-session actions
-- Portal payments: charges history + payment links
-- New env: `PORTAL_JWT_SECRET`
-- Portal URL displayed in `/settings/whatsapp` for owner to share
-
-### Story 4 — UX/UI Polish
-- Sidebar: grouped sections (Operations / Settings / Teacher) with visual dividers
-- `/settings/page.tsx`: landing page with setting-category cards (fixes 404)
-- WeekNav: "היום" button to jump to current week
-- `/lessons` + `/dashboard`: `loading.tsx` skeleton screens
-- `proxy.ts`: add `/portal/*` to public bypass list
-
-**Key new files:**
-- `src/lib/lessons/createLesson.ts`
-- `src/lib/portal/session.ts`, `src/lib/portal/otp.ts`
-- `src/app/(dashboard)/lessons/new/`
-- `src/app/(dashboard)/teacher/new-lesson/`
-- `src/app/portal/[orgId]/` (layout, login, home, book, payments)
-- `src/app/(dashboard)/settings/page.tsx`
-- `supabase/migrations/20260401000001_portal_otps.sql`
-
----
-
-## Sprint 14 — Homework Module + WhatsApp Smart Intents
-**Status:** Planned  
-**Depends on:** Sprint 13 complete
-
-**Goal:** Teachers send homework via WhatsApp. Parents can query their status (debt, schedule) conversationally without calling the admin.
-
-### Story 1 — Homework Module
-- DB: `homework_templates` (org_id, title, subject, body_markdown, created_by)
-- DB: `homework_assignments` (template_id or ad-hoc body, student_id, teacher_id, due_date, status: pending/done/overdue)
-- Dashboard: `/homework/templates` — teacher creates/edits templates
-- Dashboard: `/homework/assign` — assign template or one-off to student(s)
-- Delivery: WhatsApp message to student (if `students.phone` set) or primary parent
-- Completion: student/parent replies "סיימתי" → status = done → teacher WhatsApp alert
-- Reminder: Edge Function `homework-reminders` (cron daily) — send reminder 1 day before due_date
-- Log: entries in `notification_log` (new type: `homework_reminder`)
-
-### Story 2 — WhatsApp Parent Self-Service Intents
-Extend the webhook state machine to handle incoming parent queries without human intervention:
-
-| Intent keywords | Response |
-|----------------|---------|
-| "חוב" / "כמה אני חייב" / "תשלום" | Sum of pending charges + payment links (if any) |
-| "שיעורים" / "מתי שיעור" / "לו״ז" | Next 3 scheduled lessons with date + time + teacher |
-| "קבלה" / "היסטוריה" | Last 3 paid charges with amounts |
-| "פורטל" / "כניסה" | Portal link for this org |
-
-**Key new files:**
-- `supabase/migrations/..._homework.sql`
-- `src/lib/homework/`
-- `src/app/(dashboard)/homework/` (templates + assign pages)
-- `src/app/api/whatsapp/webhook/route.ts` (update: new intents)
-- `supabase/functions/homework-reminders/index.ts`
-
-**Schema additions:**
-```sql
-CREATE TABLE homework_templates (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  title           text NOT NULL,
-  subject         text,
-  body            text NOT NULL,
-  created_by      uuid NOT NULL REFERENCES profiles(id),
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE homework_assignments (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  teacher_id      uuid NOT NULL REFERENCES teachers(id),
-  student_id      uuid NOT NULL REFERENCES students(id),
-  template_id     uuid REFERENCES homework_templates(id),
-  body            text NOT NULL,
-  due_date        date,
-  status          text NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'done', 'overdue')),
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
-```
-
----
-
-## Sprint 15 — Tax Receipts (חשבוניות מס) + Bit/PayBox
-**Status:** Planned  
-**Depends on:** Sprint 14 complete
-
-**Goal:** Israeli legal compliance (receipts for every payment) and support for dominant Israeli payment methods (Bit, PayBox).
-
-### Story 1 — חשבוניות ירוקות Integration
-- API integration with [חשבוניות ירוקות](https://www.hashbonot.co.il) (most popular Israeli receipt provider — has REST API)
-- On charge marked paid → auto-create receipt via API → store receipt URL on charge
-- WhatsApp message to parent with receipt link: "קבלה על תשלום ₪[sum]: [link]"
-- Dashboard: receipt link in charge detail view
-- Settings: `/settings/receipts` — owner enters חשבוניות ירוקות API key (encrypted)
-
-### Story 2 — Bit Business API
-- New payment provider: `src/lib/payments/bit.ts`
-- Bit Business payment link generation (using Bit's API)
-- Webhook: `POST /api/payments/bit` — mark charge paid
-- DB: widen `organizations.payment_provider` CHECK to include `'bit'`
-
-### Story 3 — PayBox
-- New payment provider: `src/lib/payments/paybox.ts` (PayBox has REST API)
-- Same pattern as Bit
-
-**Schema changes:**
-```sql
--- Widen payment provider enum (also fixes the existing Cardcom-only constraint)
-ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_payment_provider_check;
-ALTER TABLE organizations ADD CONSTRAINT organizations_payment_provider_check
-  CHECK (payment_provider IN ('cardcom', 'payplus', 'bit', 'paybox', 'stripe'));
-
--- Receipt tracking on charges
-ALTER TABLE charges ADD COLUMN receipt_url text;
-ALTER TABLE charges ADD COLUMN receipt_issued_at timestamptz;
-```
-
-**New env vars:**
-- `HASHBONOT_API_KEY` (per org, encrypted in `payment_config_encrypted` JSON)
-
----
-
-## Sprint 16 — Custom Message Templates + iCal Export + Portal Receipt View
-**Status:** ✅ Done
-**Depends on:** Sprint 15 complete
-
-**Goal:** Org owners can customize every WhatsApp message. Teachers get a calendar subscription URL. Both reduce support load and increase retention.
-
-### Story 1 — Custom WhatsApp Templates
-- DB: `message_templates` (org_id, type enum, body_template with `{{variables}}`)
-- Types: `booking_confirmation`, `lesson_reminder`, `payment_reminder`, `payment_request`, `homework_assignment`, `homework_reminder`, `cancellation_confirmation`
-- Dashboard: `/settings/message-templates` — editable list with preview
-- Variable substitution: `{{parent_name}}`, `{{teacher_name}}`, `{{date}}`, `{{time}}`, `{{amount}}`, `{{payment_link}}`
-- Fallback: if no custom template for a type, use system default Hebrew string
-- All WhatsApp send functions updated to call `resolveTemplate(orgId, type, vars)` before sending
-
-### Story 2 — iCal Export / Calendar Subscription
-- API route: `GET /api/calendar/[token].ics` — returns valid iCal file
-- Token = signed JWT with `teacherId` + `orgId` (no expiry — can be revoked by regenerating)
-- Includes all `scheduled` lessons for this teacher (past 2 weeks + future 6 months)
-- Teacher portal: `/teacher/calendar` — shows subscription URL + "copy link" + regenerate button
-- Works with Google Calendar, Apple Calendar, Outlook ("subscribe to calendar" feature)
-
-**Schema changes:**
-```sql
-CREATE TABLE message_templates (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  type            text NOT NULL,
-  body_template   text NOT NULL,
-  updated_at      timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (organization_id, type)
-);
-
-ALTER TABLE teachers ADD COLUMN ical_token text; -- signed JWT, regeneratable
-```
-
----
-
-## Sprint 17 — Analytics & Reporting
-**Status:** ✅ Done
-**Depends on:** Sprint 16 complete
-
-**Goal:** Business owners and admins get a full reports section with interactive charts, tabular data, and CSV export. KPI dashboard extended with 3 new indicators. Deprecated WhatsApp helpers deleted.
-
-### Delivered:
-- `src/lib/reports/` — data layer: revenue, lessons, debt, teachers, students
-- `/reports` landing page + `דוחות` sidebar section (owner/admin)
-- `/reports/revenue` — bar chart + table, configurable period
-- `/reports/lessons` — grouped bar chart (scheduled vs cancelled) + table
-- `/reports/debt` — tabular debt list sorted by balance desc
-- `/reports/teachers` — horizontal bar chart + table
-- `/reports/students` — at-risk alert block + full activity table
-- `GET /api/reports/[report]` — CSV export with UTF-8 BOM for all 5 reports
-- `CsvDownloadButton` + `PeriodSelector` shared client components
-- KPI dashboard: 3 new cards — cancellation rate, at-risk students, new leads this month
-- Story 0: deleted 11 deprecated WhatsApp send helpers from `src/lib/whatsapp/index.ts`
-
-**New dependency:** `recharts ^3.8.1` (interactive charts)
-
-**Schema additions:** None — all data from existing tables.
-
----
-
-## Sprint 18 — Super Admin Dashboard
-**Status:** ✅ Done
-**Branch:** `sprint-18`
-
-### Delivered:
-- Schema: `superadmin` role, `profiles.organization_id` nullable, invariant CHECK constraint
-- Session: `requireDashboardSession()` / `requireSuperAdminSession()` / `requireMutation()`
-- Support mode: signed httpOnly cookie (30m TTL), `SupportModeBanner`, `StartSupportModeButton`
-- Admin shell: `(admin)` route group, dark `AdminSidebar`, `AdminHeader` with Platform Admin label
-- `/admin/dashboard` — platform KPIs, needs-setup list, recently-active orgs
-- `/admin/orgs` — list with search/status/missingSetup filters, derived status (`needs_setup / active / inactive`)
-- `/admin/orgs/new` — 7-step resilient org creation with compensating rollback
-- `/admin/orgs/[id]` — org detail view + settings edit form
-- `/admin/billing` — billing readiness table (per-org payment/receipt/revenue data)
-- `SUPPORT_SESSION_SECRET` env var added to `ALWAYS_REQUIRED`
-- Tests: 227/227 passing (19 new tests added)
-
----
-
-## Sprint 19 — AI WhatsApp Assistant
-**Status:** ✅ Done
-**Branch:** `sprint-19`
-
-### Delivered:
-- Schema: `conversation_log` table + RLS (owner-only) + `organizations.ai_assistant_enabled`
-- Schema: `whatsapp_processed_messages` table + index (idempotency dedup)
-- `src/lib/ai-assistant/buildSystemPrompt.ts` — context-rich Hebrew system prompt builder
-- `src/lib/ai-assistant/conversationLog.ts` — DB read helpers (`countAssistantReplies`, `getRecentHistory`)
-- `src/lib/ai-assistant/index.ts` — `aiAssistant()`: safety cap (3/24h) + OpenAI gpt-4o-mini call + token logging
-- `src/lib/whatsapp/idempotency.ts` — `claimIncomingMessage` + `releaseIncomingMessageClaim`
-- `src/app/api/whatsapp/webhook/route.ts` — unknown-intent fallback calls `aiAssistant()` when enabled; error → falls back to template
-- `src/app/(dashboard)/settings/ai-assistant/` — enable toggle + conversation log viewer (last 50 rows)
-- Sidebar: "עוזר AI" nav item (owner) + settings card
-- `OPENAI_API_KEY` added to `REQUIRED_IN_PRODUCTION`
-- Tests: `buildSystemPrompt` snapshot + safety cap unit test + webhook error fallback
-
-**Not completed in Sprint 19 (deferred to Sprint 20):**
-- Webhook does not yet call `claimIncomingMessage` / `releaseIncomingMessageClaim`
-- `conversation_log` write (user + assistant turns) not yet called from webhook handler
-- AI key-absent guard in `saveAiAssistantSettings`
-- Silent dead-ends in webhook (no-student path, unresolvable parent in self-service intents)
-- Idempotency regression tests
-
----
-
-## Sprint 20 — AI Assistant + WhatsApp Hardening
-**Status:** ✅ Done
-**Branch:** `sprint-20`
-**Depends on:** Sprint 19 complete
-
-**Goal:** Close the AI assistant release safely before internationalization begins. Wire the idempotency layer into the webhook handler, complete the conversation log write path, remove silent dead-ends, add runtime guardrails on the AI assistant, and add targeted regression tests for all failure branches.
-
-### Stories:
-1. **Webhook idempotency wiring** — call `claimIncomingMessage` at handler entry; call `releaseIncomingMessageClaim` on retryable failures; return `200` on duplicate without re-processing
-2. **Conversation log write** — add `appendTurn()` helper; call it from the AI fallback path in the webhook after a successful AI reply; catch and log any write failure without crashing
-3. **Silent dead-end removal** — when parent is found but has no linked student → send `unknown_intent` template instead of silently returning; same for unresolvable parent in balance/schedule intents; token decryption failure → log + `200`, do not release claim
-4. **AI runtime hardening** — `saveAiAssistantSettings` rejects enabling AI when `OPENAI_API_KEY` is absent; settings page shows amber banner when key is missing but AI is enabled; OpenAI `APIError` logged with HTTP status code before rethrowing
-5. **Regression tests** — idempotency helpers unit tests; webhook duplicate/retry/decrypt-failure paths; `appendTurn` fire-and-forget contract; AI key-absent guard
-
-### Retention policy for MVP:
-- `conversation_log` and `whatsapp_processed_messages` kept indefinitely for Sprint 20
-- Automated pruning deferred to data-retention workstream before international launch
-
-### Exit criteria:
-- All unknown-intent and self-service WhatsApp flows either reply or remain retryable
-- Duplicate Meta retries return `200` without double-processing
-- AI cannot be newly enabled when `OPENAI_API_KEY` is absent
-- `conversation_log` populated for every AI exchange
-- `npm test` passes 100%
-- Manual QA on staging complete
-
-**Key files:**
-- `src/app/api/whatsapp/webhook/route.ts` (update: idempotency + log write + dead-end removal)
-- `src/lib/ai-assistant/conversationLog.ts` (update: add `appendTurn`)
-- `src/lib/ai-assistant/index.ts` (update: OpenAI error classification)
-- `src/app/(dashboard)/settings/ai-assistant/actions.ts` (update: key guard)
-- `src/app/(dashboard)/settings/ai-assistant/page.tsx` (update: key-absent warning)
-- `src/lib/whatsapp/idempotency.test.ts` (new)
-- `src/lib/ai-assistant/conversationLog.test.ts` (new)
-
----
-
-## Sprint 21 — i18n Infrastructure + English
-**Status:** ✅ Done
-**Branch:** `sprint-21`
-**Depends on:** Sprint 20 complete
-
-**Goal:** Lay multilingual infrastructure before international expansion. Extract all Hebrew dashboard strings to translation keys, add English as the first additional language. Hebrew users see zero visible change.
-
-### Architecture:
-- `next-intl ^3.x` in cookie-based locale mode (no URL-path prefix — dashboard is auth-gated, no SEO value)
-- Locales: `['he', 'en']`, default `'he'`
-- `messages/he.json` — all dashboard Hebrew strings
-- `messages/en.json` — full English translation
-- `profiles.preferred_locale` column — persists user choice across devices
-- Locale switcher component in dashboard header
-- `dir="rtl"` for Hebrew, `dir="ltr"` for English via root layout
-
-### Scope:
-- `next-intl` config (`src/i18n/routing.ts`, `src/i18n/request.ts`, `next.config.ts`)
-- Hebrew string extraction from all ~60 dashboard pages + components
-- English translation (`messages/en.json`)
-- Locale switcher (`LocaleSwitcher` component + `saveLocaleAction`)
-- RTL/LTR layout polish
-
-**Not in scope:** Arabic support (Sprint 23), portal/booking WebView i18n (deferred), URL-based locale routing (deferred to Sprint 23 for public-facing pages)
-
-**New dependency:** `next-intl ^3.x`
-
-**Schema:**
-```sql
-ALTER TABLE profiles
-  ADD COLUMN preferred_locale text NOT NULL DEFAULT 'he'
-    CHECK (preferred_locale IN ('he', 'en'));
-```
-
----
-
-## Sprint 22 — Billing Cycle Completion + Subscription Management + i18n Cleanup
-**Status:** In Progress
-**Branch:** `sprint-22`
-**Depends on:** Sprint 21 complete
-
-**Sprint source of truth:** `/docs/sprint-22-scope.md`
-
-**Goal:** Close the three visible gaps left after Sprint 21:
-1. Billing approval + auto WhatsApp payment request (the generate→approve→collect step was missing)
-2. Subscription management UI (backend was fully built but no dashboard page)
-3. i18n cleanup for charges, billing, leads, homework, and onboarding wizard pages
-
-**Context:** Monthly billing engine, subscriptions lib, groups, and onboarding wizard were built outside the sprint cycle and are fully functional at the data layer. Sprint 22 surfaces these in the UI and closes the billing workflow end-to-end.
-
-**Schema changes:** None — all tables already exist.
-
-**New dependencies:** None.
+| 12 | Automated WhatsApp reminders (lesson + payment Edge Functions) | ✅ Done |
+| 13 | Single lesson scheduling + Parent portal (OTP) + UX polish | ✅ Done |
+| 14 | Homework module + WhatsApp smart intents | ✅ Done |
+| 15 | Tax receipts (חשבוניות ירוקות) + Bit + PayBox | ✅ Done |
+| 16 | Custom message templates + iCal export + portal receipt view | ✅ Done |
+| 17 | Analytics & reporting (5 report types + CSV export) | ✅ Done |
+| 18 | Super Admin dashboard (platform KPIs, org management, support mode) | ✅ Done |
+| 19 | AI WhatsApp assistant (OpenAI fallback, conversation log) | ✅ Done |
+| 20 | AI assistant + WhatsApp hardening (idempotency, dead-end removal, tests) | ✅ Done |
+| 21 | i18n infrastructure + English (next-intl, Hebrew extraction, locale switcher) | ✅ Done |
+| 22 | Billing cycle completion + subscription management + i18n cleanup | ✅ Done |
 
 ---
 
@@ -401,6 +45,7 @@ ALTER TABLE profiles
 - Right to deletion: parent can request data deletion from portal → creates deletion request ticket in admin
 - Data export: admin can export all data for a parent (JSON)
 - Data retention policy: `organization.data_retention_days` — auto-anonymize old lessons + `conversation_log` + `whatsapp_processed_messages` after N days (Edge Function)
+- Legal pages (Terms + Privacy) with real content (currently placeholder)
 
 ### Story 2 — URL-Based Locale Routing + Arabic
 - Add URL prefix routing for portal + booking WebView (public-facing, SEO matters here)
@@ -409,17 +54,260 @@ ALTER TABLE profiles
 - English becomes default for non-IL orgs
 
 ### Story 3 — International Payment Methods
-- Stripe provider (Sprint 22 adds billing; this sprint adds Stripe as a payment provider for lesson charges)
-  - `src/lib/payments/stripe.ts` implementing `PaymentProvider` interface
+- Stripe provider (`src/lib/payments/stripe.ts` implementing `PaymentProvider` interface)
   - Stripe Checkout or Payment Links for parent payments
 - SEPA Direct Debit support via Stripe (EU market)
 - PayPal option (US/AU market)
 
-### Story 4 — WhatsApp Template Messages (Meta Approval)
+### Story 4 — WhatsApp Approved Templates (Meta)
 Currently the system uses "session messages" (valid only if parent messaged within 24h). For proactive messages to users who haven't messaged recently, Meta requires **approved Message Templates**.
 - Submit Hebrew + English + Arabic templates to Meta for approval
 - Implement template message type in WhatsApp send functions (currently all `type: 'text'`)
 - Fallback: if session expired → send template; if within session → send text
+
+### Story 5 — Production Hardening
+- Add `src/app/error.tsx` + `src/app/not-found.tsx` global error/404 pages
+- Add `src/app/(dashboard)/error.tsx` dashboard error boundary
+- Validate Sumit SaaS billing end-to-end with real credentials on staging
+- Enforce feature gates server-side (currently UI-only in sidebar)
+
+---
+
+## Sprint 24 — Pedagogical Depth
+**Status:** Planned
+**Depends on:** Sprint 23 complete
+
+**Goal:** Transform homework from a simple text message into a real assignment system. Give teachers a place to document what happened in each lesson. Give owners visibility into student progress.
+
+### Story 1 — Homework v2: Attachments + Submission + Grading
+- DB: `homework_attachments` (assignment_id, url, filename, uploaded_by)
+- File upload: teacher can attach PDFs, images, links to an assignment
+- Submission flow: parent/student uploads completed work via portal (file or text)
+- DB: `homework_submissions` (assignment_id, student_id, body, attachment_url, submitted_at)
+- Grading: teacher adds score (0–100 or custom rubric) + written feedback per submission
+- Progress analytics: per-student completion rate + average score visible on student profile
+- Scheduled sending: teacher sets "send on [date] at [time]" instead of sending immediately
+
+### Story 2 — Lesson Notes + Materials
+- DB: `lesson_notes` (lesson_id, teacher_id, body_markdown, created_at)
+- Teacher can add structured notes after a lesson: topics covered, gaps, next steps
+- Materials: attach links or files to a lesson (reference sheets, exercises)
+- Admin/owner can read all lesson notes; teacher sees only their own
+- Notes visible in lesson detail page + student profile history
+
+### Story 3 — Student Profile Overhaul
+- Student detail page redesigned: tabs — Overview / Lessons / Homework / Billing / Notes
+- Overview tab: attendance rate (last 30/90 days), homework completion rate, outstanding balance, last lesson date
+- Lessons tab: full history (date, teacher, status, duration, cancellation reason if any)
+- Homework tab: all assignments with status, score, submission link
+- Billing tab: per-student charges + payment history (drill-down from billing page)
+- Notes tab: teacher-written lesson notes (read-only for admin, editable for originating teacher)
+
+### Story 4 — Learning Goals
+- DB: `student_goals` (student_id, org_id, subject, description, target_date, status: active/achieved/abandoned)
+- Owner/admin/teacher can define goals per student
+- Goals visible on student profile + parent portal
+- Status update with achievement note
+
+**Schema additions:**
+```sql
+CREATE TABLE homework_submissions (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  assignment_id   uuid NOT NULL REFERENCES homework_assignments(id) ON DELETE CASCADE,
+  student_id      uuid NOT NULL REFERENCES students(id),
+  body            text,
+  attachment_url  text,
+  score           int CHECK (score BETWEEN 0 AND 100),
+  feedback        text,
+  submitted_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE lesson_notes (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  lesson_id       uuid NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  teacher_id      uuid NOT NULL REFERENCES teachers(id),
+  body            text NOT NULL,
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE student_goals (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  student_id      uuid NOT NULL REFERENCES students(id),
+  subject         text NOT NULL,
+  description     text NOT NULL,
+  target_date     date,
+  status          text NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active', 'achieved', 'abandoned')),
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+```
+
+---
+
+## Sprint 25 — AI Intelligence + Multi-Channel Communications
+**Status:** Planned
+**Depends on:** Sprint 24 complete
+
+**Goal:** Make the AI assistant provider-agnostic and measurable. Add email as a second notification channel. Wire up the unused bell icon into a real in-app notification center.
+
+### Story 1 — AI Multi-Provider + Key Management
+- DB: `organizations.ai_provider` (openai / anthropic / google), `organizations.ai_model`, `organizations.ai_config_encrypted` (API key, encrypted AES-256-GCM)
+- Settings page: owner selects provider + model + pastes own API key (replacing global `OPENAI_API_KEY` env var)
+- Supported: `gpt-4o`, `gpt-4o-mini`, `claude-sonnet-4-6`, `claude-haiku-4-5`, `gemini-2.0-flash`
+- `src/lib/ai-assistant/providers/` — adapter per provider (OpenAI SDK, Anthropic SDK, Google SDK)
+- Fallback: if org has no key configured → use platform key from env (opt-in platform default)
+
+### Story 2 — AI Usage Dashboard
+- Track per-org: `ai_usage_log` (org_id, date, provider, model, prompt_tokens, completion_tokens, estimated_cost_usd)
+- Settings → AI: new "שימוש" tab — monthly tokens used, estimated cost, autonomous resolution rate (AI replies / total incoming messages)
+- Satisfaction: after AI reply, send "האם עזרתי? ✅ / ❌" — track response in `ai_usage_log.satisfaction`
+- Aggregate satisfaction score displayed in usage dashboard
+
+### Story 3 — Email Notifications (Resend)
+- New dependency: `resend` (3,000 emails/month free tier; simple API)
+- New env vars: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
+- `src/lib/email/index.ts` — `sendEmail(to, subject, html)` wrapper
+- `src/lib/email/templates/` — React Email templates: lesson_reminder, payment_request, homework_assignment, receipt
+- Settings → Reminders: owner can toggle WhatsApp + email independently per notification type
+- Email sent as fallback when WhatsApp delivery fails (or when parent has email but no WhatsApp)
+- Teacher notifications (lesson cancelled, homework submitted) go to teacher's email
+
+### Story 4 — In-App Notification Center
+- DB: `in_app_notifications` (org_id, recipient_profile_id, type, title, body, action_url, read_at, created_at)
+- Bell icon in TopBar now rendered with unread count badge
+- Notification drawer: click bell → slide-out panel with notification list
+- Types: lesson_cancelled, payment_received, homework_submitted, student_at_risk, new_lead
+- Auto-dismiss after 30 days
+- Mark as read individually or "mark all read"
+- Edge Function: `notify-events` — creates in-app notifications from DB triggers (lesson status change, charge paid, etc.)
+
+**Schema additions:**
+```sql
+ALTER TABLE organizations
+  ADD COLUMN ai_provider   text NOT NULL DEFAULT 'openai'
+    CHECK (ai_provider IN ('openai', 'anthropic', 'google')),
+  ADD COLUMN ai_model      text NOT NULL DEFAULT 'gpt-4o-mini',
+  ADD COLUMN ai_config_encrypted text; -- encrypted API key
+
+CREATE TABLE ai_usage_log (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  date            date NOT NULL DEFAULT CURRENT_DATE,
+  provider        text NOT NULL,
+  model           text NOT NULL,
+  prompt_tokens   int NOT NULL DEFAULT 0,
+  completion_tokens int NOT NULL DEFAULT 0,
+  estimated_cost_usd numeric(10,6) NOT NULL DEFAULT 0,
+  satisfaction    text CHECK (satisfaction IN ('positive', 'negative', 'none')) DEFAULT 'none',
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE in_app_notifications (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id     uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  recipient_profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  type                text NOT NULL,
+  title               text NOT NULL,
+  body                text,
+  action_url          text,
+  read_at             timestamptz,
+  created_at          timestamptz NOT NULL DEFAULT now()
+);
+```
+
+**New dependencies:** `resend`, `@anthropic-ai/sdk`, `@google/generative-ai`
+
+---
+
+## Sprint 26 — Parent Portal 2.0
+**Status:** Planned
+**Depends on:** Sprint 25 complete
+
+**Goal:** Elevate the parent portal from a minimal payment screen to a genuine parent engagement tool — visible progress, full schedule, homework visibility, and teacher communication.
+
+### Story 1 — Full Schedule & Attendance History
+- Portal home: replace "4 upcoming lessons" with full calendar view (week/month toggle)
+- Attendance history tab: all past lessons with status (completed / cancelled / no_show)
+- Cancel lesson from portal (respects org cancellation policy, sends confirmation)
+
+### Story 2 — Homework Visibility in Portal
+- Portal: new "שיעורי בית" tab
+- Shows all active assignments: subject, due date, status (pending/done/overdue)
+- Submit homework: upload file or type text response
+- View teacher feedback + score after grading
+
+### Story 3 — Progress Report
+- Portal: new "התקדמות" tab
+- Shows: attendance rate (last 30/90 days), homework completion rate, active goals
+- Teacher notes: filtered view — only notes marked `visible_to_parent = true`
+- Monthly summary card: "החודש הגעת ל-X מתוך Y שיעורים"
+
+### Story 4 — Messaging (Teacher ↔ Parent)
+- DB: `portal_messages` (org_id, lesson_id or null, sender_profile_id or parent_id, body, sent_at)
+- Parent can send a message to the teacher from portal (not WhatsApp)
+- Teacher receives in-app notification + can reply from dashboard lesson page
+- Conversation thread per student
+
+---
+
+## Sprint 27 — Billing & Accounting Pro
+**Status:** Planned
+**Depends on:** Sprint 26 complete
+
+**Goal:** Make billing feel enterprise-grade: downloadable PDF invoices, proper accounting integrations, and hard server-side feature enforcement.
+
+### Story 1 — PDF Invoice Generation
+- `src/lib/billing/generateInvoicePdf.ts` — React PDF (`@react-pdf/renderer`) or Puppeteer
+- Invoice includes: org logo + name + tax ID + address, line items (lessons, subscriptions, adjustments), totals, VAT if applicable, invoice number (sequential per org)
+- Download button on `/billing/[studentId]` + send via WhatsApp/email on approval
+- DB: `student_monthly_billing.invoice_number` (auto-incremented per org), `invoice_pdf_url`
+
+### Story 2 — iCount Integration
+- `src/lib/receipts/icount.ts` — iCount REST API adapter (`ReceiptProvider` interface)
+- Settings → Receipts: add iCount option alongside חשבוניות ירוקות
+- Same flow: mark paid → issue receipt → WhatsApp/email receipt URL to parent
+- iCount supports full tax invoices (חשבונית מס) not just receipts — configurable
+
+### Story 3 — Server-Side Feature Enforcement
+- Move feature gate checks from sidebar (UI-only) to server actions and API routes
+- `requireFeature(session, 'homework')` — throws 403 if plan doesn't include feature
+- Applies to: AI assistant, homework, parent portal, full reports, leads
+- Quota enforcement: `basic` plan capped at 100 students and 200 lessons/month → returns 402 when exceeded
+
+### Story 4 — Accounting Export
+- Export billing data as CSV compatible with iCount + QuickBooks format
+- Monthly billing export: one row per charge with student, amount, VAT, receipt number
+- Available from `/reports/revenue` → "ייצוא לחשבונאות"
+
+---
+
+## Sprint 28 — Analytics Pro
+**Status:** Planned
+**Depends on:** Sprint 27 complete
+
+**Goal:** Give business owners the visibility they need to make data-driven decisions — trends, forecasts, drill-downs, and teacher performance.
+
+### Story 1 — Dashboard Redesign
+- Every KPI card shows `Δ vs. last month` (green/red delta badge)
+- KPI cards are clickable → drill into underlying data
+- New KPIs: average revenue per student, lessons per teacher (utilization), lead conversion rate
+- Revenue trend sparkline (last 12 months) directly on dashboard
+
+### Story 2 — Revenue Forecasting
+- "תחזית חודש זה": based on scheduled lessons + subscription billing → projected revenue
+- At-risk revenue: scheduled lessons with at-risk students flagged
+- Teacher utilization: hours booked / available hours per week
+
+### Story 3 — Teacher Performance Dashboard
+- Per-teacher: lessons delivered, cancellation rate, on-time rate, avg lesson rating (from future parent feedback)
+- Comparison table: teachers side-by-side
+- Trend: month-over-month per teacher
+
+### Story 4 — Student Lifetime Value + Cohort
+- LTV: total charged per student since creation
+- Cohort retention: of students who started in month X, how many are still active at month X+1, X+3, X+6
+- Churn analysis: which months lose the most students
 
 ---
 
@@ -434,12 +322,16 @@ Currently the system uses "session messages" (valid only if parent messaged with
 | 16 | Custom Templates + iCal + Portal Receipts | Brand customization + teacher retention + parent UX |
 | 17 | Analytics & Reporting | Business owner visibility + accountant exports |
 | 18 | Super Admin Dashboard | Platform scalability (5+ customers) |
-| 19 | AI WhatsApp Assistant ✅ | Zero-admin parent support |
+| 19 | AI WhatsApp Assistant | Zero-admin parent support |
 | 20 | AI Assistant + WhatsApp Hardening | Production reliability for AI + webhook |
-| 21 | i18n Infrastructure + English ✅ | English UI for international market entry |
-| 22 | Billing Cycle + Subscriptions + i18n Cleanup | End-to-end billing workflow + subscription management |
-| 23 | SaaS Billing (Stripe) | Automated revenue from LESSIO's own customers |
-| 24 | International Launch | EU + English-speaking markets |
+| 21 | i18n Infrastructure + English | English UI for international market entry |
+| 22 | Billing Cycle + Subscription Management | Complete billing workflow + SaaS subscriptions |
+| 23 | International Launch | EU + English-speaking markets + Meta approved templates |
+| 24 | Pedagogical Depth | Homework v2, lesson notes, student profile overhaul |
+| 25 | AI Intelligence + Multi-Channel Comms | Multi-provider AI, email, in-app notifications |
+| 26 | Parent Portal 2.0 | Full schedule, homework, progress, messaging |
+| 27 | Billing & Accounting Pro | PDF invoices, iCount, server-side enforcement |
+| 28 | Analytics Pro | Trends, forecasting, teacher performance, LTV |
 
 ---
 
@@ -449,6 +341,9 @@ After Sprint 14: **No Israeli competitor offers WhatsApp-native scheduling + hom
 After Sprint 15: **Full legal compliance + Bit support = enterprise sales-ready.**
 After Sprint 19: **AI assistant eliminates admin overhead — parents never need to call.**
 After Sprint 23: **International-grade product, ready for UK/AU tutoring market.**
+After Sprint 25: **Multi-provider AI with cost visibility + email = enterprise-level communication stack.**
+After Sprint 26: **Parent portal depth rivals dedicated parent-engagement apps.**
+After Sprint 28: **Data-driven operations — owners run the business from a single dashboard.**
 
 ---
 
@@ -460,6 +355,8 @@ These do not change across any sprint:
 - All secrets: server-only env vars, validated at startup
 - WhatsApp: one number per org (Embedded Signup) — never a shared number
 - Payments: abstraction layer (`PaymentProvider` interface) — providers are plug-in
+- Receipts: abstraction layer (`ReceiptProvider` interface) — חשבוניות ירוקות + iCount plug-in
 - Billing: always on primary parent (`is_primary = true` from `relationships`)
 - Dates: stored UTC, displayed in org timezone (Luxon)
 - RLS: enabled on all tables; service role used only where explicitly required
+- Feature gates: enforced server-side (Sprint 27+), not UI-only

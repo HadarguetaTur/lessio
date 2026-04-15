@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
+import { getTeacherByProfileId } from '@/lib/teachers'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -95,6 +96,118 @@ export async function updateParent(
   }
 
   redirect('/parents')
+}
+
+async function assertTeacherCanAccessParent(
+  parentId: string,
+  orgId: string,
+  teacherId: string
+): Promise<boolean> {
+  const db = createServiceRoleClient()
+  const { data: rels } = await db
+    .from('relationships')
+    .select('student_id')
+    .eq('parent_id', parentId)
+    .eq('organization_id', orgId)
+  const studentIds = [...new Set((rels ?? []).map((r) => r.student_id as string))]
+  if (studentIds.length === 0) return false
+
+  const { data: students } = await db
+    .from('students')
+    .select('id, teacher_id')
+    .in('id', studentIds)
+    .eq('organization_id', orgId)
+  if (students?.some((s) => s.teacher_id === teacherId)) return true
+
+  const { data: lsRows } = await db
+    .from('lesson_students')
+    .select('lesson_id')
+    .in('student_id', studentIds)
+  const lessonIds = [...new Set((lsRows ?? []).map((r) => r.lesson_id as string))]
+  if (lessonIds.length === 0) return false
+
+  const { data: lessons } = await db
+    .from('lessons')
+    .select('id')
+    .in('id', lessonIds)
+    .eq('organization_id', orgId)
+    .eq('teacher_id', teacherId)
+  return (lessons?.length ?? 0) > 0
+}
+
+/** Teacher: update full contact details for parents linked to their students. */
+export async function updateParentAsTeacher(
+  parentId: string,
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const full_name = (formData.get('full_name') as string ?? '').trim()
+  const rawPhone = (formData.get('phone') as string ?? '').trim()
+  const notes = (formData.get('notes') as string ?? '').trim() || null
+
+  if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
+  if (!rawPhone) return { error: 'מספר טלפון הוא שדה חובה' }
+
+  let phone: string
+  try {
+    phone = normalizePhone(rawPhone)
+  } catch (e) {
+    if (e instanceof PhoneNormalizationError) {
+      return { error: 'מספר טלפון לא תקין. יש להזין מספר ישראלי (לדוגמה: 0501234567)' }
+    }
+    return { error: 'שגיאה בעיבוד מספר הטלפון' }
+  }
+
+  const { orgId, role, profileId } = await getSession()
+  if (role !== 'teacher') return { error: 'אין הרשאה לביצוע פעולה זו' }
+
+  const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
+  if (!teacher) return { error: 'לא נמצא פרופיל מורה פעיל' }
+
+  const ok = await assertTeacherCanAccessParent(parentId, orgId, teacher.id)
+  if (!ok) return { error: 'אין הרשאה לעדכן הורה זה' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('parents')
+    .update({ full_name, phone, notes, updated_at: new Date().toISOString() })
+    .eq('id', parentId)
+    .eq('organization_id', orgId)
+
+  if (error) {
+    if (error.code === '23505') return { error: 'מספר טלפון זה כבר קיים במערכת' }
+    return { error: 'שגיאה בעדכון ההורה' }
+  }
+  revalidatePath('/parents')
+  return null
+}
+
+/** Teacher: update notes only for parents linked to their students. */
+export async function updateParentNotesAsTeacher(
+  parentId: string,
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const notes = (formData.get('notes') as string ?? '').trim() || null
+  const { orgId, role, profileId } = await getSession()
+  if (role !== 'teacher') return { error: 'אין הרשאה לביצוע פעולה זו' }
+
+  const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
+  if (!teacher) return { error: 'לא נמצא פרופיל מורה פעיל' }
+
+  const ok = await assertTeacherCanAccessParent(parentId, orgId, teacher.id)
+  if (!ok) return { error: 'אין הרשאה לעדכן הורה זה' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('parents')
+    .update({ notes, updated_at: new Date().toISOString() })
+    .eq('id', parentId)
+    .eq('organization_id', orgId)
+
+  if (error) return { error: 'שגיאה בעדכון ההערות' }
+  revalidatePath('/parents')
+  return null
 }
 
 export async function archiveParent(id: string): Promise<void> {

@@ -1,5 +1,5 @@
 # LESSIO — AI Operating Manual
-*Current Sprint: Sprint 22 — Billing Cycle Completion + Subscription Management + i18n Cleanup*
+*Current Sprint: Sprint 23 — International Launch Readiness*
 
 ---
 
@@ -12,25 +12,27 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 
 ---
 
-## Current Sprint: Sprint 22 — Billing Cycle Completion + Subscription Management + i18n Cleanup
+## Current Sprint: Sprint 23 — International Launch Readiness
 
-**Sprint source of truth:** `/docs/sprint-22-scope.md`
+**Sprint source of truth:** `/docs/sprint-23-scope.md`
 
 **Goal:**
-- Billing approval workflow: generate → approve → auto-send WhatsApp payment request → mark paid
-- Subscription management page (`/subscriptions`) + form in student detail sheet
-- i18n cleanup: replace all remaining hardcoded Hebrew in charges, billing, leads, homework pages
-- Onboarding wizard + import flow translation
+- GDPR compliance: privacy policy, cookie consent, right to deletion, data export
+- URL-based locale routing for public pages + Arabic language support
+- International payment methods: Stripe provider + SEPA + PayPal
+- WhatsApp approved templates (Meta) to support proactive messages beyond 24h window
+- Production hardening: error boundaries, Sumit staging validation, server-side feature gates
 
 **Users in scope:**
-- Dashboard: owner, admin (billing workflow + subscriptions)
-- All dashboard users (i18n cleanup)
+- All dashboard users (i18n, legal pages)
+- Parents (portal locale routing, deletion requests)
+- Platform owner (Stripe payments, GDPR settings)
 
-**New dependencies:** none
+**New dependencies:** none planned
 
-**New env vars:** none
+**New env vars:** none planned (Stripe moved to Sprint 23 payment provider, not SaaS billing)
 
-**Schema changes:** none (all tables already in place)
+**Schema changes:** `organization.data_retention_days`, `deletion_requests` table
 
 ---
 
@@ -314,17 +316,63 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || `src/components/import/` — FileUploadZone + ImportFlow + ImportPreviewTable + ImportResultsSummary | ✅ Done |
 
 || **Sprint 22 stories:** ||
-|| `billing/actions.ts` — approveBillingAction + sendBillingPaymentRequestAction | ⬜ Todo |
-|| `/billing` page — approve button per row + i18n fix | ⬜ Todo |
-|| `/billing/[studentId]` — approve + send payment request buttons | ⬜ Todo |
-|| `src/app/(dashboard)/subscriptions/page.tsx` — subscriptions list page (owner/admin) | ⬜ Todo |
-|| `src/components/dashboard/billing/SubscriptionForm.tsx` — add/edit subscription form in student detail sheet | ⬜ Todo |
-|| `src/components/dashboard/Sidebar.tsx` — מנויים nav entry (owner/admin) | ⬜ Todo |
-|| i18n cleanup: charges/page.tsx + charges/[id]/page.tsx — all hardcoded Hebrew replaced | ⬜ Todo |
-|| i18n cleanup: billing/page.tsx + billing/[studentId]/*.tsx | ⬜ Todo |
-|| i18n cleanup: leads/page.tsx + leads/[id]/convert/page.tsx | ⬜ Todo |
-|| i18n cleanup: homework/page.tsx + assign/page.tsx + templates/ | ⬜ Todo |
-|| Onboarding wizard + import flow translation (new `onboarding` + `import` namespaces) | ⬜ Todo |
+|| `billing/actions.ts` — approveBillingAction + sendBillingPaymentRequestAction | ✅ Done (Sprint 22) |
+|| `/billing` page — approve button per row + i18n fix | ✅ Done (Sprint 22) |
+|| `/billing/[studentId]` — approve + send payment request buttons | ✅ Done (Sprint 22) |
+|| `src/app/(dashboard)/subscriptions/page.tsx` — subscriptions list page (owner/admin) | ✅ Done (Sprint 22) |
+|| `src/components/dashboard/billing/SubscriptionForm.tsx` — add/edit subscription form in student detail sheet | ✅ Done (Sprint 22) |
+|| `src/components/dashboard/Sidebar.tsx` — מנויים nav entry (owner/admin) | ✅ Done (Sprint 22) |
+|| i18n cleanup: charges/page.tsx + charges/[id]/page.tsx — all hardcoded Hebrew replaced | ✅ Done (Sprint 22) |
+|| i18n cleanup: billing/page.tsx + billing/[studentId]/*.tsx | ✅ Done (Sprint 22) |
+|| i18n cleanup: leads/page.tsx + leads/[id]/convert/page.tsx | ✅ Done (Sprint 22) |
+|| i18n cleanup: homework/page.tsx + assign/page.tsx + templates/ | ✅ Done (Sprint 22) |
+|| Onboarding wizard + import flow translation (`onboarding` + `import` namespaces) | ✅ Done (Sprint 22) |
+
+|| **Sprint 23 stories (planned):** ||
+|| `src/app/error.tsx` + `src/app/not-found.tsx` + `src/app/(dashboard)/error.tsx` — global error boundaries | ⬜ Planned |
+|| `/privacy` + `/terms` — real legal content (replace placeholder) | ⬜ Planned |
+|| GDPR: deletion request flow (portal → admin ticket) + data export (JSON) | ⬜ Planned |
+|| `organization.data_retention_days` + Edge Function for auto-anonymization | ⬜ Planned |
+|| Cookie consent banner (non-EU exempt) | ⬜ Planned |
+|| URL-based locale routing for `/portal/[orgId]/` + `/book/[token]/` | ⬜ Planned |
+|| `messages/ar.json` — Arabic translation + RTL support | ⬜ Planned |
+|| `src/lib/payments/stripe.ts` — Stripe payment provider adapter | ⬜ Planned |
+|| Meta WhatsApp approved templates: submit + implement template message type | ⬜ Planned |
+|| Server-side feature gate enforcement in server actions + API routes | ⬜ Planned |
+|| Sumit SaaS billing end-to-end staging validation | ⬜ Planned |
+
+|| **Sprint 24 stories (planned — Pedagogical Depth):** ||
+|| `homework_submissions` table + file upload + grading flow | ⬜ Planned |
+|| Homework scheduled sending (set send date/time) | ⬜ Planned |
+|| `lesson_notes` table + teacher note UI in lesson detail | ⬜ Planned |
+|| Student profile overhaul: tabs (Overview / Lessons / Homework / Billing / Notes) | ⬜ Planned |
+|| `student_goals` table + goals UI on student profile | ⬜ Planned |
+
+|| **Sprint 25 stories (planned — AI + Multi-Channel):** ||
+|| AI multi-provider: `organizations.ai_provider` + `ai_config_encrypted` + provider adapters | ⬜ Planned |
+|| AI usage dashboard: `ai_usage_log` + tokens/cost/resolution rate | ⬜ Planned |
+|| AI satisfaction: WhatsApp 👍/👎 + aggregate score in settings | ⬜ Planned |
+|| Email: Resend integration + `src/lib/email/` + templates for lesson/payment/homework | ⬜ Planned |
+|| In-app notifications: `in_app_notifications` table + bell icon + drawer | ⬜ Planned |
+
+|| **Sprint 26 stories (planned — Parent Portal 2.0):** ||
+|| Portal: full calendar view (week/month) + attendance history tab | ⬜ Planned |
+|| Portal: homework tab (view assignments + submit work) | ⬜ Planned |
+|| Portal: progress tab (attendance rate, homework rate, goals, teacher notes) | ⬜ Planned |
+|| Portal: teacher ↔ parent messaging (`portal_messages` table + thread UI) | ⬜ Planned |
+
+|| **Sprint 27 stories (planned — Billing & Accounting Pro):** ||
+|| PDF invoice generation (`@react-pdf/renderer`) + download + WhatsApp/email send | ⬜ Planned |
+|| `src/lib/receipts/icount.ts` — iCount adapter + settings page option | ⬜ Planned |
+|| Server-side quota enforcement: max students/lessons per plan tier | ⬜ Planned |
+|| Accounting export: iCount + QuickBooks compatible CSV from `/reports/revenue` | ⬜ Planned |
+
+|| **Sprint 28 stories (planned — Analytics Pro):** ||
+|| Dashboard KPI cards: Δ vs. last month badge + clickable drill-down | ⬜ Planned |
+|| Revenue sparkline (12m) on main dashboard | ⬜ Planned |
+|| Revenue forecasting: scheduled lessons + subscriptions → projected revenue | ⬜ Planned |
+|| Teacher performance dashboard: lessons delivered, cancellation rate, utilization | ⬜ Planned |
+|| Student LTV + cohort retention analysis | ⬜ Planned |
 
 When starting any task, check this table first.
 Do not rebuild what is already marked `✅`.
@@ -378,7 +426,10 @@ See `/docs/decisions.md` for all decisions.
 | Auth (booking WebView) | Signed JWT (jose), not Supabase session |
 | Auth (parent portal) | Phone OTP → httpOnly cookie (jose JWT) |
 | WhatsApp | Meta WhatsApp Cloud API |
-| Payments | Abstraction layer: Cardcom + PayPlus adapters |
+| Email | Resend (Sprint 25) |
+| Payments | Abstraction layer: Cardcom, PayPlus, Bit, PayBox + Stripe (Sprint 23) |
+| Receipts | Abstraction layer: חשבוניות ירוקות + iCount (Sprint 27) |
+| AI | Multi-provider: OpenAI, Anthropic, Google (Sprint 25) |
 | Validation | Zod 4 |
 | Dates | Luxon 3 |
 | Icons | Lucide React |
@@ -397,9 +448,9 @@ lessio/
 │   ├── schema.md                 ← DB schema (source of truth)
 │   ├── decisions.md              ← architectural decisions (all sprints)
 │   ├── security.md               ← RLS policies + auth model
-│   ├── sprint-roadmap.md         ← full sprint roadmap (sprints 1–22)
-│   ├── sprint-1-scope.md  through sprint-12-scope.md ← ✅ completed
-│   └── sprint-13-scope.md        ← current sprint (to be written)
+│   ├── sprint-roadmap.md         ← full sprint roadmap (sprints 1–28)
+│   ├── sprint-1-scope.md  through sprint-22-scope.md ← ✅ completed
+│   └── sprint-23-scope.md        ← current sprint (to be written)
 ├── src/
 │   ├── app/
 │   │   ├── (dashboard)/          ← owner/admin/teacher pages (Supabase Auth)

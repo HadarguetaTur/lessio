@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Pencil, Archive, RotateCcw, MoreHorizontal, MessageSquare } from 'lucide-react'
+import { useState, useActionState, useEffect, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { Plus, Pencil, Archive, RotateCcw, MoreHorizontal, MessageSquare, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { Label } from '@/components/ui/label'
+import { updateParentNotesAsTeacher, updateParentAsTeacher } from '@/app/(dashboard)/parents/actions'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -142,6 +145,51 @@ export function ParentRowActions({
               notes: parent.notes,
             }}
             onCancel={() => setEditOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+    </>
+  )
+}
+
+// ── Teacher: full contact edit (linked parents only) ──────────────────────────
+
+export function TeacherParentNotesRowActions({
+  parent,
+}: {
+  parent: { id: string; full_name: string; phone: string; notes?: string | null }
+}) {
+  const t = useTranslations('parents')
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const editAction = useMemo(() => updateParentAsTeacher.bind(null, parent.id), [parent.id])
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+        aria-label={t('editParent')}
+      >
+        <Pencil size={15} />
+      </button>
+
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto" dir="rtl">
+          <SheetHeader className="mb-6">
+            <SheetTitle>{t('editParent')}</SheetTitle>
+            <SheetDescription>{parent.full_name}</SheetDescription>
+          </SheetHeader>
+          <ParentForm
+            action={editAction}
+            defaultValues={{
+              full_name: parent.full_name,
+              phone: parent.phone,
+              notes: parent.notes,
+            }}
+            onSuccess={() => { setOpen(false); router.refresh() }}
+            onCancel={() => setOpen(false)}
           />
         </SheetContent>
       </Sheet>

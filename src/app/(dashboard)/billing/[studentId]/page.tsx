@@ -4,15 +4,21 @@ import { ArrowRight } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { getBillingMonthRange, getCurrentBillingMonth } from '@/lib/billing/monthly/month'
+import {
+  formatBillingMonthLabel,
+  getBillingMonthRange,
+  getCurrentBillingMonth,
+} from '@/lib/billing/monthly/month'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { getLocale } from 'next-intl/server'
 import { getStudentById } from '@/lib/students'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { getTranslations } from 'next-intl/server'
-import { MarkPaidButton } from '../MarkPaidButton'
+import { BillingDetailHeaderActions } from './BillingDetailHeaderActions'
 import { ManualAdjustmentForm } from './ManualAdjustmentForm'
-import { RecalculateButton } from './RecalculateButton'
 import { CancellationEventRow } from './CancellationEventRow'
+import { CancellationEventCard } from './CancellationEventCard'
 
 function getBillingStatus(row: { is_paid: boolean; is_approved: boolean }): string {
   if (row.is_paid) return 'paid'
@@ -27,13 +33,16 @@ export default async function BillingDetailPage(props: {
   const { studentId } = await props.params
   const searchParams = await props.searchParams
   const { orgId, role } = await getSession()
-  const [timezone, t, tBilling] = await Promise.all([
+  const [timezone, t, tBilling, locale] = await Promise.all([
     getOrgTimezone(orgId),
     getTranslations('billing.detail'),
     getTranslations('billing'),
+    getLocale(),
   ])
 
   const billingMonth = searchParams.month || getCurrentBillingMonth(timezone)
+  const intlLocale = toIntlLocale(parseAppLocale(locale))
+  const billingMonthLabel = formatBillingMonthLabel(billingMonth, timezone, intlLocale)
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
 
   const [student, supabase] = await Promise.all([
@@ -121,15 +130,23 @@ export default async function BillingDetailPage(props: {
     <div>
       <PageHeader
         title={`${t('title')} — ${student.full_name}`}
-        subtitle={`${billingMonth}`}
+        subtitle={billingMonthLabel}
+        mobileCentered
         actions={
           isOwnerOrAdmin ? (
-            <div className="flex items-center gap-2">
-              <RecalculateButton studentId={studentId} billingMonth={billingMonth} />
-              {billingData && !billingData.is_paid && (
-                <MarkPaidButton billingId={billingData.id} />
-              )}
-            </div>
+            <BillingDetailHeaderActions
+              studentId={studentId}
+              billingMonth={billingMonth}
+              billingData={
+                billingData
+                  ? {
+                      id: billingData.id,
+                      is_paid: billingData.is_paid,
+                      is_approved: billingData.is_approved,
+                    }
+                  : null
+              }
+            />
           ) : undefined
         }
       />
@@ -144,7 +161,7 @@ export default async function BillingDetailPage(props: {
 
       {/* Billing summary card */}
       {billingData && (
-        <div className="bg-card rounded-xl border border-border p-5 mb-6 grid grid-cols-5 gap-6">
+        <div className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-5 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
           <div>
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
               {tBilling('table.lessons')}
@@ -192,36 +209,68 @@ export default async function BillingDetailPage(props: {
         {lessons.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('noLessons')}</p>
         ) : (
-          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colDate')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colTeacher')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colType')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colStatus')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colPricePerStudent')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {lessons.map((lesson) => (
-                  <tr key={lesson.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-2.5 text-sm text-foreground">
-                      {new Date(lesson.start_at).toLocaleDateString('he-IL', { timeZone: timezone })}
-                      {' '}
-                      {new Date(lesson.start_at).toLocaleTimeString('he-IL', { timeZone: timezone, hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                    <td className="px-4 py-2.5 text-sm text-foreground">{lesson.teacher_name}</td>
-                    <td className="px-4 py-2.5 text-sm text-muted-foreground">{lesson.lesson_type}</td>
-                    <td className="px-4 py-2.5"><StatusBadge status={lesson.status} /></td>
-                    <td className="px-4 py-2.5 text-sm font-mono text-foreground" dir="ltr">
+          <>
+            <div className="space-y-3 sm:hidden">
+              {lessons.map((lesson) => (
+                <div
+                  key={lesson.id}
+                  className="rounded-lg border border-border bg-card p-3 text-sm shadow-sm"
+                >
+                  <p className="font-medium text-foreground">
+                    {new Date(lesson.start_at).toLocaleDateString('he-IL', { timeZone: timezone })}{' '}
+                    {new Date(lesson.start_at).toLocaleTimeString('he-IL', {
+                      timeZone: timezone,
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">{lesson.teacher_name}</p>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">{lesson.lesson_type}</span>
+                    <StatusBadge status={lesson.status} />
+                  </div>
+                  <div className="mt-2 grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
+                    <span dir="ltr" className="font-mono text-foreground">
                       {lesson.price_per_student != null ? `₪${lesson.price_per_student}` : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </span>
+                    <span className="text-end text-xs text-muted-foreground">{t('colPricePerStudent')}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden overflow-hidden rounded-xl border border-border bg-card shadow-sm sm:block">
+              <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+                <table className="min-w-[720px] w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/40">
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colDate')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colTeacher')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colType')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colStatus')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colPricePerStudent')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {lessons.map((lesson) => (
+                      <tr key={lesson.id} className="transition-colors hover:bg-muted/20">
+                        <td className="px-4 py-2.5 text-sm text-foreground">
+                          {new Date(lesson.start_at).toLocaleDateString('he-IL', { timeZone: timezone })}
+                          {' '}
+                          {new Date(lesson.start_at).toLocaleTimeString('he-IL', { timeZone: timezone, hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="px-4 py-2.5 text-sm text-foreground">{lesson.teacher_name}</td>
+                        <td className="px-4 py-2.5 text-sm text-muted-foreground">{lesson.lesson_type}</td>
+                        <td className="px-4 py-2.5"><StatusBadge status={lesson.status} /></td>
+                        <td className="px-4 py-2.5 font-mono text-sm text-foreground" dir="ltr">
+                          {lesson.price_per_student != null ? `₪${lesson.price_per_student}` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </section>
 
@@ -231,32 +280,68 @@ export default async function BillingDetailPage(props: {
         {subscriptions.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('noSubscriptions')}</p>
         ) : (
-          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colType')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colMonthlyAmount')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colStartDate')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colEndDate')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colStatus')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {subscriptions.map((sub) => (
-                  <tr key={sub.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-2.5 text-sm text-foreground">{sub.subscription_type ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-sm font-mono text-foreground" dir="ltr">₪{Number(sub.monthly_amount).toFixed(2)}</td>
-                    <td className="px-4 py-2.5 text-sm text-foreground">{sub.start_date}</td>
-                    <td className="px-4 py-2.5 text-sm text-foreground">{sub.end_date ?? '—'}</td>
-                    <td className="px-4 py-2.5">
-                      <StatusBadge status={sub.is_paused ? 'cancelled' : 'completed'} label={sub.is_paused ? t('subPaused') : t('subActive')} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="space-y-3 sm:hidden">
+              {subscriptions.map((sub) => (
+                <div
+                  key={sub.id}
+                  className="rounded-lg border border-border bg-card p-3 text-sm shadow-sm"
+                >
+                  <p className="font-medium text-foreground">{sub.subscription_type ?? '—'}</p>
+                  <div className="mt-2 grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
+                    <span dir="ltr" className="font-mono text-foreground">
+                      ₪{Number(sub.monthly_amount).toFixed(2)}
+                    </span>
+                    <span className="text-end text-xs text-muted-foreground">{t('colMonthlyAmount')}</span>
+                  </div>
+                  <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
+                      <dt className="col-start-2 row-start-1 text-end">{t('colStartDate')}</dt>
+                      <dd className="col-start-1 row-start-1 text-foreground">{sub.start_date}</dd>
+                    </div>
+                    <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
+                      <dt className="col-start-2 row-start-1 text-end">{t('colEndDate')}</dt>
+                      <dd className="col-start-1 row-start-1 text-foreground">{sub.end_date ?? '—'}</dd>
+                    </div>
+                  </dl>
+                  <div className="mt-2">
+                    <StatusBadge
+                      status={sub.is_paused ? 'cancelled' : 'completed'}
+                      label={sub.is_paused ? t('subPaused') : t('subActive')}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden overflow-hidden rounded-xl border border-border bg-card shadow-sm sm:block">
+              <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+                <table className="min-w-[640px] w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/40">
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colType')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colMonthlyAmount')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colStartDate')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colEndDate')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colStatus')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {subscriptions.map((sub) => (
+                      <tr key={sub.id} className="transition-colors hover:bg-muted/20">
+                        <td className="px-4 py-2.5 text-sm text-foreground">{sub.subscription_type ?? '—'}</td>
+                        <td className="px-4 py-2.5 font-mono text-sm text-foreground" dir="ltr">₪{Number(sub.monthly_amount).toFixed(2)}</td>
+                        <td className="px-4 py-2.5 text-sm text-foreground">{sub.start_date}</td>
+                        <td className="px-4 py-2.5 text-sm text-foreground">{sub.end_date ?? '—'}</td>
+                        <td className="px-4 py-2.5">
+                          <StatusBadge status={sub.is_paused ? 'cancelled' : 'completed'} label={sub.is_paused ? t('subPaused') : t('subActive')} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </section>
 
@@ -266,31 +351,44 @@ export default async function BillingDetailPage(props: {
         {cancellations.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('noCancellations')}</p>
         ) : (
-          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colCancellationDate')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colHoursBefore')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colLt24h')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colChargeApproved')}</th>
-                  <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colManualAmount')}</th>
-                  {isOwnerOrAdmin && (
-                    <th className="px-4 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase">{t('colActions')}</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {cancellations.map((event) => (
-                  <CancellationEventRow
-                    key={event.id}
-                    event={event}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="space-y-3 sm:hidden">
+              {cancellations.map((event) => (
+                <CancellationEventCard
+                  key={event.id}
+                  event={event}
+                  isOwnerOrAdmin={isOwnerOrAdmin}
+                />
+              ))}
+            </div>
+            <div className="hidden overflow-hidden rounded-xl border border-border bg-card shadow-sm sm:block">
+              <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+                <table className={isOwnerOrAdmin ? 'min-w-[880px] w-full' : 'min-w-[720px] w-full'}>
+                  <thead>
+                    <tr className="border-b border-border bg-muted/40">
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colCancellationDate')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colHoursBefore')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colLt24h')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colChargeApproved')}</th>
+                      <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colManualAmount')}</th>
+                      {isOwnerOrAdmin && (
+                        <th className="px-4 py-2.5 text-start text-[11px] font-semibold uppercase text-muted-foreground">{t('colActions')}</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {cancellations.map((event) => (
+                      <CancellationEventRow
+                        key={event.id}
+                        event={event}
+                        isOwnerOrAdmin={isOwnerOrAdmin}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </section>
 

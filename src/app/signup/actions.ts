@@ -1,6 +1,11 @@
 'use server'
 
-import { createOrgWithOwner, SignupSchema } from '@/lib/auth/createOrgWithOwner'
+import { getLocale, getTranslations } from 'next-intl/server'
+
+import {
+  buildSignupSchema,
+  createOrgWithOwner,
+} from '@/lib/auth/createOrgWithOwner'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -16,17 +21,28 @@ export async function signUp(
     password: formData.get('password') as string ?? '',
   }
 
+  const tAuth = await getTranslations('auth.errors')
   const confirmPassword = formData.get('confirm_password') as string ?? ''
   if (raw.password !== confirmPassword) {
-    return { error: 'הסיסמאות אינן תואמות' }
+    return { error: tAuth('passwordsMismatch') }
   }
 
-  const parsed = SignupSchema.safeParse(raw)
+  const tVal = await getTranslations('auth.validation')
+  const schema = buildSignupSchema((key) => tVal(key))
+  const parsed = schema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? tAuth('invalidData') }
   }
 
-  const result = await createOrgWithOwner(parsed.data)
+  const tSrv = await getTranslations('auth.signupServerErrors')
+  const flowErrors = {
+    emailTaken: tSrv('emailTaken'),
+    accountFailed: tSrv('accountFailed'),
+    orgFailed: tSrv('orgFailed'),
+    profileFailed: tSrv('profileFailed'),
+  }
+
+  const result = await createOrgWithOwner(parsed.data, flowErrors)
 
   if (!result.success) {
     return { error: result.error }
@@ -44,9 +60,9 @@ export async function signUp(
     redirect('/login')
   }
 
-  // Set locale cookie
+  const locale = await getLocale()
   const cookieStore = await cookies()
-  cookieStore.set('locale', 'he', {
+  cookieStore.set('locale', locale, {
     path: '/',
     maxAge: 60 * 60 * 24 * 365,
     httpOnly: false,

@@ -2,6 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { redirect } from 'next/navigation'
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard'
+import { listActiveSaasPlans } from '@/lib/saas/plans'
+import { getOpenCustomPlanInquiry } from '@/lib/saas/subscriptions'
+import { getTranslations } from 'next-intl/server'
+import { onboardingPanelCard, onboardingPanelPadding } from '@/components/onboarding/onboardingVisual'
 
 export default async function OnboardingPage() {
   const supabase = await createClient()
@@ -32,6 +36,21 @@ export default async function OnboardingPage() {
 
   // Already onboarded — go to dashboard
   if (org.onboarding_completed) redirect('/dashboard')
+
+  const openInquiry = await getOpenCustomPlanInquiry(orgId)
+  if (openInquiry) redirect('/onboarding/pending-custom')
+
+  const saasPlans = await listActiveSaasPlans()
+  if (saasPlans.length === 0) {
+    const t = await getTranslations('onboarding.errors')
+    return (
+      <div
+        className={`mx-auto max-w-lg text-center text-sm text-foreground ${onboardingPanelCard} ${onboardingPanelPadding}`}
+      >
+        <p className="leading-relaxed text-muted-foreground">{t('saasPlansMissing')}</p>
+      </div>
+    )
+  }
 
   // Fetch existing teachers for context
   const { data: teachers } = await db
@@ -72,6 +91,7 @@ export default async function OnboardingPage() {
       timezone={org.timezone}
       billingMode={org.billing_mode}
       teachers={teacherList}
+      saasPlans={saasPlans}
       counts={{
         students: studentCount ?? 0,
         parents: parentCount ?? 0,

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Check, AlertTriangle, X, ChevronDown, ChevronUp, Copy } from 'lucide-react'
 import type { ValidatedRow } from '@/lib/import/validators'
 
@@ -28,6 +29,7 @@ export function ImportPreviewTable({
   excludedRows,
   onToggleRow,
 }: ImportPreviewTableProps) {
+  const t = useTranslations('import')
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
   if (rows.length === 0) return null
@@ -35,6 +37,8 @@ export function ImportPreviewTable({
   const columns = Object.keys(rows[0].data).filter(
     (k) => rows.some((r) => r.data[k] != null && r.data[k] !== '')
   )
+
+  const columnTitle = (col: string) => t(`fields.${col}` as never)
 
   return (
     <div className="rounded-xl border border-border overflow-hidden">
@@ -47,14 +51,14 @@ export function ImportPreviewTable({
                 #
               </th>
               <th className="px-3 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-16">
-                סטטוס
+                {t('table.status')}
               </th>
               {columns.map((col) => (
                 <th
                   key={col}
                   className="px-3 py-2.5 text-start text-[11px] font-semibold text-muted-foreground uppercase tracking-wider"
                 >
-                  {col}
+                  {columnTitle(col)}
                 </th>
               ))}
               <th className="px-3 py-2.5 w-10" />
@@ -88,7 +92,7 @@ export function ImportPreviewTable({
                       {isDuplicate ? (
                         <span className="inline-flex items-center gap-1 text-orange-600">
                           <Copy size={14} />
-                          <span className="text-[10px] font-medium">כפול</span>
+                          <span className="text-[10px] font-medium">{t('table.duplicate')}</span>
                         </span>
                       ) : (
                         STATUS_ICON[row.status]

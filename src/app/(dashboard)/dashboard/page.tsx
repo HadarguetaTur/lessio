@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   const { orgId, role } = await getSession()
 
   if (role === 'teacher') {
-    redirect('/teacher/schedule')
+    redirect('/teacher/dashboard')
   }
 
   const [timezone, locale, t, tc] = await Promise.all([
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
       <PageHeader title={t('title')} subtitle={todayLabel} />
 
       {/* Primary KPI cards */}
-      <section className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
         <KpiCard
           label={t('kpi.monthlyRevenue')}
           value={formatCurrency(stats.monthlyRevenue, locale)}
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
       </section>
 
       {/* Secondary KPI cards */}
-      <section className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <KpiCard
           label={t('kpi.cancellationRate')}
           value={`${stats.cancellationRateThisMonth}%`}
@@ -132,7 +132,7 @@ export default async function DashboardPage() {
         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">
           {t('todayStatus')}
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
           {statusCounters.map(({ label, value, color }) => (
             <div
               key={label}

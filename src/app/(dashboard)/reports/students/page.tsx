@@ -68,7 +68,7 @@ export default async function StudentsReportPage() {
       )}
 
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="h-full min-h-0 min-w-0 overflow-auto overscroll-x-contain -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="h-full min-h-0 w-full overflow-x-auto overflow-y-auto overscroll-x-contain">
           <Table className="min-w-[600px] w-full table-fixed">
             <colgroup>
               <col className="w-1/4" />

@@ -6,7 +6,11 @@ import { createParent, updateParent, archiveParent, restoreParent, sendPaymentRe
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { NewParentSheet, ParentRowActions } from '@/components/dashboard/parents/ParentSheet'
+import {
+  NewParentSheet,
+  ParentRowActions,
+  TeacherParentNotesRowActions,
+} from '@/components/dashboard/parents/ParentSheet'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
@@ -27,6 +31,7 @@ export default async function ParentsPage(props: {
 
   const { orgId, role } = await getSession()
   const parents = await getParents(orgId, { search: q })
+  const isTeacher = role === 'teacher'
   const canSendPaymentRequest = role === 'owner' || role === 'admin'
   const t = await getTranslations('parents')
   const tCommon = await getTranslations('common')
@@ -36,15 +41,17 @@ export default async function ParentsPage(props: {
       <PageHeader
         title={t('title')}
         actions={
-          <div className="flex items-center gap-2">
-            <Link href="/parents/import">
-              <Button variant="outline" size="sm">
-                <Upload size={14} className="ml-1.5" />
-                יבוא
-              </Button>
-            </Link>
-            <NewParentSheet action={createParent} />
-          </div>
+          !isTeacher ? (
+            <div className="flex items-center gap-2">
+              <Link href="/parents/import">
+                <Button variant="outline" size="sm">
+                  <Upload size={14} className="ml-1.5" />
+                  יבוא
+                </Button>
+              </Link>
+              <NewParentSheet action={createParent} />
+            </div>
+          ) : undefined
         }
       />
 
@@ -104,14 +111,18 @@ export default async function ParentsPage(props: {
                         </span>
                       </TableCell>
                       <TableCell className="px-5 py-3.5">
-                        <ParentRowActions
-                          parent={parent}
-                          updateAction={updateAction}
-                          archiveAction={archiveAction}
-                          restoreAction={restoreAction}
-                          paymentAction={sendPaymentRequestAction}
-                          canSendPaymentRequest={canSendPaymentRequest}
-                        />
+                        {isTeacher ? (
+                          <TeacherParentNotesRowActions parent={{ id: parent.id, full_name: parent.full_name, phone: parent.phone, notes: parent.notes }} />
+                        ) : (
+                          <ParentRowActions
+                            parent={parent}
+                            updateAction={updateAction}
+                            archiveAction={archiveAction}
+                            restoreAction={restoreAction}
+                            paymentAction={sendPaymentRequestAction}
+                            canSendPaymentRequest={canSendPaymentRequest}
+                          />
+                        )}
                       </TableCell>
                     </TableRow>
                   )

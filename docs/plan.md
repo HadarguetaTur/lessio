@@ -1,12 +1,14 @@
-# LESSIO — Product Plan (v5)
-*Updated: Sprint 13 planning*
+# LESSIO — Product Plan (v6)
+*Updated: Sprint 22 complete, Sprint 23–28 planned*
 
 ## Vision
 
 LESSIO is a multi-tenant SaaS platform for managing private tutoring businesses and learning centers.
-It provides holistic operational control: scheduling, billing, cancellations, homework, and WhatsApp-based client communication — all in one system.
+It provides holistic operational control: scheduling, billing, cancellations, homework, parent communication, and analytics — all in one system.
 
 **Core problem it solves:** revenue lost to untracked cancellations, scheduling chaos, manual billing, and parent communication overhead.
+
+**Long-term vision:** the operating system for tutoring businesses worldwide — from a single Hebrew-speaking tutor to a multi-branch international learning center.
 
 ---
 
@@ -23,7 +25,10 @@ It provides holistic operational control: scheduling, billing, cancellations, ho
 | Auth (parent portal) | Phone OTP → httpOnly cookie (jose JWT) |
 | Background Jobs | Supabase Edge Functions (Deno, scheduled cron) |
 | WhatsApp | Meta WhatsApp Cloud API (one number per org) |
-| Payments | Abstraction layer: Cardcom + PayPlus (Stripe Sprint 21) |
+| Email | Resend (Sprint 25) |
+| Payments | Abstraction layer: Cardcom, PayPlus, Bit, PayBox + Stripe (Sprint 23) |
+| Receipts | Abstraction layer: חשבוניות ירוקות + iCount (Sprint 27) |
+| AI | Multi-provider: OpenAI, Anthropic, Google (Sprint 25) |
 | Hosting | Vercel (app) + Supabase (backend) |
 
 ---
@@ -33,9 +38,12 @@ It provides holistic operational control: scheduling, billing, cancellations, ho
 - Single SaaS codebase: dashboard + booking WebView + parent portal + server logic
 - Multi-tenant from day one — `organization_id` is the canonical tenant key
 - All tenant-scoped tables include `organization_id`; RLS enforces isolation
-- WhatsApp is the primary parent communication channel; portal is self-service complement
+- WhatsApp is the primary parent communication channel; email is the fallback (Sprint 25)
 - No microservices — Next.js + Supabase + Edge Functions only
 - Payment abstraction layer: swap providers without changing the charge model
+- Receipt abstraction layer: swap receipt providers without changing the billing model
+- AI abstraction layer: swap LLM providers per org without changing assistant logic (Sprint 25)
+- Feature gates enforced server-side, not UI-only (Sprint 27)
 - Secrets: server-only, validated at startup, never in client bundles
 
 ---
@@ -48,7 +56,8 @@ It provides holistic operational control: scheduling, billing, cancellations, ho
 |---|---|
 | `owner` | Full access: org settings, integrations, billing config, all reports, all data |
 | `admin` | Operational: students, parents, leads, lessons, day-to-day. No org settings or billing config |
-| `teacher` | Own schedule only: view lessons, mark outcome (completed/no_show). No billing, no people management |
+| `teacher` | Own schedule only: view lessons, mark outcome, add lesson notes, manage homework. No billing, no people management |
+| `superadmin` | Platform-level: manage all orgs, view KPIs, create orgs, support mode impersonation |
 
 ### External Users (no dashboard auth)
 
@@ -79,13 +88,18 @@ It provides holistic operational control: scheduling, billing, cancellations, ho
 | Homework + WhatsApp Intents | Homework module, parent self-service queries via WhatsApp | 14 | ✅ Done |
 | Tax Receipts + Israeli Payments | חשבוניות ירוקות integration, Bit + PayBox providers | 15 | ✅ Done |
 | Custom Templates + iCal | Custom WhatsApp message templates, iCal calendar subscription | 16 | ✅ Done |
-| Analytics & Reporting | Revenue, debt aging, cancellation rates, CSV/PDF export | 17 | ✅ Done |
+| Analytics & Reporting | Revenue, debt aging, cancellation rates, CSV export | 17 | ✅ Done |
 | Super Admin Dashboard | Platform-level org management, subscription oversight | 18 | ✅ Done |
 | AI WhatsApp Assistant | OpenAI-powered fallback for unrecognized parent queries | 19 | ✅ Done |
-| AI Assistant + WhatsApp Hardening | Idempotency wiring, conversation log write, dead-end removal, runtime guards | 20 | ⏳ In Progress |
-| i18n Infrastructure + English | next-intl cookie-based locale, Hebrew extraction, English translation, locale switcher | 21 | Planned |
-| SaaS Billing | Stripe Billing for charging your own customers | 22 | Planned |
-| International Launch | GDPR, URL locale routing, Arabic, Stripe payment provider, global payment methods | 23 | Planned |
+| AI Assistant + WhatsApp Hardening | Idempotency wiring, conversation log, dead-end removal | 20 | ✅ Done |
+| i18n Infrastructure + English | next-intl cookie-based locale, Hebrew extraction, English translation | 21 | ✅ Done |
+| Billing Cycle + Subscriptions | Billing approval workflow, subscription management, i18n cleanup | 22 | ✅ Done |
+| International Launch | GDPR, URL locale routing, Arabic, Stripe, Meta approved templates | 23 | Planned |
+| Pedagogical Depth | Homework v2 (attachments + grading), lesson notes, student profile overhaul | 24 | Planned |
+| AI Intelligence + Multi-Channel | Multi-provider AI + usage dashboard, email (Resend), in-app notifications | 25 | Planned |
+| Parent Portal 2.0 | Full schedule, homework visibility, progress report, teacher messaging | 26 | Planned |
+| Billing & Accounting Pro | PDF invoices, iCount integration, server-side feature enforcement | 27 | Planned |
+| Analytics Pro | Trends + forecasting, teacher performance, student LTV + cohort | 28 | Planned |
 
 ---
 
@@ -112,10 +126,15 @@ It provides holistic operational control: scheduling, billing, cancellations, ho
 | 17 | Analytics & Reporting | ✅ Done |
 | 18 | Super Admin Dashboard | ✅ Done |
 | 19 | AI WhatsApp Assistant | ✅ Done |
-| 20 | AI Assistant + WhatsApp Hardening | ⏳ In Progress |
-| 21 | i18n Infrastructure + English | Planned |
-| 22 | SaaS Billing (Stripe) | Planned |
-| 23 | International Launch — GDPR + global payments | Planned |
+| 20 | AI Assistant + WhatsApp Hardening | ✅ Done |
+| 21 | i18n Infrastructure + English | ✅ Done |
+| 22 | Billing Cycle + Subscription Management | ✅ Done |
+| 23 | International Launch — GDPR + Arabic + global payments + Meta templates | Planned |
+| 24 | Pedagogical Depth — homework v2, lesson notes, student profile | Planned |
+| 25 | AI Intelligence + Multi-Channel — multi-provider AI, email, notifications | Planned |
+| 26 | Parent Portal 2.0 — full schedule, homework, progress, messaging | Planned |
+| 27 | Billing & Accounting Pro — PDF invoices, iCount, enforcement | Planned |
+| 28 | Analytics Pro — trends, forecasting, LTV, cohort | Planned |
 
 Full sprint detail: see `/docs/sprint-roadmap.md`
 
@@ -139,7 +158,7 @@ Full sprint detail: see `/docs/sprint-roadmap.md`
 
 ---
 
-## Parent Portal Flow — OTP Model (Sprint 13)
+## Parent Portal Flow — OTP Model
 
 1. Parent opens `/portal/[orgId]`
 2. If no `portal_session` cookie → redirect to `/portal/[orgId]/login`
@@ -149,67 +168,21 @@ Full sprint detail: see `/docs/sprint-roadmap.md`
 6. Parent redirected to `/portal/[orgId]/home` — upcoming lessons + outstanding balance
 7. Parent can book new lessons, view payment history, pay via existing payment links
 
+**Sprint 26 additions:** full calendar, homework tab, progress tab, teacher messaging
+
 ---
 
 ## What the Full System Looks Like
 
-**For the business owner:** Full dashboard — people, schedule, billing, cancellations, reports. Automated reminders and payment requests. Everything tracked automatically.
+**For the business owner:** Full dashboard — people, schedule, billing, cancellations, reports, analytics. Automated reminders and payment requests. PDF invoices. Everything tracked automatically.
 
-**For the teacher:** Own schedule only. Create single lessons. Mark completed/no_show. iCal subscription (Sprint 16). Weekly summary.
+**For the teacher:** Own schedule only. Create single lessons. Mark completed/no_show. Add lesson notes and materials. Manage homework + grade submissions. iCal subscription. Weekly summary.
 
-**For the parent:** WhatsApp for everything — booking, cancellation, payment, homework, reminders, self-service queries. Portal for structured access: lessons, payments, booking.
+**For the parent:** WhatsApp for everything — booking, cancellation, payment, homework, reminders, self-service queries. Portal (Sprint 26) for structured access: full calendar, homework, progress reports, teacher messaging.
 
-**For the student:** WhatsApp direct — homework assignments, reminders, mark as done (Sprint 14).
+**For the student:** WhatsApp direct — homework assignments, reminders, mark as done.
 
-**For you (as the platform owner):** Super Admin dashboard to manage all orgs (Sprint 18). Each customer with their own WhatsApp number, payment provider, org settings. Automated SaaS billing via Stripe (Sprint 21).
-
----
-
-## Repository Structure
-
-```
-lessio/
-├── AGENTS.md                      ← AI operating manual (always read first)
-├── CLAUDE.md                      ← points to AGENTS.md
-├── docs/
-│   ├── plan.md                    ← this file
-│   ├── schema.md                  ← DB schema (source of truth)
-│   ├── decisions.md               ← architectural decisions
-│   ├── security.md                ← RLS + auth model
-│   ├── sprint-roadmap.md          ← full roadmap (sprints 1–22)
-│   ├── sprint-1-scope.md  →  sprint-12-scope.md  ← completed
-│   └── sprint-13-scope.md         ← current sprint
-├── src/
-│   ├── app/
-│   │   ├── (dashboard)/           ← owner/admin/teacher (Supabase Auth)
-│   │   ├── book/[token]/          ← parent booking WebView (JWT auth)
-│   │   ├── portal/[orgId]/        ← parent portal (cookie auth) — Sprint 13
-│   │   └── api/
-│   │       ├── whatsapp/webhook/
-│   │       └── payments/[provider]/
-│   ├── lib/
-│   │   ├── supabase/              ← client, server, service-role
-│   │   ├── booking/               ← getAvailableSlots, createSlotLock, confirmBooking
-│   │   ├── billing/               ← calculateCancellationCharge, createCharge
-│   │   ├── lessons/               ← createSeries, cancelSeries, createLesson (S13)
-│   │   ├── whatsapp/              ← Meta API client + all send functions
-│   │   ├── payments/              ← registry, cardcom, payplus
-│   │   ├── portal/                ← session.ts, otp.ts — Sprint 13
-│   │   ├── jwt/                   ← signBookingToken, verifyBookingToken
-│   │   ├── crypto/                ← AES-256-GCM
-│   │   ├── organizations/         ← timezone, holidays
-│   │   ├── dashboard/             ← stats.ts (KPIs)
-│   │   └── phone/                 ← normalizePhone
-│   └── components/
-│       ├── ui/                    ← shadcn components
-│       ├── booking/               ← BookingFlow + step components
-│       └── dashboard/             ← Sidebar, KpiCard, lessons/, availability/
-├── supabase/
-│   ├── migrations/
-│   ├── functions/                 ← lesson-reminders, payment-reminders
-│   └── config.toml
-└── .env.local
-```
+**For you (as the platform owner):** Super Admin dashboard to manage all orgs. Each customer with their own WhatsApp number, payment provider, AI provider, org settings. Automated SaaS billing.
 
 ---
 
@@ -222,7 +195,7 @@ lessio/
 - Cancellation charges: configurable per org via `cancellation_policies`
 - Each org manages its own WhatsApp number via Meta Embedded Signup
 - One charge per lesson by default; additional charges use `charge_type`
-- Teacher scope: own schedule only + own lesson outcome (completed/no_show)
+- Teacher scope: own schedule only + own lesson outcome + own lesson notes + own homework
 - All phone numbers stored as E.164 — `normalizePhone()` before every save/lookup
 - All datetimes stored as UTC — display per `organizations.timezone` (Luxon)
 - Archive = `is_active = false` — never hard delete entities
@@ -230,6 +203,7 @@ lessio/
 - Teacher creation = invite flow only (Supabase Auth invite)
 - Service role access isolated to `src/lib/supabase/service-role.ts`
 - Required env vars validated at startup — fail fast with named errors
+- Feature gates enforced server-side from Sprint 27 (not UI-only)
 - Production release blocked until staging QA + Data Recovery Playbook complete
 
 ---
@@ -238,11 +212,10 @@ lessio/
 
 | Document | Status |
 |---|---|
-| decisions.md | ✅ Up to date through Sprint 19 |
-| schema.md | ✅ Updated through Sprint 19 |
-| plan.md | ✅ This file — updated Sprint 20 planning |
-| sprint-roadmap.md | ✅ Full roadmap Sprints 1–23 (Sprint 19 ✅, Sprint 20 planned) |
-| AGENTS.md | ✅ Updated Sprint 20 |
-| sprint-1-scope.md → sprint-19-scope.md | ✅ Done |
-| sprint-20-scope.md | ✅ Written |
-| sprint-21-scope.md → sprint-23-scope.md | ⬜ Written per sprint |
+| decisions.md | ✅ Up to date through Sprint 22 |
+| schema.md | ✅ Updated through Sprint 22 |
+| plan.md | ✅ This file — updated Sprint 22 complete, Sprints 23–28 planned |
+| sprint-roadmap.md | ✅ Full roadmap Sprints 1–28 |
+| AGENTS.md | ✅ Updated Sprint 22 |
+| sprint-1-scope.md → sprint-22-scope.md | ✅ Done |
+| sprint-23-scope.md → sprint-28-scope.md | ⬜ To be written per sprint |

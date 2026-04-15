@@ -378,6 +378,10 @@ deno_version = 2
 #   homework-reminders: "0 8 * * *"  (daily at 08:00 UTC)
 [functions.homework-reminders]
 
+# Sprint 22: SaaS subscription lifecycle checker
+#   saas-subscription-checker: "0 0 * * *"  (daily at 00:00 UTC)
+[functions.saas-subscription-checker]
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

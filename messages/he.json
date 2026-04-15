@@ -136,13 +136,21 @@
     "settingsReminders": "תזכורות",
     "settingsAiAssistant": "עוזר AI",
     "settingsLocale": "שפה ותצוגה",
+    "accountBilling": "חשבון וחיובים",
     "teacherSection": "סביבת העבודה שלי",
+    "teacherDashboard": "דאשבורד",
+    "teacherStudents": "התלמידים שלי",
+    "teacherParents": "ההורים שלי",
+    "teacherHomework": "שיעורי בית",
+    "teacherReportsLessons": "שיעורים לפי חודש",
+    "teacherReportsStudents": "נוכחות תלמידים",
     "teacherSchedule": "השיעורים שלי",
     "teacherCalendar": "מנוי ליומן",
     "teacherNewLesson": "שיעור חדש",
     "teacherAvailability": "הזמינות שלי",
     "teacherOverrides": "חריגים ביומן",
     "billing": "חיוב חודשי",
+    "subscriptions": "מנויים",
     "globalSearch": {
       "placeholder": "חיפוש תלמידים, הורים, שיעורים…",
       "ariaLabel": "חיפוש כללי",
@@ -155,6 +163,13 @@
         "lessons": "שיעורים",
         "charges": "חיובים פתוחים"
       }
+    },
+    "mobileQuickMenu": {
+      "triggerAria": "פתיחת תפריט פעולות מהירות",
+      "title": "פעולות מהירות",
+      "scheduleLesson": "קביעת שיעור",
+      "openDebt": "חובות פתוחים",
+      "dailySchedule": "לוח שיעורים יומי"
     }
   },
   "dashboard": {
@@ -343,6 +358,7 @@
     "archive": "ארכיב",
     "restore": "שחזור",
     "edit": "עריכה",
+    "teacherNotes": "הערות",
     "deleteConfirm": "למחוק את ההורה?",
     "saved": "ההורה נשמר בהצלחה",
     "phoneHint": "פורמט בינלאומי, לדוגמה: 972501234567+"
@@ -390,6 +406,7 @@
       "date": "תאריך",
       "time": "שעת התחלה",
       "duration": "משך",
+      "status": "סטטוס שיעור",
       "dayOfWeek": "יום בשבוע",
       "startDate": "תאריך התחלה",
       "endDate": "תאריך סיום",
@@ -583,8 +600,14 @@
       "cancellationApproved": "אושר",
       "cancellationPending": "ממתין",
       "invalidAmount": "סכום לא תקין",
-      "reasonRequired": "יש להזין סיבה"
+      "reasonRequired": "יש להזין סיבה",
+      "actionsMenuAria": "פעולות חיוב"
     },
+    "approve": "אשר חיוב",
+    "approving": "מאשר...",
+    "sendPaymentRequest": "שלח בקשת תשלום",
+    "sendingPaymentRequest": "שולח...",
+    "paymentRequestSent": "נשלח ✓",
     "generateSuccess": "חושבו {success} תלמידים, {errors} שגיאות, {skipped} דולגו",
     "noBillingRecords": "אין רשומות חיוב לחודש זה"
   },
@@ -902,6 +925,20 @@
     }
   },
   "teacherSelf": {
+    "dashboard": {
+      "title": "דאשבורד",
+      "kpi": {
+        "lessonsToday": "שיעורים היום",
+        "lessonsThisWeek": "שיעורים השבוע",
+        "completedThisMonth": "הושלמו החודש",
+        "activeStudents": "תלמידים פעילים"
+      },
+      "todayLessons": "שיעורים היום",
+      "actions": {
+        "newLesson": "שיעור חדש",
+        "viewSchedule": "לוח שיעורים"
+      }
+    },
     "schedule": {
       "title": "השיעורים שלי",
       "noLessons": "אין שיעורים בשבוע זה"
@@ -964,10 +1001,44 @@
       "outlookStep1": "פתח Outlook בדפדפן (outlook.com או Office 365)",
       "outlookStep2": "לחץ 'הוסף לוח שנה' ← 'מ-אינטרנט'",
       "outlookStep3": "הדבק את הקישור בשדה URL ולחץ ייבא"
+    },
+    "reports": {
+      "title": "דוחות בקרה",
+      "lessonsTitle": "שיעורים לפי חודש",
+      "lessonsDesc": "סיכום שיעורים שהושלמו, בוטלו ולא הגיעו",
+      "lessonsSubtitle": "הושלמו {completed} · בוטלו {cancelled} · לא הגיעו {noShow}",
+      "studentsTitle": "נוכחות תלמידים",
+      "studentsDesc": "אחוז נוכחות לפי תלמיד בחודשים האחרונים",
+      "studentsSubtitle": "נתונים מ-{months} החודשים האחרונים",
+      "tableMonth": "חודש",
+      "tableCompleted": "הושלמו",
+      "tableCancelled": "בוטלו",
+      "tableNoShow": "לא הגיעו",
+      "tableStudent": "תלמיד",
+      "tableLessons": "שיעורים",
+      "tableAttendance": "נוכחות",
+      "atRiskAlert": "{count} תלמידים עם נוכחות מתחת 70%",
+      "noStudents": "אין תלמידים פעילים",
+      "lessonsChart": {
+        "completed": "הושלמו",
+        "cancelled": "בוטלו",
+        "noShow": "לא הגיעו"
+      }
     }
   },
   "admin": {
-    "nav": { "title": "LESSIO Admin", "dashboard": "לוח בקרה", "orgs": "ארגונים", "billing": "בילינג" },
+    "nav": { "title": "LESSIO Admin", "dashboard": "לוח בקרה", "orgs": "ארגונים", "billing": "בילינג", "saasInquiries": "פניות מנוי" },
+    "saasInquiries": {
+      "title": "פניות תוכנית מותאמת",
+      "description": "ארגונים שביקשו מנוי מותאם אישית",
+      "empty": "אין פניות פתוחות",
+      "org": "ארגון",
+      "contact": "איש קשר",
+      "phone": "טלפון",
+      "message": "הערה",
+      "actions": "פעולות",
+      "resolve": "אשר ופתח גישה"
+    },
     "readOnly": "(קריאה בלבד)",
     "dashboard": {
       "title": "לוח בקרה — פלטפורמה",
@@ -1068,7 +1139,145 @@
     },
     "supportBanner": "מצב תמיכה: {orgName} — נותרו {timeRemaining} דקות"
   },
+  "auth": {
+    "common": {
+      "backToHome": "חזרה לדף הבית",
+      "backToHomeShort": "בית"
+    },
+    "login": {
+      "title": "ברוכים הבאים",
+      "email": "אימייל",
+      "password": "סיסמה",
+      "forgotPassword": "שכחתי סיסמה",
+      "submit": "התחברות",
+      "submitting": "מתחבר...",
+      "divider": "או",
+      "noAccount": "אין חשבון?",
+      "signupLink": "הרשמה"
+    },
+    "signup": {
+      "title": "יצירת חשבון חדש",
+      "orgName": "שם העסק / הארגון",
+      "orgNamePlaceholder": "לדוגמה: מתמטיקה עם דנה",
+      "fullName": "שם מלא",
+      "fullNamePlaceholder": "ישראל ישראלי",
+      "email": "אימייל",
+      "password": "סיסמה",
+      "passwordPlaceholder": "6 תווים לפחות",
+      "confirmPassword": "אימות סיסמה",
+      "confirmPasswordPlaceholder": "הקלד שוב את הסיסמה",
+      "submit": "צור חשבון",
+      "submitting": "יוצר חשבון...",
+      "divider": "או",
+      "socialHelper": "הרשמה חברתית תופעל בקרוב",
+      "hasAccount": "כבר יש לך חשבון?",
+      "loginLink": "התחברות"
+    },
+    "forgotPassword": {
+      "title": "איפוס סיסמה",
+      "body": "המסך בפיתוח — בקרוב תוכלו לקבל קישור לאיפוס סיסמה באימייל.",
+      "backToLogin": "חזרה להתחברות",
+      "remember": "זוכרים את הסיסמה?",
+      "loginLink": "התחברות"
+    },
+    "social": {
+      "continueGoogle": "המשך עם Google",
+      "continueFacebook": "המשך עם Facebook",
+      "helperLogin": "התחברות חברתית תופעל בקרוב",
+      "helperSignup": "הרשמה חברתית תופעל בקרוב"
+    },
+    "trust": {
+      "secure": "מאובטח",
+      "ssl": "SSL"
+    },
+    "brand": {
+      "subtitle": "ניהול שיעורים",
+      "simple": "פשוט",
+      "fast": "מהיר",
+      "focused": "מרוכז",
+      "tagline": "שיעורים חכמים · גבייה אוטומטית · עוזר AI · תהליכים חכמים ב-WhatsApp",
+      "feature1": "לוח שיעורים חכם",
+      "feature2": "גבייה אוטומטית",
+      "feature3": "עוזר AI חכם",
+      "feature4": "תהליכים חכמים ב-WhatsApp",
+      "statusLive": "מערכת פעילה"
+    },
+    "errors": {
+      "invalidCredentials": "אימייל או סיסמה שגויים",
+      "passwordsMismatch": "הסיסמאות אינן תואמות",
+      "invalidData": "נתונים לא תקינים"
+    },
+    "validation": {
+      "orgNameMin": "שם הארגון חייב להכיל לפחות 2 תווים",
+      "fullNameMin": "שם מלא חייב להכיל לפחות 2 תווים",
+      "emailInvalid": "כתובת אימייל לא תקינה",
+      "passwordMin": "סיסמה חייבת להכיל לפחות 6 תווים"
+    },
+    "signupServerErrors": {
+      "emailTaken": "כתובת אימייל זו כבר רשומה במערכת",
+      "accountFailed": "שגיאה ביצירת החשבון. נסה שוב.",
+      "orgFailed": "שגיאה ביצירת הארגון. נסה שוב.",
+      "profileFailed": "יצירת הפרופיל נכשלה. נסה שוב."
+    }
+  },
+  "legal": {
+    "backHome": "חזרה לדף הבית",
+    "privacy": {
+      "title": "מדיניות פרטיות",
+      "metaDescription": "מדיניות פרטיות של Lessio (בקרוב).",
+      "placeholder": "אנחנו מכינים את העמוד. מדיניות הפרטיות המלאה תופיע כאן בקרוב."
+    },
+    "terms": {
+      "title": "תנאי שימוש",
+      "metaDescription": "תנאי שימוש של Lessio (בקרוב).",
+      "placeholder": "אנחנו מכינים את העמוד. תנאי השימוש המלאים יופיעו כאן בקרוב."
+    }
+  },
+  "saas": {
+    "trialBanner": "נותרו {days} ימים בניסיון החינמי.",
+    "readOnlyBanner": "המנוי במצב צפייה בלבד. שדרגו כדי להמשיך לערוך.",
+    "manageBilling": "ניהול חיוב",
+    "accountBilling": {
+      "title": "חשבון וחיובים",
+      "subtitle": "מנוי LESSIO, חשבוניות ותשלומים",
+      "currentPlan": "תוכנית נוכחית",
+      "status": "סטטוס",
+      "statusTrial": "ניסיון",
+      "statusActive": "פעיל",
+      "statusPending": "ממתין לתשלום",
+      "statusReadOnly": "צפייה בלבד",
+      "renewsAt": "חידוש הבא",
+      "card": "אמצעי תשלום",
+      "cardLastFour": "כרטיס המסתיים ב־{digits}",
+      "cardUnknown": "לא נשמר במערכת",
+      "invoices": "חשבוניות",
+      "invoiceAmount": "סכום",
+      "invoicePeriod": "תקופה",
+      "invoiceStatus": "סטטוס",
+      "invoicePaid": "שולם",
+      "invoicePending": "ממתין",
+      "invoiceLink": "מסמך",
+      "openPdf": "פתיחה",
+      "cancelAtEnd": "בקשת ביטול מנוי (בסוף התקופה)",
+      "cancelPending": "ביטול מתוזמן לסוף התקופה",
+      "upgradeHint": "לשדרוג או שינוי תוכנית פנו לתמיכה.",
+      "ownerOnly": "רק בעל העסק רואה דף זה.",
+      "legacyNoSubscription": "לא נמצאה רשומת מנוי פלטפורמה (ארגון שנפתח לפני תכונת המנויים). ניתן להמשיך לעבוד כרגיל."
+    }
+  },
   "onboarding": {
+    "errors": {
+      "noPermission": "אין הרשאה",
+      "settingsUpdateFailed": "שגיאה בעדכון ההגדרות",
+      "fullNameEmailRequired": "שם מלא ואימייל הם שדות חובה",
+      "emailAlreadyRegistered": "אימייל זה כבר רשום במערכת",
+      "inviteFailed": "שליחת ההזמנה נכשלה: {message}",
+      "teacherProfileError": "שגיאה ביצירת פרופיל המורה",
+      "teacherRecordError": "שגיאה ביצירת רשומת המורה",
+      "cancellationPolicyUpdateFailed": "שגיאה בעדכון מדיניות הביטולים",
+      "remindersUpdateFailed": "שגיאה בעדכון הגדרות התזכורות",
+      "saasPlansMissing": "אירעה תקלה זמנית בטעינת אפשרויות המנוי. נסו שוב בעוד כמה רגעים."
+    },
     "welcome": {
       "title": "ברוכים הבאים, {name}!",
       "subtitle": "בואו נגדיר את הפרטים הבסיסיים של {orgName}",
@@ -1077,7 +1286,14 @@
       "monthly": "חודשי",
       "monthlyDesc": "תשלום חודשי קבוע",
       "perLesson": "לפי שיעור",
-      "perLessonDesc": "תשלום לכל שיעור"
+      "perLessonDesc": "תשלום לכל שיעור",
+      "timezones": {
+        "Asia/Jerusalem": "ישראל (Asia/Jerusalem)",
+        "Europe/London": "לונדון (Europe/London)",
+        "America/New_York": "ניו יורק (America/New_York)",
+        "America/Los_Angeles": "לוס אנג'לס (America/Los_Angeles)",
+        "Europe/Berlin": "ברלין (Europe/Berlin)"
+      }
     },
     "teachers": {
       "title": "הוספת מורים",
@@ -1091,11 +1307,18 @@
       "importFromFile": "ייבוא מקובץ",
       "importFromFileDesc": "ייבוא רשימת מורים מקובץ Excel או CSV",
       "importTitle": "ייבוא מורים מקובץ",
-      "importSubtitle": "העלה קובץ Excel או CSV עם רשימת המורים. כל מורה יקבל הזמנה למערכת."
+      "importSubtitle": "העלה קובץ Excel או CSV עם רשימת המורים. כל מורה יקבל הזמנה למערכת.",
+      "fullName": "שם מלא",
+      "emailLabel": "אימייל",
+      "namePlaceholder": "שם המורה",
+      "manualSubtitle": "הזן שם ואימייל לכל מורה. הם יקבלו הזמנה למערכת."
     },
     "importStudents": {
       "title": "יבוא תלמידים והורים",
-      "subtitle": "העלה קובץ אקסל או CSV עם הנתונים הקיימים שלך"
+      "subtitle": "העלה קובץ אקסל או CSV עם הנתונים הקיימים שלך",
+      "hint": "הורד את התבנית כדי לראות את הפורמט הנדרש.",
+      "studentsTab": "תלמידים",
+      "parentsTab": "הורים"
     },
     "importLessons": {
       "title": "יבוא שיעורים",
@@ -1111,13 +1334,160 @@
       "chargePercent": "אחוז חיוב בביטול מאוחר",
       "reminders": "תזכורות",
       "lessonReminder": "תזכורת שיעור (שעות לפני)",
-      "paymentReminder": "תזכורת תשלום (ימים)"
+      "paymentReminder": "תזכורת תשלום (ימים)",
+      "unitHours": "{count} שעות",
+      "unitDays": "{count} ימים",
+      "unitPercent": "{n}%"
     },
     "complete": {
       "title": "הכל מוכן!",
       "subtitle": "המערכת שלך מוכנה לשימוש. הנה סיכום של מה שהגדרת:",
       "goToDashboard": "כניסה לדשבורד",
-      "loading": "עובר לדשבורד..."
+      "loading": "עובר לדשבורד...",
+      "stats": {
+        "teachers": "מורים",
+        "students": "תלמידים",
+        "parents": "הורים",
+        "lessons": "שיעורים"
+      }
+    },
+    "planSelection": {
+      "title": "בחירת מסלול",
+      "subtitle": "לא משנה אם את מורה פרטית שעובדת לבד או מנהל מרכז למידה גדול - יש מסלול שיתן לך יותר סדר, שליטה מלאה בביטולים ותיאומים והרבה יותר שקט תפעולי.",
+      "popularBadge": "הכי מומלץ",
+      "growthPickLine": "רוב הסטודיוים והמורים עם עומס קבוע בוחרים כאן",
+      "bestForLabel": "מתאים ל: ",
+      "outcomesIntro": "",
+      "outcomes": [
+        "פחות כאוס בין WhatsApp ליומן",
+        "פחות שיעורים שנופלים בין הכיסאות",
+        "יותר סדר, שליטה ושירות מקצועי"
+      ],
+      "pricingSectionAria": "השוואת מסלולים",
+      "billingMonthly": "חודשי",
+      "billingYearly": "שנתי",
+      "perMonth": "לחודש",
+      "perYear": "לשנה",
+      "freePrice": "₪0",
+      "freePriceCaption": "בלי כרטיס אשראי",
+      "continueToPay": "המשך לתשלום",
+      "contactName": "שם",
+      "phone": "טלפון",
+      "message": "הערות (רשות)",
+      "submitInquiry": "שליחת פנייה",
+      "back": "חזרה",
+      "paymentStubTitle": "תשלום עדיין לא מחובר",
+      "paymentStubBody": "בקרוב יופיע כאן מסך סליקה. עד אז אפשר להמשיך עם ניסיון חינם או לעבור לשלב הסיום בלי חיוב.",
+      "paymentStubClose": "סגירה",
+      "paymentStubContinue": "המשך לשלב הסיום",
+      "faqTitle": "שאלות נפוצות",
+      "faq": {
+        "upgrade": {
+          "q": "אפשר לעבור למסלול אחר אחר כך?",
+          "a": "כן. מדף החשבון אפשר לשנות מסלול בכל עת — הסכום יתעדכן במחזור החיוב הבא."
+        },
+        "trial": {
+          "q": "מה כלול בניסיון החינם?",
+          "a": "שימוש ללא חיוב: ניהול תלמידים, שיעורים ויומן ברמת בסיס. אוטומציה מלאה, דוחות מתקדמים, פורטל הורים ועוזר AI זמינים במסלול Growth ובפתרונות המורחבים."
+        },
+        "choose": {
+          "q": "מה ההבדל בין Starter ל־Growth?",
+          "a": "Starter — עבודה לבד או צוות קטן: סדר, תיעוד ותזכורות בסיסיות בווטסאפ. Growth — נפח גבוה של תלמידים ושיעורים: אוטומציה מלאה, דוחות, פורטל הורים ועוזר AI. לא בטוחים? מתחילים מניסיון או מ־Starter ומשדרגים כשנוח."
+        },
+        "cancel": {
+          "q": "איך מבטלים מנוי?",
+          "a": "הכל לפי תנאי השימוש. לשינוי או ביטול אפשר לפנות לתמיכה או לנהל את החשבון מהגדרות."
+        }
+      },
+      "plans": {
+        "free": {
+          "title": "ניסיון חינם",
+          "tagline": "להתרשם מהמערכת בלי לשלם ובלי למסור כרטיס.",
+          "bestFor": "מי שרוצה קודם לראות איך Lessio נכנס לשגרה.",
+          "cta": "התחלת ניסיון",
+          "bullets": [
+            "עד 30 יום",
+            "תלמידים, שיעורים ויומן — הבסיס",
+            "מעקב מהיר אחר סטטוס",
+            "בלי אוטומציה מלאה, בלי דוחות מתקדמים ובלי AI"
+          ]
+        },
+        "starter": {
+          "title": "Starter",
+          "tagline": "סדר בעבודה — בלי לנהל הכל בווטסאפ ובאקסל.",
+          "bestFor": "מורים פרטיים ועסקים קטנים שעובדים בעיקר לבד.",
+          "cta": "לבחירת Starter",
+          "bullets": [
+            "כל התלמידים והשיעורים במקום אחד",
+            "תיעוד שיעורים והיסטוריה",
+            "תזכורות בסיסיות בווטסאפ",
+            "נוכחות, ביטולים ומעקב אחר חיובים",
+            "שיעורי בית בסיסיים"
+          ]
+        },
+        "growth": {
+          "title": "Growth",
+          "tagline": "אוטומציה, דוחות, פורטל הורים ועוזר AI — פחות רדיפה אחרי פרטים קטנים.",
+          "bestFor": "סטודיו או בית ספר עם נפח עבודה קבוע שרוצים לחסוך זמן.",
+          "cta": "לבחירת Growth",
+          "bullets": [
+            "כל מה שכלול ב־Starter",
+            "אוטומציה מלאה בווטסאפ",
+            "דוחות מתקדמים",
+            "פורטל הורים ושיעורי בית",
+            "עוזר AI לטקסטים ולשגרה",
+            "תעדוף בתמיכה"
+          ]
+        },
+        "center": {
+          "title": "מרכז / מותאם אישית",
+          "tagline": "לצוותים, סניפים ודרישות מיוחדות — התאמה אישית, לא מנוי ״מהמדף״.",
+          "bestFor": "מרכזי למידה, כמה מורים או צרכים שאין להם מענה במסלולים הרגילים.",
+          "cta": "צרו קשר",
+          "ctaOpen": "מילוי פרטים לחזרה",
+          "bullets": [
+            "משתמשים, הרשאות וסניפים",
+            "התאמת תהליכים וליווי בהתחלה",
+            "חיבור למערכות חיצוניות (לפי שלב)",
+            "תמיכה מורחבת לפי הצורך"
+          ]
+        }
+      }
+    },
+    "paymentCallback": {
+      "processing": "מאמתים תשלום…",
+      "hint": "אם סיימתם לשלם, המערכת תעבור לדשבורד אוטומטית.",
+      "slow": "זה לוקח יותר מהצפוי. ניתן לרענן את הדף או לחזור מאוחר יותר.",
+      "failedTitle": "התשלום לא הושלם",
+      "failedBody": "לא חויבתם. ניתן לבחור תוכנית שוב מההתחלה.",
+      "backToOnboarding": "חזרה להגדרת חשבון"
+    },
+    "checkoutPreview": {
+      "title": "אישור לפני תשלום",
+      "plan": "תוכנית",
+      "amount": "סכום לחיוב",
+      "externalNote": "בלחיצה על המשך תועברו לדף תשלום מאובטח של ספק הסליקה (מחוץ לאפליקציה).",
+      "continuePay": "המשך לדף התשלום",
+      "cancel": "חזרה לבחירת תוכנית"
+    },
+    "mockPayment": {
+      "title": "דף תשלום (בדיקות)",
+      "subtitle": "סביבת טסט — אין חיוב אמיתי.",
+      "plan": "תוכנית",
+      "billing": "מחזור",
+      "intervalMonthly": "חודשי",
+      "intervalYearly": "שנתי",
+      "amount": "סכום לתשלום",
+      "hint": "בסביבה חיה כאן יופיע דף הסליקה של ספק התשלומים (למשל סאמיט).",
+      "payNow": "השלם תשלום (סימולציה)",
+      "back": "ביטול וחזרה לבחירת תוכנית",
+      "testBadge": "מצב בדיקות בלבד"
+    },
+    "pendingCustom": {
+      "title": "קיבלנו את הפנייה",
+      "body": "ניצור איתכם קשר בהקדם להתאמת מנוי. עד אז החשבון נשאר בהקפאה.",
+      "footer": "לאחר האישור תקבלו גישה מלאה לדשבורד.",
+      "logoutHint": "יציאה מהמערכת"
     },
     "steps": {
       "welcome": "ברוכים הבאים",
@@ -1125,7 +1495,12 @@
       "importStudents": "תלמידים והורים",
       "importLessons": "שיעורים",
       "settings": "הגדרות",
+      "planSelection": "מנוי",
       "complete": "סיום"
+    },
+    "stepIndicator": {
+      "progress": "שלב {current} מתוך {total}",
+      "navAria": "התקדמות בהגדרת החשבון"
     },
     "nav": {
       "next": "המשך",
@@ -1148,27 +1523,128 @@
       "valid": "{count} תקינות",
       "warnings": "{count} אזהרות",
       "errors": "{count} שגיאות",
+      "duplicates": "{count} כפילויות",
       "total": "מתוך {count} שורות",
-      "import": "ייבא {count} שורות"
+      "import": "ייבא {count} שורות",
+      "duplicateHint": "סמנו את תיבת הסימון ליד שורות כפולות כדי לדרוס את הרשומה הקיימת"
     },
     "importing": "מייבא נתונים...",
     "processing": "מעבד את הקובץ...",
     "results": {
       "title": "תוצאות הייבוא",
       "inserted": "יובאו בהצלחה",
+      "updated": "עודכנו",
       "skipped": "דולגו",
       "errors": "שגיאות",
       "errorDetails": "פירוט שגיאות:",
       "row": "שורה {row}",
-      "importMore": "ייבוא נוסף"
+      "importMore": "ייבוא נוסף",
+      "linkedRelationships": "קישורים נוצרו",
+      "failedLinks": "קישורים שנכשלו (תלמיד לא נמצא):",
+      "failedLinkDetail": "הקישור ל-\"{name}\" לא נוצר — תלמיד לא נמצא במערכת"
     },
     "entities": {
       "students": "תלמידים",
       "parents": "הורים",
       "teachers": "מורים",
       "lessonsSchedule": "מערכת שעות חוזרת",
-      "lessonsHistory": "היסטוריית שיעורים"
+      "lessonsHistory": "היסטוריית שיעורים",
+      "familyList": "רשימת משפחות"
     },
-    "button": "יבוא"
+    "button": "יבוא",
+    "table": {
+      "status": "סטטוס",
+      "duplicate": "כפול"
+    },
+    "fileErrors": {
+      "unsupportedFormat": "פורמט קובץ לא נתמך. יש להעלות XLSX, XLS או CSV",
+      "fileTooLarge": "הקובץ גדול מדי (מקסימום {maxSize}MB)"
+    },
+    "flowErrors": {
+      "parseFailed": "שגיאה בעיבוד הקובץ",
+      "parseFailedRetry": "שגיאה בעיבוד הקובץ. נסה שוב.",
+      "executeFailed": "שגיאה בביצוע הייבוא",
+      "executeFailedRetry": "שגיאה בביצוע הייבוא. נסה שוב."
+    },
+    "apiErrors": {
+      "noPermission": "אין הרשאה",
+      "noFile": "לא הועלה קובץ",
+      "invalidEntity": "סוג ישות לא תקין",
+      "fileTooLarge": "הקובץ גדול מדי (מקסימום 5MB)",
+      "unsupportedFormat": "פורמט קובץ לא נתמך. יש להעלות XLSX, XLS או CSV",
+      "emptyFile": "הקובץ ריק או לא מכיל נתונים",
+      "parseError": "שגיאה בעיבוד הקובץ. ודא שהוא תקין ונסה שוב.",
+      "noRowsToImport": "אין שורות לייבוא",
+      "executeError": "שגיאה בביצוע הייבוא. נסה שוב."
+    },
+    "warnings": {
+      "existingRecord": "רשומה קיימת במערכת",
+      "studentNotFound": "התלמיד \"{name}\" לא נמצא — הקישור לא ייווצר"
+    },
+    "fields": {
+      "full_name": "שם מלא",
+      "phone": "טלפון",
+      "email": "אימייל",
+      "teacher_name": "שם מורה",
+      "student_name": "שם תלמיד",
+      "day_of_week": "יום בשבוע",
+      "start_time": "שעת התחלה",
+      "end_time": "שעת סיום",
+      "duration_minutes": "משך (דקות)",
+      "date": "תאריך",
+      "grade": "כיתה",
+      "level": "רמה",
+      "focused_subject": "מקצוע",
+      "weekly_quota": "מכסה שבועית",
+      "notes": "הערות",
+      "status": "סטטוס",
+      "student_names": "שמות תלמידים",
+      "bio": "ביוגרפיה",
+      "hourly_rate": "תעריף שעתי",
+      "lesson_type": "סוג שיעור",
+      "cancel_reason": "סיבת ביטול",
+      "parent_name": "שם הורה",
+      "parent_phone": "טלפון הורה",
+      "parent_name_2": "שם הורה 2",
+      "parent_phone_2": "טלפון הורה 2",
+      "student_notes": "הערות תלמיד",
+      "parent_notes": "הערות הורה"
+    },
+    "validation": {
+      "fullNameRequired": "שם מלא הוא שדה חובה",
+      "weeklyQuotaInvalid": "מכסה שבועית חייבת להיות מספר בין 1 ל-20",
+      "studentStatusInvalid": "סטטוס לא תקין",
+      "phoneRequired": "מספר טלפון הוא שדה חובה",
+      "emailRequired": "אימייל הוא שדה חובה",
+      "invalidEmail": "כתובת אימייל לא תקינה",
+      "hourlyRateInvalid": "תעריף שעתי חייב להיות מספר חיובי",
+      "teacherNameRequired": "שם מורה הוא שדה חובה",
+      "studentNameRequired": "שם תלמיד הוא שדה חובה",
+      "dayOfWeekRequired": "יום בשבוע הוא שדה חובה",
+      "startTimeRequired": "שעת התחלה היא שדה חובה",
+      "timeFormatInvalid": "פורמט שעה לא תקין (HH:MM)",
+      "durationRequired": "משך השיעור הוא שדה חובה",
+      "durationInvalid": "משך חייב להיות מספר בין 1 ל-480",
+      "lessonTypeInvalid": "סוג שיעור לא תקין",
+      "dateRequired": "תאריך הוא שדה חובה",
+      "endTimeRequired": "שעת סיום היא שדה חובה",
+      "lessonStatusInvalid": "סטטוס לא תקין",
+      "parentNameRequired": "שם הורה הוא שדה חובה",
+      "parent2NameRequired": "שם הורה 2 נדרש כאשר טלפון הורה 2 מסופק"
+    },
+    "executeErrors": {
+      "invalidPhone": "מספר טלפון לא תקין",
+      "duplicatePhone": "מספר טלפון כפול",
+      "profileUpdateFailed": "שגיאה בעדכון פרופיל",
+      "teacherRecordUpdateFailed": "שגיאה בעדכון רשומת מורה",
+      "emailAlreadyRegistered": "אימייל {email} כבר רשום במערכת",
+      "inviteFailed": "שליחת הזמנה נכשלה: {message}",
+      "profileCreateFailed": "שגיאה ביצירת פרופיל",
+      "teacherRecordCreateFailed": "שגיאה ביצירת רשומת מורה",
+      "teacherNotFound": "מורה \"{name}\" לא נמצא",
+      "studentNotFound": "תלמיד \"{name}\" לא נמצא",
+      "invalidDayOfWeek": "יום בשבוע לא תקין",
+      "dbError": "{message}"
+    }
   }
 }

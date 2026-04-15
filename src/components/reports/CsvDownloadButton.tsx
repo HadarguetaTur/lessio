@@ -30,6 +30,7 @@ export function CsvDownloadButton({
 
   return (
     <button
+      type="button"
       onClick={handleDownload}
       className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600 transition-colors"
     >

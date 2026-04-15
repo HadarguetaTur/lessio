@@ -13,13 +13,16 @@ import { getSession } from '@/lib/auth/session'
 import { executeImport } from '@/lib/import/executeImport'
 import { getOrgTimezone } from '@/lib/organizations'
 import type { EntityType, ValidatedRow } from '@/lib/import/validators'
+import { getImportTranslator } from '@/lib/i18n/serverTranslator'
 
-const VALID_TYPES: EntityType[] = ['students', 'parents', 'teachers', 'lessons-schedule', 'lessons-history']
+const VALID_TYPES: EntityType[] = ['students', 'parents', 'teachers', 'lessons-schedule', 'lessons-history', 'family-list']
 
 export async function POST(request: NextRequest) {
+  const t = await getImportTranslator()
+
   const session = await getSession()
   if (!['owner', 'admin'].includes(session.role)) {
-    return NextResponse.json({ error: 'אין הרשאה' }, { status: 403 })
+    return NextResponse.json({ error: t('apiErrors.noPermission') }, { status: 403 })
   }
 
   const body = await request.json()
@@ -29,27 +32,19 @@ export async function POST(request: NextRequest) {
   }
 
   if (!VALID_TYPES.includes(entityType as EntityType)) {
-    return NextResponse.json({ error: 'סוג ישות לא תקין' }, { status: 400 })
+    return NextResponse.json({ error: t('apiErrors.invalidEntity') }, { status: 400 })
   }
 
   if (!rows || rows.length === 0) {
-    return NextResponse.json({ error: 'אין שורות לייבוא' }, { status: 400 })
+    return NextResponse.json({ error: t('apiErrors.noRowsToImport') }, { status: 400 })
   }
 
   try {
     const timezone = await getOrgTimezone(session.orgId)
-    const result = await executeImport(
-      session.orgId,
-      entityType as EntityType,
-      rows,
-      timezone
-    )
+    const result = await executeImport(session.orgId, entityType as EntityType, rows, timezone, t)
 
     return NextResponse.json(result)
   } catch {
-    return NextResponse.json(
-      { error: 'שגיאה בביצוע הייבוא. נסה שוב.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: t('apiErrors.executeError') }, { status: 500 })
   }
 }

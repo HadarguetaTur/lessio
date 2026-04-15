@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { assertOrgNotSaasReadOnly } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { buildMonthForAllStudents } from '@/lib/billing/monthly/buildMonthForAllStudents'
 import { buildStudentMonth } from '@/lib/billing/monthly/buildStudentMonth'
@@ -14,6 +15,11 @@ import {
   updateSubscription,
   deleteSubscription,
 } from '@/lib/subscriptions'
+import { decryptToken } from '@/lib/crypto'
+import { getPaymentProvider } from '@/lib/payments/factory'
+import { PaymentProviderNotConfiguredError } from '@/lib/payments'
+import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { sendTextMessage } from '@/lib/whatsapp'
 
 function revalidateBillingSurfaces(studentId?: string) {
   revalidatePath('/billing')
@@ -34,6 +40,7 @@ function revalidateBillingSurfaces(studentId?: string) {
 export async function generateMonthlyBilling(billingMonth: string) {
   const session = await getSession()
   requireMutation(session)
+  await assertOrgNotSaasReadOnly(session.orgId)
 
   if (session.role !== 'owner' && session.role !== 'admin') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
@@ -98,6 +105,7 @@ export async function recalculateStudentBilling(
 export async function markBillingAsPaid(billingId: string) {
   const session = await getSession()
   requireMutation(session)
+  await assertOrgNotSaasReadOnly(session.orgId)
 
   if (session.role !== 'owner') {
     return { error: 'רק בעלים יכול לסמן כשולם' }
@@ -378,4 +386,188 @@ export async function deleteSubscriptionAction(id: string) {
   } catch {
     return { error: 'שגיאה במחיקת המנוי' }
   }
+}
+
+// ─── Billing approval actions ──────────────────────────────────────────────
+
+export async function approveBillingAction(billingId: string) {
+  const session = await getSession()
+  requireMutation(session)
+  await assertOrgNotSaasReadOnly(session.orgId)
+
+  if (session.role !== 'owner' && session.role !== 'admin') {
+    return { error: 'אין הרשאה לביצוע פעולה זו' }
+  }
+
+  const supabase = createServiceRoleClient()
+
+  const { data: billing } = await supabase
+    .from('student_monthly_billing')
+    .select('id, student_id, parent_id, billing_month, total_amount, is_paid, is_approved')
+    .eq('id', billingId)
+    .eq('organization_id', session.orgId)
+    .single()
+
+  if (!billing) return { error: 'רשומת חיוב לא נמצאה' }
+  if (billing.is_paid) return { error: 'החיוב כבר סומן כשולם' }
+  if (billing.is_approved) return { error: null } // idempotent
+
+  const { error: updateError } = await supabase
+    .from('student_monthly_billing')
+    .update({ is_approved: true, updated_at: new Date().toISOString() })
+    .eq('id', billingId)
+    .eq('organization_id', session.orgId)
+
+  if (updateError) return { error: 'שגיאה בעדכון אישור החיוב' }
+
+  let chargeId: string | null = null
+  try {
+    const syncResult = await syncMonthlyCharge({
+      organizationId: session.orgId,
+      billingRecordId: billing.id as string,
+      parentId: (billing.parent_id as string | null) ?? null,
+      billingMonth: billing.billing_month as string,
+      amount: Number(billing.total_amount),
+      isApproved: true,
+      isPaid: false,
+    })
+    chargeId = syncResult.chargeId
+  } catch {
+    return { error: 'החיוב אושר אך סנכרון ledger נכשל' }
+  }
+
+  revalidateBillingSurfaces(billing.student_id as string)
+
+  // Fire-and-forget: send payment request if enabled and charge was created
+  if (chargeId && billing.parent_id) {
+    sendBillingPaymentRequestCore(billingId, session.orgId).catch((err) => {
+      console.error('[billing] auto payment request failed after approve', {
+        billingId,
+        orgId: session.orgId,
+        err,
+      })
+    })
+  }
+
+  return { error: null }
+}
+
+export async function sendBillingPaymentRequestAction(billingId: string) {
+  const session = await getSession()
+  requireMutation(session)
+  await assertOrgNotSaasReadOnly(session.orgId)
+
+  if (session.role !== 'owner' && session.role !== 'admin') {
+    return { error: 'אין הרשאה לביצוע פעולה זו' }
+  }
+
+  try {
+    await sendBillingPaymentRequestCore(billingId, session.orgId)
+    return { error: null }
+  } catch (err) {
+    console.error('[billing] sendBillingPaymentRequestAction failed', { billingId, orgId: session.orgId, err })
+    return { error: 'שגיאה בשליחת בקשת התשלום' }
+  }
+}
+
+/**
+ * Shared core: creates payment link + sends WhatsApp for a monthly billing record.
+ * Throws on failure — callers decide whether to fire-and-forget or surface the error.
+ */
+async function sendBillingPaymentRequestCore(
+  billingId: string,
+  orgId: string
+): Promise<void> {
+  const db = createServiceRoleClient()
+
+  // Load org settings
+  const { data: org } = await db
+    .from('organizations')
+    .select('auto_send_payment_request, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone')
+    .eq('id', orgId)
+    .single()
+
+  if (!org?.auto_send_payment_request && !org?.payment_provider) {
+    // Called from approve fire-and-forget: skip silently
+    return
+  }
+
+  const encryptedToken = org.whatsapp_access_token as string | null
+  const phoneNumberId = org.whatsapp_phone_number_id as string | null
+  const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
+
+  if (!encryptedToken || !phoneNumberId) {
+    throw new Error('WhatsApp לא מחובר')
+  }
+
+  // Load billing + linked charge
+  const { data: billing } = await db
+    .from('student_monthly_billing')
+    .select('id, parent_id, billing_month, total_amount, student_id')
+    .eq('id', billingId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!billing) throw new Error('רשומת חיוב לא נמצאה')
+  if (!billing.parent_id) throw new Error('לא שויך הורה לחיוב זה')
+
+  const { data: charge } = await db
+    .from('charges')
+    .select('id, status, amount')
+    .eq('organization_id', orgId)
+    .eq('billing_record_id', billingId)
+    .maybeSingle()
+
+  if (!charge) throw new Error('חיוב ב-ledger לא נמצא — יש לאשר תחילה')
+  if (charge.status === 'paid') throw new Error('החיוב כבר שולם')
+
+  // Load parent
+  const { data: parent } = await db
+    .from('parents')
+    .select('id, full_name, phone')
+    .eq('id', billing.parent_id)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!parent?.phone) throw new Error('הורה לא נמצא או חסר מספר טלפון')
+
+  // Create payment link
+  const { provider, providerName } = await getPaymentProvider(orgId)
+  const paymentResult = await provider.createPaymentLink({
+    chargeId: charge.id,
+    amount: Number(charge.amount),
+    description: `חיוב חודשי ${billing.billing_month} — ${parent.full_name}`,
+    orgId,
+  })
+
+  // Persist link on charge
+  await db
+    .from('charges')
+    .update({
+      payment_link: paymentResult.url,
+      payment_reference: paymentResult.reference,
+      payment_provider: providerName,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', charge.id)
+    .eq('organization_id', orgId)
+
+  // Build and send WhatsApp message via template
+  const accessToken = decryptToken(encryptedToken)
+  const body = await resolveTemplate(orgId, 'payment_request', {
+    amount: Number(charge.amount).toFixed(2),
+    description: `חיוב חודשי ${billing.billing_month}`,
+    payment_link: paymentResult.url,
+  })
+
+  await sendTextMessage(parent.phone, body, accessToken, phoneNumberId)
+
+  // Log sent_at
+  await db
+    .from('charges')
+    .update({ sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', charge.id)
+    .eq('organization_id', orgId)
+
+  console.info('[billing] payment request sent', { billingId, orgId, chargeId: charge.id, providerName })
 }

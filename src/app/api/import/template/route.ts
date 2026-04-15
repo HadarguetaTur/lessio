@@ -9,7 +9,7 @@ import { getSession } from '@/lib/auth/session'
 import { generateTemplate, getTemplateFilename } from '@/lib/import/templates'
 import type { EntityType } from '@/lib/import/validators'
 
-const VALID_TYPES: EntityType[] = ['students', 'parents', 'teachers', 'lessons-schedule', 'lessons-history']
+const VALID_TYPES: EntityType[] = ['students', 'parents', 'teachers', 'lessons-schedule', 'lessons-history', 'family-list']
 
 export async function GET(request: NextRequest) {
   const session = await getSession()

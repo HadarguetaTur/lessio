@@ -10,6 +10,7 @@ import {
   CreditCard,
   LogOut,
   ShieldCheck,
+  Inbox,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 import { cn } from '@/lib/utils'
@@ -28,6 +29,7 @@ export function AdminSidebar({ userName, mobile = false }: AdminSidebarProps) {
     { href: '/admin/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { href: '/admin/orgs',      label: t('nav.orgs'),      icon: Building2       },
     { href: '/admin/billing',   label: t('nav.billing'),   icon: CreditCard      },
+    { href: '/admin/saas-inquiries', label: t('nav.saasInquiries'), icon: Inbox },
   ]
 
   const initials = userName

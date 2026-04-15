@@ -183,6 +183,17 @@
   scrollbar-color: oklch(0.68 0.12 255 / 0.55) transparent;
 }
 
+/* Keep touch/drag scroll but hide track (e.g. horizontal tab strips) */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* RTL — push scrollbar to the left (away from the right-side sidebar) */
 [dir="rtl"] .overflow-y-auto,
 [dir="rtl"] .overflow-auto,

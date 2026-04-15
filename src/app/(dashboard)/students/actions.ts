@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
+import { getTeacherByProfileId } from '@/lib/teachers'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getStudentLessons, getStudentFinancial, getStudentPrimaryParent, type StudentLesson, type StudentFinancial, type StudentPrimaryParent } from '@/lib/students'
@@ -93,10 +94,43 @@ export async function updateStudent(
     return { error: parsed.error.errors[0]?.message ?? 'נתונים לא תקינים' }
   }
 
-  const { orgId, role } = await getSession()
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
-
+  const { orgId, role, profileId } = await getSession()
   const supabase = await createClient()
+
+  if (role === 'teacher') {
+    const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
+    if (!teacher) return { error: 'לא נמצא פרופיל מורה פעיל' }
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from('students')
+      .select('id, teacher_id')
+      .eq('id', id)
+      .eq('organization_id', orgId)
+      .single()
+    if (fetchErr || !existing) return { error: 'תלמיד לא נמצא' }
+    if (existing.teacher_id !== teacher.id) {
+      return { error: 'ניתן לעדכן רק תלמידים המשויכים אליך' }
+    }
+
+    const { error } = await supabase
+      .from('students')
+      .update({
+        grade: parsed.data.grade,
+        level: parsed.data.level,
+        focused_subject: parsed.data.focused_subject,
+        weekly_quota: parsed.data.weekly_quota,
+        notes: parsed.data.notes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('organization_id', orgId)
+
+    if (error) return { error: 'שגיאה בעדכון התלמיד' }
+    revalidatePath('/students')
+    return null
+  }
+
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
 
   const { error } = await supabase
     .from('students')

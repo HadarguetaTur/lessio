@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { BookOpen } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getAssignments } from '@/lib/homework'
+import { getTeacherByProfileId } from '@/lib/teachers'
 import { getTranslations } from 'next-intl/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,7 @@ export default async function HomeworkPage({
 }: {
   searchParams: Promise<{ status?: string }>
 }) {
-  const { orgId, role } = await getSession()
+  const { orgId, role, userId } = await getSession()
   const t = await getTranslations('homework')
   const tCommon = await getTranslations('common')
 
@@ -46,7 +47,13 @@ export default async function HomeworkPage({
     ? (rawStatus as Status)
     : undefined
 
-  const assignments = await getAssignments(orgId, { status: statusFilter })
+  let teacherIdFilter: string | undefined
+  if (role === 'teacher') {
+    const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
+    teacherIdFilter = teacher?.id
+  }
+
+  const assignments = await getAssignments(orgId, { status: statusFilter, teacherId: teacherIdFilter })
 
   const STATUS_LABELS: Record<Status, string> = {
     pending: tCommon('homeworkStatus.pending'),

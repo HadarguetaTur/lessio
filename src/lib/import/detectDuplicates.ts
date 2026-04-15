@@ -1,23 +1,29 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
+import { normalizePhone } from '@/lib/phone'
 import type { EntityType, ValidatedRow } from './validators'
 
 /**
  * Detect duplicate rows against existing DB records.
- * Enriches each matching row with `existingId` and a warning.
+ * Enriches each matching row with `existingId` / `existingStudentId` / `existingParentId` and warnings.
+ *
+ * @param studentNotFoundWarning Optional fn(name) → warning string for unresolvable student_names in parent import.
  */
 export async function detectDuplicates(
   orgId: string,
   entityType: EntityType,
-  rows: ValidatedRow[]
+  rows: ValidatedRow[],
+  existingRecordWarning: string,
+  studentNotFoundWarning?: (name: string) => string
 ): Promise<ValidatedRow[]> {
   switch (entityType) {
     case 'parents':
-      return detectParentDuplicates(orgId, rows)
+      return detectParentDuplicates(orgId, rows, existingRecordWarning, studentNotFoundWarning)
     case 'teachers':
-      return detectTeacherDuplicates(orgId, rows)
+      return detectTeacherDuplicates(orgId, rows, existingRecordWarning)
     case 'students':
-      return detectStudentDuplicates(orgId, rows)
+      return detectStudentDuplicates(orgId, rows, existingRecordWarning)
+    case 'family-list':
+      return detectFamilyListDuplicates(orgId, rows, existingRecordWarning)
     default:
       return rows
   }
@@ -25,7 +31,9 @@ export async function detectDuplicates(
 
 async function detectParentDuplicates(
   orgId: string,
-  rows: ValidatedRow[]
+  rows: ValidatedRow[],
+  existingRecordWarning: string,
+  studentNotFoundWarning?: (name: string) => string
 ): Promise<ValidatedRow[]> {
   const phoneToRow = new Map<string, number[]>()
 
@@ -57,7 +65,7 @@ async function detectParentDuplicates(
 
   const phoneToId = new Map(existing.map((p) => [p.phone, p.id]))
 
-  return rows.map((row, i) => {
+  let enriched: ValidatedRow[] = rows.map((row): ValidatedRow => {
     const raw = row.data.phone
     if (!raw) return row
     try {
@@ -67,7 +75,7 @@ async function detectParentDuplicates(
         return {
           ...row,
           existingId,
-          warnings: [...row.warnings, 'רשומה קיימת במערכת'],
+          warnings: [...row.warnings, existingRecordWarning],
           status: row.status === 'error' ? 'error' : 'warning',
         }
       }
@@ -76,11 +84,54 @@ async function detectParentDuplicates(
     }
     return row
   })
+
+  // Validate student_names against existing students and surface unresolvable names as warnings
+  if (studentNotFoundWarning) {
+    const allNames = enriched.flatMap((row) => {
+      const raw = row.data.student_names || row.data.student_name
+      if (!raw) return []
+      return raw.split(',').map((n) => n.trim()).filter(Boolean)
+    })
+
+    if (allNames.length > 0) {
+      const db = createServiceRoleClient()
+      const { data: students } = await db
+        .from('students')
+        .select('id, full_name')
+        .eq('organization_id', orgId)
+
+      const nameSet = new Set<string>()
+      for (const s of students ?? []) {
+        nameSet.add(s.full_name)
+        nameSet.add(s.full_name.toLowerCase())
+        nameSet.add(s.full_name.trim().toLowerCase())
+      }
+
+      enriched = enriched.map((row): ValidatedRow => {
+        const raw = row.data.student_names || row.data.student_name
+        if (!raw) return row
+        const names = raw.split(',').map((n) => n.trim()).filter(Boolean)
+        const notFound = names.filter(
+          (n) => !nameSet.has(n) && !nameSet.has(n.toLowerCase()) && !nameSet.has(n.trim().toLowerCase())
+        )
+        if (notFound.length === 0) return row
+        const newWarnings = notFound.map((n) => studentNotFoundWarning(n))
+        return {
+          ...row,
+          warnings: [...row.warnings, ...newWarnings],
+          status: row.status === 'error' ? 'error' : 'warning',
+        }
+      })
+    }
+  }
+
+  return enriched
 }
 
 async function detectTeacherDuplicates(
   orgId: string,
-  rows: ValidatedRow[]
+  rows: ValidatedRow[],
+  existingRecordWarning: string
 ): Promise<ValidatedRow[]> {
   const emails = rows
     .map((r) => r.data.email?.trim().toLowerCase())
@@ -111,7 +162,7 @@ async function detectTeacherDuplicates(
       return {
         ...row,
         existingId,
-        warnings: [...row.warnings, 'רשומה קיימת במערכת'],
+        warnings: [...row.warnings, existingRecordWarning],
         status: row.status === 'error' ? 'error' : 'warning',
       }
     }
@@ -121,7 +172,8 @@ async function detectTeacherDuplicates(
 
 async function detectStudentDuplicates(
   orgId: string,
-  rows: ValidatedRow[]
+  rows: ValidatedRow[],
+  existingRecordWarning: string
 ): Promise<ValidatedRow[]> {
   const names = rows
     .map((r) => r.data.full_name?.trim())
@@ -152,10 +204,98 @@ async function detectStudentDuplicates(
       return {
         ...row,
         existingId,
-        warnings: [...row.warnings, 'רשומה קיימת במערכת'],
+        warnings: [...row.warnings, existingRecordWarning],
         status: row.status === 'error' ? 'error' : 'warning',
       }
     }
     return row
+  })
+}
+
+async function detectFamilyListDuplicates(
+  orgId: string,
+  rows: ValidatedRow[],
+  existingRecordWarning: string
+): Promise<ValidatedRow[]> {
+  const db = createServiceRoleClient()
+
+  // Collect phones for parent lookup
+  const phones: string[] = []
+  for (const row of rows) {
+    try {
+      if (row.data.parent_phone) phones.push(normalizePhone(row.data.parent_phone))
+    } catch { /* skip */ }
+    try {
+      if (row.data.parent_phone_2) phones.push(normalizePhone(row.data.parent_phone_2))
+    } catch { /* skip */ }
+  }
+
+  // Collect student names for student lookup
+  const studentNames = rows
+    .map((r) => r.data.student_name?.trim())
+    .filter((n): n is string => !!n)
+
+  const [{ data: existingParents }, { data: existingStudents }] = await Promise.all([
+    phones.length > 0
+      ? db.from('parents').select('id, phone').eq('organization_id', orgId).in('phone', phones)
+      : Promise.resolve({ data: [] }),
+    studentNames.length > 0
+      ? db.from('students').select('id, full_name').eq('organization_id', orgId)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const phoneToParentId = new Map((existingParents ?? []).map((p) => [p.phone, p.id]))
+
+  const nameToStudentId = new Map<string, string>()
+  for (const s of existingStudents ?? []) {
+    nameToStudentId.set(s.full_name, s.id)
+    nameToStudentId.set(s.full_name.toLowerCase(), s.id)
+    nameToStudentId.set(s.full_name.trim().toLowerCase(), s.id)
+  }
+
+  return rows.map((row) => {
+    let enriched: ValidatedRow = { ...row }
+    const warnings: string[] = [...row.warnings]
+
+    // Check parent
+    try {
+      if (row.data.parent_phone) {
+        const phone = normalizePhone(row.data.parent_phone)
+        const parentId = phoneToParentId.get(phone)
+        if (parentId) {
+          enriched = { ...enriched, existingParentId: parentId }
+          warnings.push(existingRecordWarning + ' (הורה)')
+        }
+      }
+    } catch { /* skip */ }
+
+    // Check second parent
+    try {
+      if (row.data.parent_phone_2) {
+        const phone2 = normalizePhone(row.data.parent_phone_2)
+        const parentId2 = phoneToParentId.get(phone2)
+        if (parentId2) {
+          warnings.push(existingRecordWarning + ' (הורה 2)')
+        }
+      }
+    } catch { /* skip */ }
+
+    // Check student
+    const studentName = row.data.student_name?.trim()
+    if (studentName) {
+      const studentId =
+        nameToStudentId.get(studentName) ?? nameToStudentId.get(studentName.toLowerCase())
+      if (studentId) {
+        enriched = { ...enriched, existingStudentId: studentId }
+        warnings.push(existingRecordWarning + ' (תלמיד)')
+      }
+    }
+
+    if (warnings.length === row.warnings.length) return enriched
+    return {
+      ...enriched,
+      warnings,
+      status: row.status === 'error' ? 'error' : ('warning' as const),
+    }
   })
 }

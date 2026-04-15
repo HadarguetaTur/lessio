@@ -1,13 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { StepIndicator, type StepDef } from './StepIndicator'
 import { WelcomeStep } from './steps/WelcomeStep'
 import { TeachersStep } from './steps/TeachersStep'
 import { ImportStudentsStep } from './steps/ImportStudentsStep'
 import { ImportLessonsStep } from './steps/ImportLessonsStep'
 import { SettingsStep } from './steps/SettingsStep'
+import { PlanSelectionStep } from './steps/PlanSelectionStep'
 import { CompleteStep } from './steps/CompleteStep'
+import type { SaasPlanRow } from '@/lib/saas/plans'
 
 export type OnboardingStep =
   | 'welcome'
@@ -15,16 +18,8 @@ export type OnboardingStep =
   | 'import-students'
   | 'import-lessons'
   | 'settings'
+  | 'plan-selection'
   | 'complete'
-
-const STEPS: StepDef[] = [
-  { id: 'welcome', label: 'ברוכים הבאים' },
-  { id: 'teachers', label: 'מורים' },
-  { id: 'import-students', label: 'תלמידים והורים' },
-  { id: 'import-lessons', label: 'שיעורים' },
-  { id: 'settings', label: 'הגדרות' },
-  { id: 'complete', label: 'סיום' },
-]
 
 interface OnboardingWizardProps {
   orgId: string
@@ -33,6 +28,7 @@ interface OnboardingWizardProps {
   timezone: string
   billingMode: string
   teachers: { id: string; full_name: string }[]
+  saasPlans: SaasPlanRow[]
   counts: {
     students: number
     parents: number
@@ -48,10 +44,25 @@ export function OnboardingWizard({
   timezone,
   billingMode,
   teachers: initialTeachers,
+  saasPlans,
   counts: initialCounts,
 }: OnboardingWizardProps) {
+  const t = useTranslations('onboarding.steps')
   const [step, setStep] = useState<OnboardingStep>('welcome')
   const [counts, setCounts] = useState(initialCounts)
+
+  const STEPS: StepDef[] = useMemo(
+    () => [
+      { id: 'welcome', label: t('welcome') },
+      { id: 'teachers', label: t('teachers') },
+      { id: 'import-students', label: t('importStudents') },
+      { id: 'import-lessons', label: t('importLessons') },
+      { id: 'settings', label: t('settings') },
+      { id: 'plan-selection', label: t('planSelection') },
+      { id: 'complete', label: t('complete') },
+    ],
+    [t]
+  )
 
   const goNext = () => {
     const idx = STEPS.findIndex((s) => s.id === step)
@@ -72,7 +83,7 @@ export function OnboardingWizard({
   }
 
   return (
-    <div>
+    <div className="w-full min-w-0">
       <StepIndicator steps={STEPS} currentStepId={step} />
 
       {step === 'welcome' && (
@@ -113,16 +124,18 @@ export function OnboardingWizard({
         />
       )}
 
-      {step === 'settings' && (
-        <SettingsStep
-          onNext={goNext}
+      {step === 'settings' && <SettingsStep onNext={goNext} onBack={goBack} />}
+
+      {step === 'plan-selection' && (
+        <PlanSelectionStep
+          plans={saasPlans}
           onBack={goBack}
+          onFreeContinue={goNext}
+          onContinueWithoutPayment={goNext}
         />
       )}
 
-      {step === 'complete' && (
-        <CompleteStep counts={counts} />
-      )}
+      {step === 'complete' && <CompleteStep counts={counts} />}
     </div>
   )
 }

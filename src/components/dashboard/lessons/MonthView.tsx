@@ -23,11 +23,22 @@ export async function buildMonthCalendarPayload(input: {
   todayStr: string
   monthStr: string
   weekStr: string
+  scheduleBasePath?: string
   teacherId?: string
   studentId?: string
 }): Promise<MonthCalendarPayload> {
-  const { cells, lessons, holidays, timezone, todayStr, monthStr, weekStr, teacherId, studentId } =
-    input
+  const {
+    cells,
+    lessons,
+    holidays,
+    timezone,
+    todayStr,
+    monthStr,
+    weekStr,
+    scheduleBasePath,
+    teacherId,
+    studentId,
+  } = input
   const locale = await getLocale()
   const appLocale = parseAppLocale(locale)
   const intlLocale = toIntlLocale(appLocale)
@@ -45,6 +56,7 @@ export async function buildMonthCalendarPayload(input: {
     todayStr,
     monthStr,
     weekStr,
+    scheduleBasePath,
     teacherId,
     studentId,
     dayHeaders,

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export type EntityType = 'students' | 'parents' | 'teachers' | 'lessons-schedule' | 'lessons-history'
+export type EntityType = 'students' | 'parents' | 'teachers' | 'lessons-schedule' | 'lessons-history' | 'family-list'
 
 export interface ValidatedRow {
   rowIndex: number
@@ -9,130 +9,168 @@ export interface ValidatedRow {
   errors: string[]
   warnings: string[]
   existingId?: string | null
+  /** family-list only: existing student matched by name */
+  existingStudentId?: string | null
+  /** family-list only: existing parent matched by phone */
+  existingParentId?: string | null
 }
 
-const studentRowSchema = z.object({
-  full_name: z.string().min(1, 'שם מלא הוא שדה חובה'),
-  grade: z.string().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  level: z.string().nullable().optional(),
-  focused_subject: z.string().nullable().optional(),
-  weekly_quota: z
-    .string()
-    .nullable()
-    .optional()
-    .refine(
-      (v) => !v || (!isNaN(Number(v)) && Number(v) > 0 && Number(v) <= 20),
-      'מכסה שבועית חייבת להיות מספר בין 1 ל-20'
-    ),
-  notes: z.string().nullable().optional(),
-  status: z
-    .string()
-    .nullable()
-    .optional()
-    .refine(
-      (v) => !v || ['active', 'on_hold', 'inactive', 'פעיל', 'מושהה', 'לא פעיל'].includes(v),
-      'סטטוס לא תקין'
-    ),
-  teacher_name: z.string().nullable().optional(),
-})
+/** Translator for keys under `import` namespace, e.g. `validation.fullNameRequired`. */
+export type ImportMessageFn = (key: string) => string
 
-const parentRowSchema = z.object({
-  full_name: z.string().min(1, 'שם מלא הוא שדה חובה'),
-  phone: z.string().min(1, 'מספר טלפון הוא שדה חובה'),
-  notes: z.string().nullable().optional(),
-  student_names: z.string().nullable().optional(),
-  student_name: z.string().nullable().optional(),
-})
+function studentRowSchema(m: ImportMessageFn) {
+  return z.object({
+    full_name: z.string().min(1, m('validation.fullNameRequired')),
+    grade: z.string().nullable().optional(),
+    phone: z.string().nullable().optional(),
+    level: z.string().nullable().optional(),
+    focused_subject: z.string().nullable().optional(),
+    weekly_quota: z
+      .string()
+      .nullable()
+      .optional()
+      .refine(
+        (v) => !v || (!isNaN(Number(v)) && Number(v) > 0 && Number(v) <= 20),
+        m('validation.weeklyQuotaInvalid')
+      ),
+    notes: z.string().nullable().optional(),
+    status: z
+      .string()
+      .nullable()
+      .optional()
+      .refine(
+        (v) => !v || ['active', 'on_hold', 'inactive', 'פעיל', 'מושהה', 'לא פעיל'].includes(v),
+        m('validation.studentStatusInvalid')
+      ),
+    teacher_name: z.string().nullable().optional(),
+  })
+}
 
-const teacherRowSchema = z.object({
-  full_name: z.string().min(1, 'שם מלא הוא שדה חובה'),
-  email: z.string().min(1, 'אימייל הוא שדה חובה').email('כתובת אימייל לא תקינה'),
-  bio: z.string().nullable().optional(),
-  hourly_rate: z
-    .string()
-    .nullable()
-    .optional()
-    .refine(
-      (v) => !v || (!isNaN(Number(v)) && Number(v) >= 0),
-      'תעריף שעתי חייב להיות מספר חיובי'
-    ),
-})
+function parentRowSchema(m: ImportMessageFn) {
+  return z.object({
+    full_name: z.string().min(1, m('validation.fullNameRequired')),
+    phone: z.string().min(1, m('validation.phoneRequired')),
+    notes: z.string().nullable().optional(),
+    student_names: z.string().nullable().optional(),
+    student_name: z.string().nullable().optional(),
+  })
+}
 
-const lessonScheduleRowSchema = z.object({
-  teacher_name: z.string().min(1, 'שם מורה הוא שדה חובה'),
-  student_name: z.string().min(1, 'שם תלמיד הוא שדה חובה'),
-  day_of_week: z.string().min(1, 'יום בשבוע הוא שדה חובה'),
-  start_time: z
-    .string()
-    .min(1, 'שעת התחלה היא שדה חובה')
-    .refine((v) => /^\d{1,2}:\d{2}$/.test(v), 'פורמט שעה לא תקין (HH:MM)'),
-  duration_minutes: z
-    .string()
-    .min(1, 'משך השיעור הוא שדה חובה')
-    .refine(
-      (v) => !isNaN(Number(v)) && Number(v) > 0 && Number(v) <= 480,
-      'משך חייב להיות מספר בין 1 ל-480'
-    ),
-  lesson_type: z
-    .string()
-    .nullable()
-    .optional()
-    .refine(
-      (v) => !v || ['individual', 'pair', 'group', 'פרטי', 'זוגי', 'קבוצתי'].includes(v),
-      'סוג שיעור לא תקין'
-    ),
-})
+function teacherRowSchema(m: ImportMessageFn) {
+  return z.object({
+    full_name: z.string().min(1, m('validation.fullNameRequired')),
+    email: z.string().min(1, m('validation.emailRequired')).email(m('validation.invalidEmail')),
+    bio: z.string().nullable().optional(),
+    hourly_rate: z
+      .string()
+      .nullable()
+      .optional()
+      .refine(
+        (v) => !v || (!isNaN(Number(v)) && Number(v) >= 0),
+        m('validation.hourlyRateInvalid')
+      ),
+  })
+}
 
-const lessonHistoryRowSchema = z.object({
-  teacher_name: z.string().min(1, 'שם מורה הוא שדה חובה'),
-  student_name: z.string().min(1, 'שם תלמיד הוא שדה חובה'),
-  date: z.string().min(1, 'תאריך הוא שדה חובה'),
-  start_time: z
-    .string()
-    .min(1, 'שעת התחלה היא שדה חובה')
-    .refine((v) => /^\d{1,2}:\d{2}$/.test(v), 'פורמט שעה לא תקין (HH:MM)'),
-  end_time: z
-    .string()
-    .min(1, 'שעת סיום היא שדה חובה')
-    .refine((v) => /^\d{1,2}:\d{2}$/.test(v), 'פורמט שעה לא תקין (HH:MM)'),
-  status: z
-    .string()
-    .nullable()
-    .optional()
-    .refine(
-      (v) =>
-        !v ||
-        ['scheduled', 'completed', 'cancelled', 'no_show', 'מתוכנן', 'הושלם', 'בוטל', 'לא הגיע'].includes(v),
-      'סטטוס לא תקין'
-    ),
-  cancel_reason: z.string().nullable().optional(),
-})
+function lessonScheduleRowSchema(m: ImportMessageFn) {
+  return z.object({
+    teacher_name: z.string().min(1, m('validation.teacherNameRequired')),
+    student_name: z.string().min(1, m('validation.studentNameRequired')),
+    day_of_week: z.string().min(1, m('validation.dayOfWeekRequired')),
+    start_time: z
+      .string()
+      .min(1, m('validation.startTimeRequired'))
+      .refine((v) => /^\d{1,2}:\d{2}$/.test(v), m('validation.timeFormatInvalid')),
+    duration_minutes: z
+      .string()
+      .min(1, m('validation.durationRequired'))
+      .refine(
+        (v) => !isNaN(Number(v)) && Number(v) > 0 && Number(v) <= 480,
+        m('validation.durationInvalid')
+      ),
+    lesson_type: z
+      .string()
+      .nullable()
+      .optional()
+      .refine(
+        (v) => !v || ['individual', 'pair', 'group', 'פרטי', 'זוגי', 'קבוצתי'].includes(v),
+        m('validation.lessonTypeInvalid')
+      ),
+  })
+}
 
-function getSchema(entityType: EntityType) {
+function familyListRowSchema(m: ImportMessageFn) {
+  return z
+    .object({
+      student_name: z.string().min(1, m('validation.studentNameRequired')),
+      grade: z.string().nullable().optional(),
+      parent_name: z.string().min(1, m('validation.parentNameRequired')),
+      parent_phone: z.string().min(1, m('validation.phoneRequired')),
+      parent_name_2: z.string().nullable().optional(),
+      parent_phone_2: z.string().nullable().optional(),
+      student_notes: z.string().nullable().optional(),
+      parent_notes: z.string().nullable().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.parent_phone_2 && !data.parent_name_2) {
+        ctx.addIssue({ code: 'custom', path: ['parent_name_2'], message: m('validation.parent2NameRequired') })
+      }
+    })
+}
+
+function lessonHistoryRowSchema(m: ImportMessageFn) {
+  return z.object({
+    teacher_name: z.string().min(1, m('validation.teacherNameRequired')),
+    student_name: z.string().min(1, m('validation.studentNameRequired')),
+    date: z.string().min(1, m('validation.dateRequired')),
+    start_time: z
+      .string()
+      .min(1, m('validation.startTimeRequired'))
+      .refine((v) => /^\d{1,2}:\d{2}$/.test(v), m('validation.timeFormatInvalid')),
+    end_time: z
+      .string()
+      .min(1, m('validation.endTimeRequired'))
+      .refine((v) => /^\d{1,2}:\d{2}$/.test(v), m('validation.timeFormatInvalid')),
+    status: z
+      .string()
+      .nullable()
+      .optional()
+      .refine(
+        (v) =>
+          !v ||
+          ['scheduled', 'completed', 'cancelled', 'no_show', 'מתוכנן', 'הושלם', 'בוטל', 'לא הגיע'].includes(v),
+        m('validation.lessonStatusInvalid')
+      ),
+    cancel_reason: z.string().nullable().optional(),
+  })
+}
+
+function getSchema(entityType: EntityType, m: ImportMessageFn) {
   switch (entityType) {
     case 'students':
-      return studentRowSchema
+      return studentRowSchema(m)
     case 'parents':
-      return parentRowSchema
+      return parentRowSchema(m)
     case 'teachers':
-      return teacherRowSchema
+      return teacherRowSchema(m)
     case 'lessons-schedule':
-      return lessonScheduleRowSchema
+      return lessonScheduleRowSchema(m)
     case 'lessons-history':
-      return lessonHistoryRowSchema
+      return lessonHistoryRowSchema(m)
+    case 'family-list':
+      return familyListRowSchema(m)
   }
 }
 
 /**
  * Validate rows against the schema for the given entity type.
- * Phase 1: field-level validation only. Phase 2 (relational) happens in executeImport.
  */
 export function validateRows(
   rows: Record<string, string | null>[],
-  entityType: EntityType
+  entityType: EntityType,
+  m: ImportMessageFn
 ): ValidatedRow[] {
-  const schema = getSchema(entityType)
+  const schema = getSchema(entityType, m)
 
   return rows.map((row, index) => {
     const result = schema.safeParse(row)
@@ -141,13 +179,8 @@ export function validateRows(
 
     if (!result.success) {
       for (const issue of result.error.issues) {
-        errors.push(`${issue.path.join('.')}: ${issue.message}`)
+        errors.push(issue.message)
       }
-    }
-
-    // Warn on empty optional fields that are commonly expected
-    if (entityType === 'students' && !row.full_name) {
-      errors.push('שם מלא הוא שדה חובה')
     }
 
     return {
@@ -161,36 +194,36 @@ export function validateRows(
 }
 
 const STATUS_HE_TO_EN: Record<string, string> = {
-  'פעיל': 'active',
-  'מושהה': 'on_hold',
+  פעיל: 'active',
+  מושהה: 'on_hold',
   'לא פעיל': 'inactive',
-  'מתוכנן': 'scheduled',
-  'הושלם': 'completed',
-  'בוטל': 'cancelled',
+  מתוכנן: 'scheduled',
+  הושלם: 'completed',
+  בוטל: 'cancelled',
   'לא הגיע': 'no_show',
 }
 
 const LESSON_TYPE_HE_TO_EN: Record<string, string> = {
-  'פרטי': 'individual',
-  'זוגי': 'pair',
-  'קבוצתי': 'group',
+  פרטי: 'individual',
+  זוגי: 'pair',
+  קבוצתי: 'group',
 }
 
 const DAY_HE_TO_NUM: Record<string, number> = {
-  'ראשון': 0,
-  'שני': 1,
-  'שלישי': 2,
-  'רביעי': 3,
-  'חמישי': 4,
-  'שישי': 5,
-  'שבת': 6,
-  'sunday': 0,
-  'monday': 1,
-  'tuesday': 2,
-  'wednesday': 3,
-  'thursday': 4,
-  'friday': 5,
-  'saturday': 6,
+  ראשון: 0,
+  שני: 1,
+  שלישי: 2,
+  רביעי: 3,
+  חמישי: 4,
+  שישי: 5,
+  שבת: 6,
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
 }
 
 export function normalizeStatus(value: string | null | undefined): string | null {

@@ -5,7 +5,7 @@ import { useActionState } from 'react'
 import { Tabs } from 'radix-ui'
 import {
   Pencil, MoreVertical, Archive, RotateCcw, AlertCircle,
-  Download, Loader2, FileBarChart, Phone, BookOpen,
+  Loader2, FileBarChart, Phone, BookOpen,
   GraduationCap, CalendarDays, Wallet, ClipboardList,
   Search, X, Check,
 } from 'lucide-react'
@@ -26,6 +26,7 @@ import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import type { Student, StudentLesson, StudentFinancial, StudentPrimaryParent } from '@/lib/students'
 import type { HomeworkAssignment } from '@/lib/homework'
+import { SubscriptionForm } from '@/components/dashboard/billing/SubscriptionForm'
 import {
   updateStudent,
   archiveStudent,
@@ -121,30 +122,6 @@ function PhoneLink({ phone, label }: { phone: string; label: string }) {
       {phone}
     </a>
   )
-}
-
-function exportLessonsToCsv(lessons: StudentLesson[], studentName: string, lessonStatusLabels: Record<string, string>, csvHeaders: string[]) {
-  const header = csvHeaders
-  const rows = lessons.map((l) => {
-    const d = new Date(l.start_at)
-    return [
-      d.toLocaleDateString('he-IL'),
-      d.toLocaleDateString('he-IL', { weekday: 'long' }),
-      d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false }),
-      String(l.duration_minutes),
-      l.teacher_name,
-      lessonStatusLabels[l.status] ?? l.status,
-      l.amount != null ? String(l.amount) : '',
-    ]
-  })
-  const csv = [header, ...rows].map((r) => r.join(',')).join('\n')
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `lessons-${studentName}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 type LazyStatus = 'idle' | 'loading' | 'loaded' | 'error'
@@ -303,12 +280,13 @@ function ParentSearchSelect({
 
 // ── Edit form ─────────────────────────────────────────────────────────────────
 
-function EditForm({ student, teachers, currentParentId, onDone, onCancel }: {
+function EditForm({ student, teachers, currentParentId, onDone, onCancel, variant = 'admin' }: {
   student: Student
   teachers: { id: string; full_name: string }[]
   currentParentId: string | null
   onDone: () => void
   onCancel: () => void
+  variant?: 'admin' | 'teacher'
 }) {
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
@@ -324,11 +302,17 @@ function EditForm({ student, teachers, currentParentId, onDone, onCancel }: {
   }, [state, pending, onDone])
 
   useEffect(() => {
+    if (variant === 'teacher') {
+      setParentsLoading(false)
+      return
+    }
     fetchOrgParents().then((r) => {
       if ('data' in r) setOrgParents(r.data)
       setParentsLoading(false)
     })
-  }, [])
+  }, [variant])
+
+  const isTeacher = variant === 'teacher'
 
   return (
     <form action={formAction} onSubmit={() => { submitted.current = true }} className="space-y-6">
@@ -339,28 +323,54 @@ function EditForm({ student, teachers, currentParentId, onDone, onCancel }: {
         </div>
       )}
 
+      {isTeacher ? (
+        <>
+          <input type="hidden" name="full_name" value={student.full_name} />
+          <input type="hidden" name="phone" value={student.phone ?? ''} />
+          <input type="hidden" name="status" value={student.status} />
+          <input type="hidden" name="teacher_id" value={student.teacher_id ?? ''} />
+        </>
+      ) : null}
+
       <SectionCard title={t('card.contactDetails')} className="overflow-visible">
         <div className="p-4 grid grid-cols-1 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="full_name">{t('fields.fullName')} <span className="text-destructive">*</span></Label>
-            <Input id="full_name" name="full_name" defaultValue={student.full_name} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="phone">{t('fields.phone')}</Label>
-            <Input id="phone" name="phone" type="tel" defaultValue={student.phone ?? ''} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t('fields.primaryParent')}</Label>
-            {parentsLoading ? (
-              <Skeleton className="h-9 w-full rounded-md" />
-            ) : (
-              <ParentSearchSelect
-                parents={orgParents}
-                value={selectedParentId}
-                onChange={setSelectedParentId}
-              />
-            )}
-          </div>
+          {isTeacher ? (
+            <>
+              <div className="space-y-1 text-sm">
+                <span className="text-muted-foreground">{t('fields.fullName')}</span>
+                <p className="font-medium">{student.full_name}</p>
+              </div>
+              {student.phone ? (
+                <div className="space-y-1 text-sm">
+                  <span className="text-muted-foreground">{t('fields.phone')}</span>
+                  <p className="font-mono" dir="ltr">{student.phone}</p>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="full_name">{t('fields.fullName')} <span className="text-destructive">*</span></Label>
+                <Input id="full_name" name="full_name" defaultValue={student.full_name} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="phone">{t('fields.phone')}</Label>
+                <Input id="phone" name="phone" type="tel" defaultValue={student.phone ?? ''} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t('fields.primaryParent')}</Label>
+                {parentsLoading ? (
+                  <Skeleton className="h-9 w-full rounded-md" />
+                ) : (
+                  <ParentSearchSelect
+                    parents={orgParents}
+                    value={selectedParentId}
+                    onChange={setSelectedParentId}
+                  />
+                )}
+              </div>
+            </>
+          )}
         </div>
       </SectionCard>
 
@@ -382,7 +392,7 @@ function EditForm({ student, teachers, currentParentId, onDone, onCancel }: {
             <Label htmlFor="focused_subject">{t('fields.focusedSubject')}</Label>
             <Input id="focused_subject" name="focused_subject" defaultValue={student.focused_subject ?? ''} />
           </div>
-          {teachers.length > 0 && (
+          {!isTeacher && teachers.length > 0 && (
             <div className="col-span-2 space-y-1.5">
               <Label htmlFor="teacher_id">{t('fields.teacher')}</Label>
               <select
@@ -403,17 +413,19 @@ function EditForm({ student, teachers, currentParentId, onDone, onCancel }: {
 
       <SectionCard title={t('card.generalSection')}>
         <div className="p-4 space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="status">{t('fields.status')}</Label>
-            <select
-              id="status" name="status" defaultValue={student.status}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="active">{t('status.active')}</option>
-              <option value="on_hold">{t('status.on_hold')}</option>
-              <option value="inactive">{t('status.inactive')}</option>
-            </select>
-          </div>
+          {!isTeacher ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="status">{t('fields.status')}</Label>
+              <select
+                id="status" name="status" defaultValue={student.status}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="active">{t('status.active')}</option>
+                <option value="on_hold">{t('status.on_hold')}</option>
+                <option value="inactive">{t('status.inactive')}</option>
+              </select>
+            </div>
+          ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="notes">{t('fields.notes')}</Label>
             <textarea
@@ -535,7 +547,7 @@ function AcademicTab({ student }: { student: Student }) {
 
 // ── Tab: History ──────────────────────────────────────────────────────────────
 
-function HistoryTab({ lazy, studentName }: { lazy: Lazy<StudentLesson[]>; studentName: string }) {
+function HistoryTab({ lazy }: { lazy: Lazy<StudentLesson[]> }) {
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
   if (lazy.status === 'idle' || lazy.status === 'loading') {
@@ -565,21 +577,10 @@ function HistoryTab({ lazy, studentName }: { lazy: Lazy<StudentLesson[]>; studen
   return (
     <div className="space-y-5">
       {/* Summary bar */}
-      <div className="flex items-center justify-between bg-muted/40 rounded-xl px-4 py-2.5">
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span>{t('card.totalLessons', { count: lessons.length })}</span>
-          <span className="text-border">|</span>
-          <span>{t('card.completedLessons', { count: completed })}</span>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => exportLessonsToCsv(lessons, studentName, {
-          scheduled: tCommon('status.scheduled'),
-          completed: tCommon('status.completed'),
-          cancelled: tCommon('status.cancelled'),
-          no_show: tCommon('status.no_show'),
-        }, [t('card.csvDate'), t('card.csvDay'), t('card.csvTime'), t('card.csvDuration'), t('card.csvTeacher'), t('card.csvStatus'), t('card.csvAmount')])} className="gap-1.5 h-7 text-xs">
-          <Download size={11} />
-          {tCommon('actions.export')}
-        </Button>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-muted/40 rounded-xl px-4 py-2.5 text-xs text-muted-foreground">
+        <span>{t('card.totalLessons', { count: lessons.length })}</span>
+        <span className="text-border">|</span>
+        <span>{t('card.completedLessons', { count: completed })}</span>
       </div>
 
       {groups.map(({ month, items }) => {
@@ -647,9 +648,25 @@ function SubscriptionStatusBadge({ sub }: { sub: Subscription }) {
   return <InlineBadge className="bg-emerald-50 text-emerald-700 border-emerald-200">{t('card.subscriptionActive')}</InlineBadge>
 }
 
-function FinancialTab({ lazy, subscriptionsLazy }: { lazy: Lazy<StudentFinancial>; subscriptionsLazy: Lazy<Subscription[]> }) {
+function FinancialTab({
+  lazy,
+  subscriptionsLazy,
+  studentId,
+  canManage,
+  onRefreshSubscriptions,
+}: {
+  lazy: Lazy<StudentFinancial>
+  subscriptionsLazy: Lazy<Subscription[]>
+  studentId: string
+  canManage?: boolean
+  onRefreshSubscriptions?: () => void
+}) {
   const t = useTranslations('students')
+  const tSub = useTranslations('subscriptions')
   const tCommon = useTranslations('common')
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [editingSubId, setEditingSubId] = useState<string | null>(null)
+
   if (lazy.status === 'idle' || lazy.status === 'loading') {
     return (
       <div className="space-y-3">
@@ -684,7 +701,7 @@ function FinancialTab({ lazy, subscriptionsLazy }: { lazy: Lazy<StudentFinancial
       <SectionCard title={t('card.subscriptions')}>
         {subscriptionsLazy.status === 'loading' ? (
           <div className="p-4"><Skeleton className="h-14 w-full rounded-xl" /></div>
-        ) : subs.length === 0 ? (
+        ) : subs.length === 0 && !showAddForm ? (
           <div className="px-4 py-6 flex flex-col items-center text-center gap-1.5">
             <Wallet size={28} className="text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">{t('card.noActiveSubscription')}</p>
@@ -692,19 +709,59 @@ function FinancialTab({ lazy, subscriptionsLazy }: { lazy: Lazy<StudentFinancial
         ) : (
           <div className="divide-y divide-border/60">
             {subs.map((sub) => (
-              <div key={sub.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors gap-3">
-                <div>
-                  <p className="text-sm font-medium">{sub.subscription_type ?? t('card.subscriptions')}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {sub.start_date}{sub.end_date ? ` — ${sub.end_date}` : ` — ${t('card.unlimited')}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <span className="text-sm font-semibold tabular-nums">₪{Number(sub.monthly_amount).toLocaleString('he-IL')}/{t('card.perMonth')}</span>
-                  <SubscriptionStatusBadge sub={sub} />
-                </div>
+              <div key={sub.id}>
+                {editingSubId === sub.id ? (
+                  <div className="p-2">
+                    <SubscriptionForm
+                      studentId={studentId}
+                      subscription={sub}
+                      onSuccess={() => { setEditingSubId(null); onRefreshSubscriptions?.() }}
+                      onCancel={() => setEditingSubId(null)}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors gap-3">
+                    <div>
+                      <p className="text-sm font-medium">{sub.subscription_type ?? t('card.subscriptions')}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {sub.start_date}{sub.end_date ? ` — ${sub.end_date}` : ` — ${t('card.unlimited')}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span className="text-sm font-semibold tabular-nums">₪{Number(sub.monthly_amount).toLocaleString('he-IL')}/{t('card.perMonth')}</span>
+                      <SubscriptionStatusBadge sub={sub} />
+                      {canManage && (
+                        <button
+                          onClick={() => { setShowAddForm(false); setEditingSubId(sub.id) }}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+        )}
+        {canManage && showAddForm && (
+          <div className="p-2">
+            <SubscriptionForm
+              studentId={studentId}
+              onSuccess={() => { setShowAddForm(false); onRefreshSubscriptions?.() }}
+              onCancel={() => setShowAddForm(false)}
+            />
+          </div>
+        )}
+        {canManage && !showAddForm && editingSubId === null && (
+          <div className="px-4 pb-3 pt-2">
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="text-xs text-primary hover:underline"
+            >
+              + {tSub('addSubscription')}
+            </button>
           </div>
         )}
       </SectionCard>
@@ -821,7 +878,8 @@ function HomeworkTab({ lazy }: { lazy: Lazy<HomeworkAssignment[]> }) {
   )
 }
 
-const TAB_VALUES = ['overview', 'academic', 'history', 'financial', 'homework'] as const
+const TAB_VALUES_ADMIN = ['overview', 'academic', 'history', 'financial', 'homework'] as const
+const TAB_VALUES_TEACHER = ['overview', 'academic', 'history', 'homework'] as const
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -830,9 +888,19 @@ interface StudentDetailSheetProps {
   teachers: { id: string; full_name: string }[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  canManage?: boolean
+  variant?: 'admin' | 'teacher'
 }
 
-export function StudentDetailSheet({ student, teachers, open, onOpenChange }: StudentDetailSheetProps) {
+export function StudentDetailSheet({
+  student,
+  teachers,
+  open,
+  onOpenChange,
+  canManage,
+  variant = 'admin',
+}: StudentDetailSheetProps) {
+  const tabValues = variant === 'teacher' ? TAB_VALUES_TEACHER : TAB_VALUES_ADMIN
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
   const [isEditing, setIsEditing] = useState(false)
@@ -888,11 +956,18 @@ export function StudentDetailSheet({ student, teachers, open, onOpenChange }: St
   const handleArchive = async () => { if (student) { await archiveStudent(student.id); onOpenChange(false) } }
   const handleRestore = async () => { if (student) { await restoreStudent(student.id); onOpenChange(false) } }
 
+  const refreshSubscriptions = async () => {
+    if (!student) return
+    setSubscriptionsLazy({ status: 'loading' })
+    const sr = await fetchStudentSubscriptions(student.id)
+    setSubscriptionsLazy('error' in sr ? { status: 'error', error: sr.error } : { status: 'loaded', data: sr.data })
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-none sm:w-[580px] p-0 flex flex-col gap-0"
+        className="w-full sm:max-w-none sm:w-[580px] p-0 flex min-w-0 flex-col gap-0 overflow-x-hidden"
         dir="rtl"
       >
         <SheetTitle className="sr-only">
@@ -901,22 +976,20 @@ export function StudentDetailSheet({ student, teachers, open, onOpenChange }: St
 
         {student && (
           <>
-            {/* ── Header ── */}
-            <div className="shrink-0 px-6 pt-6 pb-5 border-b border-border bg-muted/20">
-              <div className="flex items-start gap-4">
-                {/* Avatar */}
+            {/* ── Header (stacked: avatar → details → actions, no row squeeze on narrow screens) ── */}
+            <div className="shrink-0 px-6 pt-6 pb-5 sm:px-8 border-b border-border bg-muted/20">
+              <div className="flex flex-col gap-4">
                 <UserAvatar
                   name={student.full_name}
                   size="md"
-                  className="w-14 h-14 shrink-0 text-base"
+                  className="w-14 h-14 shrink-0 text-base self-start"
                 />
 
-                {/* Name + badges */}
-                <div className="flex-1 min-w-0 pt-0.5">
-                  <h2 className="text-lg font-bold text-foreground leading-tight truncate">
+                <div className="min-w-0 flex flex-col gap-2">
+                  <h2 className="text-lg font-bold text-foreground leading-snug break-words">
                     {student.full_name}
                   </h2>
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {student.grade && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted border border-border text-muted-foreground">
                         {t('card.grade', { grade: student.grade })}
@@ -924,37 +997,35 @@ export function StudentDetailSheet({ student, teachers, open, onOpenChange }: St
                     )}
                     <StatusBadge status={student.status} />
                   </div>
-                  {/* Quick phone */}
                   {student.phone && (
-                    <a href={`tel:${student.phone}`} className="inline-flex items-center gap-1 mt-2 text-xs text-muted-foreground hover:text-primary transition-colors">
-                      <Phone size={11} />
-                      {student.phone}
+                    <a href={`tel:${student.phone}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors w-fit max-w-full">
+                      <Phone size={11} className="shrink-0" />
+                      <span className="break-all">{student.phone}</span>
                     </a>
                   )}
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-1 shrink-0 -mt-1">
-                  {!isEditing && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-1.5 text-muted-foreground hover:text-foreground hidden lg:flex"
-                        disabled
-                        title={t('card.comingSoon')}
-                      >
-                        <FileBarChart size={14} />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={() => setIsEditing(true)}
-                      >
-                        <Pencil size={13} />
-                        {tCommon('actions.edit')}
-                      </Button>
+                {!isEditing && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-muted-foreground hover:text-foreground hidden lg:flex"
+                      disabled
+                      title={t('card.comingSoon')}
+                    >
+                      <FileBarChart size={14} />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      <Pencil size={13} />
+                      {tCommon('actions.edit')}
+                    </Button>
+                    {variant === 'admin' ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" className="px-2 text-muted-foreground">
@@ -976,20 +1047,21 @@ export function StudentDetailSheet({ student, teachers, open, onOpenChange }: St
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </>
-                  )}
-                </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* ── Body ── */}
-            <div className="flex-1 overflow-y-auto">
-              {isEditing ? (
-                <div className="px-6 py-5">
+            {/* ── Body: edit mode scrolls whole form; view mode keeps tabs fixed and scrolls content only ── */}
+            {isEditing ? (
+              <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto min-h-0">
+                <div className="px-6 py-5 sm:px-8">
                   <EditForm
                     key={student.id}
                     student={student}
                     teachers={teachers}
+                    variant={variant}
                     currentParentId={parent?.id ?? null}
                     onDone={() => {
                       setIsEditing(false)
@@ -1003,28 +1075,38 @@ export function StudentDetailSheet({ student, teachers, open, onOpenChange }: St
                     onCancel={() => setIsEditing(false)}
                   />
                 </div>
-              ) : (
-                <Tabs.Root value={activeTab} onValueChange={handleTabChange} dir="rtl">
-                  {/* Tab bar */}
-                  <Tabs.List className="flex gap-1 px-5 pt-4 pb-0 sticky top-0 z-10 bg-background border-b border-border">
-                    {TAB_VALUES.map((value) => (
-                      <Tabs.Trigger
-                        key={value}
-                        value={value}
-                        className={cn(
-                          'px-3.5 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-all whitespace-nowrap -mb-px',
-                          'text-muted-foreground hover:text-foreground',
-                          'data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:bg-primary/5',
-                          'data-[state=inactive]:border-transparent',
-                        )}
-                      >
-                        {t(`tabs.${value}` as 'tabs.overview')}
-                      </Tabs.Trigger>
-                    ))}
-                  </Tabs.List>
+              </div>
+            ) : (
+              <Tabs.Root
+                value={activeTab}
+                onValueChange={handleTabChange}
+                dir="rtl"
+                className="min-w-0 flex flex-1 flex-col min-h-0 overflow-hidden"
+              >
+                {/* Tab bar stays outside the vertical scroll region so the scrollbar sits only under the tabs */}
+                <div className="shrink-0 z-10 border-b border-border bg-background">
+                  <div className="overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x scrollbar-hide">
+                    <Tabs.List className="flex w-max max-w-none gap-1 px-6 pt-4 pb-0 sm:px-8">
+                      {tabValues.map((value) => (
+                        <Tabs.Trigger
+                          key={value}
+                          value={value}
+                          className={cn(
+                            'shrink-0 px-3.5 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-all whitespace-nowrap -mb-px',
+                            'text-muted-foreground hover:text-foreground',
+                            'data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:bg-primary/5',
+                            'data-[state=inactive]:border-transparent',
+                          )}
+                        >
+                          {t(`tabs.${value}` as 'tabs.overview')}
+                        </Tabs.Trigger>
+                      ))}
+                    </Tabs.List>
+                  </div>
+                </div>
 
-                  {/* Tab content */}
-                  <div className="px-5 py-5">
+                <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto min-h-0">
+                  <div className="px-6 py-5 sm:px-8">
                     <Tabs.Content value="overview" forceMount className="data-[state=inactive]:hidden">
                       <OverviewTab student={student} parent={parent} parentLoading={parentLoading} />
                     </Tabs.Content>
@@ -1032,18 +1114,24 @@ export function StudentDetailSheet({ student, teachers, open, onOpenChange }: St
                       <AcademicTab student={student} />
                     </Tabs.Content>
                     <Tabs.Content value="history" forceMount className="data-[state=inactive]:hidden">
-                      <HistoryTab lazy={lessonsLazy} studentName={student.full_name} />
+                      <HistoryTab lazy={lessonsLazy} />
                     </Tabs.Content>
                     <Tabs.Content value="financial" forceMount className="data-[state=inactive]:hidden">
-                      <FinancialTab lazy={financialLazy} subscriptionsLazy={subscriptionsLazy} />
+                      <FinancialTab
+                        lazy={financialLazy}
+                        subscriptionsLazy={subscriptionsLazy}
+                        studentId={student.id}
+                        canManage={canManage}
+                        onRefreshSubscriptions={refreshSubscriptions}
+                      />
                     </Tabs.Content>
                     <Tabs.Content value="homework" forceMount className="data-[state=inactive]:hidden">
                       <HomeworkTab lazy={homeworkLazy} />
                     </Tabs.Content>
                   </div>
-                </Tabs.Root>
-              )}
-            </div>
+                </div>
+              </Tabs.Root>
+            )}
           </>
         )}
       </SheetContent>

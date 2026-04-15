@@ -15,14 +15,28 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { z } from 'zod'
 
-export const SignupSchema = z.object({
-  org_name: z.string().min(2, 'שם הארגון חייב להכיל לפחות 2 תווים'),
-  full_name: z.string().min(2, 'שם מלא חייב להכיל לפחות 2 תווים'),
-  email: z.string().email('כתובת אימייל לא תקינה'),
-  password: z.string().min(6, 'סיסמה חייבת להכיל לפחות 6 תווים'),
-})
+export type SignupInput = {
+  org_name: string
+  full_name: string
+  email: string
+  password: string
+}
 
-export type SignupInput = z.infer<typeof SignupSchema>
+export function buildSignupSchema(t: (key: string) => string) {
+  return z.object({
+    org_name: z.string().min(2, t('orgNameMin')),
+    full_name: z.string().min(2, t('fullNameMin')),
+    email: z.string().email(t('emailInvalid')),
+    password: z.string().min(6, t('passwordMin')),
+  })
+}
+
+export type SignupFlowServerErrors = {
+  emailTaken: string
+  accountFailed: string
+  orgFailed: string
+  profileFailed: string
+}
 
 export type SignupResult =
   | { success: true; orgId: string; userId: string }
@@ -57,7 +71,8 @@ async function uniqueSlug(
 }
 
 export async function createOrgWithOwner(
-  input: SignupInput
+  input: SignupInput,
+  errors: SignupFlowServerErrors
 ): Promise<SignupResult> {
   const db = createServiceRoleClient()
 
@@ -72,10 +87,10 @@ export async function createOrgWithOwner(
   if (authError || !authData?.user) {
     const msg = authError?.message ?? ''
     if (msg.includes('already been registered') || msg.includes('already exists')) {
-      return { success: false, error: 'כתובת אימייל זו כבר רשומה במערכת' }
+      return { success: false, error: errors.emailTaken }
     }
     console.error('[createOrgWithOwner] auth signup failed', { error: authError })
-    return { success: false, error: 'שגיאה ביצירת החשבון. נסה שוב.' }
+    return { success: false, error: errors.accountFailed }
   }
 
   const userId = authData.user.id
@@ -101,7 +116,7 @@ export async function createOrgWithOwner(
   if (orgError || !org) {
     console.error('[createOrgWithOwner] org insert failed', { error: orgError })
     await db.auth.admin.deleteUser(userId)
-    return { success: false, error: 'שגיאה ביצירת הארגון. נסה שוב.' }
+    return { success: false, error: errors.orgFailed }
   }
 
   const orgId = org.id
@@ -131,7 +146,7 @@ export async function createOrgWithOwner(
     })
     await db.auth.admin.deleteUser(userId)
     await db.from('organizations').delete().eq('id', orgId)
-    return { success: false, error: 'יצירת הפרופיל נכשלה. נסה שוב.' }
+    return { success: false, error: errors.profileFailed }
   }
 
   console.info('[createOrgWithOwner] success', { orgId, userId, email: input.email })

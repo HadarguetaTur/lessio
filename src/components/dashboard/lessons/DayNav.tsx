@@ -9,10 +9,11 @@ import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 interface DayNavProps {
   dateStr: string       // YYYY-MM-DD
   todayStr: string      // YYYY-MM-DD
+  scheduleBasePath?: string
   teacherId?: string
 }
 
-export function DayNav({ dateStr, todayStr, teacherId }: DayNavProps) {
+export function DayNav({ dateStr, todayStr, scheduleBasePath = '/lessons', teacherId }: DayNavProps) {
   const t = useTranslations('lessons')
   const uiLocale = parseAppLocale(useLocale())
   const intlLocale = toIntlLocale(uiLocale)
@@ -24,10 +25,10 @@ export function DayNav({ dateStr, todayStr, teacherId }: DayNavProps) {
     const next = new Date(base.getTime() + delta * 24 * 60 * 60 * 1000)
     const nextStr = next.toISOString().substring(0, 10)
     const params = new URLSearchParams({ view: 'day', date: nextStr })
-    if (teacherId) params.set('teacher', teacherId)
+    if (scheduleBasePath === '/lessons' && teacherId) params.set('teacher', teacherId)
     const student = searchParams.get('student')
     if (student) params.set('student', student)
-    router.push(`/lessons?${params.toString()}`)
+    router.push(`${scheduleBasePath}?${params.toString()}`)
   }
 
   const isToday = dateStr === todayStr
@@ -40,15 +41,15 @@ export function DayNav({ dateStr, todayStr, teacherId }: DayNavProps) {
   }).format(new Date(`${dateStr}T12:00:00Z`))
 
   return (
-    <div className="flex items-center gap-1" dir="ltr">
+    <div className="flex w-full max-w-md items-center justify-center gap-1 sm:w-auto sm:max-w-none sm:justify-start" dir="ltr">
       {!isToday && (
         <Link
           href={(() => {
             const p = new URLSearchParams({ view: 'day', date: todayStr })
-            if (teacherId) p.set('teacher', teacherId)
+            if (scheduleBasePath === '/lessons' && teacherId) p.set('teacher', teacherId)
             const student = searchParams.get('student')
             if (student) p.set('student', student)
-            return `/lessons?${p.toString()}`
+            return `${scheduleBasePath}?${p.toString()}`
           })()}
           className="px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors ml-1"
         >

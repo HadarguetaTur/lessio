@@ -1,5 +1,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { assertOrgNotSaasReadOnly } from '@/lib/saas/subscriptions'
+import type { LessonStatus } from '@/lib/lessons/types'
 
 export type CreateLessonParams = {
   orgId: string
@@ -11,6 +13,8 @@ export type CreateLessonParams = {
   startTime: string       // HH:MM in org timezone
   durationMinutes: number
   createdByProfileId: string
+  /** Defaults to scheduled when omitted (e.g. teacher quick-create). */
+  status?: LessonStatus
   /** Optional per-student override price for pair/group lessons */
   pricePerStudent?: number | null
 }
@@ -51,10 +55,15 @@ export async function createLesson(
     startTime,
     durationMinutes,
     createdByProfileId,
+    status: lessonStatus,
     pricePerStudent,
   } = params
 
+  const status: LessonStatus = lessonStatus ?? 'scheduled'
+
   if (studentIds.length === 0) throw new Error('At least one student is required')
+
+  await assertOrgNotSaasReadOnly(orgId)
 
   const db = createServiceRoleClient()
 
@@ -132,7 +141,7 @@ export async function createLesson(
     teacher_id: teacherId,
     start_at: startUtc,
     end_at: endUtc,
-    status: 'scheduled',
+    status,
     lesson_type: lessonType,
     max_students: studentIds.length,
   }

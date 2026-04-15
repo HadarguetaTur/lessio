@@ -13,6 +13,9 @@ const DASHBOARD_PREFIXES = [
   '/teachers',
   '/lessons',
   '/charges',
+  '/billing',
+  '/subscriptions',
+  '/account',
   '/settings',
   '/teacher',
   '/homework',
@@ -116,6 +119,13 @@ export async function proxy(request: NextRequest) {
   // Authenticated user at /login → redirect to /dashboard.
   // Use redirectWithSession so any rotated token cookies are preserved.
   if (user && pathname === '/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return redirectWithSession(url, supabaseResponse)
+  }
+
+  // Authenticated user at marketing entry points → dashboard.
+  if (user && (pathname === '/' || pathname === '/signup')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return redirectWithSession(url, supabaseResponse)

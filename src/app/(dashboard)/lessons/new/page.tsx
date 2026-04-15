@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
-import { getOrgTimezone } from '@/lib/organizations'
 import { getTeachers } from '@/lib/teachers'
 import { getStudents } from '@/lib/students'
 import { getGroups } from '@/lib/groups'
-import { getCurrentDayStr } from '@/lib/lessons'
+import { LESSON_FORM_MIN_DATE_STR } from '@/lib/lessons/lessonFormDates'
 import { NewLessonForm } from '@/components/dashboard/lessons/NewLessonForm'
 import { createLessonAction } from './actions'
 import { getTranslations } from 'next-intl/server'
@@ -17,11 +16,10 @@ export default async function NewLessonPage(props: {
   const { orgId, role } = await getSession()
   if (role !== 'owner' && role !== 'admin') redirect('/lessons')
 
-  const [teachers, students, groups, timezone] = await Promise.all([
+  const [teachers, students, groups] = await Promise.all([
     getTeachers(orgId),
     getStudents(orgId),
     getGroups(orgId),
-    getOrgTimezone(orgId),
   ])
 
   const activeTeachers = teachers
@@ -33,11 +31,12 @@ export default async function NewLessonPage(props: {
     .map((s) => ({ id: s.id, full_name: s.full_name }))
 
   const t = await getTranslations('lessons')
-  const todayStr = getCurrentDayStr(timezone)
 
   const dateParsed = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(dateParam)
   const initialDate =
-    dateParsed.success && dateParsed.data >= todayStr ? dateParsed.data : undefined
+    dateParsed.success && dateParsed.data >= LESSON_FORM_MIN_DATE_STR
+      ? dateParsed.data
+      : undefined
 
   return (
     <div className="max-w-lg">
@@ -47,7 +46,7 @@ export default async function NewLessonPage(props: {
         students={activeStudents}
         groups={groups}
         action={createLessonAction}
-        minDateStr={todayStr}
+        minDateStr={LESSON_FORM_MIN_DATE_STR}
         initialDate={initialDate}
       />
     </div>

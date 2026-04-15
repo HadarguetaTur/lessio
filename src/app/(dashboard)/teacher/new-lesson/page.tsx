@@ -30,6 +30,7 @@ export default async function TeacherNewLessonPage() {
       <NewLessonForm
         students={activeStudents}
         fixedTeacherId={teacher.id}
+        allowGroupLessons={false}
         action={createTeacherLessonAction}
         minDateStr={todayStr}
       />

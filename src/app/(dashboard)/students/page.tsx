@@ -1,8 +1,9 @@
 import { GraduationCap, Users, Upload } from 'lucide-react'
 import { z } from 'zod'
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { getStudentById, getStudents } from '@/lib/students'
-import { getTeachers } from '@/lib/teachers'
+import { getTeacherByProfileId, getTeachers } from '@/lib/teachers'
 import { getGroups } from '@/lib/groups'
 import { StudentSearch } from '@/components/dashboard/students/StudentSearch'
 import { createStudent } from './actions'
@@ -29,13 +30,34 @@ export default async function StudentsPage(props: {
   const q = searchParams.q ?? ''
   const openStudentParsed = z.string().uuid().safeParse(searchParams.openStudent)
 
-  const { orgId } = await getSession()
+  const { orgId, role, profileId } = await getSession()
+  const isTeacher = role === 'teacher'
   const t = await getTranslations('students')
   const tCommon = await getTranslations('common')
 
+  if (isTeacher && tab === 'groups') {
+    redirect('/students')
+  }
+
+  const teacherRecord =
+    isTeacher ? await getTeacherByProfileId(profileId, orgId, { activeOnly: true }) : null
+  if (isTeacher && !teacherRecord) {
+    return (
+      <div className="text-center mt-16 text-sm text-muted-foreground">
+        לא נמצאה רשומת מורה פעילה עבור משתמש זה.
+      </div>
+    )
+  }
+
+  const studentQuery = {
+    search: q,
+    isActive,
+    ...(isTeacher && teacherRecord ? { teacherId: teacherRecord.id } : {}),
+  }
+
   const [students, teachers, groups, initialSheetStudent] = await Promise.all([
-    getStudents(orgId, { search: q, isActive }),
-    getTeachers(orgId),
+    getStudents(orgId, studentQuery),
+    isTeacher ? Promise.resolve([]) : getTeachers(orgId),
     tab === 'groups' ? getGroups(orgId) : Promise.resolve([]),
     tab === 'students' && openStudentParsed.success
       ? getStudentById(openStudentParsed.data, orgId)
@@ -45,7 +67,9 @@ export default async function StudentsPage(props: {
   // For the group form we always need the full active student list
   const allActiveStudents = isActive && tab === 'groups'
     ? students
-    : (tab === 'groups' ? await getStudents(orgId, { isActive: true }) : students)
+    : tab === 'groups'
+      ? await getStudents(orgId, { isActive: true })
+      : students
 
   const activeTeachers = teachers
     .filter((t) => t.is_active)
@@ -56,49 +80,53 @@ export default async function StudentsPage(props: {
       <PageHeader
         title={t('title')}
         actions={
-          tab === 'groups' ? (
-            <NewGroupSheet students={allActiveStudents} action={createGroup} />
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link href="/students/import">
-                <Button variant="outline" size="sm">
-                  <Upload size={14} className="ml-1.5" />
-                  {tCommon('actions.import')}
-                </Button>
-              </Link>
-              <NewStudentSheet action={createStudent} />
-            </div>
-          )
+          isTeacher
+            ? undefined
+            : tab === 'groups'
+              ? <NewGroupSheet students={allActiveStudents} action={createGroup} />
+              : (
+                  <div className="flex items-center gap-2">
+                    <Link href="/students/import">
+                      <Button variant="outline" size="sm">
+                        <Upload size={14} className="ml-1.5" />
+                        {tCommon('actions.import')}
+                      </Button>
+                    </Link>
+                    <NewStudentSheet action={createStudent} />
+                  </div>
+                )
         }
       />
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-4 border-b border-border">
-        <Link
-          href="/students?tab=students"
-          className={cn(
-            'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
-            tab === 'students'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <GraduationCap size={15} />
-          {t('title')}
-        </Link>
-        <Link
-          href="/students?tab=groups"
-          className={cn(
-            'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
-            tab === 'groups'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <Users size={15} />
-          {t('groups.tab')}
-        </Link>
-      </div>
+      {!isTeacher ? (
+        <div className="flex gap-1 mb-4 border-b border-border">
+          <Link
+            href="/students?tab=students"
+            className={cn(
+              'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+              tab === 'students'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <GraduationCap size={15} />
+            {t('title')}
+          </Link>
+          <Link
+            href="/students?tab=groups"
+            className={cn(
+              'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+              tab === 'groups'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Users size={15} />
+            {t('groups.tab')}
+          </Link>
+        </div>
+      ) : null}
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {tab === 'students' && (
@@ -110,8 +138,8 @@ export default async function StudentsPage(props: {
                 <EmptyState
                   icon={GraduationCap}
                   title={q ? tCommon('emptyStates.noResults') : t('title')}
-                  subtitle={!q ? t('newStudent') : undefined}
-                  action={!q ? <NewStudentSheet action={createStudent} /> : undefined}
+                  subtitle={!q && !isTeacher ? t('newStudent') : undefined}
+                  action={!q && !isTeacher ? <NewStudentSheet action={createStudent} /> : undefined}
                 />
               </div>
             ) : (
@@ -122,6 +150,9 @@ export default async function StudentsPage(props: {
                 tGrade={t('fields.grade')}
                 tStatus={tCommon('table.status')}
                 initialSheetStudent={initialSheetStudent}
+                canManage={role === 'owner' || role === 'admin'}
+                sheetVariant={isTeacher ? 'teacher' : 'admin'}
+                showArchiveActions={!isTeacher}
               />
             )}
           </>

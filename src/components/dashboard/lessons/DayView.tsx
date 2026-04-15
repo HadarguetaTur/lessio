@@ -30,6 +30,7 @@ interface DayViewProps {
   holidays: Holiday[]
   timezone: string
   weekStr: string
+  scheduleBasePath?: string
   teacherId?: string
   studentId?: string
 }
@@ -40,6 +41,7 @@ export async function DayView({
   holidays,
   timezone,
   weekStr,
+  scheduleBasePath = '/lessons',
   teacherId,
   studentId,
 }: DayViewProps) {
@@ -84,10 +86,15 @@ export async function DayView({
           (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / 60000
         )
 
+        const lessonHref =
+          scheduleBasePath === '/teacher/schedule'
+            ? `/teacher/schedule/${lesson.id}?week=${encodeURIComponent(weekStr)}`
+            : `/lessons/${lesson.id}?${lessonListQuery(weekStr, teacherId, studentId)}`
+
         return (
           <Link
             key={lesson.id}
-            href={`/lessons/${lesson.id}?${lessonListQuery(weekStr, teacherId, studentId)}`}
+            href={lessonHref}
             className={`flex items-center gap-4 px-4 py-3 rounded-lg border transition-opacity hover:opacity-80 ${STATUS_STYLES[lesson.status]}`}
           >
             <div className="text-center min-w-[56px]">

@@ -17,22 +17,26 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 **Sprint source of truth:** `/docs/sprint-23-scope.md`
 
 **Goal:**
-- GDPR compliance: privacy policy, cookie consent, right to deletion, data export
-- URL-based locale routing for public pages + Arabic language support
-- International payment methods: Stripe provider + SEPA + PayPal
-- WhatsApp approved templates (Meta) to support proactive messages beyond 24h window
-- Production hardening: error boundaries, Sumit staging validation, server-side feature gates
+- GDPR: deletion request flow (portal → superadmin), data masking, retention Edge Function, legal page sections
+- Locale auto-detection from `Accept-Language` + 301 redirect for legacy portal URLs
+- Stripe payment provider (per-org keys, manual currency, card-only — SEPA/PayPal deferred)
+- WhatsApp `sendSmartMessage`: session-window check → text or approved template
+- Production hardening: error boundaries + server-side feature gate enforcement (redirect to upgrade, read-only for existing data)
 
 **Users in scope:**
-- All dashboard users (i18n, legal pages)
-- Parents (portal locale routing, deletion requests)
-- Platform owner (Stripe payments, GDPR settings)
+- Parents (portal deletion request button)
+- Superadmin (process deletion requests, data export)
+- Org owners (Stripe payment settings, data retention settings on Advanced/Custom)
+- All users (locale auto-detection, error boundaries)
 
-**New dependencies:** none planned
+**New dependencies:** `stripe`
 
-**New env vars:** none planned (Stripe moved to Sprint 23 payment provider, not SaaS billing)
+**New env vars:** none at platform level — Stripe keys are per-org in `payment_config_encrypted`
 
-**Schema changes:** `organization.data_retention_days`, `deletion_requests` table
+**Schema changes:**
+- `data_deletion_requests` table
+- `organizations.data_retention_days int NOT NULL DEFAULT 365`
+- Index `(organization_id, from_phone, created_at)` on `whatsapp_processed_messages`
 
 ---
 
@@ -328,18 +332,23 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || i18n cleanup: homework/page.tsx + assign/page.tsx + templates/ | ✅ Done (Sprint 22) |
 || Onboarding wizard + import flow translation (`onboarding` + `import` namespaces) | ✅ Done (Sprint 22) |
 
-|| **Sprint 23 stories (planned):** ||
-|| `src/app/error.tsx` + `src/app/not-found.tsx` + `src/app/(dashboard)/error.tsx` — global error boundaries | ⬜ Planned |
-|| `/privacy` + `/terms` — real legal content (replace placeholder) | ⬜ Planned |
-|| GDPR: deletion request flow (portal → admin ticket) + data export (JSON) | ⬜ Planned |
-|| `organization.data_retention_days` + Edge Function for auto-anonymization | ⬜ Planned |
-|| Cookie consent banner (non-EU exempt) | ⬜ Planned |
-|| URL-based locale routing for `/portal/[orgId]/` + `/book/[token]/` | ⬜ Planned |
-|| `messages/ar.json` — Arabic translation + RTL support | ⬜ Planned |
-|| `src/lib/payments/stripe.ts` — Stripe payment provider adapter | ⬜ Planned |
-|| Meta WhatsApp approved templates: submit + implement template message type | ⬜ Planned |
-|| Server-side feature gate enforcement in server actions + API routes | ⬜ Planned |
-|| Sumit SaaS billing end-to-end staging validation | ⬜ Planned |
+|| **Sprint 23 stories:** ||
+|| `data_deletion_requests` table + migration + index on `whatsapp_processed_messages(org_id, from_phone, created_at)` | ⬜ Planned |
+|| GDPR: deletion request button in portal + anonymise/dismiss in superadmin org detail | ⬜ Planned |
+|| GDPR: `exportOrgDataAction` (JSON) in superadmin org detail | ⬜ Planned |
+|| `organizations.data_retention_days` (default 365) + `supabase/functions/data-retention` daily cron | ⬜ Planned |
+|| `/privacy` + `/terms` — structured sections with headings (not Lorem) | ⬜ Planned |
+|| `src/i18n/request.ts` — Accept-Language → `he`/`en` detection + persist to `profiles.preferred_locale` | ⬜ Planned |
+|| `src/proxy.ts` — 301 redirect `/portal/:orgId` → `/he/portal/:orgId` | ⬜ Planned |
+|| `src/lib/payments/stripe.ts` — Stripe adapter (per-org keys, manual currency, card-only) | ⬜ Planned |
+|| Stripe webhook route + settings UI (secret key + webhook secret + currency dropdown) | ⬜ Planned |
+|| `src/lib/whatsapp/sendSmart.ts` — `sendSmartMessage` with 24h session-window check | ⬜ Planned |
+|| `src/lib/whatsapp/approvedTemplates.ts` — placeholder Meta template registry | ⬜ Planned |
+|| `sendSmartMessage` wired into lesson/payment/homework reminder Edge Functions | ⬜ Planned |
+|| `src/lib/saas/featureGate.ts` — `requireFeature` (redirect to `/account/billing?upgrade=`) | ⬜ Planned |
+|| Feature gates on: AI assistant, homework writes, leads conversion, full reports, portal login | ⬜ Planned |
+|| `src/app/error.tsx` + `not-found.tsx` + `(dashboard)/error.tsx` + `(admin)/error.tsx` | ⬜ Planned |
+|| Sumit SaaS billing E2E staging validation (manual checklist) | ⬜ Planned |
 
 || **Sprint 24 stories (planned — Pedagogical Depth):** ||
 || `homework_submissions` table + file upload + grading flow | ⬜ Planned |

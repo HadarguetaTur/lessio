@@ -3,6 +3,7 @@ import { BookOpen } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getAssignments } from '@/lib/homework'
 import { getTeacherByProfileId } from '@/lib/teachers'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getTranslations } from 'next-intl/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
@@ -54,6 +55,26 @@ export default async function HomeworkPage({
   }
 
   const assignments = await getAssignments(orgId, { status: statusFilter, teacherId: teacherIdFilter })
+
+  // Fetch submission counts per assignment for completion rate column
+  const assignmentIds = assignments.map((a) => a.id)
+  const submissionCounts = new Map<string, { total: number; graded: number }>()
+  if (assignmentIds.length > 0) {
+    const db = createServiceRoleClient()
+    const { data: subs } = await db
+      .from('homework_submissions')
+      .select('assignment_id, score')
+      .eq('organization_id', orgId)
+      .in('assignment_id', assignmentIds)
+
+    for (const sub of subs ?? []) {
+      const row = sub as { assignment_id: string; score: number | null }
+      const entry = submissionCounts.get(row.assignment_id) ?? { total: 0, graded: 0 }
+      entry.total++
+      if (row.score != null) entry.graded++
+      submissionCounts.set(row.assignment_id, entry)
+    }
+  }
 
   const STATUS_LABELS: Record<Status, string> = {
     pending: tCommon('homeworkStatus.pending'),
@@ -127,35 +148,47 @@ export default async function HomeworkPage({
                   <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">{tCommon('table.status')}</TableHead>
                   <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">{t('columnSent')}</TableHead>
                   <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">{t('columnCompleted')}</TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">{t('completionRate')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assignments.map((a) => (
-                  <TableRow key={a.id} className="hover:bg-muted/20">
-                    <TableCell className="px-4 py-3 text-foreground">{a.studentName}</TableCell>
-                    <TableCell className="max-w-xs px-4 py-3 text-foreground">
-                      <div className="truncate">{a.title}</div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-muted-foreground">{a.dueDate ?? '—'}</TableCell>
-                    <TableCell className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CLASSES[a.status]}`}
-                      >
-                        {STATUS_LABELS[a.status]}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-xs text-muted-foreground">
-                      {a.sentAt
-                        ? new Date(a.sentAt).toLocaleDateString('he-IL')
-                        : '—'}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-xs text-muted-foreground">
-                      {a.completedAt
-                        ? new Date(a.completedAt).toLocaleDateString('he-IL')
-                        : '—'}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {assignments.map((a) => {
+                  const counts = submissionCounts.get(a.id)
+                  const completionLabel = counts
+                    ? `${counts.graded}/${counts.total}`
+                    : '—'
+                  return (
+                    <TableRow key={a.id} className="hover:bg-muted/20">
+                      <TableCell className="px-4 py-3 text-foreground">{a.studentName}</TableCell>
+                      <TableCell className="max-w-xs px-4 py-3 text-foreground">
+                        <Link href={`/homework/${a.id}`} className="truncate text-primary hover:underline">
+                          {a.title}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-muted-foreground">{a.dueDate ?? '—'}</TableCell>
+                      <TableCell className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CLASSES[a.status]}`}
+                        >
+                          {STATUS_LABELS[a.status]}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-muted-foreground">
+                        {a.sentAt
+                          ? new Date(a.sentAt).toLocaleDateString('he-IL')
+                          : '—'}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-muted-foreground">
+                        {a.completedAt
+                          ? new Date(a.completedAt).toLocaleDateString('he-IL')
+                          : '—'}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-muted-foreground">
+                        {completionLabel}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>

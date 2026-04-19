@@ -107,6 +107,7 @@ async function processOrg(db: any, org: any): Promise<void> {
     `)
     .eq('organization_id', orgId)
     .eq('status', 'pending')
+    .eq('sent', true)     // Only remind about assignments that have been sent (Sprint 24)
     .eq('due_date', tomorrowStr)
 
   if (asgError) {

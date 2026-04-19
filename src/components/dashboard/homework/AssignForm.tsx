@@ -5,9 +5,10 @@
  * Per /docs/sprint-14-scope.md § Story 4.
  */
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { Paperclip, X, Clock } from 'lucide-react'
 import type { AssignActionState } from '@/app/(dashboard)/homework/assign/actions'
 
 interface Template {
@@ -35,8 +36,22 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialState)
   const [mode, setMode] = useState<'template' | 'adhoc'>('template')
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+  const [files, setFiles] = useState<File[]>([])
+  const [isScheduled, setIsScheduled] = useState(false)
+  const [sendAt, setSendAt] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const newFiles = Array.from(e.target.files ?? [])
+    setFiles((prev) => [...prev, ...newFiles])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index))
+  }
 
   if (state.success) {
     return (
@@ -55,7 +70,18 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
   }
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form
+      action={(fd) => {
+        // Inject files into FormData
+        for (const f of files) fd.append('files', f)
+        // Inject sendAt as ISO string
+        if (isScheduled && sendAt) {
+          fd.set('sendAt', new Date(sendAt).toISOString())
+        }
+        formAction(fd)
+      }}
+      className="space-y-6"
+    >
       {/* Mode toggle */}
       <div>
         <p className="text-sm font-medium text-gray-700 mb-2">{t('type')}</p>
@@ -206,6 +232,80 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
         />
       </div>
 
+      {/* File attachments */}
+      <div>
+        <p className="text-sm font-medium text-gray-700 mb-2">
+          {t('attachFiles')}{' '}
+          <span className="text-gray-400 text-xs">{t('dueDateOptional')}</span>
+        </p>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            <Paperclip size={14} />
+            {t('addFile')}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          {files.length > 0 && (
+            <ul className="space-y-1">
+              {files.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded px-2 py-1">
+                  <Paperclip size={12} className="text-gray-400 shrink-0" />
+                  <span className="truncate">{f.name}</span>
+                  <span className="text-xs text-gray-400 shrink-0">({Math.round(f.size / 1024)} KB)</span>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(i)}
+                    className="ms-auto text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Scheduled send */}
+      <div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isScheduled}
+            onChange={(e) => {
+              setIsScheduled(e.target.checked)
+              if (!e.target.checked) setSendAt('')
+            }}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <Clock size={14} className="text-gray-500" />
+          <span className="text-sm font-medium text-gray-700">{t('scheduleSend')}</span>
+        </label>
+        {isScheduled && (
+          <div className="mt-2 ms-6">
+            <input
+              type="datetime-local"
+              value={sendAt}
+              onChange={(e) => setSendAt(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+              required={isScheduled}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">{t('scheduleSendHint')}</p>
+          </div>
+        )}
+      </div>
+
       {/* Error */}
       {state.error && (
         <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
@@ -216,10 +316,10 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
       {/* Submit */}
       <button
         type="submit"
-        disabled={isPending || (mode === 'template' && !selectedTemplateId)}
+        disabled={isPending || (mode === 'template' && !selectedTemplateId) || (isScheduled && !sendAt)}
         className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
-        {isPending ? t('assignSending') : t('assignAndSend')}
+        {isPending ? t('assignSending') : isScheduled ? t('assignAndSchedule') : t('assignAndSend')}
       </button>
     </form>
   )

@@ -30,6 +30,7 @@ export type MessageTemplateType =
   | 'balance_reply'
   | 'schedule_reply'
   | 'portal_link_reply'
+  | 'homework_graded'
   | 'unknown_intent_fallback'
 
 /**
@@ -64,6 +65,8 @@ export const DEFAULT_TEMPLATES: Record<MessageTemplateType, string> = {
     'השיעורים הקרובים שלך:\n{{lesson_lines}}',
   portal_link_reply:
     'קישור לאזור האישי שלך:\n{{portal_url}}\n\nניתן להתחבר עם מספר הטלפון שלך.',
+  homework_graded:
+    '✅ שיעורי הבית "{{title}}" קיבלו ציון: {{score}}/100.\n{{feedback_line}}',
   unknown_intent_fallback:
     'שלום 👋 לא הצלחתי להבין את הבקשה שלך.\nניתן לשלוח:\n• הזמנה — לקביעת שיעור\n• ביטול — לביטול שיעור\n• חוב — לסגירת יתרה\n• שיעורים — ללוח זמנים\n• פורטל — לגישה לאזור האישי',
 }
@@ -132,6 +135,7 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   receipt_notification: ['amount', 'receipt_url'],
   homework_assignment: ['title', 'body', 'due_line'],
   homework_reminder: ['title', 'due_date_suffix'],
+  homework_graded: ['title', 'score', 'feedback_line'],
   balance_reply: ['total', 'charge_lines'],
   schedule_reply: ['lesson_lines'],
   portal_link_reply: ['portal_url'],
@@ -152,6 +156,7 @@ export const TEMPLATE_LABELS: Record<MessageTemplateType, string> = {
   receipt_notification: 'קבלה לאחר תשלום',
   homework_assignment: 'שיעורי בית חדשים',
   homework_reminder: 'תזכורת שיעורי בית',
+  homework_graded: 'ציון על שיעורי בית',
   balance_reply: 'תשובה לשאלת יתרה',
   schedule_reply: 'תשובה לשאלת לוח זמנים',
   portal_link_reply: 'קישור לפורטל האישי',
@@ -172,6 +177,7 @@ export const TEMPLATE_PREVIEW_VARS: Record<MessageTemplateType, Record<string, s
   receipt_notification: { amount: '250.00', receipt_url: 'https://hashboniot.co.il/receipt/123' },
   homework_assignment: { title: 'עמ׳ 45–47', body: 'תרגילים 1–10', due_line: 'להגשה עד יום חמישי' },
   homework_reminder: { title: 'עמ׳ 45–47', due_date_suffix: ' (21.4)' },
+  homework_graded: { title: 'עמ׳ 45–47', score: '92', feedback_line: 'עבודה מצוינת!' },
   balance_reply: { total: '500.00', charge_lines: '\n₪250.00 — קישור לתשלום: https://pay.example.com/1\n₪250.00 — קישור לתשלום: https://pay.example.com/2' },
   schedule_reply: { lesson_lines: '1. יום שני, 21.4 בשעה 17:00 עם אהרון כהן\n2. יום רביעי, 23.4 בשעה 15:00 עם אהרון כהן' },
   portal_link_reply: { portal_url: 'https://app.lessio.co/portal/org-id' },

@@ -1,8 +1,11 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { z } from 'zod'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { updateLessonStatus, LessonStatus } from '@/lib/lessons'
+import { createNote, deleteNote } from '@/lib/lessons/notes'
+import { getTeacherByProfileId } from '@/lib/teachers'
 import { createLessonCharge, createCancellationCharge } from '@/lib/billing/createCharge'
 import { getCancellationPolicy } from '@/lib/cancellation-policy'
 import { calculateCancellationCharge } from '@/lib/billing/calculateCancellationCharge'
@@ -244,6 +247,96 @@ export async function cancelSeriesAction(
     return { error: null, cancelled }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'שגיאה בביטול הסדרה' }
+  }
+}
+
+// ── Lesson notes ──────────────────────────────────────────────────────────────
+
+export type AddNoteResult    = { error: string | null; success?: boolean }
+export type DeleteNoteResult = { error: string | null }
+
+const NoteSchema = z.object({ body: z.string().min(1).max(2000) })
+
+export async function addLessonNote(
+  lessonId: string,
+  _prev: AddNoteResult,
+  formData: FormData
+): Promise<AddNoteResult> {
+  const session = await getSession()
+
+  try {
+    requireMutation(session)
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+  }
+
+  const parsed = NoteSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return { error: 'תוכן ההערה אינו תקין' }
+
+  // Resolve teacherId — teachers use their own, owner/admin use a placeholder
+  let teacherId: string | null = null
+  if (session.role === 'teacher') {
+    const teacher = await getTeacherByProfileId(session.profileId, session.orgId)
+    if (!teacher) return { error: 'לא נמצא פרופיל מורה' }
+    teacherId = teacher.id
+  } else {
+    // owner/admin: find the teacher associated with this lesson
+    const { createServiceRoleClient } = await import('@/lib/supabase/service-role')
+    const db = createServiceRoleClient()
+    const { data: lesson } = await db
+      .from('lessons')
+      .select('teacher_id')
+      .eq('id', lessonId)
+      .eq('organization_id', session.orgId)
+      .single()
+    teacherId = (lesson as { teacher_id: string } | null)?.teacher_id ?? null
+  }
+
+  if (!teacherId) return { error: 'לא ניתן לאתר את המורה של השיעור' }
+
+  try {
+    await createNote({
+      orgId: session.orgId,
+      lessonId,
+      teacherId,
+      body: parsed.data.body,
+    })
+    revalidatePath(`/lessons/${lessonId}`)
+    return { error: null, success: true }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'שגיאה בשמירת ההערה' }
+  }
+}
+
+export async function deleteLessonNote(
+  lessonId: string,
+  _prev: DeleteNoteResult,
+  formData: FormData
+): Promise<DeleteNoteResult> {
+  const session = await getSession()
+
+  try {
+    requireMutation(session)
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+  }
+
+  const noteId = formData.get('noteId') as string | null
+  if (!noteId) return { error: 'מזהה הערה חסר' }
+
+  // Teachers can only delete their own notes; owner/admin can delete any
+  let actorTeacherId: string | undefined
+  if (session.role === 'teacher') {
+    const teacher = await getTeacherByProfileId(session.profileId, session.orgId)
+    actorTeacherId = teacher?.id
+  }
+
+  try {
+    await deleteNote({ orgId: session.orgId, noteId, actorTeacherId })
+    revalidatePath(`/lessons/${lessonId}`)
+    return { error: null }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'שגיאה במחיקת ההערה' }
   }
 }
 

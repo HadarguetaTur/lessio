@@ -7,7 +7,9 @@ import { getLessonAccessScope, getLessonById, formatTime, formatDate, LessonStat
 import { LessonStatusForm } from '@/components/dashboard/lessons/LessonStatusForm'
 import { CancelLessonForm } from '@/components/dashboard/lessons/CancelLessonForm'
 import { SeriesBanner } from '@/components/dashboard/lessons/SeriesBanner'
-import { setLessonStatus, cancelLesson, cancelSeriesAction } from './actions'
+import { LessonNotesSection } from '@/components/dashboard/lessons/LessonNotesSection'
+import { setLessonStatus, cancelLesson, cancelSeriesAction, addLessonNote, deleteLessonNote } from './actions'
+import { getNotes } from '@/lib/lessons/notes'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
 
@@ -28,7 +30,10 @@ export default async function LessonDetailPage(props: {
   const canCancel = role === 'owner' || role === 'admin'
   const timezone = await getOrgTimezone(orgId)
 
-  const lesson = await getLessonById(id, orgId)
+  const [lesson, notes] = await Promise.all([
+    getLessonById(id, orgId),
+    getNotes(orgId, id),
+  ])
   if (!lesson) {
     const scope = await getLessonAccessScope(id)
     if (scope && scope.organizationId !== orgId) {
@@ -58,6 +63,8 @@ export default async function LessonDetailPage(props: {
 
   const boundAction = setLessonStatus.bind(null, id)
   const boundCancelSeriesAction = cancelSeriesAction.bind(null, id)
+  const boundAddNoteAction = addLessonNote.bind(null, id)
+  const boundDeleteNoteAction = deleteLessonNote.bind(null, id)
 
   return (
     <div className="max-w-lg">
@@ -128,6 +135,17 @@ export default async function LessonDetailPage(props: {
             <CancelLessonForm action={cancelLesson.bind(null, lesson.id)} />
           </div>
         )}
+      </div>
+
+      {/* Lesson notes */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mt-4">
+        <LessonNotesSection
+          notes={notes}
+          lessonId={id}
+          addNoteAction={boundAddNoteAction}
+          deleteNoteAction={boundDeleteNoteAction}
+          canAdd={role === 'teacher' || role === 'owner' || role === 'admin'}
+        />
       </div>
     </div>
   )

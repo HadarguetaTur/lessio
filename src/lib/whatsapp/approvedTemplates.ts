@@ -90,6 +90,36 @@ export const APPROVED_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTem
       },
     ],
   },
+
+  homework_assignment: {
+    name: 'lessio_homework_assignment_he',
+    languageCode: 'he',
+    buildComponents: (vars) => [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: vars.title ?? '' },
+          { type: 'text', text: vars.body ?? '' },
+          { type: 'text', text: vars.due_line ?? '' },
+        ],
+      },
+    ],
+  },
+
+  homework_graded: {
+    name: 'lessio_homework_graded_he',
+    languageCode: 'he',
+    buildComponents: (vars) => [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: vars.title ?? '' },
+          { type: 'text', text: vars.score ?? '' },
+          { type: 'text', text: vars.feedback_line ?? '' },
+        ],
+      },
+    ],
+  },
 }
 
 /**

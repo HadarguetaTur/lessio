@@ -714,7 +714,27 @@
     "filterAll": "הכל",
     "columnSent": "נשלח",
     "columnCompleted": "הושלם",
-    "noPermission": "אין הרשאה"
+    "noPermission": "אין הרשאה",
+    "status": {
+      "pending": "ממתין",
+      "done": "הושלם",
+      "overdue": "באיחור"
+    },
+    "scheduledSend": "שליחה מתוזמנת",
+    "attachFiles": "צירוף קבצים",
+    "addFile": "הוסף קובץ",
+    "scheduleSend": "תזמון שליחה",
+    "scheduleSendHint": "ההודעה תישלח בזמן שנבחר",
+    "assignAndSchedule": "הקצה ותזמן",
+    "completionRate": "אחוז השלמה",
+    "attachments": "קבצים מצורפים",
+    "submissions": "הגשות",
+    "noSubmissions": "אין הגשות",
+    "grade": "ציון",
+    "gradeSaved": "הציון נשמר בהצלחה ונשלחה הודעה להורה.",
+    "feedbackPlaceholder": "משוב (אופציונלי)...",
+    "saveGrade": "שמור ציון",
+    "detail": "פרטי שיעורי בית"
   },
   "reports": {
     "title": "דוחות",
@@ -1706,5 +1726,30 @@
       "invalidDayOfWeek": "יום בשבוע לא תקין",
       "dbError": "{message}"
     }
+  },
+  "studentProfile": {
+    "tabs": {
+      "overview": "סקירה",
+      "lessons": "שיעורים",
+      "homework": "משימות",
+      "billing": "חיובים",
+      "notes": "הערות ויעדים"
+    },
+    "overview": {
+      "title": "סקירה כללית",
+      "attendance": "נוכחות (90 יום)",
+      "homeworkCompletion": "השלמת משימות",
+      "balance": "יתרה לתשלום",
+      "totalLessons": "סה״כ שיעורים",
+      "completedLessons": "שיעורים שהושלמו",
+      "doneAssignments": "משימות שהושלמו"
+    },
+    "grade": "כיתה",
+    "noLessons": "אין שיעורים",
+    "noHomework": "אין שיעורי בית",
+    "noCharges": "אין חיובים",
+    "noNotes": "אין הערות מורה",
+    "lessonNotes": "הערות שיעור",
+    "due": "תאריך הגשה"
   }
 }

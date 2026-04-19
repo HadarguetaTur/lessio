@@ -1,5 +1,5 @@
 # LESSIO — AI Operating Manual
-*Current Sprint: Sprint 23 — International Launch Readiness*
+*Current Sprint: Sprint 25 — AI Intelligence + Multi-Channel*
 
 ---
 
@@ -12,31 +12,32 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 
 ---
 
-## Current Sprint: Sprint 23 — International Launch Readiness
+## Current Sprint: Sprint 25 — AI Intelligence + Multi-Channel
 
-**Sprint source of truth:** `/docs/sprint-23-scope.md`
+**Sprint source of truth:** `/docs/sprint-25-scope.md`
 
 **Goal:**
-- GDPR: deletion request flow (portal → superadmin), data masking, retention Edge Function, legal page sections
-- Locale auto-detection from `Accept-Language` + 301 redirect for legacy portal URLs
-- Stripe payment provider (per-org keys, manual currency, card-only — SEPA/PayPal deferred)
-- WhatsApp `sendSmartMessage`: session-window check → text or approved template
-- Production hardening: error boundaries + server-side feature gate enforcement (redirect to upgrade, read-only for existing data)
+- AI multi-provider: per-org provider selection (OpenAI / Anthropic / Google) with encrypted API key storage
+- AI usage dashboard: token tracking, cost estimation, satisfaction scoring
+- Email notifications via Resend: lesson/payment/homework reminders + receipts
+- In-app notification center: bell icon with unread badge + slide-out drawer
+- Carry-over: Sumit SaaS billing E2E staging validation (manual checklist)
 
 **Users in scope:**
-- Parents (portal deletion request button)
-- Superadmin (process deletion requests, data export)
-- Org owners (Stripe payment settings, data retention settings on Advanced/Custom)
-- All users (locale auto-detection, error boundaries)
+- Owner (configure AI provider, view usage, toggle email/WhatsApp per notification type)
+- Teachers (receive email notifications for lesson cancellations, homework submissions)
+- Parents (receive email as fallback/secondary channel)
+- All dashboard users (in-app notification bell)
 
-**New dependencies:** `stripe`
+**New dependencies:** `resend`, `@anthropic-ai/sdk`, `@google/generative-ai`
 
-**New env vars:** none at platform level — Stripe keys are per-org in `payment_config_encrypted`
+**New env vars:** `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (REQUIRED_IN_PRODUCTION)
 
 **Schema changes:**
-- `data_deletion_requests` table
-- `organizations.data_retention_days int NOT NULL DEFAULT 365`
-- Index `(organization_id, from_phone, created_at)` on `whatsapp_processed_messages`
+- `organizations.ai_provider` + `organizations.ai_model` + `organizations.ai_config_encrypted` columns
+- `ai_usage_log` table
+- `in_app_notifications` table
+- `organizations.email_enabled` + `organizations.email_notification_types` columns
 
 ---
 
@@ -348,16 +349,22 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || `src/lib/saas/featureGate.ts` — `requireFeature` (redirect to `/account/billing?upgrade=`) | ✅ Done (Sprint 23) |
 || Feature gates on: AI assistant, homework writes, leads conversion, full reports, portal login | ✅ Done (Sprint 23) |
 || `src/app/error.tsx` + `not-found.tsx` + `(dashboard)/error.tsx` + `(admin)/error.tsx` | ✅ Done (Sprint 23) |
-|| Sumit SaaS billing E2E staging validation (manual checklist) | ⬜ Planned |
+|| Sumit SaaS billing E2E staging validation (manual checklist) | ⬜ Carried → Sprint 24 |
 
-|| **Sprint 24 stories (planned — Pedagogical Depth):** ||
-|| `homework_submissions` table + file upload + grading flow | ⬜ Planned |
-|| Homework scheduled sending (set send date/time) | ⬜ Planned |
-|| `lesson_notes` table + teacher note UI in lesson detail | ⬜ Planned |
-|| Student profile overhaul: tabs (Overview / Lessons / Homework / Billing / Notes) | ⬜ Planned |
-|| `student_goals` table + goals UI on student profile | ⬜ Planned |
+|| **Sprint 24 stories:** ||
+|| Sumit SaaS billing E2E staging validation (carry-over from Sprint 23) | ⬜ Carried → Sprint 25 |
+|| `homework_attachments` table + file upload (Supabase Storage) + assignment form | ✅ Done (Sprint 24) |
+|| `homework_submissions` table + portal homework tab + submission flow | ✅ Done (Sprint 24) |
+|| Homework grading: score (0–100) + feedback + WhatsApp notification | ✅ Done (Sprint 24) |
+|| Homework scheduled sending: `send_at` column + `homework-sender` Edge Function | ✅ Done (Sprint 24) |
+|| `lesson_notes` table + notes section on lesson detail + teacher quick notes prompt | ✅ Done (Sprint 24) |
+|| Student profile overhaul: 5 tabs (Overview / Lessons / Homework / Billing / Notes) | ✅ Done (Sprint 24) |
+|| Student overview KPIs: attendance rate, homework completion, outstanding balance | ✅ Done (Sprint 24) |
+|| `student_goals` table + goals CRUD + UI on student profile + portal display | ✅ Done (Sprint 24) |
+|| Sprint 24 code review fixes: `sent_at` bug, file type validation, RLS deny policies, AssignForm UI (file upload + scheduled send), grading notification stabilization, completion rate column, GradingForm i18n, approved templates for homework_assignment + homework_graded | ✅ Done (Sprint 24) |
 
 || **Sprint 25 stories (planned — AI + Multi-Channel):** ||
+|| Sumit SaaS billing E2E staging validation (carry-over from Sprint 23/24) | ⬜ Planned |
 || AI multi-provider: `organizations.ai_provider` + `ai_config_encrypted` + provider adapters | ⬜ Planned |
 || AI usage dashboard: `ai_usage_log` + tokens/cost/resolution rate | ⬜ Planned |
 || AI satisfaction: WhatsApp 👍/👎 + aggregate score in settings | ⬜ Planned |

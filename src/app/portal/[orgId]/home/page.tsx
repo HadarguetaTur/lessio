@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CalendarDays, AlertCircle, Plus } from 'lucide-react'
+import { CalendarDays, AlertCircle, Plus, Target } from 'lucide-react'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getOrgTimezone } from '@/lib/organizations'
@@ -9,6 +9,7 @@ import { formatTime, formatDate } from '@/lib/lessons'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
 import { DeletionRequestButton } from '@/components/portal/DeletionRequestButton'
+import { getActiveGoalsForStudents } from '@/lib/goals'
 import { requestDeletionAction } from './actions'
 
 export default async function PortalHomePage({
@@ -47,6 +48,8 @@ export default async function PortalHomePage({
       .eq('status', 'pending'),
   ])
 
+  const goalsPromise = getActiveGoalsForStudents(orgId, studentIds)
+
   const lessonsResult = studentIds.length > 0
     ? await db
         .from('lessons')
@@ -67,6 +70,7 @@ export default async function PortalHomePage({
   const orgName = orgResult.data?.name ?? ''
   const lessons = lessonsResult.data ?? []
   const balance = (balanceResult.data ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
+  const goals = await goalsPromise
 
   return (
     <div className="flex flex-col flex-1 pb-20">
@@ -150,6 +154,34 @@ export default async function PortalHomePage({
             </div>
           )}
         </div>
+
+        {/* Learning goals */}
+        {goals.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-3">
+              <Target size={14} className="text-muted-foreground" />
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+                יעדי למידה
+              </p>
+            </div>
+            <div className="space-y-2">
+              {goals.map((goal) => (
+                <div key={goal.id} className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-medium text-muted-foreground">{goal.subject}</span>
+                      <p className="text-sm text-foreground mt-0.5">{goal.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{goal.studentName}</p>
+                    </div>
+                    {goal.targetDate && (
+                      <span className="text-xs text-muted-foreground shrink-0">{goal.targetDate}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Book CTA */}
         <Link

@@ -11,6 +11,7 @@ import { getSession } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createAssignment } from '@/lib/homework'
+import { uploadAttachment } from '@/lib/homework/attachments'
 import { sendHomeworkAssignment } from '@/lib/homework/sendHomework'
 import { decryptToken } from '@/lib/crypto'
 import { requireFeature } from '@/lib/saas/featureGate'
@@ -28,6 +29,7 @@ const AssignSchema = z
     title:      z.string().min(1).max(200).optional(),
     body:       z.string().min(1).max(2000).optional(),
     dueDate:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    sendAt:     z.string().datetime().optional(),
   })
   .refine(
     (data) => data.templateId || (data.title && data.body),
@@ -47,12 +49,14 @@ export async function assignHomeworkAction(
   await requireFeature(orgId, 'homework')
 
   const rawTemplateId = (formData.get('templateId') as string | null) ?? ''
+  const rawSendAt = (formData.get('sendAt') as string | null) || undefined
   const raw = {
     studentIds: formData.getAll('studentIds').filter(Boolean) as string[],
     templateId: rawTemplateId !== '' ? rawTemplateId : undefined,
     title:      (formData.get('title') as string | null) || undefined,
     body:       (formData.get('body') as string | null) || undefined,
     dueDate:    (formData.get('dueDate') as string | null) || undefined,
+    sendAt:     rawSendAt,
   }
 
   const parsed = AssignSchema.safeParse(raw)
@@ -60,7 +64,7 @@ export async function assignHomeworkAction(
     return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
   }
 
-  const { studentIds, templateId, title, body, dueDate } = parsed.data
+  const { studentIds, templateId, title, body, dueDate, sendAt } = parsed.data
 
   // Resolve teacher: teacher from session, or first active teacher in org for owner/admin
   let teacherId: string
@@ -96,10 +100,41 @@ export async function assignHomeworkAction(
       title: title as string | undefined,
       body:  body  as string | undefined,
       dueDate,
+      sendAt,
     })
   } catch (err) {
     console.error('[homework/assign] createAssignment failed', { orgId, err })
     return { error: err instanceof Error ? err.message : 'שגיאה ביצירת שיעורי הבית' }
+  }
+
+  // Upload file attachments to each created assignment
+  const files = formData.getAll('files') as File[]
+  const validFiles = files.filter((f) => f instanceof File && f.size > 0)
+  if (validFiles.length > 0) {
+    for (const assignment of assignments) {
+      for (const file of validFiles) {
+        try {
+          await uploadAttachment({
+            orgId,
+            assignmentId: assignment.id,
+            uploadedBy: profileId,
+            file,
+          })
+        } catch (err) {
+          console.error('[homework/assign] File upload failed', {
+            assignmentId: assignment.id,
+            fileName: file.name,
+            err,
+          })
+        }
+      }
+    }
+  }
+
+  // If scheduled, skip immediate WhatsApp send — homework-sender will handle it
+  if (sendAt) {
+    revalidatePath('/homework')
+    return { error: null, success: true, count: assignments.length }
   }
 
   // Fire-and-forget: send WhatsApp message for each assignment.

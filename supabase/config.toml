@@ -390,6 +390,10 @@ deno_version = 2
 #   data-retention: "0 3 * * *"  (daily at 03:00 UTC)
 [functions.data-retention]
 
+# Sprint 24: Homework sender — sends scheduled homework assignments via WhatsApp
+#   homework-sender: "0 * * * *"  (hourly)
+[functions.homework-sender]
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

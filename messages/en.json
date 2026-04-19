@@ -714,7 +714,27 @@
     "filterAll": "All",
     "columnSent": "Sent",
     "columnCompleted": "Completed",
-    "noPermission": "No permission"
+    "noPermission": "No permission",
+    "status": {
+      "pending": "Pending",
+      "done": "Completed",
+      "overdue": "Overdue"
+    },
+    "scheduledSend": "Scheduled Send",
+    "attachFiles": "Attach Files",
+    "addFile": "Add file",
+    "scheduleSend": "Schedule send",
+    "scheduleSendHint": "The message will be sent at the selected time",
+    "assignAndSchedule": "Assign & Schedule",
+    "completionRate": "Completion Rate",
+    "attachments": "Attachments",
+    "submissions": "Submissions",
+    "noSubmissions": "No submissions",
+    "grade": "Grade",
+    "gradeSaved": "Grade saved successfully and notification sent to parent.",
+    "feedbackPlaceholder": "Feedback (optional)...",
+    "saveGrade": "Save grade",
+    "detail": "Homework Details"
   },
   "reports": {
     "title": "Reports",
@@ -1706,5 +1726,30 @@
       "invalidDayOfWeek": "Invalid day of week",
       "dbError": "{message}"
     }
+  },
+  "studentProfile": {
+    "tabs": {
+      "overview": "Overview",
+      "lessons": "Lessons",
+      "homework": "Homework",
+      "billing": "Billing",
+      "notes": "Notes & Goals"
+    },
+    "overview": {
+      "title": "Overview",
+      "attendance": "Attendance (90d)",
+      "homeworkCompletion": "Homework Completion",
+      "balance": "Outstanding Balance",
+      "totalLessons": "Total Lessons",
+      "completedLessons": "Completed Lessons",
+      "doneAssignments": "Done Assignments"
+    },
+    "grade": "Grade",
+    "noLessons": "No lessons",
+    "noHomework": "No homework",
+    "noCharges": "No charges",
+    "noNotes": "No teacher notes",
+    "lessonNotes": "Lesson Notes",
+    "due": "Due"
   }
 }

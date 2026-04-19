@@ -32,6 +32,8 @@ export type HomeworkAssignment = {
   status: 'pending' | 'done' | 'overdue'
   sentAt: string | null
   completedAt: string | null
+  sendAt: string | null    // scheduled send time (Sprint 24)
+  sent: boolean            // whether the assignment WhatsApp was sent (Sprint 24)
   createdAt: string
 }
 
@@ -71,6 +73,8 @@ type AssignmentRow = {
   status: 'pending' | 'done' | 'overdue'
   sent_at: string | null
   completed_at: string | null
+  send_at: string | null
+  sent: boolean
   created_at: string
 }
 
@@ -87,6 +91,8 @@ function mapAssignment(row: AssignmentRow): HomeworkAssignment {
     status: row.status,
     sentAt: row.sent_at,
     completedAt: row.completed_at,
+    sendAt: row.send_at,
+    sent: row.sent,
     createdAt: row.created_at,
   }
 }
@@ -120,6 +126,36 @@ export async function getTemplate(
   if (error) throw new Error(`[homework] getTemplate failed: ${error.message}`)
   if (!data) return null
   return mapTemplate(data as TemplateRow)
+}
+
+export async function getAssignment(
+  orgId: string,
+  assignmentId: string
+): Promise<(HomeworkAssignment & { studentName: string; teacherName: string }) | null> {
+  const db = createServiceRoleClient()
+  const { data, error } = await db
+    .from('homework_assignments')
+    .select(`
+      *,
+      students ( full_name ),
+      teachers ( profiles ( full_name ) )
+    `)
+    .eq('organization_id', orgId)
+    .eq('id', assignmentId)
+    .maybeSingle()
+
+  if (error) throw new Error(`[homework] getAssignment failed: ${error.message}`)
+  if (!data) return null
+
+  const row = data as AssignmentRow & {
+    students: { full_name: string } | null
+    teachers: { profiles: { full_name: string } | null } | null
+  }
+  return {
+    ...mapAssignment(row),
+    studentName: row.students?.full_name ?? '',
+    teacherName: (row.teachers?.profiles as { full_name: string } | null)?.full_name ?? '',
+  }
 }
 
 export async function getAssignments(
@@ -247,6 +283,7 @@ export async function createAssignment(params: {
   title?: string
   body?: string
   dueDate?: string
+  sendAt?: string   // ISO timestamp for scheduled send; null = send immediately
 }): Promise<HomeworkAssignment[]> {
   const db = createServiceRoleClient()
 
@@ -274,6 +311,9 @@ export async function createAssignment(params: {
     throw new Error('[homework] title and body are required when no templateId is provided')
   }
 
+  // Scheduled send: if sendAt is in the future, mark sent=false and don't send immediately.
+  // homework-sender Edge Function will pick it up.
+  const isScheduled = params.sendAt != null
   const rows = params.studentIds.map((studentId) => ({
     organization_id: params.orgId,
     teacher_id:      params.teacherId,
@@ -283,6 +323,8 @@ export async function createAssignment(params: {
     body:            resolvedBody,
     due_date:        params.dueDate ?? null,
     status:          'pending' as const,
+    send_at:         params.sendAt ?? null,
+    sent:            !isScheduled,  // immediately sent if no schedule
   }))
 
   const { data, error } = await db

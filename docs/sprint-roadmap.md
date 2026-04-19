@@ -1,6 +1,6 @@
 
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprint 22 complete, Sprint 23 planned*
+*Updated: Sprint 24 complete, Sprint 25 planned*
 
 ---
 
@@ -30,123 +30,51 @@
 | 20 | AI assistant + WhatsApp hardening (idempotency, dead-end removal, tests) | ✅ Done |
 | 21 | i18n infrastructure + English (next-intl, Hebrew extraction, locale switcher) | ✅ Done |
 | 22 | Billing cycle completion + subscription management + i18n cleanup | ✅ Done |
+| 23 | International launch readiness (GDPR, Stripe, WhatsApp templates, error boundaries) | ✅ Done |
+| 24 | Pedagogical depth (homework v2, lesson notes, student profile, learning goals) | ✅ Done |
 
 ---
 
 ## Sprint 23 — International Launch Readiness
-**Status:** Planned
+**Status:** ✅ Done
 **Depends on:** Sprint 22 complete
 
 **Goal:** Everything needed to legally and technically operate in the EU and English-speaking markets (UK, Australia, US).
 
-### Story 1 — GDPR Compliance
-- Privacy policy page per org (generated from template, org fills in contact details)
-- Cookie consent banner (non-EU users exempt)
-- Right to deletion: parent can request data deletion from portal → creates deletion request ticket in admin
-- Data export: admin can export all data for a parent (JSON)
-- Data retention policy: `organization.data_retention_days` — auto-anonymize old lessons + `conversation_log` + `whatsapp_processed_messages` after N days (Edge Function)
-- Legal pages (Terms + Privacy) with real content (currently placeholder)
+### Completed
+- GDPR compliance: deletion request flow (portal → superadmin), data masking, data-retention Edge Function, structured legal pages
+- Locale auto-detection from Accept-Language header + portal URL backward-compat 301 redirect
+- Stripe payment provider (per-org keys, manual currency, card-only)
+- WhatsApp `sendSmartMessage`: session-window check → text or approved template
+- Production hardening: error boundaries + server-side feature gate enforcement (`requireFeature`)
 
-### Story 2 — URL-Based Locale Routing + Arabic
-- Add URL prefix routing for portal + booking WebView (public-facing, SEO matters here)
-- Locale auto-detection from browser `Accept-Language` header on first visit
-- Arabic support (`messages/ar.json`, RTL same as Hebrew)
-- English becomes default for non-IL orgs
-
-### Story 3 — International Payment Methods
-- Stripe provider (`src/lib/payments/stripe.ts` implementing `PaymentProvider` interface)
-  - Stripe Checkout or Payment Links for parent payments
-- SEPA Direct Debit support via Stripe (EU market)
-- PayPal option (US/AU market)
-
-### Story 4 — WhatsApp Approved Templates (Meta)
-Currently the system uses "session messages" (valid only if parent messaged within 24h). For proactive messages to users who haven't messaged recently, Meta requires **approved Message Templates**.
-- Submit Hebrew + English + Arabic templates to Meta for approval
-- Implement template message type in WhatsApp send functions (currently all `type: 'text'`)
-- Fallback: if session expired → send template; if within session → send text
-
-### Story 5 — Production Hardening
-- Add `src/app/error.tsx` + `src/app/not-found.tsx` global error/404 pages
-- Add `src/app/(dashboard)/error.tsx` dashboard error boundary
-- Validate Sumit SaaS billing end-to-end with real credentials on staging
-- Enforce feature gates server-side (currently UI-only in sidebar)
+### Carried to Sprint 24
+- Sumit SaaS Billing E2E staging validation (manual checklist — requires real credentials)
 
 ---
 
 ## Sprint 24 — Pedagogical Depth
-**Status:** Planned
+**Status:** ✅ Done
 **Depends on:** Sprint 23 complete
 
-**Goal:** Transform homework from a simple text message into a real assignment system. Give teachers a place to document what happened in each lesson. Give owners visibility into student progress.
+**Goal:** Transform homework from a simple text message into a real assignment system with file attachments, submissions, and grading. Add structured lesson notes. Overhaul the student profile into a tabbed view. Introduce learning goals.
 
-### Story 1 — Homework v2: Attachments + Submission + Grading
-- DB: `homework_attachments` (assignment_id, url, filename, uploaded_by)
-- File upload: teacher can attach PDFs, images, links to an assignment
-- Submission flow: parent/student uploads completed work via portal (file or text)
-- DB: `homework_submissions` (assignment_id, student_id, body, attachment_url, submitted_at)
-- Grading: teacher adds score (0–100 or custom rubric) + written feedback per submission
-- Progress analytics: per-student completion rate + average score visible on student profile
-- Scheduled sending: teacher sets "send on [date] at [time]" instead of sending immediately
+**Sprint scope:** See `docs/sprint-24-scope.md`
 
-### Story 2 — Lesson Notes + Materials
-- DB: `lesson_notes` (lesson_id, teacher_id, body_markdown, created_at)
-- Teacher can add structured notes after a lesson: topics covered, gaps, next steps
-- Materials: attach links or files to a lesson (reference sheets, exercises)
-- Admin/owner can read all lesson notes; teacher sees only their own
-- Notes visible in lesson detail page + student profile history
+### Completed
+- Homework v2: file attachments (Supabase Storage), student submissions via portal, teacher grading (0–100 + feedback + WhatsApp notification), scheduled sending (homework-sender Edge Function)
+- Lesson notes: CRUD with RBAC, integrated on lesson detail page
+- Student profile overhaul: 5-tab layout (Overview / Lessons / Homework / Billing / Notes) with KPIs
+- Learning goals: CRUD + portal display, 3-status model (active / achieved / abandoned)
+- Code review fixes: `sent_at` bug, file type validation, RLS deny policies, AssignForm UI completion, grading notification stabilization, completion rate column, approved templates
 
-### Story 3 — Student Profile Overhaul
-- Student detail page redesigned: tabs — Overview / Lessons / Homework / Billing / Notes
-- Overview tab: attendance rate (last 30/90 days), homework completion rate, outstanding balance, last lesson date
-- Lessons tab: full history (date, teacher, status, duration, cancellation reason if any)
-- Homework tab: all assignments with status, score, submission link
-- Billing tab: per-student charges + payment history (drill-down from billing page)
-- Notes tab: teacher-written lesson notes (read-only for admin, editable for originating teacher)
-
-### Story 4 — Learning Goals
-- DB: `student_goals` (student_id, org_id, subject, description, target_date, status: active/achieved/abandoned)
-- Owner/admin/teacher can define goals per student
-- Goals visible on student profile + parent portal
-- Status update with achievement note
-
-**Schema additions:**
-```sql
-CREATE TABLE homework_submissions (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  assignment_id   uuid NOT NULL REFERENCES homework_assignments(id) ON DELETE CASCADE,
-  student_id      uuid NOT NULL REFERENCES students(id),
-  body            text,
-  attachment_url  text,
-  score           int CHECK (score BETWEEN 0 AND 100),
-  feedback        text,
-  submitted_at    timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE lesson_notes (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  lesson_id       uuid NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
-  teacher_id      uuid NOT NULL REFERENCES teachers(id),
-  body            text NOT NULL,
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE student_goals (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  student_id      uuid NOT NULL REFERENCES students(id),
-  subject         text NOT NULL,
-  description     text NOT NULL,
-  target_date     date,
-  status          text NOT NULL DEFAULT 'active'
-    CHECK (status IN ('active', 'achieved', 'abandoned')),
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
-```
+### Carried to Sprint 25
+- Sumit SaaS Billing E2E staging validation (manual checklist — carried from Sprint 23)
 
 ---
 
 ## Sprint 25 — AI Intelligence + Multi-Channel Communications
-**Status:** Planned
+**Status:** Current Sprint
 **Depends on:** Sprint 24 complete
 
 **Goal:** Make the AI assistant provider-agnostic and measurable. Add email as a second notification channel. Wire up the unused bell icon into a real in-app notification center.

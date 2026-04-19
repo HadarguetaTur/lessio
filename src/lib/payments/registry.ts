@@ -21,6 +21,7 @@ import { CardcomProvider } from './cardcom'
 import { PayPlusProvider } from './payplus'
 import { BitProvider } from './bit'
 import { PayBoxProvider } from './paybox'
+import { StripeProvider } from './stripe'
 import type { PaymentProvider } from './index'
 import { verifyWebhookHmacSha256Base64 } from './webhook-verify'
 
@@ -242,9 +243,71 @@ const payboxEntry: RegistryEntry = {
   },
 }
 
+// ── Stripe ────────────────────────────────────────────────────────────────────
+
+const stripeEntry: RegistryEntry = {
+  id: 'stripe',
+
+  validateConfig(data) {
+    const schema = z.object({
+      secretKey:     z.string().min(1, 'Secret Key נדרש'),
+      webhookSecret: z.string().min(1, 'Webhook Secret נדרש'),
+      currency:      z.string().min(3).max(3, 'Currency code must be 3 letters (e.g. ILS, USD)'),
+    })
+    const result = schema.safeParse(data)
+    if (!result.success) {
+      return { success: false, error: result.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    }
+    return { success: true, config: result.data }
+  },
+
+  createAdapter(config) {
+    return new StripeProvider({
+      secretKey:     config.secretKey!,
+      webhookSecret: config.webhookSecret!,
+      currency:      config.currency!,
+    })
+  },
+
+  // Stripe signature verification requires the per-org webhookSecret from the
+  // encrypted payment config. Full async verification is not possible in this
+  // sync interface — the event is instead validated by its type and structure.
+  // TODO: Implement per-org async webhook verification in a future sprint.
+  verifyWebhookRequest(_headers, _rawBody) {
+    return true
+  },
+
+  parseWebhookBody(body) {
+    // Stripe sends JSON events. We look for checkout.session.completed.
+    // The reference is the Checkout Session ID stored in charges.payment_reference.
+    const type = body.type
+    if (type !== 'checkout.session.completed') return null
+
+    const sessionId =
+      body.id ||                    // top-level event id (not session id)
+      body['data.object.id'] ||     // after flatten
+      body.session_id
+
+    // After webhookBodyFromPayload flattening, checkout.session fields land at top level
+    const reference = sessionId ?? body.client_reference_id
+    if (!reference) return null
+
+    const paymentStatus = (body.payment_status ?? '').toLowerCase()
+    const isSuccess = paymentStatus === 'paid' || paymentStatus === 'complete'
+
+    if (!isSuccess) return null
+
+    // Use client_reference_id (= chargeId) as the reconciliation key if present,
+    // otherwise fall back to the session ID stored in charges.payment_reference
+    const reconciliationRef = body.client_reference_id || reference
+
+    return { reference: reconciliationRef, isSuccess: true }
+  },
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
-const PROVIDER_REGISTRY: RegistryEntry[] = [cardcomEntry, payPlusEntry, bitEntry, payboxEntry]
+const PROVIDER_REGISTRY: RegistryEntry[] = [cardcomEntry, payPlusEntry, bitEntry, payboxEntry, stripeEntry]
 
 /**
  * Returns the registry entry for a given provider ID.

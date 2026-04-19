@@ -8,6 +8,8 @@ import { getLocale } from 'next-intl/server'
 import { formatTime, formatDate } from '@/lib/lessons'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
+import { DeletionRequestButton } from '@/components/portal/DeletionRequestButton'
+import { requestDeletionAction } from './actions'
 
 export default async function PortalHomePage({
   params,
@@ -158,6 +160,13 @@ export default async function PortalHomePage({
           קבע שיעור חדש
         </Link>
       </main>
+
+      {/* GDPR deletion request */}
+      <div className="px-4 pb-4 flex justify-center">
+        <DeletionRequestButton
+          action={requestDeletionAction.bind(null, orgId)}
+        />
+      </div>
 
       <PortalTabBar orgId={orgId} active="home" />
     </div>

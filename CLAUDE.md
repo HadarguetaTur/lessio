@@ -112,6 +112,8 @@ UI components that invoke server actions must receive the action as a prop — n
 **SaaS platform layer (distinct from org-level billing):**
 Organizations themselves are tenants on the Lessio SaaS platform. Platform billing (plan selection, payment for Lessio itself) lives in `src/lib/saas/` and `src/app/(dashboard)/subscriptions/`. This is entirely separate from the org-level billing engine (`src/lib/billing/monthly/`) that bills *students*. The superadmin shell (`/admin/`) manages the platform; org owners manage their own org's student billing.
 
+The SaaS billing provider is **Sumit** (`src/lib/saas/sumit.ts`): creates tax invoices/receipts and charges stored card tokens for subscription renewals. Credentials (`SUMIT_COMPANY_ID`, `SUMIT_API_KEY`) are platform-level env vars (always required). `SUMIT_WEBHOOK_SECRET` is required in production for HMAC verification of Sumit payment callbacks. The Sumit webhook route (`/api/sumit/`) is in the `proxy.ts` public bypass list (no Supabase session check).
+
 **Teacher sub-shell (`/teacher/`):**
 Teachers access a scoped subset of the dashboard: `/teacher/schedule`, `/teacher/new-lesson`, `/teacher/dashboard`, `/teacher/reports`. These share the same Supabase Auth session but data queries are filtered by the authenticated teacher's `teacher_id`. Teachers cannot access billing, students, or parents pages.
 

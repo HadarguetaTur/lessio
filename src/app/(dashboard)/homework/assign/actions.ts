@@ -13,6 +13,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createAssignment } from '@/lib/homework'
 import { sendHomeworkAssignment } from '@/lib/homework/sendHomework'
 import { decryptToken } from '@/lib/crypto'
+import { requireFeature } from '@/lib/saas/featureGate'
 
 export type AssignActionState = {
   error: string | null
@@ -42,6 +43,8 @@ export async function assignHomeworkAction(
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return { error: 'אין הרשאה' }
   }
+
+  await requireFeature(orgId, 'homework')
 
   const rawTemplateId = (formData.get('templateId') as string | null) ?? ''
   const raw = {

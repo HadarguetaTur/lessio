@@ -382,6 +382,14 @@ deno_version = 2
 #   saas-subscription-checker: "0 0 * * *"  (daily at 00:00 UTC)
 [functions.saas-subscription-checker]
 
+# Sprint 23: SaaS renewal reminder — WhatsApp to org owner 2 days before renewal
+#   saas-renewal-reminder: "0 8 * * *"  (daily at 08:00 UTC)
+[functions.saas-renewal-reminder]
+
+# Sprint 23: Data retention — anonymises conversation_log + whatsapp_processed_messages
+#   data-retention: "0 3 * * *"  (daily at 03:00 UTC)
+[functions.data-retention]
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

@@ -138,6 +138,36 @@ export const PROVIDERS_UI: ProviderUIDef[] = [
       },
     ],
   },
+  {
+    id: 'stripe',
+    label: 'Stripe',
+    description: 'כרטיסי אשראי בינלאומיים — USD, EUR, GBP, ILS ועוד',
+    docsUrl: 'https://dashboard.stripe.com/apikeys',
+    setupHint: 'Secret Key נמצא בפאנל Stripe תחת Developers → API keys. Webhook Secret נמצא תחת Developers → Webhooks לאחר הוספת Endpoint.',
+    fields: [
+      {
+        name: 'secretKey',
+        label: 'Secret Key',
+        type: 'password',
+        placeholder: 'sk_live_... או sk_test_...',
+        hint: 'Secret key מלוח הבקרה של Stripe (Developers → API keys)',
+      },
+      {
+        name: 'webhookSecret',
+        label: 'Webhook Signing Secret',
+        type: 'password',
+        placeholder: 'whsec_...',
+        hint: 'Signing secret מה-Webhook endpoint ב-Stripe (Developers → Webhooks)',
+      },
+      {
+        name: 'currency',
+        label: 'מטבע',
+        type: 'text',
+        placeholder: 'ILS / USD / EUR / GBP / AUD',
+        hint: 'קוד מטבע ISO 4217 — 3 אותיות גדולות',
+      },
+    ],
+  },
 ]
 
 /**

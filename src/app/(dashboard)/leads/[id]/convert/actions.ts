@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/session'
 import { convertLead } from '@/lib/leads/convertLead'
+import { requireFeature } from '@/lib/saas/featureGate'
 
 const convertLeadSchema = z.object({
   leadId: z.string().uuid(),
@@ -23,6 +24,8 @@ export async function convertLeadAction(
   if (role !== 'owner' && role !== 'admin') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
   }
+
+  await requireFeature(orgId, 'leads')
 
   const parsed = convertLeadSchema.safeParse({
     leadId,

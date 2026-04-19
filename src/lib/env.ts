@@ -22,6 +22,9 @@ const ALWAYS_REQUIRED: string[] = [
   'PORTAL_JWT_SECRET',
   // Sprint 18: superadmin read-only support mode cookie signing
   'SUPPORT_SESSION_SECRET',
+  // Sprint 23: Sumit SaaS platform billing credentials
+  'SUMIT_COMPANY_ID',
+  'SUMIT_API_KEY',
 ]
 
 /**

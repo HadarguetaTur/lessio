@@ -820,6 +820,10 @@
       "locale": {
         "title": "Language & Display",
         "description": "Choose the interface language and reading direction"
+      },
+      "privacy": {
+        "title": "Privacy & Data Retention",
+        "description": "Activity data retention policy and GDPR"
       }
     },
     "whatsapp": {
@@ -1222,15 +1226,71 @@
   },
   "legal": {
     "backHome": "Back to home",
+    "lastUpdated": "Last updated",
+    "contactEmail": "Contact: {email}",
+    "sectionComingSoon": "Full content coming soon.",
     "privacy": {
-      "title": "Privacy policy",
-      "metaDescription": "Lessio privacy policy (coming soon).",
-      "placeholder": "We are preparing this page. The full privacy policy will appear here soon."
+      "title": "Privacy Policy",
+      "metaDescription": "Lessio privacy policy — how we collect, use, and protect your information.",
+      "sections": {
+        "informationWeCollect": {
+          "heading": "Information We Collect",
+          "body": "We collect contact details (name, phone), lesson and payment information, and communication history. This information is provided directly by you or generated through use of the platform."
+        },
+        "howWeUseIt": {
+          "heading": "How We Use It",
+          "body": "We use your information to manage lessons, process billing, send WhatsApp reminders, and provide customer support. We do not sell your information to third parties."
+        },
+        "dataStorage": {
+          "heading": "Data Storage",
+          "body": "Data is stored on Supabase infrastructure (Amazon AWS, Europe). Activity data is anonymised after a configurable retention period (default: 365 days)."
+        },
+        "yourRights": {
+          "heading": "Your Rights",
+          "body": "Under GDPR you have the right to access, correct, and request deletion of your data. Deletion requests can be submitted through the parent portal."
+        },
+        "contact": {
+          "heading": "Contact",
+          "body": "For privacy questions please contact {email}."
+        }
+      }
     },
     "terms": {
-      "title": "Terms of use",
-      "metaDescription": "Lessio terms of use (coming soon).",
-      "placeholder": "We are preparing this page. The full terms of use will appear here soon."
+      "title": "Terms of Use",
+      "metaDescription": "Lessio terms of use — the agreement governing your use of the platform.",
+      "sections": {
+        "serviceDescription": {
+          "heading": "Service Description",
+          "body": "Lessio is a SaaS platform for managing private tutoring businesses and learning centres. The service includes scheduling, billing, and a parent portal."
+        },
+        "acceptableUse": {
+          "heading": "Acceptable Use",
+          "body": "The service is for lawful business use only. You may not use the platform to distribute harmful content, violate privacy, or breach applicable data protection laws."
+        },
+        "paymentTerms": {
+          "heading": "Payment Terms",
+          "body": "Subscriptions are billed monthly in advance. Cancellation takes effect at the end of the current billing period. No refunds are issued for partial periods."
+        },
+        "termination": {
+          "heading": "Termination",
+          "body": "Lessio reserves the right to suspend accounts that violate these terms. You may cancel your subscription at any time through the management dashboard."
+        },
+        "governingLaw": {
+          "heading": "Governing Law",
+          "body": "These terms are governed by the laws of the State of Israel. Any disputes will be resolved in the competent courts of Israel."
+        }
+      }
+    }
+  },
+  "portal": {
+    "gdpr": {
+      "requestDeletion": "Request data deletion (GDPR)",
+      "confirmTitle": "Request Data Deletion",
+      "confirmBody": "This will anonymise your name and phone number in the system. Billing history will be preserved.",
+      "confirm": "Confirm deletion request",
+      "cancel": "Cancel",
+      "success": "Your deletion request has been submitted. We will process it shortly.",
+      "error": "Error submitting request. Please try again."
     }
   },
   "saas": {

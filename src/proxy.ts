@@ -63,10 +63,24 @@ export async function proxy(request: NextRequest) {
   // /portal/* uses httpOnly cookie session — no Supabase session middleware.
   // /api/calendar/* is public — UUID token is the auth mechanism (Sprint 16).
   // See AGENTS.md § Authentication Model.
+  // Story 2b (Sprint 23): Backward-compat redirect for legacy portal URLs shared with parents.
+  // /portal/:orgId → /he/portal/:orgId (permanent 301 so old links still work).
+  // Note: /he/portal/* paths are NOT caught here — they start with /he/ which this block
+  // does not match, so they fall through to NextResponse.next() below.
+  const { pathname } = request.nextUrl
+  if (/^\/portal\/[^/]/.test(pathname)) {
+    const url = request.nextUrl.clone()
+    url.pathname = `/he${pathname}`
+    return NextResponse.redirect(url, { status: 301 })
+  }
+
   if (
     request.nextUrl.pathname.startsWith('/book/') ||
     request.nextUrl.pathname.startsWith('/portal/') ||
-    request.nextUrl.pathname.startsWith('/api/calendar/')
+    request.nextUrl.pathname.startsWith('/he/portal/') ||
+    request.nextUrl.pathname.startsWith('/api/calendar/') ||
+    // Sumit SaaS billing webhook — authenticated via HMAC, no Supabase session
+    request.nextUrl.pathname.startsWith('/api/sumit/')
   ) {
     return NextResponse.next()
   }
@@ -105,8 +119,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  const { pathname } = request.nextUrl
 
   // Unauthenticated user accessing a dashboard route → redirect to /login.
   // Use redirectWithSession so any rotated token cookies are preserved.

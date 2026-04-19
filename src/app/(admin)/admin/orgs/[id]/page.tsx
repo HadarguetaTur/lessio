@@ -5,9 +5,13 @@ import { getTranslations } from 'next-intl/server'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { OrganizationDetailCard } from '@/components/admin/OrganizationDetailCard'
 import { OrganizationSettingsForm } from '@/components/admin/OrganizationSettingsForm'
+import { DeletionRequestsSection } from '@/components/admin/DeletionRequestsSection'
+import { OrgDataExportButton } from '@/components/admin/OrgDataExportButton'
 import { StartSupportModeButton } from './StartSupportModeButton'
 import { getOrganizationDetail } from '@/lib/superadmin/organizations'
+import { listDeletionRequests } from '@/lib/superadmin/dataDeletion'
 import { updateOrganizationAction } from '../actions'
+import { processDeletionRequestAction, exportOrgDataAction } from './actions'
 
 /**
  * Organization detail page — superadmin only.
@@ -21,7 +25,10 @@ interface Props {
 export default async function AdminOrgDetailPage({ params }: Props) {
   const t = await getTranslations('common')
   const { id } = await params
-  const org = await getOrganizationDetail(id)
+  const [org, deletionRequests] = await Promise.all([
+    getOrganizationDetail(id),
+    listDeletionRequests(id),
+  ])
   if (!org) notFound()
 
   return (
@@ -41,6 +48,16 @@ export default async function AdminOrgDetailPage({ params }: Props) {
 
       <OrganizationDetailCard org={org} />
       <OrganizationSettingsForm org={org} action={updateOrganizationAction} />
+
+      <DeletionRequestsSection
+        requests={deletionRequests}
+        orgId={org.id}
+        processAction={processDeletionRequestAction}
+      />
+
+      <div className="mt-4 flex justify-end">
+        <OrgDataExportButton orgId={org.id} exportAction={exportOrgDataAction} />
+      </div>
     </div>
   )
 }

@@ -8,6 +8,58 @@
 
 const META_API_VERSION = 'v19.0'
 
+// ── Meta approved template message component types ────────────────────────────
+
+export type MetaTemplateComponent =
+  | { type: 'header'; parameters: MetaTemplateParameter[] }
+  | { type: 'body'; parameters: MetaTemplateParameter[] }
+  | { type: 'button'; sub_type: 'quick_reply' | 'url'; index: number; parameters: MetaTemplateParameter[] }
+
+export type MetaTemplateParameter =
+  | { type: 'text'; text: string }
+  | { type: 'currency'; currency: { fallback_value: string; code: string; amount_1000: number } }
+  | { type: 'date_time'; date_time: { fallback_value: string } }
+
+/**
+ * Sends a Meta-approved WhatsApp template message.
+ * Used when the 24h customer-service window has expired.
+ * Per /docs/sprint-23-scope.md § Story 4a.
+ */
+export async function sendTemplateMessage(
+  to: string,
+  accessToken: string,
+  phoneNumberId: string,
+  templateName: string,
+  languageCode: string,
+  components: MetaTemplateComponent[] = []
+): Promise<void> {
+  const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: languageCode },
+        components: components.length > 0 ? components : undefined,
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    console.error('[whatsapp] Template API error', { to, templateName, status: res.status, detail })
+    throw new Error(`WhatsApp template API error ${res.status}: ${detail}`)
+  }
+}
+
 export async function sendTextMessage(
   to: string,
   text: string,

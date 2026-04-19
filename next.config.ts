@@ -16,6 +16,17 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '11mb', // Homework media uploads: max 10MB file + form fields overhead
     },
   },
+  // Sprint 23 Story 2b: /he/portal/:path* internally serves /portal/:path* without
+  // restructuring files. The proxy adds a 301 from /portal/:orgId → /he/portal/:orgId
+  // so new parents land at the locale-prefixed URL while existing links still work.
+  async rewrites() {
+    return [
+      {
+        source: '/he/portal/:path*',
+        destination: '/portal/:path*',
+      },
+    ]
+  },
 };
 
 export default withNextIntl(nextConfig);

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
+import { requireFeature } from '@/lib/saas/featureGate'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getRevenueReport } from '@/lib/reports/revenue'
 import { parseReportMonths } from '@/lib/reports/params'
@@ -30,6 +31,7 @@ interface Props {
 export default async function RevenueReportPage({ searchParams }: Props) {
   const session = await getSession()
   if (!['owner', 'admin'].includes(session.role)) redirect('/dashboard')
+  await requireFeature(session.orgId, 'full_reports')
 
   const { months: monthsParam } = await searchParams
   const months = parseReportMonths(monthsParam, { defaultValue: 12, maxValue: 24 })

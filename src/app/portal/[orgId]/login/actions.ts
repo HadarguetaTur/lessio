@@ -8,6 +8,7 @@ import { decryptToken } from '@/lib/crypto'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { generateOtp, storeOtp, verifyOtp } from '@/lib/portal/otp'
 import { setPortalSessionCookie } from '@/lib/portal/session'
+import { requireFeature } from '@/lib/saas/featureGate'
 
 const PhoneSchema = z.object({
   phone: z.string().min(9),
@@ -90,6 +91,8 @@ export async function verifyOtpAction(
   _prev: LoginState,
   formData: FormData
 ): Promise<LoginState> {
+  await requireFeature(orgId, 'parent_portal')
+
   const parsed = OtpSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return { error: 'קוד לא תקין — חייב להיות 6 ספרות' }
 

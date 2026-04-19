@@ -18,7 +18,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
-import { sendTextMessage } from '../_shared/whatsapp.ts'
+import { sendSmartMessage } from '../_shared/whatsapp.ts'
 import { resolveTemplate } from '../_shared/templates.ts'
 
 Deno.serve(async (_req) => {
@@ -154,7 +154,7 @@ async function processOrg(db: any, org: any): Promise<void> {
       continue
     }
 
-    // ── Send reminder ─────────────────────────────────────────────────────────
+    // ── Send reminder (session-window aware) ─────────────────────────────────
     const dueDateSuffix = assignment.due_date ? ` (${assignment.due_date})` : ''
     const message = await resolveTemplate(db, orgId, 'homework_reminder', {
       title: assignment.title,
@@ -163,7 +163,16 @@ async function processOrg(db: any, org: any): Promise<void> {
 
     let sendError: string | null = null
     try {
-      await sendTextMessage(phone, message, accessToken, org.whatsapp_phone_number_id)
+      await sendSmartMessage(
+        db,
+        orgId,
+        phone,
+        accessToken,
+        org.whatsapp_phone_number_id,
+        'homework_reminder',
+        message,
+        [assignment.student_name ?? '', assignment.title, assignment.due_date ?? '']
+      )
     } catch (err) {
       sendError = String(err)
       console.error('[homework-reminders] WhatsApp send failed', {

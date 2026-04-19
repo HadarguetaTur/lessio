@@ -333,21 +333,21 @@ It replaces manual scheduling, billing, and WhatsApp coordination with a structu
 || Onboarding wizard + import flow translation (`onboarding` + `import` namespaces) | ✅ Done (Sprint 22) |
 
 || **Sprint 23 stories:** ||
-|| `data_deletion_requests` table + migration + index on `whatsapp_processed_messages(org_id, from_phone, created_at)` | ⬜ Planned |
-|| GDPR: deletion request button in portal + anonymise/dismiss in superadmin org detail | ⬜ Planned |
-|| GDPR: `exportOrgDataAction` (JSON) in superadmin org detail | ⬜ Planned |
-|| `organizations.data_retention_days` (default 365) + `supabase/functions/data-retention` daily cron | ⬜ Planned |
-|| `/privacy` + `/terms` — structured sections with headings (not Lorem) | ⬜ Planned |
-|| `src/i18n/request.ts` — Accept-Language → `he`/`en` detection + persist to `profiles.preferred_locale` | ⬜ Planned |
-|| `src/proxy.ts` — 301 redirect `/portal/:orgId` → `/he/portal/:orgId` | ⬜ Planned |
-|| `src/lib/payments/stripe.ts` — Stripe adapter (per-org keys, manual currency, card-only) | ⬜ Planned |
-|| Stripe webhook route + settings UI (secret key + webhook secret + currency dropdown) | ⬜ Planned |
-|| `src/lib/whatsapp/sendSmart.ts` — `sendSmartMessage` with 24h session-window check | ⬜ Planned |
-|| `src/lib/whatsapp/approvedTemplates.ts` — placeholder Meta template registry | ⬜ Planned |
-|| `sendSmartMessage` wired into lesson/payment/homework reminder Edge Functions | ⬜ Planned |
-|| `src/lib/saas/featureGate.ts` — `requireFeature` (redirect to `/account/billing?upgrade=`) | ⬜ Planned |
-|| Feature gates on: AI assistant, homework writes, leads conversion, full reports, portal login | ⬜ Planned |
-|| `src/app/error.tsx` + `not-found.tsx` + `(dashboard)/error.tsx` + `(admin)/error.tsx` | ⬜ Planned |
+|| `data_deletion_requests` table + migration + index on `whatsapp_processed_messages(org_id, from_phone, created_at)` | ✅ Done (Sprint 23) |
+|| GDPR: deletion request button in portal + anonymise/dismiss in superadmin org detail | ✅ Done (Sprint 23) |
+|| GDPR: `exportOrgDataAction` (JSON) in superadmin org detail | ✅ Done (Sprint 23) |
+|| `organizations.data_retention_days` (default 365) + `supabase/functions/data-retention` daily cron | ✅ Done (Sprint 23) |
+|| `/privacy` + `/terms` — structured sections with headings (not Lorem) | ✅ Done (Sprint 23) |
+|| `src/i18n/request.ts` — Accept-Language → `he`/`en` detection + persist to `profiles.preferred_locale` | ✅ Done (Sprint 23) |
+|| `src/proxy.ts` — 301 redirect `/portal/:orgId` → `/he/portal/:orgId` | ✅ Done (Sprint 23) |
+|| `src/lib/payments/stripe.ts` — Stripe adapter (per-org keys, manual currency, card-only) | ✅ Done (Sprint 23) |
+|| Stripe webhook route + settings UI (secret key + webhook secret + currency dropdown) | ✅ Done (Sprint 23) |
+|| `src/lib/whatsapp/sendSmart.ts` — `sendSmartMessage` with 24h session-window check | ✅ Done (Sprint 23) |
+|| `src/lib/whatsapp/approvedTemplates.ts` — placeholder Meta template registry | ✅ Done (Sprint 23) |
+|| `sendSmartMessage` wired into lesson/payment/homework reminder Edge Functions | ✅ Done (Sprint 23) |
+|| `src/lib/saas/featureGate.ts` — `requireFeature` (redirect to `/account/billing?upgrade=`) | ✅ Done (Sprint 23) |
+|| Feature gates on: AI assistant, homework writes, leads conversion, full reports, portal login | ✅ Done (Sprint 23) |
+|| `src/app/error.tsx` + `not-found.tsx` + `(dashboard)/error.tsx` + `(admin)/error.tsx` | ✅ Done (Sprint 23) |
 || Sumit SaaS billing E2E staging validation (manual checklist) | ⬜ Planned |
 
 || **Sprint 24 stories (planned — Pedagogical Depth):** ||

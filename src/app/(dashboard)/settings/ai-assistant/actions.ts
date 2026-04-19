@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { requireFeature } from '@/lib/saas/featureGate'
 
 export type AiAssistantActionState = {
   error: string | null
@@ -37,6 +38,8 @@ export async function saveAiAssistantSettings(
       error: error instanceof Error ? error.message : 'מצב תמיכה הוא קריאה בלבד.',
     }
   }
+
+  await requireFeature(session.orgId, 'ai_assistant')
 
   const parsed = ToggleSchema.safeParse({
     ai_assistant_enabled: formData.get('ai_assistant_enabled'),

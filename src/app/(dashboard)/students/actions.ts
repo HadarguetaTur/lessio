@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation'
 import { getStudentLessons, getStudentFinancial, getStudentPrimaryParent, type StudentLesson, type StudentFinancial, type StudentPrimaryParent } from '@/lib/students'
 import { getAssignments, type HomeworkAssignment } from '@/lib/homework'
 import { getSubscriptions, type Subscription } from '@/lib/subscriptions'
+import { getGoalsForStudent, type StudentGoal } from '@/lib/goals'
 
 type ActionState = { error: string } | null
 
@@ -272,5 +273,17 @@ export async function fetchStudentSubscriptions(
     return { data }
   } catch {
     return { error: 'שגיאה בטעינת המנויים' }
+  }
+}
+
+export async function fetchStudentGoals(
+  studentId: string
+): Promise<{ data: StudentGoal[] } | { error: string }> {
+  try {
+    const { orgId } = await getSession()
+    const data = await getGoalsForStudent(orgId, studentId)
+    return { data }
+  } catch {
+    return { error: 'שגיאה בטעינת היעדים' }
   }
 }

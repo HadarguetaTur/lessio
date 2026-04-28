@@ -16,6 +16,8 @@
   | `homework-reminders` | `0 8 * * *` | תזכורות שיעורי בית — יום יום ב-08:00 UTC |
   | `saas-subscription-checker` | `0 0 * * *` | בדיקת סטטוס מנויי SaaS — חצות UTC |
   | `saas-renewal-reminder` | `0 8 * * *` | התראת חידוש מנוי לowner — יום יום ב-08:00 UTC |
+  | `data-retention` | `0 3 * * *` | אנונימיזציית conversation_log + whatsapp_processed_messages — יום יום ב-03:00 UTC |
+  | `homework-sender` | `0 * * * *` | שליחת שיעורי בית מתוזמנים דרך WhatsApp — כל שעה |
 
 - [ ] הגדרת Environment Secrets לכל Edge Function ב-Supabase Dashboard:
   - `SUPABASE_URL`
@@ -37,6 +39,9 @@
 - [ ] `META_APP_SECRET` — מ-Meta App Dashboard
 - [ ] `PAYMENT_CONFIG_ENCRYPTION_KEY` — hex string של 64 תווים
 - [ ] `OPENAI_API_KEY` — מ-OpenAI
+- [ ] `AI_CONFIG_ENCRYPTION_KEY` — hex string של 64 תווים (Sprint 25 — להצפנת מפתחות AI per-org)
+- [ ] `RESEND_API_KEY` — מ-Resend Dashboard (Sprint 25 — שליחת אימיילים)
+- [ ] `RESEND_FROM_EMAIL` — כתובת השולח שאומתה ב-Resend, למשל `noreply@lessio.co.il`
 - [ ] `SUMIT_COMPANY_ID` — מספר החברה ב-Sumit
 - [ ] `SUMIT_API_KEY` — API key מ-Sumit
 - [ ] `SUMIT_WEBHOOK_SECRET` — מחרוזת אקראית שתוזן גם ב-Sumit
@@ -92,12 +97,19 @@
 
 ---
 
-## 🔵 עתידי — Sprint 25 ואילך
+## 🟡 Resend — הגדרת שליחת אימיילים (Sprint 25)
 
-- [ ] **מייל שולח:** פתחי חשבון Resend + הוסיפי דומיין (למשל `noreply@lessio.co.il`)
-  - אחרי זה: החלף WhatsApp renewal reminder במייל
-  - הוסף `RESEND_API_KEY` ל-env vars
-- [ ] **דומיין מייל:** הוסיפי DNS records ב-רשם הדומיין (MX, SPF, DKIM) לפי הוראות Resend
+- [ ] פתחי חשבון Resend ([resend.com](https://resend.com))
+- [ ] הוסיפי דומיין (למשל `lessio.co.il`) ב-Resend → **Domains**
+- [ ] הוסיפי DNS records ב-רשם הדומיין (MX, SPF, DKIM) לפי הוראות Resend
+- [ ] המתיני לאימות הדומיין (בד״כ עד שעה)
+- [ ] יצרי API key ב-Resend → **API Keys** והזיני ב-`RESEND_API_KEY`
+- [ ] הזיני את כתובת השולח המאומתת ב-`RESEND_FROM_EMAIL`
+
+---
+
+## 🔵 עתידי — Sprint 26 ואילך
+
 - [ ] **ערבית (`ar.json`):** אם יש דוברי ערבית בבסיס הלקוחות — הוסיפי תרגום + RTL support
 - [ ] **Meta Templates לערבית:** הגישי גרסאות ערבית של כל התבניות
 

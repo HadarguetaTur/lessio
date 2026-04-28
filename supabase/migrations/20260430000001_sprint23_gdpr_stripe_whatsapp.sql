@@ -30,4 +30,4 @@ ALTER TABLE organizations
 -- ── Story 4b: Session-window index for sendSmartMessage ──────────────────────
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_processed_messages_phone
-  ON whatsapp_processed_messages (organization_id, from_phone, created_at DESC);
+  ON whatsapp_processed_messages (organization_id, phone, created_at DESC);

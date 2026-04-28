@@ -10,6 +10,14 @@ import { getSupportSession } from '@/lib/support-session'
 import { PATHNAME_HEADER } from '@/proxy'
 import { getLocale } from 'next-intl/server'
 import { SaasOwnerBanners } from '@/components/dashboard/SaasOwnerBanners'
+import { NotificationBell } from '@/components/dashboard/NotificationBell'
+import { getUnreadCount } from '@/lib/notifications'
+import {
+  fetchNotificationsAction,
+  fetchUnreadCountAction,
+  markAsReadAction,
+  markAllReadAction,
+} from './notifications/actions'
 import {
   getEffectiveSaasFeatures,
   subscriptionAllowsDashboardAccess,
@@ -153,6 +161,22 @@ export default async function DashboardLayout({
   const showSaasBanners =
     (profile?.role === 'owner' || profile?.role === 'admin') && profile?.organization_id
 
+  // Notification bell — fetch initial unread count server-side
+  const initialUnreadCount = profile?.organization_id
+    ? await getUnreadCount(user.id, profile.organization_id)
+    : 0
+
+  const bellElement = profile?.organization_id ? (
+    <NotificationBell
+      initialUnreadCount={initialUnreadCount}
+      locale={locale}
+      fetchNotifications={fetchNotificationsAction}
+      fetchUnreadCount={fetchUnreadCountAction}
+      markAsRead={markAsReadAction}
+      markAllRead={markAllReadAction}
+    />
+  ) : null
+
   return (
       <div className="flex h-screen bg-background" dir={dir}>
       <Sidebar
@@ -164,6 +188,7 @@ export default async function DashboardLayout({
         <TopBar
           currentLocale={locale}
           userRole={profile?.role ?? 'owner'}
+          notificationBell={bellElement}
           mobileNavigation={
             <Sidebar
               userName={profile?.full_name ?? user.email ?? ''}

@@ -8,16 +8,28 @@ interface RemindersFormProps {
   defaultEnabled: boolean
   defaultLessonHours: number
   defaultPaymentDays: number
+  defaultEmailNotifications: Record<string, boolean>
+  parentsWithEmail: number
 }
 
 const LESSON_HOUR_OPTIONS = [2, 4, 12, 24, 48]
 
 const initialState: ReminderActionState = { error: null }
 
+const EMAIL_NOTIFICATION_TYPES = [
+  { key: 'lesson_reminder', label: 'תזכורת שיעור' },
+  { key: 'payment_reminder', label: 'תזכורת תשלום' },
+  { key: 'homework_assignment', label: 'שיעורי בית חדשים' },
+  { key: 'receipt', label: 'קבלה על תשלום' },
+  { key: 'homework_graded', label: 'ציון שיעורי בית' },
+]
+
 export function RemindersForm({
   defaultEnabled,
   defaultLessonHours,
   defaultPaymentDays,
+  defaultEmailNotifications,
+  parentsWithEmail,
 }: RemindersFormProps) {
   const t = useTranslations('settings.reminders')
   const tCommon = useTranslations('common')
@@ -94,6 +106,28 @@ export function RemindersForm({
           className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
         />
         <p className="text-xs text-gray-400 mt-1">בין 1 ל-30 ימים</p>
+      </div>
+
+      {/* Email notification toggles — Sprint 25 */}
+      <hr className="border-gray-100" />
+      <div>
+        <p className="text-sm font-medium text-gray-900 mb-1">{t('emailNotifications')}</p>
+        <p className="text-xs text-gray-500 mb-3">
+          {t('emailDescription')} ({parentsWithEmail} {t('parentsWithEmail')})
+        </p>
+        <div className="space-y-2">
+          {EMAIL_NOTIFICATION_TYPES.map(({ key, label }) => (
+            <label key={key} className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                name={`email_${key}`}
+                defaultChecked={defaultEmailNotifications[key] ?? false}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">{label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       {state.error && (

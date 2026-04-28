@@ -394,6 +394,10 @@ deno_version = 2
 #   homework-sender: "0 * * * *"  (hourly)
 [functions.homework-sender]
 
+# Sprint 25: Notification cleanup — deletes in_app_notifications older than 30 days
+#   notification-cleanup: "0 4 * * *"  (daily at 04:00 UTC)
+[functions.notification-cleanup]
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

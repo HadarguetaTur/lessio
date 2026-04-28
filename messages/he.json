@@ -225,7 +225,8 @@
       "academic": "לימודי",
       "history": "שיעורים",
       "financial": "פיננסי",
-      "homework": "משימות"
+      "homework": "משימות",
+      "goals": "יעדים"
     },
     "card": {
       "contactDetails": "פרטי קשר",
@@ -914,7 +915,10 @@
         "recipient": "נמען",
         "sentAt": "נשלח ב"
       },
-      "noLog": "אין רשומות"
+      "noLog": "אין רשומות",
+      "emailNotifications": "התראות באימייל",
+      "emailDescription": "שלח אימייל לצד WhatsApp עבור סוגי ההתראות הנבחרים",
+      "parentsWithEmail": "הורים עם אימייל"
     },
     "messageTemplates": {
       "title": "התאמה אישית של הודעות",
@@ -925,6 +929,7 @@
     },
     "aiAssistant": {
       "title": "עוזר AI",
+      "description": "עוזר חכם ב-WhatsApp למענה אוטומטי",
       "enable": "הפעל עוזר AI",
       "enabled": "פעיל",
       "disabled": "כבוי",
@@ -937,7 +942,30 @@
         "aiReply": "תשובת AI"
       },
       "noLog": "אין שיחות מתועדות",
-      "roleParent": "הורה"
+      "roleParent": "הורה",
+      "tabSettings": "הגדרות",
+      "tabUsage": "שימוש",
+      "providerSettings": "הגדרות ספק AI",
+      "provider": "ספק",
+      "model": "מודל",
+      "apiKey": "מפתח API",
+      "apiKeyPlaceholder": "הדבק את מפתח ה-API שלך",
+      "apiKeyPlaceholderSaved": "מפתח שמור (הדבק להחלפה)",
+      "openaiKeyOptional": "אופציונלי — ישתמש במפתח הפלטפורמה אם ריק",
+      "apiKeyRequired": "חובה — ספק זה דורש מפתח API משלך",
+      "providerSaved": "הגדרות הספק נשמרו",
+      "testConnection": "בדוק חיבור",
+      "testSuccess": "החיבור הצליח — ה-AI מגיב"
+    },
+    "aiUsage": {
+      "title": "שימוש ב-AI",
+      "totalRequests": "סה\"כ בקשות",
+      "totalTokens": "סה\"כ טוקנים",
+      "estimatedCost": "עלות משוערת",
+      "satisfaction": "שביעות רצון",
+      "dailyRequests": "בקשות יומיות (30 ימים אחרונים)",
+      "requests": "בקשות",
+      "noData": "אין נתוני שימוש לחודש זה"
     },
     "locale": {
       "title": "שפה ותצוגה",
@@ -1751,5 +1779,18 @@
     "noNotes": "אין הערות מורה",
     "lessonNotes": "הערות שיעור",
     "due": "תאריך הגשה"
+  },
+  "notifications": {
+    "title": "התראות",
+    "markAllRead": "סמן הכל כנקרא",
+    "empty": "אין התראות חדשות",
+    "types": {
+      "lesson_cancelled": "שיעור בוטל",
+      "payment_received": "תשלום התקבל",
+      "homework_submitted": "שיעורי בית הוגשו",
+      "student_at_risk": "תלמיד בסיכון",
+      "new_lead": "ליד חדש",
+      "goal_achieved": "מטרה הושגה"
+    }
   }
 }

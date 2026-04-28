@@ -45,10 +45,10 @@ export default async function RemindersSettingsPage() {
 
   const db = createServiceRoleClient()
 
-  const [{ data: org }, { data: logs }] = await Promise.all([
+  const [{ data: org }, { data: logs }, { count: parentsWithEmail }] = await Promise.all([
     db
       .from('organizations')
-      .select('reminders_enabled, lesson_reminder_hours, payment_reminder_days')
+      .select('reminders_enabled, lesson_reminder_hours, payment_reminder_days, email_notifications')
       .eq('id', orgId)
       .single(),
     db
@@ -57,6 +57,11 @@ export default async function RemindersSettingsPage() {
       .eq('organization_id', orgId)
       .order('sent_at', { ascending: false })
       .limit(20),
+    db
+      .from('parents')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+      .not('email', 'is', null),
   ])
 
   return (
@@ -72,6 +77,8 @@ export default async function RemindersSettingsPage() {
           defaultEnabled={org?.reminders_enabled ?? true}
           defaultLessonHours={org?.lesson_reminder_hours ?? 24}
           defaultPaymentDays={org?.payment_reminder_days ?? 7}
+          defaultEmailNotifications={(org?.email_notifications ?? {}) as Record<string, boolean>}
+          parentsWithEmail={parentsWithEmail ?? 0}
         />
       </div>
 

@@ -15,6 +15,14 @@ export type ReminderActionState = {
   success?: boolean
 }
 
+const EmailNotificationsSchema = z.object({
+  lesson_reminder: z.boolean().optional().default(false),
+  payment_reminder: z.boolean().optional().default(false),
+  homework_assignment: z.boolean().optional().default(false),
+  receipt: z.boolean().optional().default(false),
+  homework_graded: z.boolean().optional().default(false),
+})
+
 const RemindersSchema = z.object({
   reminders_enabled: z.boolean(),
   lesson_reminder_hours: z.coerce
@@ -23,6 +31,7 @@ const RemindersSchema = z.object({
       message: 'ערך שעות לא חוקי',
     }),
   payment_reminder_days: z.coerce.number().int().min(1).max(30),
+  email_notifications: EmailNotificationsSchema.optional(),
 })
 
 export async function saveReminderSettings(
@@ -39,6 +48,13 @@ export async function saveReminderSettings(
     reminders_enabled: formData.get('reminders_enabled') === 'on',
     lesson_reminder_hours: formData.get('lesson_reminder_hours'),
     payment_reminder_days: formData.get('payment_reminder_days'),
+    email_notifications: {
+      lesson_reminder: formData.get('email_lesson_reminder') === 'on',
+      payment_reminder: formData.get('email_payment_reminder') === 'on',
+      homework_assignment: formData.get('email_homework_assignment') === 'on',
+      receipt: formData.get('email_receipt') === 'on',
+      homework_graded: formData.get('email_homework_graded') === 'on',
+    },
   }
 
   const parsed = RemindersSchema.safeParse(raw)
@@ -53,6 +69,7 @@ export async function saveReminderSettings(
       reminders_enabled: parsed.data.reminders_enabled,
       lesson_reminder_hours: parsed.data.lesson_reminder_hours,
       payment_reminder_days: parsed.data.payment_reminder_days,
+      email_notifications: parsed.data.email_notifications ?? {},
     })
     .eq('id', orgId)
 

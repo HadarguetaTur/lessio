@@ -46,6 +46,11 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   'OPENAI_API_KEY',
   // Sprint 22: HMAC secret for Sumit SaaS billing webhook signature verification
   'SUMIT_WEBHOOK_SECRET',
+  // Sprint 25: per-org AI provider credential encryption
+  'AI_CONFIG_ENCRYPTION_KEY',
+  // Sprint 25: Resend email delivery
+  'RESEND_API_KEY',
+  'RESEND_FROM_EMAIL',
 ]
 
 /**

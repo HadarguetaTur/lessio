@@ -43,9 +43,12 @@ import {
 } from '@/lib/cancellation-flow'
 import { markAssignmentDone } from '@/lib/homework'
 import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
+import { isAiConfiguredForOrg } from '@/lib/ai-assistant/providers/factory'
+import { findRecentUsageLog, updateSatisfaction } from '@/lib/ai-assistant/usage'
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { DateTime } from 'luxon'
 import { claimIncomingMessage, releaseIncomingMessageClaim } from '@/lib/whatsapp/idempotency'
+import { notifyMultiple, getOwnerAndAdminProfileIds } from '@/lib/notifications'
 
 // ── GET — Meta hub verification ───────────────────────────────────────────────
 
@@ -279,15 +282,29 @@ async function processMessage(
     return
   }
 
+  // 9f. AI satisfaction response (Sprint 25 — 👍/👎 after AI reply)
+  if (hasAiSatisfactionIntent(msg.text)) {
+    const recentLog = await findRecentUsageLog(org.id, senderPhone)
+    if (recentLog) {
+      const satisfaction = msg.text.includes('👍') ? 'positive' as const : 'negative' as const
+      await updateSatisfaction(recentLog.id, satisfaction)
+      console.info('[whatsapp/webhook] AI satisfaction recorded', { orgId: org.id, satisfaction })
+      return
+    }
+    // No recent AI log — fall through to normal intent handling
+  }
+
   // 10. Check booking intent
   if (!hasBookingIntent(msg.text)) {
     // No recognized intent — try AI assistant if enabled, else polite fallback
-    if (org.ai_assistant_enabled && isAiAssistantConfigured()) {
+    const aiConfigured = isAiAssistantConfigured() || await isAiConfiguredForOrg(org.id)
+    if (org.ai_assistant_enabled && aiConfigured) {
       let reply: string
       let shouldLogExchange = false
 
       try {
-        reply = await aiAssistant(org.id, senderPhone, parent.id, msg.text)
+        const aiResult = await aiAssistant(org.id, senderPhone, parent.id, msg.text)
+        reply = aiResult.reply
         shouldLogExchange = true
       } catch (err) {
         console.error('[whatsapp/webhook] aiAssistant failed — falling back to template', {
@@ -299,6 +316,14 @@ async function processMessage(
 
       await sendTextMessage(senderPhone, reply, accessToken, phoneNumberId)
 
+      // Send satisfaction follow-up (Sprint 25)
+      if (shouldLogExchange) {
+        const satisfactionBody = await resolveTemplate(org.id, 'ai_satisfaction_prompt', {})
+        await sendTextMessage(senderPhone, satisfactionBody, accessToken, phoneNumberId).catch((err) => {
+          console.error('[whatsapp/webhook] Failed to send satisfaction prompt', { orgId: org.id, err })
+        })
+      }
+
       if (shouldLogExchange) {
         await logExchange(org.id, senderPhone, parent.id, msg.text, reply).catch((err) => {
           console.error('[whatsapp/webhook] Failed to persist AI exchange after send', {
@@ -309,8 +334,8 @@ async function processMessage(
         })
       }
     } else {
-      if (org.ai_assistant_enabled && !isAiAssistantConfigured()) {
-        console.warn('[whatsapp/webhook] AI assistant enabled but OPENAI_API_KEY is missing — using fallback reply', {
+      if (org.ai_assistant_enabled && !aiConfigured) {
+        console.warn('[whatsapp/webhook] AI assistant enabled but no API key configured — using fallback reply', {
           orgId: org.id,
         })
       }
@@ -395,6 +420,23 @@ async function handleUnknownSender(
   await upsertLead(organizationId, phone, rawMessage).catch(err => {
     console.error('[whatsapp/webhook] Failed to upsert lead', { phone, err })
   })
+
+  // Fire-and-forget: in-app notification for new lead (Sprint 25 Story 4)
+  void (async () => {
+    try {
+      const recipients = await getOwnerAndAdminProfileIds(organizationId)
+      await notifyMultiple(
+        organizationId,
+        recipients,
+        'new_lead',
+        `ליד חדש — ${phone}`,
+        rawMessage?.slice(0, 100) || undefined,
+        '/leads'
+      )
+    } catch (err) {
+      console.error('[whatsapp/webhook] lead notification failed', { organizationId, phone, err })
+    }
+  })()
 
   // Send fixed reply to unknown sender (Decision #4)
   await sendUnknownParentReply(phone, accessToken, phoneNumberId)
@@ -835,6 +877,16 @@ async function handleReceiptQuery(
   await sendTextMessage(senderPhone, receiptBody, accessToken, phoneNumberId)
 
   console.info('[whatsapp/webhook] Receipt query replied', { orgId, senderPhone })
+}
+
+/**
+ * Detects thumbs-up or thumbs-down emoji — used for AI satisfaction tracking.
+ */
+function hasAiSatisfactionIntent(text: string): boolean {
+  const trimmed = text.trim()
+  return trimmed === '👍' || trimmed === '👎' ||
+    trimmed === '👍🏻' || trimmed === '👍🏼' || trimmed === '👍🏽' || trimmed === '👍🏾' || trimmed === '👍🏿' ||
+    trimmed === '👎🏻' || trimmed === '👎🏼' || trimmed === '👎🏽' || trimmed === '👎🏾' || trimmed === '👎🏿'
 }
 
 async function handlePortalQuery(

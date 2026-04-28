@@ -6,6 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Sprint Discipline
+
+Before starting work, always:
+1. Read `docs/sprint-roadmap.md` to understand completed, current, and planned sprints.
+2. Read the current sprint scope (e.g. `docs/sprint-25-scope.md`).
+3. Do not rebuild completed work — check the roadmap first.
+
+## Tech Stack
+
+Next.js 16 (App Router) · React 19 · TypeScript · Supabase (Postgres + Auth + Edge Functions + Storage) · Tailwind CSS v4 · shadcn/ui (Radix primitives) · Luxon (dates) · next-intl (i18n) · Vitest (tests) · Zod 4 (validation)
+
+---
+
 ## Development Commands
 
 ```bash
@@ -17,6 +30,9 @@ npm run build
 
 # Lint
 npm run lint
+
+# Type-check (no emit)
+npx tsc --noEmit
 
 # Run all tests
 npm test
@@ -76,8 +92,17 @@ Never call `redirect()` inside a `try/catch` block. Place `redirect()` after the
 **Zod version:**
 This project uses **Zod 4** (`zod@^4.x`). The API differs from Zod 3 — use `z.string().min(1)` not `.nonempty()`, `z.object({}).strict()` not `.strict()` chained after parse, etc.
 
+**Date/time library:**
+Use **Luxon** (`DateTime`, `Interval`, etc.) for all date/time logic. Do not introduce `dayjs`, `date-fns`, or raw `Date` arithmetic. Dates are stored UTC in the DB and displayed in org timezone.
+
+**UI components:**
+Use existing shadcn/ui components from `src/components/ui/` and Tailwind v4 utility classes. Do not add alternative component libraries.
+
+**Server Actions body size:**
+`next.config.ts` sets `serverActions.bodySizeLimit: '11mb'` for homework file uploads. Keep this in mind when adding upload-related actions.
+
 **Test file convention:**
-Tests are co-located with source as `*.test.ts` (e.g. `src/lib/billing/calculateCancellationCharge.test.ts`). No separate `__tests__` directory.
+Tests are co-located with source as `*.test.ts` (e.g. `src/lib/billing/calculateCancellationCharge.test.ts`). The vitest config also includes `__tests__/**/*.test.ts` as a fallback pattern.
 
 **Env var validation:**
 All required env vars are declared in `src/lib/env.ts` (`ALWAYS_REQUIRED` vs `REQUIRED_IN_PRODUCTION`). Add new env vars there — they are validated at startup and fail fast with a named error if missing.

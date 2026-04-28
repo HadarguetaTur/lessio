@@ -1,10 +1,10 @@
 
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprint 24 complete, Sprint 25 planned*
+*Updated: Sprint 25 complete, Sprint 26 planned*
 
 ---
 
-## Completed Sprints (1–22)
+## Completed Sprints (1–25)
 
 | Sprint | Theme | Status |
 |--------|-------|--------|
@@ -32,6 +32,7 @@
 | 22 | Billing cycle completion + subscription management + i18n cleanup | ✅ Done |
 | 23 | International launch readiness (GDPR, Stripe, WhatsApp templates, error boundaries) | ✅ Done |
 | 24 | Pedagogical depth (homework v2, lesson notes, student profile, learning goals) | ✅ Done |
+| 25 | AI Intelligence + Multi-Channel Communications (multi-provider AI, email, in-app notifications) | ✅ Done |
 
 ---
 
@@ -74,41 +75,19 @@
 ---
 
 ## Sprint 25 — AI Intelligence + Multi-Channel Communications
-**Status:** Current Sprint
+**Status:** ✅ Done
 **Depends on:** Sprint 24 complete
 
 **Goal:** Make the AI assistant provider-agnostic and measurable. Add email as a second notification channel. Wire up the unused bell icon into a real in-app notification center.
 
-### Story 1 — AI Multi-Provider + Key Management
-- DB: `organizations.ai_provider` (openai / anthropic / google), `organizations.ai_model`, `organizations.ai_config_encrypted` (API key, encrypted AES-256-GCM)
-- Settings page: owner selects provider + model + pastes own API key (replacing global `OPENAI_API_KEY` env var)
-- Supported: `gpt-4o`, `gpt-4o-mini`, `claude-sonnet-4-6`, `claude-haiku-4-5`, `gemini-2.0-flash`
-- `src/lib/ai-assistant/providers/` — adapter per provider (OpenAI SDK, Anthropic SDK, Google SDK)
-- Fallback: if org has no key configured → use platform key from env (opt-in platform default)
+### Completed
+- AI multi-provider: adapter pattern for OpenAI/Anthropic/Google, per-org encrypted API key, settings UI with provider/model selection + test connection, platform-level OpenAI fallback
+- AI usage dashboard: per-request token logging, estimated cost calculation, satisfaction tracking via WhatsApp thumbs emoji, usage tab with summary cards + daily bar chart
+- Email notifications (Resend): `sendEmail` wrapper (Node + Deno), 5 HTML templates, per-type toggle in reminder settings, wired into 3 Edge Functions + grading + receipt actions
+- In-app notification center: `src/lib/notifications/` lib, bell icon with unread badge in TopBar, slide-out drawer with mark-read, triggers for lesson_cancelled/payment_received/homework_submitted/new_lead/goal_achieved, 30-day cleanup Edge Function
 
-### Story 2 — AI Usage Dashboard
-- Track per-org: `ai_usage_log` (org_id, date, provider, model, prompt_tokens, completion_tokens, estimated_cost_usd)
-- Settings → AI: new "שימוש" tab — monthly tokens used, estimated cost, autonomous resolution rate (AI replies / total incoming messages)
-- Satisfaction: after AI reply, send "האם עזרתי? ✅ / ❌" — track response in `ai_usage_log.satisfaction`
-- Aggregate satisfaction score displayed in usage dashboard
-
-### Story 3 — Email Notifications (Resend)
-- New dependency: `resend` (3,000 emails/month free tier; simple API)
-- New env vars: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
-- `src/lib/email/index.ts` — `sendEmail(to, subject, html)` wrapper
-- `src/lib/email/templates/` — React Email templates: lesson_reminder, payment_request, homework_assignment, receipt
-- Settings → Reminders: owner can toggle WhatsApp + email independently per notification type
-- Email sent as fallback when WhatsApp delivery fails (or when parent has email but no WhatsApp)
-- Teacher notifications (lesson cancelled, homework submitted) go to teacher's email
-
-### Story 4 — In-App Notification Center
-- DB: `in_app_notifications` (org_id, recipient_profile_id, type, title, body, action_url, read_at, created_at)
-- Bell icon in TopBar now rendered with unread count badge
-- Notification drawer: click bell → slide-out panel with notification list
-- Types: lesson_cancelled, payment_received, homework_submitted, student_at_risk, new_lead
-- Auto-dismiss after 30 days
-- Mark as read individually or "mark all read"
-- Edge Function: `notify-events` — creates in-app notifications from DB triggers (lesson status change, charge paid, etc.)
+### Carried to Sprint 26
+- Sumit SaaS Billing E2E staging validation (manual checklist — carried from Sprint 23)
 
 **Schema additions:**
 ```sql
@@ -149,7 +128,7 @@ CREATE TABLE in_app_notifications (
 ---
 
 ## Sprint 26 — Parent Portal 2.0
-**Status:** Planned
+**Status:** Current Sprint
 **Depends on:** Sprint 25 complete
 
 **Goal:** Elevate the parent portal from a minimal payment screen to a genuine parent engagement tool — visible progress, full schedule, homework visibility, and teacher communication.

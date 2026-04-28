@@ -14,6 +14,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { autoSendPaymentRequest } from '@/lib/payment-request/autoSend'
 import { cancelLessonSeries, type CancelSeriesScope } from '@/lib/lessons/cancelSeries'
 import { createCancellationEvent } from '@/lib/billing/monthly/cancellationEvents'
+import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
 
 const VALID_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
 
@@ -176,6 +177,31 @@ export async function cancelLesson(
       console.error('[cancelLesson] cancellation event creation failed', { lessonId, studentId: ls.student_id, err })
     )
   }
+
+  // Fire-and-forget: in-app notification for lesson cancellation (Sprint 25 Story 4)
+  void (async () => {
+    try {
+      const teacher = lesson.teachers as unknown as { id: string }
+      const [ownerAdmins, teacherProfileId] = await Promise.all([
+        getOwnerAndAdminProfileIds(orgId),
+        teacher?.id ? getTeacherProfileId(teacher.id) : Promise.resolve(null),
+      ])
+      const recipients = [...ownerAdmins]
+      if (teacherProfileId && !recipients.includes(teacherProfileId)) {
+        recipients.push(teacherProfileId)
+      }
+      await notifyMultiple(
+        orgId,
+        recipients,
+        'lesson_cancelled',
+        `שיעור בוטל — ${reason}`,
+        undefined,
+        `/lessons/${lessonId}`
+      )
+    } catch (err) {
+      console.error('[cancelLesson] notification failed', { lessonId, err })
+    }
+  })()
 
   revalidatePath(`/lessons/${lessonId}`)
   revalidatePath('/lessons')

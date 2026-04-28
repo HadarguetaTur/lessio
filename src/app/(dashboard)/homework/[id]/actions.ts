@@ -12,6 +12,8 @@ import { gradeSubmission } from '@/lib/homework/submissions'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
 import { decryptToken } from '@/lib/crypto'
+import { sendEmail, shouldSendEmail } from '@/lib/email'
+import { homeworkGradedEmail } from '@/lib/email/templates/homeworkGraded'
 
 export type GradeActionState = { error: string | null; success?: boolean }
 
@@ -56,6 +58,15 @@ export async function gradeSubmissionAction(
   // Fire-and-forget: notify parent via WhatsApp
   notifyGraded(session.orgId, assignmentId, submission.studentId, score, feedback).catch((err) => {
     console.error('[homework/grade] WhatsApp notification failed', {
+      orgId: session.orgId,
+      submissionId,
+      err,
+    })
+  })
+
+  // Fire-and-forget: notify parent via email
+  notifyGradedEmail(session.orgId, assignmentId, submission.studentId, score, feedback).catch((err) => {
+    console.error('[homework/grade] email notification failed', {
       orgId: session.orgId,
       submissionId,
       err,
@@ -131,4 +142,48 @@ async function notifyGraded(
       feedback_line: feedbackLine,
     },
   })
+}
+
+async function notifyGradedEmail(
+  orgId: string,
+  assignmentId: string,
+  studentId: string,
+  score: number,
+  feedback: string
+): Promise<void> {
+  const db = createServiceRoleClient()
+
+  // Get assignment title
+  const { data: assignment } = await db
+    .from('homework_assignments')
+    .select('title')
+    .eq('id', assignmentId)
+    .single()
+
+  if (!assignment) return
+
+  // Resolve parent email via student → primary relationship
+  const { data: rel } = await db
+    .from('relationships')
+    .select('parents ( email )')
+    .eq('student_id', studentId)
+    .eq('organization_id', orgId)
+    .eq('is_primary', true)
+    .maybeSingle()
+
+  type RelRow = { parents: { email: string | null } | null }
+  const parentEmail = (rel as unknown as RelRow | null)?.parents?.email
+  if (!parentEmail) return
+
+  const canSend = await shouldSendEmail(orgId, 'homework_graded', parentEmail)
+  if (!canSend) return
+
+  const title = (assignment as { title: string }).title
+  const { subject, html } = homeworkGradedEmail({
+    title,
+    score: String(score),
+    feedback: feedback.trim() || undefined,
+  })
+
+  await sendEmail({ to: parentEmail, subject, html })
 }

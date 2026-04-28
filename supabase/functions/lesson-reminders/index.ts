@@ -19,6 +19,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendSmartMessage } from '../_shared/whatsapp.ts'
 import { resolveTemplate } from '../_shared/templates.ts'
+import { sendEmail } from '../_shared/email.ts'
 
 Deno.serve(async (_req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -28,7 +29,7 @@ Deno.serve(async (_req) => {
   // ── 1. Fetch orgs with reminders enabled + WhatsApp connected ────────────────
   const { data: orgs, error: orgsError } = await db
     .from('organizations')
-    .select('id, timezone, lesson_reminder_hours, whatsapp_phone_number_id, whatsapp_access_token')
+    .select('id, timezone, lesson_reminder_hours, whatsapp_phone_number_id, whatsapp_access_token, email_notifications')
     .eq('reminders_enabled', true)
     .not('whatsapp_phone_number_id', 'is', null)
     .not('whatsapp_access_token', 'is', null)
@@ -79,7 +80,7 @@ async function processOrg(db: any, org: any, now: Date) {
         student:students (
           relationships (
             is_primary,
-            parent:parents ( id, phone, full_name )
+            parent:parents ( id, phone, full_name, email )
           )
         )
       )
@@ -180,6 +181,19 @@ async function processOrg(db: any, org: any, now: Date) {
       })
     }
 
+    // ── 5b. Send email if enabled (Sprint 25) ─────────────────────────────────
+    const emailSettings = (org.email_notifications ?? {}) as Record<string, boolean>
+    const parentEmail = resolvePrimaryParentEmail(lesson)
+    if (emailSettings.lesson_reminder && parentEmail) {
+      await sendEmail({
+        to: parentEmail,
+        subject: `תזכורת שיעור — ${dateStr} בשעה ${timeStr}`,
+        html: `<p>תזכורת: שיעור עם ${teacherName} ב${dateStr} בשעה ${timeStr}.</p>`,
+      }).catch((err: unknown) => {
+        console.error('[lesson-reminders] Email send failed', { org_id: org.id, lesson_id: lesson.id, error: String(err) })
+      })
+    }
+
     // ── 6. Insert notification log ────────────────────────────────────────────
     await insertLog(
       db,
@@ -204,6 +218,23 @@ function resolvePrimaryParentPhone(lesson: any): string | null {
     for (const rel of relationships) {
       if (rel.is_primary && rel.parent?.phone) {
         return rel.parent.phone as string
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Same as resolvePrimaryParentPhone but returns email.
+ */
+// deno-lint-ignore no-explicit-any
+function resolvePrimaryParentEmail(lesson: any): string | null {
+  const lessonStudents = lesson.lesson_students ?? []
+  for (const ls of lessonStudents) {
+    const relationships = ls.student?.relationships ?? []
+    for (const rel of relationships) {
+      if (rel.is_primary && rel.parent?.email) {
+        return rel.parent.email as string
       }
     }
   }

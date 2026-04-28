@@ -89,9 +89,10 @@ interface TopBarProps {
   currentLocale: string
   userRole: string
   mobileNavigation?: ReactNode
+  notificationBell?: ReactNode
 }
 
-export function TopBar({ currentLocale, userRole, mobileNavigation }: TopBarProps) {
+export function TopBar({ currentLocale, userRole, mobileNavigation, notificationBell }: TopBarProps) {
   const pathname = usePathname()
   const t = useTranslations('nav')
   const tc = useTranslations('common')
@@ -150,6 +151,7 @@ export function TopBar({ currentLocale, userRole, mobileNavigation }: TopBarProp
       />
 
       <div className="flex shrink-0 items-center gap-2">
+        {notificationBell}
         <LocaleSwitcher currentLocale={currentLocale} />
       </div>
     </div>

@@ -25,6 +25,15 @@ Nothing ships to production without passing staging first (Decision #24).
   - [ ] `META_APP_ID` (Sprint 7)
   - [ ] `META_APP_SECRET` (Sprint 7)
   - [ ] `PAYMENT_CONFIG_ENCRYPTION_KEY` (Sprint 8)
+  - [ ] `PORTAL_JWT_SECRET` (Sprint 13 — parent portal session cookies)
+  - [ ] `SUPPORT_SESSION_SECRET` (Sprint 18 — superadmin support mode cookie)
+  - [ ] `OPENAI_API_KEY` (Sprint 19 — AI assistant fallback)
+  - [ ] `SUMIT_WEBHOOK_SECRET` (Sprint 22 — SaaS billing webhook HMAC)
+  - [ ] `SUMIT_COMPANY_ID` (Sprint 23 — SaaS billing provider)
+  - [ ] `SUMIT_API_KEY` (Sprint 23 — SaaS billing provider)
+  - [ ] `AI_CONFIG_ENCRYPTION_KEY` (Sprint 25 — per-org AI provider credential encryption)
+  - [ ] `RESEND_API_KEY` (Sprint 25 — email delivery)
+  - [ ] `RESEND_FROM_EMAIL` (Sprint 25 — verified sender email)
 - [ ] App starts cleanly on staging (no startup errors from env validation)
 
 ### 1.2 Migrations
@@ -43,6 +52,7 @@ Nothing ships to production without passing staging first (Decision #24).
 ## Phase 2 — Staging E2E Smoke Tests
 
 All 7 scenarios must pass on staging. Mark each as Pass / Fail / Blocked.
+Also verify that Sprint 24-25 crons are registered in Supabase Dashboard: `homework-sender`, `data-retention` (see `/docs/post-launch-checklist.md`).
 
 | # | Scenario | Steps | Result |
 |---|---|---|---|
@@ -83,6 +93,15 @@ All 7 scenarios must pass on staging. Mark each as Pass / Fail / Blocked.
   - [ ] `META_APP_ID` — production Meta app (Sprint 7)
   - [ ] `META_APP_SECRET` — production Meta app secret (Sprint 7)
   - [ ] `PAYMENT_CONFIG_ENCRYPTION_KEY` — 32-byte hex, production value (Sprint 8)
+  - [ ] `PORTAL_JWT_SECRET` — fresh value, not reused from staging (Sprint 13)
+  - [ ] `SUPPORT_SESSION_SECRET` — fresh value, not reused from staging (Sprint 18)
+  - [ ] `OPENAI_API_KEY` — production OpenAI key (Sprint 19)
+  - [ ] `SUMIT_WEBHOOK_SECRET` — matches what is registered in Sumit webhook settings (Sprint 22)
+  - [ ] `SUMIT_COMPANY_ID` — production Sumit company ID (Sprint 23)
+  - [ ] `SUMIT_API_KEY` — production Sumit API key (Sprint 23)
+  - [ ] `AI_CONFIG_ENCRYPTION_KEY` — 32-byte hex, production value (Sprint 25)
+  - [ ] `RESEND_API_KEY` — production Resend API key (Sprint 25)
+  - [ ] `RESEND_FROM_EMAIL` — verified sender email on production domain (Sprint 25)
 
 ### 4.2 Migrations
 

@@ -10,6 +10,8 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createGoal, updateGoal, deleteGoal } from '@/lib/goals'
 import type { GoalStatus } from '@/lib/goals'
+import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export type GoalActionState = { error: string | null; success?: boolean }
 
@@ -17,7 +19,7 @@ const GoalSchema = z.object({
   studentId:   z.string().uuid(),
   subject:     z.string().min(1).max(100),
   description: z.string().min(1).max(1000),
-  targetDate:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  targetDate:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')).transform((v) => v || undefined),
 })
 
 export async function createGoalAction(
@@ -86,6 +88,48 @@ export async function updateGoalStatusAction(
 
   try {
     await updateGoal({ orgId: session.orgId, goalId, status: status as GoalStatus })
+
+    // Fire-and-forget: notify on goal achieved (Sprint 25 Story 4)
+    if (status === 'achieved') {
+      void (async () => {
+        try {
+          const db = createServiceRoleClient()
+          const { data: goal } = await db
+            .from('student_goals')
+            .select('subject')
+            .eq('id', goalId)
+            .single()
+          const subject = (goal as { subject: string } | null)?.subject ?? ''
+
+          const { data: student } = await db
+            .from('students')
+            .select('teacher_id')
+            .eq('id', studentId)
+            .single()
+          const teacherId = (student as { teacher_id: string | null } | null)?.teacher_id
+
+          const [ownerAdmins, teacherProfileId] = await Promise.all([
+            getOwnerAndAdminProfileIds(session.orgId),
+            teacherId ? getTeacherProfileId(teacherId) : Promise.resolve(null),
+          ])
+          const recipients = [...ownerAdmins]
+          if (teacherProfileId && !recipients.includes(teacherProfileId)) {
+            recipients.push(teacherProfileId)
+          }
+          await notifyMultiple(
+            session.orgId,
+            recipients,
+            'goal_achieved',
+            `מטרה הושגה — ${subject}`,
+            undefined,
+            `/students/${studentId}?tab=notes`
+          )
+        } catch (err) {
+          console.error('[goals] notification failed', { goalId, err })
+        }
+      })()
+    }
+
     revalidatePath(`/students/${studentId}`)
     return { error: null, success: true }
   } catch (e) {

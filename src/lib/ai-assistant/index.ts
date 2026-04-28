@@ -1,45 +1,40 @@
 /**
  * AI WhatsApp assistant.
  * Enforces a 3-reply-per-24h safety cap, builds a context-rich Hebrew system
- * prompt, calls OpenAI gpt-4o-mini, logs the exchange, and returns the reply.
- * Per /docs/sprint-19-scope.md § Story 1.
+ * prompt, calls the org's configured AI provider, logs the exchange, and returns the reply.
+ * Per /docs/sprint-19-scope.md § Story 1 + /docs/sprint-25-scope.md § Story 1c.
  */
 
-import OpenAI from 'openai'
 import { buildSystemPrompt } from './buildSystemPrompt'
 import { countAssistantReplies, getRecentHistory } from './conversationLog'
+import { getAiProvider, isAiConfiguredForOrg } from './providers/factory'
+import { logAiUsage } from './usage'
+import { estimateCost } from './costs'
 
 const SAFETY_CAP = 3
-const OPENAI_TIMEOUT_MS = 8_000
-const OPENAI_MAX_RETRIES = 1
 export const HUMAN_REDIRECT_MESSAGE =
   'לא הצלחתי לענות על השאלה שלך. אנא פנה/י ישירות לצוות בית הספר לסיוע.'
 
-let _openai: OpenAI | null = null
-
+/**
+ * Sync check: platform-level OpenAI key exists.
+ * For org-level check, use isAiConfiguredForOrg(orgId) (async).
+ */
 export function isAiAssistantConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY)
 }
 
-function getOpenAI(): OpenAI {
-  if (!isAiAssistantConfigured()) {
-    throw new Error('OPENAI_API_KEY is not configured')
-  }
-
-  if (!_openai) {
-    _openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      timeout: OPENAI_TIMEOUT_MS,
-      maxRetries: OPENAI_MAX_RETRIES,
-    })
-  }
-  return _openai
+export interface AiAssistantResult {
+  reply: string
+  promptTokens: number
+  completionTokens: number
+  provider: string
+  model: string
 }
 
 /**
  * Generates an AI reply for an incoming WhatsApp message from a known parent.
  *
- * @returns The reply string to send back via WhatsApp.
+ * @returns The reply + token counts + provider info.
  *          Returns HUMAN_REDIRECT_MESSAGE when the safety cap is reached.
  */
 export async function aiAssistant(
@@ -47,7 +42,7 @@ export async function aiAssistant(
   phone: string,
   parentId: string | null,
   incomingMessage: string
-): Promise<string> {
+): Promise<AiAssistantResult> {
   // 1. Safety cap — prevent runaway spend
   let replyCount: number
   try {
@@ -58,7 +53,13 @@ export async function aiAssistant(
       phone,
       err,
     })
-    return HUMAN_REDIRECT_MESSAGE
+    return {
+      reply: HUMAN_REDIRECT_MESSAGE,
+      promptTokens: 0,
+      completionTokens: 0,
+      provider: 'unknown',
+      model: 'unknown',
+    }
   }
 
   if (replyCount >= SAFETY_CAP) {
@@ -67,7 +68,13 @@ export async function aiAssistant(
       phone,
       replyCount,
     })
-    return HUMAN_REDIRECT_MESSAGE
+    return {
+      reply: HUMAN_REDIRECT_MESSAGE,
+      promptTokens: 0,
+      completionTokens: 0,
+      provider: 'unknown',
+      model: 'unknown',
+    }
   }
 
   // 2. Build system prompt with live context
@@ -76,44 +83,46 @@ export async function aiAssistant(
   // 3. Fetch recent conversation history (last 10 turns, past 24h)
   const history = await getRecentHistory(orgId, phone)
 
-  // 4. Call OpenAI
-  const openai = getOpenAI()
-  let response: Awaited<ReturnType<typeof openai.chat.completions.create>>
-  try {
-    response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...history,
-        { role: 'user', content: incomingMessage },
-      ],
-      max_tokens: 300,
-      temperature: 0.3,
-    })
-  } catch (err) {
-    if (err instanceof OpenAI.APIError) {
-      console.error('[ai-assistant] OpenAI API error', {
-        orgId,
-        phone,
-        status: err.status,
-        message: err.message,
-      })
-    } else {
-      console.error('[ai-assistant] Unexpected error', { orgId, phone, err })
-    }
-    throw err
-  }
+  // 4. Get org's AI provider and call it
+  const { provider, providerName, model } = await getAiProvider(orgId)
 
-  const reply = response.choices[0]?.message?.content?.trim() ?? HUMAN_REDIRECT_MESSAGE
+  const result = await provider.chat({
+    systemPrompt,
+    history,
+    userMessage: incomingMessage,
+    maxTokens: 300,
+    temperature: 0.3,
+  })
+
+  const reply = result.content || HUMAN_REDIRECT_MESSAGE
 
   // 5. Structured log for cost tracking
   console.info('[ai-assistant] Reply generated', {
     orgId,
     phone,
-    model: response.model,
-    promptTokens: response.usage?.prompt_tokens,
-    completionTokens: response.usage?.completion_tokens,
+    provider: providerName,
+    model,
+    promptTokens: result.promptTokens,
+    completionTokens: result.completionTokens,
   })
 
-  return reply
+  // 6. Fire-and-forget usage logging (Sprint 25)
+  logAiUsage({
+    orgId,
+    provider: providerName,
+    model,
+    promptTokens: result.promptTokens,
+    completionTokens: result.completionTokens,
+    estimatedCostUsd: estimateCost(providerName, model, result.promptTokens, result.completionTokens),
+  }).catch((err) => {
+    console.error('[ai-assistant] Failed to log AI usage', { orgId, err })
+  })
+
+  return {
+    reply,
+    promptTokens: result.promptTokens,
+    completionTokens: result.completionTokens,
+    provider: providerName,
+    model,
+  }
 }

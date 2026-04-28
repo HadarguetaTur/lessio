@@ -225,7 +225,8 @@
       "academic": "Academic",
       "history": "Lessons",
       "financial": "Financial",
-      "homework": "Homework"
+      "homework": "Homework",
+      "goals": "Goals"
     },
     "card": {
       "contactDetails": "Contact Details",
@@ -914,7 +915,10 @@
         "recipient": "Recipient",
         "sentAt": "Sent At"
       },
-      "noLog": "No entries"
+      "noLog": "No entries",
+      "emailNotifications": "Email Notifications",
+      "emailDescription": "Send email alongside WhatsApp for selected notification types",
+      "parentsWithEmail": "parents with email"
     },
     "messageTemplates": {
       "title": "Customize Messages",
@@ -925,6 +929,7 @@
     },
     "aiAssistant": {
       "title": "AI Assistant",
+      "description": "Smart WhatsApp assistant for automatic replies",
       "enable": "Enable AI Assistant",
       "enabled": "Active",
       "disabled": "Off",
@@ -937,7 +942,30 @@
         "aiReply": "AI Reply"
       },
       "noLog": "No conversations recorded",
-      "roleParent": "Parent"
+      "roleParent": "Parent",
+      "tabSettings": "Settings",
+      "tabUsage": "Usage",
+      "providerSettings": "AI Provider Settings",
+      "provider": "Provider",
+      "model": "Model",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Paste your API key",
+      "apiKeyPlaceholderSaved": "Key saved (paste to replace)",
+      "openaiKeyOptional": "Optional — falls back to platform key if empty",
+      "apiKeyRequired": "Required — this provider needs your own API key",
+      "providerSaved": "Provider settings saved",
+      "testConnection": "Test Connection",
+      "testSuccess": "Connection successful — AI is responding"
+    },
+    "aiUsage": {
+      "title": "AI Usage",
+      "totalRequests": "Total Requests",
+      "totalTokens": "Total Tokens",
+      "estimatedCost": "Estimated Cost",
+      "satisfaction": "Satisfaction",
+      "dailyRequests": "Daily Requests (last 30 days)",
+      "requests": "requests",
+      "noData": "No usage data for this month"
     },
     "locale": {
       "title": "Language & Display",
@@ -1751,5 +1779,18 @@
     "noNotes": "No teacher notes",
     "lessonNotes": "Lesson Notes",
     "due": "Due"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "empty": "No new notifications",
+    "types": {
+      "lesson_cancelled": "Lesson Cancelled",
+      "payment_received": "Payment Received",
+      "homework_submitted": "Homework Submitted",
+      "student_at_risk": "Student At Risk",
+      "new_lead": "New Lead",
+      "goal_achieved": "Goal Achieved"
+    }
   }
 }

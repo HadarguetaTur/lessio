@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import type { Student, StudentLesson, StudentFinancial, StudentPrimaryParent } from '@/lib/students'
 import type { HomeworkAssignment } from '@/lib/homework'
 import { SubscriptionForm } from '@/components/dashboard/billing/SubscriptionForm'
+import { GoalsSection } from '@/components/dashboard/students/GoalsSection'
 import {
   updateStudent,
   archiveStudent,
@@ -36,9 +37,17 @@ import {
   fetchStudentFinancial,
   fetchStudentHomework,
   fetchStudentSubscriptions,
+  fetchStudentGoals,
   fetchOrgParents,
 } from '@/app/(dashboard)/students/actions'
+import {
+  createGoalAction,
+  updateGoalStatusAction,
+  deleteGoalAction,
+  type GoalActionState,
+} from '@/app/(dashboard)/students/[id]/actions'
 import type { Subscription } from '@/lib/subscriptions'
+import type { StudentGoal } from '@/lib/goals'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -878,8 +887,8 @@ function HomeworkTab({ lazy }: { lazy: Lazy<HomeworkAssignment[]> }) {
   )
 }
 
-const TAB_VALUES_ADMIN = ['overview', 'academic', 'history', 'financial', 'homework'] as const
-const TAB_VALUES_TEACHER = ['overview', 'academic', 'history', 'homework'] as const
+const TAB_VALUES_ADMIN = ['overview', 'academic', 'history', 'financial', 'homework', 'goals'] as const
+const TAB_VALUES_TEACHER = ['overview', 'academic', 'history', 'homework', 'goals'] as const
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -911,6 +920,7 @@ export function StudentDetailSheet({
   const [financialLazy, setFinancialLazy] = useState<Lazy<StudentFinancial>>(IDLE)
   const [homeworkLazy, setHomeworkLazy] = useState<Lazy<HomeworkAssignment[]>>(IDLE)
   const [subscriptionsLazy, setSubscriptionsLazy] = useState<Lazy<Subscription[]>>(IDLE)
+  const [goalsLazy, setGoalsLazy] = useState<Lazy<StudentGoal[]>>(IDLE)
 
   useEffect(() => {
     setIsEditing(false)
@@ -920,6 +930,7 @@ export function StudentDetailSheet({
     setFinancialLazy(IDLE)
     setHomeworkLazy(IDLE)
     setSubscriptionsLazy(IDLE)
+    setGoalsLazy(IDLE)
     if (!student) return
     setParentLoading(true)
     fetchStudentParent(student.id).then((result) => {
@@ -951,7 +962,19 @@ export function StudentDetailSheet({
       const r = await fetchStudentHomework(student.id)
       setHomeworkLazy('error' in r ? { status: 'error', error: r.error } : { status: 'loaded', data: r.data })
     }
+    if (tab === 'goals' && goalsLazy.status === 'idle') {
+      setGoalsLazy({ status: 'loading' })
+      const r = await fetchStudentGoals(student.id)
+      setGoalsLazy('error' in r ? { status: 'error', error: r.error } : { status: 'loaded', data: r.data })
+    }
   }
+
+  const refreshGoals = async () => {
+    if (!student) return
+    const r = await fetchStudentGoals(student.id)
+    setGoalsLazy('error' in r ? { status: 'error', error: r.error } : { status: 'loaded', data: r.data })
+  }
+
 
   const handleArchive = async () => { if (student) { await archiveStudent(student.id); onOpenChange(false) } }
   const handleRestore = async () => { if (student) { await restoreStudent(student.id); onOpenChange(false) } }
@@ -967,7 +990,7 @@ export function StudentDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-none sm:w-[580px] p-0 flex min-w-0 flex-col gap-0 overflow-x-hidden"
+        className="w-full sm:max-w-none sm:w-[720px] p-0 flex min-w-0 flex-col gap-0 overflow-x-hidden"
         dir="rtl"
       >
         <SheetTitle className="sr-only">
@@ -1127,6 +1150,38 @@ export function StudentDetailSheet({
                     </Tabs.Content>
                     <Tabs.Content value="homework" forceMount className="data-[state=inactive]:hidden">
                       <HomeworkTab lazy={homeworkLazy} />
+                    </Tabs.Content>
+                    <Tabs.Content value="goals" forceMount className="data-[state=inactive]:hidden">
+                      {goalsLazy.status === 'loading' || goalsLazy.status === 'idle' ? (
+                        <div className="space-y-3">
+                          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-2xl" />)}
+                        </div>
+                      ) : (
+                        <>
+                          {goalsLazy.status === 'error' && (
+                            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/5 border border-destructive/20 p-3 rounded-xl mb-4">
+                              <AlertCircle size={15} className="shrink-0" />
+                              <span className="flex-1">{goalsLazy.error}</span>
+                              <button
+                                type="button"
+                                onClick={refreshGoals}
+                                className="text-xs underline hover:no-underline shrink-0"
+                              >
+                                {tCommon('actions.refresh')}
+                              </button>
+                            </div>
+                          )}
+                          <GoalsSection
+                            goals={goalsLazy.data ?? []}
+                            studentId={student.id}
+                            createAction={createGoalAction}
+                            updateStatusAction={updateGoalStatusAction}
+                            deleteAction={deleteGoalAction}
+                            canEdit={canManage ?? false}
+                            onSuccess={refreshGoals}
+                          />
+                        </>
+                      )}
                     </Tabs.Content>
                   </div>
                 </div>

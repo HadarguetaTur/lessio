@@ -5,9 +5,8 @@
  * Per /docs/sprint-24-scope.md § Story 4.
  */
 
-import { useState } from 'react'
-import { useActionState } from 'react'
-import { Target, Plus, Trash2, CheckCircle, XCircle } from 'lucide-react'
+import { useState, useTransition, useRef } from 'react'
+import { Target, Plus, Trash2, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import type { StudentGoal } from '@/lib/goals'
 import type { GoalActionState } from '@/app/(dashboard)/students/[id]/actions'
 
@@ -18,6 +17,7 @@ type Props = {
   updateStatusAction: (prev: GoalActionState, fd: FormData) => Promise<GoalActionState>
   deleteAction: (prev: GoalActionState, fd: FormData) => Promise<GoalActionState>
   canEdit: boolean
+  onSuccess?: () => void
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -38,14 +38,56 @@ export function GoalsSection({
   updateStatusAction,
   deleteAction,
   canEdit,
+  onSuccess,
 }: Props) {
   const [showForm, setShowForm] = useState(false)
-  const [createState, createFormAction, createPending] = useActionState(createAction, { error: null })
-  const [statusState, statusFormAction] = useActionState(updateStatusAction, { error: null })
-  const [deleteState, deleteFormAction] = useActionState(deleteAction, { error: null })
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const formRef = useRef<HTMLFormElement>(null)
 
   const activeGoals = goals.filter((g) => g.status === 'active')
   const pastGoals = goals.filter((g) => g.status !== 'active')
+
+  const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    startTransition(async () => {
+      setError(null)
+      const result = await createAction({ error: null }, fd)
+      if (result.error) {
+        setError(result.error)
+      } else {
+        setShowForm(false)
+        formRef.current?.reset()
+        onSuccess?.()
+      }
+    })
+  }
+
+  const handleStatusUpdate = (goalId: string, status: string) => {
+    const fd = new FormData()
+    fd.set('goalId', goalId)
+    fd.set('studentId', studentId)
+    fd.set('status', status)
+    startTransition(async () => {
+      setError(null)
+      const result = await updateStatusAction({ error: null }, fd)
+      if (result.error) setError(result.error)
+      else onSuccess?.()
+    })
+  }
+
+  const handleDelete = (goalId: string) => {
+    const fd = new FormData()
+    fd.set('goalId', goalId)
+    fd.set('studentId', studentId)
+    startTransition(async () => {
+      setError(null)
+      const result = await deleteAction({ error: null }, fd)
+      if (result.error) setError(result.error)
+      else onSuccess?.()
+    })
+  }
 
   return (
     <div className="space-y-4">
@@ -66,13 +108,11 @@ export function GoalsSection({
         )}
       </div>
 
-      {createState.error && <p className="text-xs text-red-600">{createState.error}</p>}
-      {statusState.error && <p className="text-xs text-red-600">{statusState.error}</p>}
-      {deleteState.error && <p className="text-xs text-red-600">{deleteState.error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
 
       {/* Create form */}
       {showForm && canEdit && (
-        <form action={createFormAction} className="bg-gray-50 rounded-lg p-4 space-y-2">
+        <form ref={formRef} onSubmit={handleCreate} className="bg-gray-50 rounded-lg p-4 space-y-2">
           <input type="hidden" name="studentId" value={studentId} />
           <input
             name="subject"
@@ -95,10 +135,11 @@ export function GoalsSection({
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={createPending}
-              className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+              disabled={isPending}
+              className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1"
             >
-              {createPending ? 'שומר...' : 'צור יעד'}
+              {isPending && <Loader2 size={12} className="animate-spin" />}
+              {isPending ? 'שומר...' : 'צור יעד'}
             </button>
             <button type="button" onClick={() => setShowForm(false)} className="text-xs text-gray-500 hover:text-gray-700">
               ביטול
@@ -124,29 +165,33 @@ export function GoalsSection({
             </div>
             {canEdit && (
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <form action={statusFormAction}>
-                  <input type="hidden" name="goalId" value={goal.id} />
-                  <input type="hidden" name="studentId" value={studentId} />
-                  <input type="hidden" name="status" value="achieved" />
-                  <button type="submit" title="סמן כהושג" className="text-green-500 hover:text-green-700 p-1">
-                    <CheckCircle size={14} />
-                  </button>
-                </form>
-                <form action={statusFormAction}>
-                  <input type="hidden" name="goalId" value={goal.id} />
-                  <input type="hidden" name="studentId" value={studentId} />
-                  <input type="hidden" name="status" value="abandoned" />
-                  <button type="submit" title="נטוש" className="text-gray-400 hover:text-gray-600 p-1">
-                    <XCircle size={14} />
-                  </button>
-                </form>
-                <form action={deleteFormAction}>
-                  <input type="hidden" name="goalId" value={goal.id} />
-                  <input type="hidden" name="studentId" value={studentId} />
-                  <button type="submit" title="מחק" className="text-gray-400 hover:text-red-500 p-1">
-                    <Trash2 size={14} />
-                  </button>
-                </form>
+                <button
+                  type="button"
+                  onClick={() => handleStatusUpdate(goal.id, 'achieved')}
+                  disabled={isPending}
+                  title="סמן כהושג"
+                  className="text-green-500 hover:text-green-700 p-1 disabled:opacity-50"
+                >
+                  <CheckCircle size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusUpdate(goal.id, 'abandoned')}
+                  disabled={isPending}
+                  title="נטוש"
+                  className="text-gray-400 hover:text-gray-600 p-1 disabled:opacity-50"
+                >
+                  <XCircle size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(goal.id)}
+                  disabled={isPending}
+                  title="מחק"
+                  className="text-gray-400 hover:text-red-500 p-1 disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             )}
           </div>

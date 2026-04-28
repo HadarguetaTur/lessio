@@ -22,6 +22,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendSmartMessage } from '../_shared/whatsapp.ts'
 import { resolveTemplate } from '../_shared/templates.ts'
+import { sendEmail } from '../_shared/email.ts'
 
 Deno.serve(async (_req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -31,7 +32,7 @@ Deno.serve(async (_req) => {
   // ── 1. Fetch orgs with reminders enabled + WhatsApp connected ────────────────
   const { data: orgs, error: orgsError } = await db
     .from('organizations')
-    .select('id, payment_reminder_days, whatsapp_phone_number_id, whatsapp_access_token')
+    .select('id, payment_reminder_days, whatsapp_phone_number_id, whatsapp_access_token, email_notifications')
     .eq('reminders_enabled', true)
     .not('whatsapp_phone_number_id', 'is', null)
     .not('whatsapp_access_token', 'is', null)
@@ -71,7 +72,7 @@ async function processOrg(db: any, org: any, now: Date) {
   // ── 2. Fetch eligible charges ──────────────────────────────────────────────
   const { data: charges, error: chargesError } = await db
     .from('charges')
-    .select('id, amount, payment_link, parent:parents ( id, phone )')
+    .select('id, amount, payment_link, parent:parents ( id, phone, email )')
     .eq('organization_id', org.id)
     .eq('status', 'pending')
     .not('payment_link', 'is', null)
@@ -147,6 +148,19 @@ async function processOrg(db: any, org: any, now: Date) {
         org_id: org.id,
         charge_id: charge.id,
         error: sendError,
+      })
+    }
+
+    // ── 5b. Send email if enabled (Sprint 25) ─────────────────────────────────
+    const emailSettings = (org.email_notifications ?? {}) as Record<string, boolean>
+    const parentEmail: string | null = charge.parent?.email ?? null
+    if (emailSettings.payment_reminder && parentEmail) {
+      await sendEmail({
+        to: parentEmail,
+        subject: `תזכורת תשלום — ₪${amount}`,
+        html: `<p>תזכורת: יש לך חיוב פתוח בסך ₪${amount}.</p>${charge.payment_link ? `<p><a href="${charge.payment_link}">לחצו כאן לתשלום</a></p>` : ''}`,
+      }).catch((err: unknown) => {
+        console.error('[payment-reminders] Email send failed', { org_id: org.id, charge_id: charge.id, error: String(err) })
       })
     }
 

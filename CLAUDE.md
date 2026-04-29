@@ -6,13 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## Sprint Discipline
-
-Before starting work, always:
-1. Read `docs/sprint-roadmap.md` to understand completed, current, and planned sprints.
-2. Read the current sprint scope (e.g. `docs/sprint-25-scope.md`).
-3. Do not rebuild completed work — check the roadmap first.
-
 ## Tech Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Supabase (Postgres + Auth + Edge Functions + Storage) · Tailwind CSS v4 · shadcn/ui (Radix primitives) · Luxon (dates) · next-intl (i18n) · Vitest (tests) · Zod 4 (validation)

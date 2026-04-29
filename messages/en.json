@@ -122,6 +122,7 @@
     "charges": "Charges",
     "leads": "Leads",
     "homework": "Homework",
+    "messages": "Messages",
     "reportsRevenue": "Revenue",
     "reportsLessons": "Lessons",
     "reportsDebt": "Debt",
@@ -362,7 +363,16 @@
     "teacherNotes": "Notes",
     "deleteConfirm": "Delete this parent?",
     "saved": "Parent saved successfully",
-    "phoneHint": "International format, e.g. +972501234567"
+    "phoneHint": "International format, e.g. +972501234567",
+    "connectedStudents": "Linked students",
+    "noLinkedStudents": "No linked students",
+    "viewCharges": "View charges",
+    "noDebt": "No outstanding balance",
+    "primaryBadge": "Primary",
+    "emptyNotes": "No notes",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "openParentProfileAria": "Parent profile: {name}"
   },
   "teachers": {
     "title": "Teachers",
@@ -1368,7 +1378,78 @@
       "openPdf": "Open",
       "cancelAtEnd": "Cancel subscription (end of period)",
       "cancelPending": "Cancellation scheduled for period end",
-      "upgradeHint": "To upgrade or change plans, contact support.",
+      "upgradeHint": "Contact support for bespoke plans or the Center package.",
+      "upgradeHintSelfServe": "Upgrade to a higher plan in the section below — no support ticket needed.",
+
+      "upgrade": {
+        "sectionTitle": "Upgrade plan",
+        "sectionSubtitle": "Pick a higher plan and finish secure checkout.",
+        "sectionTitleNew": "Choose a plan",
+        "sectionSubtitleNew": "Select the plan that fits your needs and complete checkout.",
+        "ctaUpgrade": "Upgrade now",
+        "billingMonthly": "Monthly",
+        "billingYearly": "Yearly",
+        "perMonth": "per month",
+        "perYear": "per year",
+        "popularBadge": "Popular",
+        "featurePrompt": {
+          "whatsapp_automation": "WhatsApp automation needs a higher plan. Choose one below.",
+          "ai_assistant": "The AI assistant needs a higher plan. Choose one below.",
+          "full_reports": "Advanced reporting needs a higher plan. Choose one below.",
+          "leads": "Lead tracking needs a higher plan. Choose one below.",
+          "homework": "Homework for students needs a higher plan. Choose one below.",
+          "parent_portal": "The parent portal needs a higher plan. Choose one below."
+        },
+        "plans": {
+          "basic": {
+            "bullets": [
+              "Students & lessons in one place",
+              "Lesson notes and history",
+              "Basic WhatsApp reminders",
+              "Attendance, cancellations, and billing rhythm",
+              "Light homework"
+            ]
+          },
+          "advanced": {
+            "bullets": [
+              "Everything in Starter",
+              "Full WhatsApp automation",
+              "Advanced reports",
+              "Parent portal and homework",
+              "AI assistance for messaging and ops",
+              "Priority support"
+            ]
+          }
+        },
+        "errors": {
+          "generic": "Something went wrong. Please try again.",
+          "readOnlySession": "Read-only session — upgrades are disabled.",
+          "ownerOnly": "Only the business owner can upgrade the subscription.",
+          "invalidInput": "Invalid plan selection.",
+          "noSubscription": "No subscription found. Contact support.",
+          "upgradeUnavailable": "Can't upgrade while the subscription is in this state (e.g. awaiting payment).",
+          "planNotFound": "Plan could not be found.",
+          "notUpgrade": "This plan isn't an upgrade from your current subscription.",
+          "invalidAmount": "Invalid price.",
+          "upsertFailed": "Could not start checkout.",
+          "sumitEnvMissing": "Payment provider credentials are missing in this environment.",
+          "checkoutUrl": "Couldn't create checkout link."
+        }
+      },
+
+      "mockPayment": {
+        "back": "Cancel and return to Account & billing"
+      },
+
+      "paymentCallback": {
+        "processing": "Confirming payment…",
+        "hint": "If you finished paying, you'll be redirected back automatically.",
+        "slow": "This is taking longer than expected. Refresh the page or try again later.",
+        "failedTitle": "Payment not completed",
+        "failedBody": "You were not charged. You can try upgrading again from Account & billing.",
+        "backToBilling": "Back to Account & billing"
+      },
+
       "ownerOnly": "Only the business owner can view this page.",
       "legacyNoSubscription": "No platform subscription record (org created before SaaS plans). You can keep using the product as usual."
     }
@@ -1566,6 +1647,8 @@
       "processing": "Confirming payment…",
       "hint": "If you finished paying, you’ll be redirected to the dashboard automatically.",
       "slow": "This is taking longer than expected. You can refresh or try again later.",
+      "timeoutTitle": "Still confirming",
+      "timeoutBody": "We couldn’t confirm payment with the provider in time. Go back to setup to pick a plan again or try later.",
       "failedTitle": "Payment not completed",
       "failedBody": "You were not charged. You can choose a plan again from onboarding.",
       "backToOnboarding": "Back to setup"

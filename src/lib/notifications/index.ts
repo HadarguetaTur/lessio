@@ -14,6 +14,7 @@ export type NotificationType =
   | 'student_at_risk'
   | 'new_lead'
   | 'goal_achieved'
+  | 'portal_message'
 
 export interface CreateNotificationParams {
   orgId: string

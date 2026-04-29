@@ -20,12 +20,27 @@ const CHARGE_PERCENTS = [0, 25, 50, 75, 100] as const
 const REMINDER_HOURS = [2, 4, 12, 24, 48] as const
 const PAYMENT_DAYS = [3, 5, 7, 14, 30] as const
 
+function snapToAllowed(
+  value: number,
+  allowed: readonly number[],
+  fallback: number
+): string {
+  if (allowed.includes(value)) return String(value)
+  return String(fallback)
+}
+
 interface SettingsStepProps {
+  settingsDefaults: {
+    noticeHoursFull: number
+    partialChargePercent: number
+    lessonReminderHours: number
+    paymentReminderDays: number
+  }
   onNext: () => void
   onBack: () => void
 }
 
-export function SettingsStep({ onNext, onBack }: SettingsStepProps) {
+export function SettingsStep({ settingsDefaults, onNext, onBack }: SettingsStepProps) {
   const t = useTranslations('onboarding.settings')
   const tNav = useTranslations('onboarding.nav')
 
@@ -67,7 +82,11 @@ export function SettingsStep({ onNext, onBack }: SettingsStepProps) {
               <select
                 id="notice_hours"
                 name="notice_hours"
-                defaultValue="24"
+                defaultValue={snapToAllowed(
+                  settingsDefaults.noticeHoursFull,
+                  NOTICE_HOURS,
+                  24
+                )}
                 className="h-11 w-full rounded-lg border border-input bg-background/50 px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 {NOTICE_HOURS.map((h) => (
@@ -82,7 +101,11 @@ export function SettingsStep({ onNext, onBack }: SettingsStepProps) {
               <select
                 id="charge_percent"
                 name="charge_percent"
-                defaultValue="50"
+                defaultValue={snapToAllowed(
+                  settingsDefaults.partialChargePercent,
+                  CHARGE_PERCENTS,
+                  50
+                )}
                 className="h-11 w-full rounded-lg border border-input bg-background/50 px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 {CHARGE_PERCENTS.map((p) => (
@@ -103,7 +126,11 @@ export function SettingsStep({ onNext, onBack }: SettingsStepProps) {
               <select
                 id="lesson_reminder_hours"
                 name="lesson_reminder_hours"
-                defaultValue="24"
+                defaultValue={snapToAllowed(
+                  settingsDefaults.lessonReminderHours,
+                  REMINDER_HOURS,
+                  24
+                )}
                 className="h-11 w-full rounded-lg border border-input bg-background/50 px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 {REMINDER_HOURS.map((h) => (
@@ -118,7 +145,11 @@ export function SettingsStep({ onNext, onBack }: SettingsStepProps) {
               <select
                 id="payment_reminder_days"
                 name="payment_reminder_days"
-                defaultValue="7"
+                defaultValue={snapToAllowed(
+                  settingsDefaults.paymentReminderDays,
+                  PAYMENT_DAYS,
+                  7
+                )}
                 className="h-11 w-full rounded-lg border border-input bg-background/50 px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 {PAYMENT_DAYS.map((d) => (

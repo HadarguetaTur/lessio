@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useActionState } from 'react'
+import Link from 'next/link'
 import { Tabs } from 'radix-ui'
 import {
   Pencil, MoreVertical, Archive, RotateCcw, AlertCircle,
@@ -464,6 +465,18 @@ function OverviewTab({ student, parent, parentLoading }: {
   parentLoading: boolean
 }) {
   const t = useTranslations('students')
+  const learningFields = [
+    { label: t('fields.teacher'), value: student.teacher_name },
+    { label: t('fields.focusedSubject'), value: student.focused_subject },
+    { label: t('fields.level'), value: student.level },
+    { label: t('fields.grade'), value: student.grade },
+    {
+      label: t('fields.weeklyQuotaShort'),
+      value: student.weekly_quota != null ? `${student.weekly_quota} ${t('fields.weeklyQuotaSuffix')}` : null,
+    },
+  ]
+  const hasLearningDetails = learningFields.some((f) => f.value)
+
   return (
     <div className="space-y-4">
       <SectionCard title={t('card.contactDetails')}>
@@ -472,7 +485,14 @@ function OverviewTab({ student, parent, parentLoading }: {
             {parentLoading
               ? <Skeleton className="h-4 w-32" />
               : parent?.full_name
-                ? <span className="font-medium">{parent.full_name}</span>
+                ? (
+                    <Link
+                      href={`/parents/${parent.id}/edit`}
+                      className="font-medium text-primary hover:underline break-words text-end"
+                    >
+                      {parent.full_name}
+                    </Link>
+                  )
                 : <span className="text-muted-foreground">—</span>
             }
           </DataRow>
@@ -490,26 +510,30 @@ function OverviewTab({ student, parent, parentLoading }: {
                 : <span className="text-muted-foreground">—</span>
             }
           </DataRow>
-          <DataRow label={t('fields.email')}>
-            <span className="text-muted-foreground">—</span>
-          </DataRow>
         </dl>
       </SectionCard>
 
-      <SectionCard title={t('card.accountStatus')}>
-        <dl className="divide-y divide-border/60">
-          <DataRow label={t('card.balance')}>
-            <span className="text-muted-foreground">—</span>
-          </DataRow>
-          <DataRow label={t('card.noSubscription')}>
-            <span className="text-muted-foreground text-xs">—</span>
-          </DataRow>
-        </dl>
+      <SectionCard title={t('card.academicSection')}>
+        {hasLearningDetails ? (
+          <dl className="divide-y divide-border/60">
+            {learningFields.map(({ label, value }) => (
+              <DataRow key={label} label={label}>
+                {value ?? <span className="text-muted-foreground">—</span>}
+              </DataRow>
+            ))}
+          </dl>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 text-center gap-2 px-4">
+            <GraduationCap size={32} className="text-muted-foreground/40 shrink-0" />
+            <p className="text-sm text-muted-foreground">{t('card.academicEmpty')}</p>
+            <p className="text-xs text-muted-foreground/70">{t('card.academicEmptyHint')}</p>
+          </div>
+        )}
       </SectionCard>
 
       {student.notes ? (
         <SectionCard title={t('card.pedagogicalNotes')}>
-          <p className="px-4 py-3 text-sm text-foreground whitespace-pre-wrap leading-relaxed">{student.notes}</p>
+          <p className="px-4 py-3 text-sm text-foreground whitespace-pre-wrap leading-relaxed break-words">{student.notes}</p>
         </SectionCard>
       ) : null}
 
@@ -517,40 +541,6 @@ function OverviewTab({ student, parent, parentLoading }: {
         {t('card.registered')} {formatDate(student.created_at)}
       </p>
     </div>
-  )
-}
-
-// ── Tab: Academic ─────────────────────────────────────────────────────────────
-
-function AcademicTab({ student }: { student: Student }) {
-  const t = useTranslations('students')
-  const fields = [
-    { label: t('fields.teacher'),       value: student.teacher_name },
-    { label: t('fields.focusedSubject'), value: student.focused_subject },
-    { label: t('fields.level'),          value: student.level },
-    { label: t('fields.grade'),          value: student.grade },
-    { label: t('fields.weeklyQuotaShort'), value: student.weekly_quota != null ? `${student.weekly_quota} ${t('fields.weeklyQuotaSuffix')}` : null },
-  ]
-  const hasAny = fields.some((f) => f.value)
-
-  return (
-    <SectionCard>
-      {hasAny ? (
-        <dl className="divide-y divide-border/60">
-          {fields.map(({ label, value }) => (
-            <DataRow key={label} label={label}>
-              {value ?? <span className="text-muted-foreground">—</span>}
-            </DataRow>
-          ))}
-        </dl>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
-          <GraduationCap size={32} className="text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">{t('card.academicEmpty')}</p>
-          <p className="text-xs text-muted-foreground/70">{t('card.academicEmptyHint')}</p>
-        </div>
-      )}
-    </SectionCard>
   )
 }
 
@@ -887,8 +877,8 @@ function HomeworkTab({ lazy }: { lazy: Lazy<HomeworkAssignment[]> }) {
   )
 }
 
-const TAB_VALUES_ADMIN = ['overview', 'academic', 'history', 'financial', 'homework', 'goals'] as const
-const TAB_VALUES_TEACHER = ['overview', 'academic', 'history', 'homework', 'goals'] as const
+const TAB_VALUES_ADMIN = ['overview', 'history', 'financial', 'homework', 'goals'] as const
+const TAB_VALUES_TEACHER = ['overview', 'history', 'homework', 'goals'] as const
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -1132,9 +1122,6 @@ export function StudentDetailSheet({
                   <div className="px-6 py-5 sm:px-8">
                     <Tabs.Content value="overview" forceMount className="data-[state=inactive]:hidden">
                       <OverviewTab student={student} parent={parent} parentLoading={parentLoading} />
-                    </Tabs.Content>
-                    <Tabs.Content value="academic" forceMount className="data-[state=inactive]:hidden">
-                      <AcademicTab student={student} />
                     </Tabs.Content>
                     <Tabs.Content value="history" forceMount className="data-[state=inactive]:hidden">
                       <HistoryTab lazy={lessonsLazy} />

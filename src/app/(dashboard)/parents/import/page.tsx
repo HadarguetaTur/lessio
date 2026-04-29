@@ -11,7 +11,7 @@ interface PageProps {
 }
 
 export default async function ParentsImportPage({ searchParams }: PageProps) {
-  const { orgId, role } = await getSession()
+  const { role } = await getSession()
   if (role === 'teacher') {
     redirect('/parents')
   }
@@ -45,7 +45,7 @@ export default async function ParentsImportPage({ searchParams }: PageProps) {
           }
         />
         <div className="max-w-2xl">
-          <ImportFlow entityType={entityType} orgId={orgId} />
+          <ImportFlow entityType={entityType} />
         </div>
       </div>
     )

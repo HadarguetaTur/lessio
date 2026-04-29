@@ -185,6 +185,7 @@ export function Sidebar({
     { href: '/subscriptions',  label: t('subscriptions'),  icon: CreditCard,   roles: ['owner', 'admin'] },
     { href: '/leads',          label: t('leads'),          icon: UserPlus,     roles: ['owner', 'admin'] },
     { href: '/homework',   label: t('homework'),   icon: ClipboardList,   roles: ['owner', 'admin', 'teacher'] },
+    { href: '/messages',   label: t('messages'),   icon: MessageSquare,   roles: ['owner', 'admin', 'teacher'] },
   ]
 
   const reportsItems: NavItem[] = [

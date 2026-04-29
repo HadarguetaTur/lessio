@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, GraduationCap, Users, BookOpen, UserCheck } from 'lucide-react'
+import { ArrowRight, CheckCircle2, GraduationCap, Users, BookOpen, UserCheck } from 'lucide-react'
 import { completeOnboarding } from '@/app/(onboarding)/onboarding/actions'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -18,10 +18,12 @@ interface CompleteStepProps {
     lessons: number
     teachers: number
   }
+  onBack: () => void
 }
 
-export function CompleteStep({ counts }: CompleteStepProps) {
+export function CompleteStep({ counts, onBack }: CompleteStepProps) {
   const t = useTranslations('onboarding.complete')
+  const tNav = useTranslations('onboarding.nav')
   const [pending, setPending] = useState(false)
 
   const handleComplete = async () => {
@@ -82,13 +84,20 @@ export function CompleteStep({ counts }: CompleteStepProps) {
         ))}
       </div>
 
-      <Button
-        onClick={handleComplete}
-        disabled={pending}
-        className={`h-12 w-full text-base font-semibold ${onboardingGradientCta}`}
-      >
-        {pending ? t('loading') : t('goToDashboard')}
-      </Button>
+      <div className="flex flex-col gap-3">
+        <Button variant="outline" type="button" className="h-11 w-full" onClick={onBack}>
+          <ArrowRight size={14} className="ms-1.5 rtl:rotate-180" />
+          {tNav('back')}
+        </Button>
+        <Button
+          type="button"
+          onClick={handleComplete}
+          disabled={pending}
+          className={`h-12 w-full text-base font-semibold ${onboardingGradientCta}`}
+        >
+          {pending ? t('loading') : t('goToDashboard')}
+        </Button>
+      </div>
     </div>
   )
 }

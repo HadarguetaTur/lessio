@@ -22,11 +22,16 @@ export type OnboardingStep =
   | 'complete'
 
 interface OnboardingWizardProps {
-  orgId: string
   orgName: string
   ownerName: string
   timezone: string
   billingMode: string
+  settingsDefaults: {
+    noticeHoursFull: number
+    partialChargePercent: number
+    lessonReminderHours: number
+    paymentReminderDays: number
+  }
   teachers: { id: string; full_name: string }[]
   saasPlans: SaasPlanRow[]
   counts: {
@@ -38,11 +43,11 @@ interface OnboardingWizardProps {
 }
 
 export function OnboardingWizard({
-  orgId,
   orgName,
   ownerName,
   timezone,
   billingMode,
+  settingsDefaults,
   teachers: initialTeachers,
   saasPlans,
   counts: initialCounts,
@@ -99,7 +104,6 @@ export function OnboardingWizard({
       {step === 'teachers' && (
         <TeachersStep
           teachers={initialTeachers}
-          orgId={orgId}
           onNext={goNext}
           onBack={goBack}
           onCountChange={(n) => updateCounts({ teachers: n })}
@@ -108,7 +112,8 @@ export function OnboardingWizard({
 
       {step === 'import-students' && (
         <ImportStudentsStep
-          orgId={orgId}
+          initialStudents={counts.students}
+          initialParents={counts.parents}
           onNext={goNext}
           onBack={goBack}
           onCountsChange={(s, p) => updateCounts({ students: s, parents: p })}
@@ -117,14 +122,16 @@ export function OnboardingWizard({
 
       {step === 'import-lessons' && (
         <ImportLessonsStep
-          orgId={orgId}
+          initialLessons={counts.lessons}
           onNext={goNext}
           onBack={goBack}
           onCountChange={(n) => updateCounts({ lessons: n })}
         />
       )}
 
-      {step === 'settings' && <SettingsStep onNext={goNext} onBack={goBack} />}
+      {step === 'settings' && (
+        <SettingsStep settingsDefaults={settingsDefaults} onNext={goNext} onBack={goBack} />
+      )}
 
       {step === 'plan-selection' && (
         <PlanSelectionStep
@@ -135,7 +142,7 @@ export function OnboardingWizard({
         />
       )}
 
-      {step === 'complete' && <CompleteStep counts={counts} />}
+      {step === 'complete' && <CompleteStep counts={counts} onBack={goBack} />}
     </div>
   )
 }

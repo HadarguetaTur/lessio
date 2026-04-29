@@ -28,11 +28,26 @@ export default async function OnboardingPage() {
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('name, timezone, billing_mode, onboarding_completed')
+    .select(
+      'name, timezone, billing_mode, onboarding_completed, lesson_reminder_hours, payment_reminder_days'
+    )
     .eq('id', orgId)
     .single()
 
   if (!org) redirect('/login')
+
+  const { data: cancellationPolicy } = await db
+    .from('cancellation_policies')
+    .select('notice_hours_full, partial_charge_percent')
+    .eq('organization_id', orgId)
+    .maybeSingle()
+
+  const settingsDefaults = {
+    noticeHoursFull: cancellationPolicy?.notice_hours_full ?? 24,
+    partialChargePercent: cancellationPolicy?.partial_charge_percent ?? 50,
+    lessonReminderHours: org.lesson_reminder_hours ?? 24,
+    paymentReminderDays: org.payment_reminder_days ?? 7,
+  }
 
   // Already onboarded — go to dashboard
   if (org.onboarding_completed) redirect('/dashboard')
@@ -85,11 +100,11 @@ export default async function OnboardingPage() {
 
   return (
     <OnboardingWizard
-      orgId={orgId}
       orgName={org.name}
       ownerName={profile.full_name}
       timezone={org.timezone}
       billingMode={org.billing_mode}
+      settingsDefaults={settingsDefaults}
       teachers={teacherList}
       saasPlans={saasPlans}
       counts={{

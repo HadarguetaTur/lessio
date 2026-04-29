@@ -6,7 +6,7 @@ import {
   buildSignupSchema,
   createOrgWithOwner,
 } from '@/lib/auth/createOrgWithOwner'
-import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -48,15 +48,13 @@ export async function signUp(
     return { error: result.error }
   }
 
-  // Sign in the user immediately after signup
-  const db = createServiceRoleClient()
-  const { data: session } = await db.auth.admin.generateLink({
-    type: 'magiclink',
+  const supabase = await createClient()
+  const { error: signInError } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
+    password: parsed.data.password,
   })
 
-  if (!session) {
-    // Fallback: redirect to login page so user can sign in manually
+  if (signInError) {
     redirect('/login')
   }
 
@@ -69,5 +67,5 @@ export async function signUp(
     sameSite: 'lax',
   })
 
-  redirect('/login?registered=true')
+  redirect('/onboarding')
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, CalendarDays, History } from 'lucide-react'
@@ -12,7 +12,7 @@ import {
 } from '@/components/onboarding/onboardingVisual'
 
 interface ImportLessonsStepProps {
-  orgId: string
+  initialLessons: number
   onNext: () => void
   onBack: () => void
   onCountChange: (count: number) => void
@@ -21,7 +21,7 @@ interface ImportLessonsStepProps {
 type Tab = 'schedule' | 'history'
 
 export function ImportLessonsStep({
-  orgId,
+  initialLessons,
   onNext,
   onBack,
   onCountChange,
@@ -31,6 +31,15 @@ export function ImportLessonsStep({
   const [tab, setTab] = useState<Tab>('schedule')
   const [scheduleDone, setScheduleDone] = useState(false)
   const [historyDone, setHistoryDone] = useState(false)
+
+  const lessonRef = useRef(initialLessons)
+
+  const hasImportActivity = scheduleDone || historyDone
+
+  const pushLessons = (inserted: number) => {
+    lessonRef.current += inserted
+    onCountChange(lessonRef.current)
+  }
 
   return (
     <div className="mx-auto w-full max-w-4xl">
@@ -71,20 +80,18 @@ export function ImportLessonsStep({
       {tab === 'schedule' && (
         <ImportFlow
           entityType="lessons-schedule"
-          orgId={orgId}
           onComplete={(count) => {
             setScheduleDone(true)
-            onCountChange(count)
+            pushLessons(count)
           }}
         />
       )}
       {tab === 'history' && (
         <ImportFlow
           entityType="lessons-history"
-          orgId={orgId}
           onComplete={(count) => {
             setHistoryDone(true)
-            onCountChange(count)
+            pushLessons(count)
           }}
         />
       )}
@@ -94,14 +101,9 @@ export function ImportLessonsStep({
           <ArrowRight size={14} className="ms-1.5" />
           {tNav('back')}
         </Button>
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={onNext}>
-            {tNav('skip')}
-          </Button>
-          <Button className={`h-11 px-6 font-semibold ${onboardingGradientCta}`} onClick={onNext}>
-            {tNav('next')}
-          </Button>
-        </div>
+        <Button className={`h-11 px-6 font-semibold ${onboardingGradientCta}`} onClick={onNext}>
+          {hasImportActivity ? tNav('next') : tNav('skip')}
+        </Button>
       </div>
     </div>
   )

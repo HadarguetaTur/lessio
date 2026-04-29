@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Building2, Check, Sparkles } from 'lucide-react'
+import { Building2, Check, Sparkles, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -504,8 +504,12 @@ export function PlanSelectionStep({
               key={idx}
               className="group rounded-xl border border-border/80 bg-card/60 px-4 shadow-sm open:shadow-md"
             >
-              <summary className="cursor-pointer py-3 text-sm font-semibold text-foreground outline-none marker:text-violet-600 focus-visible:ring-2 focus-visible:ring-ring dark:marker:text-violet-400 [&::-webkit-details-marker]:hidden">
-                <span className="block pe-6">{item.q}</span>
+              <summary className="flex cursor-pointer list-none items-start gap-2 py-3 text-sm font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                <ChevronDown
+                  className="mt-0.5 size-4 shrink-0 text-violet-600 transition-transform duration-200 group-open:rotate-180 dark:text-violet-400"
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1 text-start">{item.q}</span>
               </summary>
               <p className="border-t border-border/60 pb-3 pt-2 text-sm leading-relaxed text-muted-foreground">
                 {item.a}

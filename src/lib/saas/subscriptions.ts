@@ -228,7 +228,7 @@ export async function activateSubscriptionFromPayment(params: {
 
 /** Dev-only: mark pending subscription active without Sumit. */
 export async function devMockActivatePendingSubscription(orgId: string): Promise<boolean> {
-  if (process.env.NODE_ENV === 'production') return false
+  if (process.env.SUMIT_CHECKOUT_MOCK !== '1') return false
   return activateSubscriptionFromPayment({
     orgId,
     sumitCustomerId: 'dev-mock',

@@ -1,35 +1,18 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getTranslations } from 'next-intl/server'
 import { getOrgSubscriptionState } from '@/lib/saas/subscriptions'
-
-async function getOrgSession() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('organization_id, role')
-    .eq('id', user.id)
-    .single()
-  if (!profile) throw new Error('No profile')
-
-  return { userId: user.id, orgId: profile.organization_id as string, role: profile.role }
-}
+import { getOnboardingSession } from '@/lib/auth/onboardingSession'
 
 export async function updateOrgSettings(
   _prevState: { error: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
   const t = await getTranslations('onboarding')
-  const { orgId, role } = await getOrgSession()
+  const { orgId, role } = await getOnboardingSession()
   if (role !== 'owner' && role !== 'admin') return { error: t('errors.noPermission') }
 
   const timezone = (formData.get('timezone') as string)?.trim() || 'Asia/Jerusalem'
@@ -51,7 +34,7 @@ export async function addTeacher(
   formData: FormData
 ): Promise<{ error: string } | null> {
   const t = await getTranslations('onboarding')
-  const { orgId, role } = await getOrgSession()
+  const { orgId, role } = await getOnboardingSession()
   if (role !== 'owner' && role !== 'admin') return { error: t('errors.noPermission') }
 
   const fullName = (formData.get('full_name') as string)?.trim()
@@ -107,7 +90,7 @@ export async function addTeacher(
 
 export async function createOwnerTeacher(): Promise<{ error: string } | null> {
   const t = await getTranslations('onboarding')
-  const { userId, orgId, role } = await getOrgSession()
+  const { userId, orgId, role } = await getOnboardingSession()
   if (role !== 'owner') return { error: t('errors.noPermission') }
 
   const db = createServiceRoleClient()
@@ -137,7 +120,7 @@ export async function updateBasicSettings(
   formData: FormData
 ): Promise<{ error: string } | null> {
   const t = await getTranslations('onboarding')
-  const { orgId, role } = await getOrgSession()
+  const { orgId, role } = await getOnboardingSession()
   if (role !== 'owner' && role !== 'admin') return { error: t('errors.noPermission') }
 
   const noticeHoursFull = parseInt(formData.get('notice_hours') as string) || 24
@@ -175,7 +158,10 @@ export async function updateBasicSettings(
 }
 
 export async function completeOnboarding(): Promise<void> {
-  const { orgId } = await getOrgSession()
+  const { orgId, role } = await getOnboardingSession()
+  if (role !== 'owner') {
+    redirect('/dashboard')
+  }
   const db = createServiceRoleClient()
 
   const state = await getOrgSubscriptionState(orgId)

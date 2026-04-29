@@ -46,6 +46,9 @@ export function LessonNotesSection({
                   <p className="text-gray-700 whitespace-pre-wrap">{note.body}</p>
                   <p className="text-xs text-gray-400">
                     {note.teacherName} · {new Date(note.createdAt).toLocaleDateString('he-IL')}
+                    {note.visibleToParent && (
+                      <span className="ms-1.5 text-[10px] text-primary bg-primary/10 px-1 py-0.5 rounded">גלוי להורה</span>
+                    )}
                   </p>
                 </div>
                 <form action={deleteAction}>
@@ -77,6 +80,10 @@ export function LessonNotesSection({
             placeholder="הוסף הערה על השיעור..."
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
           />
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input type="checkbox" name="visibleToParent" value="true" className="rounded border-gray-300" />
+            הצג להורה
+          </label>
           {addState.error && (
             <p className="text-xs text-red-600">{addState.error}</p>
           )}

@@ -20,6 +20,7 @@ const DASHBOARD_PREFIXES = [
   '/teacher',
   '/homework',
   '/reports',
+  '/onboarding',
   // Sprint 18: superadmin platform shell
   '/admin',
 ]

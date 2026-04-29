@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
 
 export default async function StudentsImportPage() {
-  const { orgId, role } = await getSession()
+  const { role } = await getSession()
   if (role === 'teacher') {
     redirect('/students')
   }
@@ -30,7 +30,7 @@ export default async function StudentsImportPage() {
         }
       />
       <div className="max-w-2xl">
-        <ImportFlow entityType="students" orgId={orgId} />
+        <ImportFlow entityType="students" />
       </div>
     </div>
   )

@@ -20,6 +20,10 @@ export type SumitCheckoutParams = {
   reference: string
   successUrl: string
   failureUrl: string
+  /**
+   * When `SUMIT_CHECKOUT_MOCK=1`, redirects to `${NEXT_PUBLIC_APP_URL}${mockPaymentPath}` instead of `/onboarding/mock-payment`.
+   */
+  mockPaymentPath?: string
 }
 
 interface SumitGenericResponse {
@@ -46,8 +50,10 @@ export async function createSumitHostedCheckoutUrl(
 ): Promise<{ url: string } | { error: string }> {
   if (process.env.SUMIT_CHECKOUT_MOCK === '1') {
     const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'http://localhost:3000'
+    const path = params.mockPaymentPath?.trim() || '/onboarding/mock-payment'
+    const normalized = path.startsWith('/') ? path : `/${path}`
     // In-app simulated checkout page (not an instant redirect to dashboard).
-    return { url: `${base}/onboarding/mock-payment` }
+    return { url: `${base}${normalized}` }
   }
 
   const endpoint =

@@ -16,6 +16,7 @@ export type LessonNote = {
   teacherId: string
   teacherName: string
   body: string
+  visibleToParent: boolean
   createdAt: string
   updatedAt: string
 }
@@ -26,6 +27,7 @@ type NoteRow = {
   lesson_id: string
   teacher_id: string
   body: string
+  visible_to_parent: boolean
   created_at: string
   updated_at: string
   teachers: { profiles: { full_name: string } | null } | null
@@ -39,6 +41,7 @@ function mapNote(row: NoteRow): LessonNote {
     teacherId: row.teacher_id,
     teacherName: (row.teachers?.profiles as { full_name: string } | null)?.full_name ?? '',
     body: row.body,
+    visibleToParent: row.visible_to_parent ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -98,20 +101,65 @@ export async function getNotesForStudent(
   }))
 }
 
+/**
+ * Parent-visible notes for a student — used in portal progress tab.
+ */
+export async function getVisibleNotesForStudent(
+  orgId: string,
+  studentId: string,
+  limit = 10
+): Promise<(LessonNote & { lessonStartAt: string })[]> {
+  const db = createServiceRoleClient()
+
+  const { data: lessonStudents } = await db
+    .from('lesson_students')
+    .select('lesson_id, lessons ( start_at )')
+    .eq('student_id', studentId)
+
+  const lessonIds = (lessonStudents ?? []).map((ls) => ls.lesson_id)
+  if (lessonIds.length === 0) return []
+
+  type LsRow = { lesson_id: string; lessons: { start_at: string } | null }
+  const lessonStartMap = new Map<string, string>(
+    (lessonStudents ?? []).map((ls) => {
+      const r = ls as unknown as LsRow
+      return [r.lesson_id, r.lessons?.start_at ?? '']
+    })
+  )
+
+  const { data, error } = await db
+    .from('lesson_notes')
+    .select('*, teachers ( profiles ( full_name ) )')
+    .eq('organization_id', orgId)
+    .eq('visible_to_parent', true)
+    .in('lesson_id', lessonIds)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw new Error(`[lesson/notes] getVisibleNotesForStudent failed: ${error.message}`)
+
+  return (data ?? []).map((r) => ({
+    ...mapNote(r as NoteRow),
+    lessonStartAt: lessonStartMap.get((r as NoteRow).lesson_id) ?? '',
+  }))
+}
+
 export async function createNote(params: {
   orgId: string
   lessonId: string
   teacherId: string
   body: string
+  visibleToParent?: boolean
 }): Promise<LessonNote> {
   const db = createServiceRoleClient()
   const { data, error } = await db
     .from('lesson_notes')
     .insert({
-      organization_id: params.orgId,
-      lesson_id:       params.lessonId,
-      teacher_id:      params.teacherId,
-      body:            params.body,
+      organization_id:  params.orgId,
+      lesson_id:        params.lessonId,
+      teacher_id:       params.teacherId,
+      body:             params.body,
+      visible_to_parent: params.visibleToParent ?? false,
     })
     .select('*, teachers ( profiles ( full_name ) )')
     .single()

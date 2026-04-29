@@ -5,11 +5,9 @@ import { ParentSearch } from '@/components/dashboard/parents/ParentSearch'
 import { createParent, updateParent, archiveParent, restoreParent, sendPaymentRequestAction } from './actions'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
-import { UserAvatar } from '@/components/ui/user-avatar'
+import { ParentsTableRow } from '@/components/dashboard/parents/ParentsTableRow'
 import {
   NewParentSheet,
-  ParentRowActions,
-  TeacherParentNotesRowActions,
 } from '@/components/dashboard/parents/ParentSheet'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -17,7 +15,6 @@ import { getTranslations } from 'next-intl/server'
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -89,42 +86,18 @@ export default async function ParentsPage(props: {
                   const archiveAction = archiveParent.bind(null, parent.id)
                   const restoreAction = restoreParent.bind(null, parent.id)
                   return (
-                    <TableRow key={parent.id} className="hover:bg-muted/20">
-                      <TableCell className="px-5 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <UserAvatar name={parent.full_name} />
-                          <span className="text-sm font-medium text-foreground">{parent.full_name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-5 py-3.5 text-sm text-muted-foreground font-mono" dir="ltr">
-                        {parent.phone}
-                      </TableCell>
-                      <TableCell className="px-5 py-3.5">
-                        <span
-                          className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
-                            parent.is_active
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-muted text-muted-foreground border-border'
-                          }`}
-                        >
-                          {parent.is_active ? 'פעיל' : 'לא פעיל'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-5 py-3.5">
-                        {isTeacher ? (
-                          <TeacherParentNotesRowActions parent={{ id: parent.id, full_name: parent.full_name, phone: parent.phone, notes: parent.notes }} />
-                        ) : (
-                          <ParentRowActions
-                            parent={parent}
-                            updateAction={updateAction}
-                            archiveAction={archiveAction}
-                            restoreAction={restoreAction}
-                            paymentAction={sendPaymentRequestAction}
-                            canSendPaymentRequest={canSendPaymentRequest}
-                          />
-                        )}
-                      </TableCell>
-                    </TableRow>
+                    <ParentsTableRow
+                      key={parent.id}
+                      parent={parent}
+                      isTeacher={isTeacher}
+                      canSendPaymentRequest={canSendPaymentRequest}
+                      statusActiveLabel={t('statusActive')}
+                      statusInactiveLabel={t('statusInactive')}
+                      updateAction={updateAction}
+                      archiveAction={archiveAction}
+                      restoreAction={restoreAction}
+                      paymentAction={sendPaymentRequestAction}
+                    />
                   )
                 })}
               </TableBody>

@@ -15,12 +15,10 @@ type FlowStep = 'upload' | 'preview' | 'importing' | 'results'
 
 interface ImportFlowProps {
   entityType: EntityType
-  orgId: string
   onComplete?: (insertedCount: number) => void
 }
 
-export function ImportFlow({ entityType, orgId, onComplete }: ImportFlowProps) {
-  void orgId
+export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
   const t = useTranslations('import')
   const tCommon = useTranslations('common.actions')
   const [step, setStep] = useState<FlowStep>('upload')

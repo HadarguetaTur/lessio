@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { Home, CalendarPlus, Receipt, FileText } from 'lucide-react'
+import { Home, CalendarDays, FileText, TrendingUp, MessageCircle } from 'lucide-react'
 
 const TABS = [
   { id: 'home',     label: 'בית',       href: (orgId: string) => `/portal/${orgId}/home`,     icon: Home },
+  { id: 'schedule', label: 'לוח',       href: (orgId: string) => `/portal/${orgId}/schedule`, icon: CalendarDays },
   { id: 'homework', label: 'משימות',    href: (orgId: string) => `/portal/${orgId}/homework`, icon: FileText },
-  { id: 'book',     label: 'קביעה',     href: (orgId: string) => `/portal/${orgId}/book`,     icon: CalendarPlus },
-  { id: 'payments', label: 'תשלומים',   href: (orgId: string) => `/portal/${orgId}/payments`, icon: Receipt },
+  { id: 'progress', label: 'התקדמות',   href: (orgId: string) => `/portal/${orgId}/progress`, icon: TrendingUp },
+  { id: 'messages', label: 'הודעות',    href: (orgId: string) => `/portal/${orgId}/messages`, icon: MessageCircle },
 ]
 
 export function PortalTabBar({ orgId, active }: { orgId: string; active: string }) {

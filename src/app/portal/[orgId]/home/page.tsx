@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CalendarDays, AlertCircle, Plus, Target } from 'lucide-react'
+import { CalendarDays, AlertCircle, Target, ArrowLeft } from 'lucide-react'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getOrgTimezone } from '@/lib/organizations'
@@ -63,7 +63,7 @@ export default async function PortalHomePage({
         .gte('start_at', now)
         .in('lesson_students.student_id', studentIds)
         .order('start_at', { ascending: true })
-        .limit(4)
+        .limit(3)
     : { data: [] }
 
   const parentName = parentResult.data?.full_name ?? ''
@@ -111,6 +111,13 @@ export default async function PortalHomePage({
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
               שיעורים קרובים
             </p>
+            <Link
+              href={`/portal/${orgId}/schedule`}
+              className="text-xs text-primary hover:underline flex items-center gap-0.5"
+            >
+              הכל
+              <ArrowLeft size={12} />
+            </Link>
           </div>
 
           {lessons.length === 0 ? (
@@ -183,14 +190,15 @@ export default async function PortalHomePage({
           </div>
         )}
 
-        {/* Book CTA */}
-        <Link
-          href={`/portal/${orgId}/book`}
-          className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
-        >
-          <Plus size={16} />
-          קבע שיעור חדש
-        </Link>
+        {/* Payments link (when no balance shown above) */}
+        {balance === 0 && (
+          <Link
+            href={`/portal/${orgId}/payments`}
+            className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            היסטוריית תשלומים →
+          </Link>
+        )}
       </main>
 
       {/* GDPR deletion request */}

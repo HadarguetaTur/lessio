@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, GraduationCap, Users } from 'lucide-react'
@@ -12,7 +12,8 @@ import {
 } from '@/components/onboarding/onboardingVisual'
 
 interface ImportStudentsStepProps {
-  orgId: string
+  initialStudents: number
+  initialParents: number
   onNext: () => void
   onBack: () => void
   onCountsChange: (students: number, parents: number) => void
@@ -20,8 +21,10 @@ interface ImportStudentsStepProps {
 
 type Tab = 'students' | 'parents'
 
+/** Snap cumulative counts toward server totals plus import batches (refs avoid clobbering the other tab). */
 export function ImportStudentsStep({
-  orgId,
+  initialStudents,
+  initialParents,
   onNext,
   onBack,
   onCountsChange,
@@ -31,6 +34,20 @@ export function ImportStudentsStep({
   const [tab, setTab] = useState<Tab>('students')
   const [studentsDone, setStudentsDone] = useState(false)
   const [parentsDone, setParentsDone] = useState(false)
+
+  const studentRef = useRef(initialStudents)
+  const parentRef = useRef(initialParents)
+
+  const hasImportActivity = studentsDone || parentsDone
+
+  const pushStudents = (inserted: number) => {
+    studentRef.current += inserted
+    onCountsChange(studentRef.current, parentRef.current)
+  }
+  const pushParents = (inserted: number) => {
+    parentRef.current += inserted
+    onCountsChange(studentRef.current, parentRef.current)
+  }
 
   return (
     <div className="mx-auto w-full max-w-4xl">
@@ -72,20 +89,18 @@ export function ImportStudentsStep({
       {tab === 'students' && (
         <ImportFlow
           entityType="students"
-          orgId={orgId}
           onComplete={(count) => {
             setStudentsDone(true)
-            onCountsChange(count, 0)
+            pushStudents(count)
           }}
         />
       )}
       {tab === 'parents' && (
         <ImportFlow
           entityType="parents"
-          orgId={orgId}
           onComplete={(count) => {
             setParentsDone(true)
-            onCountsChange(0, count)
+            pushParents(count)
           }}
         />
       )}
@@ -95,14 +110,9 @@ export function ImportStudentsStep({
           <ArrowRight size={14} className="ms-1.5" />
           {tNav('back')}
         </Button>
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={onNext}>
-            {tNav('skip')}
-          </Button>
-          <Button className={`h-11 px-6 font-semibold ${onboardingGradientCta}`} onClick={onNext}>
-            {tNav('next')}
-          </Button>
-        </div>
+        <Button className={`h-11 px-6 font-semibold ${onboardingGradientCta}`} onClick={onNext}>
+          {hasImportActivity ? tNav('next') : tNav('skip')}
+        </Button>
       </div>
     </div>
   )

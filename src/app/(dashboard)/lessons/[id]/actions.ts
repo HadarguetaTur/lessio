@@ -326,6 +326,7 @@ export async function addLessonNote(
       lessonId,
       teacherId,
       body: parsed.data.body,
+      visibleToParent: formData.get('visibleToParent') === 'true',
     })
     revalidatePath(`/lessons/${lessonId}`)
     return { error: null, success: true }

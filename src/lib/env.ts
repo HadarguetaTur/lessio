@@ -51,6 +51,8 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   // Sprint 25: Resend email delivery
   'RESEND_API_KEY',
   'RESEND_FROM_EMAIL',
+  // SaaS onboarding: stub vs Sumit-hosted paid checkout UI
+  'NEXT_PUBLIC_ONBOARDING_PAID_CHECKOUT',
 ]
 
 /**

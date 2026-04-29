@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
 
 export default async function TeachersImportPage() {
-  const { orgId, role } = await getSession()
+  const { role } = await getSession()
   if (role !== 'owner' && role !== 'admin') {
     return <p>אין הרשאה</p>
   }
@@ -26,7 +26,7 @@ export default async function TeachersImportPage() {
         }
       />
       <div className="max-w-2xl">
-        <ImportFlow entityType="teachers" orgId={orgId} />
+        <ImportFlow entityType="teachers" />
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useActionState } from 'react'
+import { useState, useActionState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +20,6 @@ type Mode = 'choose' | 'manual' | 'import'
 
 interface TeachersStepProps {
   teachers: { id: string; full_name: string }[]
-  orgId: string
   onNext: () => void
   onBack: () => void
   onCountChange: (count: number) => void
@@ -28,7 +27,6 @@ interface TeachersStepProps {
 
 export function TeachersStep({
   teachers: initialTeachers,
-  orgId,
   onNext,
   onBack,
   onCountChange,
@@ -36,9 +34,11 @@ export function TeachersStep({
   const t = useTranslations('onboarding.teachers')
   const tNav = useTranslations('onboarding.nav')
   const [mode, setMode] = useState<Mode>('choose')
+  const [soloError, setSoloError] = useState<string | null>(null)
   const [addedTeachers, setAddedTeachers] = useState<string[]>(
     initialTeachers.map((row) => row.full_name)
   )
+  const importExtraRef = useRef(0)
 
   const [addState, addAction, addPending] = useActionState(
     async (_prev: { error: string } | null, formData: FormData) => {
@@ -46,8 +46,11 @@ export function TeachersStep({
       if (!result) {
         const name = (formData.get('full_name') as string)?.trim()
         if (name) {
-          setAddedTeachers((prev) => [...prev, name])
-          onCountChange(addedTeachers.length + 1)
+          setAddedTeachers((prev) => {
+            const next = [...prev, name]
+            onCountChange(next.length + importExtraRef.current)
+            return next
+          })
         }
       }
       return result
@@ -56,7 +59,12 @@ export function TeachersStep({
   )
 
   const handleSoloTeacher = async () => {
-    await createOwnerTeacher()
+    setSoloError(null)
+    const result = await createOwnerTeacher()
+    if (result?.error) {
+      setSoloError(result.error)
+      return
+    }
     onCountChange(1)
     onNext()
   }
@@ -113,6 +121,13 @@ export function TeachersStep({
           </button>
         </div>
 
+        {soloError && (
+          <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-sm text-destructive">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden />
+            <span>{soloError}</span>
+          </div>
+        )}
+
         <div className="flex justify-between mt-8">
           <Button variant="outline" onClick={onBack}>
             <ArrowRight size={14} className="ms-1.5" />
@@ -136,9 +151,9 @@ export function TeachersStep({
 
         <ImportFlow
           entityType="teachers"
-          orgId={orgId}
           onComplete={(count) => {
-            onCountChange(addedTeachers.length + count)
+            importExtraRef.current += count
+            onCountChange(addedTeachers.length + importExtraRef.current)
           }}
         />
 

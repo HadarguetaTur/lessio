@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getSaasPlanByName } from '@/lib/saas/plans'
 import type { BeginPaidCheckoutSummary, SaasPlanName } from '@/lib/saas/types'
+import { getOwnerOnboardingSession } from '@/lib/auth/onboardingSession'
 import {
   upsertTrialSubscription,
   upsertPendingPaymentSubscription,
@@ -17,30 +18,15 @@ import {
   getSumitCredentialsFromEnv,
 } from '@/lib/saas/sumit-checkout'
 
-async function getOwnerOrgSession() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('organization_id, role')
-    .eq('id', user.id)
-    .single()
-  if (!profile?.organization_id) throw new Error('No profile')
-  if (profile.role !== 'owner') throw new Error('Owner only')
-
-  return { userId: user.id, orgId: profile.organization_id as string }
-}
 
 const planNameSchema = z.enum(['free', 'basic', 'advanced', 'custom'])
 const billingIntervalSchema = z.enum(['monthly', 'yearly'])
 
 export async function startFreeTrialSaas(): Promise<{ error: string } | { ok: true }> {
+  let orgId: string
   try {
-    await getOwnerOrgSession()
+    ;({ orgId } = await getOwnerOnboardingSession())
   } catch {
     return { error: 'אין הרשאה' }
   }
@@ -49,7 +35,6 @@ export async function startFreeTrialSaas(): Promise<{ error: string } | { ok: tr
   if (!plan) return { error: 'תוכנית לא נמצאה' }
 
   try {
-    const { orgId } = await getOwnerOrgSession()
     await upsertTrialSubscription(orgId, plan.id)
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'שגיאה'
@@ -72,7 +57,7 @@ export async function beginPaidSaasCheckout(
 
   let orgId: string
   try {
-    ;({ orgId } = await getOwnerOrgSession())
+    ;({ orgId } = await getOwnerOnboardingSession())
   } catch {
     return { error: 'אין הרשאה' }
   }
@@ -180,7 +165,7 @@ export async function completeMockSaasCheckoutAction(): Promise<void> {
   }
   let orgId: string
   try {
-    ;({ orgId } = await getOwnerOrgSession())
+    ;({ orgId } = await getOwnerOnboardingSession())
   } catch {
     redirect('/onboarding')
   }
@@ -199,7 +184,7 @@ export async function completeMockSaasCheckoutAction(): Promise<void> {
 export async function cancelPendingSaasCheckoutAction(): Promise<void> {
   let orgId: string
   try {
-    ;({ orgId } = await getOwnerOrgSession())
+    ;({ orgId } = await getOwnerOnboardingSession())
   } catch {
     redirect('/onboarding')
   }
@@ -232,7 +217,7 @@ export async function submitCustomSaasPlanInquiry(
 
   let orgId: string
   try {
-    ;({ orgId } = await getOwnerOrgSession())
+    ;({ orgId } = await getOwnerOnboardingSession())
   } catch {
     return { error: 'אין הרשאה' }
   }
@@ -254,7 +239,7 @@ export async function submitCustomSaasPlanInquiry(
 export async function checkSaasActivationAndComplete(): Promise<'dashboard' | 'pending'> {
   let orgId: string
   try {
-    ;({ orgId } = await getOwnerOrgSession())
+    ;({ orgId } = await getOwnerOnboardingSession())
   } catch {
     return 'pending'
   }
@@ -275,7 +260,7 @@ export async function applyPaymentCallbackQuery(params: {
 }): Promise<'dashboard' | 'pending' | 'failed'> {
   let orgId: string
   try {
-    ;({ orgId } = await getOwnerOrgSession())
+    ;({ orgId } = await getOwnerOnboardingSession())
   } catch {
     return 'failed'
   }

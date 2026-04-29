@@ -11,12 +11,12 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { Button } from '@/components/ui/button'
 import { TeacherEditForm } from './TeacherEditForm'
 import { cn } from '@/lib/utils'
+import type { Teacher } from '@/lib/teachers'
 import {
   fetchTeacherForSheet,
   updateTeacher,
   archiveTeacher,
   restoreTeacher,
-  type Teacher,
 } from '@/app/(dashboard)/teachers/actions'
 
 interface TeacherDetailSheetProps {

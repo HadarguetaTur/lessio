@@ -127,6 +127,7 @@
     "reportsLessons": "Lessons",
     "reportsDebt": "Debt",
     "reportsTeachers": "Teachers",
+    "reportsTeacherPerformance": "Teacher Performance",
     "reportsStudents": "Students",
     "settingsWhatsApp": "WhatsApp",
     "settingsMessages": "Messages",
@@ -185,7 +186,17 @@
       "activeStudents": "Active Students",
       "cancellationRate": "Cancellation Rate",
       "atRiskStudents": "At-Risk Students",
-      "newLeads": "New Leads This Month"
+      "newLeads": "New Leads This Month",
+      "avgRevenuePerStudent": "Avg Revenue / Student",
+      "lessonsPerTeacher": "Lessons / Teacher",
+      "leadConversionRate": "Lead Conversion Rate"
+    },
+    "forecast": {
+      "title": "Monthly Forecast",
+      "actual": "Actual so far",
+      "projected": "Projected remaining",
+      "total": "Total projected",
+      "atRisk": "At risk"
     },
     "todayStatus": "Today's Status",
     "todayLessons": "Today's Lessons",
@@ -886,6 +897,18 @@
       "atRiskBannerTitle": "At-risk students",
       "pageSubtitle": "{count, plural, one {# active student} other {# active students}}",
       "pageSubtitleWithRisk": "{count, plural, one {# active student} other {# active students}} · {atRisk} at risk (no lesson in 30 days)"
+    },
+    "teacherPerformance": {
+      "title": "Teacher Performance",
+      "noData": "No data to display",
+      "teacher": "Teacher",
+      "lessonsDelivered": "Lessons Delivered",
+      "cancellationRate": "Cancellation Rate",
+      "noShows": "No-Shows",
+      "students": "Students",
+      "avgMonthly": "Avg Monthly",
+      "orgAvgLessons": "Org avg lessons",
+      "orgAvgCancellation": "Org avg cancellation"
     }
   },
   "settings": {

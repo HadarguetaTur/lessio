@@ -127,7 +127,8 @@
     "reportsLessons": "שיעורים",
     "reportsDebt": "חובות",
     "reportsTeachers": "מורים",
-    "reportsStudents": "תלמידים",
+    "reportsTeacherPerformance": "ביצועי מורים",
+    "reportsStudents": "תלמידי��",
     "settingsWhatsApp": "WhatsApp",
     "settingsMessages": "הודעות",
     "settingsPayment": "תשלומים",
@@ -185,7 +186,17 @@
       "activeStudents": "תלמידים פעילים",
       "cancellationRate": "שיעורים שבוטלו",
       "atRiskStudents": "תלמידים בסיכון",
-      "newLeads": "לידים חדשים החודש"
+      "newLeads": "לידים חדשים החודש",
+      "avgRevenuePerStudent": "ממוצע הכנסה לתלמיד",
+      "lessonsPerTeacher": "שיעורים למורה",
+      "leadConversionRate": "שיעור המרת לידים"
+    },
+    "forecast": {
+      "title": "תחזית החודש",
+      "actual": "בפועל עד כה",
+      "projected": "צפוי מהשיעורים הבאים",
+      "total": "סה\"כ צפי",
+      "atRisk": "בסיכון"
     },
     "todayStatus": "סטטוס היום",
     "todayLessons": "שיעורים — היום",
@@ -886,6 +897,18 @@
       "atRiskBannerTitle": "תלמידים בסיכון",
       "pageSubtitle": "{count} תלמידים פעילים",
       "pageSubtitleWithRisk": "{count} תלמידים פעילים · {atRisk} בסיכון (אין שיעור ב-30 יום)"
+    },
+    "teacherPerformance": {
+      "title": "ביצועי מורים",
+      "noData": "אין נתונים לתצוגה",
+      "teacher": "מורה",
+      "lessonsDelivered": "שיעורים שהתקיימו",
+      "cancellationRate": "שיעור ביטולים",
+      "noShows": "לא הגיעו",
+      "students": "תלמידים",
+      "avgMonthly": "ממוצע חודשי",
+      "orgAvgLessons": "ממוצע ארגוני שיעורים",
+      "orgAvgCancellation": "ממוצע ארגוני ביטולים"
     }
   },
   "settings": {

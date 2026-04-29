@@ -1,6 +1,6 @@
 
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprint 26 complete, Sprint 27 current*
+*Updated: Sprint 27 complete, Sprint 28 current*
 
 ---
 
@@ -34,6 +34,7 @@
 | 24 | Pedagogical depth (homework v2, lesson notes, student profile, learning goals) | ✅ Done |
 | 25 | AI Intelligence + Multi-Channel Communications (multi-provider AI, email, in-app notifications) | ✅ Done |
 | 26 | Parent Portal 2.0 (schedule, progress, messaging) | ✅ Done |
+| 27 | Billing & Accounting Pro (PDF invoices, tax docs, quotas, credit notes) | ✅ Done |
 
 ---
 
@@ -191,7 +192,7 @@ CREATE TABLE in_app_notifications (
 ---
 
 ## Sprint 28 — Analytics Pro
-**Status:** Planned
+**Status:** Current Sprint
 **Depends on:** Sprint 27 complete
 
 **Goal:** Give business owners the visibility they need to make data-driven decisions — trends, forecasts, drill-downs, and teacher performance.

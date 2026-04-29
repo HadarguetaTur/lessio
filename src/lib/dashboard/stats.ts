@@ -26,6 +26,140 @@ type LessonStudentRow = {
   lesson_students: { student_id: string }[] | null
 }
 
+export type Trend = {
+  direction: 'up' | 'down' | 'neutral'
+  label: string
+}
+
+export type DashboardStatsWithDeltas = DashboardStats & {
+  deltas: {
+    revenue: Trend
+    lessons: Trend
+    students: Trend
+    leads: Trend
+  }
+  avgRevenuePerStudent: number
+  lessonsPerTeacher: number
+  leadConversionRate: number
+}
+
+function computeTrend(current: number, previous: number): Trend {
+  if (previous === 0 && current === 0) return { direction: 'neutral', label: '\u2014' }
+  if (previous === 0) return { direction: 'up', label: '+100%' }
+  const pct = Math.round(((current - previous) / previous) * 100)
+  if (pct === 0) return { direction: 'neutral', label: '\u2014' }
+  if (pct > 0) return { direction: 'up', label: `+${pct}%` }
+  return { direction: 'down', label: `${pct}%` }
+}
+
+export async function getDashboardStatsWithDeltas(
+  orgId: string,
+  timezone: string,
+  _locale?: string
+): Promise<DashboardStatsWithDeltas> {
+  const db = createServiceRoleClient()
+  const now = DateTime.now().setZone(timezone)
+
+  // Current month stats
+  const current = await getDashboardStats(orgId, timezone)
+
+  // Previous month boundaries
+  const prevMonthStart = now.minus({ months: 1 }).startOf('month').toUTC().toISO()!
+  const prevMonthEnd = now.startOf('month').toUTC().toISO()!
+
+  // Previous month queries
+  const [prevRevenueRes, prevLessonsRes, prevStudentsRes, prevLeadsRes] = await Promise.all([
+    db
+      .from('charges')
+      .select('amount')
+      .eq('organization_id', orgId)
+      .eq('status', 'paid')
+      .gte('paid_at', prevMonthStart)
+      .lt('paid_at', prevMonthEnd),
+    db
+      .from('lessons')
+      .select('status')
+      .eq('organization_id', orgId)
+      .neq('status', 'cancelled')
+      .gte('start_at', prevMonthStart)
+      .lt('start_at', prevMonthEnd),
+    db
+      .from('lessons')
+      .select('lesson_students(student_id)')
+      .eq('organization_id', orgId)
+      .neq('status', 'cancelled')
+      .gte('start_at', prevMonthStart)
+      .lt('start_at', prevMonthEnd),
+    db
+      .from('leads')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+      .gte('created_at', prevMonthStart)
+      .lt('created_at', prevMonthEnd),
+  ])
+
+  const prevRevenue = (prevRevenueRes.data ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
+  const prevLessons = (prevLessonsRes.data ?? []).length
+  const prevStudents = new Set(
+    ((prevStudentsRes.data ?? []) as LessonStudentRow[]).flatMap((lesson) =>
+      (lesson.lesson_students ?? []).map((ls) => ls.student_id)
+    )
+  ).size
+  const prevLeads = prevLeadsRes.count ?? 0
+
+  // New KPIs
+  // Active teachers count
+  const teachersRes = await db
+    .from('teachers')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+
+  const activeTeachersCount = teachersRes.count ?? 0
+
+  // Lead conversion rate
+  const monthStart = now.startOf('month').toUTC().toISO()!
+  const [convertedLeadsRes, totalLeadsRes] = await Promise.all([
+    db
+      .from('leads')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+      .eq('status', 'converted')
+      .gte('created_at', monthStart),
+    db
+      .from('leads')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+      .gte('created_at', monthStart),
+  ])
+
+  const convertedLeads = convertedLeadsRes.count ?? 0
+  const totalLeads = totalLeadsRes.count ?? 0
+
+  const avgRevenuePerStudent = current.activeStudents > 0
+    ? Math.round(current.monthlyRevenue / current.activeStudents)
+    : 0
+  const lessonsPerTeacher = activeTeachersCount > 0
+    ? Math.round((current.lessonsThisMonth / activeTeachersCount) * 10) / 10
+    : 0
+  const leadConversionRate = totalLeads > 0
+    ? Math.round((convertedLeads / totalLeads) * 100)
+    : 0
+
+  return {
+    ...current,
+    deltas: {
+      revenue: computeTrend(current.monthlyRevenue, prevRevenue),
+      lessons: computeTrend(current.lessonsThisMonth, prevLessons),
+      students: computeTrend(current.activeStudents, prevStudents),
+      leads: computeTrend(current.newLeadsThisMonth, prevLeads),
+    },
+    avgRevenuePerStudent,
+    lessonsPerTeacher,
+    leadConversionRate,
+  }
+}
+
 export async function getDashboardStats(orgId: string, timezone: string): Promise<DashboardStats> {
   const db = createServiceRoleClient()
 

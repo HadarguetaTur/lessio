@@ -190,11 +190,12 @@ export function Sidebar({
   ]
 
   const reportsItems: NavItem[] = [
-    { href: '/reports/revenue',  label: t('reportsRevenue'),  icon: BarChart2,     roles: ['owner', 'admin'] },
-    { href: '/reports/lessons',  label: t('reportsLessons'),  icon: BookOpen,      roles: ['owner', 'admin'] },
-    { href: '/reports/debt',     label: t('reportsDebt'),     icon: Receipt,       roles: ['owner', 'admin'] },
-    { href: '/reports/teachers', label: t('reportsTeachers'), icon: UserRound,     roles: ['owner', 'admin'] },
-    { href: '/reports/students', label: t('reportsStudents'), icon: GraduationCap, roles: ['owner', 'admin'] },
+    { href: '/reports/revenue',             label: t('reportsRevenue'),             icon: BarChart2,     roles: ['owner', 'admin'] },
+    { href: '/reports/lessons',             label: t('reportsLessons'),             icon: BookOpen,      roles: ['owner', 'admin'] },
+    { href: '/reports/debt',                label: t('reportsDebt'),                icon: Receipt,       roles: ['owner', 'admin'] },
+    { href: '/reports/teachers',            label: t('reportsTeachers'),            icon: UserRound,     roles: ['owner', 'admin'] },
+    { href: '/reports/teacher-performance', label: t('reportsTeacherPerformance'),  icon: UserRound,     roles: ['owner', 'admin'] },
+    { href: '/reports/students',            label: t('reportsStudents'),            icon: GraduationCap, roles: ['owner', 'admin'] },
   ]
 
   const settingsItems: NavItem[] = [

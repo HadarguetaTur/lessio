@@ -3,6 +3,7 @@ import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { z } from 'zod'
 import type { EntityType, ValidatedRow } from './validators'
 import { normalizeStatus, normalizeLessonType, normalizeDayOfWeek } from './validators'
+import { requireQuotaCapacity } from '@/lib/saas/quota'
 
 export interface ImportResult {
   inserted: number
@@ -89,6 +90,12 @@ export async function executeImport(
 ): Promise<ImportResult> {
   const db = createServiceRoleClient()
   const result: ImportResult = { inserted: 0, updated: 0, skipped: 0, errors: [] }
+
+  // Quota enforcement for student imports
+  if (entityType === 'students') {
+    const insertCount = validRows.filter((r) => r.status !== 'error').length
+    await requireQuotaCapacity(orgId, 'students', insertCount)
+  }
 
   const rows = validRows.filter((r) => r.status !== 'error')
 

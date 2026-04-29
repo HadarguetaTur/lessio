@@ -6,7 +6,6 @@ import { getSession } from '@/lib/auth/session'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getTeacherById, type Teacher } from '@/lib/teachers'
-export type { Teacher }
 
 type ActionState = { error: string } | null
 

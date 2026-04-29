@@ -31,6 +31,7 @@ import {
   Banknote,
   Languages,
   Wallet,
+  Building2,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 import type { SaasFeatures } from '@/lib/saas/types'
@@ -198,6 +199,7 @@ export function Sidebar({
 
   const settingsItems: NavItem[] = [
     { href: '/account/billing',              label: t('accountBilling'),      icon: Wallet,           roles: ['owner'] },
+    { href: '/settings/business-profile',    label: t('settingsBusinessProfile'), icon: Building2,    roles: ['owner'] },
     { href: '/settings/whatsapp',            label: t('settingsWhatsApp'),    icon: MessageCircle,  roles: ['owner'] },
     { href: '/settings/message-templates',   label: t('settingsMessages'),    icon: MessageSquare,  roles: ['owner'] },
     { href: '/settings/payment',             label: t('settingsPayment'),     icon: CreditCard,     roles: ['owner'] },

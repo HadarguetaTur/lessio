@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
+import { z } from 'zod'
 import type { EntityType, ValidatedRow } from './validators'
 import { normalizeStatus, normalizeLessonType, normalizeDayOfWeek } from './validators'
 
@@ -11,10 +12,47 @@ export interface ImportResult {
   /** Number of parent–student relationships created (parents and family-list imports) */
   linkedRelationships?: number
   /** Student names that could not be linked because they don't exist in the DB */
-  failedLinks?: { row: number; name: string }[]
+  failedLinks?: { row: number; name: string; message?: string }[]
 }
 
 type NameIdMap = Map<string, string>
+
+async function clearStudentPrimaryParents(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string,
+  studentId: string
+): Promise<void> {
+  await db
+    .from('relationships')
+    .update({ is_primary: false })
+    .eq('organization_id', orgId)
+    .eq('student_id', studentId)
+    .eq('is_primary', true)
+}
+
+function normalizedImportedRelationType(v: string | null | undefined): string | null {
+  if (!v?.trim()) return null
+  const s = v.trim().toLowerCase()
+  const map: Record<string, string> = {
+    mother: 'mother',
+    father: 'father',
+    guardian: 'guardian',
+    other: 'other',
+    אמא: 'mother',
+    אבא: 'father',
+    אפוטרופוס: 'guardian',
+    אחר: 'other',
+  }
+  const out = map[s]
+  return out ?? null
+}
+
+function parseOptionalImportEmail(raw: string | null | undefined): string | null {
+  const trimmed = raw?.trim() ?? ''
+  if (!trimmed) return null
+  const p = z.string().email().safeParse(trimmed)
+  return p.success ? p.data : null
+}
 
 function buildNameLookup(
   records: { id: string; name: string }[]
@@ -191,6 +229,19 @@ async function importParents(
       throw e
     }
 
+    const relationTypeCol = normalizedImportedRelationType(row.data.relation_type)
+    const emailCol = parseOptionalImportEmail(row.data.email)
+    let secondPhoneCol: string | null = null
+    if (row.data.second_phone?.trim()) {
+      try {
+        secondPhoneCol = normalizePhone(row.data.second_phone)
+      } catch {
+        result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidPhone') })
+        result.skipped++
+        continue
+      }
+    }
+
     let parentId: string
 
     if (row.existingId) {
@@ -198,7 +249,12 @@ async function importParents(
         .from('parents')
         .update({
           full_name: row.data.full_name!,
+          phone,
           notes: row.data.notes || null,
+          email: emailCol,
+          second_phone: secondPhoneCol,
+          address: row.data.address?.trim() || null,
+          relation_type: relationTypeCol,
         })
         .eq('id', row.existingId)
 
@@ -228,6 +284,10 @@ async function importParents(
           full_name: row.data.full_name!,
           phone,
           notes: row.data.notes || null,
+          email: emailCol,
+          second_phone: secondPhoneCol,
+          address: row.data.address?.trim() || null,
+          relation_type: relationTypeCol,
         })
         .select('id')
         .single()
@@ -256,16 +316,31 @@ async function importParents(
       for (const name of names) {
         const studentId = findInMap(studentMap, name)
         if (studentId) {
-          await db.from('relationships').insert({
-            organization_id: orgId,
-            parent_id: parentId,
-            student_id: studentId,
-            is_primary: true,
-          })
-          result.linkedRelationships = (result.linkedRelationships ?? 0) + 1
+          await clearStudentPrimaryParents(db, orgId, studentId)
+          const { error: relUpsertErr } = await db.from('relationships').upsert(
+            {
+              organization_id: orgId,
+              parent_id: parentId,
+              student_id: studentId,
+              is_primary: true,
+            },
+            { onConflict: 'parent_id,student_id' }
+          )
+          if (relUpsertErr) {
+            result.errors.push({
+              row: row.rowIndex + 2,
+              message: t('executeErrors.dbError', { message: relUpsertErr.message }),
+            })
+          } else {
+            result.linkedRelationships = (result.linkedRelationships ?? 0) + 1
+          }
         } else {
           result.failedLinks = result.failedLinks ?? []
-          result.failedLinks.push({ row: row.rowIndex + 2, name })
+          result.failedLinks.push({
+            row: row.rowIndex + 2,
+            name,
+            message: t('warnings.studentNotFound', { name }),
+          })
         }
       }
     }
@@ -626,6 +701,13 @@ async function importLessonHistory(
   return result
 }
 
+type ParentUpsertExtras = {
+  email: string | null
+  second_phone: string | null
+  address: string | null
+  relation_type: string | null
+}
+
 async function upsertParent(
   db: ReturnType<typeof createServiceRoleClient>,
   orgId: string,
@@ -636,13 +718,32 @@ async function upsertParent(
   phoneToParentId: Map<string, string>,
   result: ImportResult,
   rowIndex: number,
-  t: ImportTranslateFn
+  t: ImportTranslateFn,
+  extras?: ParentUpsertExtras | null
 ): Promise<string | null> {
+  const extrasSafe: ParentUpsertExtras = extras ?? {
+    email: null,
+    second_phone: null,
+    address: null,
+    relation_type: null,
+  }
+
   const cached = phoneToParentId.get(phone)
   if (cached) return cached
 
   if (existingId) {
-    await db.from('parents').update({ full_name: name, notes }).eq('id', existingId)
+    await db
+      .from('parents')
+      .update({
+        full_name: name,
+        phone,
+        notes,
+        email: extrasSafe.email,
+        second_phone: extrasSafe.second_phone,
+        address: extrasSafe.address,
+        relation_type: extrasSafe.relation_type,
+      })
+      .eq('id', existingId)
     result.updated++
     phoneToParentId.set(phone, existingId)
     return existingId
@@ -650,13 +751,21 @@ async function upsertParent(
 
   const { data: parent, error } = await db
     .from('parents')
-    .insert({ organization_id: orgId, full_name: name, phone, notes })
+    .insert({
+      organization_id: orgId,
+      full_name: name,
+      phone,
+      notes,
+      email: extrasSafe.email,
+      second_phone: extrasSafe.second_phone,
+      address: extrasSafe.address,
+      relation_type: extrasSafe.relation_type,
+    })
     .select('id')
     .single()
 
   if (error) {
     if (error.code === '23505') {
-      // Concurrent insert: try to fetch the existing parent
       const { data: existing } = await db
         .from('parents')
         .select('id')
@@ -702,6 +811,24 @@ async function importFamilyList(
       continue
     }
 
+    let primarySecondParsed: string | null = null
+    if (row.data.parent_second_phone?.trim()) {
+      try {
+        primarySecondParsed = normalizePhone(row.data.parent_second_phone)
+      } catch {
+        result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidPhone') })
+        result.skipped++
+        continue
+      }
+    }
+
+    const parentExtrasPrimary: ParentUpsertExtras = {
+      email: parseOptionalImportEmail(row.data.parent_email),
+      second_phone: primarySecondParsed,
+      address: row.data.parent_address?.trim() || null,
+      relation_type: normalizedImportedRelationType(row.data.parent_relation_type),
+    }
+
     const parentId = await upsertParent(
       db, orgId,
       row.data.parent_name!,
@@ -711,7 +838,8 @@ async function importFamilyList(
       phoneToParentId,
       result,
       row.rowIndex + 2,
-      t
+      t,
+      parentExtrasPrimary
     )
     if (!parentId) continue
 
@@ -728,7 +856,8 @@ async function importFamilyList(
           phoneToParentId,
           result,
           row.rowIndex + 2,
-          t
+          t,
+          null
         )
       } catch { /* invalid phone2 — skip silently, primary parent still processes */ }
     }
@@ -761,14 +890,18 @@ async function importFamilyList(
     }
 
     // --- Relationship: primary parent → student ---
-    const { error: relError } = await db.from('relationships').insert({
-      organization_id: orgId,
-      parent_id: parentId,
-      student_id: studentId,
-      is_primary: true,
-    })
+    await clearStudentPrimaryParents(db, orgId, studentId)
+    const { error: relError } = await db.from('relationships').upsert(
+      {
+        organization_id: orgId,
+        parent_id: parentId,
+        student_id: studentId,
+        is_primary: true,
+      },
+      { onConflict: 'parent_id,student_id' }
+    )
     if (!relError || relError.code === '23505') {
-      result.linkedRelationships!++
+      result.linkedRelationships = (result.linkedRelationships ?? 0) + 1
     }
 
     // --- Relationship: second parent → student ---

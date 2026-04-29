@@ -6,6 +6,7 @@ import { getRevenueReport } from '@/lib/reports/revenue'
 import { parseReportMonths } from '@/lib/reports/params'
 import { RevenueChart } from '@/components/reports/RevenueChart'
 import { CsvDownloadButton } from '@/components/reports/CsvDownloadButton'
+import AccountingExportButton from './AccountingExportButton'
 import { PeriodSelector } from '@/components/reports/PeriodSelector'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
@@ -56,6 +57,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <PeriodSelector current={months} />
           <CsvDownloadButton report="revenue" params={{ months: String(months) }} />
+          <AccountingExportButton />
           </div>
         }
       />

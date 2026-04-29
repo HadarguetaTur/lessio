@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/session'
+import { requireFeature } from '@/lib/saas/featureGate'
 import { createTemplate, updateTemplate, deleteTemplate } from '@/lib/homework'
 
 export type ActionState = {
@@ -30,6 +31,8 @@ export async function createTemplateAction(
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return { error: 'אין הרשאה' }
   }
+
+  await requireFeature(orgId, 'homework')
 
   const raw = {
     title:   formData.get('title'),
@@ -69,6 +72,8 @@ export async function updateTemplateAction(
     return { error: 'אין הרשאה' }
   }
 
+  await requireFeature(orgId, 'homework')
+
   const raw = {
     title:   formData.get('title'),
     subject: formData.get('subject') || undefined,
@@ -104,6 +109,8 @@ export async function deleteTemplateAction(
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return { error: 'אין הרשאה' }
   }
+
+  await requireFeature(orgId, 'homework')
 
   try {
     await deleteTemplate(orgId, templateId)

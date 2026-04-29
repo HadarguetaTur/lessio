@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth/session'
+import { requireFeature } from '@/lib/saas/featureGate'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getRevenueReport } from '@/lib/reports/revenue'
@@ -17,7 +18,9 @@ import { getLessonsReport } from '@/lib/reports/lessons'
 import { getDebtReport } from '@/lib/reports/debt'
 import { getTeachersReport } from '@/lib/reports/teachers'
 import { getStudentsReport } from '@/lib/reports/students'
+import { getAccountingExport } from '@/lib/reports/accounting'
 import { parseReportMonths } from '@/lib/reports/params'
+import { DateTime } from 'luxon'
 
 const BOM = '\uFEFF'
 
@@ -42,6 +45,9 @@ export async function GET(request: NextRequest, { params }: Context) {
   }
 
   const { report } = await params
+  if (report !== 'revenue') {
+    await requireFeature(session.orgId, 'full_reports')
+  }
   const { searchParams } = request.nextUrl
   const orgId = session.orgId
   const timezone = await getOrgTimezone(orgId)
@@ -124,6 +130,30 @@ export async function GET(request: NextRequest, { params }: Context) {
           ])
         )
         filename = 'students.csv'
+        break
+      }
+      case 'accounting': {
+        const from = searchParams.get('from') ?? DateTime.now().setZone(timezone).startOf('month').toISODate()!
+        const to = searchParams.get('to') ?? DateTime.now().setZone(timezone).toISODate()!
+        const rows = await getAccountingExport(orgId, timezone, { from, to })
+        csv = toCsv(
+          ['Type / סוג', 'Date / תאריך', 'Document # / מס׳ מסמך', 'Customer / לקוח', 'Tax ID / ח.פ.', 'Description / תיאור', 'Net / סכום ללא מע״מ', 'VAT / מע״מ', 'Total / סה״כ', 'Status / סטטוס', 'Paid On / שולם בתאריך', 'Receipt # / מס׳ קבלה'],
+          rows.map(r => [
+            r.type === 'invoice' ? 'חשבונית / Invoice' : 'זיכוי / Credit Note',
+            r.date,
+            r.documentNumber,
+            r.customerName,
+            r.customerTaxId,
+            r.description,
+            r.amountNet,
+            r.vatAmount,
+            r.amountGross,
+            r.paymentStatus === 'paid' ? 'שולם / Paid' : 'פתוח / Open',
+            r.paymentDate,
+            r.receiptNumber,
+          ])
+        )
+        filename = 'accounting.csv'
         break
       }
       default:

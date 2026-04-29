@@ -36,7 +36,7 @@ export async function issueReceiptForCharge(
   const { data: charge, error: chargeError } = await db
     .from('charges')
     .select(
-      'id, amount, charge_type, billing_month, notes, status, receipt_issued_at, parent_id, parents(full_name, phone), organizations(name, timezone, whatsapp_phone_number_id, whatsapp_access_token)'
+      'id, amount, charge_type, billing_month, notes, status, receipt_issued_at, parent_id, parents(full_name, phone, tax_id), organizations(name, timezone, whatsapp_phone_number_id, whatsapp_access_token, receipt_document_type, default_vat_rate)'
     )
     .eq('id', chargeId)
     .eq('organization_id', orgId)
@@ -76,13 +76,15 @@ export async function issueReceiptForCharge(
 
   // ── 4. Issue receipt via provider ─────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const parent = (charge as any).parents as { full_name: string; phone: string | null } | null
+  const parent = (charge as any).parents as { full_name: string; phone: string | null; tax_id: string | null } | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const org = (charge as any).organizations as {
     name: string
     timezone: string | null
     whatsapp_phone_number_id: string | null
     whatsapp_access_token: string | null
+    receipt_document_type: string | null
+    default_vat_rate: number | null
   } | null
 
   const parentName = parent?.full_name ?? 'לקוח'
@@ -103,13 +105,21 @@ export async function issueReceiptForCharge(
           ? ((charge.notes as string | null) ?? `חיוב ידני — ${parentName}`).trim()
           : `תשלום שיעור — ${parentName}`
 
-  const { receiptUrl } = await provider.issueReceipt({
+  const documentType = (org?.receipt_document_type === 'tax_invoice' ? 'tax_invoice' : 'receipt') as import('./index').DocumentType
+  const vatRate = Number(org?.default_vat_rate ?? 0)
+  const vatAmount = documentType === 'tax_invoice' ? Math.round(charge.amount * vatRate) / 100 : undefined
+  const customerTaxId = parent?.tax_id ?? undefined
+
+  const { receiptUrl, documentType: issuedDocType } = await provider.issueReceipt({
     chargeId,
     amount: charge.amount,
     parentName,
     description,
     orgName,
     date: today,
+    documentType,
+    vatAmount,
+    customerTaxId,
   })
 
   // ── 5. Atomic update — only if not already issued ─────────────────────────
@@ -118,6 +128,7 @@ export async function issueReceiptForCharge(
     .update({
       receipt_url: receiptUrl,
       receipt_issued_at: new Date().toISOString(),
+      document_type: issuedDocType,
     })
     .eq('id', chargeId)
     .is('receipt_issued_at', null) // atomic guard against concurrent calls

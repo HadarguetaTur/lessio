@@ -14,6 +14,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/session'
+import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptToken } from '@/lib/crypto'
 
@@ -45,6 +46,8 @@ export async function saveWhatsAppConnection(
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
   }
+
+  await requireFeature(orgId, 'whatsapp_automation')
 
   const parsed = SaveSchema.safeParse({
     phoneNumberId: formData.get('phoneNumberId'),
@@ -118,6 +121,8 @@ export async function disconnectWhatsApp(
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
   }
+
+  await requireFeature(orgId, 'whatsapp_automation')
 
   const db = createServiceRoleClient()
   const { error: updateError } = await db

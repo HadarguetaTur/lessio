@@ -8,6 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle } from 'lucide-react'
 
+const selectClassName =
+  'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+
+type RelationType = 'mother' | 'father' | 'guardian' | 'other' | ''
+
 type ActionState = { error: string } | null
 type FormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
 
@@ -16,6 +21,10 @@ interface ParentFormProps {
   defaultValues?: {
     full_name?: string
     phone?: string
+    email?: string | null
+    second_phone?: string | null
+    address?: string | null
+    relation_type?: string | null
     notes?: string | null
   }
   onSuccess?: () => void
@@ -27,6 +36,8 @@ export function ParentForm({ action, defaultValues, onSuccess, onCancel }: Paren
   const tCommon = useTranslations('common')
   const didSubmitRef = useRef(false)
   const [state, formAction, pending] = useActionState(action, null)
+
+  const rel = (defaultValues?.relation_type ?? '') as RelationType
 
   useEffect(() => {
     if (didSubmitRef.current && !pending && !state?.error) {
@@ -74,6 +85,52 @@ export function ParentForm({ action, defaultValues, onSuccess, onCancel }: Paren
           defaultValue={defaultValues?.phone ?? ''}
         />
         <p className="text-xs text-muted-foreground">{t('phoneHint')}</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="relation_type">{t('fields.relationType')}</Label>
+        <select id="relation_type" name="relation_type" defaultValue={rel} className={selectClassName}>
+          <option value="">{t('fields.relationTypeUnset')}</option>
+          <option value="mother">{t('fields.relationTypeMother')}</option>
+          <option value="father">{t('fields.relationTypeFather')}</option>
+          <option value="guardian">{t('fields.relationTypeGuardian')}</option>
+          <option value="other">{t('fields.relationTypeOther')}</option>
+        </select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="email">{t('fields.email')}</Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          dir="ltr"
+          autoComplete="email"
+          defaultValue={defaultValues?.email ?? ''}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="second_phone">{t('fields.secondPhone')}</Label>
+        <Input
+          id="second_phone"
+          name="second_phone"
+          type="tel"
+          dir="ltr"
+          placeholder="0521234567"
+          defaultValue={defaultValues?.second_phone ?? ''}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="address">{t('fields.address')}</Label>
+        <textarea
+          id="address"
+          name="address"
+          rows={2}
+          defaultValue={defaultValues?.address ?? ''}
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+        />
       </div>
 
       <div className="space-y-1.5">

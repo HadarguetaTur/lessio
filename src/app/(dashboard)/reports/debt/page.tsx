@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { Receipt } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
+import { requireFeature } from '@/lib/saas/featureGate'
 import { getDebtReport } from '@/lib/reports/debt'
 import { CsvDownloadButton } from '@/components/reports/CsvDownloadButton'
 import { getLocale, getTranslations } from 'next-intl/server'
@@ -25,6 +26,7 @@ export default async function DebtReportPage() {
   const session = await getSession()
   if (!session) redirect('/login')
   if (!['owner', 'admin'].includes(session.role)) redirect('/dashboard')
+  await requireFeature(session.orgId, 'full_reports')
 
   const { rows, totalDebt } = await getDebtReport(session.orgId)
   const [locale, t] = await Promise.all([getLocale(), getTranslations('reports')])

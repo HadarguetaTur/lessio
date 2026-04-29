@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -26,6 +25,7 @@ interface ParentsTableRowProps {
   archiveAction: VoidAction
   restoreAction: VoidAction
   paymentAction: PaymentAction
+  onRowClick?: (parent: Parent) => void
 }
 
 export function ParentsTableRow({
@@ -38,19 +38,19 @@ export function ParentsTableRow({
   archiveAction,
   restoreAction,
   paymentAction,
+  onRowClick,
 }: ParentsTableRowProps) {
-  const router = useRouter()
   const t = useTranslations('parents')
 
-  function goToProfile() {
+  function openDetail() {
     if (isTeacher) return
-    router.push(`/parents/${parent.id}/edit`)
+    onRowClick?.(parent)
   }
 
   function handleRowClick(e: MouseEvent<HTMLTableRowElement>) {
     if (isTeacher) return
     if ((e.target as HTMLElement).closest(IGNORE_SELECTOR)) return
-    goToProfile()
+    openDetail()
   }
 
   function handleRowKeyDown(e: KeyboardEvent<HTMLTableRowElement>) {
@@ -58,7 +58,7 @@ export function ParentsTableRow({
     if (e.key !== 'Enter' && e.key !== ' ') return
     if ((e.target as HTMLElement).closest(IGNORE_SELECTOR)) return
     e.preventDefault()
-    goToProfile()
+    openDetail()
   }
 
   return (
@@ -100,6 +100,10 @@ export function ParentsTableRow({
                 id: parent.id,
                 full_name: parent.full_name,
                 phone: parent.phone,
+                email: parent.email,
+                second_phone: parent.second_phone,
+                address: parent.address,
+                relation_type: parent.relation_type,
                 notes: parent.notes,
               }}
             />

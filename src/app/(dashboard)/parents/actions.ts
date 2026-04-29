@@ -1,19 +1,51 @@
 'use server'
 
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getPendingChargesForParent, buildPaymentRequestMessage, logPaymentRequestSent } from '@/lib/payment-request'
-import { getParentById } from '@/lib/parents'
+import { getParentById, type Parent } from '@/lib/parents'
+import { getParentStudents, type ParentStudent } from '@/lib/relationships'
+import { getParentDebt } from '@/lib/charges'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { decryptToken } from '@/lib/crypto'
 
 type ActionState = { error: string } | null
+
+const RELATION_VALUES = new Set(['mother', 'father', 'guardian', 'other'])
+
+function relationTypeFromForm(formData: FormData): string | null {
+  const raw = (formData.get('relation_type') as string | null)?.trim() ?? ''
+  if (!raw) return null
+  return RELATION_VALUES.has(raw) ? raw : null
+}
+
+function parseOptionalEmail(formData: FormData): { email: string | null; error?: string } {
+  const raw = (formData.get('email') as string | null)?.trim() ?? ''
+  if (!raw) return { email: null }
+  const r = z.string().email().safeParse(raw)
+  if (!r.success) return { email: null, error: 'כתובת אימייל לא תקינה' }
+  return { email: r.data }
+}
+
+function parseOptionalSecondPhone(formData: FormData): { phone: string | null; error?: string } {
+  const raw = (formData.get('second_phone') as string | null)?.trim() ?? ''
+  if (!raw) return { phone: null }
+  try {
+    return { phone: normalizePhone(raw) }
+  } catch (e) {
+    if (e instanceof PhoneNormalizationError) {
+      return { phone: null, error: 'מספר טלפון נוסף לא תקין' }
+    }
+    throw e
+  }
+}
 
 export async function createParent(
   _prevState: ActionState,
@@ -22,9 +54,17 @@ export async function createParent(
   const full_name = (formData.get('full_name') as string).trim()
   const rawPhone = (formData.get('phone') as string).trim()
   const notes = (formData.get('notes') as string).trim() || null
+  const address = (formData.get('address') as string).trim() || null
+  const relation_type = relationTypeFromForm(formData)
 
   if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
   if (!rawPhone) return { error: 'מספר טלפון הוא שדה חובה' }
+
+  const emailRes = parseOptionalEmail(formData)
+  if (emailRes.error) return { error: emailRes.error }
+
+  const secondRes = parseOptionalSecondPhone(formData)
+  if (secondRes.error) return { error: secondRes.error }
 
   let phone: string
   try {
@@ -36,14 +76,24 @@ export async function createParent(
     return { error: 'שגיאה בעיבוד מספר הטלפון' }
   }
 
-  const { orgId, role } = await getSession()
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  const session = await getSession()
+  if (session.role !== 'owner' && session.role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  requireMutation(session)
 
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('parents')
-    .insert({ organization_id: orgId, full_name, phone, notes })
+    .insert({
+      organization_id: session.orgId,
+      full_name,
+      phone,
+      notes,
+      email: emailRes.email,
+      second_phone: secondRes.phone,
+      address,
+      relation_type,
+    })
 
   if (error) {
     if (error.code === '23505') {
@@ -63,9 +113,17 @@ export async function updateParent(
   const full_name = (formData.get('full_name') as string).trim()
   const rawPhone = (formData.get('phone') as string).trim()
   const notes = (formData.get('notes') as string).trim() || null
+  const address = (formData.get('address') as string).trim() || null
+  const relation_type = relationTypeFromForm(formData)
 
   if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
   if (!rawPhone) return { error: 'מספר טלפון הוא שדה חובה' }
+
+  const emailRes = parseOptionalEmail(formData)
+  if (emailRes.error) return { error: emailRes.error }
+
+  const secondRes = parseOptionalSecondPhone(formData)
+  if (secondRes.error) return { error: secondRes.error }
 
   let phone: string
   try {
@@ -77,16 +135,26 @@ export async function updateParent(
     return { error: 'שגיאה בעיבוד מספר הטלפון' }
   }
 
-  const { orgId, role } = await getSession()
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  const session = await getSession()
+  if (session.role !== 'owner' && session.role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  requireMutation(session)
 
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('parents')
-    .update({ full_name, phone, notes, updated_at: new Date().toISOString() })
+    .update({
+      full_name,
+      phone,
+      notes,
+      email: emailRes.email,
+      second_phone: secondRes.phone,
+      address,
+      relation_type,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id)
-    .eq('organization_id', orgId)
+    .eq('organization_id', session.orgId)
 
   if (error) {
     if (error.code === '23505') {
@@ -144,9 +212,17 @@ export async function updateParentAsTeacher(
   const full_name = (formData.get('full_name') as string ?? '').trim()
   const rawPhone = (formData.get('phone') as string ?? '').trim()
   const notes = (formData.get('notes') as string ?? '').trim() || null
+  const address = (formData.get('address') as string ?? '').trim() || null
+  const relation_type = relationTypeFromForm(formData)
 
   if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
   if (!rawPhone) return { error: 'מספר טלפון הוא שדה חובה' }
+
+  const emailRes = parseOptionalEmail(formData)
+  if (emailRes.error) return { error: emailRes.error }
+
+  const secondRes = parseOptionalSecondPhone(formData)
+  if (secondRes.error) return { error: secondRes.error }
 
   let phone: string
   try {
@@ -158,21 +234,30 @@ export async function updateParentAsTeacher(
     return { error: 'שגיאה בעיבוד מספר הטלפון' }
   }
 
-  const { orgId, role, profileId } = await getSession()
-  if (role !== 'teacher') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  const session = await getSession()
+  if (session.role !== 'teacher') return { error: 'אין הרשאה לביצוע פעולה זו' }
 
-  const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
+  const teacher = await getTeacherByProfileId(session.profileId, session.orgId, { activeOnly: true })
   if (!teacher) return { error: 'לא נמצא פרופיל מורה פעיל' }
 
-  const ok = await assertTeacherCanAccessParent(parentId, orgId, teacher.id)
+  const ok = await assertTeacherCanAccessParent(parentId, session.orgId, teacher.id)
   if (!ok) return { error: 'אין הרשאה לעדכן הורה זה' }
 
   const supabase = await createClient()
   const { error } = await supabase
     .from('parents')
-    .update({ full_name, phone, notes, updated_at: new Date().toISOString() })
+    .update({
+      full_name,
+      phone,
+      notes,
+      email: emailRes.email,
+      second_phone: secondRes.phone,
+      address,
+      relation_type,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', parentId)
-    .eq('organization_id', orgId)
+    .eq('organization_id', session.orgId)
 
   if (error) {
     if (error.code === '23505') return { error: 'מספר טלפון זה כבר קיים במערכת' }
@@ -367,4 +452,29 @@ export async function sendPaymentRequestAction(
   revalidatePath('/charges')
   revalidatePath('/parents')
   return { error: null }
+}
+
+// ── Sheet lazy-load ───────────────────────────────────────────────────────────
+
+export interface ParentSheetData {
+  parent: Parent
+  linkedStudents: ParentStudent[]
+  debt: number
+}
+
+export async function fetchParentForSheet(
+  parentId: string
+): Promise<{ data: ParentSheetData } | { error: string }> {
+  try {
+    const { orgId } = await getSession()
+    const [parent, linkedStudents, debt] = await Promise.all([
+      getParentById(parentId, orgId),
+      getParentStudents(parentId, orgId),
+      getParentDebt(parentId, orgId),
+    ])
+    if (!parent) return { error: 'הורה לא נמצא' }
+    return { data: { parent, linkedStudents, debt } }
+  } catch {
+    return { error: 'שגיאה בטעינת פרטי ההורה' }
+  }
 }

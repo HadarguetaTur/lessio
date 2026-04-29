@@ -1,32 +1,69 @@
 'use client'
 
-import { useActionState, useEffect, useRef } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle } from 'lucide-react'
+import { ParentSearchSelect } from './ParentSearchSelect'
+import { fetchOrgParents } from '@/app/(dashboard)/students/actions'
+import { cn } from '@/lib/utils'
+import type { StudentStatus } from '@/lib/students'
 
 type ActionState = { error: string } | null
 type FormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
 
 interface StudentFormProps {
   action: FormAction
+  teachers?: { id: string; full_name: string }[]
+  variant?: 'create' | 'edit'
   defaultValues?: {
     full_name?: string
     grade?: string | null
     notes?: string | null
+    phone?: string | null
+    level?: string | null
+    focused_subject?: string | null
+    weekly_quota?: number | null
+    status?: StudentStatus
+    teacher_id?: string | null
   }
   onSuccess?: () => void
   onCancel?: () => void
 }
 
-export function StudentForm({ action, defaultValues, onSuccess, onCancel }: StudentFormProps) {
+const selectClass =
+  'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+
+export function StudentForm({
+  action,
+  teachers = [],
+  variant = 'create',
+  defaultValues,
+  onSuccess,
+  onCancel,
+}: StudentFormProps) {
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
+  const tParents = useTranslations('parents')
   const didSubmitRef = useRef(false)
   const [state, formAction, pending] = useActionState(action, null)
+
+  const [addParent, setAddParent] = useState(false)
+  const [parentMode, setParentMode] = useState<'existing' | 'new'>('existing')
+  const [selectedParentId, setSelectedParentId] = useState('')
+  const [orgParents, setOrgParents] = useState<{ id: string; full_name: string; phone: string }[]>([])
+  const [parentsLoaded, setParentsLoaded] = useState(false)
+
+  useEffect(() => {
+    if (variant !== 'create') return
+    fetchOrgParents().then((r) => {
+      if ('data' in r) setOrgParents(r.data)
+      setParentsLoaded(true)
+    })
+  }, [variant])
 
   useEffect(() => {
     if (didSubmitRef.current && !pending && !state?.error) {
@@ -34,10 +71,15 @@ export function StudentForm({ action, defaultValues, onSuccess, onCancel }: Stud
     }
   }, [state, pending, onSuccess])
 
+  const statusDefault = defaultValues?.status ?? 'active'
+  const teacherDefault = defaultValues?.teacher_id ?? ''
+
   return (
     <form
       action={formAction}
-      onSubmit={() => { didSubmitRef.current = true }}
+      onSubmit={() => {
+        didSubmitRef.current = true
+      }}
       className="space-y-5"
     >
       {state?.error && (
@@ -60,15 +102,96 @@ export function StudentForm({ action, defaultValues, onSuccess, onCancel }: Stud
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="grade">{t('fields.grade')}</Label>
-        <Input
-          id="grade"
-          name="grade"
-          type="text"
-          defaultValue={defaultValues?.grade ?? ''}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="phone">{t('fields.phone')}</Label>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            dir="ltr"
+            placeholder="0501234567"
+            defaultValue={defaultValues?.phone ?? ''}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="grade">{t('fields.grade')}</Label>
+          <Input
+            id="grade"
+            name="grade"
+            type="text"
+            defaultValue={defaultValues?.grade ?? ''}
+          />
+        </div>
       </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="level">{t('fields.level')}</Label>
+          <Input
+            id="level"
+            name="level"
+            type="text"
+            defaultValue={defaultValues?.level ?? ''}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="focused_subject">{t('fields.focusedSubject')}</Label>
+          <Input
+            id="focused_subject"
+            name="focused_subject"
+            type="text"
+            defaultValue={defaultValues?.focused_subject ?? ''}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="weekly_quota">{t('fields.weeklyQuota')}</Label>
+          <Input
+            id="weekly_quota"
+            name="weekly_quota"
+            type="number"
+            min={1}
+            max={10}
+            placeholder="1–10"
+            defaultValue={defaultValues?.weekly_quota ?? ''}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="status">{t('fields.status')}</Label>
+          <select
+            id="status"
+            name="status"
+            defaultValue={statusDefault}
+            className={selectClass}
+          >
+            <option value="active">{t('status.active')}</option>
+            <option value="on_hold">{t('status.on_hold')}</option>
+            <option value="inactive">{t('status.inactive')}</option>
+          </select>
+        </div>
+      </div>
+
+      {teachers.length > 0 && (
+        <div className="space-y-1.5">
+          <Label htmlFor="teacher_id">{t('fields.teacher')}</Label>
+          <select
+            id="teacher_id"
+            name="teacher_id"
+            defaultValue={teacherDefault}
+            className={selectClass}
+          >
+            <option value="">{t('fields.noTeacher')}</option>
+            {teachers.map((teach) => (
+              <option key={teach.id} value={teach.id}>
+                {teach.full_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <Label htmlFor="notes">{t('fields.notes')}</Label>
@@ -81,12 +204,119 @@ export function StudentForm({ action, defaultValues, onSuccess, onCancel }: Stud
         />
       </div>
 
+      {variant === 'create' ? (
+        <section
+          className={cn(
+            'rounded-xl border border-border bg-muted/20 p-4 space-y-4',
+            addParent && 'bg-card',
+          )}
+        >
+          <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+            <input
+              type="checkbox"
+              name="add_parent"
+              value="on"
+              checked={addParent}
+              onChange={(e) => setAddParent(e.target.checked)}
+            />
+            {t('intake.addParent')}
+          </label>
+
+          {addParent ? (
+            <div className="space-y-4 pt-2 border-t border-border">
+              <div className="flex gap-4 text-sm" role="radiogroup">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="parent_mode_radio"
+                    checked={parentMode === 'existing'}
+                    onChange={() => setParentMode('existing')}
+                  />
+                  {t('intake.existingParent')}
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="parent_mode_radio"
+                    checked={parentMode === 'new'}
+                    onChange={() => setParentMode('new')}
+                  />
+                  {t('intake.newParent')}
+                </label>
+              </div>
+              <input type="hidden" name="parent_mode" value={parentMode} />
+
+              {parentMode === 'existing' ? (
+                <div className="space-y-1.5">
+                  <Label>{t('intake.pickExistingParent')}</Label>
+                  {parentsLoaded ? (
+                    <ParentSearchSelect parents={orgParents} value={selectedParentId} onChange={setSelectedParentId} />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t('intake.loadingParents')}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new_parent_full_name">
+                      {t('intake.parentName')} <span className="text-destructive">*</span>
+                    </Label>
+                    <Input id="new_parent_full_name" name="new_parent_full_name" type="text" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new_parent_phone">
+                      {tParents('fields.phone')} <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="new_parent_phone"
+                      name="new_parent_phone"
+                      type="tel"
+                      dir="ltr"
+                      placeholder="0501234567"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new_parent_email">{tParents('fields.email')}</Label>
+                    <Input
+                      id="new_parent_email"
+                      name="new_parent_email"
+                      type="email"
+                      dir="ltr"
+                      autoComplete="email"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new_parent_relation">{tParents('fields.relationType')}</Label>
+                    <select
+                      id="new_parent_relation"
+                      name="new_parent_relation_type"
+                      defaultValue=""
+                      className={selectClass}
+                    >
+                      <option value="">{tParents('fields.relationTypeUnset')}</option>
+                      <option value="mother">{tParents('fields.relationTypeMother')}</option>
+                      <option value="father">{tParents('fields.relationTypeFather')}</option>
+                      <option value="guardian">{tParents('fields.relationTypeGuardian')}</option>
+                      <option value="other">{tParents('fields.relationTypeOther')}</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       <div className="flex flex-col-reverse sm:flex-row gap-3 pt-1">
         {onCancel ? (
-          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel}>{tCommon('actions.cancel')}</Button>
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel}>
+            {tCommon('actions.cancel')}
+          </Button>
         ) : (
           <Link href="/students" className="w-full sm:w-auto">
-            <Button type="button" variant="outline" className="w-full">{tCommon('actions.cancel')}</Button>
+            <Button type="button" variant="outline" className="w-full">
+              {tCommon('actions.cancel')}
+            </Button>
           </Link>
         )}
         <Button type="submit" disabled={pending} className="w-full sm:w-auto">

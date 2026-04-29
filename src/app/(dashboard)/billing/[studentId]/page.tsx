@@ -143,6 +143,8 @@ export default async function BillingDetailPage(props: {
                       id: billingData.id,
                       is_paid: billingData.is_paid,
                       is_approved: billingData.is_approved,
+                      invoice_number: billingData.invoice_number ?? null,
+                      credit_note_number: billingData.credit_note_number ?? null,
                     }
                   : null
               }

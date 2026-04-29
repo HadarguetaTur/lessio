@@ -2,8 +2,10 @@
 
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
+import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
+import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getStudentLessons, getStudentFinancial, getStudentPrimaryParent, type StudentLesson, type StudentFinancial, type StudentPrimaryParent } from '@/lib/students'
@@ -19,11 +21,13 @@ const studentSchema = z.object({
   grade: z.string().optional().nullable(),
   level: z.string().optional().nullable(),
   focused_subject: z.string().optional().nullable(),
-  weekly_quota: z.coerce.number().int().min(1).max(20).optional().nullable(),
+  weekly_quota: z.coerce.number().int().min(1).max(10).optional().nullable(),
   status: z.enum(['active', 'on_hold', 'inactive']).default('active'),
   notes: z.string().optional().nullable(),
   teacher_id: z.string().uuid().optional().nullable(),
 })
+
+const PARENT_RELATIONS = new Set(['mother', 'father', 'guardian', 'other'])
 
 export async function createStudent(
   _prevState: ActionState,
@@ -43,15 +47,76 @@ export async function createStudent(
 
   const parsed = studentSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
   }
 
-  const { orgId, role } = await getSession()
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  let phoneNorm: string | null = null
+  if (parsed.data.phone) {
+    try {
+      phoneNorm = normalizePhone(parsed.data.phone)
+    } catch (e) {
+      if (e instanceof PhoneNormalizationError) {
+        return { error: 'טלפון התלמיד לא תקין. יש להזין מספר ישראלי (לדוגמה: 0501234567)' }
+      }
+      return { error: 'שגיאה בעיבוד מספר הטלפון של התלמיד' }
+    }
+  }
+
+  const session = await getSession()
+  if (session.role !== 'owner' && session.role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  requireMutation(session)
+  await requireQuotaCapacity(session.orgId, 'students')
+  const orgId = session.orgId
+
+  const addParentOn = formData.get('add_parent') === 'on'
+  let parentPlan:
+    | { mode: 'existing'; parentId: string }
+    | { mode: 'new'; full_name: string; phone: string; email: string | null; relation_type: string | null }
+    | null = null
+
+  if (addParentOn) {
+    const modeRaw = (formData.get('parent_mode') as string ?? '').trim()
+    const modeNew = modeRaw === 'new'
+    if (!modeNew) {
+      const parentId = (formData.get('parent_id') as string ?? '').trim()
+      if (!parentId) {
+        return { error: 'בחרו הורה קיים מהרשימה או הפעילו יצירת הורה חדש עם שם וטלפון' }
+      }
+      parentPlan = { mode: 'existing', parentId }
+    } else {
+      const pfn = (formData.get('new_parent_full_name') as string ?? '').trim()
+      const pphoneRaw = (formData.get('new_parent_phone') as string ?? '').trim()
+      const pem = (formData.get('new_parent_email') as string ?? '').trim()
+      const relRaw = (formData.get('new_parent_relation_type') as string ?? '').trim()
+
+      if (!pfn || !pphoneRaw) {
+        return { error: 'בהוספת הורה חדש נדרשים שם והטלפון הראשי' }
+      }
+
+      let pPhone: string
+      try {
+        pPhone = normalizePhone(pphoneRaw)
+      } catch (e) {
+        if (e instanceof PhoneNormalizationError) {
+          return { error: 'מספר הטלפון של ההורה לא תקין' }
+        }
+        return { error: 'שגיאה בעיבוד מספר הטלפון של ההורה' }
+      }
+
+      let parentEmail: string | null = null
+      if (pem) {
+        const em = z.string().email().safeParse(pem)
+        if (!em.success) return { error: 'אימייל ההורה לא תקין' }
+        parentEmail = em.data
+      }
+
+      const relation_type = relRaw && PARENT_RELATIONS.has(relRaw) ? relRaw : null
+      parentPlan = { mode: 'new', full_name: pfn, phone: pPhone, email: parentEmail, relation_type }
+    }
+  }
 
   const supabase = await createClient()
 
-  // Auto-assign the sole active teacher if none specified
   let teacher_id = parsed.data.teacher_id ?? null
   if (!teacher_id) {
     const { data: teacherRows } = await supabase
@@ -64,11 +129,117 @@ export async function createStudent(
     }
   }
 
-  const { error } = await supabase
-    .from('students')
-    .insert({ organization_id: orgId, ...parsed.data, teacher_id })
+  const insertBody = {
+    organization_id: orgId,
+    full_name: parsed.data.full_name,
+    grade: parsed.data.grade,
+    phone: phoneNorm,
+    level: parsed.data.level,
+    focused_subject: parsed.data.focused_subject,
+    weekly_quota: parsed.data.weekly_quota,
+    notes: parsed.data.notes,
+    status: parsed.data.status,
+    teacher_id,
+  }
 
-  if (error) return { error: 'שגיאה ביצירת התלמיד' }
+  const { data: insertedStudent, error: insErr } = await supabase
+    .from('students')
+    .insert(insertBody)
+    .select('id')
+    .single()
+
+  if (insErr || !insertedStudent) return { error: 'שגיאה ביצירת התלמיד' }
+
+  const newStudentId = insertedStudent.id
+
+  async function rollbackStudent() {
+    await supabase.from('students').delete().eq('id', newStudentId).eq('organization_id', orgId)
+  }
+
+  if (parentPlan) {
+    let parentUuid: string
+    if (parentPlan.mode === 'existing') {
+      const { data: prow, error: pchkErr } = await supabase
+        .from('parents')
+        .select('id')
+        .eq('id', parentPlan.parentId)
+        .eq('organization_id', orgId)
+        .maybeSingle()
+
+      if (pchkErr || !prow) {
+        await rollbackStudent()
+        return { error: 'הורה שנבחר לא נמצא בארגון' }
+      }
+      parentUuid = prow.id as string
+
+      await supabase
+        .from('relationships')
+        .update({ is_primary: false })
+        .eq('student_id', newStudentId)
+        .eq('organization_id', orgId)
+
+      const { error: relErr } = await supabase
+        .from('relationships')
+        .upsert(
+          {
+            organization_id: orgId,
+            parent_id: parentUuid,
+            student_id: newStudentId,
+            is_primary: true,
+          },
+          { onConflict: 'parent_id,student_id' }
+        )
+
+      if (relErr) {
+        await rollbackStudent()
+        return { error: 'התלמיד נוצר אך קישור ההורה נכשל' }
+      }
+    } else {
+      const { data: np, error: pInsErr } = await supabase
+        .from('parents')
+        .insert({
+          organization_id: orgId,
+          full_name: parentPlan.full_name,
+          phone: parentPlan.phone,
+          email: parentPlan.email,
+          relation_type: parentPlan.relation_type,
+          notes: null,
+        })
+        .select('id')
+        .single()
+
+      if (pInsErr || !np) {
+        await rollbackStudent()
+        if (pInsErr?.code === '23505') {
+          return {
+            error: 'מספר הטלפון של ההורה כבר קיים — בחרו הורה קיים מהרשימה',
+          }
+        }
+        return { error: 'שגיאה ביצירת רשומת ההורה' }
+      }
+
+      parentUuid = np.id as string
+
+      await supabase
+        .from('relationships')
+        .update({ is_primary: false })
+        .eq('student_id', newStudentId)
+        .eq('organization_id', orgId)
+
+      const { error: relErr } = await supabase.from('relationships').insert({
+        organization_id: orgId,
+        parent_id: parentUuid,
+        student_id: newStudentId,
+        is_primary: true,
+      })
+
+      if (relErr) {
+        await rollbackStudent()
+        await supabase.from('parents').delete().eq('id', parentUuid).eq('organization_id', orgId)
+        return { error: 'יצירת התלמיד וההורה בוטלה בשל שגיאה בקישור' }
+      }
+    }
+  }
 
   redirect('/students')
 }
@@ -92,10 +263,12 @@ export async function updateStudent(
 
   const parsed = studentSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
   }
 
-  const { orgId, role, profileId } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role, profileId } = session
   const supabase = await createClient()
 
   if (role === 'teacher') {
@@ -133,9 +306,32 @@ export async function updateStudent(
 
   if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
 
+  let phoneForDb: string | null = parsed.data.phone ?? null
+  if (parsed.data.phone) {
+    try {
+      phoneForDb = normalizePhone(parsed.data.phone)
+    } catch (e) {
+      if (e instanceof PhoneNormalizationError) {
+        return { error: 'טלפון התלמיד לא תקין. יש להזין מספר ישראלי (לדוגמה: 0501234567)' }
+      }
+      return { error: 'שגיאה בעיבוד מספר הטלפון של התלמיד' }
+    }
+  }
+
   const { error } = await supabase
     .from('students')
-    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .update({
+      full_name: parsed.data.full_name,
+      phone: phoneForDb,
+      grade: parsed.data.grade,
+      level: parsed.data.level,
+      focused_subject: parsed.data.focused_subject,
+      weekly_quota: parsed.data.weekly_quota,
+      status: parsed.data.status,
+      notes: parsed.data.notes,
+      teacher_id: parsed.data.teacher_id,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id)
     .eq('organization_id', orgId)
 

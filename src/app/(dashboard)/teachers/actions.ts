@@ -5,6 +5,8 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getSession } from '@/lib/auth/session'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { getTeacherById, type Teacher } from '@/lib/teachers'
+export type { Teacher }
 
 type ActionState = { error: string } | null
 
@@ -93,7 +95,19 @@ export async function updateTeacher(
 
   if (error) return { error: 'שגיאה בעדכון המורה' }
 
-  redirect('/teachers')
+  revalidatePath('/teachers')
+  revalidatePath(`/teachers/${id}/edit`)
+
+  return null
+}
+
+export async function fetchTeacherForSheet(
+  id: string
+): Promise<{ data: Teacher } | { error: string }> {
+  const { orgId } = await getSession()
+  const teacher = await getTeacherById(id, orgId)
+  if (!teacher) return { error: 'המורה לא נמצא' }
+  return { data: teacher }
 }
 
 export async function archiveTeacher(id: string): Promise<void> {
@@ -109,6 +123,7 @@ export async function archiveTeacher(id: string): Promise<void> {
     .eq('organization_id', orgId)
 
   revalidatePath('/teachers')
+  revalidatePath(`/teachers/${id}/edit`)
 }
 
 export async function restoreTeacher(id: string): Promise<void> {
@@ -124,4 +139,5 @@ export async function restoreTeacher(id: string): Promise<void> {
     .eq('organization_id', orgId)
 
   revalidatePath('/teachers')
+  revalidatePath(`/teachers/${id}/edit`)
 }

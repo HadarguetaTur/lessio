@@ -92,7 +92,7 @@ export default async function StudentsPage(props: {
                         {tCommon('actions.import')}
                       </Button>
                     </Link>
-                    <NewStudentSheet action={createStudent} />
+                    <NewStudentSheet action={createStudent} teachers={activeTeachers} />
                   </div>
                 )
         }
@@ -139,7 +139,7 @@ export default async function StudentsPage(props: {
                   icon={GraduationCap}
                   title={q ? tCommon('emptyStates.noResults') : t('title')}
                   subtitle={!q && !isTeacher ? t('newStudent') : undefined}
-                  action={!q && !isTeacher ? <NewStudentSheet action={createStudent} /> : undefined}
+                  action={!q && !isTeacher ? <NewStudentSheet action={createStudent} teachers={activeTeachers} /> : undefined}
                 />
               </div>
             ) : (

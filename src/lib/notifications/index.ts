@@ -15,6 +15,7 @@ export type NotificationType =
   | 'new_lead'
   | 'goal_achieved'
   | 'portal_message'
+  | 'invoice_cancelled'
 
 export interface CreateNotificationParams {
   orgId: string

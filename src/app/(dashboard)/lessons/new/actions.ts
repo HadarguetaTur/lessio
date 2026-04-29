@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
+import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 
@@ -59,6 +60,7 @@ export async function createLessonAction(
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return { error: 'אין הרשאה' }
   }
+  await requireQuotaCapacity(orgId, 'lessons_monthly')
 
   const rawType = formData.get('lesson_type') as string | null
   const lessonType = rawType === 'group' ? 'group' : 'individual'

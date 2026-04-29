@@ -30,7 +30,7 @@ function studentRowSchema(m: ImportMessageFn) {
       .nullable()
       .optional()
       .refine(
-        (v) => !v || (!isNaN(Number(v)) && Number(v) > 0 && Number(v) <= 20),
+        (v) => !v || (!isNaN(Number(v)) && Number(v) > 0 && Number(v) <= 10),
         m('validation.weeklyQuotaInvalid')
       ),
     notes: z.string().nullable().optional(),
@@ -51,6 +51,10 @@ function parentRowSchema(m: ImportMessageFn) {
     full_name: z.string().min(1, m('validation.fullNameRequired')),
     phone: z.string().min(1, m('validation.phoneRequired')),
     notes: z.string().nullable().optional(),
+    email: z.string().nullable().optional(),
+    second_phone: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+    relation_type: z.string().nullable().optional(),
     student_names: z.string().nullable().optional(),
     student_name: z.string().nullable().optional(),
   })
@@ -110,10 +114,20 @@ function familyListRowSchema(m: ImportMessageFn) {
       parent_phone_2: z.string().nullable().optional(),
       student_notes: z.string().nullable().optional(),
       parent_notes: z.string().nullable().optional(),
+      parent_email: z.string().nullable().optional(),
+      parent_second_phone: z.string().nullable().optional(),
+      parent_address: z.string().nullable().optional(),
+      parent_relation_type: z.string().nullable().optional(),
     })
     .superRefine((data, ctx) => {
       if (data.parent_phone_2 && !data.parent_name_2) {
         ctx.addIssue({ code: 'custom', path: ['parent_name_2'], message: m('validation.parent2NameRequired') })
+      }
+      if (data.parent_email?.trim()) {
+        const ok = z.string().email().safeParse(data.parent_email.trim())
+        if (!ok.success) {
+          ctx.addIssue({ code: 'custom', path: ['parent_email'], message: m('validation.invalidEmail') })
+        }
       }
     })
 }

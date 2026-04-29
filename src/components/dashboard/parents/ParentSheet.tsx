@@ -69,6 +69,10 @@ interface ParentRowActionsProps {
     id: string
     full_name: string
     phone: string
+    email?: string | null
+    second_phone?: string | null
+    address?: string | null
+    relation_type?: string | null
     notes?: string | null
     is_active: boolean
   }
@@ -142,6 +146,10 @@ export function ParentRowActions({
             defaultValues={{
               full_name: parent.full_name,
               phone: parent.phone,
+              email: parent.email,
+              second_phone: parent.second_phone,
+              address: parent.address,
+              relation_type: parent.relation_type,
               notes: parent.notes,
             }}
             onCancel={() => setEditOpen(false)}
@@ -157,7 +165,16 @@ export function ParentRowActions({
 export function TeacherParentNotesRowActions({
   parent,
 }: {
-  parent: { id: string; full_name: string; phone: string; notes?: string | null }
+  parent: {
+    id: string
+    full_name: string
+    phone: string
+    email?: string | null
+    second_phone?: string | null
+    address?: string | null
+    relation_type?: string | null
+    notes?: string | null
+  }
 }) {
   const t = useTranslations('parents')
   const router = useRouter()
@@ -186,6 +203,10 @@ export function TeacherParentNotesRowActions({
             defaultValues={{
               full_name: parent.full_name,
               phone: parent.phone,
+              email: parent.email,
+              second_phone: parent.second_phone,
+              address: parent.address,
+              relation_type: parent.relation_type,
               notes: parent.notes,
             }}
             onSuccess={() => { setOpen(false); router.refresh() }}

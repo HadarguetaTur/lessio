@@ -140,3 +140,15 @@ Teachers access a scoped subset of the dashboard: `/teacher/schedule`, `/teacher
 
 **Onboarding wizard:**
 New orgs are redirected to `/onboarding` after signup if `organizations.onboarding_completed` is false. The wizard steps: Welcome → Teachers → Settings → Import Students → Import Lessons → Complete. The import flow (`src/components/import/`) is reused inside onboarding and standalone. After completing onboarding, `onboarding_completed` is set to `true` and the org is redirected to `/dashboard`.
+
+**PDF Invoice generation (Sprint 27):**
+`src/lib/billing/invoices/` generates PDF invoices using `@react-pdf/renderer` (Heebo font for Hebrew RTL). Invoice numbers are sequential per-org per-year via `invoice_counters` table (atomic increment). PDFs are stored in `invoices` Supabase Storage bucket. Invoice generation fires on billing approval (fire-and-forget). Credit notes (חשבוניות זיכוי) follow the same pattern with `CR-YYYY-NNNN` numbering.
+
+**Receipt provider document types (Sprint 27):**
+`ReceiptProvider.issueReceipt()` accepts optional `documentType: 'receipt' | 'tax_invoice'`, `vatAmount`, and `customerTaxId`. iCount: doctype 300 (tax invoice) / 400 (receipt) / 330 (credit note). Green Invoice: type 305 / 320 / 330. Sumit: receipts only. Org setting `receipt_document_type` on organizations table controls the default.
+
+**Quota enforcement (Sprint 27):**
+`requireQuotaCapacity(orgId, 'students' | 'lessons_monthly')` from `src/lib/saas/quota.ts` — checks current usage against `saas_plans.students_quota` / `lessons_monthly_quota`. Throws `QuotaExceededError` which is caught by `/app/(dashboard)/error.tsx` error boundary → upgrade card. Called in `createStudentAction`, `createLessonAction`, and bulk import.
+
+**Feature gate enforcement (Sprint 27 hardening):**
+`requireFeature(orgId, feature)` must be called in every plan-gated server action — not just UI sidebar filtering. Never inside try/catch (uses `redirect()`). All gated actions audited and enforced since Sprint 27.

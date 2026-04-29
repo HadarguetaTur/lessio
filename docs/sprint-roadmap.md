@@ -1,6 +1,6 @@
 
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprint 25 complete, Sprint 26 planned*
+*Updated: Sprint 26 complete, Sprint 27 current*
 
 ---
 
@@ -33,6 +33,7 @@
 | 23 | International launch readiness (GDPR, Stripe, WhatsApp templates, error boundaries) | ✅ Done |
 | 24 | Pedagogical depth (homework v2, lesson notes, student profile, learning goals) | ✅ Done |
 | 25 | AI Intelligence + Multi-Channel Communications (multi-provider AI, email, in-app notifications) | ✅ Done |
+| 26 | Parent Portal 2.0 (schedule, progress, messaging) | ✅ Done |
 
 ---
 
@@ -128,7 +129,7 @@ CREATE TABLE in_app_notifications (
 ---
 
 ## Sprint 26 — Parent Portal 2.0
-**Status:** Current Sprint
+**Status:** ✅ Done
 **Depends on:** Sprint 25 complete
 
 **Goal:** Elevate the parent portal from a minimal payment screen to a genuine parent engagement tool — visible progress, full schedule, homework visibility, and teacher communication.
@@ -159,7 +160,7 @@ CREATE TABLE in_app_notifications (
 ---
 
 ## Sprint 27 — Billing & Accounting Pro
-**Status:** Planned
+**Status:** Current Sprint
 **Depends on:** Sprint 26 complete
 
 **Goal:** Make billing feel enterprise-grade: downloadable PDF invoices, proper accounting integrations, and hard server-side feature enforcement.

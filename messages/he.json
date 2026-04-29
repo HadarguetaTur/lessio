@@ -132,6 +132,7 @@
     "settingsMessages": "הודעות",
     "settingsPayment": "תשלומים",
     "settingsReceipts": "קבלות",
+    "settingsBusinessProfile": "פרופיל העסק",
     "settingsCancellation": "מדיניות ביטולים",
     "settingsHolidays": "חגים וחופשות",
     "settingsReminders": "תזכורות",
@@ -215,6 +216,14 @@
       "teacher": "מורה מלווה",
       "noTeacher": "ללא שיוך",
       "weeklyQuotaSuffix": "שיעורים"
+    },
+    "intake": {
+      "addParent": "צרף הורה (קביעת הורה ראשי לחיוב)",
+      "existingParent": "הורה קיים במערכת",
+      "newParent": "יצירת הורה חדש",
+      "pickExistingParent": "חפש ובחר הורה",
+      "parentName": "שם ההורה",
+      "loadingParents": "טוען רשימת הורים…"
     },
     "status": {
       "active": "פעיל",
@@ -348,6 +357,14 @@
       "fullName": "שם מלא",
       "phone": "טלפון",
       "email": "אימייל",
+      "secondPhone": "טלפון נוסף",
+      "address": "כתובת",
+      "relationType": "סוג הקשר לתלמיד",
+      "relationTypeUnset": "לא נבחר",
+      "relationTypeMother": "אמא",
+      "relationTypeFather": "אבא",
+      "relationTypeGuardian": "אפוטרופוס",
+      "relationTypeOther": "אחר",
       "notes": "הערות"
     },
     "balance": "יתרת חוב",
@@ -620,7 +637,66 @@
     "sendingPaymentRequest": "שולח...",
     "paymentRequestSent": "נשלח ✓",
     "generateSuccess": "חושבו {success} תלמידים, {errors} שגיאות, {skipped} דולגו",
-    "noBillingRecords": "אין רשומות חיוב לחודש זה"
+    "noBillingRecords": "אין רשומות חיוב לחודש זה",
+    "invoice": {
+      "download": "הורד חשבונית",
+      "generating": "מפיק חשבונית...",
+      "notAvailable": "חשבונית לא זמינה",
+      "number": "מס׳ חשבונית",
+      "date": "תאריך חשבונית",
+      "vatAmount": "מע\"מ",
+      "subtotal": "סכום לפני מע\"מ",
+      "total": "סה\"כ כולל מע\"מ"
+    },
+    "creditNote": {
+      "issue": "הנפק חשבונית זיכוי",
+      "issuing": "מנפיק...",
+      "download": "הורד חשבונית זיכוי",
+      "reason": "סיבת הביטול",
+      "reasonPlaceholder": "הזן סיבה לביטול החשבונית",
+      "confirmTitle": "ביטול חשבונית",
+      "confirmMessage": "פעולה זו תנפיק חשבונית זיכוי ואינה ניתנת לביטול. להמשיך?",
+      "cancelled": "בוטל",
+      "number": "מס׳ זיכוי"
+    },
+    "accountingExport": "ייצוא לחשבונאות",
+    "accountingFrom": "מתאריך",
+    "accountingTo": "עד תאריך",
+    "accountingDownload": "הורד דוח חשבונאי"
+  },
+  "settings": {
+    "businessProfile": {
+      "title": "פרופיל העסק",
+      "subtitle": "פרטים עסקיים לחשבוניות ומסמכים",
+      "legalName": "שם עסק / חברה",
+      "legalNamePlaceholder": "שם עסק כפי שמופיע ברשם החברות",
+      "taxId": "ח.פ / ע.מ",
+      "taxIdPlaceholder": "מספר עוסק מורשה / חברה",
+      "address": "כתובת עסק",
+      "addressPlaceholder": "רחוב, עיר, מיקוד",
+      "currency": "מטבע",
+      "vatRate": "שיעור מע\"מ (%)",
+      "logo": "לוגו",
+      "uploadLogo": "העלה לוגו",
+      "changeLogo": "החלף לוגו",
+      "logoHint": "PNG / JPEG, עד 2MB",
+      "saved": "הפרטים נשמרו בהצלחה"
+    },
+    "receipts": {
+      "documentType": "סוג מסמך ברירת מחדל",
+      "receipt": "קבלה",
+      "taxInvoice": "חשבונית מס"
+    }
+  },
+  "quota": {
+    "exceeded": "הגעת למכסה של החבילה",
+    "studentsLimit": "מכסת תלמידים",
+    "lessonsLimit": "מכסת שיעורים חודשית",
+    "studentsExceeded": "הגעת למכסת התלמידים ({limit}). שדרג את החבילה כדי להוסיף עוד.",
+    "lessonsExceeded": "הגעת למכסת השיעורים החודשית ({limit}). שדרג את החבילה כדי ליצור עוד.",
+    "upgrade": "שדרג חבילה",
+    "usage": "שימוש",
+    "of": "מתוך"
   },
   "subscriptions": {
     "title": "מנויים",
@@ -855,7 +931,32 @@
       "privacy": {
         "title": "פרטיות ושמירת נתונים",
         "description": "מדיניות שמירת נתוני פעילות ו-GDPR"
+      },
+      "businessProfile": {
+        "title": "פרופיל עסקי",
+        "description": "לוגו, שם עסק, מספר עוסק ומטבע"
       }
+    },
+    "businessProfile": {
+      "title": "פרופיל עסקי",
+      "subtitle": "הגדרת מיתוג העסק ופרטי מס לחשבוניות",
+      "logoTitle": "לוגו הארגון",
+      "noLogo": "אין לוגו",
+      "uploadLogo": "העלאת לוגו",
+      "uploading": "מעלה...",
+      "logoHint": "PNG, JPEG או WebP — עד 2 MB",
+      "logoUploaded": "הלוגו הועלה בהצלחה",
+      "detailsTitle": "פרטי העסק",
+      "businessLegalName": "שם עסק רשמי",
+      "businessLegalNamePlaceholder": "לדוגמה: אקדמיית המוזיקה בע\"מ",
+      "taxId": "מספר עוסק / ח.פ.",
+      "taxIdPlaceholder": "לדוגמה: 515123456",
+      "businessAddress": "כתובת העסק",
+      "businessAddressPlaceholder": "לדוגמה: הרצל 10, תל אביב",
+      "currency": "מטבע",
+      "defaultVatRate": "שיעור מע\"מ ברירת מחדל",
+      "vatHint": "יוחל על חשבוניות חדשות (0–25%)",
+      "saved": "פרופיל העסק נשמר"
     },
     "whatsapp": {
       "title": "WhatsApp",
@@ -1798,11 +1899,18 @@
       "parent_name_2": "שם הורה 2",
       "parent_phone_2": "טלפון הורה 2",
       "student_notes": "הערות תלמיד",
-      "parent_notes": "הערות הורה"
+      "parent_notes": "הערות הורה",
+      "parent_email": "אימייל הורה",
+      "parent_second_phone": "טלפון נוסף הורה",
+      "parent_address": "כתובת הורה",
+      "parent_relation_type": "סוג קשר הורה",
+      "second_phone": "טלפון נוסף (ייבוא הורים)",
+      "address": "כתובת (ייבוא הורים)",
+      "relation_type": "סוג קשר (ייבוא הורים)"
     },
     "validation": {
       "fullNameRequired": "שם מלא הוא שדה חובה",
-      "weeklyQuotaInvalid": "מכסה שבועית חייבת להיות מספר בין 1 ל-20",
+      "weeklyQuotaInvalid": "מכסה שבועית חייבת להיות מספר בין 1 ל-10",
       "studentStatusInvalid": "סטטוס לא תקין",
       "phoneRequired": "מספר טלפון הוא שדה חובה",
       "emailRequired": "אימייל הוא שדה חובה",

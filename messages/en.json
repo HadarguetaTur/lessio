@@ -132,6 +132,7 @@
     "settingsMessages": "Messages",
     "settingsPayment": "Payments",
     "settingsReceipts": "Receipts",
+    "settingsBusinessProfile": "Business Profile",
     "settingsCancellation": "Cancellation Policy",
     "settingsHolidays": "Holidays",
     "settingsReminders": "Reminders",
@@ -215,6 +216,14 @@
       "teacher": "Assigned Teacher",
       "noTeacher": "Unassigned",
       "weeklyQuotaSuffix": "lessons"
+    },
+    "intake": {
+      "addParent": "Add parent (set as primary for billing)",
+      "existingParent": "Existing parent",
+      "newParent": "Create new parent",
+      "pickExistingParent": "Search and select a parent",
+      "parentName": "Parent name",
+      "loadingParents": "Loading parents…"
     },
     "status": {
       "active": "Active",
@@ -348,6 +357,14 @@
       "fullName": "Full Name",
       "phone": "Phone",
       "email": "Email",
+      "secondPhone": "Second phone",
+      "address": "Address",
+      "relationType": "Relation to student",
+      "relationTypeUnset": "Not set",
+      "relationTypeMother": "Mother",
+      "relationTypeFather": "Father",
+      "relationTypeGuardian": "Guardian",
+      "relationTypeOther": "Other",
       "notes": "Notes"
     },
     "balance": "Outstanding Balance",
@@ -620,7 +637,66 @@
     "sendingPaymentRequest": "Sending...",
     "paymentRequestSent": "Sent ✓",
     "generateSuccess": "Processed {success} students, {errors} errors, {skipped} skipped",
-    "noBillingRecords": "No billing records for this month"
+    "noBillingRecords": "No billing records for this month",
+    "invoice": {
+      "download": "Download Invoice",
+      "generating": "Generating invoice...",
+      "notAvailable": "Invoice not available",
+      "number": "Invoice #",
+      "date": "Invoice Date",
+      "vatAmount": "VAT",
+      "subtotal": "Subtotal",
+      "total": "Total (incl. VAT)"
+    },
+    "creditNote": {
+      "issue": "Issue Credit Note",
+      "issuing": "Issuing...",
+      "download": "Download Credit Note",
+      "reason": "Cancellation Reason",
+      "reasonPlaceholder": "Enter reason for cancelling the invoice",
+      "confirmTitle": "Cancel Invoice",
+      "confirmMessage": "This will issue a credit note and cannot be undone. Continue?",
+      "cancelled": "Cancelled",
+      "number": "Credit Note #"
+    },
+    "accountingExport": "Export for Accounting",
+    "accountingFrom": "From Date",
+    "accountingTo": "To Date",
+    "accountingDownload": "Download Accounting Report"
+  },
+  "settings": {
+    "businessProfile": {
+      "title": "Business Profile",
+      "subtitle": "Business details for invoices and documents",
+      "legalName": "Legal Business Name",
+      "legalNamePlaceholder": "Name as registered",
+      "taxId": "Tax ID",
+      "taxIdPlaceholder": "Tax identification number",
+      "address": "Business Address",
+      "addressPlaceholder": "Street, City, ZIP",
+      "currency": "Currency",
+      "vatRate": "VAT Rate (%)",
+      "logo": "Logo",
+      "uploadLogo": "Upload Logo",
+      "changeLogo": "Change Logo",
+      "logoHint": "PNG / JPEG, max 2MB",
+      "saved": "Profile saved successfully"
+    },
+    "receipts": {
+      "documentType": "Default Document Type",
+      "receipt": "Receipt",
+      "taxInvoice": "Tax Invoice"
+    }
+  },
+  "quota": {
+    "exceeded": "Plan Quota Reached",
+    "studentsLimit": "Students Limit",
+    "lessonsLimit": "Monthly Lessons Limit",
+    "studentsExceeded": "You've reached the student limit ({limit}). Upgrade your plan to add more.",
+    "lessonsExceeded": "You've reached the monthly lesson limit ({limit}). Upgrade your plan to create more.",
+    "upgrade": "Upgrade Plan",
+    "usage": "Usage",
+    "of": "of"
   },
   "subscriptions": {
     "title": "Subscriptions",
@@ -855,7 +931,32 @@
       "privacy": {
         "title": "Privacy & Data Retention",
         "description": "Activity data retention policy and GDPR"
+      },
+      "businessProfile": {
+        "title": "Business Profile",
+        "description": "Logo, legal name, tax ID and currency"
       }
+    },
+    "businessProfile": {
+      "title": "Business Profile",
+      "subtitle": "Configure your business branding and tax details for invoices",
+      "logoTitle": "Organization Logo",
+      "noLogo": "No logo",
+      "uploadLogo": "Upload Logo",
+      "uploading": "Uploading...",
+      "logoHint": "PNG, JPEG or WebP — max 2 MB",
+      "logoUploaded": "Logo uploaded successfully",
+      "detailsTitle": "Business Details",
+      "businessLegalName": "Legal Business Name",
+      "businessLegalNamePlaceholder": "e.g. Music Academy Ltd.",
+      "taxId": "Tax ID",
+      "taxIdPlaceholder": "e.g. 515123456",
+      "businessAddress": "Business Address",
+      "businessAddressPlaceholder": "e.g. 10 Herzl St., Tel Aviv",
+      "currency": "Currency",
+      "defaultVatRate": "Default VAT Rate",
+      "vatHint": "Applied to new invoices (0–25%)",
+      "saved": "Business profile saved"
     },
     "whatsapp": {
       "title": "WhatsApp",
@@ -1799,11 +1900,18 @@
       "parent_name_2": "Parent 2 name",
       "parent_phone_2": "Parent 2 phone",
       "student_notes": "Student notes",
-      "parent_notes": "Parent notes"
+      "parent_notes": "Parent notes",
+      "parent_email": "Parent email",
+      "parent_second_phone": "Parent second phone",
+      "parent_address": "Parent address",
+      "parent_relation_type": "Parent relation type",
+      "second_phone": "Second phone (parent import)",
+      "address": "Address (parent import)",
+      "relation_type": "Relation type (parent import)"
     },
     "validation": {
       "fullNameRequired": "Full name is required",
-      "weeklyQuotaInvalid": "Weekly quota must be a number from 1 to 20",
+      "weeklyQuotaInvalid": "Weekly quota must be a number from 1 to 10",
       "studentStatusInvalid": "Invalid status",
       "phoneRequired": "Phone number is required",
       "emailRequired": "Email is required",

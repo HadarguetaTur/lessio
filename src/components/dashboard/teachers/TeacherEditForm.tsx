@@ -57,7 +57,7 @@ export function TeacherEditForm({ action, defaultValues, onSuccess, onCancel }: 
           defaultValue={defaultValues?.hourly_rate ?? ''}
           placeholder={t('fields.hourlyRatePlaceholder')}
         />
-        {!defaultValues?.hourly_rate && (
+        {defaultValues?.hourly_rate == null && (
           <p className="text-xs text-amber-600">{t('noRateWarning')}</p>
         )}
       </div>

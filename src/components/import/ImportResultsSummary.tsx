@@ -89,7 +89,7 @@ export function ImportResultsSummary({ result }: ImportResultsSummaryProps) {
             {result.failedLinks!.map((fl, i) => (
               <p key={i} className="text-xs text-amber-800">
                 <span className="font-medium">{t('results.row', { row: fl.row })}:</span>{' '}
-                {t('results.failedLinkDetail', { name: fl.name })}
+                {fl.message ?? t('results.failedLinkDetail', { name: fl.name })}
               </p>
             ))}
           </div>

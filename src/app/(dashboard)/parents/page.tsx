@@ -5,20 +5,11 @@ import { ParentSearch } from '@/components/dashboard/parents/ParentSearch'
 import { createParent, updateParent, archiveParent, restoreParent, sendPaymentRequestAction } from './actions'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
-import { ParentsTableRow } from '@/components/dashboard/parents/ParentsTableRow'
-import {
-  NewParentSheet,
-} from '@/components/dashboard/parents/ParentSheet'
+import { ParentsTable } from '@/components/dashboard/parents/ParentsTable'
+import { NewParentSheet } from '@/components/dashboard/parents/ParentSheet'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 export default async function ParentsPage(props: {
   searchParams: Promise<{ q?: string }>
@@ -29,7 +20,6 @@ export default async function ParentsPage(props: {
   const { orgId, role } = await getSession()
   const parents = await getParents(orgId, { search: q })
   const isTeacher = role === 'teacher'
-  const canSendPaymentRequest = role === 'owner' || role === 'admin'
   const t = await getTranslations('parents')
   const tCommon = await getTranslations('common')
 
@@ -63,47 +53,19 @@ export default async function ParentsPage(props: {
           />
         </div>
       ) : (
-        <div className="mt-4 min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <div className="h-full overflow-auto">
-            <Table className="min-w-[640px]">
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                    {t('title')}
-                  </TableHead>
-                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                    {tCommon('table.phone')}
-                  </TableHead>
-                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                    {tCommon('table.status')}
-                  </TableHead>
-                  <TableHead className="sticky top-0 z-10 w-12 bg-muted/95 px-5 backdrop-blur" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {parents.map((parent) => {
-                  const updateAction = updateParent.bind(null, parent.id)
-                  const archiveAction = archiveParent.bind(null, parent.id)
-                  const restoreAction = restoreParent.bind(null, parent.id)
-                  return (
-                    <ParentsTableRow
-                      key={parent.id}
-                      parent={parent}
-                      isTeacher={isTeacher}
-                      canSendPaymentRequest={canSendPaymentRequest}
-                      statusActiveLabel={t('statusActive')}
-                      statusInactiveLabel={t('statusInactive')}
-                      updateAction={updateAction}
-                      archiveAction={archiveAction}
-                      restoreAction={restoreAction}
-                      paymentAction={sendPaymentRequestAction}
-                    />
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+        <ParentsTable
+          parents={parents}
+          role={role as 'owner' | 'admin' | 'teacher'}
+          headingName={t('title')}
+          headingPhone={tCommon('table.phone')}
+          headingStatus={tCommon('table.status')}
+          statusActiveLabel={t('statusActive')}
+          statusInactiveLabel={t('statusInactive')}
+          updateAction={updateParent}
+          archiveAction={archiveParent}
+          restoreAction={restoreParent}
+          paymentAction={sendPaymentRequestAction}
+        />
       )}
     </div>
   )

@@ -15,7 +15,7 @@
  * Adjust the endpoint path or field names if Sumit changes their API.
  */
 
-import type { ReceiptProvider } from './index'
+import type { DocumentType, ReceiptProvider } from './index'
 
 const SUMIT_BASE = 'https://api.sumit.co.il'
 
@@ -49,7 +49,10 @@ export class SumitProvider implements ReceiptProvider {
     description: string
     orgName:     string
     date:        string
-  }): Promise<{ receiptUrl: string; receiptId: string }> {
+    documentType?: DocumentType
+    vatAmount?:    number
+    customerTaxId?: string
+  }): Promise<{ receiptUrl: string; receiptId: string; documentType: DocumentType }> {
     const { chargeId, amount, parentName, description, orgName, date } = params
 
     const docDescription =
@@ -111,6 +114,7 @@ export class SumitProvider implements ReceiptProvider {
     return {
       receiptUrl,
       receiptId: json.ReturnValue.DocumentID,
+      documentType: 'receipt', // Sumit supports receipts only
     }
   }
 

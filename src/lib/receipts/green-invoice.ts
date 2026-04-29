@@ -13,7 +13,7 @@
  * Token fetched fresh per call — no in-memory caching (serverless environment).
  */
 
-import type { ReceiptProvider } from './index'
+import type { DocumentType, ReceiptProvider } from './index'
 
 const GREEN_INVOICE_BASE = 'https://api.greeninvoice.co.il/api/v1'
 
@@ -35,53 +35,61 @@ interface GreenInvoiceDocumentResponse {
 export class GreenInvoiceProvider implements ReceiptProvider {
   constructor(private config: GreenInvoiceConfig) {}
 
-  async issueReceipt(params: {
-    chargeId: string
-    amount: number
-    parentName: string
-    description: string
-    orgName: string
-    date: string
-  }): Promise<{ receiptUrl: string; receiptId: string }> {
-    const { chargeId, amount, parentName, description, orgName, date } = params
-
+  private async createDocument(
+    docType: number,
+    params: {
+      chargeId: string
+      amount: number
+      parentName: string
+      description: string
+      orgName: string
+      date: string
+      vatAmount?: number
+      customerTaxId?: string
+    }
+  ): Promise<{ url: string; id: string }> {
     const token = await this.getToken()
 
     const docDescription =
-      orgName.trim().length > 0 ? `${orgName.trim()} — ${description}` : description
+      params.orgName.trim().length > 0
+        ? `${params.orgName.trim()} — ${params.description}`
+        : params.description
+
+    const hasVat = (params.vatAmount ?? 0) > 0
+    const client: Record<string, unknown> = { name: params.parentName, add: false }
+    if (params.customerTaxId) {
+      client.taxId = params.customerTaxId
+    }
 
     const body = {
       description: docDescription,
-      type: 320,        // קבלה
-      date,
-      dueDate: date,
+      type: docType,
+      date: params.date,
+      dueDate: params.date,
       lang: 'he',
       currency: 'ILS',
-      vatType: 0,
+      vatType: hasVat ? 1 : 0,
       discount: 0,
       rounding: false,
       signed: false,
-      client: {
-        name: parentName,
-        add: false,
-      },
+      client,
       income: [
         {
           catalogNum: '',
           description: docDescription,
           quantity: 1,
-          price: amount,
+          price: params.amount,
           currency: 'ILS',
-          vatType: 0,
+          vatType: hasVat ? 1 : 0,
         },
       ],
       payment: [
         {
-          type: 5,          // bank transfer / other
-          price: amount,
+          type: 5,
+          price: params.amount + (params.vatAmount ?? 0),
           currency: 'ILS',
-          date,
-          ref: chargeId,
+          date: params.date,
+          ref: params.chargeId,
         },
       ],
     }
@@ -101,19 +109,49 @@ export class GreenInvoiceProvider implements ReceiptProvider {
     }
 
     const json = (await res.json()) as GreenInvoiceDocumentResponse
-
     if (!json.id) {
       throw new Error(`[green-invoice] Response missing document id: ${JSON.stringify(json)}`)
     }
 
-    // Green Invoice returns the document URL; fall back to constructing it.
-    const receiptUrl =
-      json.url ?? `https://app.greeninvoice.co.il/documents/${json.id}`
-
     return {
-      receiptUrl,
-      receiptId: json.id,
+      url: json.url ?? `https://app.greeninvoice.co.il/documents/${json.id}`,
+      id: json.id,
     }
+  }
+
+  async issueReceipt(params: {
+    chargeId: string
+    amount: number
+    parentName: string
+    description: string
+    orgName: string
+    date: string
+    documentType?: DocumentType
+    vatAmount?: number
+    customerTaxId?: string
+  }): Promise<{ receiptUrl: string; receiptId: string; documentType: DocumentType }> {
+    const docType = params.documentType ?? 'receipt'
+    // 305 = חשבונית מס (tax invoice), 320 = קבלה (receipt)
+    const greenType = docType === 'tax_invoice' ? 305 : 320
+    const result = await this.createDocument(greenType, params)
+    return { receiptUrl: result.url, receiptId: result.id, documentType: docType }
+  }
+
+  async issueCreditNote(params: {
+    chargeId: string
+    amount: number
+    parentName: string
+    description: string
+    orgName: string
+    date: string
+    vatAmount: number
+    customerTaxId?: string
+    originalInvoiceNumber: string
+  }): Promise<{ creditNoteUrl: string; creditNoteId: string }> {
+    const description = `${params.description} (מבטלת חשבונית ${params.originalInvoiceNumber})`
+    // Green Invoice type 330 = חשבונית זיכוי (credit note)
+    const result = await this.createDocument(330, { ...params, description })
+    return { creditNoteUrl: result.url, creditNoteId: result.id }
   }
 
   private async getToken(): Promise<string> {

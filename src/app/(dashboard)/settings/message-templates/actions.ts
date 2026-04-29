@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession } from '@/lib/auth/session'
+import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
@@ -39,6 +40,8 @@ export async function saveTemplateAction(
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
   }
+
+  await requireFeature(orgId, 'whatsapp_automation')
 
   const parsed = TemplateSchema.safeParse({
     type: formData.get('type'),
@@ -80,6 +83,8 @@ export async function resetTemplateAction(type: string): Promise<{ error?: strin
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
   }
+
+  await requireFeature(orgId, 'whatsapp_automation')
 
   const db = createServiceRoleClient()
   const { error } = await db

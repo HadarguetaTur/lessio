@@ -18,9 +18,10 @@ type FormAction = (prevState: ActionState, formData: FormData) => Promise<Action
 
 interface NewStudentSheetProps {
   action: FormAction
+  teachers: { id: string; full_name: string }[]
 }
 
-export function NewStudentSheet({ action }: NewStudentSheetProps) {
+export function NewStudentSheet({ action, teachers }: NewStudentSheetProps) {
   const t = useTranslations('students')
   const [open, setOpen] = useState(false)
 
@@ -39,6 +40,7 @@ export function NewStudentSheet({ action }: NewStudentSheetProps) {
           </SheetHeader>
           <StudentForm
             action={action}
+            teachers={teachers}
             onSuccess={() => setOpen(false)}
             onCancel={() => setOpen(false)}
           />

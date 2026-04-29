@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { requireFeature } from '@/lib/saas/featureGate'
 import { gradeSubmission } from '@/lib/homework/submissions'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
@@ -39,6 +40,8 @@ export async function gradeSubmissionAction(
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
   }
+
+  await requireFeature(session.orgId, 'homework')
 
   const parsed = GradeSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) {

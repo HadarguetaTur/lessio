@@ -4,6 +4,10 @@ export interface Parent {
   id: string
   full_name: string
   phone: string
+  email: string | null
+  second_phone: string | null
+  address: string | null
+  relation_type: string | null
   notes: string | null
   is_active: boolean
   created_at: string
@@ -21,7 +25,9 @@ export async function getParents(
 
   let query = supabase
     .from('parents')
-    .select('id, full_name, phone, notes, is_active, created_at')
+    .select(
+      'id, full_name, phone, email, second_phone, address, relation_type, notes, is_active, created_at'
+    )
     .eq('organization_id', organizationId)
     .order('full_name', { ascending: true })
 
@@ -45,7 +51,9 @@ export async function getParentById(
 
   const { data } = await supabase
     .from('parents')
-    .select('id, full_name, phone, notes, is_active, created_at')
+    .select(
+      'id, full_name, phone, email, second_phone, address, relation_type, notes, is_active, created_at'
+    )
     .eq('id', id)
     .eq('organization_id', organizationId)
     .single()

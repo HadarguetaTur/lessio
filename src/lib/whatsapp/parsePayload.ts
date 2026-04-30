@@ -5,6 +5,8 @@
  * Returns an array of extracted messages (usually 0 or 1 per webhook call).
  */
 
+import { z } from 'zod'
+
 export interface WhatsAppMessage {
   /** E.164-ish sender phone (from Meta — may need normalizePhone before DB lookup) */
   from: string
@@ -16,41 +18,42 @@ export interface WhatsAppMessage {
   phoneNumberId: string
 }
 
-// Minimal structural types for the Meta payload
-interface MetaTextMessage {
-  from: string
-  id: string
-  type: 'text'
-  text: { body: string }
-}
+const MetaMessageSchema = z.object({
+  from: z.string().min(1),
+  id: z.string().min(1),
+  type: z.string().min(1),
+  text: z.object({ body: z.string() }).optional(),
+})
 
-interface MetaValue {
-  messaging_product: string
-  metadata: {
-    display_phone_number: string
-    phone_number_id: string
-  }
-  messages?: MetaTextMessage[]
-}
+const MetaWebhookPayloadSchema = z.object({
+  object: z.literal('whatsapp_business_account'),
+  entry: z.array(
+    z.object({
+      id: z.string(),
+      changes: z.array(
+        z.object({
+          field: z.string(),
+          value: z.object({
+            messaging_product: z.string(),
+            metadata: z.object({
+              display_phone_number: z.string().min(1),
+              phone_number_id: z.string().min(1),
+            }),
+            messages: z.array(MetaMessageSchema).optional(),
+          }),
+        })
+      ).default([]),
+    })
+  ).default([]),
+})
 
-interface MetaChange {
-  value: MetaValue
-  field: string
-}
-
-interface MetaEntry {
-  id: string
-  changes: MetaChange[]
-}
-
-export interface MetaWebhookPayload {
-  object: string
-  entry: MetaEntry[]
-}
+export type MetaWebhookPayload = z.infer<typeof MetaWebhookPayloadSchema>
 
 export function parseWebhookPayload(body: unknown): WhatsAppMessage[] {
-  const payload = body as MetaWebhookPayload
-  if (payload?.object !== 'whatsapp_business_account') return []
+  const parsed = MetaWebhookPayloadSchema.safeParse(body)
+  if (!parsed.success) return []
+
+  const payload = parsed.data
 
   const results: WhatsAppMessage[] = []
 
@@ -61,7 +64,7 @@ export function parseWebhookPayload(body: unknown): WhatsAppMessage[] {
       if (!messages) continue
 
       for (const msg of messages) {
-        if (msg.type !== 'text') continue
+        if (msg.type !== 'text' || !msg.text) continue
         results.push({
           from: msg.from,
           messageId: msg.id,
@@ -79,7 +82,14 @@ export function parseWebhookPayload(body: unknown): WhatsAppMessage[] {
 /** Returns true if the message text contains a booking intent keyword. */
 export function hasBookingIntent(text: string): boolean {
   const lower = text.toLowerCase()
-  return lower.includes('קביעה') || lower.includes('שיעור')
+  return (
+    lower.includes('קביעה') ||
+    lower.includes('לקבוע') ||
+    lower.includes('לקבוע שיעור') ||
+    lower.includes('להזמין שיעור') ||
+    lower.includes('הזמנה') ||
+    lower.includes('book')
+  )
 }
 
 /**

@@ -5,6 +5,11 @@ import { createHmac } from 'crypto'
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
 const mockFrom = vi.fn()
+const mockIsAiAssistantConfigured = vi.hoisted(() => vi.fn())
+
+vi.mock('@/lib/crypto', () => ({
+  decryptToken: vi.fn().mockReturnValue('test-access-token'),
+}))
 
 vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({ from: (t: string) => mockFrom(t) }),
@@ -14,13 +19,20 @@ vi.mock('@/lib/whatsapp', async () => {
   const actual = await vi.importActual('@/lib/whatsapp')
   return {
     ...actual,
-    sendBookingLink: vi.fn().mockResolvedValue(undefined),
+    sendTextMessage: vi.fn().mockResolvedValue(undefined),
     sendUnknownParentReply: vi.fn().mockResolvedValue(undefined),
     sendCancellationLessonList: vi.fn().mockResolvedValue(undefined),
     sendNoEligibleLessonsReply: vi.fn().mockResolvedValue(undefined),
     sendInvalidSelectionReply: vi.fn().mockResolvedValue(undefined),
   }
 })
+
+vi.mock('@/lib/whatsapp/templates', () => ({
+  resolveTemplate: vi.fn().mockImplementation(
+    (_orgId: string, _type: string, vars: Record<string, string> = {}) =>
+      Promise.resolve(vars['booking_url'] ?? 'mocked-template-body')
+  ),
+}))
 
 vi.mock('@/lib/cancellation-flow', () => ({
   getEligibleLessons: vi.fn().mockResolvedValue([]),
@@ -29,6 +41,26 @@ vi.mock('@/lib/cancellation-flow', () => ({
   getActiveCancellationSession: vi.fn().mockResolvedValue(null),
   deleteCancellationSession: vi.fn().mockResolvedValue(undefined),
   executeCancellation: vi.fn().mockResolvedValue({ success: false, error: 'not_found' }),
+}))
+
+vi.mock('@/lib/ai-assistant', () => ({
+  aiAssistant: vi.fn().mockResolvedValue({
+    reply: 'ai-reply',
+    promptTokens: 50,
+    completionTokens: 20,
+    provider: 'openai',
+    model: 'gpt-4o-mini',
+  }),
+  isAiAssistantConfigured: mockIsAiAssistantConfigured,
+}))
+
+vi.mock('@/lib/ai-assistant/conversationLog', () => ({
+  logExchange: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/lib/whatsapp/idempotency', () => ({
+  claimIncomingMessage: vi.fn().mockResolvedValue(true),
+  releaseIncomingMessageClaim: vi.fn().mockResolvedValue(undefined),
 }))
 
 const mockUpsertLead = vi.fn().mockResolvedValue(undefined)
@@ -42,8 +74,9 @@ vi.mock('@/lib/jwt', () => ({
 }))
 
 import { GET, POST } from './route'
+import { decryptToken } from '@/lib/crypto'
 import {
-  sendBookingLink,
+  sendTextMessage,
   sendUnknownParentReply,
   sendInvalidSelectionReply,
   sendCancellationLessonList,
@@ -55,8 +88,11 @@ import {
   getEligibleLessons,
   executeCancellation,
 } from '@/lib/cancellation-flow'
+import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
+import { logExchange } from '@/lib/ai-assistant/conversationLog'
+import { claimIncomingMessage, releaseIncomingMessageClaim } from '@/lib/whatsapp/idempotency'
 
-const mockSendBookingLink = vi.mocked(sendBookingLink)
+const mockSendTextMessage = vi.mocked(sendTextMessage)
 const mockSendUnknownParentReply = vi.mocked(sendUnknownParentReply)
 const mockSendInvalidSelectionReply = vi.mocked(sendInvalidSelectionReply)
 const mockSendCancellationLessonList = vi.mocked(sendCancellationLessonList)
@@ -65,6 +101,12 @@ const mockDeleteCancellationSession = vi.mocked(deleteCancellationSession)
 const mockUpsertCancellationSession = vi.mocked(upsertCancellationSession)
 const mockGetEligibleLessons = vi.mocked(getEligibleLessons)
 const mockExecuteCancellation = vi.mocked(executeCancellation)
+const mockAiAssistant = vi.mocked(aiAssistant)
+const mockAiAssistantConfigured = vi.mocked(isAiAssistantConfigured)
+const mockLogExchange = vi.mocked(logExchange)
+const mockClaimIncomingMessage = vi.mocked(claimIncomingMessage)
+const mockReleaseIncomingMessageClaim = vi.mocked(releaseIncomingMessageClaim)
+const mockDecryptToken = vi.mocked(decryptToken)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -165,6 +207,17 @@ describe('POST /api/whatsapp/webhook', () => {
     process.env.WHATSAPP_APP_SECRET = APP_SECRET
     process.env.WHATSAPP_ACCESS_TOKEN = 'test-access-token'
     process.env.WHATSAPP_PHONE_NUMBER_ID = 'test-phone-number-id'
+    mockClaimIncomingMessage.mockResolvedValue(true)
+    mockReleaseIncomingMessageClaim.mockResolvedValue(undefined)
+    mockAiAssistant.mockResolvedValue({
+      reply: 'ai-reply',
+      promptTokens: 50,
+      completionTokens: 20,
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+    })
+    mockAiAssistantConfigured.mockReturnValue(true)
+    mockLogExchange.mockResolvedValue(undefined)
   })
 
   it('returns 200 for a valid signed request', async () => {
@@ -174,15 +227,15 @@ describe('POST /api/whatsapp/webhook', () => {
     expect(res.status).toBe(200)
   })
 
-  it('returns 403 when X-Hub-Signature-256 is invalid', async () => {
+  it('returns 401 when X-Hub-Signature-256 is invalid', async () => {
     const req = makeRequest(makeWebhookPayload('שיעור'), { signed: false })
     const res = await POST(req)
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(401)
   })
 
   it('sends unknown parent reply and creates lead when parent not found', async () => {
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: null, error: null }) // not found
       if (table === 'leads') return buildChain({ data: null, error: null })
       return buildChain({ data: null, error: null })
@@ -197,12 +250,12 @@ describe('POST /api/whatsapp/webhook', () => {
       'test-access-token',
       'phone-number-id-1'
     )
-    expect(mockSendBookingLink).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
   })
 
   it('sends booking link when parent has exactly one student and message has booking intent', async () => {
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       if (table === 'relationships') {
         const chain = buildChain(null) as Record<string, unknown>
@@ -215,11 +268,11 @@ describe('POST /api/whatsapp/webhook', () => {
       return buildChain({ data: null, error: null })
     })
 
-    const req = makeRequest(makeWebhookPayload('אני רוצה שיעור'))
+    const req = makeRequest(makeWebhookPayload('אני רוצה לקבוע שיעור'))
     const res = await POST(req)
 
     expect(res.status).toBe(200)
-    expect(mockSendBookingLink).toHaveBeenCalledWith(
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
       expect.stringContaining('/book/signed-token-abc'),
       'test-access-token',
@@ -228,10 +281,10 @@ describe('POST /api/whatsapp/webhook', () => {
     expect(mockUpsertLead).not.toHaveBeenCalled()
   })
 
-  it('does not send booking link when message has no booking intent', async () => {
+  it('sends unknown-intent fallback when message has no booking intent', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       return buildChain({ data: null, error: null })
     })
@@ -240,8 +293,249 @@ describe('POST /api/whatsapp/webhook', () => {
     const res = await POST(req)
 
     expect(res.status).toBe(200)
-    expect(mockSendBookingLink).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'mocked-template-body',
+      'test-access-token',
+      'phone-number-id-1'
+    )
     expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
+  })
+
+  it('sends an AI reply and logs the exchange when AI assistant is enabled', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('אפשר עזרה עם התשלום?'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockAiAssistant).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164, PARENT_ID, 'אפשר עזרה עם התשלום?')
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'ai-reply',
+      'test-access-token',
+      'phone-number-id-1'
+    )
+    expect(mockLogExchange).toHaveBeenCalledWith(
+      ORG_ID,
+      SENDER_PHONE_E164,
+      PARENT_ID,
+      'אפשר עזרה עם התשלום?',
+      'ai-reply'
+    )
+  })
+
+  it('falls back to the generic template when the AI assistant throws', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockAiAssistant.mockRejectedValueOnce(new Error('openai down'))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('אפשר עזרה עם התשלום?'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'mocked-template-body',
+      'test-access-token',
+      'phone-number-id-1'
+    )
+    expect(mockLogExchange).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the generic template when AI is enabled but OPENAI_API_KEY is missing', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockAiAssistantConfigured.mockReturnValue(false)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('אפשר עזרה עם התשלום?'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockAiAssistant).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'mocked-template-body',
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('ignores duplicate webhook deliveries for the same message id', async () => {
+    mockClaimIncomingMessage.mockResolvedValueOnce(false)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('אפשר עזרה עם התשלום?'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockAiAssistant).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
+  })
+
+  it('releases the inbound claim when sending the AI reply fails', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockSendTextMessage.mockRejectedValueOnce(new Error('send failed'))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('אפשר עזרה עם התשלום?'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockReleaseIncomingMessageClaim).toHaveBeenCalledWith(ORG_ID, 'msg-1')
+    expect(mockLogExchange).not.toHaveBeenCalled()
+  })
+
+  it('releases the inbound claim when parent lookup fails after the claim is taken', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: false,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: null, error: { message: 'db down' } })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('שלום'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockReleaseIncomingMessageClaim).toHaveBeenCalledWith(ORG_ID, 'msg-1')
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
+  })
+
+  it('releases the inbound claim when sending the fallback reply fails', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockSendTextMessage.mockRejectedValueOnce(new Error('send failed'))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: false,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('שלום'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockReleaseIncomingMessageClaim).toHaveBeenCalledWith(ORG_ID, 'msg-1')
+    expect(mockLogExchange).not.toHaveBeenCalled()
+  })
+
+  it('sends an explanatory reply when booking is requested without a linked student', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: false,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      if (table === 'relationships') return buildChain({ data: [], error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('אני רוצה לקבוע שיעור'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      expect.stringContaining('אין תלמיד מקושר'),
+      'test-access-token',
+      'phone-number-id-1'
+    )
   })
 
   it('returns 200 even when no org matches the business phone', async () => {
@@ -253,7 +547,36 @@ describe('POST /api/whatsapp/webhook', () => {
     const req = makeRequest(makeWebhookPayload('שיעור'))
     const res = await POST(req)
     expect(res.status).toBe(200)
-    expect(mockSendBookingLink).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
+  })
+
+  it('does not release the claim on successful message processing', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem', ai_assistant_enabled: false }, error: null })
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('שלום'))
+    await POST(req)
+
+    expect(mockReleaseIncomingMessageClaim).not.toHaveBeenCalled()
+  })
+
+  it('returns 200 without claiming when token decryption fails', async () => {
+    mockDecryptToken.mockImplementationOnce(() => { throw new Error('decryption failed') })
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('שלום'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockClaimIncomingMessage).not.toHaveBeenCalled()
+    expect(mockReleaseIncomingMessageClaim).not.toHaveBeenCalled()
   })
 })
 
@@ -269,7 +592,7 @@ describe('WhatsApp cancellation intent', () => {
   it('starts cancellation flow when parent sends ביטול', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       if (table === 'relationships') return buildChain({ data: [], error: null })
       return buildChain({ data: null, error: null })
@@ -279,13 +602,13 @@ describe('WhatsApp cancellation intent', () => {
     const res = await POST(req)
     expect(res.status).toBe(200)
     // No booking link sent
-    expect(mockSendBookingLink).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
   })
 
-  it('does not start cancellation for unrelated message from known parent', async () => {
+  it('sends unknown-intent fallback for unrelated message from known parent', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       return buildChain({ data: null, error: null })
     })
@@ -293,14 +616,19 @@ describe('WhatsApp cancellation intent', () => {
     const req = makeRequest(makeWebhookPayload('תודה רבה'))
     const res = await POST(req)
     expect(res.status).toBe(200)
-    expect(mockSendBookingLink).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'mocked-template-body',
+      'test-access-token',
+      'phone-number-id-1'
+    )
     expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
   })
 
   it('does not create lead for recognized parent (converted phone routes as parent, not lead)', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       return buildChain({ data: null, error: null })
     })
@@ -310,6 +638,12 @@ describe('WhatsApp cancellation intent', () => {
     expect(res.status).toBe(200)
     expect(mockUpsertLead).not.toHaveBeenCalled()
     expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'mocked-template-body',
+      'test-access-token',
+      'phone-number-id-1'
+    )
   })
 
   it('invalid selection input keeps cancellation flow open', async () => {
@@ -324,7 +658,7 @@ describe('WhatsApp cancellation intent', () => {
       { id: 'lesson-1', start_at: new Date(Date.now() + 86400000).toISOString(), student_name: 'A', teacher_name: 'B' },
     ])
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       return buildChain({ data: null, error: null })
     })
@@ -365,7 +699,7 @@ describe('WhatsApp cancellation intent', () => {
       { id: 'lesson-2', start_at: new Date(Date.now() + 86400000).toISOString(), student_name: 'A', teacher_name: 'B' },
     ])
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_token: null, timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
       if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
       return buildChain({ data: null, error: null })
     })

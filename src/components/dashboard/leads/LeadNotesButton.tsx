@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface Props {
   leadId: string
@@ -9,6 +10,8 @@ interface Props {
 }
 
 export function LeadNotesButton({ leadId, initialNotes, action }: Props) {
+  const t = useTranslations('leads')
+  const tCommon = useTranslations('common')
   const [isPending, startTransition] = useTransition()
   const [isOpen, setIsOpen] = useState(false)
   const [notes, setNotes] = useState(initialNotes ?? '')
@@ -32,7 +35,7 @@ export function LeadNotesButton({ leadId, initialNotes, action }: Props) {
         onClick={() => setIsOpen(true)}
         className="text-sm text-blue-600 hover:text-blue-800"
       >
-        {initialNotes ? 'ערוך הערה' : 'הוסף הערה'}
+        {initialNotes ? t('editNote') : t('addNote')}
       </button>
     )
   }
@@ -43,7 +46,7 @@ export function LeadNotesButton({ leadId, initialNotes, action }: Props) {
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         rows={2}
-        placeholder="הערה על הליד"
+        placeholder={t('notePlaceholder')}
         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -53,7 +56,7 @@ export function LeadNotesButton({ leadId, initialNotes, action }: Props) {
           disabled={isPending}
           className="text-sm text-blue-700 hover:text-blue-900 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {isPending ? 'שומר...' : 'שמור'}
+          {isPending ? t('saving') : tCommon('actions.save')}
         </button>
         <button
           type="button"
@@ -65,7 +68,7 @@ export function LeadNotesButton({ leadId, initialNotes, action }: Props) {
           disabled={isPending}
           className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-40"
         >
-          ביטול
+          {tCommon('actions.cancel')}
         </button>
       </div>
     </div>

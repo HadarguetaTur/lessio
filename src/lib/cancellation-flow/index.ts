@@ -52,23 +52,42 @@ export async function getEligibleLessons(
   const now = new Date()
   const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
+  // Step 1: resolve lesson IDs for this parent's students via junction table
+  const { data: lessonStudentRows, error: lsError } = await db
+    .from('lesson_students')
+    .select('lesson_id, student_id, students(full_name)')
+    .in('student_id', studentIds)
+
+  if (lsError || !lessonStudentRows || lessonStudentRows.length === 0) return []
+
+  const lessonIds = [...new Set(lessonStudentRows.map((r: { lesson_id: string }) => r.lesson_id))]
+
+  // Step 2: fetch those lessons with status + teacher, filtered by window
   const { data: lessons, error: lessonError } = await db
     .from('lessons')
-    .select('id, start_at, students(full_name), teachers(profiles(full_name))')
+    .select('id, start_at, teachers(profiles(full_name))')
     .eq('organization_id', orgId)
     .eq('status', 'scheduled')
-    .in('student_id', studentIds)
+    .in('id', lessonIds)
     .gte('start_at', now.toISOString())
     .lt('start_at', sevenDaysLater.toISOString())
     .order('start_at', { ascending: true })
 
   if (lessonError || !lessons) return []
 
+  // Build a lookup: lesson_id → student name
+  const studentNameByLesson = new Map<string, string>()
+  for (const row of lessonStudentRows as unknown as Array<{ lesson_id: string; student_id: string; students: { full_name: string } }>) {
+    if (!studentNameByLesson.has(row.lesson_id)) {
+      studentNameByLesson.set(row.lesson_id, row.students.full_name)
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return lessons.map((l: any) => ({
     id: l.id,
     start_at: l.start_at,
-    student_name: (l.students as { full_name: string }).full_name,
+    student_name: studentNameByLesson.get(l.id) ?? '—',
     teacher_name: (l.teachers as { profiles: { full_name: string } }).profiles.full_name,
   }))
 }

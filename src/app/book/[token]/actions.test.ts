@@ -8,6 +8,10 @@ vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({ from: (t: string) => mockFrom(t) }),
 }))
 
+vi.mock('@/lib/crypto', () => ({
+  decryptToken: vi.fn().mockReturnValue('test-token'),
+}))
+
 vi.mock('@/lib/jwt', () => ({
   verifyBookingToken: vi.fn(),
   signBookingToken: vi.fn(),
@@ -18,6 +22,7 @@ vi.mock('@/lib/booking', async () => {
   return {
     ...actual,
     getAvailableSlots: vi.fn(),
+    getAvailabilitySummary: vi.fn(),
     createSlotLock: vi.fn(),
     confirmBooking: vi.fn(),
   }
@@ -27,18 +32,29 @@ vi.mock('@/lib/whatsapp', async () => {
   const actual = await vi.importActual('@/lib/whatsapp')
   return {
     ...actual,
-    sendBookingConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendTextMessage: vi.fn().mockResolvedValue(undefined),
   }
 })
 
+vi.mock('@/lib/whatsapp/templates', () => ({
+  resolveTemplate: vi.fn().mockResolvedValue('מורה: ישראל ישראלי'),
+}))
+
 import { verifyBookingToken } from '@/lib/jwt'
-import { confirmBooking, LockExpiredError, NoPrimaryParentError, InactiveParticipantError } from '@/lib/booking'
-import { sendBookingConfirmation } from '@/lib/whatsapp'
-import { confirmBookingAction } from './actions'
+import {
+  confirmBooking,
+  getAvailabilitySummary,
+  LockExpiredError,
+  NoPrimaryParentError,
+  InactiveParticipantError,
+} from '@/lib/booking'
+import { sendTextMessage } from '@/lib/whatsapp'
+import { confirmBookingAction, getAvailabilitySummaryAction } from './actions'
 
 const mockVerify = vi.mocked(verifyBookingToken)
 const mockConfirmBooking = vi.mocked(confirmBooking)
-const mockSendConfirmation = vi.mocked(sendBookingConfirmation)
+const mockGetAvailabilitySummary = vi.mocked(getAvailabilitySummary)
+const mockSendTextMessage = vi.mocked(sendTextMessage)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -89,7 +105,10 @@ describe('confirmBookingAction', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'parents') return buildChain({ data: { phone: PARENT_PHONE }, error: null })
       if (table === 'teachers') return buildChain({ data: { profiles: { full_name: TEACHER_NAME } }, error: null })
-      if (table === 'organizations') return buildChain({ data: { whatsapp_token: null }, error: null })
+      if (table === 'organizations') return buildChain({
+        data: { whatsapp_phone_number_id: 'test-phone-id', whatsapp_access_token: 'encrypted-test-token' },
+        error: null,
+      })
       return buildChain({ data: null, error: null })
     })
 
@@ -102,10 +121,9 @@ describe('confirmBookingAction', () => {
 
     // Wait for fire-and-forget to settle
     await new Promise(r => setTimeout(r, 10))
-    expect(mockSendConfirmation).toHaveBeenCalledWith(
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
       PARENT_PHONE,
-      TEACHER_NAME,
-      START_AT,
+      expect.stringContaining('ישראל ישראלי'),
       'test-token',
       'test-phone-id'
     )
@@ -113,12 +131,15 @@ describe('confirmBookingAction', () => {
 
   it('returns success even if WhatsApp confirmation send fails', async () => {
     mockConfirmBooking.mockResolvedValue(BOOKING_RESULT)
-    mockSendConfirmation.mockRejectedValueOnce(new Error('Meta API down'))
+    mockSendTextMessage.mockRejectedValueOnce(new Error('Meta API down'))
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'parents') return buildChain({ data: { phone: PARENT_PHONE }, error: null })
       if (table === 'teachers') return buildChain({ data: { profiles: { full_name: TEACHER_NAME } }, error: null })
-      if (table === 'organizations') return buildChain({ data: { whatsapp_token: null }, error: null })
+      if (table === 'organizations') return buildChain({
+        data: { whatsapp_phone_number_id: 'test-phone-id', whatsapp_access_token: 'encrypted-test-token' },
+        error: null,
+      })
       return buildChain({ data: null, error: null })
     })
 
@@ -154,6 +175,32 @@ describe('confirmBookingAction', () => {
     await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
 
     await new Promise(r => setTimeout(r, 10))
-    expect(mockSendConfirmation).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
+  })
+})
+
+describe('getAvailabilitySummaryAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockVerify.mockResolvedValue({ organizationId: ORG_ID, parentId: PARENT_ID, studentId: STUDENT_ID })
+  })
+
+  it('verifies the token and delegates to the weekly availability summary helper', async () => {
+    mockGetAvailabilitySummary.mockResolvedValue({
+      weekStart: '2026-03-22',
+      timezone: 'UTC',
+      durationMinutes: 60,
+      days: [],
+    })
+
+    const result = await getAvailabilitySummaryAction(TOKEN, TEACHER_ID, 60, '2026-03-24')
+
+    expect(result.weekStart).toBe('2026-03-22')
+    expect(mockGetAvailabilitySummary).toHaveBeenCalledWith({
+      teacherId: TEACHER_ID,
+      organizationId: ORG_ID,
+      durationMinutes: 60,
+      weekStart: '2026-03-24',
+    })
   })
 })

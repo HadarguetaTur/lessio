@@ -11,6 +11,7 @@ const { mockGetSession, mockRedirect, mockInviteUserByEmail, mockFrom } = vi.hoi
 
 vi.mock('@/lib/auth/session', () => ({
   getSession: mockGetSession,
+  requireMutation: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -37,7 +38,7 @@ import { inviteTeacher } from './actions'
 describe('inviteTeacher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetSession.mockResolvedValue({ orgId: 'org-1' })
+    mockGetSession.mockResolvedValue({ orgId: 'org-1', role: 'owner' })
   })
 
   it('sends the invite and creates profile and teacher records', async () => {

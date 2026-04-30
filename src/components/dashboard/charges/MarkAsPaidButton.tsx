@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface Props {
   chargeId: string
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export function MarkAsPaidButton({ chargeId, action }: Props) {
+  const t = useTranslations('charges')
+  const tCommon = useTranslations('common')
   const [isPending, startTransition] = useTransition()
   const [isOpen, setIsOpen] = useState(false)
   const [notes, setNotes] = useState('')
@@ -33,7 +36,7 @@ export function MarkAsPaidButton({ chargeId, action }: Props) {
         onClick={() => setIsOpen(true)}
         className="text-sm text-green-700 hover:text-green-900 disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        סמן כשולם
+        {t('markAsPaidButton')}
       </button>
     )
   }
@@ -44,7 +47,7 @@ export function MarkAsPaidButton({ chargeId, action }: Props) {
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         rows={2}
-        placeholder="הערת תשלום (אופציונלי)"
+        placeholder={t('markAsPaidPlaceholder')}
         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
       />
 
@@ -58,7 +61,7 @@ export function MarkAsPaidButton({ chargeId, action }: Props) {
           disabled={isPending}
           className="text-sm text-green-700 hover:text-green-900 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {isPending ? 'מעדכן...' : 'אישור'}
+          {isPending ? t('updating') : tCommon('actions.confirm')}
         </button>
         <button
           type="button"
@@ -70,7 +73,7 @@ export function MarkAsPaidButton({ chargeId, action }: Props) {
           disabled={isPending}
           className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-40"
         >
-          ביטול
+          {tCommon('actions.cancel')}
         </button>
       </div>
     </div>

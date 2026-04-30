@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
 
 type ActionState = { error: string } | null
@@ -16,7 +16,10 @@ export async function linkParent(
 
   if (!parentId) return { error: 'יש לבחור הורה' }
 
-  const { orgId } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
   const supabase = await createClient()
 
   // If marking as primary, clear existing primary for this student first
@@ -45,7 +48,10 @@ export async function linkParent(
 }
 
 export async function setPrimary(relationshipId: string, studentId: string): Promise<void> {
-  const { orgId } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
+  if (role !== 'owner' && role !== 'admin') return
   const supabase = await createClient()
 
   // Unset all primaries for this student, then set the chosen one
@@ -65,7 +71,10 @@ export async function setPrimary(relationshipId: string, studentId: string): Pro
 }
 
 export async function unlinkParent(relationshipId: string, studentId: string): Promise<void> {
-  const { orgId } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
+  if (role !== 'owner' && role !== 'admin') return
   const supabase = await createClient()
 
   await supabase

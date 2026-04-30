@@ -2,9 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { getTeacherById, type Teacher } from '@/lib/teachers'
 
 type ActionState = { error: string } | null
 
@@ -25,7 +26,10 @@ export async function inviteTeacher(
   if (!email) return { error: 'אימייל הוא שדה חובה' }
   if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
 
-  const { orgId } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
   const adminClient = createServiceRoleClient()
 
   // Step 1: Send invite email via Supabase Auth admin API
@@ -79,7 +83,11 @@ export async function updateTeacher(
     return { error: 'תעריף שעתי חייב להיות מספר חיובי' }
   }
 
-  const { orgId } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
+  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -90,11 +98,27 @@ export async function updateTeacher(
 
   if (error) return { error: 'שגיאה בעדכון המורה' }
 
-  redirect('/teachers')
+  revalidatePath('/teachers')
+  revalidatePath(`/teachers/${id}/edit`)
+
+  return null
+}
+
+export async function fetchTeacherForSheet(
+  id: string
+): Promise<{ data: Teacher } | { error: string }> {
+  const { orgId } = await getSession()
+  const teacher = await getTeacherById(id, orgId)
+  if (!teacher) return { error: 'המורה לא נמצא' }
+  return { data: teacher }
 }
 
 export async function archiveTeacher(id: string): Promise<void> {
-  const { orgId } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
+  if (role !== 'owner' && role !== 'admin') return
+
   const supabase = await createClient()
 
   await supabase
@@ -104,10 +128,15 @@ export async function archiveTeacher(id: string): Promise<void> {
     .eq('organization_id', orgId)
 
   revalidatePath('/teachers')
+  revalidatePath(`/teachers/${id}/edit`)
 }
 
 export async function restoreTeacher(id: string): Promise<void> {
-  const { orgId } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
+  if (role !== 'owner' && role !== 'admin') return
+
   const supabase = await createClient()
 
   await supabase
@@ -117,4 +146,5 @@ export async function restoreTeacher(id: string): Promise<void> {
     .eq('organization_id', orgId)
 
   revalidatePath('/teachers')
+  revalidatePath(`/teachers/${id}/edit`)
 }

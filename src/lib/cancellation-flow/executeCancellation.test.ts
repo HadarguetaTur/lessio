@@ -36,9 +36,8 @@ const MOCK_LESSON = {
   start_at: FUTURE_START,
   end_at: FUTURE_END,
   status: 'scheduled',
-  student_id: 'student-1',
+  lesson_students: [{ student_id: 'student-1', students: { full_name: 'ישראל ישראלי' } }],
   teachers: { id: 'teacher-1', hourly_rate: 200, profiles: { full_name: 'שרה כהן' } },
-  students: { full_name: 'ישראל ישראלי' },
 }
 
 const MOCK_POLICY = {

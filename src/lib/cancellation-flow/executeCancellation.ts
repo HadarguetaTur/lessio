@@ -42,11 +42,11 @@ export async function executeCancellation(
   const db = createServiceRoleClient()
   const now = new Date()
 
-  // 1. Load lesson with teacher rate and names
+  // 1. Load lesson with teacher rate and names; student comes via lesson_students
   const { data: lesson, error: lessonError } = await db
     .from('lessons')
     .select(
-      'id, start_at, end_at, status, student_id, teachers(id, hourly_rate, profiles(full_name)), students(full_name)'
+      'id, start_at, end_at, status, lesson_students(student_id, students(full_name)), teachers(id, hourly_rate, profiles(full_name))'
     )
     .eq('id', lessonId)
     .eq('organization_id', orgId)
@@ -60,13 +60,19 @@ export async function executeCancellation(
   // 3. Revalidate: must still be scheduled
   if (lesson.status !== 'scheduled') return { success: false, error: 'not_eligible' }
 
+  // Resolve primary student for this lesson
+  const lessonStudents = (lesson.lesson_students as unknown as Array<{ student_id: string; students: { full_name: string } }>)
+  const primaryStudentId = lessonStudents[0]?.student_id
+
+  if (!primaryStudentId) return { success: false, error: 'not_eligible' }
+
   // 4. Revalidate: still belongs to this parent
   const { data: rel } = await db
     .from('relationships')
     .select('id')
     .eq('organization_id', orgId)
     .eq('parent_id', parentId)
-    .eq('student_id', lesson.student_id)
+    .eq('student_id', primaryStudentId)
     .maybeSingle()
 
   if (!rel) return { success: false, error: 'not_eligible' }
@@ -99,6 +105,7 @@ export async function executeCancellation(
   // 8. Calculate charge — reuse Sprint 3 function, never reimplement
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const teacher = (lesson.teachers as any) as { id: string; hourly_rate: number | null; profiles: { full_name: string } }
+  const studentName = lessonStudents[0]?.students.full_name ?? '—'
   const chargeResult = calculateCancellationCharge(
     { start_at: lesson.start_at, end_at: lesson.end_at, hourly_rate: teacher.hourly_rate },
     now,
@@ -113,8 +120,7 @@ export async function executeCancellation(
   return {
     success: true,
     lessonStartAt: lesson.start_at,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    studentName: (lesson.students as any as { full_name: string }).full_name,
+    studentName,
     teacherName: teacher.profiles.full_name,
     chargeResult,
   }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { DAY_NAMES } from '@/lib/availability/constants'
 
@@ -8,11 +9,12 @@ type ActionState = { error: string } | null
 type FormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
 
 export function AddAvailabilityForm({ action }: { action: FormAction }) {
+  const t = useTranslations('teacherSelf.availability')
   const [state, formAction, pending] = useActionState(action, null)
 
   return (
     <form action={formAction} className="bg-white rounded-lg border border-gray-200 p-4">
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">הוסף חלון זמינות</h2>
+      <h2 className="text-sm font-semibold text-gray-700 mb-3">{t('addSlotTitle')}</h2>
 
       {state?.error && (
         <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-2 rounded-md mb-3">
@@ -23,7 +25,7 @@ export function AddAvailabilityForm({ action }: { action: FormAction }) {
       <div className="flex flex-wrap gap-3 items-end">
         <div className="space-y-1">
           <label htmlFor="day_of_week" className="block text-sm font-medium text-gray-700">
-            יום
+            {t('day')}
           </label>
           <select
             id="day_of_week"
@@ -41,7 +43,7 @@ export function AddAvailabilityForm({ action }: { action: FormAction }) {
 
         <div className="space-y-1">
           <label htmlFor="start_time" className="block text-sm font-medium text-gray-700">
-            משעה
+            {t('from')}
           </label>
           <input
             id="start_time"
@@ -55,7 +57,7 @@ export function AddAvailabilityForm({ action }: { action: FormAction }) {
 
         <div className="space-y-1">
           <label htmlFor="end_time" className="block text-sm font-medium text-gray-700">
-            עד שעה
+            {t('to')}
           </label>
           <input
             id="end_time"
@@ -68,7 +70,7 @@ export function AddAvailabilityForm({ action }: { action: FormAction }) {
         </div>
 
         <Button type="submit" disabled={pending} className="mb-0">
-          {pending ? 'שומר...' : 'הוסף'}
+          {pending ? t('saving') : t('add')}
         </Button>
       </div>
     </form>

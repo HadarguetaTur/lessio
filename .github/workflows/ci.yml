@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          SUPABASE_SERVICE_ROLE_KEY: placeholder
+          BOOKING_JWT_SECRET: placeholder-32-chars-minimum-value
+          PORTAL_JWT_SECRET: placeholder-32-chars-minimum-value
+          SUPPORT_SESSION_SECRET: placeholder-32-chars-minimum-value
+          SUMIT_COMPANY_ID: placeholder
+          SUMIT_API_KEY: placeholder
+          NEXT_PUBLIC_APP_URL: https://ci.example.com
+          WHATSAPP_APP_SECRET: placeholder
+          WHATSAPP_VERIFY_TOKEN: placeholder
+          WHATSAPP_TOKEN_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+          META_APP_ID: placeholder
+          META_APP_SECRET: placeholder
+          PAYMENT_CONFIG_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+          OPENAI_API_KEY: placeholder
+          SUMIT_WEBHOOK_SECRET: placeholder
+          AI_CONFIG_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+          RESEND_API_KEY: placeholder
+          RESEND_FROM_EMAIL: ci@example.com
+          NEXT_PUBLIC_ONBOARDING_PAID_CHECKOUT: placeholder
+          NEXT_PUBLIC_SENTRY_DSN: https://placeholder@sentry.io/0

@@ -1,0 +1,35 @@
+/**
+ * GET /api/import/template?type=students|parents|teachers|lessons-schedule|lessons-history
+ *
+ * Returns a downloadable XLSX template for the given entity type.
+ */
+
+import { NextRequest, NextResponse } from 'next/server'
+import { getSession } from '@/lib/auth/session'
+import { generateTemplate, getTemplateFilename } from '@/lib/import/templates'
+import type { EntityType } from '@/lib/import/validators'
+
+const VALID_TYPES: EntityType[] = ['students', 'parents', 'teachers', 'lessons-schedule', 'lessons-history', 'family-list']
+
+export async function GET(request: NextRequest) {
+  const session = await getSession()
+  if (!['owner', 'admin'].includes(session.role)) {
+    return new NextResponse('Forbidden', { status: 403 })
+  }
+
+  const entityType = request.nextUrl.searchParams.get('type') as string
+
+  if (!VALID_TYPES.includes(entityType as EntityType)) {
+    return NextResponse.json({ error: 'סוג ישות לא תקין' }, { status: 400 })
+  }
+
+  const buffer = generateTemplate(entityType as EntityType)
+  const filename = getTemplateFilename(entityType as EntityType)
+
+  return new NextResponse(buffer, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  })
+}

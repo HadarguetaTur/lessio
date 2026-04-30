@@ -7,11 +7,14 @@
  */
 
 import { verifyBookingToken } from '@/lib/jwt'
+import { decryptToken } from '@/lib/crypto'
 import {
   getAvailableSlots,
+  getAvailabilitySummary,
   createSlotLock,
   confirmBooking,
   type AvailableSlot,
+  type AvailabilitySummary,
   type SlotLock,
   type ConfirmBookingResult,
   SlotUnavailableError,
@@ -20,7 +23,8 @@ import {
   NoPrimaryParentError,
 } from '@/lib/booking'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { sendBookingConfirmation } from '@/lib/whatsapp'
+import { sendTextMessage } from '@/lib/whatsapp'
+import { resolveTemplate } from '@/lib/whatsapp/templates'
 
 // ── Teacher list ───────────────────────────────────────────────────────────────
 
@@ -61,6 +65,16 @@ export async function getAvailableSlotsAction(
 ): Promise<AvailableSlot[]> {
   const { organizationId } = await verifyBookingToken(token)
   return getAvailableSlots({ teacherId, date, durationMinutes, organizationId })
+}
+
+export async function getAvailabilitySummaryAction(
+  token: string,
+  teacherId: string,
+  durationMinutes: number,
+  weekStart?: string
+): Promise<AvailabilitySummary> {
+  const { organizationId } = await verifyBookingToken(token)
+  return getAvailabilitySummary({ teacherId, organizationId, durationMinutes, weekStart })
 }
 
 // ── Slot lock ──────────────────────────────────────────────────────────────────
@@ -108,7 +122,7 @@ export async function confirmBookingAction(
     // Sprint 1 flow step 12: send WhatsApp confirmation to parent
     // Fire-and-forget — a send failure must not roll back a confirmed booking
     sendWhatsAppConfirmation(db, organizationId, parentId, teacherId, result.startAt).catch(err => {
-      console.error('[confirmBookingAction] Failed to send WhatsApp confirmation', { err })
+      console.error('[confirmBookingAction] Failed to send WhatsApp confirmation', { orgId: organizationId, lessonId: result.lessonId, parentId, err })
     })
 
     return { success: true, result }
@@ -133,7 +147,7 @@ async function sendWhatsAppConfirmation(
   const [parentResult, teacherResult, orgResult] = await Promise.all([
     db.from('parents').select('phone').eq('id', parentId).eq('organization_id', organizationId).single(),
     db.from('teachers').select('profiles(full_name)').eq('id', teacherId).single(),
-    db.from('organizations').select('whatsapp_token').eq('id', organizationId).single(),
+    db.from('organizations').select('whatsapp_phone_number_id, whatsapp_access_token').eq('id', organizationId).single(),
   ])
 
   if (parentResult.error || !parentResult.data) {
@@ -148,8 +162,34 @@ async function sendWhatsAppConfirmation(
   const phone = parentResult.data.phone
   const profiles = teacherResult.data.profiles as unknown as { full_name: string } | null
   const teacherName = profiles?.full_name ?? ''
-  const accessToken = (orgResult.data?.whatsapp_token as string | null) ?? process.env.WHATSAPP_ACCESS_TOKEN ?? ''
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? ''
+  const orgData = orgResult.data
 
-  await sendBookingConfirmation(phone, teacherName, startAt, accessToken, phoneNumberId)
+  const encryptedToken = orgData?.whatsapp_access_token as string | null
+  if (!encryptedToken || !orgData?.whatsapp_phone_number_id) {
+    console.warn('[confirmBookingAction] Org WhatsApp not connected — skipping confirmation', { organizationId })
+    return
+  }
+
+  let accessToken: string
+  try {
+    accessToken = decryptToken(encryptedToken)
+  } catch {
+    console.error('[confirmBookingAction] Failed to decrypt org access token — skipping confirmation', { organizationId })
+    return
+  }
+
+  const phoneNumberId = orgData.whatsapp_phone_number_id as string
+
+  const date = new Date(startAt).toLocaleDateString('he-IL', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
+  })
+  const time = new Date(startAt).toLocaleTimeString('he-IL', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
+  })
+  const body = await resolveTemplate(organizationId, 'booking_confirmation', {
+    teacher_name: teacherName,
+    date,
+    time,
+  })
+  await sendTextMessage(phone, body, accessToken, phoneNumberId)
 }

@@ -1,18 +1,50 @@
+import Link from 'next/link'
+
+import { getTranslations } from 'next-intl/server'
+
+import { AuthEntryColumn } from '@/components/auth/AuthEntryColumn'
+import { AuthSplitShell } from '@/components/auth/AuthSplitShell'
+import { LoginSocialButtons } from '@/components/auth/LoginSocialButtons'
 import { LoginForm } from './LoginForm'
+
+async function FormColumn() {
+  const t = await getTranslations('auth.login')
+
+  return (
+    <AuthEntryColumn
+      title={t('title')}
+      card={<LoginForm />}
+      afterCard={
+        <>
+          <div className="relative my-9 mx-auto flex w-full max-w-sm items-center gap-3">
+            <span className="h-px flex-1 bg-border/90" />
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">{t('divider')}</span>
+            <span className="h-px flex-1 bg-border/90" />
+          </div>
+          <div className="mx-auto w-full max-w-sm">
+            <LoginSocialButtons />
+          </div>
+        </>
+      }
+      footer={
+        <p className="mt-8 text-sm leading-relaxed text-muted-foreground">
+          {t('noAccount')}{' '}
+          <Link
+            href="/signup"
+            className="font-semibold text-violet-600 underline-offset-4 transition-colors hover:text-violet-500 hover:underline dark:text-violet-400 dark:hover:text-violet-300"
+          >
+            {t('signupLink')}
+          </Link>
+        </p>
+      }
+    />
+  )
+}
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">LESSIO</h1>
-          <p className="mt-1 text-sm text-gray-500">מערכת ניהול שיעורים</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">התחברות</h2>
-          <LoginForm />
-        </div>
-      </div>
-    </main>
+    <AuthSplitShell>
+      <FormColumn />
+    </AuthSplitShell>
   )
 }

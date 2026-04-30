@@ -14,7 +14,7 @@ vi.mock('./resolveBillingParent', async () => {
   }
 })
 
-import { createLessonCharge } from './createCharge'
+import { createCancellationCharge, createLessonCharge } from './createCharge'
 import { resolveBillingParent, MissingPrimaryParentError } from './resolveBillingParent'
 
 const mockResolveBillingParent = vi.mocked(resolveBillingParent)
@@ -44,7 +44,7 @@ describe('createLessonCharge', () => {
           id: 'lesson-1',
           start_at: '2026-04-01T10:00:00.000Z',
           end_at: '2026-04-01T11:30:00.000Z',
-          student_id: 'student-1',
+          lesson_students: [{ student_id: 'student-1' }],
           teachers: { id: 'teacher-1', hourly_rate: 200 },
         })
       }
@@ -83,7 +83,7 @@ describe('createLessonCharge', () => {
           id: 'lesson-1',
           start_at: '2026-04-01T10:00:00.000Z',
           end_at: '2026-04-01T11:00:00.000Z',
-          student_id: 'student-1',
+          lesson_students: [{ student_id: 'student-1' }],
           teachers: { id: 'teacher-1', hourly_rate: 200 },
         })
       }
@@ -109,7 +109,7 @@ describe('createLessonCharge', () => {
           id: 'lesson-1',
           start_at: '2026-04-01T10:00:00.000Z',
           end_at: '2026-04-01T11:00:00.000Z',
-          student_id: 'student-1',
+          lesson_students: [{ student_id: 'student-1' }],
           teachers: { id: 'teacher-1', hourly_rate: null },
         })
       }
@@ -131,7 +131,7 @@ describe('createLessonCharge', () => {
           id: 'lesson-1',
           start_at: '2026-04-01T10:00:00.000Z',
           end_at: '2026-04-01T11:00:00.000Z',
-          student_id: 'student-1',
+          lesson_students: [{ student_id: 'student-1' }],
           teachers: { id: 'teacher-1', hourly_rate: 200 },
         })
       }
@@ -141,7 +141,36 @@ describe('createLessonCharge', () => {
 
     await expect(createLessonCharge('lesson-1', 'org-1')).resolves.toEqual({
       type: 'missing_parent',
-      message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר',
+      message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר. יש לקשר הורה לתלמיד דרך עמוד התלמיד > הורים.',
     })
+  })
+})
+
+describe('createCancellationCharge', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('silently ignores duplicate cancellation retries', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'charges') {
+        return {
+          insert: async () => ({
+            error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected table: ${table}`)
+    })
+
+    await expect(
+      createCancellationCharge('lesson-1', 'org-1', 'parent-1', {
+        shouldCharge: true,
+        amount: 120,
+        percentage: 100,
+        reasonCode: 'late_cancel',
+      })
+    ).resolves.toBeNull()
   })
 })

@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export type ChargeStatus = 'pending' | 'invoiced' | 'paid'
-export type ChargeType = 'lesson' | 'cancellation' | 'manual'
+export type ChargeType = 'lesson' | 'cancellation' | 'manual' | 'monthly'
+
+export const OPEN_CHARGE_STATUSES = ['pending', 'invoiced'] as const
 
 export interface Charge {
   id: string
@@ -13,6 +15,11 @@ export interface Charge {
   paid_at: string | null
   created_at: string
   lesson_id: string | null
+  payment_link: string | null
+  payment_reference: string | null
+  payment_provider: string | null
+  receipt_url: string | null
+  receipt_issued_at: string | null
   parent: { id: string; full_name: string }
   lesson: { start_at: string } | null
 }
@@ -33,7 +40,7 @@ export async function getCharges(
   let query = supabase
     .from('charges')
     .select(
-      'id, amount, charge_type, status, notes, paid_at, created_at, lesson_id, parents(id, full_name), lessons(start_at)'
+      'id, amount, charge_type, status, notes, paid_at, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, parents(id, full_name), lessons(start_at)'
     )
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false })
@@ -56,6 +63,11 @@ export async function getCharges(
     paid_at: c.paid_at,
     created_at: c.created_at,
     lesson_id: c.lesson_id,
+    payment_link: c.payment_link ?? null,
+    payment_reference: c.payment_reference ?? null,
+    payment_provider: c.payment_provider ?? null,
+    receipt_url: c.receipt_url ?? null,
+    receipt_issued_at: c.receipt_issued_at ?? null,
     parent: c.parents as { id: string; full_name: string },
     lesson: c.lessons as { start_at: string } | null,
   }))
@@ -72,29 +84,93 @@ export async function getParentDebt(
     .select('amount')
     .eq('parent_id', parentId)
     .eq('organization_id', organizationId)
-    .in('status', ['pending', 'invoiced'])
+    .in('status', [...OPEN_CHARGE_STATUSES])
 
   if (error) throw new Error(error.message)
   return (data ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
 }
 
+export async function getChargeById(
+  organizationId: string,
+  chargeId: string
+): Promise<Charge | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('charges')
+    .select(
+      'id, amount, charge_type, status, notes, paid_at, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, parents(id, full_name), lessons(start_at)'
+    )
+    .eq('organization_id', organizationId)
+    .eq('id', chargeId)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) return null
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const c = data as any
+  return {
+    id: c.id,
+    amount: c.amount,
+    charge_type: c.charge_type,
+    status: c.status,
+    notes: c.notes,
+    paid_at: c.paid_at,
+    created_at: c.created_at,
+    lesson_id: c.lesson_id,
+    payment_link: c.payment_link ?? null,
+    payment_reference: c.payment_reference ?? null,
+    payment_provider: c.payment_provider ?? null,
+    receipt_url: c.receipt_url ?? null,
+    receipt_issued_at: c.receipt_issued_at ?? null,
+    parent: c.parents as { id: string; full_name: string },
+    lesson: c.lessons as { start_at: string } | null,
+  }
+}
+
 export async function markChargeAsPaid(
   chargeId: string,
   organizationId: string,
-  notes?: string
+  notes?: string | null
 ): Promise<void> {
   const supabase = createServiceRoleClient()
+  const paidAt = new Date().toISOString()
 
-  const { error } = await supabase
+  const payload: Record<string, unknown> = {
+    status: 'paid',
+    paid_at: paidAt,
+    updated_at: paidAt,
+  }
+  if (notes !== undefined) {
+    payload.notes = notes || null
+  }
+
+  const { data: updatedCharge, error } = await supabase
     .from('charges')
-    .update({
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-      notes: notes || null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(payload)
     .eq('id', chargeId)
     .eq('organization_id', organizationId)
+    .select('charge_type, billing_record_id')
+    .single()
 
   if (error) throw new Error(error.message)
+
+  if (
+    updatedCharge?.charge_type === 'monthly' &&
+    typeof updatedCharge.billing_record_id === 'string'
+  ) {
+    const { error: billingError } = await supabase
+      .from('student_monthly_billing')
+      .update({
+        is_paid: true,
+        updated_at: paidAt,
+      })
+      .eq('id', updatedCharge.billing_record_id)
+      .eq('organization_id', organizationId)
+
+    if (billingError) {
+      throw new Error(billingError.message)
+    }
+  }
 }

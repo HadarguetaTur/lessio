@@ -2,24 +2,24 @@
 
 const ERROR_MESSAGES: Record<string, { title: string; body: string }> = {
   lock_expired: {
-    title: 'פג הזמן לשמירת המקום',
-    body: 'הזמן לאישור השיעור פג. אנא בחר/י שעה מחדש.',
+    title: 'המועד כבר לא שמור',
+    body: 'חלף הזמן שנשמר לכם להשלמת ההזמנה. אפשר לבחור שעה חדשה ולהמשיך.',
   },
   inactive_participant: {
-    title: 'שגיאה בהזמנה',
-    body: 'לא ניתן לקבוע שיעור כרגע. אנא צור/י קשר עם המרכז.',
+    title: 'אי אפשר להשלים את ההזמנה כרגע',
+    body: 'כרגע לא ניתן לקבוע את השיעור הזה. מומלץ ליצור קשר עם המרכז ונשמח לעזור.',
   },
   no_primary_parent: {
-    title: 'שגיאה בהזמנה',
-    body: 'לא נמצא פרטי הורה ראשי. אנא צור/י קשר עם המרכז.',
+    title: 'חסרים פרטים להשלמת ההזמנה',
+    body: 'לא הצלחנו לאתר הורה ראשי לצורך ההזמנה. מומלץ ליצור קשר עם המרכז.',
   },
   token_expired: {
     title: 'הקישור פג תוקף',
-    body: 'אנא שלח/י הודעה ב-WhatsApp כדי לקבל קישור חדש.',
+    body: 'כדי להמשיך, שלחו הודעה ב־WhatsApp ונשלח לכם קישור חדש.',
   },
   unknown: {
-    title: 'שגיאה לא צפויה',
-    body: 'אירעה שגיאה. אנא נסה/י שוב או צור/י קשר עם המרכז.',
+    title: 'משהו השתבש בדרך',
+    body: 'לא הצלחנו להשלים את הפעולה כרגע. אפשר לנסות שוב, ואם צריך ליצור קשר עם המרכז.',
   },
 }
 
@@ -43,7 +43,7 @@ export function BookingError({ errorCode, onRestart }: BookingErrorProps) {
             onClick={onRestart}
             className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-semibold"
           >
-            התחל/י מחדש
+            חזרה לתחילת התהליך
           </button>
         )}
       </div>

@@ -79,6 +79,25 @@ describe('parseWebhookPayload', () => {
     expect(parseWebhookPayload({})).toHaveLength(0)
   })
 
+  it('returns empty array when required metadata is missing', () => {
+    const payload = {
+      object: 'whatsapp_business_account',
+      entry: [{
+        id: 'entry-1',
+        changes: [{
+          field: 'messages',
+          value: {
+            messaging_product: 'whatsapp',
+            metadata: { display_phone_number: '0521234567' },
+            messages: [{ from: '972501234567', id: 'msg-1', type: 'text', text: { body: 'שלום' } }],
+          },
+        }],
+      }],
+    }
+
+    expect(parseWebhookPayload(payload)).toHaveLength(0)
+  })
+
   it('extracts multiple messages from multiple entries', () => {
     const payload: MetaWebhookPayload = {
       object: 'whatsapp_business_account',
@@ -117,8 +136,9 @@ describe('parseWebhookPayload', () => {
 // ── hasBookingIntent ──────────────────────────────────────────────────────────
 
 describe('hasBookingIntent', () => {
-  it('returns true for "שיעור"', () => {
-    expect(hasBookingIntent('שיעור')).toBe(true)
+  it('returns false for generic lesson mentions without a booking verb', () => {
+    expect(hasBookingIntent('שיעור')).toBe(false)
+    expect(hasBookingIntent('כמה עולה שיעור?')).toBe(false)
   })
 
   it('returns true for "קביעה"', () => {
@@ -131,6 +151,7 @@ describe('hasBookingIntent', () => {
 
   it('matches keywords embedded in longer sentences', () => {
     expect(hasBookingIntent('אפשר לקבוע שיעור מחר?')).toBe(true)
+    expect(hasBookingIntent('אשמח להזמנה לשיעור ניסיון')).toBe(true)
     expect(hasBookingIntent('לא רוצה כלום')).toBe(false)
   })
 })

@@ -8,7 +8,59 @@
 
 const META_API_VERSION = 'v19.0'
 
-async function sendTextMessage(
+// ── Meta approved template message component types ────────────────────────────
+
+export type MetaTemplateComponent =
+  | { type: 'header'; parameters: MetaTemplateParameter[] }
+  | { type: 'body'; parameters: MetaTemplateParameter[] }
+  | { type: 'button'; sub_type: 'quick_reply' | 'url'; index: number; parameters: MetaTemplateParameter[] }
+
+export type MetaTemplateParameter =
+  | { type: 'text'; text: string }
+  | { type: 'currency'; currency: { fallback_value: string; code: string; amount_1000: number } }
+  | { type: 'date_time'; date_time: { fallback_value: string } }
+
+/**
+ * Sends a Meta-approved WhatsApp template message.
+ * Used when the 24h customer-service window has expired.
+ * Per /docs/sprint-23-scope.md § Story 4a.
+ */
+export async function sendTemplateMessage(
+  to: string,
+  accessToken: string,
+  phoneNumberId: string,
+  templateName: string,
+  languageCode: string,
+  components: MetaTemplateComponent[] = []
+): Promise<void> {
+  const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: languageCode },
+        components: components.length > 0 ? components : undefined,
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    console.error('[whatsapp] Template API error', { to, templateName, status: res.status, detail })
+    throw new Error(`WhatsApp template API error ${res.status}: ${detail}`)
+  }
+}
+
+export async function sendTextMessage(
   to: string,
   text: string,
   accessToken: string,
@@ -32,49 +84,9 @@ async function sendTextMessage(
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
+    console.error('[whatsapp] API error', { to, status: res.status, detail })
     throw new Error(`WhatsApp API error ${res.status}: ${detail}`)
   }
-}
-
-/**
- * Sends the booking link to the parent via WhatsApp.
- * The URL is the full WebView booking URL including the JWT token.
- */
-export async function sendBookingLink(
-  to: string,
-  bookingUrl: string,
-  accessToken: string,
-  phoneNumberId: string
-): Promise<void> {
-  const message = `קבע/י שיעור — לחץ/י על הקישור (בתוקף ל-15 דקות):\n${bookingUrl}`
-  return sendTextMessage(to, message, accessToken, phoneNumberId)
-}
-
-/**
- * Sends the booking confirmation message to the parent after a lesson is created.
- * Per Sprint 1 success flow step 12.
- */
-export async function sendBookingConfirmation(
-  to: string,
-  teacherName: string,
-  startAt: string,
-  accessToken: string,
-  phoneNumberId: string
-): Promise<void> {
-  const date = new Date(startAt).toLocaleDateString('he-IL', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'UTC',
-  })
-  const time = new Date(startAt).toLocaleTimeString('he-IL', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'UTC',
-  })
-  const message = `✅ השיעור נקבע!\nמורה: ${teacherName}\nתאריך: ${date}\nשעה: ${time}`
-  return sendTextMessage(to, message, accessToken, phoneNumberId)
 }
 
 /**
@@ -139,82 +151,64 @@ export async function sendCancellationTimeoutReply(
   return sendTextMessage(to, message, accessToken, phoneNumberId)
 }
 
-/**
- * Sends cancellation confirmation to the parent.
- */
-export async function sendCancellationConfirmation(
-  to: string,
-  studentName: string,
-  teacherName: string,
-  lessonStartAt: string,
-  timezone: string,
-  chargeAmount: number,
-  chargeType: 'full' | 'partial' | null,
-  accessToken: string,
-  phoneNumberId: string
-): Promise<void> {
-  const date = new Date(lessonStartAt).toLocaleDateString('he-IL', {
-    timeZone: timezone,
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  })
-  const time = new Date(lessonStartAt).toLocaleTimeString('he-IL', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-
-  let chargeLine = ''
-  if (chargeType && chargeAmount > 0) {
-    const label = chargeType === 'full' ? 'חיוב ביטול מלא' : 'חיוב ביטול חלקי'
-    chargeLine = `\n${label}: ₪${chargeAmount.toFixed(2)}`
-  }
-
-  const message = `✅ השיעור בוטל.\n${studentName} עם ${teacherName}\n${date}, ${time}${chargeLine}`
-  return sendTextMessage(to, message, accessToken, phoneNumberId)
-}
-
-/**
- * Sends a cancellation alert to the admin/owner phone.
- */
-export async function sendCancellationAdminAlert(
-  to: string,
-  parentPhone: string,
-  studentName: string,
-  teacherName: string,
-  lessonStartAt: string,
-  timezone: string,
-  chargeAmount: number,
-  chargeType: 'full' | 'partial' | null,
-  accessToken: string,
-  phoneNumberId: string
-): Promise<void> {
-  const date = new Date(lessonStartAt).toLocaleDateString('he-IL', {
-    timeZone: timezone,
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  })
-  const time = new Date(lessonStartAt).toLocaleTimeString('he-IL', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-
-  let chargeLine = ''
-  if (chargeType && chargeAmount > 0) {
-    const label = chargeType === 'full' ? 'חיוב מלא' : 'חיוב חלקי'
-    chargeLine = `\nחיוב: ₪${chargeAmount.toFixed(2)} (${label})`
-  } else {
-    chargeLine = '\nללא חיוב ביטול'
-  }
-
-  const message = `🔔 ביטול שיעור\nתלמיד: ${studentName}\nמורה: ${teacherName}\n${date}, ${time}${chargeLine}\nמבטל/ת: ${parentPhone}`
-  return sendTextMessage(to, message, accessToken, phoneNumberId)
-}
-
 export { parseWebhookPayload, hasBookingIntent, hasCancellationIntent } from './parsePayload'
 export type { WhatsAppMessage, MetaWebhookPayload } from './parsePayload'
+
+// ── Intent detectors (Sprint 14) ──────────────────────────────────────────────
+
+/**
+ * Returns true if the message contains a "homework done" intent.
+ * Matches: סיימתי, גמרתי, עשיתי, הכנתי (case-insensitive, anywhere in text)
+ */
+export function hasHomeworkDoneIntent(text: string): boolean {
+  return /סיימתי|גמרתי|עשיתי|הכנתי/i.test(text)
+}
+
+/**
+ * Returns true if the message contains a balance/payment intent.
+ * Matches: חוב, כמה אני חייב, יתרה, תשלום עומד
+ */
+export function hasBalanceIntent(text: string): boolean {
+  return /חוב|כמה אני חייב|יתרה|תשלום עומד/i.test(text)
+}
+
+/**
+ * Returns true if the message contains a schedule query intent.
+ * Matches: שיעורים, מתי שיעור, לוז, לו״ז, לוח זמנים
+ */
+export function hasScheduleIntent(text: string): boolean {
+  return /שיעורים|מתי שיעור|לוז|לו״ז|לוח זמנים/i.test(text)
+}
+
+/**
+ * Returns true if the message contains a receipt/payment history intent.
+ * Matches: קבלה, היסטוריה, מה שילמתי, תשלומים
+ */
+export function hasReceiptIntent(text: string): boolean {
+  return /קבלה|היסטוריה|מה שילמתי|תשלומים/i.test(text)
+}
+
+/**
+ * Returns true if the message contains a portal link intent.
+ * Matches: פורטל, כניסה לפורטל, אזור אישי, לינק, קישור לפורטל
+ */
+export function hasPortalIntent(text: string): boolean {
+  return /פורטל|כניסה לפורטל|אזור אישי|לינק|קישור לפורטל/i.test(text)
+}
+
+// ── Send helpers (Sprint 14) ──────────────────────────────────────────────────
+
+/**
+ * Sends a homework done alert to the teacher.
+ */
+export async function sendHomeworkAlert(
+  teacherPhone: string,
+  studentName: string,
+  homeworkTitle: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const message = `✅ ${studentName} סיים/ה את שיעורי הבית: ${homeworkTitle}`
+  return sendTextMessage(teacherPhone, message, accessToken, phoneNumberId)
+}
+

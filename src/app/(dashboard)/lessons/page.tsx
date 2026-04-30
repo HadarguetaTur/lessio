@@ -1,132 +1,312 @@
-import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import {
   getLessonsForWeek,
+  getLessonsForRange,
   getCurrentWeekSunday,
+  getCurrentDayStr,
   getWeekDays,
-  formatTime,
-  LessonStatus,
+  getMonthDays,
 } from '@/lib/lessons'
 import { getTeachers } from '@/lib/teachers'
+import { getStudents } from '@/lib/students'
+import { getGroups } from '@/lib/groups'
+import { getOrgHolidays } from '@/lib/organizations/holidays'
 import { WeekNav } from '@/components/dashboard/lessons/WeekNav'
+import { DayNav } from '@/components/dashboard/lessons/DayNav'
+import { MonthNav } from '@/components/dashboard/lessons/MonthNav'
+import { ViewToggle } from '@/components/dashboard/lessons/ViewToggle'
+import { CalendarTeacherSelect } from '@/components/dashboard/lessons/CalendarTeacherSelect'
+import { buildWeekCalendarPayload } from '@/components/dashboard/lessons/WeekView'
+import { buildMonthCalendarPayload } from '@/components/dashboard/lessons/MonthView'
+import {
+  LessonsScheduleSection,
+  type ScheduleFormResources,
+} from '@/components/dashboard/lessons/LessonsScheduleSection'
+import { LessonScheduleSheetProvider } from '@/components/dashboard/lessons/LessonScheduleSheetProvider'
+import { LessonsScheduleHeaderActions } from '@/components/dashboard/lessons/LessonsScheduleHeaderActions'
+import { DayView } from '@/components/dashboard/lessons/DayView'
+import { PageHeader } from '@/components/ui/page-header'
+import { getTranslations } from 'next-intl/server'
+import { Suspense } from 'react'
+import { z } from 'zod'
+import { LessonsNewLessonFromQuery } from '@/components/dashboard/lessons/LessonsNewLessonFromQuery'
 
-const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
-
-const STATUS_STYLES: Record<LessonStatus, string> = {
-  scheduled: 'bg-blue-50 text-blue-700 border border-blue-100',
-  completed: 'bg-green-50 text-green-700 border border-green-100',
-  cancelled: 'bg-gray-100 text-gray-400 border border-gray-200 line-through',
-  no_show: 'bg-yellow-50 text-yellow-700 border border-yellow-100',
-}
+type CalendarView = 'day' | 'week' | 'month'
 
 export default async function LessonsPage(props: {
-  searchParams: Promise<{ week?: string; teacher?: string }>
+  searchParams: Promise<{
+    view?: string
+    week?: string
+    date?: string
+    month?: string
+    teacher?: string
+    student?: string
+  }>
 }) {
-  const { week, teacher } = await props.searchParams
-  const { orgId } = await getSession()
+  const { view: viewParam, week, date, month, teacher, student: studentParam } =
+    await props.searchParams
+  const studentParsed = z.string().uuid().safeParse(studentParam)
+  const studentFilter = studentParsed.success ? studentParsed.data : undefined
+  const view: CalendarView =
+    viewParam === 'day' || viewParam === 'month' ? viewParam : 'week'
+
+  const { orgId, role } = await getSession()
+  const t = await getTranslations('lessons')
+  const tCommon = await getTranslations('common')
+
+  const VIEW_TITLES: Record<CalendarView, string> = {
+    day:   t('title'),
+    week:  t('title'),
+    month: t('title'),
+  }
   const timezone = await getOrgTimezone(orgId)
 
-  const weekStr = week ?? getCurrentWeekSunday(timezone)
-  const weekDays = getWeekDays(weekStr)
+  const todayStr = getCurrentDayStr(timezone)
+  const currentWeekStr = getCurrentWeekSunday(timezone)
+  const currentMonthStr = todayStr.substring(0, 7)
 
-  const [lessons, teachers] = await Promise.all([
-    getLessonsForWeek(orgId, timezone, weekStr, teacher),
+  const [teachers, holidays] = await Promise.all([
     getTeachers(orgId),
+    getOrgHolidays(orgId),
   ])
-
-  // Group lessons by local date (YYYY-MM-DD in org timezone)
-  const byDay = new Map<string, typeof lessons>()
-  weekDays.forEach((d) => byDay.set(d, []))
-  lessons.forEach((l) => {
-    const localDate = new Date(l.start_at).toLocaleDateString('sv-SE', { timeZone: timezone })
-    byDay.get(localDate)?.push(l)
-  })
-
-  const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: timezone })
 
   const activeTeachers = teachers
     .filter((t) => t.is_active)
     .map((t) => ({ id: t.id, full_name: t.profile.full_name }))
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <h1 className="text-2xl font-bold text-gray-900">לוח שיעורים שבועי</h1>
-        <WeekNav weekStr={weekStr} teachers={activeTeachers} teacherId={teacher} />
-      </div>
+  const isAdmin = role === 'owner' || role === 'admin'
 
-      {/* Calendar grid — 7 columns */}
-      <div className="grid grid-cols-7 gap-1.5">
-        {weekDays.map((dateStr, i) => {
-          const dayLessons = byDay.get(dateStr) ?? []
-          const isToday = dateStr === todayStr
-          const dayNum = new Date(`${dateStr}T12:00:00Z`).getUTCDate()
+  let scheduleForm: ScheduleFormResources | null = null
+  if (isAdmin) {
+    const [students, groups] = await Promise.all([getStudents(orgId), getGroups(orgId)])
+    scheduleForm = {
+      teachers: activeTeachers,
+      students: students
+        .filter((s) => s.is_active)
+        .map((s) => ({ id: s.id, full_name: s.full_name })),
+      groups,
+    }
+  }
 
-          return (
-            <div
-              key={dateStr}
-              className={`rounded-lg border min-h-36 ${
-                isToday
-                  ? 'border-blue-300 bg-blue-50/30'
-                  : 'border-gray-200 bg-white'
-              }`}
-            >
-              {/* Day header */}
-              <div
-                className={`px-2 py-1.5 text-center border-b ${
-                  isToday ? 'border-blue-200' : 'border-gray-100'
-                }`}
-              >
-                <p className="text-xs text-gray-500">{DAY_NAMES[i]}</p>
-                <p
-                  className={`text-sm font-bold ${
-                    isToday ? 'text-blue-600' : 'text-gray-800'
-                  }`}
-                >
-                  {dayNum}
-                </p>
+  const headerActions = isAdmin ? (
+    <LessonsScheduleHeaderActions
+      labels={{
+        import: tCommon('actions.import'),
+        newSeries: t('newSeries'),
+        newLesson: t('newLesson'),
+      }}
+    />
+  ) : undefined
+
+  // ─── WEEK VIEW ─────────────────────────────────────────────────────────────
+  if (view === 'week') {
+    const weekStr = week ?? currentWeekStr
+    const weekDays = getWeekDays(weekStr, timezone)
+    const lessons = await getLessonsForWeek(orgId, timezone, weekStr, teacher, studentFilter)
+
+    const weekCalendar = await buildWeekCalendarPayload({
+      weekDays,
+      lessons,
+      holidays,
+      timezone,
+      todayStr,
+      weekStr,
+      teacherId: teacher,
+      studentId: studentFilter,
+    })
+
+    return (
+      <LessonScheduleSheetProvider
+        headerDefaultDate={todayStr}
+        scheduleForm={scheduleForm}
+        defaultTeacherId={teacher}
+      >
+        <Suspense fallback={null}>
+          <LessonsNewLessonFromQuery />
+        </Suspense>
+        <div>
+          <PageHeader title={VIEW_TITLES.week} actions={headerActions} mobileCentered />
+          <div className="mb-5 flex min-w-0 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-3 sm:overflow-x-hidden">
+            <div className="w-full shrink-0 sm:w-auto">
+              <ViewToggle
+                currentView="week"
+                currentDate={todayStr}
+                currentWeek={weekStr}
+                currentMonth={currentMonthStr}
+                teacherId={teacher}
+              />
+            </div>
+            <div className="flex w-full min-w-0 justify-center sm:block sm:flex-1 sm:min-w-0 sm:justify-start">
+              <WeekNav
+                weekStr={weekStr}
+                teachers={activeTeachers}
+                teacherId={teacher}
+                currentWeekStr={currentWeekStr}
+              />
+            </div>
+          </div>
+          <LessonsScheduleSection
+            variant="week"
+            todayStr={todayStr}
+            calendar={weekCalendar}
+            scheduleForm={scheduleForm}
+            defaultTeacherId={teacher}
+          />
+        </div>
+      </LessonScheduleSheetProvider>
+    )
+  }
+
+  // ─── DAY VIEW ──────────────────────────────────────────────────────────────
+  if (view === 'day') {
+    const dateStr = date ?? todayStr
+
+    // Compute the Sunday of the week containing dateStr (for lesson back-links)
+    const base = new Date(`${dateStr}T12:00:00Z`)
+    const dow = base.getUTCDay()
+    const sundayMs = base.getTime() - dow * 24 * 60 * 60 * 1000
+    const weekStr = new Date(sundayMs).toISOString().substring(0, 10)
+
+    const lessons = await getLessonsForRange(
+      orgId,
+      timezone,
+      dateStr,
+      dateStr,
+      teacher,
+      studentFilter
+    )
+
+    return (
+      <LessonScheduleSheetProvider
+        headerDefaultDate={dateStr}
+        scheduleForm={scheduleForm}
+        defaultTeacherId={teacher}
+      >
+        <Suspense fallback={null}>
+          <LessonsNewLessonFromQuery />
+        </Suspense>
+        <div>
+          <PageHeader title={VIEW_TITLES.day} actions={headerActions} mobileCentered />
+          <div className="mb-5 flex min-w-0 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-3 sm:overflow-x-hidden">
+            <div className="w-full shrink-0 sm:w-auto">
+              <ViewToggle
+                currentView="day"
+                currentDate={dateStr}
+                currentWeek={currentWeekStr}
+                currentMonth={currentMonthStr}
+                teacherId={teacher}
+              />
+            </div>
+            <div className="flex w-full min-w-0 flex-col items-center gap-3 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-3 sm:overflow-x-auto sm:overflow-y-hidden sm:overscroll-x-contain sm:touch-pan-x sm:scrollbar-hide sm:py-1 sm:min-w-0 sm:flex-1">
+              <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
+                <DayNav dateStr={dateStr} todayStr={todayStr} teacherId={teacher} />
               </div>
-
-              {/* Lessons */}
-              <div className="p-1 space-y-1">
-                {dayLessons.map((lesson) => (
-                  <Link
-                    key={lesson.id}
-                    href={`/lessons/${lesson.id}?week=${weekStr}${teacher ? `&teacher=${teacher}` : ''}`}
-                    className={`block rounded px-1.5 py-1 text-xs leading-snug ${STATUS_STYLES[lesson.status]} hover:opacity-75 transition-opacity`}
-                  >
-                    <span dir="ltr" className="font-mono block">
-                      {formatTime(lesson.start_at, timezone)}
-                    </span>
-                    <span className="truncate block">{lesson.student.full_name}</span>
-                  </Link>
-                ))}
+              <div className="flex w-full shrink-0 justify-center sm:w-auto sm:min-w-0 sm:justify-start">
+                <CalendarTeacherSelect
+                  teachers={activeTeachers}
+                  teacherId={teacher}
+                  view="day"
+                  dateStr={dateStr}
+                />
               </div>
             </div>
-          )
-        })}
-      </div>
+          </div>
+          <DayView
+            dateStr={dateStr}
+            lessons={lessons}
+            holidays={holidays}
+            timezone={timezone}
+            weekStr={weekStr}
+            teacherId={teacher}
+            studentId={studentFilter}
+          />
+        </div>
+      </LessonScheduleSheetProvider>
+    )
+  }
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 mt-4 text-xs text-gray-500 flex-wrap">
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-blue-100 border border-blue-200 inline-block" />
-          מתוכנן
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-green-100 border border-green-200 inline-block" />
-          הושלם
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-yellow-100 border border-yellow-200 inline-block" />
-          לא הגיע
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-gray-100 border border-gray-200 inline-block" />
-          בוטל
-        </span>
+  // ─── MONTH VIEW ────────────────────────────────────────────────────────────
+  const monthStr = month ?? currentMonthStr
+  const cells = getMonthDays(monthStr)
+
+  const firstCell = cells.find((c) => c.isCurrentMonth) ?? cells[0]
+  const lastCell = [...cells].reverse().find((c) => c.isCurrentMonth) ?? cells[cells.length - 1]
+
+  const lessons = await getLessonsForRange(
+    orgId,
+    timezone,
+    firstCell.dateStr,
+    lastCell.dateStr,
+    teacher,
+    studentFilter
+  )
+
+  // Compute week anchor (Sunday) for lesson back-links
+  const anchorBase = new Date(`${firstCell.dateStr}T12:00:00Z`)
+  const anchorDow = anchorBase.getUTCDay()
+  const anchorSunday = new Date(anchorBase.getTime() - anchorDow * 24 * 60 * 60 * 1000)
+  const weekStr = anchorSunday.toISOString().substring(0, 10)
+
+  const monthCalendar = await buildMonthCalendarPayload({
+    cells,
+    lessons,
+    holidays,
+    timezone,
+    todayStr,
+    monthStr,
+    weekStr,
+    teacherId: teacher,
+    studentId: studentFilter,
+  })
+
+  return (
+    <LessonScheduleSheetProvider
+      headerDefaultDate={todayStr}
+      scheduleForm={scheduleForm}
+      defaultTeacherId={teacher}
+    >
+      <Suspense fallback={null}>
+        <LessonsNewLessonFromQuery />
+      </Suspense>
+      <div>
+        <PageHeader title={VIEW_TITLES.month} actions={headerActions} mobileCentered />
+        <div className="mb-5 flex min-w-0 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-3 sm:overflow-x-hidden">
+          <div className="w-full shrink-0 sm:w-auto">
+            <ViewToggle
+              currentView="month"
+              currentDate={todayStr}
+              currentWeek={currentWeekStr}
+              currentMonth={monthStr}
+              teacherId={teacher}
+            />
+          </div>
+          <div className="flex w-full min-w-0 flex-col items-center gap-3 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-3 sm:overflow-x-auto sm:overflow-y-hidden sm:overscroll-x-contain sm:touch-pan-x sm:scrollbar-hide sm:py-1 sm:min-w-0 sm:flex-1">
+            <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
+              <MonthNav
+                monthStr={monthStr}
+                currentMonthStr={currentMonthStr}
+                teacherId={teacher}
+              />
+            </div>
+            <div className="flex w-full shrink-0 justify-center sm:w-auto sm:min-w-0 sm:justify-start">
+              <CalendarTeacherSelect
+                teachers={activeTeachers}
+                teacherId={teacher}
+                view="month"
+                monthStr={monthStr}
+              />
+            </div>
+          </div>
+        </div>
+        <LessonsScheduleSection
+          variant="month"
+          todayStr={todayStr}
+          calendar={monthCalendar}
+          scheduleForm={scheduleForm}
+          defaultTeacherId={teacher}
+        />
       </div>
-    </div>
+    </LessonScheduleSheetProvider>
   )
 }

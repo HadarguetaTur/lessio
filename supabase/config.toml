@@ -172,7 +172,7 @@ enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+minimum_password_length = 8
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
@@ -364,6 +364,39 @@ policy = "per_worker"
 inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
+
+# Sprint 12: Automated reminder cron jobs
+# The 'schedule' key is not supported by CLI v2.x — register schedules manually
+# in the Supabase Dashboard under Edge Functions → Schedules:
+#   lesson-reminders:  "0 * * * *"   (every hour)
+#   payment-reminders: "0 9 * * *"   (daily at 09:00 UTC)
+[functions.lesson-reminders]
+
+[functions.payment-reminders]
+
+# Sprint 14: Homework reminder cron
+#   homework-reminders: "0 8 * * *"  (daily at 08:00 UTC)
+[functions.homework-reminders]
+
+# Sprint 22: SaaS subscription lifecycle checker
+#   saas-subscription-checker: "0 0 * * *"  (daily at 00:00 UTC)
+[functions.saas-subscription-checker]
+
+# Sprint 23: SaaS renewal reminder — WhatsApp to org owner 2 days before renewal
+#   saas-renewal-reminder: "0 8 * * *"  (daily at 08:00 UTC)
+[functions.saas-renewal-reminder]
+
+# Sprint 23: Data retention — anonymises conversation_log + whatsapp_processed_messages
+#   data-retention: "0 3 * * *"  (daily at 03:00 UTC)
+[functions.data-retention]
+
+# Sprint 24: Homework sender — sends scheduled homework assignments via WhatsApp
+#   homework-sender: "0 * * * *"  (hourly)
+[functions.homework-sender]
+
+# Sprint 25: Notification cleanup — deletes in_app_notifications older than 30 days
+#   notification-cleanup: "0 4 * * *"  (daily at 04:00 UTC)
+[functions.notification-cleanup]
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"

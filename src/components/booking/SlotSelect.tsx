@@ -53,7 +53,11 @@ export function SlotSelect({
   }, [token, teacherId, date, durationMinutes])
 
   useEffect(() => {
-    loadSlots()
+    const timeoutId = window.setTimeout(() => {
+      void loadSlots()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [loadSlots])
 
   // Countdown timer when a lock is active

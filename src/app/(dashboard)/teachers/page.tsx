@@ -1,126 +1,59 @@
-import Link from 'next/link'
-import { Plus, Pencil, Archive, RotateCcw, Mail, CalendarDays } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { UserRound, Upload } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getTeachers } from '@/lib/teachers'
-import { archiveTeacher, restoreTeacher } from './actions'
+import { inviteTeacher, updateTeacher, archiveTeacher, restoreTeacher } from './actions'
+import { PageHeader } from '@/components/ui/page-header'
+import { EmptyState } from '@/components/ui/empty-state'
+import { TeachersTable } from '@/components/dashboard/teachers/TeachersTable'
+import { NewTeacherSheet } from '@/components/dashboard/teachers/TeacherSheet'
+import { getTranslations } from 'next-intl/server'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 export default async function TeachersPage() {
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
   const teachers = await getTeachers(orgId)
+  const t = await getTranslations('teachers')
+  const tCommon = await getTranslations('common')
+  const tStudents = await getTranslations('students')
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">מורים</h1>
-        <Link href="/teachers/new">
-          <Button>
-            <Mail size={16} className="ml-1" />
-            הזמן מורה
-          </Button>
-        </Link>
-      </div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <PageHeader
+        title={t('title')}
+        actions={
+          <div className="flex items-center gap-2">
+            <Link href="/teachers/import">
+              <Button variant="outline" size="sm">
+                <Upload size={14} className="ml-1.5" />
+                יבוא
+              </Button>
+            </Link>
+            <NewTeacherSheet action={inviteTeacher} />
+          </div>
+        }
+      />
 
       {teachers.length === 0 ? (
-        <div className="mt-10 text-center">
-          <p className="text-sm text-gray-400 mb-3">עדיין לא הוזמנו מורים.</p>
-          <Link href="/teachers/new">
-            <Button variant="outline" size="sm">הזמן מורה ראשון</Button>
-          </Link>
-        </div>
+        <EmptyState
+          icon={UserRound}
+          title={t('title')}
+          subtitle={t('invite')}
+          action={<NewTeacherSheet action={inviteTeacher} />}
+        />
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  שם
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  ביוגרפיה
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  סטטוס
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  פעולות
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {teachers.map((teacher) => {
-                const archiveAction = archiveTeacher.bind(null, teacher.id)
-                const restoreAction = restoreTeacher.bind(null, teacher.id)
-                return (
-                  <tr key={teacher.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {teacher.profile.full_name}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">
-                      {teacher.bio ?? <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {teacher.is_active ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
-                          פעיל
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
-                          לא פעיל
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Link
-                          href={`/teachers/${teacher.id}/edit`}
-                          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          <Pencil size={13} />
-                          עריכה
-                        </Link>
-                        <Link
-                          href={`/teachers/${teacher.id}/availability`}
-                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
-                        >
-                          <CalendarDays size={13} />
-                          זמינות
-                        </Link>
-                        <Link
-                          href={`/teachers/${teacher.id}/overrides`}
-                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
-                        >
-                          חריגים
-                        </Link>
-                        {teacher.is_active ? (
-                          <form action={archiveAction}>
-                            <button
-                              type="submit"
-                              className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700"
-                            >
-                              <Archive size={13} />
-                              ארכיב
-                            </button>
-                          </form>
-                        ) : (
-                          <form action={restoreAction}>
-                            <button
-                              type="submit"
-                              className="flex items-center gap-1 text-sm text-green-600 hover:text-green-800"
-                            >
-                              <RotateCcw size={13} />
-                              שחזור
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <TeachersTable
+          teachers={teachers}
+          role={role as 'owner' | 'admin' | 'teacher'}
+          headingName={tCommon('table.teacher')}
+          headingBio={t('bio')}
+          headingStatus={tCommon('table.status')}
+          statusActiveLabel={tStudents('status.active')}
+          statusInactiveLabel={tStudents('status.inactive')}
+          updateAction={updateTeacher}
+          archiveAction={archiveTeacher}
+          restoreAction={restoreTeacher}
+        />
       )}
     </div>
   )

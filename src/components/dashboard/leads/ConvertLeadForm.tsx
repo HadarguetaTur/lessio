@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { convertLeadAction } from '@/app/(dashboard)/leads/[id]/convert/actions'
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export function ConvertLeadForm({ leadId, phone }: Props) {
+  const t = useTranslations('leads')
+  const tCommon = useTranslations('common')
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [parentFullName, setParentFullName] = useState('')
@@ -34,7 +37,7 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
     <form onSubmit={handleSubmit} className="space-y-5 max-w-md">
       {/* Phone (read-only) */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">טלפון</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('fields.phone')}</label>
         <input
           type="text"
           value={phone}
@@ -47,14 +50,14 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
       {/* Parent full name */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          שם הורה <span className="text-red-500">*</span>
+          {t('parentNameLabel')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           value={parentFullName}
           onChange={(e) => setParentFullName(e.target.value)}
           required
-          placeholder="שם מלא של ההורה"
+          placeholder={t('parentNamePlaceholder')}
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         />
       </div>
@@ -62,14 +65,14 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
       {/* Student full name */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          שם תלמיד <span className="text-red-500">*</span>
+          {t('studentNameLabel')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           value={studentFullName}
           onChange={(e) => setStudentFullName(e.target.value)}
           required
-          placeholder="שם מלא של התלמיד"
+          placeholder={t('studentNamePlaceholder')}
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         />
       </div>
@@ -77,13 +80,13 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
       {/* Grade (optional) */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          כיתה <span className="text-gray-400 font-normal">(אופציונלי)</span>
+          {t('gradeOptional')} <span className="text-gray-400 font-normal">{t('gradeOptionalHint')}</span>
         </label>
         <input
           type="text"
           value={grade}
           onChange={(e) => setGrade(e.target.value)}
-          placeholder="לדוגמה: ז׳, ח׳, ט׳"
+          placeholder={t('gradePlaceholder')}
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         />
       </div>
@@ -100,13 +103,13 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
           disabled={isPending}
           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isPending ? 'ממיר...' : 'המר לליד'}
+          {isPending ? t('converting') : t('convertButton')}
         </button>
         <a
           href="/leads"
           className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
         >
-          ביטול
+          {tCommon('actions.cancel')}
         </a>
       </div>
     </form>

@@ -50,7 +50,7 @@ describe('localMidnightToUTC', () => {
 
 describe('getWeekDays', () => {
   it('returns 7 consecutive dates starting from the given Sunday', () => {
-    const days = getWeekDays('2024-01-07') // Sunday 2024-01-07
+    const days = getWeekDays('2024-01-07', 'UTC') // Sunday 2024-01-07
     expect(days).toHaveLength(7)
     expect(days[0]).toBe('2024-01-07')
     expect(days[1]).toBe('2024-01-08')

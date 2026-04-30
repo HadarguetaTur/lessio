@@ -1,0 +1,193 @@
+import React from 'react'
+import { renderToBuffer } from '@react-pdf/renderer'
+import { DateTime } from 'luxon'
+
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getNextInvoiceNumber } from './issueInvoiceNumber'
+import { uploadInvoicePdf } from './uploadInvoicePdf'
+import InvoiceDocument from './InvoiceDocument'
+import type { InvoiceLineItem } from './InvoiceDocument'
+
+/**
+ * Generates a tax invoice PDF for a monthly billing record, stores it
+ * in Supabase Storage, and updates the billing record with the invoice metadata.
+ */
+export async function generateAndStoreInvoice(
+  billingId: string,
+  orgId: string
+): Promise<{ invoiceNumber: string; pdfUrl: string }> {
+  const supabase = createServiceRoleClient()
+
+  // ── 1. Load billing record + related data ─────────────────────────────────
+
+  const { data: billing, error: billingError } = await supabase
+    .from('student_monthly_billing')
+    .select('*')
+    .eq('id', billingId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (billingError || !billing) {
+    throw new Error(
+      `[generateAndStoreInvoice] billing record not found: ${billingError?.message ?? 'null'}`
+    )
+  }
+
+  // Already has an invoice — return existing
+  if (billing.invoice_number && billing.invoice_pdf_url) {
+    return {
+      invoiceNumber: billing.invoice_number,
+      pdfUrl: billing.invoice_pdf_url,
+    }
+  }
+
+  const { data: student, error: studentError } = await supabase
+    .from('students')
+    .select('id, first_name, last_name')
+    .eq('id', billing.student_id)
+    .single()
+
+  if (studentError || !student) {
+    throw new Error(
+      `[generateAndStoreInvoice] student not found: ${studentError?.message ?? 'null'}`
+    )
+  }
+
+  let parentName = ''
+  if (billing.parent_id) {
+    const { data: parent } = await supabase
+      .from('parents')
+      .select('id, first_name, last_name')
+      .eq('id', billing.parent_id)
+      .single()
+    if (parent) {
+      parentName = `${parent.first_name ?? ''} ${parent.last_name ?? ''}`.trim()
+    }
+  }
+  if (!parentName) {
+    parentName = `${student.first_name ?? ''} ${student.last_name ?? ''}`.trim()
+  }
+
+  const { data: org, error: orgError } = await supabase
+    .from('organizations')
+    .select(
+      'id, name, business_legal_name, tax_id, business_address, logo_url, currency, default_vat_rate'
+    )
+    .eq('id', orgId)
+    .single()
+
+  if (orgError || !org) {
+    throw new Error(
+      `[generateAndStoreInvoice] org not found: ${orgError?.message ?? 'null'}`
+    )
+  }
+
+  // ── 2. Get next invoice number ────────────────────────────────────────────
+
+  const now = DateTime.now()
+  const year = now.year
+  const invoiceNumber = await getNextInvoiceNumber(orgId, year, 'invoice')
+
+  // ── 3. Compute VAT ───────────────────────────────────────────────────────
+
+  const totalAmount = Number(billing.total_amount)
+  const vatRate = Number(org.default_vat_rate ?? 0)
+  const vatAmount = Math.round(totalAmount * vatRate) / 100
+
+  // ── 4. Build line items ───────────────────────────────────────────────────
+
+  const lineItems: InvoiceLineItem[] = []
+
+  const lessonsAmount = Number(billing.lessons_amount ?? 0)
+  if (lessonsAmount !== 0) {
+    lineItems.push({
+      description: `\u05E9\u05D9\u05E2\u05D5\u05E8\u05D9\u05DD (${billing.lessons_count ?? 0} \u05E9\u05D9\u05E2\u05D5\u05E8\u05D9\u05DD)`,
+      amount: lessonsAmount,
+    })
+  }
+
+  const subscriptionsAmount = Number(billing.subscriptions_amount ?? 0)
+  if (subscriptionsAmount !== 0) {
+    lineItems.push({
+      description: '\u05DE\u05E0\u05D5\u05D9 \u05D7\u05D5\u05D3\u05E9\u05D9', // מנוי חודשי
+      amount: subscriptionsAmount,
+    })
+  }
+
+  const cancellationsAmount = Number(billing.cancellations_amount ?? 0)
+  if (cancellationsAmount !== 0) {
+    lineItems.push({
+      description: '\u05D7\u05D9\u05D5\u05D1\u05D9 \u05D1\u05D9\u05D8\u05D5\u05DC', // חיובי ביטול
+      amount: cancellationsAmount,
+    })
+  }
+
+  const manualAdjustment = Number(billing.manual_adjustment_amount ?? 0)
+  if (manualAdjustment !== 0) {
+    lineItems.push({
+      description: billing.manual_adjustment_reason
+        ? `\u05D4\u05EA\u05D0\u05DE\u05D4 \u05D9\u05D3\u05E0\u05D9\u05EA: ${billing.manual_adjustment_reason}`
+        : '\u05D4\u05EA\u05D0\u05DE\u05D4 \u05D9\u05D3\u05E0\u05D9\u05EA', // התאמה ידנית
+      amount: manualAdjustment,
+    })
+  }
+
+  // ── 5. Render PDF ─────────────────────────────────────────────────────────
+
+  const subtotal = totalAmount
+  const total = Math.round((totalAmount + vatAmount) * 100) / 100
+  const studentName = `${student.first_name ?? ''} ${student.last_name ?? ''}`.trim()
+  const invoiceDate = now.toFormat('dd/MM/yyyy')
+  const currency = org.currency ?? 'ILS'
+
+  const element = React.createElement(InvoiceDocument, {
+    orgLegalName: org.business_legal_name ?? org.name ?? '',
+    orgTaxId: org.tax_id ?? null,
+    orgAddress: org.business_address ?? null,
+    orgLogoUrl: org.logo_url ?? null,
+    currency,
+    parentName,
+    studentName,
+    billingMonth: billing.billing_month,
+    lineItems,
+    subtotal,
+    vatAmount,
+    total,
+    invoiceNumber,
+    invoiceDate,
+  })
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdfBuffer = await renderToBuffer(element as any)
+
+  // ── 6. Upload PDF ─────────────────────────────────────────────────────────
+
+  const fileName = `invoice-${invoiceNumber.replace(/\//g, '-')}`
+  const storagePath = await uploadInvoicePdf(
+    orgId,
+    year,
+    fileName,
+    Buffer.from(pdfBuffer)
+  )
+
+  // ── 7. Update billing record ──────────────────────────────────────────────
+
+  const { error: updateError } = await supabase
+    .from('student_monthly_billing')
+    .update({
+      invoice_number: invoiceNumber,
+      invoice_pdf_url: storagePath,
+      vat_amount: vatAmount,
+      invoice_issued_at: now.toISO(),
+    })
+    .eq('id', billingId)
+    .eq('organization_id', orgId)
+
+  if (updateError) {
+    throw new Error(
+      `[generateAndStoreInvoice] failed to update billing record: ${updateError.message}`
+    )
+  }
+
+  return { invoiceNumber, pdfUrl: storagePath }
+}

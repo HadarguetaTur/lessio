@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 
-const DURATION_OPTIONS = [
+export const DURATION_OPTIONS = [
   { value: 45, label: '45 דקות' },
   { value: 60, label: 'שעה' },
   { value: 90, label: 'שעה וחצי' },

@@ -1,7 +1,20 @@
 'use server'
 
+import { getTranslations } from 'next-intl/server'
+import { headers } from 'next/headers'
+
 import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+
+function detectLocale(acceptLanguage: string | null): 'he' | 'en' {
+  if (!acceptLanguage) return 'he'
+  const first = acceptLanguage.split(',')[0]?.split(';')[0]?.trim().toLowerCase() ?? ''
+  if (first.startsWith('he')) return 'he'
+  if (first.startsWith('en')) return 'en'
+  return 'en'
+}
 
 export async function signIn(
   _prevState: { error: string } | null,
@@ -11,10 +24,47 @@ export async function signIn(
   const password = formData.get('password') as string
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    return { error: 'אימייל או סיסמה שגויים' }
+    const t = await getTranslations('auth.errors')
+    return { error: t('invalidCredentials') }
+  }
+
+  // Sync locale: use saved preference if present, otherwise detect from Accept-Language
+  // and persist it so future visits use the correct language without re-detection.
+  if (data.user) {
+    const db = createServiceRoleClient()
+    const { data: profile } = await db
+      .from('profiles')
+      .select('preferred_locale')
+      .eq('id', data.user.id)
+      .single()
+
+    const cookieStore = await cookies()
+
+    if (profile?.preferred_locale) {
+      cookieStore.set('locale', profile.preferred_locale, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365,
+        httpOnly: false,
+        sameSite: 'lax',
+      })
+    } else {
+      // First login — detect from Accept-Language and persist to DB
+      const headerStore = await headers()
+      const detectedLocale = detectLocale(headerStore.get('accept-language'))
+      cookieStore.set('locale', detectedLocale, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365,
+        httpOnly: false,
+        sameSite: 'lax',
+      })
+      await db
+        .from('profiles')
+        .update({ preferred_locale: detectedLocale })
+        .eq('id', data.user.id)
+    }
   }
 
   redirect('/dashboard')

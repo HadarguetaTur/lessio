@@ -1,35 +1,36 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Search } from 'lucide-react'
+import { useDebouncedSearchParam } from '@/lib/hooks/useDebouncedSearchParam'
 
 interface ParentSearchProps {
   q: string
 }
 
 export function ParentSearch({ q }: ParentSearchProps) {
-  const router = useRouter()
-
-  function handleSearch(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const input = e.currentTarget.elements.namedItem('q') as HTMLInputElement
+  const t = useTranslations('parents')
+  const [draft, setDraft] = useDebouncedSearchParam(q, (d) => {
     const params = new URLSearchParams()
-    if (input.value) params.set('q', input.value)
-    router.push(`/parents?${params.toString()}`)
-  }
+    if (d) params.set('q', d)
+    const qs = params.toString()
+    return qs ? `/parents?${qs}` : '/parents'
+  })
 
   return (
-    <form onSubmit={handleSearch} className="relative max-w-sm">
+    <div className="relative max-w-sm">
       <Search
         size={15}
         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
       />
       <input
-        name="q"
-        defaultValue={q}
-        placeholder="חיפוש לפי שם או טלפון..."
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder={t('searchPlaceholder')}
+        type="search"
+        autoComplete="off"
         className="w-full pr-9 pl-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
-    </form>
+    </div>
   )
 }

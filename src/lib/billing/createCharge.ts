@@ -7,6 +7,10 @@ export type ChargeAlert = {
   message: string
 }
 
+function isDuplicateInsertError(error: { code?: string } | null): boolean {
+  return error?.code === '23505'
+}
+
 /**
  * Creates a lesson charge when a lesson is marked completed.
  * Idempotent: the unique index on charges(lesson_id) WHERE charge_type='lesson'
@@ -21,18 +25,18 @@ export async function createLessonCharge(
 ): Promise<ChargeAlert | null> {
   const supabase = createServiceRoleClient()
 
-  // Fetch lesson with teacher hourly_rate and student_id
+  // Fetch lesson with teacher hourly_rate; student resolved via lesson_students
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
     .select(
-      'id, start_at, end_at, student_id, teachers(id, hourly_rate)'
+      'id, start_at, end_at, lesson_students(student_id), teachers(id, hourly_rate)'
     )
     .eq('id', lessonId)
     .eq('organization_id', organizationId)
     .single()
 
   if (lessonError || !lesson) {
-    console.error(`[createLessonCharge] lesson not found: ${lessonId}`)
+    console.error('[createLessonCharge] lesson not found', { lessonId, orgId: organizationId, error: lessonError?.message })
     return { type: 'error', message: 'שיעור לא נמצא' }
   }
 
@@ -40,23 +44,31 @@ export async function createLessonCharge(
   const teacher = (lesson.teachers as any) as { id: string; hourly_rate: number | null }
 
   if (teacher.hourly_rate == null) {
-    console.error(`[createLessonCharge] missing hourly_rate for teacher ${teacher.id}`)
+    console.error('[createLessonCharge] missing hourly_rate', { lessonId, orgId: organizationId, teacherId: teacher.id })
     return {
       type: 'missing_rate',
       message: 'לא ניתן ליצור חיוב — למורה אין תעריף שעתי מוגדר',
     }
   }
 
-  // Resolve billing parent
+  // Resolve billing parent via the primary student in lesson_students
+  const lessonStudents = (lesson.lesson_students as Array<{ student_id: string }>)
+  const primaryStudentId = lessonStudents[0]?.student_id
+
+  if (!primaryStudentId) {
+    console.error('[createLessonCharge] no students in lesson_students', { lessonId, orgId: organizationId })
+    return { type: 'missing_parent', message: 'לא ניתן ליצור חיוב — לשיעור אין תלמידים מקושרים' }
+  }
+
   let parentId: string
   try {
-    parentId = await resolveBillingParent(lesson.student_id, organizationId)
+    parentId = await resolveBillingParent(primaryStudentId, organizationId)
   } catch (e) {
     if (e instanceof MissingPrimaryParentError) {
-      console.error(`[createLessonCharge] ${e.message}`)
+      console.error('[createLessonCharge] no primary parent', { lessonId, orgId: organizationId, studentId: primaryStudentId, error: (e as Error).message })
       return {
         type: 'missing_parent',
-        message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר',
+        message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר. יש לקשר הורה לתלמיד דרך עמוד התלמיד > הורים.',
       }
     }
     throw e
@@ -77,10 +89,10 @@ export async function createLessonCharge(
 
   if (insertError) {
     // Unique constraint violation = duplicate call, safe to ignore
-    if (insertError.code === '23505') {
+    if (isDuplicateInsertError(insertError)) {
       return null
     }
-    console.error(`[createLessonCharge] insert error: ${insertError.message}`)
+    console.error('[createLessonCharge] insert error', { lessonId, orgId: organizationId, parentId, amount, error: insertError.message })
     return { type: 'error', message: 'שגיאה ביצירת החיוב' }
   }
 
@@ -113,7 +125,10 @@ export async function createCancellationCharge(
   })
 
   if (error) {
-    console.error(`[createCancellationCharge] insert error: ${error.message}`)
+    if (isDuplicateInsertError(error)) {
+      return null
+    }
+    console.error('[createCancellationCharge] insert error', { lessonId, orgId: organizationId, parentId, amount: chargeResult.amount, error: error.message })
     return { type: 'error', message: 'שגיאה ביצירת חיוב הביטול' }
   }
 

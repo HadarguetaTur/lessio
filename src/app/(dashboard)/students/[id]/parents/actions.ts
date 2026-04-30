@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
 
 type ActionState = { error: string } | null
@@ -16,7 +16,9 @@ export async function linkParent(
 
   if (!parentId) return { error: 'יש לבחור הורה' }
 
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
   const supabase = await createClient()
 
@@ -46,7 +48,9 @@ export async function linkParent(
 }
 
 export async function setPrimary(relationshipId: string, studentId: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return
   const supabase = await createClient()
 
@@ -67,7 +71,9 @@ export async function setPrimary(relationshipId: string, studentId: string): Pro
 }
 
 export async function unlinkParent(relationshipId: string, studentId: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return
   const supabase = await createClient()
 

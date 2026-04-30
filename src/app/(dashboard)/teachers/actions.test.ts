@@ -11,6 +11,7 @@ const { mockGetSession, mockRedirect, mockInviteUserByEmail, mockFrom } = vi.hoi
 
 vi.mock('@/lib/auth/session', () => ({
   getSession: mockGetSession,
+  requireMutation: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({

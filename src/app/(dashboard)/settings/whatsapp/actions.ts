@@ -13,7 +13,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptToken } from '@/lib/crypto'
@@ -41,7 +41,9 @@ export async function saveWhatsAppConnection(
   _prevState: WhatsAppActionResult,
   formData: FormData
 ): Promise<WhatsAppActionResult> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
@@ -116,7 +118,9 @@ export async function disconnectWhatsApp(
   _prevState: WhatsAppActionResult,
   _formData: FormData
 ): Promise<WhatsAppActionResult> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }

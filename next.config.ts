@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 import { validateEnv } from "./src/lib/env";
 import createNextIntlPlugin from "next-intl/plugin";
 
@@ -16,6 +17,20 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '11mb', // Homework media uploads: max 10MB file + form fields overhead
     },
   },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+    ]
+  },
   // Sprint 23 Story 2b: /he/portal/:path* internally serves /portal/:path* without
   // restructuring files. The proxy adds a 301 from /portal/:orgId → /he/portal/:orgId
   // so new parents land at the locale-prefixed URL while existing links still work.
@@ -29,4 +44,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+export default withSentryConfig(withNextIntl(nextConfig), {
+  // Suppress source map upload warnings when SENTRY_AUTH_TOKEN is not set (local dev).
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+  // Upload source maps for better stack traces in production.
+  widenClientFileUpload: true,
+  // Disable Sentry telemetry.
+  telemetry: false,
+});

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { forbidden } from 'next/navigation'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptWithKey } from '@/lib/crypto'
 import { ICountProvider } from '@/lib/receipts/icount'
@@ -102,7 +102,9 @@ export async function saveReceiptConfigAction(
   _prev: ReceiptActionState,
   formData: FormData
 ): Promise<ReceiptActionState> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     forbidden()
@@ -156,7 +158,9 @@ export async function saveReceiptConfigAction(
 }
 
 export async function disconnectReceiptAction(): Promise<{ error?: string }> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     forbidden()

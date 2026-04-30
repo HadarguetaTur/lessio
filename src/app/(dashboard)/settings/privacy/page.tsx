@@ -33,7 +33,7 @@ export default async function PrivacySettingsPage() {
     <div className="max-w-xl">
       <PageHeader
         title="פרטיות ושמירת נתונים"
-        description="הגדר כמה זמן נשמרים נתוני הפעילות של הארגון"
+        subtitle="הגדר כמה זמן נשמרים נתוני הפעילות של הארגון"
       />
 
       {canCustomiseRetention ? (

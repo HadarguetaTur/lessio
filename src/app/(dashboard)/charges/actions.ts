@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { markChargeAsPaid } from '@/lib/charges'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
@@ -13,7 +13,9 @@ export async function markAsPaid(
   chargeId: string,
   notes?: string
 ): Promise<{ error: string | null }> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }

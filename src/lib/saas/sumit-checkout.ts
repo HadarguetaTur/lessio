@@ -49,7 +49,7 @@ export async function createSumitHostedCheckoutUrl(
   params: SumitCheckoutParams
 ): Promise<{ url: string } | { error: string }> {
   if (process.env.SUMIT_CHECKOUT_MOCK === '1') {
-    const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'http://localhost:3000'
+    const base = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '')
     const path = params.mockPaymentPath?.trim() || '/onboarding/mock-payment'
     const normalized = path.startsWith('/') ? path : `/${path}`
     // In-app simulated checkout page (not an instant redirect to dashboard).

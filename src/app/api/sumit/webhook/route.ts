@@ -84,8 +84,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const signatureHeader = req.headers.get('x-sumit-signature')
 
   if (!verifySignature(rawBody, signatureHeader)) {
-    console.error('[sumit/webhook] Signature verification failed')
-    return NextResponse.json({ ok: false }, { status: 401 })
+    return fail('Signature verification failed')
   }
 
   let payload: SumitWebhookPayload

@@ -296,7 +296,9 @@ export async function updateParentNotesAsTeacher(
 }
 
 export async function archiveParent(id: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
   if (role !== 'owner' && role !== 'admin') return
 
   const supabase = await createClient()
@@ -311,7 +313,9 @@ export async function archiveParent(id: string): Promise<void> {
 }
 
 export async function restoreParent(id: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
   if (role !== 'owner' && role !== 'admin') return
 
   const supabase = await createClient()

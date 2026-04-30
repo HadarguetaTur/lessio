@@ -7,7 +7,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createAssignment } from '@/lib/homework'
@@ -40,7 +40,9 @@ export async function assignHomeworkAction(
   _prev: AssignActionState,
   formData: FormData
 ): Promise<AssignActionState> {
-  const { orgId, profileId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, profileId, role } = session
+  requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return { error: 'אין הרשאה' }

@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 
@@ -19,7 +19,9 @@ export async function createTeacherLessonAction(
   _prev: NewLessonState,
   formData: FormData
 ): Promise<NewLessonState> {
-  const { orgId, profileId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, profileId, role } = session
+  requireMutation(session)
   if (role !== 'teacher') return { error: 'אין הרשאה' }
 
   const teacher = await getTeacherByProfileId(profileId, orgId)

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { convertLead } from '@/lib/leads/convertLead'
 import { requireFeature } from '@/lib/saas/featureGate'
 
@@ -19,7 +19,9 @@ export async function convertLeadAction(
   studentFullName: string,
   grade: string
 ): Promise<{ error: string | null }> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }

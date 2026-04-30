@@ -38,6 +38,10 @@ vi.mock('@/lib/reports/students', () => ({
   getStudentsReport: vi.fn(),
 }))
 
+vi.mock('@/lib/saas/featureGate', () => ({
+  requireFeature: vi.fn(),
+}))
+
 const mockGetSession = vi.mocked(getSession)
 const mockGetOrgTimezone = vi.mocked(getOrgTimezone)
 const mockGetRevenueReport = vi.mocked(getRevenueReport)

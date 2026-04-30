@@ -25,6 +25,9 @@ const ALWAYS_REQUIRED: string[] = [
   // Sprint 23: Sumit SaaS platform billing credentials
   'SUMIT_COMPANY_ID',
   'SUMIT_API_KEY',
+  // Public base URL — used for booking links, payment callbacks, calendar URLs.
+  // Without it, external redirects break in production.
+  'NEXT_PUBLIC_APP_URL',
 ]
 
 /**
@@ -42,17 +45,15 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   'META_APP_SECRET',
   // Sprint 8: per-org payment provider credential encryption
   'PAYMENT_CONFIG_ENCRYPTION_KEY',
-  // Sprint 19: platform-wide AI API key; validated for every production deploy
-  'OPENAI_API_KEY',
   // Sprint 22: HMAC secret for Sumit SaaS billing webhook signature verification
   'SUMIT_WEBHOOK_SECRET',
   // Sprint 25: per-org AI provider credential encryption
   'AI_CONFIG_ENCRYPTION_KEY',
-  // Sprint 25: Resend email delivery
-  'RESEND_API_KEY',
-  'RESEND_FROM_EMAIL',
   // SaaS onboarding: stub vs Sumit-hosted paid checkout UI
   'NEXT_PUBLIC_ONBOARDING_PAID_CHECKOUT',
+  // OPENAI_API_KEY: optional platform-level fallback. Each org configures its own AI key.
+  // RESEND_API_KEY / RESEND_FROM_EMAIL: optional. Required only when email reminders are used.
+  // NEXT_PUBLIC_SENTRY_DSN: optional. Set to enable Sentry error monitoring.
 ]
 
 /**

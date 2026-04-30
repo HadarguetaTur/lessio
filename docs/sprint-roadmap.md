@@ -1,6 +1,6 @@
 
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprint 27 complete, Sprint 28 current*
+*Updated: All sprints (1–28) complete — production readiness*
 
 ---
 
@@ -161,7 +161,7 @@ CREATE TABLE in_app_notifications (
 ---
 
 ## Sprint 27 — Billing & Accounting Pro
-**Status:** Current Sprint
+**Status:** ✅ Done
 **Depends on:** Sprint 26 complete
 
 **Goal:** Make billing feel enterprise-grade: downloadable PDF invoices, proper accounting integrations, and hard server-side feature enforcement.
@@ -192,7 +192,7 @@ CREATE TABLE in_app_notifications (
 ---
 
 ## Sprint 28 — Analytics Pro
-**Status:** Current Sprint
+**Status:** ✅ Done
 **Depends on:** Sprint 27 complete
 
 **Goal:** Give business owners the visibility they need to make data-driven decisions — trends, forecasts, drill-downs, and teacher performance.

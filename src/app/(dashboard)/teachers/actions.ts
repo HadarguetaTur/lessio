@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getTeacherById, type Teacher } from '@/lib/teachers'
@@ -26,7 +26,9 @@ export async function inviteTeacher(
   if (!email) return { error: 'אימייל הוא שדה חובה' }
   if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
 
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
   const adminClient = createServiceRoleClient()
 
@@ -81,7 +83,9 @@ export async function updateTeacher(
     return { error: 'תעריף שעתי חייב להיות מספר חיובי' }
   }
 
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
 
   const supabase = await createClient()
@@ -110,7 +114,9 @@ export async function fetchTeacherForSheet(
 }
 
 export async function archiveTeacher(id: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return
 
   const supabase = await createClient()
@@ -126,7 +132,9 @@ export async function archiveTeacher(id: string): Promise<void> {
 }
 
 export async function restoreTeacher(id: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return
 
   const supabase = await createClient()

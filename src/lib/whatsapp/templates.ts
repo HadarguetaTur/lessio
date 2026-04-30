@@ -142,6 +142,7 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   balance_reply: ['total', 'charge_lines'],
   schedule_reply: ['lesson_lines'],
   portal_link_reply: ['portal_url'],
+  ai_satisfaction_prompt: [],
   unknown_intent_fallback: [],
 }
 
@@ -163,6 +164,7 @@ export const TEMPLATE_LABELS: Record<MessageTemplateType, string> = {
   balance_reply: 'תשובה לשאלת יתרה',
   schedule_reply: 'תשובה לשאלת לוח זמנים',
   portal_link_reply: 'קישור לפורטל האישי',
+  ai_satisfaction_prompt: 'בקשת משוב על תשובת AI',
   unknown_intent_fallback: 'הודעת ברירת מחדל (כוונה לא מזוהה)',
 }
 
@@ -184,5 +186,6 @@ export const TEMPLATE_PREVIEW_VARS: Record<MessageTemplateType, Record<string, s
   balance_reply: { total: '500.00', charge_lines: '\n₪250.00 — קישור לתשלום: https://pay.example.com/1\n₪250.00 — קישור לתשלום: https://pay.example.com/2' },
   schedule_reply: { lesson_lines: '1. יום שני, 21.4 בשעה 17:00 עם אהרון כהן\n2. יום רביעי, 23.4 בשעה 15:00 עם אהרון כהן' },
   portal_link_reply: { portal_url: 'https://app.lessio.co/portal/org-id' },
+  ai_satisfaction_prompt: {},
   unknown_intent_fallback: {},
 }

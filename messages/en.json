@@ -105,7 +105,10 @@
       "unexpected": "An error occurred. Please try again.",
       "required": "Required"
     },
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "nav": {
+      "students": "Students"
+    }
   },
   "nav": {
     "sections": {
@@ -1052,7 +1055,15 @@
       "noLog": "No entries",
       "emailNotifications": "Email Notifications",
       "emailDescription": "Send email alongside WhatsApp for selected notification types",
-      "parentsWithEmail": "parents with email"
+      "parentsWithEmail": "parents with email",
+      "emailTypes": {
+        "lesson_reminder": "Lesson reminder",
+        "payment_reminder": "Payment reminder",
+        "homework_assignment": "New homework assignments",
+        "receipt": "Payment receipt",
+        "homework_graded": "Homework graded",
+        "progress_report": "Progress report (sent from dashboard)"
+      }
     },
     "messageTemplates": {
       "title": "Customize Messages",
@@ -1975,7 +1986,8 @@
       "lessons": "Lessons",
       "homework": "Homework",
       "billing": "Billing",
-      "notes": "Notes & Goals"
+      "notes": "Notes & Goals",
+      "exams": "Exams"
     },
     "overview": {
       "title": "Overview",
@@ -1992,7 +2004,55 @@
     "noCharges": "No charges",
     "noNotes": "No teacher notes",
     "lessonNotes": "Lesson Notes",
-    "due": "Due"
+    "due": "Due",
+    "progressReport": {
+      "button": "Progress report",
+      "title": "Progress report",
+      "studentName": "Student",
+      "from": "From",
+      "to": "To",
+      "includesTitle": "Report includes",
+      "includes": {
+        "attendance": "Attendance and lessons in period",
+        "homework": "Homework assigned and grades",
+        "exams": "Recorded exams",
+        "goals": "Learning goals (current status)",
+        "notes": "Teacher notes visible to parents"
+      },
+      "download": "Download PDF",
+      "sendSection": "Send by email",
+      "toParent": "Parent from list",
+      "customEmail": "Another address",
+      "emailPlaceholder": "email@example.com",
+      "send": "Email report",
+      "sent": "Report sent successfully"
+    },
+    "exams": {
+      "title": "Exams & grades",
+      "add": "Add exam",
+      "empty": "No exams recorded",
+      "edit": "Edit",
+      "delete": "Delete",
+      "columns": {
+        "date": "Date",
+        "title": "Title",
+        "subject": "Subject",
+        "score": "Score"
+      },
+      "form": {
+        "createTitle": "New exam",
+        "editTitle": "Edit exam",
+        "subject": "Subject",
+        "title": "Title / topic",
+        "examDate": "Exam date",
+        "score": "Score",
+        "maxScore": "Out of",
+        "notes": "Notes (optional)",
+        "cancel": "Cancel",
+        "save": "Save",
+        "saving": "Saving…"
+      }
+    }
   },
   "notifications": {
     "title": "Notifications",
@@ -2006,5 +2066,10 @@
       "new_lead": "New Lead",
       "goal_achieved": "Goal Achieved"
     }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or has been removed.",
+    "backHome": "Back to home"
   }
 }

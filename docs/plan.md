@@ -94,12 +94,12 @@ It provides holistic operational control: scheduling, billing, cancellations, ho
 | AI Assistant + WhatsApp Hardening | Idempotency wiring, conversation log, dead-end removal | 20 | ✅ Done |
 | i18n Infrastructure + English | next-intl cookie-based locale, Hebrew extraction, English translation | 21 | ✅ Done |
 | Billing Cycle + Subscriptions | Billing approval workflow, subscription management, i18n cleanup | 22 | ✅ Done |
-| International Launch | GDPR, URL locale routing, Arabic, Stripe, Meta approved templates | 23 | Planned |
-| Pedagogical Depth | Homework v2 (attachments + grading), lesson notes, student profile overhaul | 24 | Planned |
-| AI Intelligence + Multi-Channel | Multi-provider AI + usage dashboard, email (Resend), in-app notifications | 25 | Planned |
-| Parent Portal 2.0 | Full schedule, homework visibility, progress report, teacher messaging | 26 | Planned |
-| Billing & Accounting Pro | PDF invoices, iCount integration, server-side feature enforcement | 27 | Planned |
-| Analytics Pro | Trends + forecasting, teacher performance, student LTV + cohort | 28 | Planned |
+| International Launch | GDPR, URL locale routing, Arabic, Stripe, Meta approved templates | 23 | ✅ Done |
+| Pedagogical Depth | Homework v2 (attachments + grading), lesson notes, student profile overhaul | 24 | ✅ Done |
+| AI Intelligence + Multi-Channel | Multi-provider AI + usage dashboard, email (Resend), in-app notifications | 25 | ✅ Done |
+| Parent Portal 2.0 | Full schedule, homework visibility, progress report, teacher messaging | 26 | ✅ Done |
+| Billing & Accounting Pro | PDF invoices, iCount integration, server-side feature enforcement | 27 | ✅ Done |
+| Analytics Pro | Trends + forecasting, teacher performance, student LTV + cohort | 28 | ✅ Done |
 
 ---
 
@@ -129,12 +129,12 @@ It provides holistic operational control: scheduling, billing, cancellations, ho
 | 20 | AI Assistant + WhatsApp Hardening | ✅ Done |
 | 21 | i18n Infrastructure + English | ✅ Done |
 | 22 | Billing Cycle + Subscription Management | ✅ Done |
-| 23 | International Launch — GDPR + Arabic + global payments + Meta templates | Planned |
-| 24 | Pedagogical Depth — homework v2, lesson notes, student profile | Planned |
-| 25 | AI Intelligence + Multi-Channel — multi-provider AI, email, notifications | Planned |
-| 26 | Parent Portal 2.0 — full schedule, homework, progress, messaging | Planned |
-| 27 | Billing & Accounting Pro — PDF invoices, iCount, enforcement | Planned |
-| 28 | Analytics Pro — trends, forecasting, LTV, cohort | Planned |
+| 23 | International Launch — GDPR + Arabic + global payments + Meta templates | ✅ Done |
+| 24 | Pedagogical Depth — homework v2, lesson notes, student profile | ✅ Done |
+| 25 | AI Intelligence + Multi-Channel — multi-provider AI, email, notifications | ✅ Done |
+| 26 | Parent Portal 2.0 — full schedule, homework, progress, messaging | ✅ Done |
+| 27 | Billing & Accounting Pro — PDF invoices, iCount, enforcement | ✅ Done |
+| 28 | Analytics Pro — trends, forecasting, LTV, cohort | ✅ Done |
 
 Full sprint detail: see `/docs/sprint-roadmap.md`
 
@@ -213,9 +213,8 @@ Full sprint detail: see `/docs/sprint-roadmap.md`
 | Document | Status |
 |---|---|
 | decisions.md | ✅ Up to date through Sprint 22 |
-| schema.md | ✅ Updated through Sprint 22 |
-| plan.md | ✅ This file — updated Sprint 22 complete, Sprints 23–28 planned |
+| schema.md | ✅ Updated through Sprint 22 (tables through Sprint 28 in migrations) |
+| plan.md | ✅ This file — all 28 sprints complete |
 | sprint-roadmap.md | ✅ Full roadmap Sprints 1–28 |
-| AGENTS.md | ✅ Updated Sprint 22 |
-| sprint-1-scope.md → sprint-22-scope.md | ✅ Done |
-| sprint-23-scope.md → sprint-28-scope.md | ⬜ To be written per sprint |
+| AGENTS.md | ✅ Updated Sprint 28 |
+| sprint-1-scope.md → sprint-28-scope.md | ✅ Done |

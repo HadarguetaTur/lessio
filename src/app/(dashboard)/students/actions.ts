@@ -362,7 +362,9 @@ export async function updateStudent(
 }
 
 export async function archiveStudent(id: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
   if (role !== 'owner' && role !== 'admin') return
 
   const supabase = await createClient()
@@ -377,7 +379,9 @@ export async function archiveStudent(id: string): Promise<void> {
 }
 
 export async function restoreStudent(id: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
   if (role !== 'owner' && role !== 'admin') return
 
   const supabase = await createClient()
@@ -481,5 +485,45 @@ export async function fetchStudentGoals(
     return { data }
   } catch {
     return { error: 'שגיאה בטעינת היעדים' }
+  }
+}
+
+export async function fetchStudentExams(
+  studentId: string
+): Promise<{ data: import('@/lib/students/exams').StudentExam[] } | { error: string }> {
+  try {
+    const { orgId } = await getSession()
+    const { listExams } = await import('@/lib/students/exams')
+    const data = await listExams(orgId, studentId)
+    return { data }
+  } catch {
+    return { error: 'שגיאה בטעינת המבחנים' }
+  }
+}
+
+export async function fetchStudentParentEmails(
+  studentId: string
+): Promise<{ data: { email: string; label: string }[] } | { error: string }> {
+  try {
+    const { orgId } = await getSession()
+    const db = (await import('@/lib/supabase/service-role')).createServiceRoleClient()
+    const { data } = await db
+      .from('relationships')
+      .select('parents ( full_name, email )')
+      .eq('student_id', studentId)
+      .eq('organization_id', orgId)
+    type Row = { parents: { full_name: string; email: string | null } | null }
+    const result = (data ?? [])
+      .map((r) => {
+        const row = r as unknown as Row
+        const email = row.parents?.email?.trim()
+        if (!email) return null
+        const name = row.parents?.full_name ?? ''
+        return { email, label: `${name} (${email})` }
+      })
+      .filter((x): x is { email: string; label: string } => x !== null)
+    return { data: result }
+  } catch {
+    return { error: 'שגיאה בטעינת אימיילים' }
   }
 }

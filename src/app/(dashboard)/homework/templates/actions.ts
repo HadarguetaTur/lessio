@@ -7,7 +7,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { createTemplate, updateTemplate, deleteTemplate } from '@/lib/homework'
 
@@ -26,7 +26,9 @@ export async function createTemplateAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { orgId, role, profileId } = await getSession()
+  const session = await getSession()
+  const { orgId, role, profileId } = session
+  requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return { error: 'אין הרשאה' }
@@ -66,7 +68,9 @@ export async function updateTemplateAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return { error: 'אין הרשאה' }
@@ -104,7 +108,9 @@ export async function updateTemplateAction(
 export async function deleteTemplateAction(
   templateId: string
 ): Promise<{ error?: string }> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return { error: 'אין הרשאה' }

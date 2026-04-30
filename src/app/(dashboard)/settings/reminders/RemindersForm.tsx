@@ -16,13 +16,14 @@ const LESSON_HOUR_OPTIONS = [2, 4, 12, 24, 48]
 
 const initialState: ReminderActionState = { error: null }
 
-const EMAIL_NOTIFICATION_TYPES = [
-  { key: 'lesson_reminder', label: 'תזכורת שיעור' },
-  { key: 'payment_reminder', label: 'תזכורת תשלום' },
-  { key: 'homework_assignment', label: 'שיעורי בית חדשים' },
-  { key: 'receipt', label: 'קבלה על תשלום' },
-  { key: 'homework_graded', label: 'ציון שיעורי בית' },
-]
+const EMAIL_NOTIFICATION_KEYS = [
+  'lesson_reminder',
+  'payment_reminder',
+  'homework_assignment',
+  'receipt',
+  'homework_graded',
+  'progress_report',
+] as const
 
 export function RemindersForm({
   defaultEnabled,
@@ -116,7 +117,7 @@ export function RemindersForm({
           {t('emailDescription')} ({parentsWithEmail} {t('parentsWithEmail')})
         </p>
         <div className="space-y-2">
-          {EMAIL_NOTIFICATION_TYPES.map(({ key, label }) => (
+          {EMAIL_NOTIFICATION_KEYS.map((key) => (
             <label key={key} className="flex items-center gap-3">
               <input
                 type="checkbox"
@@ -124,7 +125,7 @@ export function RemindersForm({
                 defaultChecked={defaultEmailNotifications[key] ?? false}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700">{label}</span>
+              <span className="text-sm text-gray-700">{t(`emailTypes.${key}`)}</span>
             </label>
           ))}
         </div>

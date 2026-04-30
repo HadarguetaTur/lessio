@@ -1,3 +1,4 @@
+import path from 'path'
 import React from 'react'
 import {
   Document,
@@ -14,11 +15,11 @@ Font.register({
   family: 'Heebo',
   fonts: [
     {
-      src: 'https://fonts.gstatic.com/s/heebo/v26/NGS6v5_NC0k9P9H0TbFhsqMA.ttf',
+      src: path.join(process.cwd(), 'public/fonts/Heebo-Regular.ttf'),
       fontWeight: 400,
     },
     {
-      src: 'https://fonts.gstatic.com/s/heebo/v26/NGS6v5_NC0k9P9H0TbFzsKMA.ttf',
+      src: path.join(process.cwd(), 'public/fonts/Heebo-Bold.ttf'),
       fontWeight: 700,
     },
   ],

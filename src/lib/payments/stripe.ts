@@ -33,7 +33,7 @@ export class StripeProvider implements PaymentProvider {
   private currency: string
 
   constructor(config: StripeConfig) {
-    this.stripe = new Stripe(config.secretKey, { apiVersion: '2025-01-27.acacia' })
+    this.stripe = new Stripe(config.secretKey, { apiVersion: '2026-03-25.dahlia' })
     this.currency = config.currency.toLowerCase()
   }
 
@@ -43,7 +43,7 @@ export class StripeProvider implements PaymentProvider {
     description: string
     orgId: string
   }): Promise<{ url: string; reference: string }> {
-    const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'https://app.lessio.app'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
     const session = await this.stripe.checkout.sessions.create({
       mode: 'payment',

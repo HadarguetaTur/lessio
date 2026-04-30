@@ -34,6 +34,8 @@ Nothing ships to production without passing staging first (Decision #24).
   - [ ] `AI_CONFIG_ENCRYPTION_KEY` (Sprint 25 — per-org AI provider credential encryption)
   - [ ] `RESEND_API_KEY` (Sprint 25 — email delivery)
   - [ ] `RESEND_FROM_EMAIL` (Sprint 25 — verified sender email)
+  - [ ] `NEXT_PUBLIC_ONBOARDING_PAID_CHECKOUT` (Sprint 22 — SaaS checkout mode)
+  - [ ] `NEXT_PUBLIC_SENTRY_DSN` (Sprint 28 — error monitoring)
 - [ ] App starts cleanly on staging (no startup errors from env validation)
 
 ### 1.2 Migrations
@@ -44,15 +46,15 @@ Nothing ships to production without passing staging first (Decision #24).
 
 ### 1.3 Test suite
 
-- [ ] `npx vitest run` — all 205+ tests pass on the branch being deployed
+- [ ] `npx vitest run` — all 287+ tests pass on the branch being deployed
 - [ ] No skipped or failing tests
 
 ---
 
 ## Phase 2 — Staging E2E Smoke Tests
 
-All 7 scenarios must pass on staging. Mark each as Pass / Fail / Blocked.
-Also verify that Sprint 24-25 crons are registered in Supabase Dashboard: `homework-sender`, `data-retention` (see `/docs/post-launch-checklist.md`).
+All 12 scenarios must pass on staging. Mark each as Pass / Fail / Blocked.
+Also verify that all crons are registered in Supabase Dashboard: `lesson-reminders`, `payment-reminders`, `homework-reminders`, `saas-subscription-checker`, `saas-renewal-reminder`, `data-retention`, `homework-sender`, `notification-cleanup`.
 
 | # | Scenario | Steps | Result |
 |---|---|---|---|
@@ -63,8 +65,13 @@ Also verify that Sprint 24-25 crons are registered in Supabase Dashboard: `homew
 | 5 | **WhatsApp cancellation** | Parent sends "ביטול" via WhatsApp → lesson list sent → parent selects lesson → cancellation confirmed → charge applied | |
 | 6 | **Payment request** | Owner configures Cardcom in `/settings/payment` → sends payment request → WhatsApp with Cardcom link sent → `payment_link` + `payment_reference` saved on charge | |
 | 7 | **WhatsApp Embedded Signup** | Owner navigates `/settings/whatsapp` → clicks connect → completes Meta Embedded Signup → `phone_number_id` + encrypted token saved to DB | requires HTTPS staging URL |
+| 8 | **Parent portal cancel** | Parent logs into portal → cancels a lesson → cancellation charge calculated → confirmation shown | |
+| 9 | **PDF invoice download** | Approve monthly billing → PDF generated → download button active in billing list | |
+| 10 | **Quota exceeded** | Import 150+ students on basic plan (100 limit) → quota error boundary with upgrade CTA | |
+| 11 | **Accounting CSV** | Export from revenue report → CSV with all expected columns downloads | |
+| 12 | **WhatsApp homework grading** | Teacher grades homework → student receives WhatsApp notification | |
 
-**Staging gate:** All 7 must pass. If any fail, fix the regression before proceeding.
+**Staging gate:** All 12 must pass. If any fail, fix the regression before proceeding.
 
 ---
 
@@ -102,6 +109,8 @@ Also verify that Sprint 24-25 crons are registered in Supabase Dashboard: `homew
   - [ ] `AI_CONFIG_ENCRYPTION_KEY` — 32-byte hex, production value (Sprint 25)
   - [ ] `RESEND_API_KEY` — production Resend API key (Sprint 25)
   - [ ] `RESEND_FROM_EMAIL` — verified sender email on production domain (Sprint 25)
+  - [ ] `NEXT_PUBLIC_ONBOARDING_PAID_CHECKOUT` — `sumit` for live billing (Sprint 22)
+  - [ ] `NEXT_PUBLIC_SENTRY_DSN` — production Sentry DSN (Sprint 28)
 
 ### 4.2 Migrations
 
@@ -128,6 +137,9 @@ Also verify that Sprint 24-25 crons are registered in Supabase Dashboard: `homew
 | Teacher can log in and see only their own schedule | |
 | WhatsApp webhook verification challenge passes (GET `/api/whatsapp/webhook`) | |
 | Booking link received via WhatsApp opens the WebView correctly | |
+| Parent portal: OTP login works on mobile | |
+| Monthly billing generate → approve → download invoice PDF | |
+| Sentry receives test error (check Sentry dashboard) | |
 
 ---
 

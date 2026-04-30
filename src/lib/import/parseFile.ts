@@ -45,7 +45,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   status: ['סטטוס', 'status'],
   teacher_name: ['שם מורה', 'teacher_name', 'teacher', 'מורה'],
   student_names: ['שמות תלמידים', 'student_names', 'students', 'תלמידים'],
-  student_name: ['שם תלמיד', 'student_name', 'student', 'תלמיד'],
+  student_name: ['שם תלמיד', 'שם התלמיד', 'student_name', 'student', 'תלמיד'],
   day_of_week: ['יום בשבוע', 'day_of_week', 'day', 'יום'],
   start_time: ['שעת התחלה', 'start_time', 'start', 'התחלה'],
   end_time: ['שעת סיום', 'end_time', 'end', 'סיום'],

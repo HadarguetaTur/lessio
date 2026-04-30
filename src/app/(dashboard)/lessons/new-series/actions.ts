@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { createLessonSeries } from '@/lib/lessons/createSeries'
 
 const SeriesFormSchema = z.object({
@@ -29,7 +29,9 @@ export async function createSeriesAction(
   _prevState: CreateSeriesState,
   formData: FormData
 ): Promise<CreateSeriesState> {
-  const { orgId, role, userId } = await getSession()
+  const session = await getSession()
+  const { orgId, role, userId } = session
+  requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }

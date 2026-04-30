@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
 
 type ActionState = { error: string } | { success: true } | null
@@ -10,7 +10,9 @@ export async function updateCancellationPolicy(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     return { error: 'רק בעל העסק יכול לעדכן את מדיניות הביטולים' }

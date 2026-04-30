@@ -105,7 +105,10 @@
       "unexpected": "אירעה שגיאה. נסה שוב.",
       "required": "שדה חובה"
     },
-    "logout": "יציאה"
+    "logout": "יציאה",
+    "nav": {
+      "students": "תלמידים"
+    }
   },
   "nav": {
     "sections": {
@@ -1052,7 +1055,15 @@
       "noLog": "אין רשומות",
       "emailNotifications": "התראות באימייל",
       "emailDescription": "שלח אימייל לצד WhatsApp עבור סוגי ההתראות הנבחרים",
-      "parentsWithEmail": "הורים עם אימייל"
+      "parentsWithEmail": "הורים עם אימייל",
+      "emailTypes": {
+        "lesson_reminder": "תזכורת שיעור",
+        "payment_reminder": "תזכורת תשלום",
+        "homework_assignment": "שיעורי בית חדשים",
+        "receipt": "קבלה על תשלום",
+        "homework_graded": "ציון שיעורי בית",
+        "progress_report": "דוח התקדמות (שליחה מהדשבורד)"
+      }
     },
     "messageTemplates": {
       "title": "התאמה אישית של הודעות",
@@ -1974,7 +1985,8 @@
       "lessons": "שיעורים",
       "homework": "משימות",
       "billing": "חיובים",
-      "notes": "הערות ויעדים"
+      "notes": "הערות ויעדים",
+      "exams": "מבחנים"
     },
     "overview": {
       "title": "סקירה כללית",
@@ -1991,7 +2003,55 @@
     "noCharges": "אין חיובים",
     "noNotes": "אין הערות מורה",
     "lessonNotes": "הערות שיעור",
-    "due": "תאריך הגשה"
+    "due": "תאריך הגשה",
+    "progressReport": {
+      "button": "דוח התקדמות",
+      "title": "דוח התקדמות",
+      "studentName": "תלמיד/ה",
+      "from": "מתאריך",
+      "to": "עד תאריך",
+      "includesTitle": "הדוח כולל",
+      "includes": {
+        "attendance": "נוכחות ושיעורים בתקופה",
+        "homework": "שיעורי בית שנשלחו וציונים",
+        "exams": "מבחנים מתועדים",
+        "goals": "יעדי למידה (סטטוס נוכחי)",
+        "notes": "הערות מורה גלויות להורה"
+      },
+      "download": "הורד PDF",
+      "sendSection": "שליחה במייל",
+      "toParent": "הורה מהרשימה",
+      "customEmail": "כתובת אחרת",
+      "emailPlaceholder": "email@example.com",
+      "send": "שלח דוח במייל",
+      "sent": "הדוח נשלח בהצלחה"
+    },
+    "exams": {
+      "title": "מבחנים וציונים",
+      "add": "מבחן חדש",
+      "empty": "אין מבחנים מתועדים",
+      "edit": "עריכה",
+      "delete": "מחיקה",
+      "columns": {
+        "date": "תאריך",
+        "title": "כותרת",
+        "subject": "מקצוע",
+        "score": "ציון"
+      },
+      "form": {
+        "createTitle": "מבחן חדש",
+        "editTitle": "עריכת מבחן",
+        "subject": "מקצוע",
+        "title": "כותרת / נושא",
+        "examDate": "תאריך מבחן",
+        "score": "ציון",
+        "maxScore": "מהמקסימום",
+        "notes": "הערות (רשות)",
+        "cancel": "ביטול",
+        "save": "שמור",
+        "saving": "שומר…"
+      }
+    }
   },
   "notifications": {
     "title": "התראות",
@@ -2005,5 +2065,10 @@
       "new_lead": "ליד חדש",
       "goal_achieved": "מטרה הושגה"
     }
+  },
+  "notFound": {
+    "title": "הדף לא נמצא",
+    "description": "הדף שחיפשת לא קיים או שהוסר.",
+    "backHome": "חזרה לדף הבית"
   }
 }

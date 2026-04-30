@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -56,7 +56,9 @@ export async function createLessonAction(
   _prev: NewLessonState,
   formData: FormData
 ): Promise<NewLessonState> {
-  const { orgId, role, profileId } = await getSession()
+  const session = await getSession()
+  const { orgId, role, profileId } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return { error: 'אין הרשאה' }
   }
@@ -83,7 +85,7 @@ export async function createLessonAction(
         duration_minutes: formData.get('duration_minutes'),
         status: formData.get('status'),
       })
-      if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? 'נתונים לא תקינים' }
+      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
 
       const { teacher_id, student_id, date, start_time, duration_minutes, status } = parsed.data
       if (teacher_id !== teacher.id) return { error: 'אין הרשאה' }
@@ -115,7 +117,7 @@ export async function createLessonAction(
         status: formData.get('status'),
         price_per_student: rawPrice && String(rawPrice).trim() ? rawPrice : null,
       })
-      if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? 'נתונים לא תקינים' }
+      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
 
       const { teacher_id, student_ids, date, start_time, duration_minutes, status, price_per_student } =
         parsed.data
@@ -142,7 +144,7 @@ export async function createLessonAction(
         duration_minutes: formData.get('duration_minutes'),
         status: formData.get('status'),
       })
-      if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? 'נתונים לא תקינים' }
+      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
 
       const { teacher_id, student_id, date, start_time, duration_minutes, status } = parsed.data
       const result = await createLesson({

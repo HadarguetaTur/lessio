@@ -85,7 +85,7 @@ export async function beginPaidSaasCheckout(
     return { error: msg }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'http://localhost:3000'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '')
   const successUrl = `${baseUrl}/onboarding/payment-callback`
   const failureUrl = `${baseUrl}/onboarding/payment-callback?failed=1`
 

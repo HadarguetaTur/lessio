@@ -898,14 +898,11 @@ export function StudentDetailSheet({
 
                 {!isEditing && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-1.5 text-muted-foreground hover:text-foreground hidden lg:flex"
-                      disabled
-                      title={t('card.comingSoon')}
-                    >
-                      <FileBarChart size={14} />
+                    <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                      <Link href={`/students/${student.id}`}>
+                        <FileBarChart size={14} />
+                        {t('card.progressReport')}
+                      </Link>
                     </Button>
                     <Button
                       variant="outline"

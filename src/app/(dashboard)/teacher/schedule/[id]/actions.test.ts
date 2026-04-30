@@ -16,7 +16,7 @@ const {
   mockRevalidatePath: vi.fn(),
 }))
 
-vi.mock('@/lib/auth/session', () => ({ getSession: mockGetSession }))
+vi.mock('@/lib/auth/session', () => ({ getSession: mockGetSession, requireMutation: vi.fn() }))
 vi.mock('@/lib/lessons', () => ({
   getLessonById: mockGetLessonById,
   updateLessonStatus: mockUpdateLessonStatus,

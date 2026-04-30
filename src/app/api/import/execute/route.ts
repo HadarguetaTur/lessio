@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { executeImport } from '@/lib/import/executeImport'
 import { getOrgTimezone } from '@/lib/organizations'
 import type { EntityType, ValidatedRow } from '@/lib/import/validators'
@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
   const t = await getImportTranslator()
 
   const session = await getSession()
+  requireMutation(session)
   if (!['owner', 'admin'].includes(session.role)) {
     return NextResponse.json({ error: t('apiErrors.noPermission') }, { status: 403 })
   }

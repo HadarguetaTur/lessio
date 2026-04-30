@@ -49,7 +49,7 @@ export async function buildSystemPrompt(
       .eq('parent_id', parentId)
 
     type RelRow = { student_id: string; students: { full_name: string } | null }
-    const relRows = (rels ?? []) as RelRow[]
+    const relRows = (rels ?? []) as unknown as RelRow[]
     studentIds = relRows.map((r) => r.student_id)
     studentNames = relRows
       .map((r) => r.students?.full_name)
@@ -86,7 +86,7 @@ export async function buildSystemPrompt(
       }
 
       if (lessons && lessons.length > 0) {
-        upcomingLessonsText = (lessons as LessonRow[])
+        upcomingLessonsText = (lessons as unknown as LessonRow[])
           .map((l) => {
             const dt = DateTime.fromISO(l.start_at, { zone: 'utc' }).setZone(timezone)
             const dateStr = dt.toFormat("EEEE d/M 'בשעה' HH:mm", { locale: 'he' })

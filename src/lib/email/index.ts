@@ -27,16 +27,19 @@ export interface SendEmailParams {
   subject: string
   html: string
   orgName?: string
+  /** Base64-encoded file contents (Resend API) */
+  attachments?: { filename: string; content: string }[]
 }
 
 /**
- * Send an email via Resend. Fire-and-forget — catches errors, logs, never throws.
+ * Send an email via Resend. Catches errors, logs, never throws.
+ * @returns true if the message was accepted by Resend, false if skipped or failed
  */
-export async function sendEmail(params: SendEmailParams): Promise<void> {
+export async function sendEmail(params: SendEmailParams): Promise<boolean> {
   const resend = getResend()
   if (!resend) {
     console.warn('[email] Resend not configured — skipping email send', { to: params.to })
-    return
+    return false
   }
 
   const fromEmail = getFromEmail()
@@ -48,14 +51,17 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
       to: params.to,
       subject: params.subject,
       html: params.html,
+      attachments: params.attachments,
     })
     console.info('[email] Email sent', { to: params.to, subject: params.subject })
+    return true
   } catch (err) {
     console.error('[email] Failed to send email', {
       to: params.to,
       subject: params.subject,
       err,
     })
+    return false
   }
 }
 
@@ -65,6 +71,7 @@ export type EmailNotificationType =
   | 'homework_assignment'
   | 'receipt'
   | 'homework_graded'
+  | 'progress_report'
 
 /**
  * Check whether email should be sent for a given org + notification type.

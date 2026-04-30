@@ -33,7 +33,7 @@ export async function getDebtReport(orgId: string): Promise<DebtReportData> {
   const parentMap = new Map<string, DebtRow>()
 
   for (const charge of data ?? []) {
-    const parent = charge.parents as { id: string; full_name: string; phone: string } | null
+    const parent = charge.parents as unknown as { id: string; full_name: string; phone: string } | null
     if (!parent) continue
 
     const existing = parentMap.get(parent.id)

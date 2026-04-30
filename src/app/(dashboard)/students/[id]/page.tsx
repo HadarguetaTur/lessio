@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowRight, User, BookOpen, FileText, Receipt, Target } from 'lucide-react'
+import { DateTime } from 'luxon'
+import { ArrowRight, User, BookOpen, FileText, Receipt, Target, ClipboardList } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getStudentOverview } from '@/lib/students/overview'
@@ -10,11 +11,23 @@ import { getNotesForStudent } from '@/lib/lessons/notes'
 import { getOrgTimezone } from '@/lib/organizations'
 import { formatDate } from '@/lib/lessons'
 import { GoalsSection } from '@/components/dashboard/students/GoalsSection'
-import { createGoalAction, updateGoalStatusAction, deleteGoalAction } from './actions'
+import { ExamList } from '@/components/students/ExamList'
+import { ProgressReportDialog } from '@/components/students/ProgressReportDialog'
+import {
+  createGoalAction,
+  updateGoalStatusAction,
+  deleteGoalAction,
+  createExamAction,
+  updateExamAction,
+  deleteExamAction,
+  generateProgressReportAction,
+  sendProgressReportEmailAction,
+} from './actions'
+import { listExams } from '@/lib/students/exams'
 import { getTranslations, getLocale } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
 
-type Tab = 'overview' | 'lessons' | 'homework' | 'billing' | 'notes'
+type Tab = 'overview' | 'lessons' | 'homework' | 'billing' | 'notes' | 'exams'
 
 const TAB_ICONS: Record<Tab, typeof User> = {
   overview: User,
@@ -22,6 +35,7 @@ const TAB_ICONS: Record<Tab, typeof User> = {
   homework: FileText,
   billing: Receipt,
   notes: Target,
+  exams: ClipboardList,
 }
 
 export default async function StudentProfilePage(props: {
@@ -30,7 +44,9 @@ export default async function StudentProfilePage(props: {
 }) {
   const { id } = await props.params
   const { tab: tabParam } = await props.searchParams
-  const activeTab: Tab = (['overview', 'lessons', 'homework', 'billing', 'notes'] as Tab[]).includes(tabParam as Tab)
+  const activeTab: Tab = (
+    ['overview', 'lessons', 'homework', 'billing', 'notes', 'exams'] as Tab[]
+  ).includes(tabParam as Tab)
     ? (tabParam as Tab)
     : 'overview'
 
@@ -56,9 +72,29 @@ export default async function StudentProfilePage(props: {
 
   const canEdit = role === 'owner' || role === 'admin' || role === 'teacher'
   const timezone = await getOrgTimezone(orgId)
+  const nowZ = DateTime.now().setZone(timezone)
+  const defaultReportFrom = nowZ.minus({ days: 30 }).toFormat('yyyy-MM-dd')
+  const defaultReportTo = nowZ.toFormat('yyyy-MM-dd')
+
+  const { data: parentRelRows } = await db
+    .from('relationships')
+    .select('parents ( full_name, email )')
+    .eq('student_id', id)
+    .eq('organization_id', orgId)
+
+  type ParentRow = { parents: { full_name: string; email: string | null } | null }
+  const parentRecipients = (parentRelRows ?? [])
+    .map((r) => {
+      const row = r as unknown as ParentRow
+      const email = row.parents?.email?.trim()
+      if (!email) return null
+      const name = row.parents?.full_name ?? ''
+      return { email, label: `${name} (${email})`.trim() }
+    })
+    .filter((x): x is { email: string; label: string } => x !== null)
 
   // Parallel data fetch based on tab
-  const [overview, assignments, goals, notes, lessonsResult, chargesResult] = await Promise.all([
+  const [overview, assignments, goals, notes, lessonsResult, chargesResult, examsList] = await Promise.all([
     activeTab === 'overview' ? getStudentOverview(orgId, id) : null,
     activeTab === 'homework' ? getAssignments(orgId, { studentId: id }) : null,
     activeTab === 'notes' ? getGoalsForStudent(orgId, id) : null,
@@ -90,6 +126,7 @@ export default async function StudentProfilePage(props: {
             .limit(50)
         })()
       : { data: [] },
+    activeTab === 'exams' ? listExams(orgId, id) : Promise.resolve([]),
   ])
 
   const TAB_LABELS: Record<Tab, string> = {
@@ -98,6 +135,7 @@ export default async function StudentProfilePage(props: {
     homework: t('tabs.homework'),
     billing: t('tabs.billing'),
     notes: t('tabs.notes'),
+    exams: t('tabs.exams'),
   }
 
   return (
@@ -127,7 +165,7 @@ export default async function StudentProfilePage(props: {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
-        {(['overview', 'lessons', 'homework', 'billing', 'notes'] as Tab[]).map((tab) => {
+        {(['overview', 'lessons', 'homework', 'billing', 'notes', 'exams'] as Tab[]).map((tab) => {
           const Icon = TAB_ICONS[tab]
           const isActive = activeTab === tab
           return (
@@ -151,7 +189,21 @@ export default async function StudentProfilePage(props: {
       <div className="bg-white rounded-lg border border-gray-100 p-5">
         {activeTab === 'overview' && overview && (
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-gray-700">{t('overview.title')}</h2>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <h2 className="text-sm font-semibold text-gray-700">{t('overview.title')}</h2>
+              {canEdit && (
+                <ProgressReportDialog
+                  studentId={id}
+                  studentName={(student as { full_name: string }).full_name}
+                  defaultFrom={defaultReportFrom}
+                  defaultTo={defaultReportTo}
+                  parentRecipients={parentRecipients}
+                  appLocale={appLocale}
+                  generateReportAction={generateProgressReportAction}
+                  sendReportEmailAction={sendProgressReportEmailAction}
+                />
+              )}
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <KpiCard label={t('overview.attendance')} value={`${overview.attendanceRate}%`} />
               <KpiCard label={t('overview.homeworkCompletion')} value={`${overview.homeworkCompletionRate}%`} />
@@ -161,6 +213,17 @@ export default async function StudentProfilePage(props: {
               <KpiCard label={t('overview.doneAssignments')} value={`${overview.doneAssignments}/${overview.totalAssignments}`} />
             </div>
           </div>
+        )}
+
+        {activeTab === 'exams' && (
+          <ExamList
+            studentId={id}
+            exams={examsList}
+            createAction={createExamAction}
+            updateAction={updateExamAction}
+            deleteAction={deleteExamAction}
+            canEdit={canEdit}
+          />
         )}
 
         {activeTab === 'lessons' && (

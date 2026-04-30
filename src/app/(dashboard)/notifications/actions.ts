@@ -5,7 +5,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import {
   getNotifications,
   getUnreadCount,
@@ -32,11 +32,15 @@ export async function fetchUnreadCountAction(): Promise<number> {
 }
 
 export async function markAsReadAction(notificationId: string): Promise<void> {
+  const session = await getSession()
+  requireMutation(session)
   await markAsRead(notificationId)
 }
 
 export async function markAllReadAction(): Promise<void> {
-  const { profileId, orgId } = await getSession()
+  const session = await getSession()
+  const { profileId, orgId } = session
+  requireMutation(session)
   await markAllRead(profileId, orgId)
   revalidatePath('/')
 }

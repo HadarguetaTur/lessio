@@ -6,12 +6,16 @@ const {
   mockRequireMutation,
   mockCreateServiceRoleClient,
   mockIsAiAssistantConfigured,
+  mockRequireFeature,
+  mockIsAiConfiguredForOrg,
 } = vi.hoisted(() => ({
   mockRevalidatePath: vi.fn(),
   mockGetSession: vi.fn(),
   mockRequireMutation: vi.fn(),
   mockCreateServiceRoleClient: vi.fn(),
   mockIsAiAssistantConfigured: vi.fn(),
+  mockRequireFeature: vi.fn(),
+  mockIsAiConfiguredForOrg: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
@@ -29,6 +33,14 @@ vi.mock('@/lib/supabase/service-role', () => ({
 
 vi.mock('@/lib/ai-assistant', () => ({
   isAiAssistantConfigured: mockIsAiAssistantConfigured,
+}))
+
+vi.mock('@/lib/saas/featureGate', () => ({
+  requireFeature: mockRequireFeature,
+}))
+
+vi.mock('@/lib/ai-assistant/providers/factory', () => ({
+  isAiConfiguredForOrg: mockIsAiConfiguredForOrg,
 }))
 
 import { saveAiAssistantSettings } from './actions'
@@ -54,6 +66,8 @@ describe('saveAiAssistantSettings', () => {
     })
     mockRequireMutation.mockImplementation(() => {})
     mockIsAiAssistantConfigured.mockReturnValue(true)
+    mockRequireFeature.mockResolvedValue(undefined)
+    mockIsAiConfiguredForOrg.mockResolvedValue(false)
   })
 
   it('saves the enabled flag for an owner session', async () => {
@@ -116,7 +130,7 @@ describe('saveAiAssistantSettings', () => {
 
     const result = await saveAiAssistantSettings({ error: null }, formData)
 
-    expect(result.error).toContain('OPENAI_API_KEY')
+    expect(result.error).toContain('API')
     expect(mockCreateServiceRoleClient).not.toHaveBeenCalled()
   })
 })

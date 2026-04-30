@@ -118,7 +118,7 @@ export async function beginUpgradeCheckoutAction(
     return { error: msg, errorCode: 'UPSERT_FAILED' }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'http://localhost:3000'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '')
   const successUrl = `${baseUrl}/account/billing/payment-callback`
   const failureUrl = `${baseUrl}/account/billing/payment-callback?failed=1`
   const mockPath = '/account/billing/mock-payment'

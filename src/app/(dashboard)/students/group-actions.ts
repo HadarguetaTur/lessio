@@ -45,7 +45,7 @@ export async function createGroup(
 
   const parsed = groupSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
   }
 
   const { name, status, student_ids } = parsed.data
@@ -90,7 +90,7 @@ export async function updateGroup(
 
   const parsed = groupSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
   }
 
   const { name, status, student_ids } = parsed.data

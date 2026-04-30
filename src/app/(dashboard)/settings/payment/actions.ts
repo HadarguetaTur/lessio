@@ -14,7 +14,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptWithKey } from '@/lib/crypto'
 import { getRegistryEntry } from '@/lib/payments/registry'
@@ -32,7 +32,9 @@ export async function savePaymentProvider(
   _prevState: PaymentActionResult,
   formData: FormData
 ): Promise<PaymentActionResult> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
@@ -101,7 +103,9 @@ export async function saveAutoSendSetting(
   _prevState: PaymentActionResult,
   formData: FormData
 ): Promise<PaymentActionResult> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
@@ -131,7 +135,9 @@ export async function disconnectPayment(
   _prevState: PaymentActionResult,
   _formData: FormData
 ): Promise<PaymentActionResult> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }

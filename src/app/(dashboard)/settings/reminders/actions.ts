@@ -7,7 +7,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export type ReminderActionState = {
@@ -21,6 +21,7 @@ const EmailNotificationsSchema = z.object({
   homework_assignment: z.boolean().optional().default(false),
   receipt: z.boolean().optional().default(false),
   homework_graded: z.boolean().optional().default(false),
+  progress_report: z.boolean().optional().default(false),
 })
 
 const RemindersSchema = z.object({
@@ -38,7 +39,9 @@ export async function saveReminderSettings(
   _prevState: ReminderActionState,
   formData: FormData
 ): Promise<ReminderActionState> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
@@ -54,6 +57,7 @@ export async function saveReminderSettings(
       homework_assignment: formData.get('email_homework_assignment') === 'on',
       receipt: formData.get('email_receipt') === 'on',
       homework_graded: formData.get('email_homework_graded') === 'on',
+      progress_report: formData.get('email_progress_report') === 'on',
     },
   }
 

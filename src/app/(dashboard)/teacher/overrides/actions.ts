@@ -7,7 +7,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { revalidatePath } from 'next/cache'
 
@@ -17,7 +17,9 @@ export async function addTeacherOverride(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { userId, orgId, role } = await getSession()
+  const session = await getSession()
+  const { userId, orgId, role } = session
+  requireMutation(session)
 
   if (role !== 'teacher') return { error: 'אין הרשאה' }
 
@@ -62,7 +64,9 @@ export async function addTeacherOverride(
 }
 
 export async function deleteTeacherOverride(id: string): Promise<void> {
-  const { userId, orgId, role } = await getSession()
+  const session = await getSession()
+  const { userId, orgId, role } = session
+  requireMutation(session)
   if (role !== 'teacher') return
 
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })

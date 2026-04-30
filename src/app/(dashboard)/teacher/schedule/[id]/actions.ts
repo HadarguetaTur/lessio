@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { getLessonById, updateLessonStatus, LessonStatus } from '@/lib/lessons'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { createLessonCharge } from '@/lib/billing/createCharge'
@@ -18,7 +18,9 @@ export async function updateTeacherLessonOutcome(
   _prevState: TeacherOutcomeResult,
   formData: FormData
 ): Promise<TeacherOutcomeResult> {
-  const { userId, orgId, role } = await getSession()
+  const session = await getSession()
+  const { userId, orgId, role } = session
+  requireMutation(session)
 
   if (role !== 'teacher') {
     return { error: 'אין הרשאה לפעולה זו' }

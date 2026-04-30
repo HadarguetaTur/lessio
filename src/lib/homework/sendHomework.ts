@@ -51,7 +51,7 @@ export async function sendHomeworkAssignment(params: {
     } | null
   }
 
-  const a = assignment as AssignmentData
+  const a = assignment as unknown as AssignmentData
 
   // 2. Resolve target phone: student phone → primary parent phone
   let targetPhone: string | null = a.students?.phone ?? null

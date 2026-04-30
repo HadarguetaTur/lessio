@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherAvailabilityByDay, hasOverlap } from '@/lib/availability'
 import { revalidatePath } from 'next/cache'
 
@@ -26,7 +26,9 @@ export async function createAvailability(
     return { error: 'שעת הסיום חייבת להיות לאחר שעת ההתחלה' }
   }
 
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
 
   // Overlap validation (non-negotiable per sprint-2-scope.md)
@@ -51,7 +53,9 @@ export async function createAvailability(
 }
 
 export async function deleteAvailability(id: string, teacherId: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return
   const supabase = await createClient()
 

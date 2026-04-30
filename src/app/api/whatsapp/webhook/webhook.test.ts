@@ -44,7 +44,13 @@ vi.mock('@/lib/cancellation-flow', () => ({
 }))
 
 vi.mock('@/lib/ai-assistant', () => ({
-  aiAssistant: vi.fn().mockResolvedValue('ai-reply'),
+  aiAssistant: vi.fn().mockResolvedValue({
+    reply: 'ai-reply',
+    promptTokens: 50,
+    completionTokens: 20,
+    provider: 'openai',
+    model: 'gpt-4o-mini',
+  }),
   isAiAssistantConfigured: mockIsAiAssistantConfigured,
 }))
 
@@ -203,7 +209,13 @@ describe('POST /api/whatsapp/webhook', () => {
     process.env.WHATSAPP_PHONE_NUMBER_ID = 'test-phone-number-id'
     mockClaimIncomingMessage.mockResolvedValue(true)
     mockReleaseIncomingMessageClaim.mockResolvedValue(undefined)
-    mockAiAssistant.mockResolvedValue('ai-reply')
+    mockAiAssistant.mockResolvedValue({
+      reply: 'ai-reply',
+      promptTokens: 50,
+      completionTokens: 20,
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+    })
     mockAiAssistantConfigured.mockReturnValue(true)
     mockLogExchange.mockResolvedValue(undefined)
   })

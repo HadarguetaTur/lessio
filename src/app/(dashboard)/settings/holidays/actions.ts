@@ -8,7 +8,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 
 export type HolidayActionState = { error: string } | null
 
@@ -49,7 +49,9 @@ export async function addHoliday(
   _prevState: HolidayActionState,
   formData: FormData
 ): Promise<HolidayActionState> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner' && role !== 'admin') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
@@ -84,7 +86,9 @@ export async function addHolidayRange(
   _prevState: HolidayActionState,
   formData: FormData
 ): Promise<HolidayActionState> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner' && role !== 'admin') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
@@ -117,7 +121,9 @@ export async function addHolidayRange(
 }
 
 export async function deleteHoliday(id: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
   if (role !== 'owner' && role !== 'admin') return
 
   const supabase = await createClient()

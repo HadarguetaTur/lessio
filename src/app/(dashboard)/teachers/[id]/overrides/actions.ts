@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
 
 type ActionState = { error: string } | null
@@ -26,7 +26,9 @@ export async function createOverride(
     if (start_time >= end_time) return { error: 'שעת הסיום חייבת להיות לאחר שעת ההתחלה' }
   }
 
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
 
   const supabase = await createClient()
@@ -53,7 +55,9 @@ export async function createOverride(
 }
 
 export async function deleteOverride(id: string, teacherId: string): Promise<void> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
+  requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return
   const supabase = await createClient()
 

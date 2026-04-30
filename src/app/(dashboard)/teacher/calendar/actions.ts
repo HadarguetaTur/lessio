@@ -6,7 +6,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 /**
@@ -15,7 +15,9 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
  * Returns an error string on failure (so the old token stays valid).
  */
 export async function regenerateCalendarTokenAction(): Promise<{ error?: string }> {
-  const { userId, orgId, role } = await getSession()
+  const session = await getSession()
+  const { userId, orgId, role } = session
+  requireMutation(session)
 
   if (role !== 'teacher') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }

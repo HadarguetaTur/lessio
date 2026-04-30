@@ -7,7 +7,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
@@ -35,7 +35,9 @@ export async function saveTemplateAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }
@@ -78,7 +80,9 @@ export async function saveTemplateAction(
  * Deletes the custom template row — org reverts to system default.
  */
 export async function resetTemplateAction(type: string): Promise<{ error?: string }> {
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     return { error: 'אין הרשאה לביצוע פעולה זו' }

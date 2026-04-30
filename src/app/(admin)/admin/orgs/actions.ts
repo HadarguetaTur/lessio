@@ -23,7 +23,7 @@ export async function createOrganizationAction(
 
   const parsed = CreateOrganizationSchema.safeParse(raw)
   if (!parsed.success) {
-    const first = parsed.error.errors[0]?.message ?? 'קלט לא תקין'
+    const first = parsed.error.issues[0]?.message ?? 'קלט לא תקין'
     return { error: first }
   }
 
@@ -61,7 +61,7 @@ export async function updateOrganizationAction(
 
   const parsed = UpdateOrgSchema.safeParse(raw)
   if (!parsed.success) {
-    const first = parsed.error.errors[0]?.message ?? 'קלט לא תקין'
+    const first = parsed.error.issues[0]?.message ?? 'קלט לא תקין'
     return { error: first }
   }
 

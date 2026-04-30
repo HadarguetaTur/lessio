@@ -7,7 +7,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth/session'
+import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { getTeacherAvailabilityByDay, hasOverlap } from '@/lib/availability'
 import { revalidatePath } from 'next/cache'
@@ -18,7 +18,9 @@ export async function addTeacherAvailability(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { userId, orgId, role } = await getSession()
+  const session = await getSession()
+  const { userId, orgId, role } = session
+  requireMutation(session)
 
   if (role !== 'teacher') return { error: 'אין הרשאה' }
 
@@ -60,7 +62,9 @@ export async function addTeacherAvailability(
 }
 
 export async function deleteTeacherAvailability(id: string): Promise<void> {
-  const { userId, orgId, role } = await getSession()
+  const session = await getSession()
+  const { userId, orgId, role } = session
+  requireMutation(session)
   if (role !== 'teacher') return
 
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })

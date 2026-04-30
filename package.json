@@ -13,8 +13,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@fontsource/heebo": "^5.2.8",
     "@google/generative-ai": "^0.21.0",
     "@react-pdf/renderer": "^4.5.1",
+    "@sentry/nextjs": "^10.51.0",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.3",
     "class-variance-authority": "^0.7.1",
@@ -48,7 +50,7 @@
     "@vitest/coverage-v8": "^4.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.0",
-    "supabase": "^2.83.0",
+    "supabase": "^2.96.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.0"

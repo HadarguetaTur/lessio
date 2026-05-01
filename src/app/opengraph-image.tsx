@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+
 import { ImageResponse } from 'next/og'
 
 export const alt = 'LESSIO — תשתית עסקית למורים פרטיים ומרכזי למידה'
@@ -5,13 +8,10 @@ export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
 export default async function OpenGraphImage() {
+  const fontsDir = join(process.cwd(), 'public', 'fonts')
   const [heeboBold, heeboRegular] = await Promise.all([
-    fetch(new URL('../../public/fonts/Heebo-Bold.ttf', import.meta.url)).then((r) =>
-      r.arrayBuffer(),
-    ),
-    fetch(new URL('../../public/fonts/Heebo-Regular.ttf', import.meta.url)).then((r) =>
-      r.arrayBuffer(),
-    ),
+    readFile(join(fontsDir, 'Heebo-Bold.ttf')),
+    readFile(join(fontsDir, 'Heebo-Regular.ttf')),
   ])
 
   return new ImageResponse(

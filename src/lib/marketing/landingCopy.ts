@@ -322,10 +322,35 @@ export function getLandingContent(locale: string): LandingContent {
 export function getLandingMetadata(locale: string): {
   title: string
   description: string
+  openGraph: {
+    title: string
+    description: string
+    locale: string
+    type: 'website'
+  }
+  twitter: {
+    card: 'summary_large_image'
+    title: string
+    description: string
+  }
 } {
   const c = getLandingContent(locale)
+  const title = `LESSIO — ${c.hero.subheadline}`
+  const description = c.hero.headline
+
   return {
-    title: 'LESSIO',
-    description: c.hero.subheadline,
+    title,
+    description,
+    openGraph: {
+      type: 'website',
+      title,
+      description,
+      locale: locale === 'en' ? 'en_US' : 'he_IL',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
   }
 }

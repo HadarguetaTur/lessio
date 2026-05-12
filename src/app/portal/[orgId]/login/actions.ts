@@ -6,7 +6,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizePhone } from '@/lib/phone'
 import { decryptToken } from '@/lib/crypto'
 import { sendTextMessage } from '@/lib/whatsapp'
-import { generateOtp, storeOtp, verifyOtp } from '@/lib/portal/otp'
+import { generateOtp, storeOtp, verifyOtp, countRecentOtpRequests } from '@/lib/portal/otp'
 import { setPortalSessionCookie } from '@/lib/portal/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 
@@ -29,6 +29,9 @@ export async function requestOtpAction(
   _prev: LoginState,
   formData: FormData
 ): Promise<LoginState> {
+  // Feature gate first — must not be inside a try/catch (redirect() throws internally).
+  await requireFeature(orgId, 'parent_portal')
+
   const parsed = PhoneSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return { error: 'מספר טלפון לא תקין' }
 
@@ -37,6 +40,14 @@ export async function requestOtpAction(
     phone = normalizePhone(parsed.data.phone)
   } catch {
     return { error: 'מספר טלפון לא תקין' }
+  }
+
+  // Server-side rate limiting: max 3 OTP requests per phone per 15 minutes.
+  // Checked after phone normalization so the key is canonical.
+  // Generic error — do not reveal whether the phone is registered.
+  const recentCount = await countRecentOtpRequests(phone, orgId)
+  if (recentCount >= 3) {
+    return { error: 'ניסיונות רבים מדי. נסה/י שוב מאוחר יותר.' }
   }
 
   const db = createServiceRoleClient()

@@ -158,7 +158,7 @@ export async function updateBasicSettings(
 }
 
 export async function completeOnboarding(): Promise<void> {
-  const { orgId, role } = await getOnboardingSession()
+  const { userId, orgId, role } = await getOnboardingSession()
   if (role !== 'owner') {
     redirect('/dashboard')
   }
@@ -175,6 +175,20 @@ export async function completeOnboarding(): Promise<void> {
     state.status !== 'read_only'
   ) {
     redirect('/onboarding')
+  }
+
+  // Ensure the owner has a teacher record — required for solo-teacher orgs
+  // that skipped the teachers step.
+  const { count } = await db
+    .from('teachers')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+
+  if ((count ?? 0) === 0) {
+    await db.from('teachers').insert({
+      organization_id: orgId,
+      profile_id: userId,
+    })
   }
 
   await db

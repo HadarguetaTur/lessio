@@ -5,6 +5,7 @@
  * Per /docs/sprint-13-scope.md § Story 3.
  */
 
+import { timingSafeEqual } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 /** Generates a cryptographically random 6-digit OTP string. */
@@ -42,6 +43,27 @@ export async function storeOtp({ phone, orgId, otp }: StoreOtpParams): Promise<v
   if (error) throw new Error(`Failed to store OTP: ${error.message}`)
 }
 
+/**
+ * Returns the number of OTP requests for this phone+org in the last `windowMinutes` minutes.
+ * Used by requestOtpAction to enforce the rate limit (max 3 per 15 min).
+ */
+export async function countRecentOtpRequests(
+  phone: string,
+  orgId: string,
+  windowMinutes = 15
+): Promise<number> {
+  const db = createServiceRoleClient()
+  const since = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString()
+  const { count, error } = await db
+    .from('portal_otps')
+    .select('id', { count: 'exact', head: true })
+    .eq('phone', phone)
+    .eq('organization_id', orgId)
+    .gte('created_at', since)
+  if (error) throw new Error(`Rate limit check failed: ${error.message}`)
+  return count ?? 0
+}
+
 export interface VerifyOtpParams {
   phone: string
   orgId: string
@@ -50,24 +72,59 @@ export interface VerifyOtpParams {
 
 /**
  * Verifies OTP — returns true and marks as used if valid.
- * Returns false if wrong OTP, already used, or expired.
+ * Returns false if wrong OTP, already used, expired, or attempt limit reached.
+ *
+ * Security properties:
+ * - Single-use: row is marked used=true on success.
+ * - Expiry-checked: expired rows are ignored.
+ * - Attempt-limited: after 5 failed guesses the row is invalidated (used=true).
+ * - Constant-time hash comparison via timingSafeEqual.
  */
 export async function verifyOtp({ phone, orgId, otp }: VerifyOtpParams): Promise<boolean> {
   const db = createServiceRoleClient()
   const otp_hash = await hashOtp(otp)
 
-  const { data } = await db
+  // Fetch the most recent active, unexpired OTP for this phone+org.
+  // We do NOT filter by hash here so we can track failed attempts on the right row.
+  const { data: record } = await db
     .from('portal_otps')
-    .select('id')
+    .select('id, otp_hash, failed_attempts')
     .eq('phone', phone)
     .eq('organization_id', orgId)
-    .eq('otp_hash', otp_hash)
     .eq('used', false)
     .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
-  if (!data) return false
+  if (!record) return false
 
-  await db.from('portal_otps').update({ used: true }).eq('id', data.id)
+  // Already hit attempt limit — invalidate and reject.
+  if ((record.failed_attempts as number) >= 5) {
+    await db.from('portal_otps').update({ used: true }).eq('id', record.id)
+    return false
+  }
+
+  // Constant-time hash comparison to prevent timing-based OTP enumeration.
+  const expectedBuf = Buffer.from(record.otp_hash as string, 'hex')
+  const actualBuf = Buffer.from(otp_hash, 'hex')
+  const hashMatch =
+    expectedBuf.length === actualBuf.length && timingSafeEqual(expectedBuf, actualBuf)
+
+  if (!hashMatch) {
+    const newAttempts = (record.failed_attempts as number) + 1
+    await db
+      .from('portal_otps')
+      .update({
+        failed_attempts: newAttempts,
+        // Lock the OTP after 5 failures so it cannot be used even if later guessed correctly.
+        ...(newAttempts >= 5 ? { used: true } : {}),
+      })
+      .eq('id', record.id)
+    return false
+  }
+
+  // Valid OTP — mark single-use.
+  await db.from('portal_otps').update({ used: true }).eq('id', record.id)
   return true
 }

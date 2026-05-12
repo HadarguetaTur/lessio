@@ -1368,7 +1368,12 @@
       "divider": "או",
       "socialHelper": "הרשמה חברתית תופעל בקרוב",
       "hasAccount": "כבר יש לך חשבון?",
-      "loginLink": "התחברות"
+      "loginLink": "התחברות",
+      "consentPrefix": "בהרשמה אתה מסכים ל",
+      "consentTerms": "תנאי השימוש",
+      "consentAnd": "ול",
+      "consentPrivacy": "מדיניות הפרטיות",
+      "consentSuffix": ". השירות כולל שליחת הודעות WhatsApp תפעוליות בשמך ללקוחותיך."
     },
     "forgotPassword": {
       "title": "איפוס סיסמה",
@@ -1380,8 +1385,8 @@
     "social": {
       "continueGoogle": "המשך עם Google",
       "continueFacebook": "המשך עם Facebook",
-      "helperLogin": "התחברות חברתית תופעל בקרוב",
-      "helperSignup": "הרשמה חברתית תופעל בקרוב"
+      "helperLogin": "או המשך עם חשבון חברתי",
+      "helperSignup": "או הצטרף עם חשבון חברתי"
     },
     "trust": {
       "secure": "מאובטח",
@@ -1640,8 +1645,9 @@
       "title": "יבוא תלמידים והורים",
       "subtitle": "העלה קובץ אקסל או CSV עם הנתונים הקיימים שלך",
       "hint": "הורד את התבנית כדי לראות את הפורמט הנדרש.",
-      "studentsTab": "תלמידים",
-      "parentsTab": "הורים"
+      "familyListTab": "תלמידים + הורים",
+      "studentsTab": "תלמידים בלבד",
+      "parentsTab": "הורים בלבד"
     },
     "importLessons": {
       "title": "יבוא שיעורים",
@@ -1874,7 +1880,7 @@
       "teachers": "מורים",
       "lessonsSchedule": "מערכת שעות חוזרת",
       "lessonsHistory": "היסטוריית שיעורים",
-      "familyList": "רשימת משפחות"
+      "familyList": "תלמידים + הורים"
     },
     "button": "יבוא",
     "table": {
@@ -1909,6 +1915,7 @@
     "fields": {
       "full_name": "שם מלא",
       "phone": "טלפון",
+      "phone_number": "טלפון",
       "email": "אימייל",
       "teacher_name": "שם מורה",
       "student_name": "שם תלמיד",
@@ -2070,5 +2077,20 @@
     "title": "הדף לא נמצא",
     "description": "הדף שחיפשת לא קיים או שהוסר.",
     "backHome": "חזרה לדף הבית"
+  },
+  "errors": {
+    "generic": {
+      "title": "משהו השתבש",
+      "description": "אירעה שגיאה בלתי צפויה. ניתן לנסות שוב.",
+      "retry": "נסה שוב",
+      "backToDashboard": "חזרה לדשבורד"
+    },
+    "quotaExceeded": {
+      "title": "הגעת למכסה של החבילה",
+      "students": "הגעת למספר התלמידים המרבי בחבילה הנוכחית. שדרג כדי להוסיף עוד תלמידים.",
+      "lessons": "הגעת למספר השיעורים החודשי המרבי בחבילה הנוכחית. שדרג כדי לתזמן עוד שיעורים.",
+      "upgrade": "שדרג חבילה",
+      "retry": "נסה שוב"
+    }
   }
 }

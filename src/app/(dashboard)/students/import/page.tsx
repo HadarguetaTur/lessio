@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { PageHeader } from '@/components/ui/page-header'
-import { ImportFlow } from '@/components/import/ImportFlow'
+import { StudentsImportClient } from './StudentsImportClient'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
@@ -18,8 +18,8 @@ export default async function StudentsImportPage() {
   return (
     <div>
       <PageHeader
-        title="יבוא תלמידים"
-        subtitle="העלה קובץ אקסל או CSV עם נתוני תלמידים"
+        title="יבוא תלמידים והורים"
+        subtitle="העלה קובץ אקסל או CSV — תלמידים + הורים בקובץ אחד, או בנפרד"
         actions={
           <Link href="/students">
             <Button variant="outline" size="sm">
@@ -30,7 +30,7 @@ export default async function StudentsImportPage() {
         }
       />
       <div className="max-w-2xl">
-        <ImportFlow entityType="students" />
+        <StudentsImportClient />
       </div>
     </div>
   )

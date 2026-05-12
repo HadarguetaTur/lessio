@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createHmac } from 'crypto'
+import { createHmac, timingSafeEqual } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { signBookingToken } from '@/lib/jwt'
@@ -113,14 +113,18 @@ export async function POST(request: NextRequest) {
 
 function verifySignature(rawBody: string, signature: string | null, appSecret: string): boolean {
   if (!signature) return false
-  const expected = 'sha256=' + createHmac('sha256', appSecret).update(rawBody).digest('hex')
-  // Constant-time comparison to prevent timing attacks
-  if (expected.length !== signature.length) return false
-  let mismatch = 0
-  for (let i = 0; i < expected.length; i++) {
-    mismatch |= expected.charCodeAt(i) ^ signature.charCodeAt(i)
+  const expected = Buffer.from(
+    'sha256=' + createHmac('sha256', appSecret).update(rawBody).digest('hex')
+  )
+  let sig: Buffer
+  try {
+    sig = Buffer.from(signature)
+  } catch {
+    return false
   }
-  return mismatch === 0
+  // timingSafeEqual requires equal-length buffers; length mismatch is not a secret.
+  if (expected.length !== sig.length) return false
+  return timingSafeEqual(expected, sig)
 }
 
 async function processMessage(

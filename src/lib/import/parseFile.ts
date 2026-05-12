@@ -37,7 +37,7 @@ export function parseFile(buffer: ArrayBuffer, filename: string): {
 const COLUMN_ALIASES: Record<string, string[]> = {
   full_name: ['שם מלא', 'full_name', 'name', 'שם'],
   grade: ['כיתה', 'grade', 'class'],
-  phone: ['טלפון', 'phone', 'tel', 'נייד', 'מספר טלפון'],
+  phone: ['טלפון', 'phone', 'phone_number', 'tel', 'נייד', 'מספר טלפון'],
   level: ['רמה', 'level'],
   focused_subject: ['מקצוע', 'focused_subject', 'subject'],
   weekly_quota: ['מכסה שבועית', 'weekly_quota', 'quota'],
@@ -62,6 +62,10 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   parent_phone_2: ['טלפון הורה 2', 'parent_phone_2', 'טלפון הורה שני'],
   student_notes: ['הערות תלמיד', 'student_notes'],
   parent_notes: ['הערות הורה', 'parent_notes'],
+  parent_email: ['אימייל הורה', 'parent_email', 'מייל הורה', 'email_parent'],
+  parent_relation_type: ['סוג קשר', 'parent_relation_type', 'יחס הורה', 'relation_type', 'קשר'],
+  parent_second_phone: ['טלפון נוסף הורה', 'parent_second_phone', 'second_phone_parent'],
+  parent_address: ['כתובת הורה', 'parent_address', 'address_parent', 'כתובת'],
 }
 
 /**

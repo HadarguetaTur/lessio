@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
@@ -15,9 +15,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://lessio.app";
+
 export const metadata: Metadata = {
-  title: "LESSIO",
-  description: "מערכת תיאום שיעורים",
+  metadataBase: new URL(siteUrl),
+  applicationName: "LESSIO",
+  title: {
+    default: "LESSIO — תשתית עסקית למורים פרטיים ומרכזי למידה",
+    template: "%s · LESSIO",
+  },
+  description:
+    "מערכת אחת שמרכזת תיאום, ביטולים, גבייה ותקשורת עם הורים. ההורים נשארים ב-WhatsApp — בלי כאוס תפעולי.",
+  openGraph: {
+    type: "website",
+    siteName: "LESSIO",
+    title: "LESSIO — תשתית עסקית למורים פרטיים ומרכזי למידה",
+    description:
+      "מערכת אחת שמרכזת תיאום, ביטולים, גבייה ותקשורת עם הורים. ההורים נשארים ב-WhatsApp — בלי כאוס תפעולי.",
+    url: "/",
+    locale: "he_IL",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LESSIO — תשתית עסקית למורים פרטיים",
+    description: "כל השוטף במקום אחד. ההורים נשארים ב-WhatsApp.",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0d9488",
 };
 
 export default async function RootLayout({

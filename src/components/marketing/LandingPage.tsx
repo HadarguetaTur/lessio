@@ -122,7 +122,7 @@ export function LandingPage({
   content,
   dir,
   locale,
-  siteContact = { address: '', supportEmail: '' },
+  siteContact = { address: '', supportEmail: '', phone: '', registrationNumber: '' },
 }: {
   content: LandingContent
   dir: 'rtl' | 'ltr'

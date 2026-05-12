@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { ArrowRight, CheckCircle2, GraduationCap, Users, BookOpen, UserCheck } from 'lucide-react'
 import { completeOnboarding } from '@/app/(onboarding)/onboarding/actions'
-import { useState } from 'react'
+import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import {
   onboardingGradientCta,
@@ -24,11 +24,15 @@ interface CompleteStepProps {
 export function CompleteStep({ counts, onBack }: CompleteStepProps) {
   const t = useTranslations('onboarding.complete')
   const tNav = useTranslations('onboarding.nav')
-  const [pending, setPending] = useState(false)
+  const [pending, startTransition] = useTransition()
 
-  const handleComplete = async () => {
-    setPending(true)
-    await completeOnboarding()
+  // useTransition is required so Next.js can pick up the server action's
+  // redirect() and navigate the client. Plain `await` on the action leaves
+  // the page stuck on the loading state until the user refreshes.
+  const handleComplete = () => {
+    startTransition(async () => {
+      await completeOnboarding()
+    })
   }
 
   const stats = [

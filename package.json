@@ -40,6 +40,11 @@
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
+  "overrides": {
+    "openai": {
+      "zod": "$zod"
+    }
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/luxon": "^3.7.1",

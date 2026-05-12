@@ -3,15 +3,15 @@ import { getTranslations } from 'next-intl/server'
 
 import { AuthEntryColumn } from '@/components/auth/AuthEntryColumn'
 import { AuthSplitShell } from '@/components/auth/AuthSplitShell'
-import { ForgotPasswordForm } from './ForgotPasswordForm'
+import { ResetPasswordForm } from './ResetPasswordForm'
 
-async function ForgotPasswordColumn() {
-  const t = await getTranslations('auth.forgotPassword')
+async function ResetPasswordColumn() {
+  const t = await getTranslations('auth.resetPassword')
 
   return (
     <AuthEntryColumn
       title={t('title')}
-      card={<ForgotPasswordForm />}
+      card={<ResetPasswordForm />}
       footer={
         <p className="mt-8 text-sm leading-relaxed text-muted-foreground">
           {t('remember')}{' '}
@@ -27,10 +27,10 @@ async function ForgotPasswordColumn() {
   )
 }
 
-export default function ForgotPasswordPage() {
+export default function ResetPasswordPage() {
   return (
     <AuthSplitShell>
-      <ForgotPasswordColumn />
+      <ResetPasswordColumn />
     </AuthSplitShell>
   )
 }

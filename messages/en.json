@@ -1382,8 +1382,21 @@
     },
     "forgotPassword": {
       "title": "Reset password",
-      "body": "This screen is under development — soon you'll be able to receive a password reset link by email.",
-      "backToLogin": "Back to sign in",
+      "email": "Email address",
+      "submit": "Send reset link",
+      "submitting": "Sending...",
+      "successBody": "We sent a password reset link to {email}. The link expires in 24 hours.",
+      "remember": "Remember your password?",
+      "loginLink": "Sign in"
+    },
+    "resetPassword": {
+      "title": "Set new password",
+      "password": "New password",
+      "confirmPassword": "Confirm password",
+      "submit": "Update password",
+      "submitting": "Updating...",
+      "mismatch": "Passwords do not match",
+      "tooShort": "Password must be at least 8 characters",
       "remember": "Remember your password?",
       "loginLink": "Sign in"
     },
@@ -1412,7 +1425,8 @@
     "errors": {
       "invalidCredentials": "Invalid email or password",
       "passwordsMismatch": "Passwords do not match",
-      "invalidData": "Invalid data"
+      "invalidData": "Invalid data",
+      "generic": "Something went wrong. Please try again."
     },
     "validation": {
       "orgNameMin": "Organization name must be at least 2 characters",

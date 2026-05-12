@@ -1,5 +1,6 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { getTranslations } from 'next-intl/server'
 
@@ -10,7 +11,10 @@ export async function sendPasswordResetEmail(
   const email = (formData.get('email') as string | null)?.trim() ?? ''
   if (!email) return { error: 'required' }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const headersList = await headers()
+  const host = headersList.get('host') ?? 'www.getlessio.com'
+  const proto = headersList.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https')
+  const appUrl = `${proto}://${host}`
   const redirectTo = `${appUrl}/auth/callback?next=/reset-password`
 
   const supabase = await createClient()

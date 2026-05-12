@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export interface Parent {
   id: string
@@ -21,7 +21,7 @@ export async function getParents(
   organizationId: string,
   options: GetParentsOptions = {}
 ): Promise<Parent[]> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   let query = supabase
     .from('parents')
@@ -47,7 +47,7 @@ export async function getParentById(
   id: string,
   organizationId: string
 ): Promise<Parent | null> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   const { data } = await supabase
     .from('parents')

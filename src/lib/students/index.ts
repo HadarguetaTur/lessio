@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { OPEN_CHARGE_STATUSES, type ChargeStatus } from '@/lib/charges'
 
@@ -118,7 +117,7 @@ export async function getStudentById(
   id: string,
   organizationId: string
 ): Promise<Student | null> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   const { data } = await supabase
     .from('students')
@@ -138,7 +137,7 @@ export async function getStudentLessons(
   studentId: string,
   organizationId: string
 ): Promise<StudentLesson[]> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   // Inner join: only lessons where this student is enrolled, no date limit
   const { data, error } = await supabase
@@ -186,7 +185,7 @@ export async function getStudentPrimaryParent(
   studentId: string,
   organizationId: string
 ): Promise<StudentPrimaryParent | null> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   const { data } = await supabase
     .from('relationships')
@@ -210,7 +209,7 @@ export async function getStudentFinancial(
   studentId: string,
   organizationId: string
 ): Promise<StudentFinancial> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   // Find primary parent
   const { data: relData } = await supabase

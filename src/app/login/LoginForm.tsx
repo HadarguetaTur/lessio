@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 
 import { signIn } from './actions'
@@ -13,6 +13,14 @@ import { AlertCircle } from 'lucide-react'
 export function LoginForm() {
   const [state, action, pending] = useActionState(signIn, null)
   const t = useTranslations('auth.login')
+
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload()
+    }
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [])
 
   return (
     <form action={action} className="space-y-6 text-center">

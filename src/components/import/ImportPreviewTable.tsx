@@ -5,6 +5,44 @@ import { useTranslations } from 'next-intl'
 import { Check, AlertTriangle, X, ChevronDown, ChevronUp, Copy } from 'lucide-react'
 import type { ValidatedRow } from '@/lib/import/validators'
 
+const IMPORT_FIELD_KEYS = new Set([
+  'full_name',
+  'phone',
+  'phone_number',
+  'email',
+  'teacher_name',
+  'student_name',
+  'day_of_week',
+  'start_time',
+  'end_time',
+  'duration_minutes',
+  'date',
+  'grade',
+  'level',
+  'focused_subject',
+  'weekly_quota',
+  'notes',
+  'status',
+  'student_names',
+  'bio',
+  'hourly_rate',
+  'lesson_type',
+  'cancel_reason',
+  'parent_name',
+  'parent_phone',
+  'parent_name_2',
+  'parent_phone_2',
+  'student_notes',
+  'parent_notes',
+  'parent_email',
+  'parent_second_phone',
+  'parent_address',
+  'parent_relation_type',
+  'second_phone',
+  'address',
+  'relation_type',
+])
+
 interface ImportPreviewTableProps {
   rows: ValidatedRow[]
   excludedRows: Set<number>
@@ -38,7 +76,9 @@ export function ImportPreviewTable({
     (k) => rows.some((r) => r.data[k] != null && r.data[k] !== '')
   )
 
-  const columnTitle = (col: string) => t(`fields.${col}` as never)
+  const columnTitle = (col: string) => (
+    IMPORT_FIELD_KEYS.has(col) ? t(`fields.${col}` as never) : col
+  )
 
   return (
     <div className="rounded-xl border border-border overflow-hidden">

@@ -1,7 +1,9 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
+
+import Link from 'next/link'
 
 import { signUp } from './actions'
 import { Button } from '@/components/ui/button'
@@ -12,6 +14,14 @@ import { AlertCircle } from 'lucide-react'
 export function SignupForm() {
   const [state, action, pending] = useActionState(signUp, null)
   const t = useTranslations('auth.signup')
+
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload()
+    }
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [])
 
   return (
     <form
@@ -111,6 +121,18 @@ export function SignupForm() {
       >
         {pending ? t('submitting') : t('submit')}
       </Button>
+
+      <p className="text-center text-[11px] leading-relaxed text-muted-foreground lg:col-span-2 lg:text-start">
+        {t('consentPrefix')}{' '}
+        <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">
+          {t('consentTerms')}
+        </Link>
+        {' '}{t('consentAnd')}{' '}
+        <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">
+          {t('consentPrivacy')}
+        </Link>
+        {t('consentSuffix')}
+      </p>
     </form>
   )
 }

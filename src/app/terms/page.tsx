@@ -17,7 +17,7 @@ export default async function TermsPage() {
   const tLegal = await getTranslations('legal')
   const { supportEmail, address, phone, registrationNumber } = getSiteContact()
 
-  const email = supportEmail || 'cs@hadarturgemanautomations.com'
+  const email = supportEmail || 'support@getlessio.com'
   const addr = address || 'נוקדים, כפר אלדד 142, ישראל'
   const tel = phone || '050-4343547'
   const reg = registrationNumber || '204174361'
@@ -44,7 +44,7 @@ export default async function TermsPage() {
           <h2 className="text-base font-semibold text-foreground mb-3">1. מבוא וזהות הצדדים</h2>
           <p>
             תנאי שימוש אלה ("התנאים") מסדירים את היחסים בין{' '}
-            <strong className="text-foreground">הדר תורגמן אוטומציות</strong>, עוסק מורשה מספר{' '}
+            <strong className="text-foreground">תורג&apos;מן גואטה הדר מזל</strong>, עוסק פטור מספר{' '}
             <strong className="text-foreground">{reg}</strong>, כתובת:{' '}
             <strong className="text-foreground">{addr}</strong> ("החברה", "Lessio"),
             לבין כל גורם המשתמש בפלטפורמת Lessio ("הלקוח", "המשתמש").
@@ -67,7 +67,7 @@ export default async function TermsPage() {
           <dl className="space-y-2">
             {[
               ['Lessio / המערכת', 'פלטפורמת התוכנה כשירות (SaaS) המופעלת על ידי החברה, לרבות כל ממשקי המשתמש, ה-API, פורטל ההורים, היישומים הנלווים, מסדי הנתונים והשירותים הקשורים.'],
-              ['החברה / מפעילת השירות', 'הדר תורגמן אוטומציות, המפעילה את Lessio ומספקת את השירות.'],
+              ['החברה / מפעילת השירות', 'תורג\'מן גואטה הדר מזל, עוסק פטור מספר 204174361, המפעיל/ת את Lessio ומספק/ת את השירות.'],
               ['לקוח עסקי', 'עסק, מוסד חינוכי, מרכז למידה, מורה פרטי, חברה, עמותה או כל גורם משפטי או יחיד הרוכש גישה ל-Lessio לצורך ניהול פעילות עסקית עצמאית.'],
               ['משתמש מורשה', 'מורה, עובד, מנהל, שותף או כל אדם אחר שהלקוח העסקי הסמיך לגשת למערכת בשמו.'],
               ['משתמש קצה', 'הורה, תלמיד, מורה, עובד או לקוח של הלקוח העסקי המשתמש בחלקים מהמערכת הנגישים לציבור (כגון פורטל הורים), מבלי שהוא עצמו צד ישיר בהסכם עם החברה.'],

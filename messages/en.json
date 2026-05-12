@@ -1368,7 +1368,12 @@
       "divider": "or",
       "socialHelper": "Social sign-up coming soon",
       "hasAccount": "Already have an account?",
-      "loginLink": "Sign in"
+      "loginLink": "Sign in",
+      "consentPrefix": "By signing up you agree to the",
+      "consentTerms": "Terms of Use",
+      "consentAnd": "and",
+      "consentPrivacy": "Privacy Policy",
+      "consentSuffix": ". The service includes sending operational WhatsApp messages to your clients on your behalf."
     },
     "forgotPassword": {
       "title": "Reset password",
@@ -1380,8 +1385,8 @@
     "social": {
       "continueGoogle": "Continue with Google",
       "continueFacebook": "Continue with Facebook",
-      "helperLogin": "Social sign-in coming soon",
-      "helperSignup": "Social sign-up coming soon"
+      "helperLogin": "Or continue with a social account",
+      "helperSignup": "Or sign up with a social account"
     },
     "trust": {
       "secure": "Secure",
@@ -1641,8 +1646,9 @@
       "title": "Import Students & Parents",
       "subtitle": "Upload an Excel or CSV file with your existing data",
       "hint": "Download the template to see the required format.",
-      "studentsTab": "Students",
-      "parentsTab": "Parents"
+      "familyListTab": "Students + Parents",
+      "studentsTab": "Students only",
+      "parentsTab": "Parents only"
     },
     "importLessons": {
       "title": "Import Lessons",
@@ -1875,7 +1881,7 @@
       "teachers": "Teachers",
       "lessonsSchedule": "Recurring Schedule",
       "lessonsHistory": "Lesson History",
-      "familyList": "Family list"
+      "familyList": "Students + Parents"
     },
     "button": "Import",
     "table": {
@@ -1910,6 +1916,7 @@
     "fields": {
       "full_name": "Full name",
       "phone": "Phone",
+      "phone_number": "Phone",
       "email": "Email",
       "teacher_name": "Teacher name",
       "student_name": "Student name",
@@ -2071,5 +2078,20 @@
     "title": "Page not found",
     "description": "The page you're looking for doesn't exist or has been removed.",
     "backHome": "Back to home"
+  },
+  "errors": {
+    "generic": {
+      "title": "Something went wrong",
+      "description": "An unexpected error occurred. You can try again.",
+      "retry": "Try again",
+      "backToDashboard": "Back to dashboard"
+    },
+    "quotaExceeded": {
+      "title": "You've reached your plan limit",
+      "students": "You've reached the maximum number of students on your current plan. Upgrade to add more.",
+      "lessons": "You've reached the monthly lesson limit on your current plan. Upgrade to schedule more.",
+      "upgrade": "Upgrade plan",
+      "retry": "Try again"
+    }
   }
 }

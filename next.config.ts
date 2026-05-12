@@ -34,6 +34,14 @@ const nextConfig: NextConfig = {
   // Sprint 23 Story 2b: /he/portal/:path* internally serves /portal/:path* without
   // restructuring files. The proxy adds a 301 from /portal/:orgId → /he/portal/:orgId
   // so new parents land at the locale-prefixed URL while existing links still work.
+  async redirects() {
+    return [
+      // Canonical URL aliases — common paths Meta and external tools check
+      { source: '/privacy-policy', destination: '/privacy', permanent: true },
+      { source: '/terms-of-service', destination: '/terms', permanent: true },
+      { source: '/tos', destination: '/terms', permanent: true },
+    ]
+  },
   async rewrites() {
     return [
       {

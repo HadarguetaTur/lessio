@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export interface Teacher {
   id: string
@@ -33,7 +33,7 @@ function mapTeacher(data: TeacherRow): Teacher {
 }
 
 export async function getTeachers(organizationId: string): Promise<Teacher[]> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   const { data, error } = await supabase
     .from('teachers')
@@ -51,7 +51,7 @@ export async function getTeacherByProfileId(
   organizationId: string,
   options?: { activeOnly?: boolean }
 ): Promise<Teacher | null> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   let query = supabase
     .from('teachers')
@@ -73,7 +73,7 @@ export async function getTeacherById(
   id: string,
   organizationId: string
 ): Promise<Teacher | null> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   const { data } = await supabase
     .from('teachers')

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { LegalSimpleLayout } from '@/components/marketing/LegalSimpleLayout'
+import { getSiteContact } from '@/lib/marketing/siteContact'
 
 export const metadata: Metadata = {
   title: 'מדיניות פרטיות | Lessio',
@@ -9,12 +10,13 @@ export const metadata: Metadata = {
     'מדיניות הפרטיות של Lessio — כיצד אנו אוספים, משתמשים ושומרים על המידע שלך בהתאם לחוק הגנת הפרטיות הישראלי.',
 }
 
-const CONTACT_EMAIL = 'cs@hadarturgemanautomations.com'
+const { supportEmail } = getSiteContact()
+const CONTACT_EMAIL = supportEmail || 'support@getlessio.com'
 const CONTACT_PHONE = '050-434-3547'
 const CONTACT_ADDRESS = 'נוקדים כפר אלדד 142, ישראל'
-const ENTITY_NAME = 'הדר אוטומציות'
+const ENTITY_NAME = 'תורג\'מן גואטה הדר מזל'
 const ENTITY_NUMBER = '204174361'
-const CONTACT_PERSON = 'הדר תורג\'מן גואטה'
+const CONTACT_PERSON = 'תורג\'מן גואטה הדר מזל'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -50,14 +52,14 @@ export default function PrivacyPage() {
       <h1 className="text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         מדיניות פרטיות
       </h1>
-      <p className="mt-1 text-xs text-muted-foreground">גרסה 1.0 · עודכן לאחרונה: [תאריך]</p>
+      <p className="mt-1 text-xs text-muted-foreground">גרסה 1.0 · עודכן לאחרונה: 1 במאי 2026</p>
 
       <div className="mt-8 space-y-8">
 
         {/* 1 */}
         <Section title="1. מי אנחנו">
           <p>
-            <strong className="text-foreground">{ENTITY_NAME}</strong>, עוסק מורשה מספר{' '}
+            <strong className="text-foreground">{ENTITY_NAME}</strong>, עוסק פטור מספר{' '}
             <strong className="text-foreground">{ENTITY_NUMBER}</strong>, שכתובתו{' '}
             <strong className="text-foreground">{CONTACT_ADDRESS}</strong>, מפעיל את פלטפורמת{' '}
             <strong className="text-foreground">Lessio</strong> — מערכת SaaS לניהול עסקי שיעורים
@@ -164,7 +166,19 @@ export default function PrivacyPage() {
             </p>
           </SubSection>
           <SubSection title="4.7 Cookies וטכנולוגיות מעקב">
-            <p>[להשלים לפי הכלים הטכניים בפועל — כולל סוגי cookies, מטרות וספקי אנליטיקה.]</p>
+            <p>
+              האתר והמערכת עושים שימוש ב-cookies וטכנולוגיות מעקב דומות לצרכים הבאים, באמצעות
+              הכלים המפורטים:
+            </p>
+            <Ul
+              items={[
+                'Google Analytics 4 (GA4) — ניתוח תנועה ודפוסי שימוש באתר ובמערכת.',
+                'Meta Pixel — מעקב אחר המרות מפרסום ושיפור קמפיינים.',
+                'PostHog — ניתוח התנהגות משתמשים ושיפור חוויית המוצר.',
+                'Hotjar — מיפוי חוויית משתמש (heatmaps, הקלטות סשן).',
+                'Sentry — ניטור שגיאות ואיתור תקלות טכניות בזמן אמת.',
+              ]}
+            />
           </SubSection>
         </Section>
 
@@ -256,15 +270,15 @@ export default function PrivacyPage() {
               <tbody className="divide-y divide-border">
                 <tr>
                   <td className="px-3 py-2">מידע תפעולי (שיעורים, תלמידים, חיובים)</td>
-                  <td className="px-3 py-2 text-amber-600 dark:text-amber-400">[יעודכן]</td>
+                  <td className="px-3 py-2">3 שנים מתום ההתקשרות</td>
                 </tr>
                 <tr>
                   <td className="px-3 py-2">לוגי מערכת ואבטחה</td>
-                  <td className="px-3 py-2 text-amber-600 dark:text-amber-400">[יעודכן]</td>
+                  <td className="px-3 py-2">12 חודשים</td>
                 </tr>
                 <tr>
                   <td className="px-3 py-2">גיבויים</td>
-                  <td className="px-3 py-2 text-amber-600 dark:text-amber-400">[יעודכן]</td>
+                  <td className="px-3 py-2">90 יום</td>
                 </tr>
                 <tr>
                   <td className="px-3 py-2">מסמכים חשבונאיים</td>
@@ -378,12 +392,15 @@ export default function PrivacyPage() {
           <Ul
             items={[
               'Cookies חיוניים — נדרשים להפעלת המערכת וניהול סשן התחברות. לא ניתן להשבית אותם.',
-              'Cookies אנליטיים — לצורך ניתוח שימוש ושיפור המוצר. [להשלים — ספקי אנליטיקה בפועל]',
-              'Cookies שיווקיים — [להשלים — לפרט ספקי פרסום ככל שישנם, או לציין שאין שימוש כזה]',
+              'Cookies אנליטיים — Google Analytics 4 ו-PostHog לניתוח שימוש ושיפור המוצר; Hotjar למיפוי חוויית משתמש.',
+              'Cookies שיווקיים — Meta Pixel למעקב המרות מפרסום.',
+              'Cookies לניטור שגיאות — Sentry לאיתור ותיעוד תקלות טכניות.',
             ]}
           />
           <p>
-            ניתן לנהל את העדפות ה-cookies דרך הגדרות הדפדפן. [להשלים — מנגנון הסכמה ככל שקיים]
+            ניתן לנהל את העדפות ה-cookies דרך הגדרות הדפדפן שלך. שימוש באתר ובמערכת לאחר הרשמה
+            מהווה הסכמה לשימוש ב-cookies חיוניים. cookies אנליטיים ושיווקיים ניתן להגביל דרך
+            הגדרות הדפדפן.
           </p>
         </Section>
 

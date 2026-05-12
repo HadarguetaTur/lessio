@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { OPEN_CHARGE_STATUSES, type ChargeStatus } from '@/lib/charges'
 
 export type StudentStatus = 'active' | 'on_hold' | 'inactive'
@@ -89,7 +90,7 @@ export async function getStudents(
   organizationId: string,
   options: GetStudentsOptions = {}
 ): Promise<Student[]> {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   let query = supabase
     .from('students')

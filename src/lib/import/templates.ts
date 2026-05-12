@@ -49,8 +49,12 @@ const FAMILY_LIST_COLUMNS: ColumnDef[] = [
   { headerHe: 'כיתה', headerEn: 'grade', required: false, description: 'כיתה (לדוגמה: ז, ח, י)', exampleValues: ['ח', 'י'] },
   { headerHe: 'שם הורה', headerEn: 'parent_name', required: true, description: 'שם מלא של ההורה', exampleValues: ['רחל כהן', 'דוד לוי'] },
   { headerHe: 'טלפון הורה', headerEn: 'parent_phone', required: true, description: 'מספר טלפון של ההורה', exampleValues: ['0501234567', '0521234567'] },
+  { headerHe: 'אימייל הורה', headerEn: 'parent_email', required: false, description: 'כתובת אימייל של ההורה', exampleValues: ['', 'dvid@example.com'] },
+  { headerHe: 'סוג קשר', headerEn: 'parent_relation_type', required: false, description: 'יחס ההורה לתלמיד (לדוגמה: אב, אם)', exampleValues: ['אב', 'אם'] },
   { headerHe: 'שם הורה 2', headerEn: 'parent_name_2', required: false, description: 'הורה שני (אופציונלי)', exampleValues: ['', 'מירה לוי'] },
   { headerHe: 'טלפון הורה 2', headerEn: 'parent_phone_2', required: false, description: 'טלפון הורה שני (אופציונלי)', exampleValues: ['', '0531234567'] },
+  { headerHe: 'טלפון נוסף הורה', headerEn: 'parent_second_phone', required: false, description: 'מספר טלפון נוסף של ההורה הראשי', exampleValues: ['', ''] },
+  { headerHe: 'כתובת הורה', headerEn: 'parent_address', required: false, description: 'כתובת מגורים', exampleValues: ['', 'תל אביב'] },
   { headerHe: 'הערות תלמיד', headerEn: 'student_notes', required: false, description: 'הערות על התלמיד', exampleValues: ['', ''] },
   { headerHe: 'הערות הורה', headerEn: 'parent_notes', required: false, description: 'הערות על ההורה', exampleValues: ['', ''] },
 ]

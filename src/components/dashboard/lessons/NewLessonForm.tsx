@@ -9,6 +9,14 @@ import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import type { LessonStatus } from '@/lib/lessons/types'
 
@@ -65,6 +73,10 @@ export function NewLessonForm({
   const [selectedGroupId, setSelectedGroupId] = useState('')
   const [groupStudentIds, setGroupStudentIds] = useState<string[]>([])
   const onSuccessRef = useRef(onSuccess)
+  const formRef = useRef<HTMLFormElement>(null)
+  const confirmHiddenRef = useRef<HTMLInputElement>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmMessage, setConfirmMessage] = useState<string | null>(null)
 
   useEffect(() => {
     onSuccessRef.current = onSuccess
@@ -76,22 +88,53 @@ export function NewLessonForm({
     }
   }, [state.success])
 
+  // Re-open the dialog every time the action settles with a needs-confirm result,
+  // even when the user previously dismissed it with the same payload.
+  const wasPendingRef = useRef(false)
+  useEffect(() => {
+    const justSettled = wasPendingRef.current && !pending
+    wasPendingRef.current = pending
+    if (justSettled && state.needsAvailabilityConfirm && state.error) {
+      setConfirmMessage(state.error)
+      setConfirmOpen(true)
+    }
+  }, [pending, state.needsAvailabilityConfirm, state.error])
+
   const handleGroupChange = (groupId: string, studentIds: string[]) => {
     setSelectedGroupId(groupId)
     setGroupStudentIds(studentIds)
+  }
+
+  const handleConfirmSchedule = () => {
+    if (confirmHiddenRef.current) confirmHiddenRef.current.value = '1'
+    setConfirmOpen(false)
+    if (formRef.current) {
+      formRef.current.requestSubmit()
+    }
+  }
+
+  const handleCancelConfirm = () => {
+    if (confirmHiddenRef.current) confirmHiddenRef.current.value = ''
+    setConfirmOpen(false)
   }
 
   const dateDefault = initialDate && initialDate >= minDateStr ? initialDate : minDateStr
 
   const formInner = (
     <>
-      {state.error && (
+      {state.error && !state.needsAvailabilityConfirm && (
         <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
           {state.error}
         </div>
       )}
 
       {calendarFlow ? <input type="hidden" name="calendar_flow" value="1" /> : null}
+      <input
+        ref={confirmHiddenRef}
+        type="hidden"
+        name="confirm_outside_availability"
+        defaultValue=""
+      />
 
       {fixedTeacherId ? (
         <input type="hidden" name="teacher_id" value={fixedTeacherId} />
@@ -250,13 +293,54 @@ export function NewLessonForm({
     </>
   )
 
+  const confirmDialog = (
+    <Dialog
+      open={confirmOpen}
+      onOpenChange={(next) => {
+        if (!next) handleCancelConfirm()
+        else setConfirmOpen(true)
+      }}
+    >
+      <DialogContent dir="rtl">
+        <DialogHeader>
+          <DialogTitle>{t('availabilityConfirm.title')}</DialogTitle>
+          <DialogDescription>
+            {confirmMessage ?? t('availabilityConfirm.fallback')}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={handleCancelConfirm}>
+            {tCommon('actions.cancel')}
+          </Button>
+          <Button type="button" onClick={handleConfirmSchedule} disabled={pending}>
+            {t('availabilityConfirm.scheduleAnyway')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
   if (variant === 'sheet') {
-    return <form action={formAction} className="space-y-5">{formInner}</form>
+    return (
+      <>
+        <form ref={formRef} action={formAction} className="space-y-5">
+          {formInner}
+        </form>
+        {confirmDialog}
+      </>
+    )
   }
 
   return (
-    <form action={formAction} className="bg-card rounded-xl border border-border p-6 space-y-5 shadow-sm">
-      {formInner}
-    </form>
+    <>
+      <form
+        ref={formRef}
+        action={formAction}
+        className="bg-card rounded-xl border border-border p-6 space-y-5 shadow-sm"
+      >
+        {formInner}
+      </form>
+      {confirmDialog}
+    </>
   )
 }

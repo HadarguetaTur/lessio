@@ -527,7 +527,12 @@
     "pricePerStudent": "Price per student (₪)",
     "pricePerStudentPlaceholder": "Default by type",
     "pricePerStudentHint": "Leave empty to use default price",
-    "durationMinutes": "{n} minutes"
+    "durationMinutes": "{n} minutes",
+    "availabilityConfirm": {
+      "title": "Teacher is unavailable at this time",
+      "fallback": "The requested time falls outside the teacher's availability window. Schedule the lesson anyway?",
+      "scheduleAnyway": "Schedule anyway"
+    }
   },
   "charges": {
     "title": "Charges",

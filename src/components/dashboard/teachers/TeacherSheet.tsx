@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Mail, Pencil, Archive, RotateCcw, CalendarDays, MoreHorizontal } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
@@ -34,6 +35,7 @@ interface NewTeacherSheetProps {
 
 export function NewTeacherSheet({ action }: NewTeacherSheetProps) {
   const t = useTranslations('teachers')
+  const router = useRouter()
   const [open, setOpen] = useState(false)
 
   return (
@@ -52,6 +54,10 @@ export function NewTeacherSheet({ action }: NewTeacherSheetProps) {
           <TeacherInviteForm
             action={action}
             onCancel={() => setOpen(false)}
+            onSuccess={() => {
+              setOpen(false)
+              router.refresh()
+            }}
           />
         </SheetContent>
       </Sheet>
@@ -81,6 +87,7 @@ export function TeacherRowActions({
   restoreAction,
 }: TeacherRowActionsProps) {
   const t = useTranslations('teachers')
+  const router = useRouter()
   const [editOpen, setEditOpen] = useState(false)
 
   return (
@@ -143,6 +150,10 @@ export function TeacherRowActions({
               hourly_rate: teacher.hourly_rate,
             }}
             onCancel={() => setEditOpen(false)}
+            onSuccess={() => {
+              setEditOpen(false)
+              router.refresh()
+            }}
           />
         </SheetContent>
       </Sheet>

@@ -1,12 +1,14 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
+import { checkTeacherAvailability } from '@/lib/availability/checkTeacherAvailability'
 
 const lessonStatusZ = z.enum(['scheduled', 'completed', 'cancelled', 'no_show'])
 
@@ -31,7 +33,16 @@ const GroupLessonSchema = z.object({
   price_per_student: z.coerce.number().positive().optional().nullable(),
 })
 
-export type NewLessonState = { error: string | null; success?: boolean }
+export type NewLessonState = {
+  error: string | null
+  success?: boolean
+  /**
+   * Set when the requested slot is outside the teacher's availability windows.
+   * The UI surfaces a confirmation dialog; resubmitting with
+   * `confirm_outside_availability=1` skips the soft check.
+   */
+  needsAvailabilityConfirm?: boolean
+}
 
 async function assertStudentsAssignedToTeacher(
   orgId: string,
@@ -66,6 +77,8 @@ export async function createLessonAction(
 
   const rawType = formData.get('lesson_type') as string | null
   const lessonType = rawType === 'group' ? 'group' : 'individual'
+  const confirmedOutsideAvailability =
+    formData.get('confirm_outside_availability') === '1'
 
   let lessonId: string
 
@@ -91,6 +104,17 @@ export async function createLessonAction(
       if (teacher_id !== teacher.id) return { error: 'אין הרשאה' }
       const assignErr = await assertStudentsAssignedToTeacher(orgId, teacher.id, [student_id])
       if (assignErr) return { error: assignErr }
+
+      if (!confirmedOutsideAvailability && status === 'scheduled') {
+        const avail = await assertWithinTeacherAvailability({
+          orgId,
+          teacherId: teacher_id,
+          date,
+          startTime: start_time,
+          durationMinutes: duration_minutes,
+        })
+        if (avail) return avail
+      }
 
       const result = await createLesson({
         orgId,
@@ -121,6 +145,18 @@ export async function createLessonAction(
 
       const { teacher_id, student_ids, date, start_time, duration_minutes, status, price_per_student } =
         parsed.data
+
+      if (!confirmedOutsideAvailability && status === 'scheduled') {
+        const avail = await assertWithinTeacherAvailability({
+          orgId,
+          teacherId: teacher_id,
+          date,
+          startTime: start_time,
+          durationMinutes: duration_minutes,
+        })
+        if (avail) return avail
+      }
+
       const result = await createLesson({
         orgId,
         teacherId: teacher_id,
@@ -147,6 +183,18 @@ export async function createLessonAction(
       if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
 
       const { teacher_id, student_id, date, start_time, duration_minutes, status } = parsed.data
+
+      if (!confirmedOutsideAvailability && status === 'scheduled') {
+        const avail = await assertWithinTeacherAvailability({
+          orgId,
+          teacherId: teacher_id,
+          date,
+          startTime: start_time,
+          durationMinutes: duration_minutes,
+        })
+        if (avail) return avail
+      }
+
       const result = await createLesson({
         orgId,
         teacherId: teacher_id,
@@ -178,6 +226,11 @@ export async function createLessonAction(
 
   const calendarFlow = formData.get('calendar_flow') === '1'
   if (calendarFlow) {
+    // The calendar sheet keeps the user on the same page and just re-fetches.
+    // Without explicit revalidation Next.js may serve a cached payload and the
+    // new lesson appears to be missing from the grid.
+    revalidatePath('/lessons')
+    revalidatePath('/teacher/schedule')
     return { error: null, success: true }
   }
 
@@ -185,4 +238,39 @@ export async function createLessonAction(
     redirect(`/teacher/schedule/${lessonId}`)
   }
   redirect(`/lessons/${lessonId}`)
+}
+
+/**
+ * Helper: returns a `NewLessonState` describing the availability conflict, or
+ * null when the slot fits inside the teacher's availability. Used by every
+ * branch of `createLessonAction` before persisting.
+ */
+async function assertWithinTeacherAvailability(params: {
+  orgId: string
+  teacherId: string
+  date: string
+  startTime: string
+  durationMinutes: number
+}): Promise<NewLessonState | null> {
+  const result = await checkTeacherAvailability(params)
+
+  if (result.status === 'inside') return null
+
+  // No availability defined at all — don't block. Schools onboarding often
+  // skip the recurring availability step; we only warn when there *is* data
+  // that conflicts with the request.
+  if (result.status === 'no_windows') return null
+
+  const messages: Record<'outside_windows' | 'override_unavailable' | 'partial_override', string> = {
+    outside_windows: 'המורה לא זמין בשעה זו. האם לקבוע את השיעור בכל זאת?',
+    override_unavailable:
+      'המורה סימן את התאריך הזה כלא זמין. האם לקבוע את השיעור בכל זאת?',
+    partial_override:
+      'השעה המבוקשת חורגת מחלון הזמינות שהוגדר לתאריך זה. האם לקבוע את השיעור בכל זאת?',
+  }
+
+  return {
+    error: messages[result.status],
+    needsAvailabilityConfirm: true,
+  }
 }

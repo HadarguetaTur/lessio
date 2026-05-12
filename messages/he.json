@@ -527,7 +527,12 @@
     "pricePerStudent": "מחיר לתלמיד (₪)",
     "pricePerStudentPlaceholder": "ברירת מחדל לפי סוג",
     "pricePerStudentHint": "השאר ריק לשימוש במחיר ברירת מחדל",
-    "durationMinutes": "{n} דקות"
+    "durationMinutes": "{n} דקות",
+    "availabilityConfirm": {
+      "title": "המורה לא זמין בשעה זו",
+      "fallback": "השעה המבוקשת נמצאת מחוץ לחלון הזמינות של המורה. האם לקבוע את השיעור בכל זאת?",
+      "scheduleAnyway": "קבע בכל זאת"
+    }
   },
   "charges": {
     "title": "חיובים",

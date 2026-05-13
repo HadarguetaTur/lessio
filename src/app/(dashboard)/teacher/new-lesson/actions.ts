@@ -15,8 +15,6 @@ const TeacherLessonSchema = z.object({
   duration_minutes: z.coerce.number().refine((v) => [30, 45, 60, 90].includes(v)),
 })
 
-export type { NewLessonState }
-
 export async function createTeacherLessonAction(
   _prev: NewLessonState,
   formData: FormData

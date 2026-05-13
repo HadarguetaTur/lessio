@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
+import { checkLessonCalendarConflicts } from '@/lib/google-calendar/checkLessonCalendarConflicts'
+import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
 
 const TeacherLessonSchema = z.object({
   student_id:       z.string().uuid(),
@@ -13,7 +15,7 @@ const TeacherLessonSchema = z.object({
   duration_minutes: z.coerce.number().refine((v) => [30, 45, 60, 90].includes(v)),
 })
 
-export type NewLessonState = { error: string | null }
+export type { NewLessonState }
 
 export async function createTeacherLessonAction(
   _prev: NewLessonState,
@@ -31,6 +33,24 @@ export async function createTeacherLessonAction(
   if (!parsed.success) return { error: 'נתונים לא תקינים' }
 
   const { student_id, date, start_time, duration_minutes } = parsed.data
+  const confirmedCalendarConflict = formData.get('confirm_calendar_conflict') === '1'
+
+  if (!confirmedCalendarConflict) {
+    const conflicts = await checkLessonCalendarConflicts({
+      orgId,
+      teacherId: teacher.id,
+      date,
+      startTime: start_time,
+      durationMinutes: duration_minutes,
+    })
+    if (conflicts.length > 0) {
+      return {
+        error: 'יש אירוע ביומן Google בשעה המבוקשת. האם לקבוע את השיעור בכל זאת?',
+        needsCalendarConfirm: true,
+        calendarConflicts: conflicts,
+      }
+    }
+  }
 
   let lessonId: string
   try {

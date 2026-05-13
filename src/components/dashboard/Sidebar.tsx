@@ -32,6 +32,7 @@ import {
   Languages,
   Wallet,
   Building2,
+  Mail,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 import type { SaasFeatures } from '@/lib/saas/types'
@@ -209,6 +210,7 @@ export function Sidebar({
     { href: '/settings/holidays',            label: t('settingsHolidays'),    icon: CalendarOff,    roles: ['owner', 'admin'] },
     { href: '/settings/reminders',           label: t('settingsReminders'),   icon: Bell,           roles: ['owner'] },
     { href: '/settings/ai-assistant',        label: t('settingsAiAssistant'), icon: Bot,            roles: ['owner'] },
+    { href: '/settings/email',               label: t('settingsEmail'),       icon: Mail,           roles: ['owner'] },
     { href: '/settings/locale',              label: t('settingsLocale'),      icon: Languages,      roles: ['owner', 'admin'] },
   ]
 
@@ -221,7 +223,8 @@ export function Sidebar({
     { href: '/teacher/calendar',     label: t('teacherCalendar'),     icon: CalendarDays, roles: ['teacher'] },
     { href: '/teacher/new-lesson',   label: t('teacherNewLesson'),    icon: Plus,         roles: ['teacher'] },
     { href: '/teacher/availability', label: t('teacherAvailability'), icon: Clock,        roles: ['teacher'] },
-    { href: '/teacher/overrides',    label: t('teacherOverrides'),    icon: CalendarX,    roles: ['teacher'] },
+    { href: '/teacher/overrides',        label: t('teacherOverrides'),        icon: CalendarX,    roles: ['teacher'] },
+    { href: '/teacher/calendar-connect', label: t('teacherCalendarConnect'),  icon: CalendarDays, roles: ['teacher'] },
   ]
 
   const visibleMainItems = mainItems

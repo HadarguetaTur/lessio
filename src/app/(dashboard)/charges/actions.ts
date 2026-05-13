@@ -87,5 +87,5 @@ async function sendReceiptEmail(chargeId: string, orgId: string): Promise<void> 
     { amount: String(c.amount), receiptUrl: c.receipt_url },
   )
 
-  await sendEmail({ to: parentEmail, subject, html })
+  await sendEmail({ orgId, to: parentEmail, subject, html })
 }

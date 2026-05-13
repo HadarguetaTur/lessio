@@ -121,6 +121,34 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Recovery-flow isolation: the pw_reset cookie is set by /auth/callback
+  // immediately after verifyOtp('recovery') or exchangeCodeForSession when
+  // next=/reset-password.  While it is present:
+  //  • /reset-password is the ONLY page a user (authenticated or not) may visit.
+  //  • Any other route — including /login and /dashboard — bounces back to
+  //    /reset-password so the session cannot be silently hijacked by navigation.
+  const hasPwReset = request.cookies.get('pw_reset')?.value === '1'
+
+  if (pathname === '/reset-password') {
+    if (!hasPwReset) {
+      // No valid recovery flow in progress — block access.
+      const url = request.nextUrl.clone()
+      url.pathname = user ? '/dashboard' : '/login'
+      return redirectWithSession(url, supabaseResponse)
+    }
+    // Cookie present → allow through to the reset form.
+    return supabaseResponse
+  }
+
+  if (hasPwReset) {
+    // User holds a recovery session but navigated away from /reset-password
+    // (e.g. clicked "back to login"). Lock them back to the reset form so
+    // the recovery session cannot be used to access the dashboard directly.
+    const url = request.nextUrl.clone()
+    url.pathname = '/reset-password'
+    return redirectWithSession(url, supabaseResponse)
+  }
+
   // Unauthenticated user accessing a dashboard route → redirect to /login.
   // Use redirectWithSession so any rotated token cookies are preserved.
   if (!user && isDashboardRoute(pathname)) {

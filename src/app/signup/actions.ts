@@ -1,6 +1,7 @@
 'use server'
 
 import { getLocale, getTranslations } from 'next-intl/server'
+import { headers } from 'next/headers'
 
 import {
   buildSignupSchema,
@@ -48,16 +49,22 @@ export async function signUp(
     return { error: result.error }
   }
 
+  // Build the callback URL so the confirmation email lands the user on onboarding.
+  const headersList = await headers()
+  const host = headersList.get('host') ?? 'www.getlessio.com'
+  const proto = headersList.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https')
+  const appUrl = `${proto}://${host}`
+
+  // Trigger Supabase's confirmation email. Errors here are non-fatal — the user
+  // can request a resend from the verify page.
   const supabase = await createClient()
-  const { error: signInError } = await supabase.auth.signInWithPassword({
+  await supabase.auth.resend({
+    type: 'signup',
     email: parsed.data.email,
-    password: parsed.data.password,
+    options: { emailRedirectTo: `${appUrl}/auth/callback?next=/onboarding` },
   })
 
-  if (signInError) {
-    redirect('/login')
-  }
-
+  // Persist locale so the verify page and onboarding render in the correct language.
   const locale = await getLocale()
   const cookieStore = await cookies()
   cookieStore.set('locale', locale, {
@@ -67,5 +74,5 @@ export async function signUp(
     sameSite: 'lax',
   })
 
-  redirect('/onboarding')
+  redirect(`/signup/verify?email=${encodeURIComponent(parsed.data.email)}`)
 }

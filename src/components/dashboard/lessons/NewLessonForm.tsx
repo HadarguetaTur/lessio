@@ -75,8 +75,10 @@ export function NewLessonForm({
   const onSuccessRef = useRef(onSuccess)
   const formRef = useRef<HTMLFormElement>(null)
   const confirmHiddenRef = useRef<HTMLInputElement>(null)
+  const calendarConfirmRef = useRef<HTMLInputElement>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null)
+  const [calendarConfirmOpen, setCalendarConfirmOpen] = useState(false)
 
   useEffect(() => {
     onSuccessRef.current = onSuccess
@@ -88,17 +90,20 @@ export function NewLessonForm({
     }
   }, [state.success])
 
-  // Re-open the dialog every time the action settles with a needs-confirm result,
-  // even when the user previously dismissed it with the same payload.
+  // Re-open the relevant dialog every time the action settles with a needs-confirm result.
   const wasPendingRef = useRef(false)
   useEffect(() => {
     const justSettled = wasPendingRef.current && !pending
     wasPendingRef.current = pending
-    if (justSettled && state.needsAvailabilityConfirm && state.error) {
+    if (!justSettled) return
+    if (state.needsAvailabilityConfirm && state.error) {
       setConfirmMessage(state.error)
       setConfirmOpen(true)
     }
-  }, [pending, state.needsAvailabilityConfirm, state.error])
+    if (state.needsCalendarConfirm) {
+      setCalendarConfirmOpen(true)
+    }
+  }, [pending, state.needsAvailabilityConfirm, state.needsCalendarConfirm, state.error])
 
   const handleGroupChange = (groupId: string, studentIds: string[]) => {
     setSelectedGroupId(groupId)
@@ -118,11 +123,22 @@ export function NewLessonForm({
     setConfirmOpen(false)
   }
 
+  const handleConfirmCalendar = () => {
+    if (calendarConfirmRef.current) calendarConfirmRef.current.value = '1'
+    setCalendarConfirmOpen(false)
+    if (formRef.current) formRef.current.requestSubmit()
+  }
+
+  const handleCancelCalendar = () => {
+    if (calendarConfirmRef.current) calendarConfirmRef.current.value = ''
+    setCalendarConfirmOpen(false)
+  }
+
   const dateDefault = initialDate && initialDate >= minDateStr ? initialDate : minDateStr
 
   const formInner = (
     <>
-      {state.error && !state.needsAvailabilityConfirm && (
+      {state.error && !state.needsAvailabilityConfirm && !state.needsCalendarConfirm && (
         <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
           {state.error}
         </div>
@@ -133,6 +149,12 @@ export function NewLessonForm({
         ref={confirmHiddenRef}
         type="hidden"
         name="confirm_outside_availability"
+        defaultValue=""
+      />
+      <input
+        ref={calendarConfirmRef}
+        type="hidden"
+        name="confirm_calendar_conflict"
         defaultValue=""
       />
 
@@ -320,6 +342,47 @@ export function NewLessonForm({
     </Dialog>
   )
 
+  const calendarConflictDialog = (
+    <Dialog
+      open={calendarConfirmOpen}
+      onOpenChange={(next) => {
+        if (!next) handleCancelCalendar()
+        else setCalendarConfirmOpen(true)
+      }}
+    >
+      <DialogContent dir="rtl">
+        <DialogHeader>
+          <DialogTitle>{t('calendarConfirm.title')}</DialogTitle>
+          <DialogDescription>{t('calendarConfirm.description')}</DialogDescription>
+        </DialogHeader>
+        {state.calendarConflicts && state.calendarConflicts.length > 0 && (
+          <ul className="text-sm space-y-1 border rounded-lg p-3 bg-muted/40">
+            {state.calendarConflicts.map((c, i) => (
+              <li key={i} className="flex items-center gap-2 text-muted-foreground">
+                <span className="text-xs font-medium text-foreground">
+                  {c.calendar === 'org' ? t('calendarConfirm.orgCalendar') : t('calendarConfirm.teacherCalendar')}
+                </span>
+                <span dir="ltr" className="text-xs">
+                  {new Date(c.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                  {' – '}
+                  {new Date(c.end).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={handleCancelCalendar}>
+            {tCommon('actions.cancel')}
+          </Button>
+          <Button type="button" onClick={handleConfirmCalendar} disabled={pending}>
+            {t('calendarConfirm.scheduleAnyway')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
   if (variant === 'sheet') {
     return (
       <>
@@ -327,6 +390,7 @@ export function NewLessonForm({
           {formInner}
         </form>
         {confirmDialog}
+        {calendarConflictDialog}
       </>
     )
   }
@@ -341,6 +405,7 @@ export function NewLessonForm({
         {formInner}
       </form>
       {confirmDialog}
+      {calendarConflictDialog}
     </>
   )
 }

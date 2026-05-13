@@ -22,6 +22,12 @@ export type SignupInput = {
   password: string
 }
 
+export type GoogleSignupInput = {
+  org_name: string
+  full_name: string
+  userId: string
+}
+
 export function buildSignupSchema(t: (key: string) => string) {
   return z.object({
     org_name: z.string().min(2, t('orgNameMin')),
@@ -80,7 +86,7 @@ export async function createOrgWithOwner(
   const { data: authData, error: authError } = await db.auth.admin.createUser({
     email: input.email,
     password: input.password,
-    email_confirm: true,
+    email_confirm: false,
     user_metadata: { full_name: input.full_name },
   })
 
@@ -150,5 +156,64 @@ export async function createOrgWithOwner(
   }
 
   console.info('[createOrgWithOwner] success', { orgId, userId, email: input.email })
+  return { success: true, orgId, userId }
+}
+
+/**
+ * Creates an org + owner profile for a user who was already created via Google OAuth.
+ * Skips auth user creation — the user already exists in Supabase Auth.
+ */
+export async function createOrgForExistingUser(
+  input: GoogleSignupInput,
+  errors: Omit<SignupFlowServerErrors, 'emailTaken' | 'accountFailed'>
+): Promise<SignupResult> {
+  const db = createServiceRoleClient()
+  const { userId, org_name, full_name } = input
+
+  const slug = await uniqueSlug(db, toSlug(org_name))
+
+  const { data: org, error: orgError } = await db
+    .from('organizations')
+    .insert({
+      name: org_name,
+      slug,
+      timezone: 'Asia/Jerusalem',
+      break_duration_minutes: 0,
+      min_booking_notice_hours: 0,
+      billing_mode: 'monthly',
+      onboarding_completed: false,
+    })
+    .select('id')
+    .single()
+
+  if (orgError || !org) {
+    console.error('[createOrgForExistingUser] org insert failed', { error: orgError })
+    return { success: false, error: errors.orgFailed }
+  }
+
+  const orgId = org.id
+
+  await db.from('cancellation_policies').insert({
+    organization_id: orgId,
+    notice_hours_full: 24,
+    notice_hours_partial: 2,
+    partial_charge_percent: 50,
+  })
+
+  const { error: profileError } = await db.from('profiles').insert({
+    id: userId,
+    organization_id: orgId,
+    full_name,
+    role: 'owner',
+    is_active: true,
+  })
+
+  if (profileError) {
+    console.error('[createOrgForExistingUser] profile insert failed', { orgId, userId, error: profileError })
+    await db.from('organizations').delete().eq('id', orgId)
+    return { success: false, error: errors.profileFailed }
+  }
+
+  console.info('[createOrgForExistingUser] success', { orgId, userId })
   return { success: true, orgId, userId }
 }

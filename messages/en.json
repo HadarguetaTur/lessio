@@ -141,6 +141,7 @@
     "settingsHolidays": "Holidays",
     "settingsReminders": "Reminders",
     "settingsAiAssistant": "AI Assistant",
+    "settingsEmail": "Email",
     "settingsLocale": "Language & Display",
     "accountBilling": "Account & billing",
     "teacherSection": "My Workspace",
@@ -155,6 +156,7 @@
     "teacherNewLesson": "New Lesson",
     "teacherAvailability": "My Availability",
     "teacherOverrides": "Schedule Exceptions",
+    "teacherCalendarConnect": "Google Calendar",
     "billing": "Monthly Billing",
     "subscriptions": "Subscriptions",
     "globalSearch": {
@@ -531,6 +533,13 @@
     "availabilityConfirm": {
       "title": "Teacher is unavailable at this time",
       "fallback": "The requested time falls outside the teacher's availability window. Schedule the lesson anyway?",
+      "scheduleAnyway": "Schedule anyway"
+    },
+    "calendarConfirm": {
+      "title": "Google Calendar conflict",
+      "description": "Google Calendar events were found overlapping the requested time slot. You can still schedule the lesson.",
+      "orgCalendar": "Org calendar",
+      "teacherCalendar": "Teacher calendar",
       "scheduleAnyway": "Schedule anyway"
     }
   },
@@ -963,6 +972,14 @@
         "title": "Privacy & Data Retention",
         "description": "Activity data retention policy and GDPR"
       },
+      "email": {
+        "title": "Email",
+        "description": "Connect Gmail to send emails from your own address"
+      },
+      "calendar": {
+        "title": "Google Calendar",
+        "description": "Connect Google Calendar to detect scheduling conflicts"
+      },
       "businessProfile": {
         "title": "Business Profile",
         "description": "Logo, legal name, tax ID and currency"
@@ -1378,7 +1395,16 @@
       "consentTerms": "Terms of Use",
       "consentAnd": "and",
       "consentPrivacy": "Privacy Policy",
-      "consentSuffix": ". The service includes sending operational WhatsApp messages to your clients on your behalf."
+      "consentSuffix": ". The service includes sending operational WhatsApp messages to your clients on your behalf.",
+      "verify": {
+        "title": "Check your inbox",
+        "body": "We sent a verification link to {email}. Click the link to activate your account.",
+        "resend": "Resend link",
+        "resending": "Sending...",
+        "resent": "Link sent successfully",
+        "backToLogin": "Back to sign in",
+        "error": "Failed to send email, please try again"
+      }
     },
     "forgotPassword": {
       "title": "Reset password",
@@ -1404,7 +1430,17 @@
       "continueGoogle": "Continue with Google",
       "continueFacebook": "Continue with Facebook",
       "helperLogin": "Or continue with a social account",
-      "helperSignup": "Or sign up with a social account"
+      "helperSignup": "Or sign up with a social account",
+      "signingIn": "Signing in..."
+    },
+    "signupComplete": {
+      "title": "Almost there!",
+      "email": "Email (from Google)",
+      "fullName": "Full name",
+      "orgName": "Business / organization name",
+      "orgNamePlaceholder": "e.g. Math with Dana",
+      "submit": "Create account",
+      "submitting": "Creating account..."
     },
     "trust": {
       "secure": "Secure",

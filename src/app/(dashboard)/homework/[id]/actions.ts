@@ -188,5 +188,5 @@ async function notifyGradedEmail(
     feedback: feedback.trim() || undefined,
   })
 
-  await sendEmail({ to: parentEmail, subject, html })
+  await sendEmail({ orgId, to: parentEmail, subject, html })
 }

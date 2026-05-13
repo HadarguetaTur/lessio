@@ -9,6 +9,7 @@ import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 import { checkTeacherAvailability } from '@/lib/availability/checkTeacherAvailability'
+import { checkLessonCalendarConflicts, CalendarConflict } from '@/lib/google-calendar/checkLessonCalendarConflicts'
 
 const lessonStatusZ = z.enum(['scheduled', 'completed', 'cancelled', 'no_show'])
 
@@ -42,6 +43,13 @@ export type NewLessonState = {
    * `confirm_outside_availability=1` skips the soft check.
    */
   needsAvailabilityConfirm?: boolean
+  /**
+   * Set when a Google Calendar event overlaps the requested slot.
+   * The UI surfaces a warning dialog; resubmitting with
+   * `confirm_calendar_conflict=1` skips the soft check.
+   */
+  needsCalendarConfirm?: boolean
+  calendarConflicts?: CalendarConflict[]
 }
 
 async function assertStudentsAssignedToTeacher(
@@ -79,6 +87,8 @@ export async function createLessonAction(
   const lessonType = rawType === 'group' ? 'group' : 'individual'
   const confirmedOutsideAvailability =
     formData.get('confirm_outside_availability') === '1'
+  const confirmedCalendarConflict =
+    formData.get('confirm_calendar_conflict') === '1'
 
   let lessonId: string
 
@@ -114,6 +124,11 @@ export async function createLessonAction(
           durationMinutes: duration_minutes,
         })
         if (avail) return avail
+      }
+
+      if (!confirmedCalendarConflict && status === 'scheduled') {
+        const cal = await assertNoCalendarConflicts({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes })
+        if (cal) return cal
       }
 
       const result = await createLesson({
@@ -157,6 +172,11 @@ export async function createLessonAction(
         if (avail) return avail
       }
 
+      if (!confirmedCalendarConflict && status === 'scheduled') {
+        const cal = await assertNoCalendarConflicts({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes })
+        if (cal) return cal
+      }
+
       const result = await createLesson({
         orgId,
         teacherId: teacher_id,
@@ -193,6 +213,11 @@ export async function createLessonAction(
           durationMinutes: duration_minutes,
         })
         if (avail) return avail
+      }
+
+      if (!confirmedCalendarConflict && status === 'scheduled') {
+        const cal = await assertNoCalendarConflicts({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes })
+        if (cal) return cal
       }
 
       const result = await createLesson({
@@ -238,6 +263,26 @@ export async function createLessonAction(
     redirect(`/teacher/schedule/${lessonId}`)
   }
   redirect(`/lessons/${lessonId}`)
+}
+
+/**
+ * Helper: returns a `NewLessonState` describing Google Calendar conflicts, or
+ * null when no conflicts are found (or no calendars are connected).
+ */
+async function assertNoCalendarConflicts(params: {
+  orgId:           string
+  teacherId:       string
+  date:            string
+  startTime:       string
+  durationMinutes: number
+}): Promise<NewLessonState | null> {
+  const conflicts = await checkLessonCalendarConflicts(params)
+  if (conflicts.length === 0) return null
+  return {
+    error: 'יש אירוע ביומן Google בשעה המבוקשת. האם לקבוע את השיעור בכל זאת?',
+    needsCalendarConfirm: true,
+    calendarConflicts: conflicts,
+  }
 }
 
 /**

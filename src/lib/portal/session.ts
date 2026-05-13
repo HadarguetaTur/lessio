@@ -11,7 +11,7 @@ import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
 const COOKIE_NAME = 'portal_session'
-const EXPIRY_SECONDS = 60 * 60 * 24 * 30 // 30 days
+const EXPIRY_SECONDS = 60 * 60 * 24 * 7 // 7 days
 
 export interface PortalSession {
   parentId: string

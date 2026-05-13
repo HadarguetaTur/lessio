@@ -1,6 +1,6 @@
 
 # LESSIO — Full Sprint Roadmap
-*Updated: All sprints (1–28) complete — production readiness*
+*Updated: Sprints 1–28 complete — Sprint 29 in progress*
 
 ---
 
@@ -35,6 +35,21 @@
 | 25 | AI Intelligence + Multi-Channel Communications (multi-provider AI, email, in-app notifications) | ✅ Done |
 | 26 | Parent Portal 2.0 (schedule, progress, messaging) | ✅ Done |
 | 27 | Billing & Accounting Pro (PDF invoices, tax docs, quotas, credit notes) | ✅ Done |
+| 28 | Analytics Pro (KPI deltas, revenue forecasting, teacher performance, student LTV) | ✅ Done |
+| 29 | Google Login + Google Calendar Integration | 🚧 In Progress |
+
+---
+
+## Sprint 29 — Google Login + Google Calendar Integration
+**Status:** 🚧 In Progress  
+**Depends on:** Sprint 28 complete  
+**Scope:** See `docs/sprint-29-scope.md`
+
+### Stories
+- Story 1: Google OAuth login/signup (Supabase Google provider + `/signup/complete` onboarding)
+- Story 2: Per-org Google Calendar connection (OAuth, encrypt refresh token, settings UI)
+- Story 3: Per-teacher Google Calendar connection (teacher sub-shell settings)
+- Story 4: Calendar conflict check in lesson creation (soft warning, override-able)
 
 ---
 

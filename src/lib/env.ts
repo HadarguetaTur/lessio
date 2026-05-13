@@ -51,6 +51,12 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   'AI_CONFIG_ENCRYPTION_KEY',
   // SaaS onboarding: stub vs Sumit-hosted paid checkout UI
   'NEXT_PUBLIC_ONBOARDING_PAID_CHECKOUT',
+  // Sprint 28: per-org Gmail OAuth for outbound email
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+  'GMAIL_TOKEN_ENCRYPTION_KEY',
+  // Sprint 29: Google Calendar conflict detection
+  'GOOGLE_CALENDAR_ENCRYPTION_KEY',
   // OPENAI_API_KEY: optional platform-level fallback. Each org configures its own AI key.
   // RESEND_API_KEY / RESEND_FROM_EMAIL: optional. Required only when email reminders are used.
   // NEXT_PUBLIC_SENTRY_DSN: optional. Set to enable Sentry error monitoring.

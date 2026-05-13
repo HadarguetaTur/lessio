@@ -76,6 +76,40 @@ export function decryptWithKey(encrypted: string, keyHex: string): string {
   return decrypted.toString('utf8')
 }
 
+// ── Google Calendar token convenience wrappers (Sprint 29) ───────────────────
+
+function getCalendarKey(): string {
+  const hex = process.env.GOOGLE_CALENDAR_ENCRYPTION_KEY
+  if (!hex) throw new Error('[crypto] GOOGLE_CALENDAR_ENCRYPTION_KEY is not set')
+  if (hex.length !== 64) throw new Error('[crypto] GOOGLE_CALENDAR_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)')
+  return hex
+}
+
+export function encryptCalendarToken(plaintext: string): string {
+  return encryptWithKey(plaintext, getCalendarKey())
+}
+
+export function decryptCalendarToken(encrypted: string): string {
+  return decryptWithKey(encrypted, getCalendarKey())
+}
+
+// ── Gmail token convenience wrappers (Sprint 28) ─────────────────────────────
+
+function getGmailKey(): string {
+  const hex = process.env.GMAIL_TOKEN_ENCRYPTION_KEY
+  if (!hex) throw new Error('[crypto] GMAIL_TOKEN_ENCRYPTION_KEY is not set')
+  if (hex.length !== 64) throw new Error('[crypto] GMAIL_TOKEN_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)')
+  return hex
+}
+
+export function encryptGmailToken(plaintext: string): string {
+  return encryptWithKey(plaintext, getGmailKey())
+}
+
+export function decryptGmailToken(encrypted: string): string {
+  return decryptWithKey(encrypted, getGmailKey())
+}
+
 // ── WhatsApp token convenience wrappers (Sprint 7) ────────────────────────────
 
 function getWhatsAppKey(): string {

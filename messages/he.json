@@ -141,6 +141,7 @@
     "settingsHolidays": "חגים וחופשות",
     "settingsReminders": "תזכורות",
     "settingsAiAssistant": "עוזר AI",
+    "settingsEmail": "מייל",
     "settingsLocale": "שפה ותצוגה",
     "accountBilling": "חשבון וחיובים",
     "teacherSection": "סביבת העבודה שלי",
@@ -155,6 +156,7 @@
     "teacherNewLesson": "שיעור חדש",
     "teacherAvailability": "הזמינות שלי",
     "teacherOverrides": "חריגים ביומן",
+    "teacherCalendarConnect": "יומן Google",
     "billing": "חיוב חודשי",
     "subscriptions": "מנויים",
     "globalSearch": {
@@ -531,6 +533,13 @@
     "availabilityConfirm": {
       "title": "המורה לא זמין בשעה זו",
       "fallback": "השעה המבוקשת נמצאת מחוץ לחלון הזמינות של המורה. האם לקבוע את השיעור בכל זאת?",
+      "scheduleAnyway": "קבע בכל זאת"
+    },
+    "calendarConfirm": {
+      "title": "חפיפה ביומן Google",
+      "description": "נמצאו אירועים ביומן Google בשעה המבוקשת. ניתן לקבוע את השיעור בכל זאת.",
+      "orgCalendar": "יומן ארגוני",
+      "teacherCalendar": "יומן מורה",
       "scheduleAnyway": "קבע בכל זאת"
     }
   },
@@ -963,6 +972,14 @@
         "title": "פרטיות ושמירת נתונים",
         "description": "מדיניות שמירת נתוני פעילות ו-GDPR"
       },
+      "email": {
+        "title": "מייל",
+        "description": "חיבור Gmail לשליחת מיילים מהכתובת שלך"
+      },
+      "calendar": {
+        "title": "יומן Google",
+        "description": "חיבור Google Calendar לבדיקת חפיפות"
+      },
       "businessProfile": {
         "title": "פרופיל עסקי",
         "description": "לוגו, שם עסק, מספר עוסק ומטבע"
@@ -1378,7 +1395,16 @@
       "consentTerms": "תנאי השימוש",
       "consentAnd": "ול",
       "consentPrivacy": "מדיניות הפרטיות",
-      "consentSuffix": ". השירות כולל שליחת הודעות WhatsApp תפעוליות בשמך ללקוחותיך."
+      "consentSuffix": ". השירות כולל שליחת הודעות WhatsApp תפעוליות בשמך ללקוחותיך.",
+      "verify": {
+        "title": "בדוק את תיבת הדואר שלך",
+        "body": "שלחנו קישור אימות לכתובת {email}. לחץ על הקישור להפעלת חשבונך.",
+        "resend": "שלח קישור חדש",
+        "resending": "שולח...",
+        "resent": "הקישור נשלח בהצלחה",
+        "backToLogin": "חזרה להתחברות",
+        "error": "שגיאה בשליחת המייל, נסה שוב"
+      }
     },
     "forgotPassword": {
       "title": "איפוס סיסמה",
@@ -1404,7 +1430,17 @@
       "continueGoogle": "המשך עם Google",
       "continueFacebook": "המשך עם Facebook",
       "helperLogin": "או המשך עם חשבון חברתי",
-      "helperSignup": "או הצטרף עם חשבון חברתי"
+      "helperSignup": "או הצטרף עם חשבון חברתי",
+      "signingIn": "מתחבר..."
+    },
+    "signupComplete": {
+      "title": "כמעט סיימנו!",
+      "email": "אימייל (מ-Google)",
+      "fullName": "שם מלא",
+      "orgName": "שם העסק / הארגון",
+      "orgNamePlaceholder": "לדוגמה: מתמטיקה עם דנה",
+      "submit": "צור חשבון",
+      "submitting": "יוצר חשבון..."
     },
     "trust": {
       "secure": "מאובטח",

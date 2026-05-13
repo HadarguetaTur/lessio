@@ -451,6 +451,7 @@ export async function sendProgressReportEmailAction(
     )
 
     const ok = await sendEmail({
+      orgId: session.orgId,
       to: emailParsed.data,
       subject,
       html,

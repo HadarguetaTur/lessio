@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { createClient } from '@/lib/supabase/client'
 
 function GoogleGlyph({ className }: { className?: string }) {
   return (
@@ -25,40 +27,38 @@ function GoogleGlyph({ className }: { className?: string }) {
   )
 }
 
-function FacebookGlyph({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden>
-      <path
-        fill="currentColor"
-        d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
-      />
-    </svg>
-  )
-}
-
 type LoginSocialButtonsProps = {
   variant?: 'login' | 'signup'
 }
 
 export function LoginSocialButtons({ variant = 'login' }: LoginSocialButtonsProps) {
   const t = useTranslations('auth.social')
+  const [loading, setLoading] = useState(false)
+
   const helperText = variant === 'signup' ? t('helperSignup') : t('helperLogin')
+
+  async function handleGoogleLogin() {
+    setLoading(true)
+    const supabase = createClient()
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    // Page will redirect — no need to setLoading(false)
+  }
 
   return (
     <div className="flex w-full flex-col items-center gap-3">
       <button
         type="button"
-        className="flex h-11 w-full max-w-sm items-center justify-center gap-2.5 rounded-xl border border-border/80 bg-card px-4 text-sm font-semibold text-foreground shadow-sm ring-1 ring-foreground/[0.04] transition-[box-shadow,transform] hover:bg-muted/40 hover:shadow-md active:scale-[0.99]"
+        onClick={handleGoogleLogin}
+        disabled={loading}
+        className="flex h-11 w-full max-w-sm items-center justify-center gap-2.5 rounded-xl border border-border/80 bg-card px-4 text-sm font-semibold text-foreground shadow-sm ring-1 ring-foreground/[0.04] transition-[box-shadow,transform] hover:bg-muted/40 hover:shadow-md active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <GoogleGlyph className="size-[1.125rem] shrink-0" />
-        <span>{t('continueGoogle')}</span>
-      </button>
-      <button
-        type="button"
-        className="flex h-11 w-full max-w-sm items-center justify-center gap-2.5 rounded-xl border border-[#1877F2]/30 bg-[#1877F2] px-4 text-sm font-semibold text-white shadow-md shadow-[#1877F2]/25 transition-[filter,transform] hover:brightness-110 active:scale-[0.99]"
-      >
-        <FacebookGlyph className="size-[1.125rem] shrink-0 text-white" />
-        <span>{t('continueFacebook')}</span>
+        <span>{loading ? t('signingIn') : t('continueGoogle')}</span>
       </button>
       <p className="text-center text-[11px] text-muted-foreground">{helperText}</p>
     </div>

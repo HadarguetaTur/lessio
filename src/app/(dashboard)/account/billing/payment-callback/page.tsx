@@ -7,7 +7,13 @@ import { BillingUpgradeCallbackPoll } from './BillingUpgradeCallbackPoll'
 export default async function AccountBillingPaymentCallbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mock?: string; failed?: string }>
+  searchParams: Promise<{
+    mock?: string
+    failed?: string
+    Valid?: string
+    Identifier?: string
+    ID?: string
+  }>
 }) {
   const sp = await searchParams
   const t = await getTranslations('saas.accountBilling.paymentCallback')
@@ -15,6 +21,9 @@ export default async function AccountBillingPaymentCallbackPage({
   const result = await applyAccountBillingPaymentCallbackQuery({
     mock: sp.mock ?? null,
     failed: sp.failed ?? null,
+    valid: sp.Valid ?? null,
+    identifier: sp.Identifier ?? null,
+    id: sp.ID ?? null,
   })
 
   if (result === 'billing') {

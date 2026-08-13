@@ -17,12 +17,15 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptToken } from '@/lib/crypto'
+import { registerTemplatesForWABA } from '@/lib/whatsapp/registerTemplates'
+import { subscribeAppToWABA } from '@/lib/whatsapp/subscribeApp'
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
 const SaveSchema = z.object({
   phoneNumberId: z.string().min(1, 'phone_number_id is required'),
-  code: z.string().min(1, 'OAuth code is required'),
+  wabaId:        z.string().optional(),
+  code:          z.string().min(1, 'OAuth code is required'),
 })
 
 // ── Result types ──────────────────────────────────────────────────────────────
@@ -53,14 +56,15 @@ export async function saveWhatsAppConnection(
 
   const parsed = SaveSchema.safeParse({
     phoneNumberId: formData.get('phoneNumberId'),
-    code: formData.get('code'),
+    wabaId:        formData.get('wabaId') ?? undefined,
+    code:          formData.get('code'),
   })
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
   }
 
-  const { phoneNumberId, code } = parsed.data
+  const { phoneNumberId, wabaId, code } = parsed.data
 
   // Exchange code → access token via Meta Graph API
   const appId     = process.env.META_APP_ID
@@ -79,6 +83,22 @@ export async function saveWhatsAppConnection(
     return { error: 'החלפת קוד ב-Token נכשלה — אנא נסה שנית' }
   }
 
+  // Subscribe our app to the customer's WABA — without this, Meta never sends
+  // message webhooks for this WABA, even though the app-level callback is set.
+  // Must succeed before we persist the connection: saving an unsubscribed WABA
+  // would look "connected" in the UI while receiving no messages.
+  // The call is idempotent on Meta's side, so redoing the signup flow is safe.
+  if (wabaId) {
+    try {
+      await subscribeAppToWABA(wabaId, accessToken)
+    } catch (err) {
+      console.error('[whatsapp/settings] WABA webhook subscription failed', { orgId, wabaId, err })
+      return { error: 'רישום ה-webhook מול Meta נכשל — אנא נסה להתחבר שוב' }
+    }
+  } else {
+    console.warn('[whatsapp/settings] No wabaId provided — skipping subscribed_apps registration', { orgId })
+  }
+
   // Encrypt before storing
   let encryptedToken: string
   try {
@@ -93,7 +113,8 @@ export async function saveWhatsAppConnection(
     .from('organizations')
     .update({
       whatsapp_phone_number_id: phoneNumberId,
-      whatsapp_access_token: encryptedToken,
+      whatsapp_access_token:    encryptedToken,
+      whatsapp_waba_id:         wabaId ?? null,
     })
     .eq('id', orgId)
 
@@ -102,7 +123,15 @@ export async function saveWhatsAppConnection(
     return { error: 'שגיאה בשמירת הנתונים' }
   }
 
-  console.info('[whatsapp/settings] WhatsApp connected', { orgId, phoneNumberId })
+  console.info('[whatsapp/settings] WhatsApp connected', { orgId, phoneNumberId, wabaId })
+
+  // Register all message templates on the org's WABA (fire-and-forget)
+  if (wabaId) {
+    registerTemplatesForWABA(wabaId, accessToken).catch((err) =>
+      console.error('[whatsapp/settings] Template registration failed', { orgId, err })
+    )
+  }
+
   revalidatePath('/settings/whatsapp')
   return { error: null }
 }

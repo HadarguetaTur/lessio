@@ -37,6 +37,7 @@
 | 27 | Billing & Accounting Pro (PDF invoices, tax docs, quotas, credit notes) | ✅ Done |
 | 28 | Analytics Pro (KPI deltas, revenue forecasting, teacher performance, student LTV) | ✅ Done |
 | 29 | Google Login + Google Calendar Integration | 🚧 In Progress |
+| 30 | Revenue Integrity & Reliability | 📝 Planned |
 
 ---
 
@@ -50,6 +51,21 @@
 - Story 2: Per-org Google Calendar connection (OAuth, encrypt refresh token, settings UI)
 - Story 3: Per-teacher Google Calendar connection (teacher sub-shell settings)
 - Story 4: Calendar conflict check in lesson creation (soft warning, override-able)
+
+---
+
+## Sprint 30 — Revenue Integrity & Reliability
+**Status:** 📝 Planned
+**Depends on:** Sprint 29 complete
+**Scope:** See `docs/sprint-30-scope.md`
+**Source:** Full product review (2026-06-11)
+
+### Stories
+- Story 1: Payment webhook security (Stripe signature verification, Cardcom/PayPlus server-side confirmation, receipt idempotency fix, payments test coverage)
+- Story 2: SaaS renewal engine (token-charge cron, past_due enforcement, cancel-subscription flow, Sumit E2E cutover — carried since Sprint 23)
+- Story 3: Ship WhatsApp automations WIP (Edge template sync, toggle E2E, WABA ID signup)
+- Story 4: Reliability hardening (Sentry in Edge Functions, cron send/mark atomicity, webhook rate limiting)
+- Story 5 (stretch): Dashboard CRUD completions (edit teacher/goal/note, teacher lesson cancel, subscriptions page links)
 
 ---
 

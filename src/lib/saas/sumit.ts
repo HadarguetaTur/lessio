@@ -265,3 +265,130 @@ export async function chargeSumitToken(params: SumitChargeParams): Promise<Sumit
     cardLastFour: res.ReturnValue?.CardLastDigits ?? null,
   }
 }
+
+// ─── Confirm a payment (server-to-server) ─────────────────────────────────────
+
+/**
+ * Authoritative payment status, used to activate a subscription after the
+ * hosted-checkout redirect-return (or from the webhook safety net). We NEVER
+ * trust the redirect/webhook body — we look the payment up at Sumit.
+ */
+export type SumitPaymentConfirmation = {
+  valid: boolean
+  paymentId: string | null
+  customerId: string | null
+  documentId: string | null
+  documentUrl: string | null
+  paymentToken: string | null
+  cardLastFour: string | null
+  amount: number | null
+  /** Our original checkout reference echoed back by Sumit (Identifier / ExternalReference). */
+  externalReference: string | null
+}
+
+interface SumitPaymentRecord {
+  ValidPayment?: boolean
+  Status?: string | number
+  ID?: string | number
+  PaymentID?: string | number
+  CustomerID?: string | number
+  DocumentID?: string | number
+  DocumentURL?: string
+  Token?: string
+  PaymentToken?: string
+  CardLastDigits?: string
+  CardLast4?: string
+  Amount?: number
+  ExternalReference?: string
+  Identifier?: string
+}
+
+interface SumitGetPaymentResponse extends SumitBaseResponse {
+  ReturnValue?: SumitPaymentRecord & { Payment?: SumitPaymentRecord }
+  Data?: SumitPaymentRecord & { Payment?: SumitPaymentRecord; Payments?: SumitPaymentRecord[] }
+  Payment?: SumitPaymentRecord
+  Payments?: SumitPaymentRecord[]
+}
+
+function extractPaymentRecord(res: SumitGetPaymentResponse): SumitPaymentRecord | null {
+  return (
+    res.ReturnValue?.Payment ??
+    res.ReturnValue ??
+    res.Data?.Payment ??
+    res.Data ??
+    res.Payment ??
+    null
+  )
+}
+
+function isPaymentValid(rec: SumitPaymentRecord): boolean {
+  if (rec.ValidPayment === true) return true
+  const s = rec.Status != null ? String(rec.Status) : null
+  return s === '000' || s === '0'
+}
+
+function normalizePaymentRecord(rec: SumitPaymentRecord): SumitPaymentConfirmation {
+  return {
+    valid: isPaymentValid(rec),
+    paymentId:
+      rec.ID != null ? String(rec.ID) : rec.PaymentID != null ? String(rec.PaymentID) : null,
+    customerId: rec.CustomerID != null ? String(rec.CustomerID) : null,
+    documentId: rec.DocumentID != null ? String(rec.DocumentID) : null,
+    documentUrl: rec.DocumentURL ?? null,
+    paymentToken: rec.PaymentToken ?? rec.Token ?? null,
+    cardLastFour: rec.CardLastDigits ?? rec.CardLast4 ?? null,
+    amount: typeof rec.Amount === 'number' ? rec.Amount : null,
+    externalReference: rec.ExternalReference ?? rec.Identifier ?? null,
+  }
+}
+
+const FAILED_CONFIRMATION: SumitPaymentConfirmation = {
+  valid: false,
+  paymentId: null,
+  customerId: null,
+  documentId: null,
+  documentUrl: null,
+  paymentToken: null,
+  cardLastFour: null,
+  amount: null,
+  externalReference: null,
+}
+
+/**
+ * Looks a payment up at Sumit by transaction ID (preferred) or by our checkout
+ * reference, and returns its authoritative status. Returns an invalid result
+ * (never throws) when the lookup fails or the payment is not found/valid.
+ */
+export async function confirmSumitPayment(params: {
+  transactionId?: string | null
+  reference?: string | null
+}): Promise<SumitPaymentConfirmation> {
+  const creds = getSumitCredentials()
+
+  try {
+    let record: SumitPaymentRecord | null = null
+
+    if (params.transactionId) {
+      const res = await sumitPost<SumitGetPaymentResponse>('/billing/payments/get/', {
+        Credentials: creds,
+        ID: params.transactionId,
+      })
+      record = extractPaymentRecord(res)
+    }
+
+    if (!record && params.reference) {
+      const res = await sumitPost<SumitGetPaymentResponse>('/billing/payments/list/', {
+        Credentials: creds,
+      })
+      const list = res.Data?.Payments ?? res.Payments ?? []
+      record =
+        list.find((p) => (p.ExternalReference ?? p.Identifier) === params.reference) ?? null
+    }
+
+    if (!record) return FAILED_CONFIRMATION
+    return normalizePaymentRecord(record)
+  } catch (e) {
+    console.error('[sumit] confirmSumitPayment failed', e instanceof Error ? e.message : String(e))
+    return FAILED_CONFIRMATION
+  }
+}

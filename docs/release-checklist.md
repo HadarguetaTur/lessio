@@ -139,6 +139,8 @@ Also verify that all crons are registered in Supabase Dashboard: `lesson-reminde
 | Booking link received via WhatsApp opens the WebView correctly | |
 | Parent portal: OTP login works on mobile | |
 | Monthly billing generate → approve → download invoice PDF | |
+| SaaS upgrade E2E: `/account/billing` → Sumit `beginredirect` page → pay → redirect-return confirms (server-to-server) → subscription `active` + invoice recorded | |
+| Sumit webhook safety net: closing the tab before redirect still activates via `/api/sumit/webhook` (no duplicate invoice) | |
 | Sentry receives test error (check Sentry dashboard) | |
 
 ---

@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { EmbeddedSignupButton } from './EmbeddedSignupButton'
 import { DisconnectButton } from './DisconnectButton'
 import { PortalUrlCopy } from '@/components/dashboard/settings/PortalUrlCopy'
+import { AutomationsSettings } from './AutomationsSettings'
 import { getTranslations } from 'next-intl/server'
 
 /**
@@ -24,7 +25,17 @@ export default async function WhatsAppSettingsPage() {
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('id, whatsapp_phone_number_id')
+    .select(`
+      id,
+      whatsapp_phone_number_id,
+      automation_lesson_reminder_enabled,
+      automation_cancellation_enabled,
+      automation_payment_request_enabled,
+      automation_dunning_enabled,
+      automation_new_leads_enabled,
+      automation_lesson_reminder_hours,
+      ai_assistant_enabled
+    `)
     .eq('id', orgId)
     .single()
 
@@ -59,6 +70,23 @@ export default async function WhatsAppSettingsPage() {
             שתף/י קישור זה עם ההורים כדי שיוכלו לגשת לפורטל האישי שלהם.
           </p>
           <PortalUrlCopy orgId={org.id} />
+        </div>
+      )}
+
+      {/* Automations — shown when WhatsApp is connected */}
+      {isConnected && org && (
+        <div className="mt-6">
+          <AutomationsSettings
+            org={{
+              automation_lesson_reminder_enabled:  org.automation_lesson_reminder_enabled ?? true,
+              automation_cancellation_enabled:     org.automation_cancellation_enabled ?? true,
+              automation_payment_request_enabled:  org.automation_payment_request_enabled ?? true,
+              automation_dunning_enabled:          org.automation_dunning_enabled ?? false,
+              automation_new_leads_enabled:        org.automation_new_leads_enabled ?? true,
+              automation_lesson_reminder_hours:    org.automation_lesson_reminder_hours ?? 24,
+              ai_assistant_enabled:                org.ai_assistant_enabled ?? false,
+            }}
+          />
         </div>
       )}
 

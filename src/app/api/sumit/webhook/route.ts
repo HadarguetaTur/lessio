@@ -1,12 +1,16 @@
 /**
  * Sumit SaaS billing webhook — POST /api/sumit/webhook
  *
- * Receives payment confirmation events from Sumit for SaaS subscriptions.
- * On success: activates the organization's subscription and records a saas_invoice.
+ * Idempotent safety net for the hosted-checkout flow. The authoritative
+ * activation path is the redirect-return server-to-server confirmation
+ * (src/app/(dashboard)/account/billing/upgrade-actions.ts). This webhook does
+ * the same thing for cases where the customer closed the tab before the
+ * redirect completed.
  *
- * Security: HMAC-SHA256 signature verified via SUMIT_WEBHOOK_SECRET.
- * Sumit sends the signature in the `X-Sumit-Signature` header as:
- *   sha256=<hex_digest>
+ * Security: we NEVER trust the webhook body. We re-confirm the payment with
+ * Sumit (`confirmSumitPayment`) before any DB mutation. An optional
+ * HMAC-SHA256 signature (SUMIT_WEBHOOK_SECRET, header `x-sumit-signature` as
+ * `sha256=<hex>`) is verified when present to drop tampered signed payloads.
  *
  * Always returns HTTP 200 — Sumit retries on non-2xx responses.
  */
@@ -14,7 +18,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { activateSubscriptionFromPayment } from '@/lib/saas/subscriptions'
-import { createSumitDocument } from '@/lib/saas/sumit'
+import { confirmSumitPayment } from '@/lib/saas/sumit'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 function ok(): NextResponse {
@@ -27,25 +31,19 @@ function fail(reason: string): NextResponse {
 }
 
 /**
- * Verifies the HMAC-SHA256 signature from Sumit.
- * Returns false if the secret is missing (warn but don't crash in dev).
+ * Verifies the optional HMAC-SHA256 signature from Sumit.
+ *
+ * Activation is gated by the server-to-server confirmation, not by this check,
+ * so an unsigned request (Sumit triggers may be unsigned) is allowed through —
+ * it still cannot activate anything unless Sumit confirms the payment. A
+ * *signed* request with a bad signature is rejected.
  */
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
   const secret = process.env.SUMIT_WEBHOOK_SECRET
-  if (!secret) {
-    if (process.env.NODE_ENV === 'production') {
-      return false
-    }
-    // Dev: allow unsigned requests with a warning
-    console.warn('[sumit/webhook] SUMIT_WEBHOOK_SECRET not set — skipping signature check (dev only)')
-    return true
-  }
+  if (!secret) return true
+  if (!signatureHeader) return true
 
-  if (!signatureHeader) return false
-
-  // Expected format: "sha256=<hex>"
   const expected = `sha256=${createHmac('sha256', secret).update(rawBody).digest('hex')}`
-
   try {
     return timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(expected))
   } catch {
@@ -53,30 +51,20 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
   }
 }
 
-/**
- * Sumit webhook payload shape (partial — we only use what we need).
- * Sumit sends payment events with a Reference field matching our checkout reference.
- */
-interface SumitWebhookPayload {
-  /** True when the payment succeeded */
-  Success?: boolean
-  /** Our checkout reference (pending_checkout_reference in organization_subscriptions) */
-  Reference?: string
-  /** Sumit's internal document ID (for the invoice) */
-  DocumentID?: number
-  DocumentURL?: string
-  /** Card token for future charges — Sumit may provide this for recurring billing */
-  PaymentToken?: string
-  CardLastDigits?: string
-  /** Customer email (if Sumit returns it) */
-  CustomerEmail?: string
-  CustomerName?: string
-  /** Amount charged in ILS */
-  Amount?: number
-  /** Sumit customer ID for recurring billing */
-  CustomerID?: string | number
-  /** Sumit subscription ID if Sumit manages the recurring schedule */
-  SubscriptionID?: string | number
+type SumitTriggerPayload = Record<string, unknown> & { Data?: Record<string, unknown> }
+
+/** Reads the first matching string/number field from the payload root or its `Data` envelope. */
+function readField(payload: SumitTriggerPayload, keys: string[]): string | null {
+  const sources: Array<Record<string, unknown> | undefined> = [payload, payload.Data]
+  for (const src of sources) {
+    if (!src || typeof src !== 'object') continue
+    for (const key of keys) {
+      const v = src[key]
+      if (typeof v === 'string' && v.trim()) return v.trim()
+      if (typeof v === 'number') return String(v)
+    }
+  }
+  return null
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -87,101 +75,76 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return fail('Signature verification failed')
   }
 
-  let payload: SumitWebhookPayload
+  let payload: SumitTriggerPayload
   try {
-    payload = JSON.parse(rawBody) as SumitWebhookPayload
+    payload = JSON.parse(rawBody) as SumitTriggerPayload
   } catch {
     return fail('Failed to parse webhook body as JSON')
   }
 
-  // Only handle successful payment events
-  if (!payload.Success) {
-    console.info('[sumit/webhook] Non-success event — no action', { reference: payload.Reference })
+  const reference = readField(payload, ['Reference', 'Identifier', 'ExternalReference'])
+  const transactionId = readField(payload, ['ID', 'PaymentID', 'TransactionID'])
+
+  if (!reference && !transactionId) {
+    console.info('[sumit/webhook] No reference or transaction id — ignoring')
     return ok()
   }
 
-  const reference = payload.Reference?.trim()
-  if (!reference) {
-    return fail('Webhook payload missing Reference field')
+  // Authoritative status — never trust the webhook body.
+  const confirmation = await confirmSumitPayment({ transactionId, reference })
+  if (!confirmation.valid) {
+    console.info('[sumit/webhook] Payment not confirmed valid — no action', { reference, transactionId })
+    return ok()
   }
 
-  // Look up the pending subscription by checkout reference
+  const lookupRef = reference ?? confirmation.externalReference
+  if (!lookupRef) {
+    return fail('Confirmed payment has no reference to map to an organization')
+  }
+
+  // Idempotency: only a still-pending subscription is activated. If the redirect
+  // callback already activated it, the row is no longer pending and this is a no-op.
   const db = createServiceRoleClient()
   const { data: sub, error: subError } = await db
     .from('organization_subscriptions')
-    .select('id, organization_id, plan_id, billing_interval')
-    .eq('pending_checkout_reference', reference)
+    .select('id, organization_id')
+    .eq('pending_checkout_reference', lookupRef)
     .eq('status', 'pending_payment')
     .maybeSingle()
 
   if (subError) {
-    return fail(`DB lookup failed for reference ${reference}: ${subError.message}`)
+    return fail(`DB lookup failed for reference ${lookupRef}: ${subError.message}`)
   }
 
   if (!sub) {
-    // May be a duplicate delivery — log and return 200
-    console.info('[sumit/webhook] No pending subscription found for reference — possible duplicate', { reference })
+    console.info('[sumit/webhook] No pending subscription for reference — already activated or unknown', {
+      reference: lookupRef,
+    })
     return ok()
   }
 
-  const orgId = sub.organization_id
-
-  // Activate the subscription
   const activated = await activateSubscriptionFromPayment({
-    orgId,
-    sumitCustomerId: payload.CustomerID != null ? String(payload.CustomerID) : null,
-    sumitSubscriptionId: payload.SubscriptionID != null ? String(payload.SubscriptionID) : null,
-    sumitPaymentToken: payload.PaymentToken ?? null,
-    cardLastFour: payload.CardLastDigits ?? null,
-    invoice: payload.Amount != null
-      ? {
-          amount: payload.Amount,
-          sumitDocumentId: payload.DocumentID != null ? String(payload.DocumentID) : null,
-          sumitDocumentUrl: payload.DocumentURL ?? null,
-        }
-      : undefined,
+    orgId: sub.organization_id,
+    sumitCustomerId: confirmation.customerId,
+    sumitPaymentToken: confirmation.paymentToken,
+    cardLastFour: confirmation.cardLastFour,
+    invoice:
+      confirmation.amount != null
+        ? {
+            amount: confirmation.amount,
+            sumitDocumentId: confirmation.documentId,
+            sumitDocumentUrl: confirmation.documentUrl,
+          }
+        : undefined,
   })
 
   if (!activated) {
-    return fail(`activateSubscriptionFromPayment returned false for org ${orgId}`)
+    return fail(`activateSubscriptionFromPayment returned false for org ${sub.organization_id}`)
   }
 
-  console.info('[sumit/webhook] Subscription activated', { orgId, reference })
-
-  // If Sumit did not generate an invoice document, create one now
-  if (!payload.DocumentID && payload.Amount && payload.CustomerName) {
-    try {
-      const doc = await createSumitDocument({
-        customerName: payload.CustomerName,
-        customerEmail: payload.CustomerEmail ?? null,
-        amount: payload.Amount,
-        description: 'LESSIO — מנוי פלטפורמה',
-        reference,
-      })
-
-      // Update the saas_invoice row with the document details
-      await db
-        .from('saas_invoices')
-        .update({
-          sumit_document_id: String(doc.documentId),
-          sumit_document_url: doc.documentUrl,
-        })
-        .eq('organization_id', orgId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      console.info('[sumit/webhook] Invoice created post-activation', {
-        orgId,
-        documentId: doc.documentId,
-      })
-    } catch (err) {
-      // Non-fatal — subscription is already activated
-      console.error('[sumit/webhook] Failed to create post-activation invoice', {
-        orgId,
-        err: err instanceof Error ? err.message : String(err),
-      })
-    }
-  }
-
+  console.info('[sumit/webhook] Subscription activated (safety net)', {
+    orgId: sub.organization_id,
+    reference: lookupRef,
+  })
   return ok()
 }

@@ -8,6 +8,7 @@ import { getSaasPlanByName } from '@/lib/saas/plans'
 import type { BeginPaidCheckoutSummary, SaasPlanName } from '@/lib/saas/types'
 import { getOwnerOnboardingSession } from '@/lib/auth/onboardingSession'
 import {
+  activateSubscriptionFromPayment,
   upsertTrialSubscription,
   upsertPendingPaymentSubscription,
   markOrganizationOnboardingComplete,
@@ -17,6 +18,7 @@ import {
   createSumitHostedCheckoutUrl,
   getSumitCredentialsFromEnv,
 } from '@/lib/saas/sumit-checkout'
+import { confirmSumitPayment } from '@/lib/saas/sumit'
 
 
 
@@ -73,23 +75,26 @@ export async function beginPaidSaasCheckout(
   if (amount <= 0) return { error: 'סכום לא חוקי' }
 
   const checkoutReference = crypto.randomUUID()
-  try {
-    await upsertPendingPaymentSubscription({
-      orgId,
-      planId: plan.id,
-      billingInterval: parsedInterval.data,
-      checkoutReference,
-    })
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'שגיאה'
-    return { error: msg }
-  }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '')
   const successUrl = `${baseUrl}/onboarding/payment-callback`
   const failureUrl = `${baseUrl}/onboarding/payment-callback?failed=1`
 
-  const creds = getSumitCredentialsFromEnv()
+  const isMock = process.env.SUMIT_CHECKOUT_MOCK === '1'
+  let creds: { companyId: string; apiKey: string }
+  if (isMock) {
+    creds = { companyId: 'mock', apiKey: 'mock' }
+  } else {
+    const envCreds = getSumitCredentialsFromEnv()
+    if (!envCreds) {
+      return {
+        error:
+          'חסרות הגדרות Sumit (SUMIT_COMPANY_ID / SUMIT_API_KEY) או הפעל SUMIT_CHECKOUT_MOCK=1 לסביבת טסט',
+      }
+    }
+    creds = envCreds
+  }
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -100,40 +105,9 @@ export async function beginPaidSaasCheckout(
     .eq('id', user!.id)
     .single()
 
-  if (process.env.SUMIT_CHECKOUT_MOCK === '1') {
-    const mock = await createSumitHostedCheckoutUrl({
-      companyId: 'mock',
-      apiKey: 'mock',
-      amount,
-      description: `LESSIO ${plan.display_name_he}`,
-      customerName: prof?.full_name ?? 'Owner',
-      customerEmail: user?.email ?? null,
-      customerPhone: null,
-      reference: checkoutReference,
-      successUrl,
-      failureUrl,
-    })
-    if ('error' in mock) return { error: mock.error }
-    return {
-      url: mock.url,
-      summary: {
-        planLabelHe: plan.display_name_he,
-        planLabelEn: plan.display_name_en,
-        amount,
-        interval: parsedInterval.data,
-        isSimulated: true,
-      },
-    }
-  }
-
-  if (!creds) {
-    return {
-      error:
-        'חסרות הגדרות Sumit (SUMIT_COMPANY_ID / SUMIT_API_KEY) או הפעל SUMIT_CHECKOUT_MOCK=1 לסביבת טסט',
-    }
-  }
-
-  const hosted = await createSumitHostedCheckoutUrl({
+  // Create the checkout link first — only mark the subscription pending once a link exists,
+  // so a failed Sumit call never leaves the org stuck in `pending_payment`.
+  const checkout = await createSumitHostedCheckoutUrl({
     companyId: creds.companyId,
     apiKey: creds.apiKey,
     amount,
@@ -146,15 +120,28 @@ export async function beginPaidSaasCheckout(
     failureUrl,
   })
 
-  if ('error' in hosted) return { error: hosted.error }
+  if ('error' in checkout) return { error: checkout.error }
+
+  try {
+    await upsertPendingPaymentSubscription({
+      orgId,
+      planId: plan.id,
+      billingInterval: parsedInterval.data,
+      checkoutReference,
+    })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'שגיאה'
+    return { error: msg }
+  }
+
   return {
-    url: hosted.url,
+    url: checkout.url,
     summary: {
       planLabelHe: plan.display_name_he,
       planLabelEn: plan.display_name_en,
       amount,
       interval: parsedInterval.data,
-      isSimulated: false,
+      isSimulated: isMock,
     },
   }
 }
@@ -257,6 +244,10 @@ export async function checkSaasActivationAndComplete(): Promise<'dashboard' | 'p
 export async function applyPaymentCallbackQuery(params: {
   mock?: string | null
   failed?: string | null
+  /** Sumit redirect-return params (see beginredirect flow). */
+  valid?: string | null
+  identifier?: string | null
+  id?: string | null
 }): Promise<'dashboard' | 'pending' | 'failed'> {
   let orgId: string
   try {
@@ -265,12 +256,38 @@ export async function applyPaymentCallbackQuery(params: {
     return 'failed'
   }
 
-  if (params.failed === '1') return 'failed'
+  if (params.failed === '1' || params.valid === '0') return 'failed'
 
   if (params.mock === '1' && process.env.SUMIT_CHECKOUT_MOCK === '1') {
     await devMockActivatePendingSubscription(orgId)
     await markOrganizationOnboardingComplete(orgId)
     return 'dashboard'
+  }
+
+  // Authoritative confirmation against Sumit — never trust the redirect body.
+  if (params.id || params.identifier) {
+    const confirmation = await confirmSumitPayment({
+      transactionId: params.id ?? null,
+      reference: params.identifier ?? null,
+    })
+    if (confirmation.valid) {
+      await activateSubscriptionFromPayment({
+        orgId,
+        sumitCustomerId: confirmation.customerId,
+        sumitPaymentToken: confirmation.paymentToken,
+        cardLastFour: confirmation.cardLastFour,
+        invoice:
+          confirmation.amount != null
+            ? {
+                amount: confirmation.amount,
+                sumitDocumentId: confirmation.documentId,
+                sumitDocumentUrl: confirmation.documentUrl,
+              }
+            : undefined,
+      })
+      await markOrganizationOnboardingComplete(orgId)
+      return 'dashboard'
+    }
   }
 
   const { getOrgSubscriptionState } = await import('@/lib/saas/subscriptions')

@@ -9,7 +9,7 @@
  * Per /docs/sprint-1-scope.md § Booking link generation and dispatch.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
@@ -49,6 +49,10 @@ import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { DateTime } from 'luxon'
 import { claimIncomingMessage, releaseIncomingMessageClaim } from '@/lib/whatsapp/idempotency'
 import { notifyMultiple, getOwnerAndAdminProfileIds } from '@/lib/notifications'
+
+// Message processing continues after the response via after(); allow up to 60s
+// for DB lookups, AI-assistant calls, and outbound WhatsApp sends.
+export const maxDuration = 60
 
 // ── GET — Meta hub verification ───────────────────────────────────────────────
 
@@ -99,11 +103,24 @@ export async function POST(request: NextRequest) {
 
   const messages = parseWebhookPayload(body)
 
-  // Process each message; errors are caught individually to avoid dropping other messages
-  for (const msg of messages) {
-    await processMessage(msg, request).catch(err => {
-      console.error('[whatsapp/webhook] Error processing message', { messageId: msg.messageId, err })
-    })
+  // Process messages in the background so Meta gets its 200 immediately —
+  // slow handlers (AI assistant, outbound sends) must not delay the ack,
+  // or Meta retries and eventually disables the webhook.
+  const origin = new URL(request.url).origin
+  const work = (async () => {
+    // Errors are caught individually to avoid dropping other messages
+    for (const msg of messages) {
+      await processMessage(msg, origin).catch(err => {
+        console.error('[whatsapp/webhook] Error processing message', { messageId: msg.messageId, err })
+      })
+    }
+  })()
+
+  try {
+    after(work)
+  } catch {
+    // Outside a Next.js request scope (vitest) after() throws — process inline.
+    await work
   }
 
   return new NextResponse('OK', { status: 200 })
@@ -135,7 +152,7 @@ async function processMessage(
     businessPhoneNumber: string
     phoneNumberId: string
   },
-  request: NextRequest
+  origin: string
 ): Promise<void> {
   const db = createServiceRoleClient()
 
@@ -161,7 +178,17 @@ async function processMessage(
 
   const { data: org, error: orgError } = await db
     .from('organizations')
-    .select('id, whatsapp_access_token, timezone, ai_assistant_enabled')
+    .select(`
+      id,
+      whatsapp_access_token,
+      timezone,
+      ai_assistant_enabled,
+      automation_lesson_reminder_enabled,
+      automation_cancellation_enabled,
+      automation_payment_request_enabled,
+      automation_dunning_enabled,
+      automation_new_leads_enabled
+    `)
     .eq('whatsapp_phone_number_id', msg.phoneNumberId)
     .maybeSingle()
 
@@ -214,8 +241,9 @@ async function processMessage(
     }
 
   if (!parent) {
-    // Unknown sender — upsert lead and send fixed reply regardless of message content
-    await handleUnknownSender(org.id, senderPhone, msg.text, accessToken, phoneNumberId)
+    if (org.automation_new_leads_enabled !== false) {
+      await handleUnknownSender(org.id, senderPhone, msg.text, accessToken, phoneNumberId)
+    }
     return
   }
 
@@ -233,7 +261,7 @@ async function processMessage(
   }
 
   // 8. Check cancellation intent
-  if (hasCancellationIntent(msg.text)) {
+  if (hasCancellationIntent(msg.text) && org.automation_cancellation_enabled !== false) {
     await handleCancellationIntent(
       parent.id, org.id, senderPhone,
       (org.timezone as string | null) ?? 'Asia/Jerusalem',
@@ -400,7 +428,6 @@ async function processMessage(
   })
 
   // 10. Build booking URL from request origin
-  const origin = new URL(request.url).origin
   const bookingUrl = `${origin}/book/${token}`
 
   // 11. Send booking link via WhatsApp

@@ -9,6 +9,7 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { getSaasPlanById, getSaasPlanByName } from '@/lib/saas/plans'
 import type { BeginPaidCheckoutSummary, SaasPlanName } from '@/lib/saas/types'
 import {
+  activateSubscriptionFromPayment,
   devMockActivatePendingSubscription,
   getOrgSubscriptionState,
   markOrganizationOnboardingComplete,
@@ -19,6 +20,7 @@ import {
   createSumitHostedCheckoutUrl,
   getSumitCredentialsFromEnv,
 } from '@/lib/saas/sumit-checkout'
+import { confirmSumitPayment } from '@/lib/saas/sumit'
 
 const planNameSchema = z.enum(['basic', 'advanced'])
 const billingIntervalSchema = z.enum(['monthly', 'yearly'])
@@ -29,7 +31,9 @@ function canStartUpgradeCheckout(state: OrgSubscriptionState | null): boolean {
   if (
     state.status !== 'trial' &&
     state.status !== 'active' &&
-    state.status !== 'read_only'
+    state.status !== 'read_only' &&
+    // A previous checkout that was never completed — allow restarting it.
+    state.status !== 'pending_payment'
   ) {
     return false
   }
@@ -57,9 +61,18 @@ async function assertUpgradeAllowed(
     return { ok: false, error: 'UPGRADE_UNAVAILABLE' }
   }
 
-  const currentPlan = await getSaasPlanById(state.planId)
   const targetPlan = await getSaasPlanByName(targetPlanName)
-  if (!currentPlan || !targetPlan) {
+  if (!targetPlan) {
+    return { ok: false, error: 'PLAN_NOT_FOUND' }
+  }
+
+  // A pending purchase is not an active plan — allow (re)starting checkout for any paid plan.
+  if (state.status === 'pending_payment') {
+    return { ok: true }
+  }
+
+  const currentPlan = await getSaasPlanById(state.planId)
+  if (!currentPlan) {
     return { ok: false, error: 'PLAN_NOT_FOUND' }
   }
   if (targetPlan.sort_order <= currentPlan.sort_order) {
@@ -106,6 +119,50 @@ export async function beginUpgradeCheckoutAction(
   if (amount <= 0) return { error: 'INVALID_AMOUNT', errorCode: 'INVALID_AMOUNT' }
 
   const checkoutReference = crypto.randomUUID()
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '')
+  const successUrl = `${baseUrl}/account/billing/payment-callback`
+  const failureUrl = `${baseUrl}/account/billing/payment-callback?failed=1`
+  const mockPath = '/account/billing/mock-payment'
+
+  const isMock = process.env.SUMIT_CHECKOUT_MOCK === '1'
+  let creds: { companyId: string; apiKey: string }
+  if (isMock) {
+    creds = { companyId: 'mock', apiKey: 'mock' }
+  } else {
+    const envCreds = getSumitCredentialsFromEnv()
+    if (!envCreds) return { error: 'SUMIT_ENV_MISSING', errorCode: 'SUMIT_ENV_MISSING' }
+    creds = envCreds
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user!.id)
+    .single()
+
+  // Create the checkout link first — only mark the subscription pending once a link exists,
+  // so a failed Sumit call never leaves the org stuck in `pending_payment`.
+  const checkout = await createSumitHostedCheckoutUrl({
+    companyId: creds.companyId,
+    apiKey: creds.apiKey,
+    amount,
+    description: `LESSIO ${plan.display_name_he}`,
+    customerName: prof?.full_name ?? 'Owner',
+    customerEmail: user?.email ?? null,
+    customerPhone: null,
+    reference: checkoutReference,
+    successUrl,
+    failureUrl,
+    ...(isMock ? { mockPaymentPath: mockPath } : {}),
+  })
+
+  if ('error' in checkout) return { error: checkout.error, errorCode: 'CHECKOUT_URL' }
+
   try {
     await upsertPendingPaymentSubscription({
       orgId: session.orgId,
@@ -118,74 +175,15 @@ export async function beginUpgradeCheckoutAction(
     return { error: msg, errorCode: 'UPSERT_FAILED' }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '')
-  const successUrl = `${baseUrl}/account/billing/payment-callback`
-  const failureUrl = `${baseUrl}/account/billing/payment-callback?failed=1`
-  const mockPath = '/account/billing/mock-payment'
-
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  const { data: prof } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', user!.id)
-    .single()
-
-  const summaryBase: Omit<BeginPaidCheckoutSummary, 'isSimulated'> = {
-    planLabelHe: plan.display_name_he,
-    planLabelEn: plan.display_name_en,
-    amount,
-    interval: parsedInterval.data,
-  }
-
-  if (process.env.SUMIT_CHECKOUT_MOCK === '1') {
-    const mock = await createSumitHostedCheckoutUrl({
-      companyId: 'mock',
-      apiKey: 'mock',
-      amount,
-      description: `LESSIO ${plan.display_name_he}`,
-      customerName: prof?.full_name ?? 'Owner',
-      customerEmail: user?.email ?? null,
-      customerPhone: null,
-      reference: checkoutReference,
-      successUrl,
-      failureUrl,
-      mockPaymentPath: mockPath,
-    })
-    if ('error' in mock) return { error: mock.error, errorCode: 'CHECKOUT_URL' }
-    return {
-      url: mock.url,
-      summary: { ...summaryBase, isSimulated: true },
-    }
-  }
-
-  const creds = getSumitCredentialsFromEnv()
-  if (!creds) {
-    return {
-      error: 'SUMIT_ENV_MISSING',
-      errorCode: 'SUMIT_ENV_MISSING',
-    }
-  }
-
-  const hosted = await createSumitHostedCheckoutUrl({
-    companyId: creds.companyId,
-    apiKey: creds.apiKey,
-    amount,
-    description: `LESSIO ${plan.display_name_he}`,
-    customerName: prof?.full_name ?? 'Owner',
-    customerEmail: user?.email ?? null,
-    customerPhone: null,
-    reference: checkoutReference,
-    successUrl,
-    failureUrl,
-  })
-
-  if ('error' in hosted) return { error: hosted.error, errorCode: 'CHECKOUT_URL' }
   return {
-    url: hosted.url,
-    summary: { ...summaryBase, isSimulated: false },
+    url: checkout.url,
+    summary: {
+      planLabelHe: plan.display_name_he,
+      planLabelEn: plan.display_name_en,
+      amount,
+      interval: parsedInterval.data,
+      isSimulated: isMock,
+    },
   }
 }
 
@@ -243,17 +241,48 @@ export async function cancelPendingUpgradeCheckoutAction(): Promise<void> {
 export async function applyAccountBillingPaymentCallbackQuery(params: {
   mock?: string | null
   failed?: string | null
+  /** Sumit redirect-return params (see beginredirect flow). */
+  valid?: string | null
+  identifier?: string | null
+  id?: string | null
 }): Promise<'billing' | 'pending' | 'failed'> {
   const session = await getSession()
   if (session.role !== 'owner') return 'failed'
 
-  if (params.failed === '1') return 'failed'
+  if (params.failed === '1' || params.valid === '0') return 'failed'
 
   if (params.mock === '1' && process.env.SUMIT_CHECKOUT_MOCK === '1') {
     await devMockActivatePendingSubscription(session.orgId)
     await markOrganizationOnboardingComplete(session.orgId)
     revalidatePath('/account/billing')
     return 'billing'
+  }
+
+  // Authoritative confirmation against Sumit — never trust the redirect body.
+  if (params.id || params.identifier) {
+    const confirmation = await confirmSumitPayment({
+      transactionId: params.id ?? null,
+      reference: params.identifier ?? null,
+    })
+    if (confirmation.valid) {
+      await activateSubscriptionFromPayment({
+        orgId: session.orgId,
+        sumitCustomerId: confirmation.customerId,
+        sumitPaymentToken: confirmation.paymentToken,
+        cardLastFour: confirmation.cardLastFour,
+        invoice:
+          confirmation.amount != null
+            ? {
+                amount: confirmation.amount,
+                sumitDocumentId: confirmation.documentId,
+                sumitDocumentUrl: confirmation.documentUrl,
+              }
+            : undefined,
+      })
+      await markOrganizationOnboardingComplete(session.orgId)
+      revalidatePath('/account/billing')
+      return 'billing'
+    }
   }
 
   const state = await getOrgSubscriptionState(session.orgId)

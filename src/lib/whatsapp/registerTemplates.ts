@@ -1,0 +1,120 @@
+/**
+ * Registers all Lessio message templates on a newly connected WABA.
+ * Called fire-and-forget from saveWhatsAppConnection after Embedded Signup.
+ *
+ * Templates are UTILITY category — Meta typically auto-approves these within minutes.
+ * Duplicate registration is safe: the API returns an error we silently ignore.
+ */
+
+const META_API_VERSION = 'v19.0'
+
+type TemplateDefinition = {
+  name: string
+  language: string
+  bodyText: string
+  example: string[][]
+}
+
+const TEMPLATES: TemplateDefinition[] = [
+  {
+    name: 'lessio_lesson_reminder_he',
+    language: 'he',
+    bodyText: 'תזכורת לשיעור עם {{1}} ב-{{2}} בשעה {{3}}',
+    example: [['שרה כהן', 'יום שני 12/5', '16:00']],
+  },
+  {
+    name: 'lessio_payment_reminder_he',
+    language: 'he',
+    bodyText: 'שלום {{1}}, יש לך חוב פתוח בסך ₪{{2}}. נשמח שתסדיר את התשלום.',
+    example: [['משה לוי', '350']],
+  },
+  {
+    name: 'lessio_payment_request_he',
+    language: 'he',
+    bodyText: 'בקשת תשלום בסך ₪{{1}}. לתשלום לחץ על הקישור: {{2}}',
+    example: [['350', 'https://pay.example.com/abc']],
+  },
+  {
+    name: 'lessio_homework_reminder_he',
+    language: 'he',
+    bodyText: 'תזכורת: שיעורי הבית של {{1}} - "{{2}}" - עד {{3}}',
+    example: [['דוד כהן', 'פרק ג בספר', '15/5']],
+  },
+  {
+    name: 'lessio_homework_assignment_he',
+    language: 'he',
+    bodyText: 'שיעורי בית חדשים: {{1}}\n{{2}}\n{{3}}',
+    example: [['חיבור על הקיץ', 'כתוב חיבור של 300 מילים', 'עד 20/5']],
+  },
+  {
+    name: 'lessio_homework_graded_he',
+    language: 'he',
+    bodyText: 'שיעורי הבית "{{1}}" נבדקו! ציון: {{2}}/100\n{{3}}',
+    example: [['חיבור על הקיץ', '92', 'כתיבה יפה, המשך כך!']],
+  },
+]
+
+export async function registerTemplatesForWABA(
+  wabaId: string,
+  accessToken: string
+): Promise<void> {
+  const results = await Promise.allSettled(
+    TEMPLATES.map((t) => registerOne(wabaId, accessToken, t))
+  )
+
+  const failed = results.filter((r) => r.status === 'rejected')
+  if (failed.length > 0) {
+    console.warn(
+      `[registerTemplates] ${failed.length}/${TEMPLATES.length} templates failed for WABA ${wabaId}`,
+      failed.map((r) => (r as PromiseRejectedResult).reason)
+    )
+  } else {
+    console.info(
+      `[registerTemplates] All ${TEMPLATES.length} templates registered for WABA ${wabaId}`
+    )
+  }
+}
+
+async function registerOne(
+  wabaId: string,
+  accessToken: string,
+  template: TemplateDefinition
+): Promise<void> {
+  const res = await fetch(
+    `https://graph.facebook.com/${META_API_VERSION}/${wabaId}/message_templates`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: template.name,
+        language: template.language,
+        category: 'UTILITY',
+        components: [
+          {
+            type: 'BODY',
+            text: template.bodyText,
+            example: { body_text: template.example },
+          },
+        ],
+      }),
+    }
+  )
+
+  if (res.ok) {
+    console.info(`[registerTemplates] Registered: ${template.name}`)
+    return
+  }
+
+  const body = await res.text().catch(() => '')
+
+  // Template already exists — not an error
+  if (body.includes('duplicate') || body.includes('already exists') || res.status === 409) {
+    console.info(`[registerTemplates] Already exists: ${template.name}`)
+    return
+  }
+
+  throw new Error(`[registerTemplates] Failed ${template.name}: ${res.status} ${body}`)
+}

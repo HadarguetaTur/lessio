@@ -18,10 +18,7 @@ import {
   markAsReadAction,
   markAllReadAction,
 } from './notifications/actions'
-import {
-  getEffectiveSaasFeatures,
-  subscriptionAllowsDashboardAccess,
-} from '@/lib/saas/subscriptions'
+import { getEffectiveSaasFeatures } from '@/lib/saas/subscriptions'
 
 export default async function DashboardLayout({
   children,
@@ -126,10 +123,12 @@ export default async function DashboardLayout({
       redirect('/onboarding')
     }
 
-    const access = await subscriptionAllowsDashboardAccess(profile.organization_id)
-    if (!access.ok && access.reason === 'pending_payment') {
-      redirect('/onboarding')
-    }
+    // NOTE: do not bounce `pending_payment` orgs to /onboarding here. A fresh
+    // signup can never be both onboarding_completed AND pending_payment (see
+    // completeOnboarding), so this only fires for an existing org mid-upgrade —
+    // and /onboarding sends completed orgs straight back to /dashboard, which
+    // produced an infinite redirect loop. The billing page renders the pending
+    // state, and the mock-payment / payment-callback pages handle completion.
   }
 
   // Teachers may only access /teacher/* and /homework/* (sidebar links שיעורי בית).

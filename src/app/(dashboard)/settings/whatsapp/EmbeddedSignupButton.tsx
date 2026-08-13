@@ -61,10 +61,11 @@ export function EmbeddedSignupButton({ metaAppId }: Props) {
         return
       }
 
-      const msg = data as { type?: string; event?: string; data?: { phone_number_id?: string; code?: string } }
+      const msg = data as { type?: string; event?: string; data?: { phone_number_id?: string; waba_id?: string; code?: string } }
 
       if (msg.type === 'WA_EMBEDDED_SIGNUP' && msg.event === 'FINISH') {
         const phoneNumberId = msg.data?.phone_number_id
+        const wabaId = msg.data?.waba_id ?? ''
         const code = msg.data?.code
 
         if (!phoneNumberId || !code) {
@@ -76,6 +77,7 @@ export function EmbeddedSignupButton({ metaAppId }: Props) {
         const form = formRef.current
         if (!form) return
         ;(form.querySelector('[name="phoneNumberId"]') as HTMLInputElement).value = phoneNumberId
+        ;(form.querySelector('[name="wabaId"]') as HTMLInputElement).value = wabaId
         ;(form.querySelector('[name="code"]') as HTMLInputElement).value = code
         form.requestSubmit()
       }
@@ -102,6 +104,7 @@ export function EmbeddedSignupButton({ metaAppId }: Props) {
       {/* Hidden form — populated and submitted programmatically on signup completion */}
       <form ref={formRef} action={formAction} className="hidden">
         <input type="hidden" name="phoneNumberId" defaultValue="" />
+        <input type="hidden" name="wabaId" defaultValue="" />
         <input type="hidden" name="code" defaultValue="" />
       </form>
 

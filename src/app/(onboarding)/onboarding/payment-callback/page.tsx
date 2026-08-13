@@ -8,7 +8,13 @@ import { onboardingPanelCard, onboardingPanelPadding } from '@/components/onboar
 export default async function PaymentCallbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mock?: string; failed?: string }>
+  searchParams: Promise<{
+    mock?: string
+    failed?: string
+    Valid?: string
+    Identifier?: string
+    ID?: string
+  }>
 }) {
   const sp = await searchParams
   const t = await getTranslations('onboarding.paymentCallback')
@@ -16,6 +22,9 @@ export default async function PaymentCallbackPage({
   const result = await applyPaymentCallbackQuery({
     mock: sp.mock ?? null,
     failed: sp.failed ?? null,
+    valid: sp.Valid ?? null,
+    identifier: sp.Identifier ?? null,
+    id: sp.ID ?? null,
   })
 
   if (result === 'dashboard') {

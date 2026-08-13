@@ -1,8 +1,17 @@
 /**
  * Sumit hosted checkout for SaaS subscriptions (test / production).
  *
- * Receipts use {@link src/lib/receipts/sumit.ts}. Payment-page endpoints vary by
- * Sumit product; configure SUMIT_CHECKOUT_ENDPOINT or use SUMIT_CHECKOUT_MOCK=1 locally.
+ * Uses Sumit's hosted redirect flow:
+ *   POST https://api.sumit.co.il/billing/payments/beginredirect/
+ * which returns a RedirectURL. We send the customer there; on completion Sumit
+ * redirects back to our `RedirectURL` with query params (`Valid`, `Result`,
+ * `Token`, `Identifier`, `Auth`, `ID`). Activation is then confirmed
+ * server-to-server via `confirmSumitPayment` (src/lib/saas/sumit.ts) — never by
+ * trusting the redirect/webhook body.
+ *
+ * Receipts use {@link src/lib/receipts/sumit.ts}. Set SUMIT_CHECKOUT_MOCK=1 to
+ * simulate checkout in-app locally, or SUMIT_CHECKOUT_ENDPOINT to override the
+ * endpoint for a non-standard Sumit product.
  *
  * @see https://app.sumit.co.il/developers/api/
  */
@@ -17,6 +26,7 @@ export type SumitCheckoutParams = {
   customerName: string
   customerEmail: string | null
   customerPhone: string | null
+  /** Our checkout reference — Sumit echoes it back as `Identifier` on redirect-return. */
   reference: string
   successUrl: string
   failureUrl: string
@@ -28,22 +38,43 @@ export type SumitCheckoutParams = {
 
 interface SumitGenericResponse {
   Succeed?: boolean
+  Status?: string | number
   ErrorMessage?: string
+  UserErrorMessage?: string
+  TechnicalErrorDetails?: string
   ReturnValue?: {
+    RedirectURL?: string
     PaymentPageURL?: string
     Url?: string
     SessionID?: string
   }
+  Data?: {
+    RedirectURL?: string
+    PaymentPageURL?: string
+    Url?: string
+  }
 }
 
-function pickPaymentUrl(json: SumitGenericResponse): string | null {
+function pickRedirectUrl(json: SumitGenericResponse): string | null {
   const rv = json.ReturnValue
-  if (!rv) return null
-  return rv.PaymentPageURL ?? rv.Url ?? null
+  const data = json.Data
+  return (
+    rv?.RedirectURL ??
+    rv?.PaymentPageURL ??
+    rv?.Url ??
+    data?.RedirectURL ??
+    data?.PaymentPageURL ??
+    data?.Url ??
+    null
+  )
+}
+
+function errorMessage(json: SumitGenericResponse, fallback: string): string {
+  return json.UserErrorMessage ?? json.ErrorMessage ?? json.TechnicalErrorDetails ?? fallback
 }
 
 /**
- * Returns hosted payment URL or null if Sumit is not configured / call failed.
+ * Returns the hosted payment-page URL, or an error if Sumit is not configured / the call failed.
  */
 export async function createSumitHostedCheckoutUrl(
   params: SumitCheckoutParams
@@ -58,23 +89,32 @@ export async function createSumitHostedCheckoutUrl(
 
   const endpoint =
     process.env.SUMIT_CHECKOUT_ENDPOINT?.trim() ||
-    `${SUMIT_API_BASE}/paymentpage/create`
+    `${SUMIT_API_BASE}/billing/payments/beginredirect/`
 
   const body: Record<string, unknown> = {
     Credentials: {
       CompanyID: params.companyId,
       APIKey: params.apiKey,
     },
-    Reference: params.reference,
-    Description: params.description,
-    Amount: params.amount,
-    Currency: 'ILS',
-    CustomerName: params.customerName,
-    CustomerEmail: params.customerEmail ?? '',
-    CustomerPhone: params.customerPhone ?? '',
-    SuccessURL: params.successUrl,
-    FailureURL: params.failureUrl,
-    // Sumit may expect different keys per integration — adjust when finalizing prod API.
+    // Echoed back as `Identifier` on redirect-return; also used for server-side confirmation lookup.
+    Identifier: params.reference,
+    ExternalReference: params.reference,
+    RedirectURL: params.successUrl,
+    Customer: {
+      Name: params.customerName,
+      EmailAddress: params.customerEmail ?? null,
+      Phone: params.customerPhone ?? null,
+      // SearchMode 0 lets Sumit create/find the customer so a reusable card token can be stored on it.
+      SearchMode: 0,
+    },
+    Items: [
+      {
+        Item: { Name: params.description, SearchMode: 0 },
+        Quantity: 1,
+        UnitPrice: params.amount,
+      },
+    ],
+    VATIncluded: true,
   }
 
   try {
@@ -93,18 +133,16 @@ export async function createSumitHostedCheckoutUrl(
     }
 
     if (!res.ok) {
-      return {
-        error: json.ErrorMessage ?? `[sumit-checkout] HTTP ${res.status}`,
-      }
+      return { error: errorMessage(json, `[sumit-checkout] HTTP ${res.status}`) }
     }
 
     if (json.Succeed === false) {
-      return { error: json.ErrorMessage ?? 'Sumit checkout rejected' }
+      return { error: errorMessage(json, 'Sumit checkout rejected') }
     }
 
-    const url = pickPaymentUrl(json)
+    const url = pickRedirectUrl(json)
     if (!url) {
-      return { error: json.ErrorMessage ?? 'Sumit did not return a payment URL' }
+      return { error: errorMessage(json, 'Sumit did not return a payment URL') }
     }
 
     return { url }

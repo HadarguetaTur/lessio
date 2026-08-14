@@ -316,7 +316,14 @@ export default function PrivacyPage() {
               {CONTACT_EMAIL}
             </a>{' '}
             תוך פירוט: שם מלא, פרטי קשר, תיאור המידע נשוא הבקשה וסוג הבקשה. ייתכן שנידרש
-            לאמת את זהות הפונה לפני מתן מענה.
+            לאמת את זהות הפונה לפני מתן מענה. הוראות מפורטות לבקשת מחיקת נתונים זמינות בעמוד{' '}
+            <Link
+              href="/data-deletion"
+              className="text-violet-600 hover:underline dark:text-violet-400"
+            >
+              הוראות מחיקת נתונים
+            </Link>
+            .
           </p>
           <p>
             <strong className="text-foreground">כאשר המידע הוזן על ידי לקוח עסקי:</strong> Lessio

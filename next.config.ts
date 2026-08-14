@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
       { source: '/privacy-policy', destination: '/privacy', permanent: true },
       { source: '/terms-of-service', destination: '/terms', permanent: true },
       { source: '/tos', destination: '/terms', permanent: true },
+      { source: '/data-deletion-instructions', destination: '/data-deletion', permanent: true },
+      { source: '/user-data-deletion', destination: '/data-deletion', permanent: true },
     ]
   },
   async rewrites() {

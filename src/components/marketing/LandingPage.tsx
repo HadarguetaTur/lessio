@@ -563,6 +563,15 @@ export function LandingPage({
               >
                 {footer.terms}
               </Link>
+              <span className="text-muted-foreground/35" aria-hidden>
+                ·
+              </span>
+              <Link
+                href="/data-deletion"
+                className="font-semibold text-muted-foreground underline-offset-4 transition-colors hover:text-violet-600 hover:underline dark:hover:text-violet-400"
+              >
+                {footer.dataDeletion}
+              </Link>
             </nav>
 
             {siteContact.address ? (

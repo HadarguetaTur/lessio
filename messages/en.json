@@ -1533,6 +1533,50 @@
           "body": "These terms are governed by the laws of the State of Israel. Any disputes will be resolved in the competent courts of Israel."
         }
       }
+    },
+    "dataDeletion": {
+      "title": "Data Deletion Instructions",
+      "metaDescription": "How to request deletion of your personal data from Lessio.",
+      "lastUpdatedDate": "August 14, 2026",
+      "intro": "Lessio is a management platform for private tutoring businesses and learning centres. This page explains how to request deletion of personal data stored in the system, in accordance with the Meta Platform Terms, the GDPR, and the Israeli Privacy Protection Law.",
+      "sections": {
+        "whatData": {
+          "heading": "What Personal Data May Be Stored",
+          "body": "Depending on how you or the tutoring business serving you use the platform, the system may store:",
+          "items": [
+            "Contact details — full name, phone number, and email address",
+            "Lesson and attendance records",
+            "Billing and payment history",
+            "History of messages sent and received via WhatsApp"
+          ]
+        },
+        "whatsappNote": {
+          "heading": "Data Received via WhatsApp (Meta)",
+          "body": "Lessio uses the WhatsApp Business Platform by Meta to send and receive messages on behalf of tutoring businesses. Data received via WhatsApp (phone numbers and message content) is processed solely to operate the service and is fully covered by the deletion instructions on this page. Lessio does not use Facebook Login and does not collect any additional data from your Facebook account."
+        },
+        "howToRequest": {
+          "heading": "How to Request Data Deletion",
+          "body": "You can submit a deletion request in either of two ways:",
+          "items": [
+            "By email — send a request to {email}, including your full name and the phone number registered with the tutoring business",
+            "Via the parent portal — signed-in parents can tap the \"Request data deletion (GDPR)\" button at the bottom of the portal home screen"
+          ],
+          "note": "If your data was entered by a tutoring business (the data controller), Lessio may coordinate the handling of your request with that business."
+        },
+        "whatHappens": {
+          "heading": "What Happens After You Submit a Request",
+          "body": "After verifying the requester's identity:",
+          "items": [
+            "Personal identifiers (name and phone number) are irreversibly anonymised across parent and student records within 30 days",
+            "Billing and accounting records are retained in de-identified form as required by law (up to 7 years under tax regulations)",
+            "Backup copies are purged on the regular backup cycle (up to 90 days)"
+          ]
+        },
+        "contact": {
+          "heading": "Contact",
+          "body": "For questions about data deletion or privacy, contact us at {email}. For more information, see our full privacy policy."
+        }
+      }
     }
   },
   "portal": {

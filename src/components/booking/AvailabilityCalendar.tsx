@@ -262,7 +262,7 @@ export function AvailabilityCalendar({
     : ''
 
   return (
-    <main className="min-h-screen flex items-start justify-center p-6 bg-background">
+    <main className="min-h-screen flex items-start justify-center p-4 sm:p-6 bg-background">
       <div className="max-w-5xl w-full space-y-6 pt-8">
         <div className="space-y-2">
           <button onClick={onBack} className="text-sm text-muted-foreground hover:underline">
@@ -298,7 +298,7 @@ export function AvailabilityCalendar({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
               <button
                 type="button"
                 disabled={summaryLoading || !!activeLock}
@@ -307,7 +307,7 @@ export function AvailabilityCalendar({
               >
                 לשבוע הקודם
               </button>
-              <div className="min-w-44 text-center text-sm font-medium">{weekLabel}</div>
+              <div className="min-w-0 flex-1 text-center text-sm font-medium sm:min-w-44 sm:flex-none">{weekLabel}</div>
               <button
                 type="button"
                 disabled={summaryLoading || !!activeLock}
@@ -333,8 +333,8 @@ export function AvailabilityCalendar({
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-              <div className="grid grid-cols-7 gap-3 min-w-[820px]">
+            <div className="md:overflow-x-auto">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-7 md:min-w-[820px]">
                 {summary?.days.map((day, index) => {
                   const isSelectedDay = day.date === selectedDate
 
@@ -345,15 +345,15 @@ export function AvailabilityCalendar({
                         isSelectedDay ? 'border-primary bg-primary/5' : 'border-border bg-background'
                       }`}
                     >
-                      <div className="text-center space-y-1">
+                      <div className="flex items-baseline justify-center gap-2 md:block md:text-center md:space-y-1">
                         <p className="text-xs text-muted-foreground">{DAY_NAMES[index]}</p>
                         <p className="text-sm font-semibold">{formatDate(day.date, summary.timezone)}</p>
                       </div>
 
                       {day.freeIntervals.length === 0 ? (
-                        <p className="text-xs text-muted-foreground text-center py-6">אין שעות פנויות</p>
+                        <p className="text-xs text-muted-foreground text-center py-2 md:py-6">אין שעות פנויות</p>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
                           {day.freeIntervals.map((band) => {
                             const isSelectedBand =
                               isSelectedDay &&

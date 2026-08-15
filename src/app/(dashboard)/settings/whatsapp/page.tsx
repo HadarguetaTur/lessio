@@ -43,6 +43,7 @@ export default async function WhatsAppSettingsPage() {
   const isConnected = Boolean(phoneNumberId)
 
   const metaAppId = process.env.META_APP_ID ?? ''
+  const metaConfigId = process.env.NEXT_PUBLIC_META_CONFIG_ID ?? ''
 
   const t = await getTranslations('settings')
 
@@ -58,7 +59,7 @@ export default async function WhatsAppSettingsPage() {
         {isConnected ? (
           <ConnectedState phoneNumberId={phoneNumberId!} connectedLabel={t('whatsapp.connected')} />
         ) : (
-          <DisconnectedState metaAppId={metaAppId} />
+          <DisconnectedState metaAppId={metaAppId} metaConfigId={metaConfigId} />
         )}
       </div>
 
@@ -129,8 +130,8 @@ function ConnectedState({ phoneNumberId, connectedLabel }: { phoneNumberId: stri
   )
 }
 
-function DisconnectedState({ metaAppId }: { metaAppId: string }) {
-  const canConnect = Boolean(metaAppId)
+function DisconnectedState({ metaAppId, metaConfigId }: { metaAppId: string; metaConfigId: string }) {
+  const missingVar = !metaAppId ? 'META_APP_ID' : !metaConfigId ? 'NEXT_PUBLIC_META_CONFIG_ID' : null
 
   return (
     <div className="space-y-4">
@@ -144,11 +145,11 @@ function DisconnectedState({ metaAppId }: { metaAppId: string }) {
         תועבר לממשק של Meta לבחירת המספר שברצונך לחבר.
       </p>
 
-      {canConnect ? (
-        <EmbeddedSignupButton metaAppId={metaAppId} />
+      {missingVar === null ? (
+        <EmbeddedSignupButton metaAppId={metaAppId} metaConfigId={metaConfigId} />
       ) : (
         <p className="text-sm text-red-600">
-          META_APP_ID אינו מוגדר בשרת — לא ניתן להתחיל תהליך חיבור.
+          {missingVar} אינו מוגדר בשרת — לא ניתן להתחיל תהליך חיבור.
         </p>
       )}
     </div>

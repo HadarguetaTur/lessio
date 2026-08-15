@@ -38,6 +38,32 @@ export async function subscribeAppToWABA(
   console.info(`[subscribeApp] WABA ${wabaId} subscribed to app`)
 }
 
+/**
+ * Unsubscribes our app from the given WABA (Meta stops delivering its webhook
+ * events). Called on disconnect so Meta does not keep dispatching messages to
+ * a phone_number_id we can no longer route.
+ * Throws on any non-OK response.
+ */
+export async function unsubscribeAppFromWABA(
+  wabaId: string,
+  accessToken: string
+): Promise<void> {
+  const res = await fetch(
+    `https://graph.facebook.com/${META_API_VERSION}/${wabaId}/subscribed_apps`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  )
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`[subscribeApp] Failed to unsubscribe WABA ${wabaId}: ${res.status} ${body}`)
+  }
+
+  console.info(`[subscribeApp] WABA ${wabaId} unsubscribed from app`)
+}
+
 export type SubscribedApp = {
   whatsapp_business_api_data?: { id?: string; name?: string; link?: string }
 }

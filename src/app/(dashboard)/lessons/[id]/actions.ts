@@ -15,6 +15,10 @@ import { autoSendPaymentRequest } from '@/lib/payment-request/autoSend'
 import { cancelLessonSeries, type CancelSeriesScope } from '@/lib/lessons/cancelSeries'
 import { createCancellationEvent } from '@/lib/billing/monthly/cancellationEvents'
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
+import { DateTime } from 'luxon'
+import { decryptToken } from '@/lib/crypto'
+import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { sendTextMessage } from '@/lib/whatsapp'
 
 const VALID_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
 
@@ -375,4 +379,117 @@ async function getOrgTimezone(orgId: string): Promise<string> {
     .eq('id', orgId)
     .single()
   return data?.timezone ?? 'Asia/Jerusalem'
+}
+
+export type SendReminderResult = { error: string | null }
+
+/**
+ * Sends a WhatsApp lesson reminder for a scheduled lesson, on demand.
+ * Same message + notification_log semantics as the lesson-reminders cron,
+ * so the hourly cron won't double-send for a lesson reminded manually.
+ */
+export async function sendLessonReminderAction(lessonId: string): Promise<SendReminderResult> {
+  const session = await getSession()
+
+  try {
+    requireMutation(session)
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+  }
+
+  if (session.role !== 'owner' && session.role !== 'admin') {
+    return { error: 'אין הרשאה לביצוע פעולה זו' }
+  }
+
+  const db = createServiceRoleClient()
+
+  const { data: org } = await db
+    .from('organizations')
+    .select('whatsapp_access_token, whatsapp_phone_number_id, timezone')
+    .eq('id', session.orgId)
+    .single()
+
+  if (!org?.whatsapp_access_token || !org?.whatsapp_phone_number_id) {
+    return { error: 'WhatsApp לא מחובר — יש להתחבר בהגדרות' }
+  }
+
+  const { data: lesson } = await db
+    .from('lessons')
+    .select(
+      `id, start_at, status,
+       teachers ( profiles ( full_name ) ),
+       lesson_students ( students ( full_name, relationships ( is_primary, parents ( phone, is_active ) ) ) )`
+    )
+    .eq('id', lessonId)
+    .eq('organization_id', session.orgId)
+    .single()
+
+  if (!lesson) return { error: 'שיעור לא נמצא' }
+  if (lesson.status !== 'scheduled') {
+    return { error: 'ניתן לשלוח תזכורת רק לשיעור מתוכנן' }
+  }
+
+  type LessonRow = {
+    start_at: string
+    teachers: { profiles: { full_name: string | null } | null } | null
+    lesson_students: Array<{
+      students: {
+        full_name: string | null
+        relationships: Array<{
+          is_primary: boolean | null
+          parents: { phone: string | null; is_active: boolean | null } | null
+        }> | null
+      } | null
+    }>
+  }
+  const row = lesson as unknown as LessonRow
+
+  let parentPhone: string | null = null
+  for (const ls of row.lesson_students ?? []) {
+    for (const rel of ls.students?.relationships ?? []) {
+      if (rel.is_primary && rel.parents?.is_active && rel.parents.phone) {
+        parentPhone = rel.parents.phone
+        break
+      }
+    }
+    if (parentPhone) break
+  }
+  if (!parentPhone) return { error: 'לא נמצא הורה ראשי פעיל עם מספר טלפון' }
+
+  const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
+  const dt = DateTime.fromISO(row.start_at, { zone: 'utc' }).setZone(timezone).setLocale('he')
+  const teacherName = row.teachers?.profiles?.full_name ?? 'המורה'
+
+  const body = await resolveTemplate(session.orgId, 'lesson_reminder', {
+    teacher_name: teacherName,
+    date: dt.toFormat("cccc, d.M"),
+    time: dt.toFormat('HH:mm'),
+  })
+
+  try {
+    await sendTextMessage(
+      parentPhone,
+      body,
+      decryptToken(org.whatsapp_access_token as string),
+      org.whatsapp_phone_number_id as string
+    )
+  } catch (e) {
+    console.error('[lessons] Manual reminder send failed', { lessonId, error: e })
+    return { error: 'שליחת התזכורת נכשלה' }
+  }
+
+  // Dedup parity with the lesson-reminders cron (UNIQUE org+type+entity)
+  await db.from('notification_log').upsert(
+    {
+      organization_id: session.orgId,
+      type: 'lesson_reminder',
+      entity_id: lessonId,
+      status: 'sent',
+      error_message: null,
+      sent_at: new Date().toISOString(),
+    },
+    { onConflict: 'organization_id,type,entity_id' }
+  )
+
+  return { error: null }
 }

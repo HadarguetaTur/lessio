@@ -16,6 +16,7 @@ export type NotificationType =
   | 'goal_achieved'
   | 'portal_message'
   | 'invoice_cancelled'
+  | 'webhook_unroutable'
 
 export interface CreateNotificationParams {
   orgId: string
@@ -167,6 +168,111 @@ export async function markAllRead(profileId: string, orgId: string): Promise<voi
   if (error) {
     console.error('[notifications] Failed to mark all as read', { profileId, error: error.message })
   }
+}
+
+/**
+ * Notify all active superadmins with a platform-level notification
+ * (organization_id IS NULL — Sprint 31 Story 4b). Fire-and-forget.
+ */
+export async function notifySuperadmins(
+  type: NotificationType,
+  title: string,
+  body?: string,
+  actionUrl?: string
+): Promise<void> {
+  try {
+    const db = createServiceRoleClient()
+    const { data: superadmins, error } = await db
+      .from('profiles')
+      .select('id')
+      .eq('role', 'superadmin')
+      .eq('is_active', true)
+
+    if (error) {
+      console.error('[notifications] Failed to resolve superadmins', { error: error.message })
+      return
+    }
+
+    if (!superadmins || superadmins.length === 0) return
+
+    const { error: insertError } = await db.from('in_app_notifications').insert(
+      superadmins.map((p) => ({
+        organization_id: null,
+        recipient_profile_id: p.id,
+        type,
+        title,
+        body: body ?? null,
+        action_url: actionUrl ?? null,
+      }))
+    )
+
+    if (insertError) {
+      console.error('[notifications] Failed to notify superadmins', { type, error: insertError.message })
+    }
+  } catch (err) {
+    console.error('[notifications] Unexpected error notifying superadmins', { type, err })
+  }
+}
+
+/**
+ * Fetch platform-level notifications (organization_id IS NULL) for a superadmin.
+ */
+export async function getSuperadminNotifications(
+  profileId: string,
+  opts: { unreadOnly?: boolean; limit?: number } = {}
+): Promise<InAppNotification[]> {
+  const db = createServiceRoleClient()
+  let query = db
+    .from('in_app_notifications')
+    .select('id, type, title, body, action_url, read_at, created_at')
+    .is('organization_id', null)
+    .eq('recipient_profile_id', profileId)
+    .order('created_at', { ascending: false })
+    .limit(opts.limit ?? 50)
+
+  if (opts.unreadOnly) {
+    query = query.is('read_at', null)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('[notifications] Failed to fetch superadmin notifications', { profileId, error: error.message })
+    return []
+  }
+
+  return (data ?? []) as InAppNotification[]
+}
+
+/**
+ * True when an unread platform-level notification of this type whose body
+ * contains `bodyContains` was created in the last `withinHours` hours.
+ * Used to throttle repeat alerts (e.g. a disconnected org emitting hundreds of
+ * unroutable webhook messages per day).
+ */
+export async function hasRecentUnreadSuperadminNotification(
+  type: NotificationType,
+  bodyContains: string,
+  withinHours: number
+): Promise<boolean> {
+  const db = createServiceRoleClient()
+  const since = new Date(Date.now() - withinHours * 60 * 60 * 1000).toISOString()
+
+  const { count, error } = await db
+    .from('in_app_notifications')
+    .select('id', { count: 'exact', head: true })
+    .is('organization_id', null)
+    .eq('type', type)
+    .is('read_at', null)
+    .gt('created_at', since)
+    .like('body', `%${bodyContains}%`)
+
+  if (error) {
+    console.error('[notifications] Failed to check recent superadmin notifications', { type, error: error.message })
+    return false
+  }
+
+  return (count ?? 0) > 0
 }
 
 /**

@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizePhone } from '@/lib/phone'
 import { decryptToken } from '@/lib/crypto'
-import { sendTextMessage } from '@/lib/whatsapp'
+import { sendOtp } from '@/lib/whatsapp/sendOtp'
 import { generateOtp, storeOtp, verifyOtp, countRecentOtpRequests } from '@/lib/portal/otp'
 import { setPortalSessionCookie } from '@/lib/portal/session'
 import { requireFeature } from '@/lib/saas/featureGate'
@@ -80,10 +80,9 @@ export async function requestOtpAction(
   await storeOtp({ phone, orgId, otp })
 
   const accessToken = decryptToken(org.whatsapp_access_token as string)
-  const message = `קוד הכניסה שלך ל-LESSIO: *${otp}*\nהקוד בתוקף ל-10 דקות.`
 
   try {
-    await sendTextMessage(phone, message, accessToken, org.whatsapp_phone_number_id as string)
+    await sendOtp(phone, otp, accessToken, org.whatsapp_phone_number_id as string)
   } catch (err) {
     console.error('[requestOtpAction] Failed to send OTP via WhatsApp', { org_id: orgId, err })
     return { error: 'שגיאה בשליחת הקוד. נסה/י שוב.' }

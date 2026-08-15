@@ -24,11 +24,18 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
     // 1. Load org settings — single query covers all needed fields
     const { data: org } = await db
       .from('organizations')
-      .select('auto_send_payment_request, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone')
+      .select('auto_send_payment_request, automation_payment_request_enabled, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone')
       .eq('id', orgId)
       .single()
 
     if (!org?.auto_send_payment_request || !org?.payment_provider) return
+
+    // WhatsApp-automations toggle (Sprint 31) — ANDed with the legacy master
+    // switch above. Manual sends from /billing are intentionally not gated.
+    if (org.automation_payment_request_enabled === false) {
+      console.info('[autoSendPaymentRequest] automation_payment_request_enabled is off — skipping', { orgId, lessonId })
+      return
+    }
 
     const encryptedToken = org.whatsapp_access_token as string | null
     const phoneNumberId = org.whatsapp_phone_number_id as string | null

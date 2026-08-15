@@ -167,8 +167,8 @@ describe('createCancellationCharge', () => {
     await expect(
       createCancellationCharge('lesson-1', 'org-1', 'parent-1', {
         shouldCharge: true,
+        chargeType: 'full',
         amount: 120,
-        percentage: 100,
         reasonCode: 'late_cancel',
       })
     ).resolves.toBeNull()

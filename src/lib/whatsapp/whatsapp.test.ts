@@ -14,7 +14,7 @@ function makePayload(overrides?: Partial<{
 }>): MetaWebhookPayload {
   const o = { object: 'whatsapp_business_account', from: '972501234567', text: 'שיעור', displayPhone: '0521234567', phoneNumberId: 'phone-id-1', type: 'text', ...overrides }
   return {
-    object: o.object,
+    object: o.object as MetaWebhookPayload['object'],
     entry: [{
       id: 'entry-1',
       changes: [{

@@ -43,6 +43,8 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   // Sprint 7: Meta Embedded Signup OAuth flow
   'META_APP_ID',
   'META_APP_SECRET',
+  // Sprint 31: Meta Embedded Signup Configuration ID (FB.login config_id)
+  'NEXT_PUBLIC_META_CONFIG_ID',
   // Sprint 8: per-org payment provider credential encryption
   'PAYMENT_CONFIG_ENCRYPTION_KEY',
   // Sprint 22: HMAC secret for Sumit SaaS billing webhook signature verification

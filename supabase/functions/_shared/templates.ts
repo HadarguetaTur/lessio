@@ -7,6 +7,9 @@
  * than constructed inside. DEFAULT_TEMPLATES is duplicated intentionally —
  * Deno Edge Functions cannot import from src/.
  *
+ * SYNC: MessageTemplateType and DEFAULT_TEMPLATES must be kept in sync with
+ * src/lib/whatsapp/templates.ts — update both files together.
+ *
  * Variable syntax: {{variable_name}} (double braces, no spaces)
  */
 
@@ -26,6 +29,8 @@ export type MessageTemplateType =
   | 'balance_reply'
   | 'schedule_reply'
   | 'portal_link_reply'
+  | 'homework_graded'
+  | 'ai_satisfaction_prompt'
   | 'unknown_intent_fallback'
 
 /**
@@ -59,6 +64,10 @@ export const DEFAULT_TEMPLATES: Record<MessageTemplateType, string> = {
     'השיעורים הקרובים שלך:\n{{lesson_lines}}',
   portal_link_reply:
     'קישור לאזור האישי שלך:\n{{portal_url}}\n\nניתן להתחבר עם מספר הטלפון שלך.',
+  homework_graded:
+    '✅ שיעורי הבית "{{title}}" קיבלו ציון: {{score}}/100.\n{{feedback_line}}',
+  ai_satisfaction_prompt:
+    'האם התשובה עזרה? 👍 / 👎',
   unknown_intent_fallback:
     'שלום 👋 לא הצלחתי להבין את הבקשה שלך.\nניתן לשלוח:\n• הזמנה — לקביעת שיעור\n• ביטול — לביטול שיעור\n• חוב — לסגירת יתרה\n• שיעורים — ללוח זמנים\n• פורטל — לגישה לאזור האישי',
 }

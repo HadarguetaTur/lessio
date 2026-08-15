@@ -83,12 +83,17 @@ export async function sendTemplateMessage(
 
 /**
  * Approved template specs for Edge Function use.
- * Must be kept in sync with src/lib/whatsapp/approvedTemplates.ts.
+ * SYNC: must be kept in sync with src/lib/whatsapp/approvedTemplates.ts
+ * (and template names with src/lib/whatsapp/registerTemplates.ts) —
+ * update all files together.
  */
 const APPROVED_TEMPLATES: Record<string, { name: string; languageCode: string; bodyParamCount: number }> = {
   lesson_reminder:  { name: 'lessio_lesson_reminder_he',  languageCode: 'he', bodyParamCount: 3 },
   payment_reminder: { name: 'lessio_payment_reminder_he', languageCode: 'he', bodyParamCount: 2 },
+  payment_request:  { name: 'lessio_payment_request_he',  languageCode: 'he', bodyParamCount: 2 },
   homework_reminder: { name: 'lessio_homework_reminder_he', languageCode: 'he', bodyParamCount: 3 },
+  homework_assignment: { name: 'lessio_homework_assignment_he', languageCode: 'he', bodyParamCount: 3 },
+  homework_graded: { name: 'lessio_homework_graded_he', languageCode: 'he', bodyParamCount: 3 },
 }
 
 /**
@@ -119,9 +124,9 @@ export async function sendSmartMessage(
 
   const { data: recent } = await db
     .from('whatsapp_processed_messages')
-    .select('id')
+    .select('message_id')
     .eq('organization_id', orgId)
-    .eq('from_phone', phone)
+    .eq('phone', phone)
     .gt('created_at', cutoff)
     .limit(1)
     .maybeSingle()

@@ -32,6 +32,11 @@ import {
   hasPortalIntent,
 } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
+import {
+  isDemoRescheduleEnabled,
+  hasRescheduleIntent,
+  handleRescheduleIntent,
+} from '@/lib/whatsapp/demoReschedule'
 import { upsertLead } from '@/lib/leads'
 import {
   getEligibleLessons,
@@ -47,8 +52,14 @@ import { isAiConfiguredForOrg } from '@/lib/ai-assistant/providers/factory'
 import { findRecentUsageLog, updateSatisfaction } from '@/lib/ai-assistant/usage'
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { DateTime } from 'luxon'
-import { claimIncomingMessage, releaseIncomingMessageClaim } from '@/lib/whatsapp/idempotency'
-import { notifyMultiple, getOwnerAndAdminProfileIds } from '@/lib/notifications'
+import { claimIncomingMessage, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
+import {
+  notifyMultiple,
+  getOwnerAndAdminProfileIds,
+  notifySuperadmins,
+  hasRecentUnreadSuperadminNotification,
+} from '@/lib/notifications'
+import * as Sentry from '@sentry/nextjs'
 
 // Message processing continues after the response via after(); allow up to 60s
 // for DB lookups, AI-assistant calls, and outbound WhatsApp sends.
@@ -144,6 +155,34 @@ function verifySignature(rawBody: string, signature: string | null, appSecret: s
   return timingSafeEqual(expected, sig)
 }
 
+/**
+ * Fire-and-forget superadmin alert for an unroutable phone_number_id.
+ * Throttled: at most one unread notification per phone_number_id per 24h —
+ * a disconnected org can emit hundreds of messages a day.
+ */
+async function notifyUnroutablePhoneNumber(phoneNumberId: string): Promise<void> {
+  try {
+    const alreadyNotified = await hasRecentUnreadSuperadminNotification(
+      'webhook_unroutable',
+      phoneNumberId,
+      24
+    )
+    if (alreadyNotified) return
+
+    await notifySuperadmins(
+      'webhook_unroutable',
+      'הודעת WhatsApp התקבלה למספר לא מזוהה',
+      `phone_number_id: ${phoneNumberId} — ייתכן שארגון נותק או שהחיבור שלו פגום.`,
+      '/admin/orgs'
+    )
+  } catch (err) {
+    console.error('[whatsapp/webhook] Failed to notify superadmins about unroutable phone_number_id', {
+      phoneNumberId,
+      err,
+    })
+  }
+}
+
 async function processMessage(
   msg: {
     from: string
@@ -193,7 +232,16 @@ async function processMessage(
     .maybeSingle()
 
   if (orgError || !org) {
-    console.warn('[whatsapp/webhook] No org found for phone_number_id — ignoring', { phoneNumberId: msg.phoneNumberId })
+    // An unroutable phone_number_id usually means a disconnected/misconfigured
+    // org silently losing messages — escalate instead of just warning.
+    console.error('[whatsapp/webhook] No org found for phone_number_id', {
+      phoneNumberId: msg.phoneNumberId,
+      messageId: msg.messageId,
+    })
+    Sentry.captureException(new Error('WhatsApp webhook: unknown phone_number_id'), {
+      extra: { phoneNumberId: msg.phoneNumberId, messageId: msg.messageId },
+    })
+    void notifyUnroutablePhoneNumber(msg.phoneNumberId)
     return
   }
 
@@ -212,6 +260,18 @@ async function processMessage(
   }
 
   const phoneNumberId = msg.phoneNumberId
+
+  // Rate limit: 30 messages per phone per 5 minutes, checked BEFORE the claim
+  // so dropped messages insert no row and the window slides. The 200 was
+  // already returned before this work runs, so Meta never sees a 429.
+  if (await isRateLimited(org.id, senderPhone)) {
+    console.warn('[whatsapp/webhook] Rate limit exceeded — dropping message', {
+      orgId: org.id,
+      senderPhone,
+      messageId: msg.messageId,
+    })
+    return
+  }
 
   const claimed = await claimIncomingMessage(org.id, msg.messageId, senderPhone)
   if (!claimed) {
@@ -267,6 +327,20 @@ async function processMessage(
       (org.timezone as string | null) ?? 'Asia/Jerusalem',
       accessToken, phoneNumberId
     )
+    return
+  }
+
+  // 8b. Demo reschedule intent (DEMO_RESCHEDULE_ENABLED only — Meta App Review demo)
+  if (isDemoRescheduleEnabled() && hasRescheduleIntent(msg.text)) {
+    await handleRescheduleIntent({
+      parentId: parent.id,
+      orgId: org.id,
+      senderPhone,
+      text: msg.text,
+      timezone: (org.timezone as string | null) ?? 'Asia/Jerusalem',
+      accessToken,
+      phoneNumberId,
+    })
     return
   }
 

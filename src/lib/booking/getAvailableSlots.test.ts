@@ -14,7 +14,7 @@ vi.mock('@/lib/supabase/service-role', () => ({
 }))
 
 // fromMock is reassigned per test
-let fromMock: (table: string) => unknown = () => buildChain({ data: null, error: null }, 'single')
+let fromMock: (table: string) => unknown = () => buildChain({ data: null, error: null })
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

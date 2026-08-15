@@ -542,14 +542,34 @@ async function sendBillingPaymentRequestCore(
 
   if (!parent?.phone) throw new Error('הורה לא נמצא או חסר מספר טלפון')
 
-  // Create payment link
-  const { provider, providerName } = await getPaymentProvider(orgId)
-  const paymentResult = await provider.createPaymentLink({
-    chargeId: charge.id,
-    amount: Number(charge.amount),
-    description: `חיוב חודשי ${billing.billing_month} — ${parent.full_name}`,
-    orgId,
-  })
+  // Create payment link. DEMO_PAYMENT_LINK_ENABLED=1 allows sending without a
+  // configured payment provider by linking to the org's parent portal instead
+  // (Meta App Review demo — dead branch in normal production operation).
+  let paymentResult: { url: string; reference: string }
+  let providerName: string
+  try {
+    const p = await getPaymentProvider(orgId)
+    providerName = p.providerName
+    paymentResult = await p.provider.createPaymentLink({
+      chargeId: charge.id,
+      amount: Number(charge.amount),
+      description: `חיוב חודשי ${billing.billing_month} — ${parent.full_name}`,
+      orgId,
+    })
+  } catch (err) {
+    if (
+      process.env.DEMO_PAYMENT_LINK_ENABLED === '1' &&
+      err instanceof PaymentProviderNotConfiguredError
+    ) {
+      providerName = 'demo'
+      paymentResult = {
+        url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/portal/${orgId}`,
+        reference: `demo-${charge.id}`,
+      }
+    } else {
+      throw err
+    }
+  }
 
   // Persist link on charge
   await db

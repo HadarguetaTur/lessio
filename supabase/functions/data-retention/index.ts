@@ -9,7 +9,7 @@
  *   2. For each org, anonymise:
  *      a. conversation_log rows older than retention window:
  *         user_phone → '***', message → '[anonymised]', response → '[anonymised]'
- *      b. whatsapp_processed_messages.from_phone → '***' for rows older than retention window
+ *      b. whatsapp_processed_messages.phone → '***' for rows older than retention window
  *   3. Failures are isolated per org
  */
 
@@ -86,10 +86,10 @@ async function processOrg(db: any, orgId: string, retentionDays: number) {
   // ── 2b. Anonymise whatsapp_processed_messages ────────────────────────────
   const { error: waErr } = await db
     .from('whatsapp_processed_messages')
-    .update({ from_phone: '***' })
+    .update({ phone: '***' })
     .eq('organization_id', orgId)
     .lt('created_at', cutoffIso)
-    .neq('from_phone', '***') // skip already-anonymised rows
+    .neq('phone', '***') // skip already-anonymised rows
 
   if (waErr) {
     console.error('[data-retention] whatsapp_processed_messages update failed', {

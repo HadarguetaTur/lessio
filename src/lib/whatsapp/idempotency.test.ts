@@ -16,7 +16,7 @@ vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: mockCreateServiceRoleClient,
 }))
 
-import { claimIncomingMessage, releaseIncomingMessageClaim } from './idempotency'
+import { claimIncomingMessage, releaseIncomingMessageClaim, isRateLimited } from './idempotency'
 
 describe('whatsapp idempotency helpers', () => {
   beforeEach(() => {
@@ -83,5 +83,39 @@ describe('whatsapp idempotency helpers', () => {
     expect(consoleErrorSpy).toHaveBeenCalled()
 
     consoleErrorSpy.mockRestore()
+  })
+})
+
+describe('isRateLimited', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function makeCountClient(result: { count: number | null; error: { message: string } | null }) {
+    const chain: Record<string, unknown> = {}
+    const pass = () => chain
+    ;['select', 'eq'].forEach((m) => { chain[m] = pass })
+    chain['gt'] = vi.fn().mockResolvedValue(result)
+    return { from: vi.fn(() => chain) }
+  }
+
+  it('returns true at 30 or more messages in the window', async () => {
+    mockCreateServiceRoleClient.mockReturnValue(makeCountClient({ count: 30, error: null }))
+    await expect(isRateLimited('org-1', '+972501234567')).resolves.toBe(true)
+  })
+
+  it('returns false below the threshold', async () => {
+    mockCreateServiceRoleClient.mockReturnValue(makeCountClient({ count: 29, error: null }))
+    await expect(isRateLimited('org-1', '+972501234567')).resolves.toBe(false)
+  })
+
+  it('fails open on a count query error', async () => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mockCreateServiceRoleClient.mockReturnValue(makeCountClient({ count: null, error: { message: 'db down' } }))
+
+    await expect(isRateLimited('org-1', '+972501234567')).resolves.toBe(false)
+    expect(consoleWarnSpy).toHaveBeenCalled()
+
+    consoleWarnSpy.mockRestore()
   })
 })

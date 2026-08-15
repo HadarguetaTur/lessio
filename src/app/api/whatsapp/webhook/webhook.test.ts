@@ -61,6 +61,18 @@ vi.mock('@/lib/ai-assistant/conversationLog', () => ({
 vi.mock('@/lib/whatsapp/idempotency', () => ({
   claimIncomingMessage: vi.fn().mockResolvedValue(true),
   releaseIncomingMessageClaim: vi.fn().mockResolvedValue(undefined),
+  isRateLimited: vi.fn().mockResolvedValue(false),
+}))
+
+vi.mock('@sentry/nextjs', () => ({
+  captureException: vi.fn(),
+}))
+
+vi.mock('@/lib/notifications', () => ({
+  notifyMultiple: vi.fn().mockResolvedValue(undefined),
+  getOwnerAndAdminProfileIds: vi.fn().mockResolvedValue([]),
+  notifySuperadmins: vi.fn().mockResolvedValue(undefined),
+  hasRecentUnreadSuperadminNotification: vi.fn().mockResolvedValue(false),
 }))
 
 const mockUpsertLead = vi.fn().mockResolvedValue(undefined)
@@ -90,7 +102,9 @@ import {
 } from '@/lib/cancellation-flow'
 import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
-import { claimIncomingMessage, releaseIncomingMessageClaim } from '@/lib/whatsapp/idempotency'
+import { claimIncomingMessage, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
+import { notifySuperadmins, hasRecentUnreadSuperadminNotification } from '@/lib/notifications'
+import * as Sentry from '@sentry/nextjs'
 
 const mockSendTextMessage = vi.mocked(sendTextMessage)
 const mockSendUnknownParentReply = vi.mocked(sendUnknownParentReply)
@@ -106,6 +120,10 @@ const mockAiAssistantConfigured = vi.mocked(isAiAssistantConfigured)
 const mockLogExchange = vi.mocked(logExchange)
 const mockClaimIncomingMessage = vi.mocked(claimIncomingMessage)
 const mockReleaseIncomingMessageClaim = vi.mocked(releaseIncomingMessageClaim)
+const mockIsRateLimited = vi.mocked(isRateLimited)
+const mockNotifySuperadmins = vi.mocked(notifySuperadmins)
+const mockHasRecentUnreadSuperadminNotification = vi.mocked(hasRecentUnreadSuperadminNotification)
+const mockSentryCaptureException = vi.mocked(Sentry.captureException)
 const mockDecryptToken = vi.mocked(decryptToken)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -719,5 +737,157 @@ describe('WhatsApp cancellation intent', () => {
       ['lesson-2']
     )
     expect(mockDeleteCancellationSession).not.toHaveBeenCalled()
+  })
+})
+
+describe('WhatsApp automation toggles', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.WHATSAPP_APP_SECRET = APP_SECRET
+    process.env.WHATSAPP_VERIFY_TOKEN = VERIFY_TOKEN
+  })
+
+  it('skips lead creation and reply when automation_new_leads_enabled is off', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            automation_new_leads_enabled: false,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: null, error: null }) // unknown sender
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('שיעור'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockUpsertLead).not.toHaveBeenCalled()
+    expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
+  })
+
+  it('skips the cancellation flow when automation_cancellation_enabled is off', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            automation_cancellation_enabled: false,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const req = makeRequest(makeWebhookPayload('ביטול'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockGetEligibleLessons).not.toHaveBeenCalled()
+    expect(mockSendCancellationLessonList).not.toHaveBeenCalled()
+    // Falls through to the unknown-intent fallback template instead
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'mocked-template-body',
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+})
+
+describe('WhatsApp webhook hardening (Sprint 31 Story 4)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.WHATSAPP_APP_SECRET = APP_SECRET
+    process.env.WHATSAPP_VERIFY_TOKEN = VERIFY_TOKEN
+    mockIsRateLimited.mockResolvedValue(false)
+    mockHasRecentUnreadSuperadminNotification.mockResolvedValue(false)
+    mockClaimIncomingMessage.mockResolvedValue(true)
+  })
+
+  function mockKnownOrgAndParent() {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+  }
+
+  it('drops the message without claiming when the phone is rate limited', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mockIsRateLimited.mockResolvedValue(true)
+    mockKnownOrgAndParent()
+
+    const req = makeRequest(makeWebhookPayload('שלום'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockIsRateLimited).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164)
+    expect(mockClaimIncomingMessage).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
+
+    warnSpy.mockRestore()
+  })
+
+  it('processes the message when the rate limit check fails open', async () => {
+    mockIsRateLimited.mockResolvedValue(false)
+    mockKnownOrgAndParent()
+
+    const req = makeRequest(makeWebhookPayload('שלום'))
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockClaimIncomingMessage).toHaveBeenCalled()
+  })
+
+  it('escalates an unknown phone_number_id to Sentry + superadmin notification', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockFrom.mockImplementation(() => buildChain({ data: null, error: null })) // org not found
+
+    const req = makeRequest(makeWebhookPayload('שלום'))
+    const res = await POST(req)
+    // notifyUnroutablePhoneNumber is fire-and-forget — flush microtasks
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(res.status).toBe(200)
+    expect(mockSentryCaptureException).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'WhatsApp webhook: unknown phone_number_id' }),
+      expect.objectContaining({ extra: expect.objectContaining({ phoneNumberId: 'phone-number-id-1' }) })
+    )
+    expect(mockNotifySuperadmins).toHaveBeenCalledWith(
+      'webhook_unroutable',
+      expect.any(String),
+      expect.stringContaining('phone-number-id-1'),
+      expect.any(String)
+    )
+
+    errorSpy.mockRestore()
+  })
+
+  it('throttles repeat superadmin notifications for the same phone_number_id', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockHasRecentUnreadSuperadminNotification.mockResolvedValue(true)
+    mockFrom.mockImplementation(() => buildChain({ data: null, error: null }))
+
+    const req = makeRequest(makeWebhookPayload('שלום'))
+    await POST(req)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(mockNotifySuperadmins).not.toHaveBeenCalled()
+    // Sentry still fires — it dedupes by grouping on its own side
+    expect(mockSentryCaptureException).toHaveBeenCalled()
+
+    errorSpy.mockRestore()
   })
 })

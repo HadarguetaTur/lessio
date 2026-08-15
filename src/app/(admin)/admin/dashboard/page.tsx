@@ -3,7 +3,9 @@ import { AdminHeader } from '@/components/admin/AdminHeader'
 import { PlatformKpiGrid } from '@/components/admin/PlatformKpiGrid'
 import { NeedsSetupList } from '@/components/admin/NeedsSetupList'
 import { RecentOrgsList } from '@/components/admin/RecentOrgsList'
+import { PlatformNotificationsList } from '@/components/admin/PlatformNotificationsList'
 import { getPlatformDashboard } from '@/lib/superadmin/dashboard'
+import { requireSuperAdminSession } from '@/lib/auth/session'
 
 /**
  * Platform dashboard — superadmin only.
@@ -13,11 +15,13 @@ import { getPlatformDashboard } from '@/lib/superadmin/dashboard'
  */
 export default async function AdminDashboardPage() {
   const t = await getTranslations('admin')
+  const { profileId } = await requireSuperAdminSession()
   const { stats, needsSetup, recentOrgs } = await getPlatformDashboard()
 
   return (
     <div className="max-w-5xl mx-auto">
       <AdminHeader title={t('dashboard.title')} />
+      <PlatformNotificationsList profileId={profileId} />
       <PlatformKpiGrid stats={stats} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <NeedsSetupList orgs={needsSetup} />

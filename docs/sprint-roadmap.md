@@ -38,6 +38,7 @@
 | 28 | Analytics Pro (KPI deltas, revenue forecasting, teacher performance, student LTV) | ✅ Done |
 | 29 | Google Login + Google Calendar Integration | 🚧 In Progress |
 | 30 | Revenue Integrity & Reliability | 📝 Planned |
+| 31 | WhatsApp Production Launch | 📝 Planned |
 
 ---
 
@@ -66,6 +67,26 @@
 - Story 3: Ship WhatsApp automations WIP (Edge template sync, toggle E2E, WABA ID signup)
 - Story 4: Reliability hardening (Sentry in Edge Functions, cron send/mark atomicity, webhook rate limiting)
 - Story 5 (stretch): Dashboard CRUD completions (edit teacher/goal/note, teacher lesson cancel, subscriptions page links)
+
+> **Note:** Story 3 and the WhatsApp parts of Story 4 (4c webhook rate limit, 4d unknown `phone_number_id`) are absorbed into Sprint 31 — see `docs/sprint-31-scope.md`.
+
+---
+
+## Sprint 31 — WhatsApp Production Launch
+**Status:** 📝 Planned
+**Depends on:** none (runs in parallel with Sprint 30 Stories 1–2; absorbs Sprint 30 Story 3 + WhatsApp parts of Story 4)
+**Scope:** See `docs/sprint-31-scope.md`
+**Source:** Full WhatsApp end-to-end audit (2026-08-14)
+
+### Stories
+- Story 0: Critical correctness fixes (`from_phone` session-window/PII bug, Node↔Deno template sync, 16-type templates UI)
+- Story 1: Connection lifecycle (`waba_id` required, disconnect unsubscribe/cleanup, Embedded Signup `config_id`)
+- Story 2: Automation toggle enforcement in Edge Functions + autoSend
+- Story 3: Portal OTP via Meta AUTHENTICATION template (cold-start login fix)
+- Story 4: Webhook hardening (rate limit 30/phone/5min, unknown `phone_number_id` → Sentry + superadmin notification)
+- Story 5: Template approval status tracking (webhook field + status chips in settings) — may slip
+- Story 6: Bot improvements (intent collisions, non-greedy cancellation session, group-lesson guard, non-text replies, outbound message log)
+- Ops: Meta Business App + Business Verification + App Review + Embedded Signup Configuration, cron registration, migrations, WABA backfill
 
 ---
 

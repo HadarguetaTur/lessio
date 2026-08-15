@@ -15,26 +15,11 @@ import {
  * Message templates settings page — owner only.
  * Per /docs/sprint-16-scope.md § Story 3.
  *
- * Loads all 14 template types; for each type shows the custom row if it
- * exists, otherwise shows the system default (greyed out).
+ * Loads every template type from DEFAULT_TEMPLATES; for each type shows the
+ * custom row if it exists, otherwise shows the system default (greyed out).
  */
 
-const ALL_TYPES: MessageTemplateType[] = [
-  'booking_link',
-  'booking_confirmation',
-  'lesson_reminder',
-  'payment_reminder',
-  'payment_request',
-  'cancellation_confirmation',
-  'cancellation_admin_alert',
-  'receipt_notification',
-  'homework_assignment',
-  'homework_reminder',
-  'balance_reply',
-  'schedule_reply',
-  'portal_link_reply',
-  'unknown_intent_fallback',
-]
+const ALL_TYPES = Object.keys(DEFAULT_TEMPLATES) as MessageTemplateType[]
 
 export default async function MessageTemplatesPage() {
   const { orgId, role } = await getSession()

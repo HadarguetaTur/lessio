@@ -18,11 +18,12 @@ import { saveWhatsAppConnection, type WhatsAppActionResult } from './actions'
 
 interface Props {
   metaAppId: string
+  metaConfigId: string
 }
 
 const initialState: WhatsAppActionResult = { error: null }
 
-export function EmbeddedSignupButton({ metaAppId }: Props) {
+export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
   const t = useTranslations('settings.whatsapp')
   const tCommon = useTranslations('common')
   const formRef = useRef<HTMLFormElement>(null)
@@ -65,11 +66,13 @@ export function EmbeddedSignupButton({ metaAppId }: Props) {
 
       if (msg.type === 'WA_EMBEDDED_SIGNUP' && msg.event === 'FINISH') {
         const phoneNumberId = msg.data?.phone_number_id
-        const wabaId = msg.data?.waba_id ?? ''
+        const wabaId = msg.data?.waba_id
         const code = msg.data?.code
 
-        if (!phoneNumberId || !code) {
-          console.warn('[EmbeddedSignup] Missing phone_number_id or code in callback', msg.data)
+        // waba_id is as mandatory as the rest: without it the server cannot
+        // subscribe the WABA to our webhook and the connection would be deaf.
+        if (!phoneNumberId || !wabaId || !code) {
+          console.warn('[EmbeddedSignup] Missing phone_number_id, waba_id or code in callback', msg.data)
           return
         }
 
@@ -91,7 +94,7 @@ export function EmbeddedSignupButton({ metaAppId }: Props) {
     window.FB?.login(
       () => { /* OAuth handled via message event */ },
       {
-        config_id: '',   // optional Business Config ID — leave empty to use default
+        config_id: metaConfigId,   // Embedded Signup Configuration ID (Meta App Dashboard)
         response_type: 'code',
         override_default_response_type: true,
         extras: { setup: {}, featurization: { messaging_product: 'whatsapp' } },

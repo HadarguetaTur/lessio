@@ -16,15 +16,18 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { encryptToken } from '@/lib/crypto'
+import { encryptToken, decryptToken } from '@/lib/crypto'
 import { registerTemplatesForWABA } from '@/lib/whatsapp/registerTemplates'
-import { subscribeAppToWABA } from '@/lib/whatsapp/subscribeApp'
+import { subscribeAppToWABA, unsubscribeAppFromWABA } from '@/lib/whatsapp/subscribeApp'
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
+// wabaId is required: without it we cannot subscribe the WABA to our webhook
+// or register templates, leaving a "deaf" connection that looks connected but
+// never receives messages.
 const SaveSchema = z.object({
   phoneNumberId: z.string().min(1, 'phone_number_id is required'),
-  wabaId:        z.string().optional(),
+  wabaId:        z.string().min(1, 'חיבור ל-Meta לא החזיר מזהה חשבון WhatsApp Business — נסי להתחבר מחדש'),
   code:          z.string().min(1, 'OAuth code is required'),
 })
 
@@ -56,7 +59,7 @@ export async function saveWhatsAppConnection(
 
   const parsed = SaveSchema.safeParse({
     phoneNumberId: formData.get('phoneNumberId'),
-    wabaId:        formData.get('wabaId') ?? undefined,
+    wabaId:        formData.get('wabaId') ?? '',
     code:          formData.get('code'),
   })
 
@@ -88,15 +91,11 @@ export async function saveWhatsAppConnection(
   // Must succeed before we persist the connection: saving an unsubscribed WABA
   // would look "connected" in the UI while receiving no messages.
   // The call is idempotent on Meta's side, so redoing the signup flow is safe.
-  if (wabaId) {
-    try {
-      await subscribeAppToWABA(wabaId, accessToken)
-    } catch (err) {
-      console.error('[whatsapp/settings] WABA webhook subscription failed', { orgId, wabaId, err })
-      return { error: 'רישום ה-webhook מול Meta נכשל — אנא נסה להתחבר שוב' }
-    }
-  } else {
-    console.warn('[whatsapp/settings] No wabaId provided — skipping subscribed_apps registration', { orgId })
+  try {
+    await subscribeAppToWABA(wabaId, accessToken)
+  } catch (err) {
+    console.error('[whatsapp/settings] WABA webhook subscription failed', { orgId, wabaId, err })
+    return { error: 'רישום ה-webhook מול Meta נכשל — אנא נסה להתחבר שוב' }
   }
 
   // Encrypt before storing
@@ -114,7 +113,7 @@ export async function saveWhatsAppConnection(
     .update({
       whatsapp_phone_number_id: phoneNumberId,
       whatsapp_access_token:    encryptedToken,
-      whatsapp_waba_id:         wabaId ?? null,
+      whatsapp_waba_id:         wabaId,
     })
     .eq('id', orgId)
 
@@ -126,11 +125,9 @@ export async function saveWhatsAppConnection(
   console.info('[whatsapp/settings] WhatsApp connected', { orgId, phoneNumberId, wabaId })
 
   // Register all message templates on the org's WABA (fire-and-forget)
-  if (wabaId) {
-    registerTemplatesForWABA(wabaId, accessToken).catch((err) =>
-      console.error('[whatsapp/settings] Template registration failed', { orgId, err })
-    )
-  }
+  registerTemplatesForWABA(wabaId, accessToken).catch((err) =>
+    console.error('[whatsapp/settings] Template registration failed', { orgId, err })
+  )
 
   revalidatePath('/settings/whatsapp')
   return { error: null }
@@ -139,9 +136,11 @@ export async function saveWhatsAppConnection(
 // ── disconnectWhatsApp ────────────────────────────────────────────────────────
 
 /**
- * Removes the org's WhatsApp phone_number_id and access token.
- * After disconnect, incoming webhook messages for this org's number will not
- * be routed (unknown phone_number_id → webhook logs a warning and returns 200).
+ * Removes the org's WhatsApp phone_number_id, access token and WABA id.
+ * Best-effort unsubscribes the WABA from our app first so Meta stops
+ * dispatching webhooks for a phone_number_id we can no longer route.
+ * A Meta API failure never blocks the disconnect — the token may already be
+ * revoked on Meta's side.
  */
 export async function disconnectWhatsApp(
   _prevState: WhatsAppActionResult,
@@ -158,11 +157,33 @@ export async function disconnectWhatsApp(
   await requireFeature(orgId, 'whatsapp_automation')
 
   const db = createServiceRoleClient()
+
+  // Best-effort: unsubscribe the WABA from our app before clearing credentials
+  const { data: org } = await db
+    .from('organizations')
+    .select('whatsapp_waba_id, whatsapp_access_token')
+    .eq('id', orgId)
+    .maybeSingle()
+
+  if (org?.whatsapp_waba_id && org?.whatsapp_access_token) {
+    try {
+      const accessToken = decryptToken(org.whatsapp_access_token)
+      await unsubscribeAppFromWABA(org.whatsapp_waba_id, accessToken)
+    } catch (err) {
+      console.error('[whatsapp/settings] WABA unsubscribe failed — continuing disconnect', {
+        orgId,
+        wabaId: org.whatsapp_waba_id,
+        err,
+      })
+    }
+  }
+
   const { error: updateError } = await db
     .from('organizations')
     .update({
       whatsapp_phone_number_id: null,
       whatsapp_access_token: null,
+      whatsapp_waba_id: null,
     })
     .eq('id', orgId)
 

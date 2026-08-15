@@ -30,10 +30,13 @@ Deno.serve(async (_req) => {
   const db = createClient(supabaseUrl, serviceRoleKey)
 
   // ── 1. Fetch orgs with reminders enabled + WhatsApp connected ────────────────
+  // automation_dunning_enabled is OPT-IN (defaults false, Sprint 31): overdue-charge
+  // nagging only runs for orgs that explicitly enabled it in /settings/whatsapp.
   const { data: orgs, error: orgsError } = await db
     .from('organizations')
     .select('id, payment_reminder_days, whatsapp_phone_number_id, whatsapp_access_token, email_notifications')
     .eq('reminders_enabled', true)
+    .eq('automation_dunning_enabled', true)
     .not('whatsapp_phone_number_id', 'is', null)
     .not('whatsapp_access_token', 'is', null)
 

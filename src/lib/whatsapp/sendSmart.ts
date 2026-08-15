@@ -70,9 +70,9 @@ async function isInSessionWindow(orgId: string, phone: string): Promise<boolean>
 
   const { data, error } = await db
     .from('whatsapp_processed_messages')
-    .select('id')
+    .select('message_id')
     .eq('organization_id', orgId)
-    .eq('from_phone', phone)
+    .eq('phone', phone)
     .gt('created_at', cutoff)
     .limit(1)
     .maybeSingle()

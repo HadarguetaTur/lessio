@@ -73,17 +73,18 @@
 ### Meta Approved Templates — שליחת הודעות יזומות
 
 > נדרש לשלוח הודעות WhatsApp מעבר לחלון 24 שעות.
+> **אין צורך בהגשה ידנית** — התבניות נרשמות אוטומטית ל-WABA של כל לקוח בעת החיבור (`registerTemplatesForWABA`, קטגוריית UTILITY שבד"כ מאושרת אוטומטית). ה-runbook המלא: `docs/sprint-31-scope.md` → Ops / Meta Runbook.
 
-- [ ] הגישי בקשת אישור לתבניות הבאות ב-Meta Business Manager → **Message Templates**:
+- [ ] ודאי שהתבניות הבאות (מ-`src/lib/whatsapp/registerTemplates.ts`) אושרו ב-WABA של כל ארגון מחובר:
   | שם תבנית | שימוש |
   |---|---|
-  | `lesson_reminder` | תזכורת שיעור להורים |
-  | `payment_reminder` | תזכורת תשלום להורים |
-  | `payment_request` | בקשת תשלום עם לינק |
-  | `booking_confirmation` | אישור הזמנת שיעור |
-  | `homework_reminder` | תזכורת שיעורי בית |
-  | `receipt_notification` | הודעה על קבלה שנשלחה |
-- [ ] לאחר אישור: עדכני את `src/lib/whatsapp/templates.ts` עם ה-`template_name` שאושר
+  | `lessio_lesson_reminder_he` | תזכורת שיעור להורים |
+  | `lessio_payment_reminder_he` | תזכורת תשלום להורים |
+  | `lessio_payment_request_he` | בקשת תשלום עם לינק |
+  | `lessio_homework_reminder_he` | תזכורת שיעורי בית |
+  | `lessio_homework_assignment_he` | שיעורי בית חדשים |
+  | `lessio_homework_graded_he` | שיעורי בית נבדקו |
+- [ ] לארגונים שחוברו לפני Sprint 31: הריצי `npx tsx scripts/backfill-waba-subscriptions.ts` (רושם subscribed_apps + תבניות)
 
 ---
 

@@ -27,10 +27,13 @@ Deno.serve(async (_req) => {
   const db = createClient(supabaseUrl, serviceRoleKey)
 
   // ── 1. Fetch orgs with reminders enabled + WhatsApp connected ────────────────
+  // automation_lesson_reminder_enabled is the per-org WhatsApp-automations toggle
+  // (Sprint 31); reminders_enabled remains the legacy master switch.
   const { data: orgs, error: orgsError } = await db
     .from('organizations')
-    .select('id, timezone, lesson_reminder_hours, whatsapp_phone_number_id, whatsapp_access_token, email_notifications')
+    .select('id, timezone, lesson_reminder_hours, automation_lesson_reminder_hours, whatsapp_phone_number_id, whatsapp_access_token, email_notifications')
     .eq('reminders_enabled', true)
+    .eq('automation_lesson_reminder_enabled', true)
     .not('whatsapp_phone_number_id', 'is', null)
     .not('whatsapp_access_token', 'is', null)
 
@@ -61,7 +64,8 @@ Deno.serve(async (_req) => {
 
 // deno-lint-ignore no-explicit-any
 async function processOrg(db: any, org: any, now: Date) {
-  const reminderHours: number = org.lesson_reminder_hours ?? 24
+  const reminderHours: number =
+    org.automation_lesson_reminder_hours ?? org.lesson_reminder_hours ?? 24
 
   // Window: lessons starting between (now + reminderHours) and (now + reminderHours + 1h)
   const windowStart = new Date(now.getTime() + reminderHours * 60 * 60 * 1000)

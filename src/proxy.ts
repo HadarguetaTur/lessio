@@ -64,16 +64,15 @@ export async function proxy(request: NextRequest) {
   // /portal/* uses httpOnly cookie session — no Supabase session middleware.
   // /api/calendar/* is public — UUID token is the auth mechanism (Sprint 16).
   // See AGENTS.md § Authentication Model.
-  // Story 2b (Sprint 23): Backward-compat redirect for legacy portal URLs shared with parents.
-  // /portal/:orgId → /he/portal/:orgId (permanent 301 so old links still work).
-  // Note: /he/portal/* paths are NOT caught here — they start with /he/ which this block
-  // does not match, so they fall through to NextResponse.next() below.
+  //
+  // /portal/* is served directly. Do NOT reintroduce the Sprint 23 301 to
+  // /he/portal/* that used to live here: middleware runs on every method, so it
+  // answered Server Action POSTs with a 301 too. Browsers downgrade a redirected
+  // POST to GET and drop the body and the Next-Action header, which killed OTP
+  // verification and made portal login impossible. Legacy /he/portal/* links are
+  // still honoured by the rewrite in next.config.ts — a rewrite is invisible to
+  // the client and never changes the method, which is why it is safe here.
   const { pathname } = request.nextUrl
-  if (/^\/portal\/[^/]/.test(pathname)) {
-    const url = request.nextUrl.clone()
-    url.pathname = `/he${pathname}`
-    return NextResponse.redirect(url, { status: 301 })
-  }
 
   if (
     request.nextUrl.pathname.startsWith('/book/') ||

@@ -31,9 +31,6 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  // Sprint 23 Story 2b: /he/portal/:path* internally serves /portal/:path* without
-  // restructuring files. The proxy adds a 301 from /portal/:orgId → /he/portal/:orgId
-  // so new parents land at the locale-prefixed URL while existing links still work.
   async redirects() {
     return [
       // Canonical URL aliases — common paths Meta and external tools check
@@ -44,6 +41,11 @@ const nextConfig: NextConfig = {
       { source: '/user-data-deletion', destination: '/data-deletion', permanent: true },
     ]
   },
+  // Backward-compat for portal links parents already received while the app briefly
+  // 301'd /portal/* → /he/portal/*. The canonical URL is /portal/:orgId; there is no
+  // locale-prefix routing (next-intl resolves the locale from a cookie, see
+  // src/i18n/request.ts), so /he/ never selected a language — it only broke Server
+  // Actions. A rewrite, unlike a redirect, does not change the request method.
   async rewrites() {
     return [
       {

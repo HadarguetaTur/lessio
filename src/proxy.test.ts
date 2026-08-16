@@ -34,6 +34,55 @@ describe('proxy', () => {
     expect(mockCreateServerClient).not.toHaveBeenCalled()
   })
 
+  // The portal previously 301'd /portal/* → /he/portal/*. Middleware runs on every
+  // method, so Server Action POSTs were redirected too — browsers downgrade those to
+  // GET and drop the body, which made OTP verification (and therefore portal login)
+  // impossible. These lock the pass-through in.
+  describe('parent portal', () => {
+    const ORG_ID = '11111111-1111-1111-1111-111111111111'
+
+    it('serves /portal/:orgId directly, with no redirect', async () => {
+      const request = new NextRequest(`http://localhost:3000/portal/${ORG_ID}`)
+
+      const response = await proxy(request)
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('location')).toBeNull()
+      expect(mockCreateServerClient).not.toHaveBeenCalled()
+    })
+
+    it('does not redirect a Server Action POST to the portal login route', async () => {
+      const request = new NextRequest(
+        `http://localhost:3000/portal/${ORG_ID}/login?step=verify&phone=%2B972500000000`,
+        { method: 'POST' }
+      )
+
+      const response = await proxy(request)
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('location')).toBeNull()
+    })
+
+    it('does not redirect nested portal routes', async () => {
+      const request = new NextRequest(`http://localhost:3000/portal/${ORG_ID}/home`)
+
+      const response = await proxy(request)
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('location')).toBeNull()
+    })
+
+    it('still passes legacy /he/portal links through (rewritten in next.config.ts)', async () => {
+      const request = new NextRequest(`http://localhost:3000/he/portal/${ORG_ID}/home`)
+
+      const response = await proxy(request)
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('location')).toBeNull()
+      expect(mockCreateServerClient).not.toHaveBeenCalled()
+    })
+  })
+
   it('redirects unauthenticated dashboard requests to /login', async () => {
     const request = new NextRequest('http://localhost:3000/dashboard')
 

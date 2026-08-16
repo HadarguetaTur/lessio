@@ -124,18 +124,26 @@ export async function verifyOtpAction(
   const parsed = OtpSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return { error: 'invalidCode' }
 
-  const valid = await verifyOtp({ phone, orgId, otp: parsed.data.otp })
-  if (!valid) return { error: 'wrongCode' }
-
+  // Resolve the parent BEFORE consuming the OTP. verifyOtp marks the code used, so a
+  // lookup failure afterwards burned the code and the parent had to request a new one
+  // — three of those and they hit the send limit with no way in.
+  // maybeSingle(), not single(): duplicate parent rows on one phone must not 500.
   const db = createServiceRoleClient()
-  const { data: parent } = await db
+  const { data: parent, error: parentError } = await db
     .from('parents')
     .select('id')
     .eq('organization_id', orgId)
     .eq('phone', phone)
-    .single()
+    .maybeSingle()
 
-  if (!parent) return { error: 'generic' }
+  if (parentError) {
+    console.error('[verifyOtpAction] parent lookup failed', { org_id: orgId, error: parentError.message })
+    return { error: 'generic' }
+  }
+  if (!parent) return { error: 'noAccount' }
+
+  const valid = await verifyOtp({ phone, orgId, otp: parsed.data.otp })
+  if (!valid) return { error: 'wrongCode' }
 
   await setPortalSessionCookie({ parentId: parent.id, orgId })
   redirect(`/portal/${orgId}/home`)

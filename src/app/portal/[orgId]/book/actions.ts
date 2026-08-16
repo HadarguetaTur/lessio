@@ -1,5 +1,6 @@
 'use server'
 
+import { redirect } from 'next/navigation'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
@@ -15,7 +16,12 @@ import {
 
 async function requirePortalSession(orgId: string) {
   const session = await getPortalSession()
-  if (!session || session.orgId !== orgId) throw new Error('Unauthorized')
+  // Bounce to login like every portal page does. Throwing here sent a parent whose
+  // 7-day session had simply expired to the generic error page instead.
+  // redirect() must stay outside any try/catch — it signals by throwing.
+  if (!session || session.orgId !== orgId) {
+    redirect(`/portal/${orgId}/login`)
+  }
   return session
 }
 

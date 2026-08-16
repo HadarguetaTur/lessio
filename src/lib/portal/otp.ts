@@ -44,8 +44,14 @@ export async function storeOtp({ phone, orgId, otp }: StoreOtpParams): Promise<v
 }
 
 /**
- * Returns the number of OTP requests for this phone+org in the last `windowMinutes` minutes.
- * Used by requestOtpAction to enforce the rate limit (max 3 per 15 min).
+ * Returns the number of *unredeemed* OTP requests for this phone+org in the last
+ * `windowMinutes` minutes. Used by requestOtpAction to enforce the rate limit
+ * (max 3 per 15 min).
+ *
+ * Consumed codes (`used = true`) are excluded on purpose: the limit exists to blunt
+ * SMS/WhatsApp flooding, and a parent who actually logged in has proven they hold the
+ * phone. Counting successes locked legitimate parents out after three logins in a
+ * quarter hour — which on a shared family phone is an ordinary afternoon.
  */
 export async function countRecentOtpRequests(
   phone: string,
@@ -59,6 +65,7 @@ export async function countRecentOtpRequests(
     .select('id', { count: 'exact', head: true })
     .eq('phone', phone)
     .eq('organization_id', orgId)
+    .eq('used', false)
     .gte('created_at', since)
   if (error) throw new Error(`Rate limit check failed: ${error.message}`)
   return count ?? 0

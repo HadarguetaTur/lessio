@@ -64,7 +64,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
     homework_reminder:
       '📚 תזכורת: שיעורי הבית "{{title}}" צריכים להיות מוכנים מחר{{due_date_suffix}}.\nבהצלחה!',
     balance_reply:
-      'היתרה הנוכחית שלך: ₪{{total}}{{charge_lines}}',
+      'יתרתך לתשלום היא ₪{{total}}.\n\nלצפייה בפירוט החיוב אפשר להיכנס לאזור האישי.\n{{portal_url}}\n\n{{payment_line}}',
     payment_history_reply:
       'התשלומים האחרונים שלך:{{charge_lines}}',
     schedule_reply:
@@ -100,7 +100,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
     homework_reminder:
       '📚 Reminder: the homework "{{title}}" is due tomorrow{{due_date_suffix}}.\nGood luck!',
     balance_reply:
-      'Your current balance: ₪{{total}}{{charge_lines}}',
+      'Your outstanding balance is ₪{{total}}.\n\nTo see the full breakdown, open your personal area.\n{{portal_url}}\n\n{{payment_line}}',
     payment_history_reply:
       'Your recent payments:{{charge_lines}}',
     schedule_reply:
@@ -217,7 +217,9 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   homework_assignment: ['title', 'body', 'due_line'],
   homework_reminder: ['title', 'due_date_suffix'],
   homework_graded: ['title', 'score', 'feedback_line'],
-  balance_reply: ['total', 'charge_lines'],
+  // charge_lines is still substituted for orgs that customised the pre-Sprint-28
+  // body, but it is deliberately not advertised — the portal holds the breakdown.
+  balance_reply: ['total', 'portal_url', 'payment_line'],
   payment_history_reply: ['total', 'charge_lines'],
   schedule_reply: ['lesson_lines'],
   portal_link_reply: ['portal_url'],
@@ -263,7 +265,7 @@ export const TEMPLATE_PREVIEW_VARS: Record<MessageTemplateType, Record<string, s
   homework_assignment: { title: 'עמ׳ 45–47', body: 'תרגילים 1–10', due_line: '\nלהגשה עד: יום חמישי' },
   homework_reminder: { title: 'עמ׳ 45–47', due_date_suffix: ' (21.4)' },
   homework_graded: { title: 'עמ׳ 45–47', score: '92', feedback_line: 'עבודה מצוינת!' },
-  balance_reply: { total: '500.00', charge_lines: '\n₪250.00, לתשלום: https://pay.example.com/1\n₪250.00, לתשלום: https://pay.example.com/2' },
+  balance_reply: { total: '500.00', portal_url: 'https://app.lessio.co/portal/org-id/payments', payment_line: 'להסדרת התשלום אפשר לשלם כאן:\nhttps://pay.example.com/1' },
   payment_history_reply: { total: '500.00', charge_lines: '\n21/04/2026: ₪250.00 ✅\n14/04/2026: ₪250.00 ✅' },
   schedule_reply: { lesson_lines: '1. יום שני, 21.4 בשעה 17:00 עם אהרון כהן\n2. יום רביעי, 23.4 בשעה 15:00 עם אהרון כהן' },
   portal_link_reply: { portal_url: 'https://app.lessio.co/portal/org-id' },

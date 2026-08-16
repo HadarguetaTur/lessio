@@ -29,7 +29,11 @@ export type BotStringKey =
   | 'homework_done_teacher_alert'
   | 'ai_human_redirect'
   | 'otp_fallback'
+  | 'balance_none'
   // Fragments injected into template variables
+  | 'balance_pay_link'
+  | 'balance_pay_portal'
+  | 'balance_pay_contact'
   | 'no_upcoming_lessons'
   | 'no_previous_payments'
   | 'pay_here'
@@ -86,7 +90,12 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       '✅ עדכון: שיעורי הבית "{{title}}" של {{student_name}} סומנו כהושלמו.',
     ai_human_redirect: 'לא הצלחתי לענות על השאלה הזו 🙂 הצוות שלנו ישמח לעזור — אפשר לפנות ישירות.',
     otp_fallback: 'קוד הכניסה שלך ל-Lessio: *{{otp}}*\nהקוד בתוקף ל-10 דקות.',
+    balance_none: 'אין לך יתרה פתוחה לתשלום 🎉',
 
+    balance_pay_link: 'להסדרת התשלום אפשר לשלם כאן:\n{{payment_link}}',
+    balance_pay_portal:
+      'להסדרת התשלום אפשר לשלם דרך האזור האישי — לכל חיוב יש שם קישור תשלום משלו.',
+    balance_pay_contact: 'להסדרת התשלום אפשר לפנות למורה — פשוט להשיב להודעה הזו 🙂',
     no_upcoming_lessons: 'אין שיעורים מתוכננים בקרוב 🙂',
     no_previous_payments: 'עדיין לא נרשמו תשלומים.',
     pay_here: 'לתשלום',
@@ -143,7 +152,13 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     ai_human_redirect:
       'I could not answer that one 🙂 Our team would be happy to help — feel free to reach out.',
     otp_fallback: 'Your Lessio login code: *{{otp}}*\nThe code is valid for 10 minutes.',
+    balance_none: 'You have no outstanding balance 🎉',
 
+    balance_pay_link: 'To settle it, you can pay here:\n{{payment_link}}',
+    balance_pay_portal:
+      'To settle it, pay from your personal area — every charge has its own payment link there.',
+    balance_pay_contact:
+      'To settle it, just reply to this message and your teacher will take it from there 🙂',
     no_upcoming_lessons: 'No lessons scheduled right now 🙂',
     no_previous_payments: 'No payments recorded yet.',
     pay_here: 'pay here',

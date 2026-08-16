@@ -33,6 +33,7 @@ import {
 } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
+import { resolvePaymentLine, sumOpenCharges } from '@/lib/whatsapp/balance'
 import { botString } from '@/lib/whatsapp/strings'
 import {
   decodeMenuPayload,
@@ -455,7 +456,7 @@ async function processMessage(
 
   // 9b. Balance query
   if (hasBalanceIntent(msg.text)) {
-    await handleBalanceQuery(parent.id, org.id, senderPhone, accessToken, phoneNumberId, locale)
+    await handleBalanceQuery(parent.id, org.id, senderPhone, accessToken, phoneNumberId, locale, origin)
     return
   }
 
@@ -774,7 +775,7 @@ async function runMenuAction(params: {
       )
       return
     case 'balance':
-      await handleBalanceQuery(parentId, org.id, senderPhone, accessToken, phoneNumberId, locale)
+      await handleBalanceQuery(parentId, org.id, senderPhone, accessToken, phoneNumberId, locale, origin)
       return
     case 'schedule':
       await handleScheduleQuery(
@@ -1090,7 +1091,8 @@ async function handleBalanceQuery(
   senderPhone: string,
   accessToken: string,
   phoneNumberId: string,
-  locale: AppLocale
+  locale: AppLocale,
+  origin: string
 ): Promise<void> {
   const db = createServiceRoleClient()
 
@@ -1108,19 +1110,45 @@ async function handleBalanceQuery(
     throw new Error('Failed to load balance data for parent')
   }
 
-  const chargeRows = (charges ?? []) as Array<{ amount: number; payment_link: string | null }>
-  const total = chargeRows.reduce((sum, c) => sum + c.amount, 0)
+  const chargeRows = (charges ?? []).map((c) => ({
+    amount: Number((c as { amount: number }).amount),
+    payment_link: (c as { payment_link: string | null }).payment_link,
+  }))
+  const total = sumOpenCharges(chargeRows)
+
+  // Nothing open — the template body ("here is what you owe, here is how to pay")
+  // would be nonsense against a zero total.
+  if (total <= 0) {
+    await sendTextMessage(senderPhone, botString('balance_none', locale), accessToken, phoneNumberId)
+    console.info('[whatsapp/webhook] Balance query replied — nothing open', { orgId, senderPhone })
+    return
+  }
+
+  // The breakdown lives in the portal; the reply carries the total, a way in,
+  // and a way to pay. charge_lines is still supplied for orgs whose custom
+  // template predates this copy — otherwise their body leaks the raw placeholder.
   const chargeLines = chargeRows.slice(0, 3).map(c => {
     let line = `\n₪${c.amount.toFixed(2)}`
     if (c.payment_link) line += `, ${botString('pay_here', locale)}: ${c.payment_link}`
     return line
   }).join('')
 
-  const balanceBody = await resolveTemplate(orgId, 'balance_reply', {
-    total: total.toFixed(2),
-    charge_lines: chargeLines,
-  }, locale)
-  await sendTextMessage(senderPhone, balanceBody, accessToken, phoneNumberId)
+  await sendLinkReply({
+    orgId,
+    to: senderPhone,
+    templateType: 'balance_reply',
+    urlVar: 'portal_url',
+    url: `${origin}/portal/${orgId}/payments`,
+    buttonKey: 'cta_open_portal',
+    locale,
+    accessToken,
+    phoneNumberId,
+    vars: {
+      total: total.toFixed(2),
+      payment_line: resolvePaymentLine(chargeRows, locale),
+      charge_lines: chargeLines,
+    },
+  })
 
   console.info('[whatsapp/webhook] Balance query replied', { orgId, senderPhone, total })
 }

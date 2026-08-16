@@ -81,7 +81,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
     homework_reminder:
       '📚 תזכורת: שיעורי הבית "{{title}}" צריכים להיות מוכנים מחר{{due_date_suffix}}.\nבהצלחה!',
     balance_reply:
-      'היתרה הנוכחית שלך: ₪{{total}}{{charge_lines}}',
+      'יתרתך לתשלום היא ₪{{total}}.\n\nלצפייה בפירוט החיוב אפשר להיכנס לאזור האישי.\n{{portal_url}}\n\n{{payment_line}}',
     payment_history_reply:
       'התשלומים האחרונים שלך:{{charge_lines}}',
     schedule_reply:
@@ -117,7 +117,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
     homework_reminder:
       '📚 Reminder: the homework "{{title}}" is due tomorrow{{due_date_suffix}}.\nGood luck!',
     balance_reply:
-      'Your current balance: ₪{{total}}{{charge_lines}}',
+      'Your outstanding balance is ₪{{total}}.\n\nTo see the full breakdown, open your personal area.\n{{portal_url}}\n\n{{payment_line}}',
     payment_history_reply:
       'Your recent payments:{{charge_lines}}',
     schedule_reply:

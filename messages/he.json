@@ -18,6 +18,7 @@
       "title": "עם איזה מורה תרצו לקבוע?",
       "subtitle": "אחרי הבחירה נציג לכם את הזמינות הפנויה לשבוע הקרוב.",
       "empty": "כרגע אין מורים זמינים לקביעת שיעור.",
+      "loading": "טוען מורים...",
       "loadError": "שגיאה בטעינת המורים. אנא נסה/י שוב."
     },
     "availability": {
@@ -32,6 +33,12 @@
       "summaryError": "לא הצלחנו לטעון את הזמינות כרגע. אפשר לנסות שוב בעוד רגע.",
       "retry": "נסו שוב",
       "noSlotsForDay": "אין שעות פנויות",
+      "tryAnotherDay": "נסו לבחור יום אחר",
+      "select": "בחר/י",
+      "lockFailed": "לא ניתן לשמור את המועד. נסה/י שוב.",
+      "noSlotsThisDay": "אין מועדים פנויים ביום זה",
+      "tryAnotherDay": "נסו לבחור יום אחר",
+      "choose": "בחרו",
       "slotsTitle": "שעות זמינות לבחירה",
       "slotsInstructions": "בחרו רצועת זמן מהלוח כדי לראות את השעות הפנויות בתוך אותה רצועה.",
       "loadingSlots": "טוענים את השעות הפנויות...",
@@ -1670,8 +1677,161 @@
       "confirmBody": "בקשה זו תגרום לאנונימיזציה של שמך ומספר הטלפון שלך מהמערכת. היסטוריית חיובים תישמר.",
       "confirm": "אשר בקשת מחיקה",
       "cancel": "ביטול",
+      "submitting": "שולח...",
       "success": "בקשת המחיקה נשלחה. נטפל בה בהקדם.",
-      "error": "שגיאה בשליחת הבקשה. נסה שוב."
+      "error": "שגיאה בשליחת הבקשה. נסה שוב.",
+      "noPhone": "לא ניתן לאתר את מספר הטלפון שלך"
+    },
+    "nav": {
+      "home": "בית",
+      "schedule": "לוח",
+      "homework": "משימות",
+      "progress": "התקדמות",
+      "messages": "הודעות"
+    },
+    "login": {
+      "title": "כניסה לפורטל",
+      "phoneSubtitle": "הזן/י מספר הטלפון שלך ונשלח לך קוד אימות",
+      "otpTitle": "הזן/י קוד אימות",
+      "otpSubtitle": "שלחנו קוד 6 ספרות ל-WhatsApp שלך",
+      "phoneLabel": "מספר טלפון",
+      "otpLabel": "קוד אימות",
+      "sendCode": "שלח קוד אימות",
+      "sendingCode": "שולח קוד...",
+      "verify": "כניסה",
+      "verifying": "מאמת...",
+      "backToPhone": "הזן/י מספר שוב",
+      "errors": {
+        "invalidPhone": "מספר טלפון לא תקין",
+        "tooManyAttempts": "ניסיונות רבים מדי. נסה/י שוב מאוחר יותר.",
+        "noAccount": "לא נמצא חשבון משויך למספר זה. פנה/י לבית הספר.",
+        "serviceUnavailable": "שירות הכניסה אינו זמין כרגע. פנה/י לבית הספר.",
+        "sendFailed": "שגיאה בשליחת הקוד. נסה/י שוב.",
+        "invalidCode": "קוד לא תקין — חייב להיות 6 ספרות",
+        "wrongCode": "קוד שגוי או שפג תוקפו. חזור/י ובקש/י קוד חדש.",
+        "generic": "שגיאה — נסה/י שוב"
+      }
+    },
+    "home": {
+      "greeting": "שלום, {name}",
+      "balanceTitle": "יתרה לתשלום",
+      "balanceCta": "לפרטים ותשלום",
+      "upcomingTitle": "שיעורים קרובים",
+      "viewAll": "הכל",
+      "noUpcoming": "אין שיעורים מתוכננים",
+      "goalsTitle": "יעדי למידה",
+      "paymentHistory": "היסטוריית תשלומים"
+    },
+    "schedule": {
+      "title": "לוח שיעורים",
+      "noStudents": "אין תלמידים משויכים",
+      "upcoming": "שיעורים קרובים",
+      "history": "היסטוריה",
+      "noUpcoming": "אין שיעורים מתוכננים",
+      "noHistory": "אין היסטוריית שיעורים",
+      "bookNew": "קבע שיעור חדש",
+      "status": {
+        "scheduled": "מתוכנן",
+        "completed": "הושלם",
+        "cancelled": "בוטל",
+        "no_show": "לא הגיע"
+      },
+      "cancel": {
+        "trigger": "ביטול",
+        "title": "ביטול שיעור",
+        "confirmBody": "לבטל את השיעור של <b>{name}</b> ב-{date}?",
+        "warning": "ביטול עשוי לגרור חיוב בהתאם למדיניות הביטול.",
+        "close": "סגור",
+        "back": "חזרה",
+        "cancelling": "מבטל...",
+        "confirm": "אישור ביטול"
+      },
+      "errors": {
+        "unauthorized": "אין הרשאה",
+      "already_cancelled": "השיעור כבר בוטל",
+        "not_eligible": "לא ניתן לבטל שיעור זה",
+        "not_found": "השיעור לא נמצא",
+        "generic": "שגיאה בביטול"
+      },
+      "cancelledWithCharge": "השיעור בוטל. חיוב ביטול: {amount}",
+      "cancelledOk": "השיעור בוטל בהצלחה"
+    },
+    "payments": {
+      "title": "תשלומים",
+      "pendingTitle": "ממתין לתשלום",
+      "historyTitle": "היסטוריה",
+      "noOpenCharges": "אין חיובים פתוחים",
+      "pay": "לתשלום",
+      "pending": "ממתין",
+      "paid": "שולם",
+      "receipt": "קבלה",
+      "chargeType": {
+        "lesson": "שיעור",
+        "cancellation": "ביטול",
+        "manual": "ידני",
+        "monthly": "חודשי"
+      }
+    },
+    "homework": {
+      "title": "שיעורי בית",
+      "empty": "אין שיעורי בית",
+      "status": {
+        "pending": "ממתין",
+        "done": "הושלם",
+        "overdue": "באיחור"
+      },
+      "dueBy": "עד {date}",
+      "dueDate": "תאריך הגשה: {date}",
+      "attachments": "קבצים מצורפים",
+      "yourSubmission": "ההגשה שלך",
+      "score": "ציון: {score}/100",
+      "form": {
+        "success": "ההגשה נשלחה בהצלחה!",
+        "updateTitle": "עדכון הגשה",
+        "submitTitle": "הגשת שיעורי בית",
+        "notesPlaceholder": "הערות (אופציונלי)...",
+        "upload": "העלה קובץ (עד {maxMb}MB)",
+        "submitting": "שולח...",
+        "update": "עדכן הגשה",
+        "submit": "הגש"
+      },
+      "errors": {
+        "unauthorized": "אין הרשאה",
+        "notFound": "שיעורי בית לא נמצאו",
+        "notAllowedForStudent": "אין הרשאה להגיש עבור תלמיד זה",
+        "submitFailed": "שגיאה בהגשת שיעורי הבית"
+      }
+    },
+    "messages": {
+      "title": "הודעות",
+      "emptyTitle": "אין שיחות עדיין",
+      "emptyBody": "שלחו הודעה למורה כדי להתחיל שיחה",
+      "threadEmpty": "אין הודעות עדיין. שלחו הודעה למורה.",
+      "inputPlaceholder": "כתבו הודעה...",
+      "errors": {
+        "empty": "הודעה ריקה",
+        "tooLong": "הודעה ארוכה מדי (עד {max} תווים)",
+        "unauthorized": "אין הרשאה",
+        "sendFailed": "שגיאה בשליחת ההודעה"
+      }
+    },
+    "progress": {
+      "title": "התקדמות",
+      "noStudents": "אין תלמידים משויכים",
+      "periodDays": "{days} ימים",
+      "monthSummary": "החודש: {lessons} שיעורים, {homework} משימות הושלמו",
+      "attendance": "נוכחות",
+      "attendanceOf": "{attended} מתוך {total} שיעורים",
+      "homeworkTitle": "שיעורי בית",
+      "homeworkOf": "{completed} מתוך {total} משימות",
+      "avgScore": "ממוצע ציון: {score}",
+      "goalsTitle": "יעדי למידה",
+      "teacherNotes": "הערות מורה",
+      "status": {
+        "active": "פעיל",
+        "achieved": "הושג",
+        "abandoned": "נזנח"
+      }
     }
   },
   "saas": {

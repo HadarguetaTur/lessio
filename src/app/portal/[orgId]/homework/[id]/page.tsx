@@ -1,5 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import { Paperclip, FileText, CheckCircle } from 'lucide-react'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { listAttachments, getAttachmentDownloadUrl } from '@/lib/homework/attachments'
@@ -19,6 +21,15 @@ export default async function PortalHomeworkDetailPage({
   if (!session || session.orgId !== orgId) {
     redirect(`/portal/${orgId}/login`)
   }
+
+  const [t, locale] = await Promise.all([
+    getTranslations('portal.homework'),
+    getLocale(),
+  ])
+  const intlLocale = toIntlLocale(parseAppLocale(locale))
+  const formatDueDate = (iso: string) =>
+    new Intl.DateTimeFormat(intlLocale, { day: 'numeric', month: 'numeric', year: 'numeric' })
+      .format(new Date(`${iso}T12:00:00Z`))
 
   const db = createServiceRoleClient()
 
@@ -75,7 +86,7 @@ export default async function PortalHomeworkDetailPage({
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="text-sm text-foreground whitespace-pre-wrap">{asg.body}</div>
           {asg.due_date && (
-            <p className="text-xs text-muted-foreground">תאריך הגשה: {asg.due_date}</p>
+            <p className="text-xs text-muted-foreground">{t('dueDate', { date: formatDueDate(asg.due_date) })}</p>
           )}
           <div className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded ${
             asg.status === 'done' ? 'bg-green-50 text-green-700' :
@@ -83,7 +94,7 @@ export default async function PortalHomeworkDetailPage({
             'bg-blue-50 text-blue-700'
           }`}>
             {asg.status === 'done' && <CheckCircle size={12} />}
-            {asg.status === 'done' ? 'הושלם' : asg.status === 'overdue' ? 'באיחור' : 'ממתין'}
+            {asg.status === 'done' ? t('status.done') : asg.status === 'overdue' ? t('status.overdue') : t('status.pending')}
           </div>
         </div>
 
@@ -92,7 +103,7 @@ export default async function PortalHomeworkDetailPage({
           <div className="bg-card border border-border rounded-xl p-4">
             <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
               <Paperclip size={12} />
-              קבצים מצורפים
+              {t('attachments')}
             </p>
             <ul className="space-y-1.5">
               {attachmentsWithUrls.map((a) => (
@@ -115,7 +126,7 @@ export default async function PortalHomeworkDetailPage({
         {/* Existing submission */}
         {submission && (
           <div className="bg-card border border-border rounded-xl p-4 space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">ההגשה שלך</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('yourSubmission')}</p>
             {submission.note && (
               <p className="text-sm text-foreground">{submission.note}</p>
             )}
@@ -128,7 +139,7 @@ export default async function PortalHomeworkDetailPage({
             )}
             {submission.score != null && (
               <div className="bg-green-50 rounded p-3">
-                <p className="text-sm font-semibold text-green-700">ציון: {submission.score}/100</p>
+                <p className="text-sm font-semibold text-green-700">{t('score', { score: submission.score })}</p>
                 {submission.feedback && (
                   <p className="text-sm text-gray-600 mt-1">{submission.feedback}</p>
                 )}

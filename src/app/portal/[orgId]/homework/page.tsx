@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { FileText, CheckCircle } from 'lucide-react'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
@@ -16,6 +18,15 @@ export default async function PortalHomeworkPage({
   if (!session || session.orgId !== orgId) {
     redirect(`/portal/${orgId}/login`)
   }
+
+  const [t, locale] = await Promise.all([
+    getTranslations('portal.homework'),
+    getLocale(),
+  ])
+  const intlLocale = toIntlLocale(parseAppLocale(locale))
+  const formatDueDate = (iso: string) =>
+    new Intl.DateTimeFormat(intlLocale, { day: 'numeric', month: 'numeric', year: 'numeric' })
+      .format(new Date(`${iso}T12:00:00Z`))
 
   const db = createServiceRoleClient()
 
@@ -48,11 +59,10 @@ export default async function PortalHomeworkPage({
         .limit(50)
     : { data: [] }
 
-  const STATUS_LABEL: Record<string, string> = {
-    pending: 'ממתין',
-    done: 'הושלם',
-    overdue: 'באיחור',
-  }
+  // next-intl throws on missing keys — guard unknown statuses with the raw value.
+  const KNOWN_STATUSES = new Set(['pending', 'done', 'overdue'])
+  const statusLabel = (status: string) =>
+    KNOWN_STATUSES.has(status) ? t(`status.${status}`) : status
   const STATUS_CLASS: Record<string, string> = {
     pending: 'bg-blue-50 text-blue-700',
     done: 'bg-green-50 text-green-700',
@@ -62,14 +72,14 @@ export default async function PortalHomeworkPage({
   return (
     <div className="flex flex-col flex-1 pb-20">
       <header className="px-4 py-3.5 border-b border-border bg-card">
-        <h1 className="font-semibold text-foreground text-sm">שיעורי בית</h1>
+        <h1 className="font-semibold text-foreground text-sm">{t('title')}</h1>
       </header>
 
       <main className="flex-1 p-4 space-y-3">
         {(assignments ?? []).length === 0 ? (
           <div className="bg-muted/40 rounded-xl border border-border py-10 flex flex-col items-center gap-2 text-center">
             <FileText size={24} className="text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">אין שיעורי בית</p>
+            <p className="text-sm text-muted-foreground">{t('empty')}</p>
           </div>
         ) : (
           (assignments ?? []).map((asg) => {
@@ -86,13 +96,13 @@ export default async function PortalHomeworkPage({
                     <p className="text-sm font-semibold text-foreground">{a.title}</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {studentNameMap.get(a.student_id) ?? ''}
-                      {a.due_date && ` · עד ${a.due_date}`}
+                      {a.due_date && <> · {t('dueBy', { date: formatDueDate(a.due_date) })}</>}
                     </p>
                   </div>
                   <div className="shrink-0 flex items-center gap-1.5">
                     {a.status === 'done' && <CheckCircle size={14} className="text-green-500" />}
                     <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_CLASS[a.status] ?? ''}`}>
-                      {STATUS_LABEL[a.status] ?? a.status}
+                      {statusLabel(a.status)}
                     </span>
                   </div>
                 </div>

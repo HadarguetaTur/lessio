@@ -1,20 +1,23 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { Home, CalendarDays, FileText, TrendingUp, MessageCircle } from 'lucide-react'
 
 const TABS = [
-  { id: 'home',     label: 'בית',       href: (orgId: string) => `/portal/${orgId}/home`,     icon: Home },
-  { id: 'schedule', label: 'לוח',       href: (orgId: string) => `/portal/${orgId}/schedule`, icon: CalendarDays },
-  { id: 'homework', label: 'משימות',    href: (orgId: string) => `/portal/${orgId}/homework`, icon: FileText },
-  { id: 'progress', label: 'התקדמות',   href: (orgId: string) => `/portal/${orgId}/progress`, icon: TrendingUp },
-  { id: 'messages', label: 'הודעות',    href: (orgId: string) => `/portal/${orgId}/messages`, icon: MessageCircle },
-]
+  { id: 'home',     href: (orgId: string) => `/portal/${orgId}/home`,     icon: Home },
+  { id: 'schedule', href: (orgId: string) => `/portal/${orgId}/schedule`, icon: CalendarDays },
+  { id: 'homework', href: (orgId: string) => `/portal/${orgId}/homework`, icon: FileText },
+  { id: 'progress', href: (orgId: string) => `/portal/${orgId}/progress`, icon: TrendingUp },
+  { id: 'messages', href: (orgId: string) => `/portal/${orgId}/messages`, icon: MessageCircle },
+] as const
 
 export function PortalTabBar({ orgId, active }: { orgId: string; active: string }) {
+  const t = useTranslations('portal.nav')
+
   return (
     <nav className="fixed bottom-0 right-0 left-0 max-w-[480px] mx-auto border-t border-border bg-card flex safe-bottom">
-      {TABS.map(({ id, label, href, icon: Icon }) => {
+      {TABS.map(({ id, href, icon: Icon }) => {
         const isActive = active === id
         return (
           <Link
@@ -30,7 +33,7 @@ export function PortalTabBar({ orgId, active }: { orgId: string; active: string 
               <Icon size={18} />
             </div>
             <span className={`leading-none ${isActive ? 'font-semibold' : 'font-normal'}`}>
-              {label}
+              {t(id)}
             </span>
           </Link>
         )

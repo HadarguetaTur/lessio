@@ -18,6 +18,7 @@
       "title": "Which teacher would you like to book with?",
       "subtitle": "After you choose, we'll show the open availability for the coming week.",
       "empty": "No teachers are currently available for booking.",
+      "loading": "Loading teachers...",
       "loadError": "We couldn't load the teachers. Please try again."
     },
     "availability": {
@@ -32,6 +33,12 @@
       "summaryError": "We couldn't load the availability right now. Please try again in a moment.",
       "retry": "Try again",
       "noSlotsForDay": "No open times",
+      "tryAnotherDay": "Try picking another day",
+      "select": "Select",
+      "lockFailed": "We couldn't hold that time. Please try again.",
+      "noSlotsThisDay": "No open times on this day",
+      "tryAnotherDay": "Try another day",
+      "choose": "Choose",
       "slotsTitle": "Available times",
       "slotsInstructions": "Pick a time band from the calendar to see the open times within it.",
       "loadingSlots": "Loading available times...",
@@ -1670,8 +1677,161 @@
       "confirmBody": "This will anonymise your name and phone number in the system. Billing history will be preserved.",
       "confirm": "Confirm deletion request",
       "cancel": "Cancel",
+      "submitting": "Sending...",
       "success": "Your deletion request has been submitted. We will process it shortly.",
-      "error": "Error submitting request. Please try again."
+      "error": "Error submitting request. Please try again.",
+      "noPhone": "We couldn't find your phone number"
+    },
+    "nav": {
+      "home": "Home",
+      "schedule": "Schedule",
+      "homework": "Homework",
+      "progress": "Progress",
+      "messages": "Messages"
+    },
+    "login": {
+      "title": "Portal sign-in",
+      "phoneSubtitle": "Enter your phone number and we'll send you a verification code",
+      "otpTitle": "Enter verification code",
+      "otpSubtitle": "We sent a 6-digit code to your WhatsApp",
+      "phoneLabel": "Phone number",
+      "otpLabel": "Verification code",
+      "sendCode": "Send verification code",
+      "sendingCode": "Sending code...",
+      "verify": "Sign in",
+      "verifying": "Verifying...",
+      "backToPhone": "Enter a different number",
+      "errors": {
+        "invalidPhone": "Invalid phone number",
+        "tooManyAttempts": "Too many attempts. Please try again later.",
+        "noAccount": "No account is linked to this number. Please contact the school.",
+        "serviceUnavailable": "Sign-in is unavailable right now. Please contact the school.",
+        "sendFailed": "Failed to send the code. Please try again.",
+        "invalidCode": "Invalid code — must be 6 digits",
+        "wrongCode": "Wrong or expired code. Go back and request a new one.",
+        "generic": "Something went wrong — please try again"
+      }
+    },
+    "home": {
+      "greeting": "Hello, {name}",
+      "balanceTitle": "Balance due",
+      "balanceCta": "Details & payment",
+      "upcomingTitle": "Upcoming lessons",
+      "viewAll": "All",
+      "noUpcoming": "No scheduled lessons",
+      "goalsTitle": "Learning goals",
+      "paymentHistory": "Payment history"
+    },
+    "schedule": {
+      "title": "Lesson schedule",
+      "noStudents": "No linked students",
+      "upcoming": "Upcoming lessons",
+      "history": "History",
+      "noUpcoming": "No scheduled lessons",
+      "noHistory": "No lesson history",
+      "bookNew": "Book a new lesson",
+      "status": {
+        "scheduled": "Scheduled",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "no_show": "No-show"
+      },
+      "cancel": {
+        "trigger": "Cancel",
+        "title": "Cancel lesson",
+        "confirmBody": "Cancel <b>{name}</b>'s lesson on {date}?",
+        "warning": "Cancelling may incur a charge according to the cancellation policy.",
+        "close": "Close",
+        "back": "Back",
+        "cancelling": "Cancelling...",
+        "confirm": "Confirm cancellation"
+      },
+      "errors": {
+        "unauthorized": "Not authorised",
+        "already_cancelled": "This lesson is already cancelled",
+        "not_eligible": "This lesson can't be cancelled",
+        "not_found": "Lesson not found",
+        "generic": "Cancellation failed"
+      },
+      "cancelledWithCharge": "The lesson was cancelled. Cancellation charge: {amount}",
+      "cancelledOk": "The lesson was cancelled successfully"
+    },
+    "payments": {
+      "title": "Payments",
+      "pendingTitle": "Awaiting payment",
+      "historyTitle": "History",
+      "noOpenCharges": "No open charges",
+      "pay": "Pay",
+      "pending": "Pending",
+      "paid": "Paid",
+      "receipt": "Receipt",
+      "chargeType": {
+        "lesson": "Lesson",
+        "cancellation": "Cancellation",
+        "manual": "Manual",
+        "monthly": "Monthly"
+      }
+    },
+    "homework": {
+      "title": "Homework",
+      "empty": "No homework",
+      "status": {
+        "pending": "Pending",
+        "done": "Completed",
+        "overdue": "Overdue"
+      },
+      "dueBy": "Due {date}",
+      "dueDate": "Due date: {date}",
+      "attachments": "Attachments",
+      "yourSubmission": "Your submission",
+      "score": "Score: {score}/100",
+      "form": {
+        "success": "Submitted successfully!",
+        "updateTitle": "Update submission",
+        "submitTitle": "Submit homework",
+        "notesPlaceholder": "Notes (optional)...",
+        "upload": "Upload a file (up to {maxMb}MB)",
+        "submitting": "Submitting...",
+        "update": "Update submission",
+        "submit": "Submit"
+      },
+      "errors": {
+        "unauthorized": "Not authorized",
+        "notFound": "Homework not found",
+        "notAllowedForStudent": "You can't submit for this student",
+        "submitFailed": "Failed to submit homework"
+      }
+    },
+    "messages": {
+      "title": "Messages",
+      "emptyTitle": "No conversations yet",
+      "emptyBody": "Send the teacher a message to start a conversation",
+      "threadEmpty": "No messages yet. Send the teacher a message.",
+      "inputPlaceholder": "Write a message...",
+      "errors": {
+        "empty": "Message is empty",
+        "tooLong": "Message is too long (up to {max} characters)",
+        "unauthorized": "Not authorized",
+        "sendFailed": "Failed to send the message"
+      }
+    },
+    "progress": {
+      "title": "Progress",
+      "noStudents": "No linked students",
+      "periodDays": "{days} days",
+      "monthSummary": "This month: {lessons} lessons, {homework} assignments completed",
+      "attendance": "Attendance",
+      "attendanceOf": "{attended} of {total} lessons",
+      "homeworkTitle": "Homework",
+      "homeworkOf": "{completed} of {total} assignments",
+      "avgScore": "Average score: {score}",
+      "goalsTitle": "Learning goals",
+      "teacherNotes": "Teacher notes",
+      "status": {
+        "active": "Active",
+        "achieved": "Achieved",
+        "abandoned": "Abandoned"
+      }
     }
   },
   "saas": {

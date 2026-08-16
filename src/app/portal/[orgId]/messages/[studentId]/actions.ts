@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { getTranslations } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
 import { sendPortalMessage } from '@/lib/portal/messages'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -14,14 +15,16 @@ export async function sendMessageAction(
   _prev: SendMessageResult,
   formData: FormData
 ): Promise<SendMessageResult> {
+  const t = await getTranslations('portal.messages')
+
   const session = await getPortalSession()
   if (!session || session.orgId !== orgId) {
-    return { error: 'unauthorized' }
+    return { error: t('errors.unauthorized') }
   }
 
   const body = (formData.get('body') as string | null)?.trim()
-  if (!body || body.length === 0) return { error: 'הודעה ריקה' }
-  if (body.length > 2000) return { error: 'הודעה ארוכה מדי (עד 2000 תווים)' }
+  if (!body || body.length === 0) return { error: t('errors.empty') }
+  if (body.length > 2000) return { error: t('errors.tooLong', { max: 2000 }) }
 
   // Verify parent owns this student
   const db = createServiceRoleClient()
@@ -33,7 +36,7 @@ export async function sendMessageAction(
     .eq('organization_id', orgId)
     .maybeSingle()
 
-  if (!rel) return { error: 'אין הרשאה' }
+  if (!rel) return { error: t('errors.unauthorized') }
 
   try {
     await sendPortalMessage({
@@ -43,7 +46,7 @@ export async function sendMessageAction(
       body,
     })
   } catch {
-    return { error: 'שגיאה בשליחת ההודעה' }
+    return { error: t('errors.sendFailed') }
   }
 
   // Fire-and-forget: notify teacher + owner/admin

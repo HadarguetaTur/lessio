@@ -9,6 +9,8 @@
  */
 
 import { useState, useEffect } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
+import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { AvailableSlot, SlotLock, ConfirmBookingResult, AvailabilitySummary } from '@/lib/booking'
 import {
   getPortalTeachersAction,
@@ -20,15 +22,10 @@ import {
 } from '@/app/portal/[orgId]/book/actions'
 import { BookingSuccess } from '@/components/booking/BookingSuccess'
 import { BookingError } from '@/components/booking/BookingError'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 
-const DURATION_OPTIONS = [
-  { value: 30,  label: '30 דק׳' },
-  { value: 45,  label: '45 דק׳' },
-  { value: 60,  label: 'שעה' },
-  { value: 90,  label: 'שעה וחצי' },
-]
-
-const DAY_LABELS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
+// Labels come from common.durations.* — looked up at render.
+const DURATION_VALUES = [30, 45, 60, 90] as const
 
 function getWeekStart(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00Z')
@@ -151,33 +148,40 @@ function TeacherStep({
   orgId: string
   onSelect: (teacherId: string, teacherName: string) => void
 }) {
+  const t = useTranslations('booking.teacher')
   const [teachers, setTeachers] = useState<PortalTeacher[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     getPortalTeachersAction(orgId)
       .then(setTeachers)
-      .catch(() => setError('שגיאה בטעינת המורים. נסה/י שוב.'))
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [orgId])
 
   return (
     <div className="flex flex-col flex-1 p-4">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">עם איזה מורה לקבוע?</h2>
-      {loading && <p className="text-sm text-gray-400 animate-pulse">טוען מורים...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <h2 className="text-base font-semibold text-gray-900 mb-4">{t('title')}</h2>
+      {loading && (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-12 rounded-xl bg-gray-100 animate-pulse" />
+          ))}
+        </div>
+      )}
+      {error && <p className="text-sm text-red-600">{t('loadError')}</p>}
       {!loading && !error && teachers.length === 0 && (
-        <p className="text-sm text-gray-400">אין מורים זמינים כרגע.</p>
+        <p className="text-sm text-gray-400">{t('empty')}</p>
       )}
       <div className="space-y-2">
-        {teachers.map((t) => (
+        {teachers.map((teacher) => (
           <button
-            key={t.id}
-            onClick={() => onSelect(t.id, t.display_name)}
-            className="w-full text-right px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-900 hover:border-blue-400 hover:bg-blue-50 active:scale-95 transition-all"
+            key={teacher.id}
+            onClick={() => onSelect(teacher.id, teacher.display_name)}
+            className="w-full text-start px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-900 hover:border-blue-400 hover:bg-blue-50 active:scale-95 transition-all"
           >
-            {t.display_name}
+            {teacher.display_name}
           </button>
         ))}
       </div>
@@ -186,6 +190,10 @@ function TeacherStep({
 }
 
 // ── Slots step ────────────────────────────────────────────────────────────────
+
+// Message keys under booking.availability — translated at render so a
+// language switch mid-flow updates them too.
+type SlotsErrorKey = 'summaryError' | 'slotsError' | 'lockTaken'
 
 function SlotsStep({
   orgId,
@@ -206,6 +214,9 @@ function SlotsStep({
   onSlotLocked: (slot: AvailableSlot, lock: SlotLock, date: string, duration: number) => void
   onBack: () => void
 }) {
+  const t = useTranslations('booking.availability')
+  const tCommon = useTranslations('common')
+  const intlLocale = toIntlLocale(parseAppLocale(useLocale()))
   const today = todayStr()
   const [duration, setDuration] = useState(initialDuration)
   const [weekStart, setWeekStart] = useState(() => getWeekStart(initialDate))
@@ -215,7 +226,7 @@ function SlotsStep({
   const [slots, setSlots] = useState<AvailableSlot[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [locking, setLocking] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<SlotsErrorKey | null>(null)
 
   // Load week availability summary whenever week or duration changes
   useEffect(() => {
@@ -231,7 +242,7 @@ function SlotsStep({
           setSelectedDate(firstAvailable?.date ?? s.days[0].date)
         }
       })
-      .catch(() => setError('שגיאה בטעינת זמינות. נסה/י שוב.'))
+      .catch(() => setError('summaryError'))
       .finally(() => setSummaryLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, teacherId, duration, weekStart])
@@ -244,7 +255,7 @@ function SlotsStep({
     setError(null)
     getPortalSlotsAction(orgId, teacherId, selectedDate, duration)
       .then(setSlots)
-      .catch(() => setError('שגיאה בטעינת מועדים. נסה/י שוב.'))
+      .catch(() => setError('slotsError'))
       .finally(() => setSlotsLoading(false))
   }, [orgId, teacherId, selectedDate, duration])
 
@@ -255,14 +266,14 @@ function SlotsStep({
       const lock = await portalLockSlotAction(orgId, teacherId, slot.startAt, slot.endAt)
       onSlotLocked(slot, lock, selectedDate, duration)
     } catch {
-      setError('לא ניתן לשמור את המועד. נסה/י שוב.')
+      setError('lockTaken')
     } finally {
       setLocking(null)
     }
   }
 
   function formatSlotTime(iso: string) {
-    return new Date(iso).toLocaleTimeString('he-IL', {
+    return new Date(iso).toLocaleTimeString(intlLocale, {
       hour: '2-digit',
       minute: '2-digit',
       timeZone: timezone,
@@ -273,8 +284,18 @@ function SlotsStep({
     return new Date(dateStr + 'T12:00:00Z').getUTCDate()
   }
 
-  function formatMonthShort(dateStr: string) {
-    return new Date(dateStr + 'T12:00:00Z').toLocaleDateString('he-IL', { month: 'short' })
+  function formatWeekday(dateStr: string) {
+    return new Intl.DateTimeFormat(intlLocale, { weekday: 'short', timeZone: 'UTC' }).format(
+      new Date(dateStr + 'T12:00:00Z')
+    )
+  }
+
+  function formatMonthYear(dateStr: string) {
+    return new Intl.DateTimeFormat(intlLocale, {
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(dateStr + 'T12:00:00Z'))
   }
 
   const canGoPrev = addWeeks(weekStart, -1) >= getWeekStart(today)
@@ -285,25 +306,29 @@ function SlotsStep({
       {/* Header */}
       <div className="px-4 pt-3 pb-2 border-b border-gray-100">
         <div className="flex items-center gap-2 mb-3">
-          <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-800 p-1 -ml-1">
-            →
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 p-1 -ms-1"
+          >
+            <ArrowLeft className="size-3.5 rtl:rotate-180" aria-hidden />
+            {t('back')}
           </button>
           <span className="text-sm font-semibold text-gray-900">{teacherName}</span>
         </div>
 
         {/* Duration pills */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {DURATION_OPTIONS.map((d) => (
+          {DURATION_VALUES.map((value) => (
             <button
-              key={d.value}
-              onClick={() => setDuration(d.value)}
+              key={value}
+              onClick={() => setDuration(value)}
               className={`flex-none px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                duration === d.value
+                duration === value
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {d.label}
+              {tCommon(`durations.${value}`)}
             </button>
           ))}
         </div>
@@ -313,22 +338,22 @@ function SlotsStep({
       <div className="px-4 py-3 border-b border-gray-100">
         <div className="flex items-center justify-between mb-2">
           <button
-            onClick={() => setWeekStart((w) => addWeeks(w, 1))}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 text-lg leading-none"
-          >
-            ‹
-          </button>
-          <span className="text-xs font-medium text-gray-500">
-            {summary
-              ? `${formatMonthShort(summary.days[0].date)} ${new Date(summary.days[0].date + 'T12:00:00Z').getUTCFullYear()}`
-              : ''}
-          </span>
-          <button
             onClick={() => setWeekStart((w) => addWeeks(w, -1))}
             disabled={!canGoPrev}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-30 text-lg leading-none"
+            aria-label={t('prevWeek')}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-30"
           >
-            ›
+            <ChevronLeft className="size-5 rtl:rotate-180" aria-hidden />
+          </button>
+          <span className="text-xs font-medium text-gray-500">
+            {summary ? formatMonthYear(summary.days[0].date) : ''}
+          </span>
+          <button
+            onClick={() => setWeekStart((w) => addWeeks(w, 1))}
+            aria-label={t('nextWeek')}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+          >
+            <ChevronRight className="size-5 rtl:rotate-180" aria-hidden />
           </button>
         </div>
 
@@ -361,9 +386,7 @@ function SlotsStep({
                           : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
                   }`}
                 >
-                  <span className="text-[10px] font-medium">
-                    {DAY_LABELS[new Date(day.date + 'T12:00:00Z').getUTCDay()]}
-                  </span>
+                  <span className="text-[10px] font-medium">{formatWeekday(day.date)}</span>
                   <span className="text-sm font-bold mt-0.5">{formatDayNum(day.date)}</span>
                   <span className={`mt-1 w-1.5 h-1.5 rounded-full ${
                     isSelected ? 'bg-white opacity-80' : hasSlots ? 'bg-green-500' : 'bg-transparent'
@@ -379,14 +402,14 @@ function SlotsStep({
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {selectedDayData && (
           <p className="text-xs font-medium text-gray-500 mb-2">
-            {new Date(selectedDate + 'T12:00:00Z').toLocaleDateString('he-IL', {
+            {new Date(selectedDate + 'T12:00:00Z').toLocaleDateString(intlLocale, {
               weekday: 'long', day: 'numeric', month: 'long',
             })}
           </p>
         )}
 
         {error && (
-          <p className="text-sm text-red-600 text-center py-4">{error}</p>
+          <p className="text-sm text-red-600 text-center py-4">{t(error)}</p>
         )}
 
         {slotsLoading && (
@@ -399,8 +422,8 @@ function SlotsStep({
 
         {!slotsLoading && !error && slots.length === 0 && (
           <div className="text-center py-8">
-            <p className="text-sm text-gray-400">אין מועדים פנויים ביום זה</p>
-            <p className="text-xs text-gray-300 mt-1">נסי/י לבחור יום אחר</p>
+            <p className="text-sm text-gray-400">{t('noSlotsThisDay')}</p>
+            <p className="text-xs text-gray-300 mt-1">{t('tryAnotherDay')}</p>
           </div>
         )}
 
@@ -417,10 +440,10 @@ function SlotsStep({
               {formatSlotTime(slot.endAt)}
             </span>
             {locking === slot.startAt ? (
-              <span className="text-xs text-gray-400">שומר...</span>
+              <span className="text-xs text-gray-400">{t('locking')}</span>
             ) : (
               <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
-                בחר/י
+                {t('choose')}
               </span>
             )}
           </button>
@@ -453,6 +476,8 @@ function ConfirmStep({
   onLockExpired: () => void
   onError: (errorCode: string) => void
 }) {
+  const t = useTranslations('booking.confirm')
+  const intlLocale = toIntlLocale(parseAppLocale(useLocale()))
   const [confirming, setConfirming] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(0)
 
@@ -492,34 +517,34 @@ function ConfirmStep({
   const countdown = `${m}:${String(s).padStart(2, '0')}`
 
   function formatTime(iso: string) {
-    return new Date(iso).toLocaleTimeString('he-IL', {
+    return new Date(iso).toLocaleTimeString(intlLocale, {
       hour: '2-digit', minute: '2-digit', timeZone: timezone,
     })
   }
 
   function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString('he-IL', {
+    return new Date(iso).toLocaleDateString(intlLocale, {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: timezone,
     })
   }
 
   return (
     <div className="flex flex-col flex-1 p-4 space-y-5">
-      <h2 className="text-base font-semibold text-gray-900">אישור קביעת שיעור</h2>
+      <h2 className="text-base font-semibold text-gray-900">{t('title')}</h2>
 
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-gray-500">מורה</span>
+          <span className="text-gray-500">{t('teacher')}</span>
           <span className="font-medium">{teacherName}</span>
         </div>
         <hr className="border-gray-100" />
         <div className="flex justify-between">
-          <span className="text-gray-500">תאריך</span>
+          <span className="text-gray-500">{t('date')}</span>
           <span className="font-medium">{formatDate(slot.startAt)}</span>
         </div>
         <hr className="border-gray-100" />
         <div className="flex justify-between">
-          <span className="text-gray-500">שעה</span>
+          <span className="text-gray-500">{t('time')}</span>
           <span className="font-medium" dir="ltr">
             {formatTime(slot.startAt)} – {formatTime(slot.endAt)}
           </span>
@@ -529,9 +554,7 @@ function ConfirmStep({
       <div className={`text-center text-sm py-2 rounded-lg ${
         secondsLeft > 30 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-600'
       }`}>
-        {secondsLeft > 0
-          ? `המועד שמור עבורך עוד ${countdown}`
-          : 'פג הזמן — חזרה לבחירת מועד'}
+        {secondsLeft > 0 ? t('held', { countdown }) : t('heldExpired')}
       </div>
 
       <button
@@ -539,7 +562,7 @@ function ConfirmStep({
         disabled={confirming || secondsLeft === 0}
         className="w-full py-3.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-40 active:scale-95 transition-all"
       >
-        {confirming ? 'קובע שיעור...' : 'אישור וקביעת שיעור ✓'}
+        {confirming ? t('submitting') : t('submit')}
       </button>
     </div>
   )

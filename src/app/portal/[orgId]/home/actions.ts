@@ -4,7 +4,8 @@ import { getPortalSession } from '@/lib/portal/session'
 import { createDeletionRequest } from '@/lib/superadmin/dataDeletion'
 import { redirect } from 'next/navigation'
 
-export type DeletionRequestState = { error: string | null; success?: boolean }
+/** `error` is a key under the portal.gdpr namespace, translated by the client. */
+export type DeletionRequestState = { error: 'noPhone' | 'error' | null; success?: boolean }
 
 /**
  * Inserts a GDPR data deletion request for the current portal session's phone number.
@@ -29,7 +30,7 @@ export async function requestDeletionAction(
     .single()
 
   if (!parent?.phone) {
-    return { error: 'לא ניתן לאתר את מספר הטלפון שלך' }
+    return { error: 'noPhone' }
   }
 
   try {
@@ -37,6 +38,6 @@ export async function requestDeletionAction(
     return { error: null, success: true }
   } catch (err) {
     console.error('[portal/deletion] createDeletionRequest failed', { orgId, err })
-    return { error: 'שגיאה בשליחת הבקשה. נסה שוב.' }
+    return { error: 'error' }
   }
 }

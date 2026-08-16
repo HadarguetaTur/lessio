@@ -5,9 +5,14 @@ import { executeCancellation } from '@/lib/cancellation-flow/executeCancellation
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
+/**
+ * `error` is a key under portal.schedule.errors; the dialog renders the
+ * outcome, so the amount is returned raw rather than pre-formatted into a
+ * Hebrew sentence.
+ */
 export type CancelLessonResult =
-  | { ok: true; charged: boolean; amount: number; message: string }
-  | { ok: false; error: string }
+  | { ok: true; charged: boolean; amount: number }
+  | { ok: false; error: 'unauthorized' | 'already_cancelled' | 'not_eligible' | 'not_found' | 'generic' }
 
 export async function cancelLessonAction(
   orgId: string,
@@ -21,12 +26,11 @@ export async function cancelLessonAction(
   const outcome = await executeCancellation(lessonId, session.parentId, orgId)
 
   if (!outcome.success) {
-    const messages: Record<string, string> = {
-      already_cancelled: 'השיעור כבר בוטל',
-      not_eligible: 'לא ניתן לבטל שיעור זה',
-      not_found: 'השיעור לא נמצא',
-    }
-    return { ok: false, error: messages[outcome.error] ?? 'שגיאה בביטול' }
+    const known = ['already_cancelled', 'not_eligible', 'not_found'] as const
+    const error = (known as readonly string[]).includes(outcome.error)
+      ? (outcome.error as (typeof known)[number])
+      : 'generic'
+    return { ok: false, error }
   }
 
   // Fire-and-forget: notify teacher + owner/admin
@@ -61,8 +65,5 @@ export async function cancelLessonAction(
     ok: true,
     charged,
     amount: charged ? outcome.chargeResult.amount : 0,
-    message: charged
-      ? `השיעור בוטל. חיוב ביטול: ₪${outcome.chargeResult.amount.toFixed(2)}`
-      : 'השיעור בוטל בהצלחה',
   }
 }

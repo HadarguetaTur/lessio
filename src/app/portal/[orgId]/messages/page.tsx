@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { MessageCircle } from 'lucide-react'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { getPortalSession } from '@/lib/portal/session'
 import { getParentConversationSummaries } from '@/lib/portal/messages'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
@@ -17,21 +19,26 @@ export default async function PortalMessagesPage({
     redirect(`/portal/${orgId}/login`)
   }
 
-  const summaries = await getParentConversationSummaries(orgId, session.parentId)
+  const [summaries, t, locale] = await Promise.all([
+    getParentConversationSummaries(orgId, session.parentId),
+    getTranslations('portal.messages'),
+    getLocale(),
+  ])
+  const intlLocale = toIntlLocale(parseAppLocale(locale))
 
   return (
     <div className="flex flex-col flex-1 pb-20">
       <header className="px-4 py-3.5 border-b border-border bg-card flex items-center gap-2">
         <MessageCircle size={16} className="text-muted-foreground" />
-        <h1 className="font-semibold text-foreground text-sm">הודעות</h1>
+        <h1 className="font-semibold text-foreground text-sm">{t('title')}</h1>
       </header>
 
       <main className="flex-1 p-4 space-y-2">
         {summaries.length === 0 ? (
           <div className="bg-muted/40 rounded-xl border border-border py-10 flex flex-col items-center gap-2 text-center">
             <MessageCircle size={24} className="text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">אין שיחות עדיין</p>
-            <p className="text-xs text-muted-foreground">שלחו הודעה למורה כדי להתחיל שיחה</p>
+            <p className="text-sm text-muted-foreground">{t('emptyTitle')}</p>
+            <p className="text-xs text-muted-foreground">{t('emptyBody')}</p>
           </div>
         ) : (
           summaries.map((summary) => (
@@ -59,7 +66,7 @@ export default async function PortalMessagesPage({
                   )}
                   {summary.lastMessageAt && (
                     <span className="text-[10px] text-muted-foreground">
-                      {new Date(summary.lastMessageAt).toLocaleDateString('he-IL')}
+                      {new Date(summary.lastMessageAt).toLocaleDateString(intlLocale)}
                     </span>
                   )}
                 </div>

@@ -4,9 +4,10 @@ import { CalendarDays, AlertCircle, Target, ArrowLeft } from 'lucide-react'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getOrgTimezone } from '@/lib/organizations'
-import { getLocale } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { formatTime, formatDate } from '@/lib/lessons'
 import { parseAppLocale } from '@/lib/i18n/locale'
+import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
 import { DeletionRequestButton } from '@/components/portal/DeletionRequestButton'
 import { getActiveGoalsForStudents } from '@/lib/goals'
@@ -25,7 +26,12 @@ export default async function PortalHomePage({
   }
 
   const db = createServiceRoleClient()
-  const [timezone, locale] = await Promise.all([getOrgTimezone(orgId), getLocale()])
+  const [timezone, locale, t, tStatus] = await Promise.all([
+    getOrgTimezone(orgId),
+    getLocale(),
+    getTranslations('portal.home'),
+    getTranslations('portal.schedule.status'),
+  ])
   const appLocale = parseAppLocale(locale)
   const now = new Date().toISOString()
 
@@ -82,7 +88,7 @@ export default async function PortalHomePage({
           </div>
           <span className="font-semibold text-foreground text-sm">{orgName}</span>
         </div>
-        <span className="text-sm text-muted-foreground">שלום, {parentName}</span>
+        <span className="text-sm text-muted-foreground">{t('greeting', { name: parentName })}</span>
       </header>
 
       <main className="flex-1 p-4 space-y-5">
@@ -92,14 +98,17 @@ export default async function PortalHomePage({
             <div className="bg-amber-50 px-4 py-4">
               <div className="flex items-center gap-2 mb-1">
                 <AlertCircle size={15} className="text-amber-600" />
-                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">יתרה לתשלום</p>
+                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">{t('balanceTitle')}</p>
               </div>
-              <p className="text-3xl font-bold text-amber-700 mb-3">₪{balance.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-amber-700 mb-3" dir="ltr">
+                {formatCurrency(balance, appLocale, 2)}
+              </p>
               <Link
                 href={`/portal/${orgId}/payments`}
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors"
               >
-                לפרטים ותשלום ←
+                {t('balanceCta')}
+                <ArrowLeft size={14} className="rtl:rotate-180" aria-hidden />
               </Link>
             </div>
           </div>
@@ -109,21 +118,21 @@ export default async function PortalHomePage({
         <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-              שיעורים קרובים
+              {t('upcomingTitle')}
             </p>
             <Link
               href={`/portal/${orgId}/schedule`}
               className="text-xs text-primary hover:underline flex items-center gap-0.5"
             >
-              הכל
-              <ArrowLeft size={12} />
+              {t('viewAll')}
+              <ArrowLeft size={12} className="rtl:rotate-180" aria-hidden />
             </Link>
           </div>
 
           {lessons.length === 0 ? (
             <div className="bg-muted/40 rounded-xl border border-border py-10 flex flex-col items-center gap-2 text-center">
               <CalendarDays size={24} className="text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">אין שיעורים מתוכננים</p>
+              <p className="text-sm text-muted-foreground">{t('noUpcoming')}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -149,10 +158,10 @@ export default async function PortalHomePage({
                         {formatDate(row.start_at, timezone, appLocale)} · {formatTime(row.start_at, timezone, appLocale)}–{formatTime(row.end_at, timezone, appLocale)}
                       </p>
                     </div>
-                    <div className="shrink-0 text-right">
+                    <div className="shrink-0 text-end">
                       <p className="text-xs text-muted-foreground">{teacherName}</p>
                       <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
-                        מתוכנן
+                        {tStatus('scheduled')}
                       </div>
                     </div>
                   </div>
@@ -168,7 +177,7 @@ export default async function PortalHomePage({
             <div className="flex items-center gap-1.5 mb-3">
               <Target size={14} className="text-muted-foreground" />
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-                יעדי למידה
+                {t('goalsTitle')}
               </p>
             </div>
             <div className="space-y-2">
@@ -194,9 +203,10 @@ export default async function PortalHomePage({
         {balance === 0 && (
           <Link
             href={`/portal/${orgId}/payments`}
-            className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center justify-center gap-1 text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            היסטוריית תשלומים →
+            {t('paymentHistory')}
+            <ArrowLeft size={12} className="rtl:rotate-180" aria-hidden />
           </Link>
         )}
       </main>

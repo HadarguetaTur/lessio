@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { Plus } from 'lucide-react'
 import { PortalCancelDialog } from './PortalCancelDialog'
 import type { CancelLessonResult } from '@/app/portal/[orgId]/schedule/actions'
@@ -25,14 +26,16 @@ interface Props {
   cancelAction: (lessonId: string) => Promise<CancelLessonResult>
 }
 
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  scheduled: { label: 'מתוכנן', className: 'bg-primary/10 text-primary border-primary/20' },
-  completed: { label: 'הושלם', className: 'bg-green-50 text-green-700 border-green-200' },
-  cancelled: { label: 'בוטל', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  no_show: { label: 'לא הגיע', className: 'bg-red-50 text-red-700 border-red-200' },
+// Labels live in portal.schedule.status; only the styling stays here.
+const STATUS_CLASS: Record<string, string> = {
+  scheduled: 'bg-primary/10 text-primary border-primary/20',
+  completed: 'bg-green-50 text-green-700 border-green-200',
+  cancelled: 'bg-amber-50 text-amber-700 border-amber-200',
+  no_show: 'bg-red-50 text-red-700 border-red-200',
 }
 
 export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: Props) {
+  const t = useTranslations('portal.schedule')
   const [view, setView] = useState<'upcoming' | 'history'>('upcoming')
   const lessons = view === 'upcoming' ? upcoming : history
 
@@ -54,7 +57,7 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
             view === 'upcoming' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
           }`}
         >
-          שיעורים קרובים
+          {t('upcoming')}
         </button>
         <button
           onClick={() => setView('history')}
@@ -62,7 +65,7 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
             view === 'history' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
           }`}
         >
-          היסטוריה
+          {t('history')}
         </button>
       </div>
 
@@ -70,7 +73,7 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
       {lessons.length === 0 ? (
         <div className="bg-muted/40 rounded-xl border border-border py-10 flex flex-col items-center gap-2 text-center">
           <p className="text-sm text-muted-foreground">
-            {view === 'upcoming' ? 'אין שיעורים מתוכננים' : 'אין היסטוריית שיעורים'}
+            {view === 'upcoming' ? t('noUpcoming') : t('noHistory')}
           </p>
         </div>
       ) : (
@@ -82,7 +85,7 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
               </p>
               <div className="space-y-2">
                 {dayLessons.map((lesson) => {
-                  const badge = STATUS_BADGE[lesson.status] ?? STATUS_BADGE.scheduled
+                  const statusKey = lesson.status in STATUS_CLASS ? lesson.status : 'scheduled'
                   return (
                     <div
                       key={lesson.id}
@@ -97,8 +100,8 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
                         </p>
                       </div>
                       <div className="shrink-0 flex items-center gap-2">
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border ${badge.className}`}>
-                          {badge.label}
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border ${STATUS_CLASS[statusKey]}`}>
+                          {t(`status.${statusKey}`)}
                         </span>
                         {view === 'upcoming' && lesson.status === 'scheduled' && (
                           <PortalCancelDialog
@@ -125,7 +128,7 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
           className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
         >
           <Plus size={16} />
-          קבע שיעור חדש
+          {t('bookNew')}
         </Link>
       )}
     </div>

@@ -6,6 +6,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
+import { getTranslations } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { submitHomework } from '@/lib/homework/submissions'
@@ -19,9 +20,11 @@ export async function submitHomeworkAction(
   _prev: SubmitActionState,
   formData: FormData
 ): Promise<SubmitActionState> {
+  const t = await getTranslations('portal.homework.errors')
+
   const session = await getPortalSession()
   if (!session || session.orgId !== orgId) {
-    return { error: 'אין הרשאה' }
+    return { error: t('unauthorized') }
   }
 
   // Resolve student from parent → relationships → check assignment belongs to student
@@ -33,7 +36,7 @@ export async function submitHomeworkAction(
     .eq('organization_id', orgId)
     .single()
 
-  if (!assignment) return { error: 'שיעורי בית לא נמצאו' }
+  if (!assignment) return { error: t('notFound') }
 
   // Verify parent owns this student
   const { data: rel } = await db
@@ -44,7 +47,7 @@ export async function submitHomeworkAction(
     .eq('organization_id', orgId)
     .maybeSingle()
 
-  if (!rel) return { error: 'אין הרשאה להגיש עבור תלמיד זה' }
+  if (!rel) return { error: t('notAllowedForStudent') }
 
   const note = (formData.get('note') as string | null) ?? undefined
   const file = formData.get('file') as File | null
@@ -88,6 +91,6 @@ export async function submitHomeworkAction(
 
     return { error: null, success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה בהגשת שיעורי הבית' }
+    return { error: e instanceof Error ? e.message : t('submitFailed') }
   }
 }

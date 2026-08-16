@@ -1,27 +1,31 @@
 'use client'
 
 import { useActionState, useRef, useEffect } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { Send } from 'lucide-react'
 import type { PortalMessage } from '@/lib/portal/messages'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 
 type Props = {
   messages: PortalMessage[]
   sendAction: (prev: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
 }
 
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return 'עכשיו'
-  if (minutes < 60) return `לפני ${minutes} דק׳`
+function relativeTime(iso: string, intlLocale: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const minutes = Math.max(0, Math.floor(diffMs / 60000))
+  const rtf = new Intl.RelativeTimeFormat(intlLocale, { numeric: 'auto' })
+  if (minutes < 60) return rtf.format(-minutes, 'minute')
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `לפני ${hours} שע׳`
+  if (hours < 24) return rtf.format(-hours, 'hour')
   const days = Math.floor(hours / 24)
-  if (days < 7) return `לפני ${days} ימים`
-  return new Date(iso).toLocaleDateString('he-IL')
+  if (days < 7) return rtf.format(-days, 'day')
+  return new Date(iso).toLocaleDateString(intlLocale)
 }
 
 export function PortalMessageThread({ messages, sendAction }: Props) {
+  const t = useTranslations('portal.messages')
+  const intlLocale = toIntlLocale(parseAppLocale(useLocale()))
   const [state, action, isPending] = useActionState(sendAction, { error: null })
   const scrollRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -43,7 +47,7 @@ export function PortalMessageThread({ messages, sendAction }: Props) {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-8">
-            אין הודעות עדיין. שלחו הודעה למורה.
+            {t('threadEmpty')}
           </p>
         )}
         {messages.map((msg) => (
@@ -63,7 +67,7 @@ export function PortalMessageThread({ messages, sendAction }: Props) {
               )}
               <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
               <p className={`text-[10px] mt-1 ${msg.isFromParent ? 'opacity-70' : 'text-muted-foreground'}`}>
-                {relativeTime(msg.createdAt)}
+                {relativeTime(msg.createdAt, intlLocale)}
               </p>
             </div>
           </div>
@@ -81,7 +85,7 @@ export function PortalMessageThread({ messages, sendAction }: Props) {
             name="body"
             required
             maxLength={2000}
-            placeholder="כתבו הודעה..."
+            placeholder={t('inputPlaceholder')}
             className="flex-1 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             autoComplete="off"
           />

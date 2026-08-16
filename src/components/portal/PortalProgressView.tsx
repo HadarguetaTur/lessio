@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { BookOpen, Target, StickyNote, CheckCircle } from 'lucide-react'
 
 type StudentProgress = {
@@ -18,12 +19,7 @@ interface Props {
   progress90: StudentProgress[]
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  active: 'פעיל',
-  achieved: 'הושג',
-  abandoned: 'נזנח',
-}
-
+// Labels live in portal.progress.status.* — looked up at render.
 const STATUS_CLASS: Record<string, string> = {
   active: 'bg-blue-50 text-blue-700',
   achieved: 'bg-green-50 text-green-700',
@@ -42,6 +38,7 @@ function ProgressBar({ rate }: { rate: number }) {
 }
 
 export function PortalProgressView({ progress30, progress90 }: Props) {
+  const t = useTranslations('portal.progress')
   const [period, setPeriod] = useState<30 | 90>(30)
   const progressData = period === 30 ? progress30 : progress90
 
@@ -55,7 +52,7 @@ export function PortalProgressView({ progress30, progress90 }: Props) {
             period === 30 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
           }`}
         >
-          30 ימים
+          {t('periodDays', { days: 30 })}
         </button>
         <button
           onClick={() => setPeriod(90)}
@@ -63,7 +60,7 @@ export function PortalProgressView({ progress30, progress90 }: Props) {
             period === 90 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
           }`}
         >
-          90 ימים
+          {t('periodDays', { days: 90 })}
         </button>
       </div>
 
@@ -79,8 +76,10 @@ export function PortalProgressView({ progress30, progress90 }: Props) {
           {/* Monthly summary */}
           <div className="bg-primary/5 border border-primary/15 rounded-xl p-4">
             <p className="text-sm text-foreground">
-              <span className="font-semibold">החודש:</span>{' '}
-              {student.monthlySummary.lessons} שיעורים, {student.monthlySummary.homeworkDone} משימות הושלמו
+              {t('monthSummary', {
+                lessons: student.monthlySummary.lessons,
+                homework: student.monthlySummary.homeworkDone,
+              })}
             </p>
           </div>
 
@@ -89,13 +88,16 @@ export function PortalProgressView({ progress30, progress90 }: Props) {
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                 <BookOpen size={13} />
-                נוכחות
+                {t('attendance')}
               </p>
               <p className="text-xs font-medium text-foreground">{student.attendance.rate}%</p>
             </div>
             <ProgressBar rate={student.attendance.rate} />
             <p className="text-xs text-muted-foreground">
-              {student.attendance.attended} מתוך {student.attendance.total} שיעורים
+              {t('attendanceOf', {
+                attended: student.attendance.attended,
+                total: student.attendance.total,
+              })}
             </p>
           </div>
 
@@ -104,15 +106,18 @@ export function PortalProgressView({ progress30, progress90 }: Props) {
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                 <CheckCircle size={13} />
-                שיעורי בית
+                {t('homeworkTitle')}
               </p>
               <p className="text-xs font-medium text-foreground">{student.homework.rate}%</p>
             </div>
             <ProgressBar rate={student.homework.rate} />
             <p className="text-xs text-muted-foreground">
-              {student.homework.completed} מתוך {student.homework.total} משימות
+              {t('homeworkOf', {
+                completed: student.homework.completed,
+                total: student.homework.total,
+              })}
               {student.homework.avgScore != null && (
-                <span> · ממוצע ציון: {student.homework.avgScore}</span>
+                <span> · {t('avgScore', { score: student.homework.avgScore })}</span>
               )}
             </p>
           </div>
@@ -122,7 +127,7 @@ export function PortalProgressView({ progress30, progress90 }: Props) {
             <div className="bg-card border border-border rounded-xl p-4 space-y-2">
               <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                 <Target size={13} />
-                יעדי למידה
+                {t('goalsTitle')}
               </p>
               <div className="space-y-2">
                 {student.goals.map((goal) => (
@@ -132,7 +137,8 @@ export function PortalProgressView({ progress30, progress90 }: Props) {
                       <p className="text-sm text-foreground">{goal.description}</p>
                     </div>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${STATUS_CLASS[goal.status] ?? ''}`}>
-                      {STATUS_LABEL[goal.status] ?? goal.status}
+                      {/* next-intl throws on missing keys — unknown statuses fall back to the raw value */}
+                      {goal.status in STATUS_CLASS ? t(`status.${goal.status}`) : goal.status}
                     </span>
                   </div>
                 ))}
@@ -145,7 +151,7 @@ export function PortalProgressView({ progress30, progress90 }: Props) {
             <div className="bg-card border border-border rounded-xl p-4 space-y-2">
               <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                 <StickyNote size={13} />
-                הערות מורה
+                {t('teacherNotes')}
               </p>
               <div className="space-y-2">
                 {student.notes.map((note) => (

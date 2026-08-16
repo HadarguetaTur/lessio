@@ -3,7 +3,7 @@ import { CalendarDays } from 'lucide-react'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getOrgTimezone } from '@/lib/organizations'
-import { getLocale } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { formatTime, formatDate } from '@/lib/lessons'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
@@ -23,7 +23,11 @@ export default async function PortalSchedulePage({
   }
 
   const db = createServiceRoleClient()
-  const [timezone, locale] = await Promise.all([getOrgTimezone(orgId), getLocale()])
+  const [timezone, locale, t] = await Promise.all([
+    getOrgTimezone(orgId),
+    getLocale(),
+    getTranslations('portal.schedule'),
+  ])
   const appLocale = parseAppLocale(locale)
   const now = new Date().toISOString()
 
@@ -41,11 +45,11 @@ export default async function PortalSchedulePage({
       <div className="flex flex-col flex-1 pb-20">
         <header className="px-4 py-3.5 border-b border-border bg-card flex items-center gap-2">
           <CalendarDays size={16} className="text-muted-foreground" />
-          <h1 className="font-semibold text-foreground text-sm">לוח שיעורים</h1>
+          <h1 className="font-semibold text-foreground text-sm">{t('title')}</h1>
         </header>
         <main className="flex-1 p-4">
           <div className="bg-muted/40 rounded-xl border border-border py-10 flex flex-col items-center gap-2 text-center">
-            <p className="text-sm text-muted-foreground">אין תלמידים משויכים</p>
+            <p className="text-sm text-muted-foreground">{t('noStudents')}</p>
           </div>
         </main>
         <PortalTabBar orgId={orgId} active="schedule" />
@@ -117,7 +121,7 @@ export default async function PortalSchedulePage({
     <div className="flex flex-col flex-1 pb-20">
       <header className="px-4 py-3.5 border-b border-border bg-card flex items-center gap-2">
         <CalendarDays size={16} className="text-muted-foreground" />
-        <h1 className="font-semibold text-foreground text-sm">לוח שיעורים</h1>
+        <h1 className="font-semibold text-foreground text-sm">{t('title')}</h1>
       </header>
 
       <main className="flex-1 p-4">

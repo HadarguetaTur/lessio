@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PortalBookingFlow } from '@/components/portal/PortalBookingFlow'
@@ -17,6 +18,8 @@ export default async function PortalBookPage({
   const session = await getPortalSession()
   if (!session || session.orgId !== orgId) redirect(`/portal/${orgId}/login`)
 
+  const t = await getTranslations('booking.flow')
+
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
@@ -28,7 +31,7 @@ export default async function PortalBookPage({
   return (
     <div className="flex flex-col flex-1 pb-16">
       <header className="px-4 py-3 border-b border-gray-200">
-        <h1 className="font-bold text-gray-900">קביעת שיעור</h1>
+        <h1 className="font-bold text-gray-900">{t('tagline')}</h1>
       </header>
       <PortalBookingFlow orgId={orgId} timezone={timezone} />
       <PortalTabBar orgId={orgId} active="book" />

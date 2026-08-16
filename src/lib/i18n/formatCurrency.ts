@@ -1,12 +1,14 @@
 /**
  * Locale-aware currency formatter for ILS amounts.
  * Returns ₪-prefixed string formatted for the given locale.
+ * `fractionDigits` defaults to whole shekels; pass 2 where agorot matter
+ * (parent-facing balances and charge lines).
  */
-export function formatCurrency(amount: number, locale: string): string {
+export function formatCurrency(amount: number, locale: string, fractionDigits = 0): string {
   return new Intl.NumberFormat(locale === 'he' ? 'he-IL' : 'en-US', {
     style: 'currency',
     currency: 'ILS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   }).format(amount)
 }

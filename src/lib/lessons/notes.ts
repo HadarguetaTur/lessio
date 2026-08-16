@@ -136,7 +136,12 @@ export async function getVisibleNotesForStudent(
     .order('created_at', { ascending: false })
     .limit(limit)
 
-  if (error) throw new Error(`[lesson/notes] getVisibleNotesForStudent failed: ${error.message}`)
+  // Parent-facing (portal progress tab) — degrade to empty rather than take the whole
+  // page down. Same reasoning as getActiveGoalsForStudents.
+  if (error) {
+    console.error('[lesson/notes] getVisibleNotesForStudent failed', { orgId, error: error.message })
+    return []
+  }
 
   return (data ?? []).map((r) => ({
     ...mapNote(r as NoteRow),

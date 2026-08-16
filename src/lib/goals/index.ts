@@ -84,7 +84,13 @@ export async function getActiveGoalsForStudents(
     .order('created_at', { ascending: false })
     .limit(10)
 
-  if (error) throw new Error(`[goals] getActiveGoalsForStudents failed: ${error.message}`)
+  // Degrade instead of throwing: this feeds the parent portal home page, where every
+  // other query already falls back to empty. A throw here has no boundary below the
+  // root one, so a goals hiccup would replace the whole portal with "משהו השתבש".
+  if (error) {
+    console.error('[goals] getActiveGoalsForStudents failed', { orgId, error: error.message })
+    return []
+  }
 
   return (data ?? []).map((r) => {
     const row = r as GoalRow & { students: { full_name: string } | null }

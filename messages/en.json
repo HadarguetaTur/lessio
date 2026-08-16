@@ -1671,6 +1671,12 @@
     }
   },
   "portal": {
+    "error": {
+      "title": "Something went wrong",
+      "body": "We couldn't load this page. Please try again — if it keeps happening, contact the school.",
+      "retry": "Try again",
+      "backToLogin": "Back to sign-in"
+    },
     "gdpr": {
       "requestDeletion": "Request data deletion (GDPR)",
       "confirmTitle": "Request Data Deletion",

@@ -43,7 +43,7 @@ export default async function PortalHomePage({
 
   const studentIds = (relationships ?? []).map((r) => r.student_id)
 
-  const [parentResult, orgResult, balanceResult] = await Promise.all([
+  const [parentResult, orgResult, balanceResult, goals] = await Promise.all([
     db.from('parents').select('full_name').eq('id', session.parentId).single(),
     db.from('organizations').select('name').eq('id', orgId).single(),
     db
@@ -52,9 +52,8 @@ export default async function PortalHomePage({
       .eq('parent_id', session.parentId)
       .eq('organization_id', orgId)
       .eq('status', 'pending'),
+    getActiveGoalsForStudents(orgId, studentIds),
   ])
-
-  const goalsPromise = getActiveGoalsForStudents(orgId, studentIds)
 
   const lessonsResult = studentIds.length > 0
     ? await db
@@ -76,7 +75,6 @@ export default async function PortalHomePage({
   const orgName = orgResult.data?.name ?? ''
   const lessons = lessonsResult.data ?? []
   const balance = (balanceResult.data ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
-  const goals = await goalsPromise
 
   return (
     <div className="flex flex-col flex-1 pb-20">

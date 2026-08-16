@@ -12,10 +12,14 @@ vi.mock('@/lib/crypto', () => ({
   decryptToken: vi.fn().mockReturnValue('test-token'),
 }))
 
-vi.mock('@/lib/jwt', () => ({
-  verifyBookingToken: vi.fn(),
-  signBookingToken: vi.fn(),
-}))
+vi.mock('@/lib/jwt', async () => {
+  const actual = await vi.importActual('@/lib/jwt')
+  return {
+    ...actual,
+    verifyBookingToken: vi.fn(),
+    signBookingToken: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/booking', async () => {
   const actual = await vi.importActual('@/lib/booking')
@@ -40,7 +44,7 @@ vi.mock('@/lib/whatsapp/templates', () => ({
   resolveTemplate: vi.fn().mockResolvedValue('מורה: ישראל ישראלי'),
 }))
 
-import { verifyBookingToken } from '@/lib/jwt'
+import { verifyBookingToken, BookingTokenError } from '@/lib/jwt'
 import {
   confirmBooking,
   getAvailabilitySummary,
@@ -195,12 +199,25 @@ describe('getAvailabilitySummaryAction', () => {
 
     const result = await getAvailabilitySummaryAction(TOKEN, TEACHER_ID, 60, '2026-03-24')
 
-    expect(result.weekStart).toBe('2026-03-22')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.weekStart).toBe('2026-03-22')
+    }
     expect(mockGetAvailabilitySummary).toHaveBeenCalledWith({
       teacherId: TEACHER_ID,
       organizationId: ORG_ID,
       durationMinutes: 60,
       weekStart: '2026-03-24',
     })
+  })
+
+  it('returns token_expired when the booking token has expired', async () => {
+    mockVerify.mockRejectedValue(new BookingTokenError('Booking link has expired', 'expired'))
+
+    const result = await getAvailabilitySummaryAction(TOKEN, TEACHER_ID, 60)
+
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('token_expired')
+    expect(mockGetAvailabilitySummary).not.toHaveBeenCalled()
   })
 })

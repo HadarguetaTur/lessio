@@ -6,7 +6,7 @@
  * Per AGENTS.md: all booking writes via service role, server-side only.
  */
 
-import { verifyBookingToken } from '@/lib/jwt'
+import { verifyBookingToken, BookingTokenError } from '@/lib/jwt'
 import { decryptToken } from '@/lib/crypto'
 import {
   getAvailableSlots,
@@ -26,6 +26,20 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 
+/**
+ * Errors thrown inside Server Actions cross to the client as opaque generic
+ * errors (Next.js masks messages in production), so the client cannot tell an
+ * expired link apart from a transient failure. Read actions therefore return a
+ * tagged result instead of throwing.
+ */
+export type BookingDataResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: 'token_expired' | 'unknown' }
+
+function isExpiredTokenError(err: unknown): boolean {
+  return err instanceof BookingTokenError && err.reason === 'expired'
+}
+
 // ── Teacher list ───────────────────────────────────────────────────────────────
 
 export interface Teacher {
@@ -33,26 +47,33 @@ export interface Teacher {
   display_name: string
 }
 
-export async function getTeachersAction(token: string): Promise<Teacher[]> {
-  const { organizationId } = await verifyBookingToken(token)
-  const db = createServiceRoleClient()
+export async function getTeachersAction(token: string): Promise<BookingDataResult<Teacher[]>> {
+  try {
+    const { organizationId } = await verifyBookingToken(token)
+    const db = createServiceRoleClient()
 
-  // teachers.display_name does not exist in schema — name comes from profiles.full_name
-  const { data, error } = await db
-    .from('teachers')
-    .select('id, profiles(full_name)')
-    .eq('organization_id', organizationId)
-    .eq('is_active', true)
+    // teachers.display_name does not exist in schema — name comes from profiles.full_name
+    const { data, error } = await db
+      .from('teachers')
+      .select('id, profiles(full_name)')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
 
-  if (error) throw new Error(`Failed to load teachers: ${error.message}`)
+    if (error) throw new Error(`Failed to load teachers: ${error.message}`)
 
-  return (data ?? []).map(t => {
-    const profiles = t.profiles as unknown as { full_name: string } | null
-    return {
-      id: t.id,
-      display_name: profiles?.full_name ?? '',
-    }
-  })
+    const teachers = (data ?? []).map(t => {
+      const profiles = t.profiles as unknown as { full_name: string } | null
+      return {
+        id: t.id,
+        display_name: profiles?.full_name ?? '',
+      }
+    })
+    return { success: true, data: teachers }
+  } catch (err) {
+    if (isExpiredTokenError(err)) return { success: false, error: 'token_expired' }
+    console.error('[getTeachersAction]', err)
+    return { success: false, error: 'unknown' }
+  }
 }
 
 // ── Available slots ────────────────────────────────────────────────────────────
@@ -62,9 +83,16 @@ export async function getAvailableSlotsAction(
   teacherId: string,
   date: string,
   durationMinutes: number
-): Promise<AvailableSlot[]> {
-  const { organizationId } = await verifyBookingToken(token)
-  return getAvailableSlots({ teacherId, date, durationMinutes, organizationId })
+): Promise<BookingDataResult<AvailableSlot[]>> {
+  try {
+    const { organizationId } = await verifyBookingToken(token)
+    const slots = await getAvailableSlots({ teacherId, date, durationMinutes, organizationId })
+    return { success: true, data: slots }
+  } catch (err) {
+    if (isExpiredTokenError(err)) return { success: false, error: 'token_expired' }
+    console.error('[getAvailableSlotsAction]', err)
+    return { success: false, error: 'unknown' }
+  }
 }
 
 export async function getAvailabilitySummaryAction(
@@ -72,9 +100,16 @@ export async function getAvailabilitySummaryAction(
   teacherId: string,
   durationMinutes: number,
   weekStart?: string
-): Promise<AvailabilitySummary> {
-  const { organizationId } = await verifyBookingToken(token)
-  return getAvailabilitySummary({ teacherId, organizationId, durationMinutes, weekStart })
+): Promise<BookingDataResult<AvailabilitySummary>> {
+  try {
+    const { organizationId } = await verifyBookingToken(token)
+    const summary = await getAvailabilitySummary({ teacherId, organizationId, durationMinutes, weekStart })
+    return { success: true, data: summary }
+  } catch (err) {
+    if (isExpiredTokenError(err)) return { success: false, error: 'token_expired' }
+    console.error('[getAvailabilitySummaryAction]', err)
+    return { success: false, error: 'unknown' }
+  }
 }
 
 // ── Slot lock ──────────────────────────────────────────────────────────────────
@@ -95,9 +130,11 @@ export async function lockSlotAction(
     return { success: true, lock }
   } catch (err) {
     if (err instanceof SlotUnavailableError) return { success: false, error: 'unavailable' }
-    if (err instanceof Error && err.message.includes('expired')) {
+    if (err instanceof BookingTokenError) {
+      // An invalid token is just as dead as an expired one for this flow
       return { success: false, error: 'token_expired' }
     }
+    console.error('[lockSlotAction]', err)
     return { success: false, error: 'unknown' }
   }
 }
@@ -130,9 +167,8 @@ export async function confirmBookingAction(
     if (err instanceof LockExpiredError) return { success: false, error: 'lock_expired' }
     if (err instanceof InactiveParticipantError) return { success: false, error: 'inactive_participant' }
     if (err instanceof NoPrimaryParentError) return { success: false, error: 'no_primary_parent' }
-    if (err instanceof Error && err.message.includes('expired')) {
-      return { success: false, error: 'token_expired' }
-    }
+    if (err instanceof BookingTokenError) return { success: false, error: 'token_expired' }
+    console.error('[confirmBookingAction]', err)
     return { success: false, error: 'unknown' }
   }
 }

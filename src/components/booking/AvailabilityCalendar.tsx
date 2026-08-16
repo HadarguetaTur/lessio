@@ -79,14 +79,24 @@ export function AvailabilityCalendar({
         durationMinutes,
         weekStart
       )
-      setSummary(result)
-      setWeekStart(result.weekStart)
+
+      if (result.success) {
+        // Deliberately NOT syncing weekStart state from the result: doing so
+        // recreates this callback and re-fires the mount effect, doubling every
+        // summary load. Navigation always sets weekStart explicitly.
+        setSummary(result.data)
+      } else if (result.error === 'token_expired') {
+        onError('token_expired')
+        return
+      } else {
+        setSummaryError('לא הצלחנו לטעון את הזמינות כרגע. אפשר לנסות שוב בעוד רגע.')
+      }
     } catch {
       setSummaryError('לא הצלחנו לטעון את הזמינות כרגע. אפשר לנסות שוב בעוד רגע.')
     } finally {
       setSummaryLoading(false)
     }
-  }, [durationMinutes, teacherId, token, weekStart])
+  }, [durationMinutes, onError, teacherId, token, weekStart])
 
   const loadSlotsForDate = useCallback(
     async (date: string) => {
@@ -94,15 +104,23 @@ export function AvailabilityCalendar({
       setSlotsError(null)
 
       try {
-        const slots = await getAvailableSlotsAction(token, teacherId, date, durationMinutes)
-        setDaySlots(slots)
+        const result = await getAvailableSlotsAction(token, teacherId, date, durationMinutes)
+
+        if (result.success) {
+          setDaySlots(result.data)
+        } else if (result.error === 'token_expired') {
+          onError('token_expired')
+          return
+        } else {
+          setSlotsError('לא הצלחנו לטעון את השעות המדויקות כרגע. אפשר לנסות שוב.')
+        }
       } catch {
         setSlotsError('לא הצלחנו לטעון את השעות המדויקות כרגע. אפשר לנסות שוב.')
       } finally {
         setSlotsLoading(false)
       }
     },
-    [durationMinutes, teacherId, token]
+    [durationMinutes, onError, teacherId, token]
   )
 
   useEffect(() => {
@@ -154,6 +172,13 @@ export function AvailabilityCalendar({
     const expiresAt = new Date(activeLock.lock.expires_at).getTime()
     const tick = () => {
       const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000))
+      // A non-finite expires_at must release the lock, not freeze the whole
+      // calendar behind a countdown that never reaches zero.
+      if (!Number.isFinite(remaining)) {
+        setActiveLock(null)
+        setLockError('השעה כבר לא שמורה עבורכם. בחרו שעה אחרת כדי להמשיך.')
+        return
+      }
       setSecondsLeft(remaining)
 
       if (remaining === 0) {
@@ -262,8 +287,7 @@ export function AvailabilityCalendar({
     : ''
 
   return (
-    <main className="min-h-screen flex items-start justify-center p-4 sm:p-6 bg-background">
-      <div className="max-w-5xl w-full space-y-6 pt-8">
+    <div className="w-full space-y-6">
         <div className="space-y-2">
           <button onClick={onBack} className="text-sm text-muted-foreground hover:underline">
             ← חזרה
@@ -463,8 +487,7 @@ export function AvailabilityCalendar({
             </div>
           )}
         </section>
-      </div>
-    </main>
+    </div>
   )
 }
 

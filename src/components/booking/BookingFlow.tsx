@@ -2,11 +2,11 @@
 
 /**
  * BookingFlow — top-level client component orchestrating the booking steps.
- * Steps: teacher → date+duration → slot → confirm → success/error
+ * Steps: teacher → availability (calendar + slot lock) → confirm → success/error
  * All booking writes go through Server Actions in /app/book/[token]/actions.ts.
  */
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { BookingTokenPayload } from '@/lib/jwt'
 import type { AvailableSlot, SlotLock } from '@/lib/booking'
 import type { ConfirmBookingResult } from '@/lib/booking'
@@ -126,10 +126,12 @@ export function BookingFlow({ token, payload }: BookingFlowProps) {
     setStep('success')
   }
 
-  function handleError(errorCode: string) {
+  // Stable identity — handleError is an effect dependency in child components,
+  // so a new function each render would re-fire their data loads.
+  const handleError = useCallback((errorCode: string) => {
     setState(s => ({ ...s, errorCode }))
     setStep('error')
-  }
+  }, [])
 
   function handleRestart() {
     setState({})
@@ -150,9 +152,13 @@ export function BookingFlow({ token, payload }: BookingFlowProps) {
     return <BookingError errorCode={state.errorCode ?? 'unknown'} onRestart={handleRestart} />
   }
 
+  // The availability step renders the full week calendar and needs real width;
+  // the other steps are narrow single-column forms.
+  const isWideStep = step === 'availability'
+
   return (
-    <main className="min-h-screen flex items-start justify-center p-6 bg-background">
-      <div className="max-w-sm w-full pt-10">
+    <main className="flex items-start justify-center p-4 sm:p-6 bg-background">
+      <div className={`${isWideStep ? 'max-w-5xl' : 'max-w-sm'} w-full pt-6 sm:pt-10 pb-12`}>
         <div className="mb-6 text-center">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center mx-auto mb-3">
             <span className="text-primary-foreground text-sm font-bold leading-none">L</span>
@@ -163,7 +169,7 @@ export function BookingFlow({ token, payload }: BookingFlowProps) {
         <StepIndicator current={step} />
 
         {step === 'teacher' && (
-          <TeacherSelect token={token} onSelect={handleTeacherSelect} inline />
+          <TeacherSelect token={token} onSelect={handleTeacherSelect} onError={handleError} inline />
         )}
 
         {step === 'availability' && (

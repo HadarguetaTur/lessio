@@ -7,20 +7,29 @@ import { getTeachersAction, type Teacher } from '@/app/book/[token]/actions'
 interface TeacherSelectProps {
   token: string
   onSelect: (teacherId: string, teacherName: string) => void
+  onError?: (errorCode: string) => void
   inline?: boolean
 }
 
-export function TeacherSelect({ token, onSelect, inline }: TeacherSelectProps) {
+export function TeacherSelect({ token, onSelect, onError, inline }: TeacherSelectProps) {
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     getTeachersAction(token)
-      .then(setTeachers)
+      .then(result => {
+        if (result.success) {
+          setTeachers(result.data)
+        } else if (result.error === 'token_expired' && onError) {
+          onError('token_expired')
+        } else {
+          setError('שגיאה בטעינת המורים. אנא נסה/י שוב.')
+        }
+      })
       .catch(() => setError('שגיאה בטעינת המורים. אנא נסה/י שוב.'))
       .finally(() => setLoading(false))
-  }, [token])
+  }, [token, onError])
 
   const content = (
     <div className="space-y-5">

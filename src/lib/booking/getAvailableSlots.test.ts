@@ -1,10 +1,9 @@
-/**
+﻿/**
  * All test orgs use timezone: 'UTC' to eliminate DST ambiguity.
  * Availability windows, lesson times, and lock times are expressed as UTC ISO strings.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { DateTime } from 'luxon'
 import { getAvailableSlots } from './getAvailableSlots'
 
 // ── Module mock ───────────────────────────────────────────────────────────────
@@ -53,7 +52,7 @@ describe('getAvailableSlots', () => {
     fromMock = tableRouter({
       organizations: single(baseOrg()),
       availability_overrides: maybeSingle(null),
-      availability: maybeSingle({ start_time: '16:00:00', end_time: '18:00:00' }),
+      availability: array([{ start_time: '16:00:00', end_time: '18:00:00' }]),
       lessons: array([]),
       slot_locks: array([]),
     })
@@ -77,7 +76,7 @@ describe('getAvailableSlots', () => {
     fromMock = tableRouter({
       organizations: single(baseOrg()),
       availability_overrides: maybeSingle(null),
-      availability: maybeSingle({ start_time: '16:00:00', end_time: '18:00:00' }),
+      availability: array([{ start_time: '16:00:00', end_time: '18:00:00' }]),
       lessons: array([
         { start_at: '2026-03-23T16:00:00.000Z', end_at: '2026-03-23T17:00:00.000Z' },
       ]),
@@ -100,7 +99,7 @@ describe('getAvailableSlots', () => {
     fromMock = tableRouter({
       organizations: single(baseOrg()),
       availability_overrides: maybeSingle(null),
-      availability: maybeSingle({ start_time: '16:00:00', end_time: '18:00:00' }),
+      availability: array([{ start_time: '16:00:00', end_time: '18:00:00' }]),
       lessons: array([]),
       slot_locks: array([
         { start_at: '2026-03-23T16:00:00.000Z', end_at: '2026-03-23T17:00:00.000Z' },
@@ -122,7 +121,7 @@ describe('getAvailableSlots', () => {
     fromMock = tableRouter({
       organizations: single(baseOrg()),
       availability_overrides: maybeSingle(null),
-      availability: maybeSingle({ start_time: '16:00:00', end_time: '18:00:00' }),
+      availability: array([{ start_time: '16:00:00', end_time: '18:00:00' }]),
       lessons: array([]),
       slot_locks: array([]),
     })
@@ -185,7 +184,7 @@ describe('getAvailableSlots', () => {
     fromMock = tableRouter({
       organizations: single(baseOrg({ break_duration_minutes: 15 })),
       availability_overrides: maybeSingle(null),
-      availability: maybeSingle({ start_time: '16:00:00', end_time: '18:30:00' }),
+      availability: array([{ start_time: '16:00:00', end_time: '18:30:00' }]),
       lessons: array([]),
       slot_locks: array([]),
     })
@@ -202,11 +201,37 @@ describe('getAvailableSlots', () => {
     expect(slots[1].startAt).toBe('2026-03-23T17:15:00.000Z')
   })
 
+  it('returns slots from all windows when the teacher has multiple windows on the same day', async () => {
+    // Morning 10:00–11:00 and evening 16:00–18:00 → 1 + 2 slots, sorted by start
+    fromMock = tableRouter({
+      organizations: single(baseOrg()),
+      availability_overrides: maybeSingle(null),
+      availability: array([
+        { start_time: '16:00:00', end_time: '18:00:00' },
+        { start_time: '10:00:00', end_time: '11:00:00' },
+      ]),
+      lessons: array([]),
+      slot_locks: array([]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    expect(slots).toHaveLength(3)
+    expect(slots[0].startAt).toBe('2026-03-23T10:00:00.000Z')
+    expect(slots[1].startAt).toBe('2026-03-23T16:00:00.000Z')
+    expect(slots[2].startAt).toBe('2026-03-23T17:00:00.000Z')
+  })
+
   it('returns empty array when no weekly availability is defined for the day', async () => {
     fromMock = tableRouter({
       organizations: single(baseOrg()),
       availability_overrides: maybeSingle(null),
-      availability: maybeSingle(null), // no record for this day
+      availability: array([]), // no records for this day
     })
 
     const slots = await getAvailableSlots({
@@ -224,7 +249,7 @@ describe('getAvailableSlots', () => {
     fromMock = tableRouter({
       organizations: single(baseOrg({ min_booking_notice_hours: 999 })),
       availability_overrides: maybeSingle(null),
-      availability: maybeSingle({ start_time: '16:00:00', end_time: '18:00:00' }),
+      availability: array([{ start_time: '16:00:00', end_time: '18:00:00' }]),
       lessons: array([]),
       slot_locks: array([]),
     })
@@ -269,7 +294,7 @@ function array(data: unknown[]) {
 function buildChain(result: { data: unknown; error: unknown }) {
   const self: Record<string, unknown> = {}
   const passThrough = () => self
-  ;['select', 'eq', 'gte', 'lte', 'gt', 'lt', 'neq', 'in'].forEach(m => {
+  ;['select', 'eq', 'gte', 'lte', 'gt', 'lt', 'neq', 'in', 'limit', 'order'].forEach(m => {
     self[m] = passThrough
   })
 

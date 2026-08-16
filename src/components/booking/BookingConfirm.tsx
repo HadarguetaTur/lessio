@@ -44,6 +44,10 @@ export function BookingConfirm({
 
     const tick = () => {
       const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000))
+      if (!Number.isFinite(remaining)) {
+        onLockExpired()
+        return
+      }
       setSecondsLeft(remaining)
       if (remaining === 0) onLockExpired()
     }
@@ -92,8 +96,7 @@ export function BookingConfirm({
   const countdown = `${m}:${String(s).padStart(2, '0')}`
 
   return (
-    <main className="min-h-screen flex items-start justify-center p-6 bg-background">
-      <div className="max-w-sm w-full space-y-6 pt-10">
+    <div className="w-full space-y-6">
         <div className="space-y-2 text-center">
           <h1 className="text-lg font-semibold">רגע לפני שמאשרים</h1>
           <p className="text-sm text-muted-foreground">
@@ -120,8 +123,7 @@ export function BookingConfirm({
         >
           {confirming ? 'קובעים את השיעור...' : 'אישור וקביעת שיעור'}
         </button>
-      </div>
-    </main>
+    </div>
   )
 }
 

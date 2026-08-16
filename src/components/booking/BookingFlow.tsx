@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import type { BookingTokenPayload } from '@/lib/jwt'
 import type { AvailableSlot, SlotLock } from '@/lib/booking'
 import type { ConfirmBookingResult } from '@/lib/booking'
@@ -31,15 +32,12 @@ interface FlowState {
   errorCode?: string
 }
 
-const STEPS: { id: Step; label: string }[] = [
-  { id: 'teacher',      label: 'מורה' },
-  { id: 'availability', label: 'תאריך ושעה' },
-  { id: 'confirm',      label: 'אישור' },
-]
+const STEP_IDS = ['teacher', 'availability', 'confirm'] as const
 
 function StepIndicator({ current }: { current: Step }) {
-  const activeSteps = ['teacher', 'availability', 'confirm']
-  const currentIdx = activeSteps.indexOf(current)
+  const t = useTranslations('booking.flow.steps')
+  const STEPS = STEP_IDS.map(id => ({ id, label: t(id) }))
+  const currentIdx = STEP_IDS.indexOf(current as (typeof STEP_IDS)[number])
 
   if (currentIdx === -1) return null
 
@@ -91,6 +89,7 @@ interface BookingFlowProps {
 }
 
 export function BookingFlow({ token, payload }: BookingFlowProps) {
+  const t = useTranslations('booking.flow')
   const [step, setStep] = useState<Step>('teacher')
   const [state, setState] = useState<FlowState>({})
 
@@ -163,7 +162,7 @@ export function BookingFlow({ token, payload }: BookingFlowProps) {
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center mx-auto mb-3">
             <span className="text-primary-foreground text-sm font-bold leading-none">L</span>
           </div>
-          <p className="text-xs text-muted-foreground">LESSIO · קביעת שיעור</p>
+          <p className="text-xs text-muted-foreground">LESSIO · {t('tagline')}</p>
         </div>
 
         <StepIndicator current={step} />

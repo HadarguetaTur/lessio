@@ -6,9 +6,11 @@
  */
 
 import { useState, useEffect } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import type { AvailableSlot, SlotLock } from '@/lib/booking'
 import type { ConfirmBookingResult } from '@/lib/booking'
 import { confirmBookingAction } from '@/app/book/[token]/actions'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 
 interface BookingConfirmProps {
   token: string
@@ -36,6 +38,8 @@ export function BookingConfirm({
   onLockExpired,
   onError,
 }: BookingConfirmProps) {
+  const t = useTranslations('booking.confirm')
+  const intlLocale = toIntlLocale(parseAppLocale(useLocale()))
   const [confirming, setConfirming] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(0)
 
@@ -71,7 +75,7 @@ export function BookingConfirm({
     }
   }
 
-  const displayDate = new Date(`${date}T12:00:00Z`).toLocaleDateString('he-IL', {
+  const displayDate = new Date(`${date}T12:00:00Z`).toLocaleDateString(intlLocale, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -79,13 +83,13 @@ export function BookingConfirm({
     timeZone: timezone,
   })
 
-  const startTime = new Date(slot.startAt).toLocaleTimeString('he-IL', {
+  const startTime = new Date(slot.startAt).toLocaleTimeString(intlLocale, {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: timezone,
   })
 
-  const endTime = new Date(slot.endAt).toLocaleTimeString('he-IL', {
+  const endTime = new Date(slot.endAt).toLocaleTimeString(intlLocale, {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: timezone,
@@ -98,22 +102,18 @@ export function BookingConfirm({
   return (
     <div className="w-full space-y-6">
         <div className="space-y-2 text-center">
-          <h1 className="text-lg font-semibold">רגע לפני שמאשרים</h1>
-          <p className="text-sm text-muted-foreground">
-            בדקו שהפרטים נכונים, ואז השלימו את קביעת השיעור.
-          </p>
+          <h1 className="text-lg font-semibold">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5 space-y-3 text-sm">
-          <Row label="מורה" value={teacherName} />
-          <Row label="תאריך" value={displayDate} />
-          <Row label="שעה" value={`${startTime} — ${endTime}`} />
+          <Row label={t('teacher')} value={teacherName} />
+          <Row label={t('date')} value={displayDate} />
+          <Row label={t('time')} value={`${startTime} — ${endTime}`} />
         </div>
 
         <p className="text-sm text-muted-foreground text-center">
-          {secondsLeft > 0
-            ? `המועד שמור עבורכם לעוד ${countdown}`
-            : 'פג הזמן לשמירת המועד'}
+          {secondsLeft > 0 ? t('held', { countdown }) : t('heldExpired')}
         </p>
 
         <button
@@ -121,7 +121,7 @@ export function BookingConfirm({
           disabled={confirming || secondsLeft === 0}
           className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-semibold disabled:opacity-40 transition-opacity"
         >
-          {confirming ? 'קובעים את השיעור...' : 'אישור וקביעת שיעור'}
+          {confirming ? t('submitting') : t('submit')}
         </button>
     </div>
   )
@@ -131,7 +131,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-right">{value}</span>
+      <span className="font-medium text-end">{value}</span>
     </div>
   )
 }

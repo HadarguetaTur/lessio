@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { UserRound } from 'lucide-react'
 import { getTeachersAction, type Teacher } from '@/app/book/[token]/actions'
 
@@ -12,9 +13,10 @@ interface TeacherSelectProps {
 }
 
 export function TeacherSelect({ token, onSelect, onError, inline }: TeacherSelectProps) {
+  const t = useTranslations('booking.teacher')
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [hasError, setHasError] = useState(false)
 
   useEffect(() => {
     getTeachersAction(token)
@@ -24,20 +26,18 @@ export function TeacherSelect({ token, onSelect, onError, inline }: TeacherSelec
         } else if (result.error === 'token_expired' && onError) {
           onError('token_expired')
         } else {
-          setError('שגיאה בטעינת המורים. אנא נסה/י שוב.')
+          setHasError(true)
         }
       })
-      .catch(() => setError('שגיאה בטעינת המורים. אנא נסה/י שוב.'))
+      .catch(() => setHasError(true))
       .finally(() => setLoading(false))
   }, [token, onError])
 
   const content = (
     <div className="space-y-5">
       <div className="space-y-1 text-center">
-        <h1 className="text-lg font-semibold text-foreground">עם איזה מורה תרצו לקבוע?</h1>
-        <p className="text-sm text-muted-foreground">
-          אחרי הבחירה נציג לכם את הזמינות הפנויה לשבוע הקרוב.
-        </p>
+        <h1 className="text-lg font-semibold text-foreground">{t('title')}</h1>
+        <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
 
       {loading && (
@@ -48,23 +48,21 @@ export function TeacherSelect({ token, onSelect, onError, inline }: TeacherSelec
         </div>
       )}
 
-      {error && (
-        <p className="text-destructive text-sm text-center">{error}</p>
+      {hasError && (
+        <p className="text-destructive text-sm text-center">{t('loadError')}</p>
       )}
 
-      {!loading && !error && teachers.length === 0 && (
-        <p className="text-muted-foreground text-sm text-center">
-          כרגע אין מורים זמינים לקביעת שיעור.
-        </p>
+      {!loading && !hasError && teachers.length === 0 && (
+        <p className="text-muted-foreground text-sm text-center">{t('empty')}</p>
       )}
 
-      {!loading && !error && teachers.length > 0 && (
+      {!loading && !hasError && teachers.length > 0 && (
         <ul className="space-y-2.5">
           {teachers.map(teacher => (
             <li key={teacher.id}>
               <button
                 onClick={() => onSelect(teacher.id, teacher.display_name)}
-                className="w-full rounded-xl border border-border bg-card p-4 flex items-center gap-3 text-right hover:bg-accent hover:border-primary/30 transition-all group"
+                className="w-full rounded-xl border border-border bg-card p-4 flex items-center gap-3 text-start hover:bg-accent hover:border-primary/30 transition-all group"
               >
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                   <UserRound size={18} className="text-primary" />

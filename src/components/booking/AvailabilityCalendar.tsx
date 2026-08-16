@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
+import { ArrowLeft } from 'lucide-react'
 import {
   getAvailabilitySummaryAction,
   getAvailableSlotsAction,
@@ -12,9 +14,12 @@ import type {
   AvailableSlot,
   SlotLock,
 } from '@/lib/booking'
-import { DURATION_OPTIONS } from './DateDurationSelect'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 
-const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+// Keys into the shared common.days namespace, positioned Sunday-first to match
+// the summary's Sun–Sat week ordering.
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
+export const DURATION_VALUES = [45, 60, 90] as const
 const LOCK_DURATION_MS = 5 * 60 * 1000
 
 export interface AvailabilitySelection {
@@ -49,20 +54,25 @@ export function AvailabilityCalendar({
   onBack,
   onError,
 }: AvailabilityCalendarProps) {
+  const t = useTranslations('booking.availability')
+  const tCommon = useTranslations('common')
+  const intlLocale = toIntlLocale(parseAppLocale(useLocale()))
   const [durationMinutes, setDurationMinutes] = useState(initialDurationMinutes)
   const [weekStart, setWeekStart] = useState<string | undefined>(initialWeekStart)
   const [summary, setSummary] = useState<AvailabilitySummary | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(true)
-  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [summaryError, setSummaryError] = useState(false)
 
   const [selectedDate, setSelectedDate] = useState<string | null>(initialDate ?? null)
   const [selectedBand, setSelectedBand] = useState<AvailabilityBand | null>(null)
 
   const [daySlots, setDaySlots] = useState<AvailableSlot[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
-  const [slotsError, setSlotsError] = useState<string | null>(null)
+  const [slotsError, setSlotsError] = useState(false)
   const [locking, setLocking] = useState<string | null>(null)
-  const [lockError, setLockError] = useState<string | null>(null)
+  // Message keys under booking.availability — translated at render so a
+  // language switch mid-flow updates them too.
+  const [lockError, setLockError] = useState<'lockLost' | 'lockTaken' | null>(null)
   const [activeLock, setActiveLock] = useState<{ lock: SlotLock; slot: AvailableSlot } | null>(null)
   const [secondsLeft, setSecondsLeft] = useState(0)
 
@@ -70,7 +80,7 @@ export function AvailabilityCalendar({
 
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true)
-    setSummaryError(null)
+    setSummaryError(false)
 
     try {
       const result = await getAvailabilitySummaryAction(
@@ -89,10 +99,10 @@ export function AvailabilityCalendar({
         onError('token_expired')
         return
       } else {
-        setSummaryError('לא הצלחנו לטעון את הזמינות כרגע. אפשר לנסות שוב בעוד רגע.')
+        setSummaryError(true)
       }
     } catch {
-      setSummaryError('לא הצלחנו לטעון את הזמינות כרגע. אפשר לנסות שוב בעוד רגע.')
+      setSummaryError(true)
     } finally {
       setSummaryLoading(false)
     }
@@ -101,7 +111,7 @@ export function AvailabilityCalendar({
   const loadSlotsForDate = useCallback(
     async (date: string) => {
       setSlotsLoading(true)
-      setSlotsError(null)
+      setSlotsError(false)
 
       try {
         const result = await getAvailableSlotsAction(token, teacherId, date, durationMinutes)
@@ -112,10 +122,10 @@ export function AvailabilityCalendar({
           onError('token_expired')
           return
         } else {
-          setSlotsError('לא הצלחנו לטעון את השעות המדויקות כרגע. אפשר לנסות שוב.')
+          setSlotsError(true)
         }
       } catch {
-        setSlotsError('לא הצלחנו לטעון את השעות המדויקות כרגע. אפשר לנסות שוב.')
+        setSlotsError(true)
       } finally {
         setSlotsLoading(false)
       }
@@ -176,14 +186,14 @@ export function AvailabilityCalendar({
       // calendar behind a countdown that never reaches zero.
       if (!Number.isFinite(remaining)) {
         setActiveLock(null)
-        setLockError('השעה כבר לא שמורה עבורכם. בחרו שעה אחרת כדי להמשיך.')
+        setLockError('lockLost')
         return
       }
       setSecondsLeft(remaining)
 
       if (remaining === 0) {
         setActiveLock(null)
-        setLockError('השעה כבר לא שמורה עבורכם. בחרו שעה אחרת כדי להמשיך.')
+        setLockError('lockLost')
         if (selectedDate) {
           void loadSlotsForDate(selectedDate)
         }
@@ -251,7 +261,7 @@ export function AvailabilityCalendar({
     }
 
     if (result.error === 'unavailable') {
-      setLockError('בזמן שבחרתם את השעה, היא נתפסה. בחרו שעה אחרת מהרשימה.')
+      setLockError('lockTaken')
       if (selectedDate) {
         await Promise.all([loadSummary(), loadSlotsForDate(selectedDate)])
       }
@@ -283,40 +293,42 @@ export function AvailabilityCalendar({
     ? summary?.days.find((day) => day.date === selectedDate) ?? null
     : null
   const weekLabel = summary
-    ? formatWeekLabel(summary.weekStart, summary.timezone)
+    ? formatWeekLabel(summary.weekStart, summary.timezone, intlLocale)
     : ''
 
   return (
     <div className="w-full space-y-6">
         <div className="space-y-2">
-          <button onClick={onBack} className="text-sm text-muted-foreground hover:underline">
-            ← חזרה
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+          >
+            <ArrowLeft className="size-3.5 rtl:rotate-180" aria-hidden />
+            {t('back')}
           </button>
-          <h1 className="text-xl font-semibold">בחרו מועד שמתאים לכם</h1>
-          <p className="text-sm text-muted-foreground">מורה נבחר: {teacherName}</p>
-          <p className="text-sm text-muted-foreground">
-            בחרו משך שיעור, עברו בין השבועות, ואז לחצו על רצועת זמן פנויה כדי לראות שעות מדויקות.
-          </p>
+          <h1 className="text-xl font-semibold">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('selectedTeacher', { name: teacherName })}</p>
+          <p className="text-sm text-muted-foreground">{t('instructions')}</p>
         </div>
 
         <section className="rounded-2xl border border-border bg-card p-4 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-sm font-medium">משך השיעור המבוקש</p>
+              <p className="text-sm font-medium">{t('durationLabel')}</p>
               <div className="flex flex-wrap gap-2">
-                {DURATION_OPTIONS.map((option) => (
+                {DURATION_VALUES.map((value) => (
                   <button
-                    key={option.value}
+                    key={value}
                     type="button"
                     disabled={!!activeLock}
-                    onClick={() => handleDurationChange(option.value)}
+                    onClick={() => handleDurationChange(value)}
                     className={`rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
-                      durationMinutes === option.value
+                      durationMinutes === value
                         ? 'border-primary bg-primary text-primary-foreground'
                         : 'border-border bg-background hover:bg-accent'
                     } disabled:opacity-50`}
                   >
-                    {option.label}
+                    {tCommon(`durations.${value}`)}
                   </button>
                 ))}
               </div>
@@ -329,7 +341,7 @@ export function AvailabilityCalendar({
                 onClick={() => handleWeekChange(-1)}
                 className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
               >
-                לשבוע הקודם
+                {t('prevWeek')}
               </button>
               <div className="min-w-0 flex-1 text-center text-sm font-medium sm:min-w-44 sm:flex-none">{weekLabel}</div>
               <button
@@ -338,22 +350,22 @@ export function AvailabilityCalendar({
                 onClick={() => handleWeekChange(1)}
                 className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
               >
-                לשבוע הבא
+                {t('nextWeek')}
               </button>
             </div>
           </div>
 
           {summaryLoading ? (
-            <p className="text-sm text-muted-foreground text-center py-8">טוענים את הזמינות לשבוע הקרוב...</p>
+            <p className="text-sm text-muted-foreground text-center py-8">{t('loadingSummary')}</p>
           ) : summaryError ? (
             <div className="text-center space-y-3 py-6">
-              <p className="text-sm text-destructive">{summaryError}</p>
+              <p className="text-sm text-destructive">{t('summaryError')}</p>
               <button
                 type="button"
                 onClick={() => void loadSummary()}
                 className="text-sm underline text-primary"
               >
-                נסו שוב
+                {t('retry')}
               </button>
             </div>
           ) : (
@@ -370,12 +382,12 @@ export function AvailabilityCalendar({
                       }`}
                     >
                       <div className="flex items-baseline justify-center gap-2 md:block md:text-center md:space-y-1">
-                        <p className="text-xs text-muted-foreground">{DAY_NAMES[index]}</p>
-                        <p className="text-sm font-semibold">{formatDate(day.date, summary.timezone)}</p>
+                        <p className="text-xs text-muted-foreground">{tCommon(`days.${DAY_KEYS[index]}`)}</p>
+                        <p className="text-sm font-semibold">{formatDate(day.date, summary.timezone, intlLocale)}</p>
                       </div>
 
                       {day.freeIntervals.length === 0 ? (
-                        <p className="text-xs text-muted-foreground text-center py-2 md:py-6">אין שעות פנויות</p>
+                        <p className="text-xs text-muted-foreground text-center py-2 md:py-6">{t('noSlotsForDay')}</p>
                       ) : (
                         <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
                           {day.freeIntervals.map((band) => {
@@ -396,7 +408,7 @@ export function AvailabilityCalendar({
                                     : 'border-border bg-card hover:bg-accent'
                                 } disabled:opacity-50`}
                               >
-                                {formatTimeRange(band.startAt, band.endAt, summary.timezone)}
+                                {formatTimeRange(band.startAt, band.endAt, summary.timezone, intlLocale)}
                               </button>
                             )
                           })}
@@ -412,63 +424,62 @@ export function AvailabilityCalendar({
 
         {lockError && (
           <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-            {lockError}
+            {t(lockError)}
           </p>
         )}
 
         {activeLock && (
           <section className="rounded-2xl border border-primary/40 bg-primary/5 p-5 space-y-3">
             <p className="text-sm font-medium">
-              שמרנו עבורכם את המועד: {formatTimeRange(activeLock.slot.startAt, activeLock.slot.endAt, timezone)}
+              {t('lockedSlot', {
+                time: formatTimeRange(activeLock.slot.startAt, activeLock.slot.endAt, timezone, intlLocale),
+              })}
             </p>
             <p className="text-sm text-muted-foreground">
-              נשארו עוד {formatCountdown(secondsLeft)} כדי להשלים את ההזמנה
+              {t('lockedCountdown', { countdown: formatCountdown(secondsLeft) })}
             </p>
             <button
               type="button"
               onClick={handleContinue}
               className="w-full rounded-xl bg-primary py-3 font-semibold text-primary-foreground"
             >
-              המשיכו לאישור
+              {t('continue')}
             </button>
           </section>
         )}
 
         <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold">שעות זמינות לבחירה</h2>
+            <h2 className="text-lg font-semibold">{t('slotsTitle')}</h2>
             {selectedDay && selectedBand ? (
               <p className="text-sm text-muted-foreground">
-                {formatDateLabel(selectedDay.date, timezone)} · {formatTimeRange(
+                {formatDateLabel(selectedDay.date, timezone, intlLocale)} · {formatTimeRange(
                   selectedBand.startAt,
                   selectedBand.endAt,
-                  timezone
+                  timezone,
+                  intlLocale
                 )}
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                בחרו רצועת זמן מהלוח כדי לראות את השעות הפנויות בתוך אותה רצועה.
-              </p>
+              <p className="text-sm text-muted-foreground">{t('slotsInstructions')}</p>
             )}
           </div>
 
           {!selectedDay || !selectedBand ? null : slotsLoading ? (
-            <p className="text-sm text-muted-foreground">טוענים את השעות הפנויות...</p>
+            <p className="text-sm text-muted-foreground">{t('loadingSlots')}</p>
           ) : slotsError ? (
             <div className="space-y-3">
-              <p className="text-sm text-destructive">{slotsError}</p>
+              <p className="text-sm text-destructive">{t('slotsError')}</p>
               <button
                 type="button"
                 onClick={() => void loadSlotsForDate(selectedDay.date)}
                 className="text-sm underline text-primary"
               >
-                נסו שוב
+                {t('retry')}
               </button>
             </div>
           ) : visibleSlots.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              כרגע אין שעות פנויות בתוך הרצועה שנבחרה. אפשר לבחור רצועה אחרת.
-            </p>
+            <p className="text-sm text-muted-foreground">{t('noSlotsInBand')}</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {visibleSlots.map((slot) => (
@@ -477,11 +488,11 @@ export function AvailabilityCalendar({
                   type="button"
                   disabled={locking === slot.startAt || !!activeLock}
                   onClick={() => void handleSlotTap(slot)}
-                  className="rounded-xl border border-border bg-background px-4 py-3 text-right text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50"
+                  className="rounded-xl border border-border bg-background px-4 py-3 text-start text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50"
                 >
                   {locking === slot.startAt
-                    ? 'שומרים...'
-                    : formatTimeRange(slot.startAt, slot.endAt, timezone)}
+                    ? t('locking')
+                    : formatTimeRange(slot.startAt, slot.endAt, timezone, intlLocale)}
                 </button>
               ))}
             </div>
@@ -491,16 +502,16 @@ export function AvailabilityCalendar({
   )
 }
 
-function formatDate(date: string, timezone: string): string {
-  return new Intl.DateTimeFormat('he-IL', {
+function formatDate(date: string, timezone: string, intlLocale: string): string {
+  return new Intl.DateTimeFormat(intlLocale, {
     day: 'numeric',
     month: 'numeric',
     timeZone: timezone,
   }).format(new Date(`${date}T12:00:00Z`))
 }
 
-function formatDateLabel(date: string, timezone: string): string {
-  return new Intl.DateTimeFormat('he-IL', {
+function formatDateLabel(date: string, timezone: string, intlLocale: string): string {
+  return new Intl.DateTimeFormat(intlLocale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -509,12 +520,12 @@ function formatDateLabel(date: string, timezone: string): string {
   }).format(new Date(`${date}T12:00:00Z`))
 }
 
-function formatTimeRange(startAt: string, endAt: string, timezone: string): string {
-  return `${formatTime(startAt, timezone)} — ${formatTime(endAt, timezone)}`
+function formatTimeRange(startAt: string, endAt: string, timezone: string, intlLocale: string): string {
+  return `${formatTime(startAt, timezone, intlLocale)} — ${formatTime(endAt, timezone, intlLocale)}`
 }
 
-function formatTime(iso: string, timezone: string): string {
-  return new Intl.DateTimeFormat('he-IL', {
+function formatTime(iso: string, timezone: string, intlLocale: string): string {
+  return new Intl.DateTimeFormat(intlLocale, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -522,11 +533,11 @@ function formatTime(iso: string, timezone: string): string {
   }).format(new Date(iso))
 }
 
-function formatWeekLabel(weekStart: string, timezone: string): string {
+function formatWeekLabel(weekStart: string, timezone: string, intlLocale: string): string {
   const start = new Date(`${weekStart}T12:00:00Z`)
   const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000)
-  const startDay = new Intl.DateTimeFormat('he-IL', { day: 'numeric', timeZone: timezone }).format(start)
-  const endDay = new Intl.DateTimeFormat('he-IL', {
+  const startDay = new Intl.DateTimeFormat(intlLocale, { day: 'numeric', timeZone: timezone }).format(start)
+  const endDay = new Intl.DateTimeFormat(intlLocale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

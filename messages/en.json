@@ -1,4 +1,88 @@
 {
+  "booking": {
+    "link": {
+      "expiredTitle": "Link expired",
+      "invalidTitle": "Invalid link",
+      "expiredBody": "This booking link has expired. Send us a WhatsApp message to get a new one.",
+      "invalidBody": "This booking link is not valid. Send us a WhatsApp message to get a new one."
+    },
+    "flow": {
+      "tagline": "Book a lesson",
+      "steps": {
+        "teacher": "Teacher",
+        "availability": "Date & time",
+        "confirm": "Confirm"
+      }
+    },
+    "teacher": {
+      "title": "Which teacher would you like to book with?",
+      "subtitle": "After you choose, we'll show the open availability for the coming week.",
+      "empty": "No teachers are currently available for booking.",
+      "loadError": "We couldn't load the teachers. Please try again."
+    },
+    "availability": {
+      "back": "Back",
+      "title": "Pick a time that works for you",
+      "selectedTeacher": "Selected teacher: {name}",
+      "instructions": "Choose a lesson duration, browse the weeks, then tap a free time band to see exact times.",
+      "durationLabel": "Lesson duration",
+      "prevWeek": "Previous week",
+      "nextWeek": "Next week",
+      "loadingSummary": "Loading availability for the coming week...",
+      "summaryError": "We couldn't load the availability right now. Please try again in a moment.",
+      "retry": "Try again",
+      "noSlotsForDay": "No open times",
+      "slotsTitle": "Available times",
+      "slotsInstructions": "Pick a time band from the calendar to see the open times within it.",
+      "loadingSlots": "Loading available times...",
+      "slotsError": "We couldn't load the exact times right now. Please try again.",
+      "noSlotsInBand": "There are no open times in the selected band right now. Try another band.",
+      "locking": "Reserving...",
+      "lockLost": "This time is no longer held for you. Pick another time to continue.",
+      "lockTaken": "That time was taken while you were choosing. Please pick another time from the list.",
+      "lockedSlot": "We're holding this time for you: {time}",
+      "lockedCountdown": "You have {countdown} left to complete the booking",
+      "continue": "Continue to confirmation"
+    },
+    "confirm": {
+      "title": "One moment before you confirm",
+      "subtitle": "Make sure the details are correct, then complete the booking.",
+      "teacher": "Teacher",
+      "date": "Date",
+      "time": "Time",
+      "held": "This time is held for you for another {countdown}",
+      "heldExpired": "The hold on this time has expired",
+      "submit": "Confirm booking",
+      "submitting": "Booking your lesson..."
+    },
+    "success": {
+      "title": "Your lesson is booked",
+      "whatsappNote": "A confirmation will be sent to you on WhatsApp shortly."
+    },
+    "errors": {
+      "lock_expired": {
+        "title": "This time is no longer held",
+        "body": "The time we held for you has run out. Pick a new time and continue."
+      },
+      "inactive_participant": {
+        "title": "We can't complete this booking right now",
+        "body": "This lesson can't be booked at the moment. Please contact the center and we'll be happy to help."
+      },
+      "no_primary_parent": {
+        "title": "Details are missing to complete the booking",
+        "body": "We couldn't find a primary parent for this booking. Please contact the center."
+      },
+      "token_expired": {
+        "title": "Link expired",
+        "body": "To continue, send us a WhatsApp message and we'll send you a new link."
+      },
+      "unknown": {
+        "title": "Something went wrong",
+        "body": "We couldn't complete the action right now. Please try again, or contact the center if needed."
+      },
+      "restart": "Start over"
+    }
+  },
   "common": {
     "actions": {
       "save": "Save",

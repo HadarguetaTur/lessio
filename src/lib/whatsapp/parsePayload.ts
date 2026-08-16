@@ -11,7 +11,16 @@ export interface WhatsAppMessage {
   /** E.164-ish sender phone (from Meta — may need normalizePhone before DB lookup) */
   from: string
   messageId: string
+  /**
+   * Free text the user typed. For an interactive reply this holds the tapped
+   * label, so keyword intent detection keeps working as a second line of defence.
+   */
   text: string
+  /**
+   * Payload id of a tapped button or list row (e.g. "action:book:<studentId>"),
+   * or undefined for a typed message. This is what the menu router dispatches on.
+   */
+  replyId?: string
   /** Display phone number of the receiving business WhatsApp line */
   businessPhoneNumber: string
   /** Meta phone_number_id of the receiving business line */
@@ -23,6 +32,16 @@ const MetaMessageSchema = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
   text: z.object({ body: z.string() }).optional(),
+  // Reply to an interactive list / reply-button message we sent.
+  interactive: z
+    .object({
+      type: z.string().optional(),
+      button_reply: z.object({ id: z.string(), title: z.string().optional() }).optional(),
+      list_reply: z.object({ id: z.string(), title: z.string().optional() }).optional(),
+    })
+    .optional(),
+  // Reply to a quick-reply button on an approved template.
+  button: z.object({ payload: z.string().optional(), text: z.string().optional() }).optional(),
 })
 
 const MetaWebhookPayloadSchema = z.object({
@@ -64,11 +83,12 @@ export function parseWebhookPayload(body: unknown): WhatsAppMessage[] {
       if (!messages) continue
 
       for (const msg of messages) {
-        if (msg.type !== 'text' || !msg.text) continue
+        const extracted = extractContent(msg)
+        if (!extracted) continue
         results.push({
           from: msg.from,
           messageId: msg.id,
-          text: msg.text.body,
+          ...extracted,
           businessPhoneNumber: metadata.display_phone_number,
           phoneNumberId: metadata.phone_number_id,
         })
@@ -77,6 +97,35 @@ export function parseWebhookPayload(body: unknown): WhatsAppMessage[] {
   }
 
   return results
+}
+
+/**
+ * Normalises the three inbound shapes we act on into { text, replyId }.
+ * Everything else (images, audio, reactions, status updates) returns null and
+ * is dropped, as before.
+ */
+function extractContent(
+  msg: z.infer<typeof MetaMessageSchema>
+): { text: string; replyId?: string } | null {
+  if (msg.type === 'text' && msg.text) {
+    return { text: msg.text.body }
+  }
+
+  if (msg.type === 'interactive' && msg.interactive) {
+    const reply = msg.interactive.button_reply ?? msg.interactive.list_reply
+    if (reply) return { text: reply.title ?? '', replyId: reply.id }
+    return null
+  }
+
+  // Quick-reply button on an approved template: the payload we registered comes
+  // back in `button.payload`, with the visible label in `button.text`.
+  if (msg.type === 'button' && msg.button) {
+    const payload = msg.button.payload ?? msg.button.text
+    if (payload) return { text: msg.button.text ?? payload, replyId: payload }
+    return null
+  }
+
+  return null
 }
 
 /** Returns true if the message text contains a booking intent keyword. */

@@ -32,7 +32,16 @@ import {
   hasPortalIntent,
 } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
 import { botString } from '@/lib/whatsapp/strings'
+import {
+  decodeMenuPayload,
+  isGreeting,
+  needsStudent,
+  sendMainMenu,
+  sendStudentPicker,
+  type MenuAction,
+} from '@/lib/whatsapp/menu'
 import {
   detectLocaleFromText,
   parseAppLocale,
@@ -197,6 +206,7 @@ async function processMessage(
     from: string
     messageId: string
     text: string
+    replyId?: string
     businessPhoneNumber: string
     phoneNumberId: string
   },
@@ -299,7 +309,7 @@ async function processMessage(
   //    an unrecognized sender must create a lead, regardless of intent)
   const { data: parent, error: parentError } = await db
     .from('parents')
-    .select('id, preferred_locale')
+    .select('id, full_name, preferred_locale')
     .eq('organization_id', org.id)
     .eq('phone', senderPhone)
     .eq('is_active', true)
@@ -346,8 +356,62 @@ async function processMessage(
       })
   }
 
+  // 6b. Tapped a menu row or button. An explicit choice outranks a cancellation
+  //     session still open from an earlier exchange, so this runs first — the
+  //     alternative is reading "book a lesson" as a lesson number.
+  const menuChoice = decodeMenuPayload(msg.replyId)
+  let forcedStudentId: string | null = null
+
+  if (menuChoice) {
+    await deleteCancellationSession(org.id, senderPhone).catch((err) => {
+      console.warn('[whatsapp/webhook] Could not clear session on menu tap', { orgId: org.id, err })
+    })
+
+    if (needsStudent(menuChoice.action)) {
+      const resolved = await resolveStudentForAction({
+        db,
+        orgId: org.id,
+        parentId: parent.id,
+        senderPhone,
+        action: menuChoice.action,
+        studentId: menuChoice.studentId,
+        accessToken,
+        phoneNumberId,
+        locale,
+      })
+      // null means a picker or an explanatory reply already went out.
+      if (!resolved) return
+      forcedStudentId = resolved
+    } else {
+      await runMenuAction({
+        action: menuChoice.action,
+        parentId: parent.id,
+        org,
+        senderPhone,
+        accessToken,
+        phoneNumberId,
+        locale,
+        origin,
+      })
+      return
+    }
+  }
+
+  // 6c. Bare greeting → greet by name and show the menu.
+  if (!menuChoice && isGreeting(msg.text)) {
+    await sendMenuWithFallback({
+      orgId: org.id,
+      senderPhone,
+      accessToken,
+      phoneNumberId,
+      locale,
+      parentFullName: parent.full_name as string | null,
+    })
+    return
+  }
+
   // 7. Known parent — check for active cancellation session first
-  const session = await getActiveCancellationSession(org.id, senderPhone)
+  const session = forcedStudentId ? null : await getActiveCancellationSession(org.id, senderPhone)
 
   if (session) {
     await handleCancellationSelection(
@@ -425,7 +489,7 @@ async function processMessage(
 
   // 9e. Portal link
   if (hasPortalIntent(msg.text)) {
-    await handlePortalQuery(org.id, senderPhone, accessToken, phoneNumberId, locale)
+    await handlePortalQuery(org.id, senderPhone, accessToken, phoneNumberId, locale, origin)
     return
   }
 
@@ -441,8 +505,8 @@ async function processMessage(
     // No recent AI log — fall through to normal intent handling
   }
 
-  // 10. Check booking intent
-  if (!hasBookingIntent(msg.text)) {
+  // 10. Check booking intent (already decided if this came from a menu tap)
+  if (!forcedStudentId && !hasBookingIntent(msg.text)) {
     // No recognized intent — try AI assistant if enabled, else polite fallback
     const aiConfigured = isAiAssistantConfigured() || await isAiConfiguredForOrg(org.id)
     if (org.ai_assistant_enabled && aiConfigured) {
@@ -488,52 +552,36 @@ async function processMessage(
       }
       const unknownBody = await resolveTemplate(org.id, 'unknown_intent_fallback', {}, locale)
       await sendTextMessage(senderPhone, unknownBody, accessToken, phoneNumberId)
+      // The menu is the actionable half of "I did not understand".
+      await sendMenuWithFallback({
+        orgId: org.id,
+        senderPhone,
+        accessToken,
+        phoneNumberId,
+        locale,
+        parentFullName: parent.full_name as string | null,
+        skipTextFallback: true,
+      })
     }
     return
   }
 
-  // 10. Resolve student for this parent
-  const { data: relationships, error: relError } = await db
-    .from('relationships')
-    .select('student_id')
-    .eq('organization_id', org.id)
-    .eq('parent_id', parent.id)
+  // 10. Resolve the student to book for. A multi-student parent now gets a
+  //     picker instead of being turned away.
+  const studentId =
+    forcedStudentId ??
+    (await resolveStudentForAction({
+      db,
+      orgId: org.id,
+      parentId: parent.id,
+      senderPhone,
+      action: 'book',
+      accessToken,
+      phoneNumberId,
+      locale,
+    }))
 
-    if (relError || !relationships) {
-      console.error('[whatsapp/webhook] DB error looking up students', { error: relError })
-      throw new Error('Failed to look up parent students for booking flow')
-    }
-
-    if (relationships.length === 0) {
-      console.warn('[whatsapp/webhook] Parent has no students — sending explanatory reply', {
-        orgId: org.id,
-        parentId: parent.id,
-      })
-      await sendBookingUnavailableReply(
-        senderPhone,
-        botString('booking_no_student', locale),
-        accessToken,
-        phoneNumberId
-      )
-      return
-    }
-
-    if (relationships.length > 1) {
-      console.warn('[whatsapp/webhook] Parent has multiple students — sending explanatory reply', {
-        orgId: org.id,
-        parentId: parent.id,
-        studentCount: relationships.length,
-      })
-      await sendBookingUnavailableReply(
-        senderPhone,
-        botString('booking_multiple_students', locale),
-        accessToken,
-        phoneNumberId
-      )
-      return
-    }
-
-  const studentId = relationships[0].student_id
+  if (!studentId) return
 
   // 9. Generate signed booking JWT (15-min expiry)
   const token = await signBookingToken({
@@ -545,9 +593,19 @@ async function processMessage(
   // 10. Build booking URL from request origin
   const bookingUrl = `${origin}/book/${token}`
 
-  // 11. Send booking link via WhatsApp
-  const bookingLinkBody = await resolveTemplate(org.id, 'booking_link', { booking_url: bookingUrl }, locale)
-  await sendTextMessage(senderPhone, bookingLinkBody, accessToken, phoneNumberId)
+  // 11. Send booking link via WhatsApp, as a CTA button — the signed token makes
+  //     the raw URL unreadably long in a plain-text body.
+  await sendLinkReply({
+    orgId: org.id,
+    to: senderPhone,
+    templateType: 'booking_link',
+    urlVar: 'booking_url',
+    url: bookingUrl,
+    buttonKey: 'cta_book_lesson',
+    locale,
+    accessToken,
+    phoneNumberId,
+  })
   console.info('[whatsapp/webhook] Booking link sent', { messageId: msg.messageId })
   } catch (error) {
     await releaseIncomingMessageClaim(org.id, msg.messageId)
@@ -587,6 +645,148 @@ async function handleUnknownSender(
 
   // Send fixed reply to unknown sender (Decision #4)
   await sendUnknownParentReply(phone, accessToken, phoneNumberId, locale)
+}
+
+/**
+ * Sends the interactive menu, falling back to the plain-text template list when
+ * the interactive send is rejected (outside the 24h window, or a client that
+ * cannot render lists). `skipTextFallback` is for callers that already sent the
+ * text version and only want the buttons on top.
+ */
+async function sendMenuWithFallback(params: {
+  orgId: string
+  senderPhone: string
+  accessToken: string
+  phoneNumberId: string
+  locale: AppLocale
+  parentFullName: string | null
+  skipTextFallback?: boolean
+}): Promise<void> {
+  const { orgId, senderPhone, accessToken, phoneNumberId, locale, parentFullName } = params
+
+  await sendMainMenu({
+    phone: senderPhone,
+    accessToken,
+    phoneNumberId,
+    locale,
+    parentFullName,
+    onFallback: async () => {
+      if (params.skipTextFallback) return
+      const body = await resolveTemplate(orgId, 'unknown_intent_fallback', {}, locale)
+      await sendTextMessage(senderPhone, body, accessToken, phoneNumberId)
+    },
+  }).catch((err) => {
+    console.error('[whatsapp/webhook] Menu send failed entirely', { orgId, err })
+  })
+}
+
+/**
+ * Resolves which student a per-student action applies to.
+ *
+ * Returns the student id when it is unambiguous; returns null after sending a
+ * picker (several students) or an explanatory reply (none / unknown id), in
+ * which case the caller must stop.
+ */
+async function resolveStudentForAction(params: {
+  db: ReturnType<typeof createServiceRoleClient>
+  orgId: string
+  parentId: string
+  senderPhone: string
+  action: MenuAction
+  studentId?: string
+  accessToken: string
+  phoneNumberId: string
+  locale: AppLocale
+}): Promise<string | null> {
+  const { db, orgId, parentId, senderPhone, action, accessToken, phoneNumberId, locale } = params
+
+  const { data: rels, error } = await db
+    .from('relationships')
+    .select('student_id, students ( id, full_name )')
+    .eq('organization_id', orgId)
+    .eq('parent_id', parentId)
+
+  if (error) {
+    console.error('[whatsapp/webhook] DB error looking up students', { orgId, parentId, error })
+    throw new Error('Failed to look up parent students')
+  }
+
+  type RelRow = { student_id: string; students: { id: string; full_name: string | null } | null }
+  const students = ((rels ?? []) as unknown as RelRow[])
+    .map((r) => r.students)
+    .filter((s): s is { id: string; full_name: string | null } => Boolean(s))
+
+  // A tapped payload names the student directly — but verify it still belongs
+  // to this parent rather than trusting an id echoed back from the client.
+  if (params.studentId) {
+    const match = students.find((s) => s.id === params.studentId)
+    if (match) return match.id
+    console.warn('[whatsapp/webhook] Tapped student is not linked to this parent', {
+      orgId,
+      parentId,
+      studentId: params.studentId,
+    })
+    await sendTextMessage(senderPhone, botString('child_not_found', locale), accessToken, phoneNumberId)
+    return null
+  }
+
+  if (students.length === 0) {
+    await sendTextMessage(senderPhone, botString('booking_no_student', locale), accessToken, phoneNumberId)
+    return null
+  }
+
+  if (students.length === 1) return students[0].id
+
+  await sendStudentPicker({
+    phone: senderPhone,
+    accessToken,
+    phoneNumberId,
+    locale,
+    action,
+    students,
+  })
+  return null
+}
+
+/** Routes a tapped menu action that does not depend on a specific student. */
+async function runMenuAction(params: {
+  action: MenuAction
+  parentId: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  org: any
+  senderPhone: string
+  accessToken: string
+  phoneNumberId: string
+  locale: AppLocale
+  origin: string
+}): Promise<void> {
+  const { action, parentId, org, senderPhone, accessToken, phoneNumberId, locale, origin } = params
+  const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
+
+  switch (action) {
+    case 'cancel':
+      if (org.automation_cancellation_enabled === false) {
+        await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId, locale)
+        return
+      }
+      await handleCancellationIntent(
+        parentId, org.id, senderPhone, timezone, accessToken, phoneNumberId, locale
+      )
+      return
+    case 'balance':
+      await handleBalanceQuery(parentId, org.id, senderPhone, accessToken, phoneNumberId, locale)
+      return
+    case 'schedule':
+      await handleScheduleQuery(
+        parentId, org.id, senderPhone, timezone, accessToken, phoneNumberId, locale
+      )
+      return
+    case 'portal':
+      await handlePortalQuery(org.id, senderPhone, accessToken, phoneNumberId, locale, origin)
+      return
+    default:
+      console.warn('[whatsapp/webhook] Unhandled menu action', { action })
+  }
 }
 
 async function sendBookingUnavailableReply(
@@ -1072,13 +1272,25 @@ async function handlePortalQuery(
   senderPhone: string,
   accessToken: string,
   phoneNumberId: string,
-  locale: AppLocale
+  locale: AppLocale,
+  origin: string
 ): Promise<void> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const portalUrl = `${appUrl}/portal/${orgId}`
+  // Built from the request origin, not NEXT_PUBLIC_APP_URL: that var is inlined
+  // at build time, so a stale/localhost value in the deploy environment shipped
+  // parents an unreachable link. The origin is whatever host Meta just called.
+  const portalUrl = `${origin}/portal/${orgId}`
 
-  const portalBody = await resolveTemplate(orgId, 'portal_link_reply', { portal_url: portalUrl }, locale)
-  await sendTextMessage(senderPhone, portalBody, accessToken, phoneNumberId)
+  await sendLinkReply({
+    orgId,
+    to: senderPhone,
+    templateType: 'portal_link_reply',
+    urlVar: 'portal_url',
+    url: portalUrl,
+    buttonKey: 'cta_open_portal',
+    locale,
+    accessToken,
+    phoneNumberId,
+  })
 
   console.info('[whatsapp/webhook] Portal query replied', { orgId, senderPhone })
 }

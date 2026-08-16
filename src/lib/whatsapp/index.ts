@@ -117,6 +117,60 @@ export async function sendCancellationLessonList(
   return sendTextMessage(to, message, accessToken, phoneNumberId)
 }
 
+/** Meta caps the CTA button label at 20 chars and an interactive body at 1024. */
+export const CTA_BUTTON_TEXT_MAX = 20
+export const CTA_BODY_MAX = 1024
+
+/**
+ * Sends an interactive "call to action URL" message — a tappable button whose
+ * label is short text ("לקביעת שיעור") and whose URL is hidden from the body.
+ *
+ * Free-form message: only valid INSIDE the 24h customer-service window. Every
+ * caller today is replying to an inbound parent message, so the window is open
+ * by construction. Outside it, Meta rejects with 131047 — use an approved
+ * template with a URL button instead.
+ */
+export async function sendCtaUrlMessage(
+  to: string,
+  body: string,
+  buttonText: string,
+  linkUrl: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'interactive',
+      interactive: {
+        type: 'cta_url',
+        body: { text: body },
+        action: {
+          name: 'cta_url',
+          parameters: {
+            display_text: buttonText.slice(0, CTA_BUTTON_TEXT_MAX),
+            url: linkUrl,
+          },
+        },
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    console.error('[whatsapp] CTA URL API error', { to, status: res.status, detail })
+    throw new Error(`WhatsApp CTA URL API error ${res.status}: ${detail}`)
+  }
+}
+
 /**
  * Sends "no eligible lessons" reply.
  */

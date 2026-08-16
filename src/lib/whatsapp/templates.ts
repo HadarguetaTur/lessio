@@ -174,6 +174,35 @@ export async function resolveTemplate(
 }
 
 /**
+ * Removes the line that holds nothing but {{varName}}, so the URL can move into
+ * a CTA button instead of sitting raw in the body.
+ *
+ * Returns null when the caller must keep the plain-text form:
+ *   - the placeholder is missing entirely
+ *   - it appears more than once
+ *   - it is embedded mid-sentence (an org customised the template) — stripping
+ *     the whole line there would mangle their copy
+ *
+ * The blank line that separated the URL from the following paragraph is
+ * collapsed, so 'intro\n{{url}}\n\noutro' becomes 'intro\n\noutro'.
+ */
+export function stripStandaloneVarLine(template: string, varName: string): string | null {
+  const placeholder = `{{${varName}}}`
+  const occurrences = template.split(placeholder).length - 1
+  if (occurrences !== 1) return null
+
+  const lines = template.split('\n')
+  const index = lines.findIndex((line) => line.trim() === placeholder)
+  if (index === -1) return null
+
+  lines.splice(index, 1)
+  // Collapse the separator blank line the URL used to sit above/below.
+  if (lines[index] === '' && lines[index - 1] === '') lines.splice(index, 1)
+
+  return lines.join('\n').trim()
+}
+
+/**
  * Available variables per template type, for UI display (settings page hints).
  */
 export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {

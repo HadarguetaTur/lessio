@@ -27,11 +27,26 @@ vi.mock('@/lib/whatsapp', async () => {
   }
 })
 
+// Interactive sends hit graph.facebook.com directly. Mock the transport, keep
+// the real payload encoding/greeting logic so routing is still exercised.
+vi.mock('@/lib/whatsapp/interactive', () => ({
+  sendListMessage: vi.fn().mockResolvedValue(undefined),
+  sendReplyButtons: vi.fn().mockResolvedValue(undefined),
+  REPLY_BUTTONS_MAX: 3,
+}))
+
 vi.mock('@/lib/whatsapp/templates', () => ({
   resolveTemplate: vi.fn().mockImplementation(
     (_orgId: string, _type: string, vars: Record<string, string> = {}) =>
       Promise.resolve(vars['booking_url'] ?? 'mocked-template-body')
   ),
+}))
+
+// Link replies go out as interactive CTA buttons; the CTA-vs-text decision and
+// its fallbacks are covered in src/lib/whatsapp/sendLinkReply.test.ts. Here we
+// only assert the webhook hands over the right template type and URL.
+vi.mock('@/lib/whatsapp/sendLinkReply', () => ({
+  sendLinkReply: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@/lib/cancellation-flow', () => ({
@@ -104,8 +119,15 @@ import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { claimIncomingMessage, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
 import { notifySuperadmins, hasRecentUnreadSuperadminNotification } from '@/lib/notifications'
+import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
+import { sendListMessage, sendReplyButtons } from '@/lib/whatsapp/interactive'
+import { signBookingToken } from '@/lib/jwt'
 import * as Sentry from '@sentry/nextjs'
 
+const mockSendListMessage = vi.mocked(sendListMessage)
+const mockSendReplyButtons = vi.mocked(sendReplyButtons)
+const mockSignBookingToken = vi.mocked(signBookingToken)
+const mockSendLinkReply = vi.mocked(sendLinkReply)
 const mockSendTextMessage = vi.mocked(sendTextMessage)
 const mockSendUnknownParentReply = vi.mocked(sendUnknownParentReply)
 const mockSendInvalidSelectionReply = vi.mocked(sendInvalidSelectionReply)
@@ -142,7 +164,39 @@ const SENDER_PHONE_META = '972501234567'
 const BUSINESS_PHONE_META = '972520000000'
 // Normalized
 const SENDER_PHONE_E164 = '+972501234567'
+/**
+ * Filler body for tests that only care about routing, not wording. Deliberately
+ * NOT a greeting: a bare "שלום"/"hi" now short-circuits into the interactive
+ * menu before any intent handling runs.
+ */
+const NEUTRAL_TEXT = 'רציתי לשאול משהו'
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Payload shape Meta sends when a parent taps a list row or reply button. */
+function makeInteractivePayload(replyId: string, title = 'tapped') {
+  return {
+    object: 'whatsapp_business_account',
+    entry: [{
+      id: 'entry-1',
+      changes: [{
+        field: 'messages',
+        value: {
+          messaging_product: 'whatsapp',
+          metadata: {
+            display_phone_number: BUSINESS_PHONE_META,
+            phone_number_id: 'phone-number-id-1',
+          },
+          messages: [{
+            from: SENDER_PHONE_META,
+            id: 'msg-1',
+            type: 'interactive',
+            interactive: { type: 'list_reply', list_reply: { id: replyId, title } },
+          }],
+        },
+      }],
+    }],
+  }
+}
 
 function makeWebhookPayload(text: string, from = SENDER_PHONE_META) {
   return {
@@ -281,7 +335,10 @@ describe('POST /api/whatsapp/webhook', () => {
         chain['select'] = () => chain
         chain['eq'] = () => chain
         chain['then'] = (res: (v: unknown) => unknown) =>
-          Promise.resolve({ data: [{ student_id: STUDENT_ID }], error: null }).then(res)
+          Promise.resolve({
+            data: [{ student_id: STUDENT_ID, students: { id: STUDENT_ID, full_name: 'דנה' } }],
+            error: null,
+          }).then(res)
         return chain
       }
       return buildChain({ data: null, error: null })
@@ -291,13 +348,48 @@ describe('POST /api/whatsapp/webhook', () => {
     const res = await POST(req)
 
     expect(res.status).toBe(200)
-    expect(mockSendTextMessage).toHaveBeenCalledWith(
-      SENDER_PHONE_E164,
-      expect.stringContaining('/book/signed-token-abc'),
-      'test-access-token',
-      'phone-number-id-1'
+    expect(mockSendLinkReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orgId: ORG_ID,
+        to: SENDER_PHONE_E164,
+        templateType: 'booking_link',
+        urlVar: 'booking_url',
+        url: expect.stringContaining('/book/signed-token-abc'),
+        buttonKey: 'cta_book_lesson',
+        accessToken: 'test-access-token',
+        phoneNumberId: 'phone-number-id-1',
+      })
     )
     expect(mockUpsertLead).not.toHaveBeenCalled()
+  })
+
+  it('builds the portal link from the request origin, never from NEXT_PUBLIC_APP_URL', async () => {
+    const previous = process.env.NEXT_PUBLIC_APP_URL
+    process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000'
+
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    try {
+      const req = makeRequest(makeWebhookPayload('אזור אישי'))
+      const res = await POST(req)
+
+      expect(res.status).toBe(200)
+      expect(mockSendLinkReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateType: 'portal_link_reply',
+          urlVar: 'portal_url',
+          buttonKey: 'cta_open_portal',
+          url: `https://example.com/portal/${ORG_ID}`,
+        })
+      )
+    } finally {
+      process.env.NEXT_PUBLIC_APP_URL = previous
+    }
   })
 
   it('sends unknown-intent fallback when message has no booking intent', async () => {
@@ -308,7 +400,7 @@ describe('POST /api/whatsapp/webhook', () => {
       return buildChain({ data: null, error: null })
     })
 
-    const req = makeRequest(makeWebhookPayload('שלום'))
+    const req = makeRequest(makeWebhookPayload(NEUTRAL_TEXT))
     const res = await POST(req)
 
     expect(res.status).toBe(200)
@@ -498,7 +590,7 @@ describe('POST /api/whatsapp/webhook', () => {
       return buildChain({ data: null, error: null })
     })
 
-    const req = makeRequest(makeWebhookPayload('שלום'))
+    const req = makeRequest(makeWebhookPayload(NEUTRAL_TEXT))
     const res = await POST(req)
 
     expect(res.status).toBe(200)
@@ -525,7 +617,7 @@ describe('POST /api/whatsapp/webhook', () => {
       return buildChain({ data: null, error: null })
     })
 
-    const req = makeRequest(makeWebhookPayload('שלום'))
+    const req = makeRequest(makeWebhookPayload(NEUTRAL_TEXT))
     const res = await POST(req)
 
     expect(res.status).toBe(200)
@@ -583,7 +675,7 @@ describe('POST /api/whatsapp/webhook', () => {
       return buildChain({ data: null, error: null })
     })
 
-    const req = makeRequest(makeWebhookPayload('שלום'))
+    const req = makeRequest(makeWebhookPayload(NEUTRAL_TEXT))
     await POST(req)
 
     expect(mockReleaseIncomingMessageClaim).not.toHaveBeenCalled()
@@ -596,7 +688,7 @@ describe('POST /api/whatsapp/webhook', () => {
       return buildChain({ data: null, error: null })
     })
 
-    const req = makeRequest(makeWebhookPayload('שלום'))
+    const req = makeRequest(makeWebhookPayload(NEUTRAL_TEXT))
     const res = await POST(req)
 
     expect(res.status).toBe(200)
@@ -658,7 +750,7 @@ describe('WhatsApp cancellation intent', () => {
       return buildChain({ data: null, error: null })
     })
 
-    const req = makeRequest(makeWebhookPayload('שלום'))
+    const req = makeRequest(makeWebhookPayload(NEUTRAL_TEXT))
     const res = await POST(req)
     expect(res.status).toBe(200)
     expect(mockUpsertLead).not.toHaveBeenCalled()
@@ -838,7 +930,7 @@ describe('WhatsApp webhook hardening (Sprint 31 Story 4)', () => {
     mockIsRateLimited.mockResolvedValue(true)
     mockKnownOrgAndParent()
 
-    const req = makeRequest(makeWebhookPayload('שלום'))
+    const req = makeRequest(makeWebhookPayload(NEUTRAL_TEXT))
     const res = await POST(req)
 
     expect(res.status).toBe(200)
@@ -853,7 +945,7 @@ describe('WhatsApp webhook hardening (Sprint 31 Story 4)', () => {
     mockIsRateLimited.mockResolvedValue(false)
     mockKnownOrgAndParent()
 
-    const req = makeRequest(makeWebhookPayload('שלום'))
+    const req = makeRequest(makeWebhookPayload(NEUTRAL_TEXT))
     const res = await POST(req)
 
     expect(res.status).toBe(200)
@@ -864,7 +956,7 @@ describe('WhatsApp webhook hardening (Sprint 31 Story 4)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockFrom.mockImplementation(() => buildChain({ data: null, error: null })) // org not found
 
-    const req = makeRequest(makeWebhookPayload('שלום'))
+    const req = makeRequest(makeWebhookPayload(NEUTRAL_TEXT))
     const res = await POST(req)
     // notifyUnroutablePhoneNumber is fire-and-forget — flush microtasks
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -889,7 +981,7 @@ describe('WhatsApp webhook hardening (Sprint 31 Story 4)', () => {
     mockHasRecentUnreadSuperadminNotification.mockResolvedValue(true)
     mockFrom.mockImplementation(() => buildChain({ data: null, error: null }))
 
-    const req = makeRequest(makeWebhookPayload('שלום'))
+    const req = makeRequest(makeWebhookPayload(NEUTRAL_TEXT))
     await POST(req)
     await new Promise((resolve) => setTimeout(resolve, 0))
 
@@ -898,5 +990,155 @@ describe('WhatsApp webhook hardening (Sprint 31 Story 4)', () => {
     expect(mockSentryCaptureException).toHaveBeenCalled()
 
     errorSpy.mockRestore()
+  })
+})
+
+// ── Interactive menu ──────────────────────────────────────────────────────────
+
+describe('WhatsApp interactive menu', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.WHATSAPP_APP_SECRET = APP_SECRET
+    mockDecryptToken.mockReturnValue('test-access-token')
+    mockClaimIncomingMessage.mockResolvedValue(true)
+    mockIsRateLimited.mockResolvedValue(false)
+    mockGetActiveCancellationSession.mockResolvedValue(null)
+    mockAiAssistantConfigured.mockReturnValue(false)
+  })
+
+  function orgAndParent(fullName: string | null = 'יעל לוי') {
+    return (table: string) => {
+      if (table === 'organizations') {
+        return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
+      }
+      if (table === 'parents') {
+        return buildChain({ data: { id: PARENT_ID, full_name: fullName }, error: null })
+      }
+      return buildChain({ data: null, error: null })
+    }
+  }
+
+  it('greets by first name and shows the menu instead of the text fallback', async () => {
+    mockFrom.mockImplementation(orgAndParent('יעל לוי'))
+
+    const res = await POST(makeRequest(makeWebhookPayload('היי')))
+    expect(res.status).toBe(200)
+
+    expect(mockSendListMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      expect.objectContaining({ body: expect.stringContaining('יעל') }),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+    // The greeting must not also trigger the AI assistant.
+    expect(mockAiAssistant).not.toHaveBeenCalled()
+  })
+
+  it('routes a tapped menu row to the matching handler', async () => {
+    mockFrom.mockImplementation(orgAndParent())
+
+    const res = await POST(makeRequest(makeInteractivePayload('m:portal')))
+    expect(res.status).toBe(200)
+
+    expect(mockSendLinkReply).toHaveBeenCalledWith(
+      expect.objectContaining({ templateType: 'portal_link_reply' })
+    )
+  })
+
+  it('asks which student to book for when the parent has several', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID, full_name: 'יעל לוי' }, error: null })
+      if (table === 'relationships') {
+        const chain = buildChain(null) as Record<string, unknown>
+        chain['select'] = () => chain
+        chain['eq'] = () => chain
+        chain['then'] = (r: (v: unknown) => unknown) =>
+          Promise.resolve({
+            data: [
+              { student_id: 'student-1', students: { id: 'student-1', full_name: 'דנה' } },
+              { student_id: 'student-2', students: { id: 'student-2', full_name: 'יובל' } },
+            ],
+            error: null,
+          }).then(r)
+        return chain
+      }
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeInteractivePayload('m:book')))
+    expect(res.status).toBe(200)
+
+    expect(mockSendReplyButtons).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      expect.objectContaining({
+        buttons: [
+          { id: 'm:book:student-1', title: 'דנה' },
+          { id: 'm:book:student-2', title: 'יובל' },
+        ],
+      }),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+    // No link yet — we are still asking who it is for.
+    expect(mockSendLinkReply).not.toHaveBeenCalled()
+  })
+
+  it('books for the student named in the tapped payload', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID, full_name: 'יעל לוי' }, error: null })
+      if (table === 'relationships') {
+        const chain = buildChain(null) as Record<string, unknown>
+        chain['select'] = () => chain
+        chain['eq'] = () => chain
+        chain['then'] = (r: (v: unknown) => unknown) =>
+          Promise.resolve({
+            data: [
+              { student_id: 'student-1', students: { id: 'student-1', full_name: 'דנה' } },
+              { student_id: 'student-2', students: { id: 'student-2', full_name: 'יובל' } },
+            ],
+            error: null,
+          }).then(r)
+        return chain
+      }
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeInteractivePayload('m:book:student-2')))
+    expect(res.status).toBe(200)
+
+    expect(mockSignBookingToken).toHaveBeenCalledWith(
+      expect.objectContaining({ studentId: 'student-2' })
+    )
+    expect(mockSendLinkReply).toHaveBeenCalledWith(
+      expect.objectContaining({ templateType: 'booking_link' })
+    )
+  })
+
+  it('refuses a student id that is not linked to this parent', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID, full_name: 'יעל לוי' }, error: null })
+      if (table === 'relationships') {
+        const chain = buildChain(null) as Record<string, unknown>
+        chain['select'] = () => chain
+        chain['eq'] = () => chain
+        chain['then'] = (r: (v: unknown) => unknown) =>
+          Promise.resolve({
+            data: [{ student_id: 'student-1', students: { id: 'student-1', full_name: 'דנה' } }],
+            error: null,
+          }).then(r)
+        return chain
+      }
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeInteractivePayload('m:book:someone-elses-child')))
+    expect(res.status).toBe(200)
+
+    expect(mockSignBookingToken).not.toHaveBeenCalled()
+    expect(mockSendLinkReply).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).toHaveBeenCalled()
   })
 })

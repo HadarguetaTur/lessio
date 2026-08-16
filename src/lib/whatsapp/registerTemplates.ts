@@ -111,6 +111,49 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Your homework has been graded ✅\nTopic: {{1}}\nScore received: {{2}} out of 100\n{{3}}\nGreat work, keep it up!',
     example: [['Summer essay', '92', 'Feedback: lovely writing!']],
   },
+  // ── Menu with quick-reply buttons ───────────────────────────────────────
+  // Free-form interactive messages are rejected outside the 24h window, so the
+  // tappable menu needs a template twin. Meta stores only the labels; the
+  // payloads (m:book / m:cancel / m:balance) are bound at send time and come
+  // back in button.payload. Three buttons is Meta's hard cap.
+  {
+    name: 'lessio_menu_he_v2',
+    language: 'he',
+    rawComponents: [
+      {
+        type: 'BODY',
+        text: 'היי {{1}} 👋 איך אפשר לעזור? אפשר לבחור אחת מהאפשרויות למטה, או פשוט לכתוב לנו מה צריך.',
+        example: { body_text: [['יעל']] },
+      },
+      {
+        type: 'BUTTONS',
+        buttons: [
+          { type: 'QUICK_REPLY', text: 'קביעת שיעור' },
+          { type: 'QUICK_REPLY', text: 'ביטול שיעור' },
+          { type: 'QUICK_REPLY', text: 'יתרה ותשלום' },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'lessio_menu_en_v2',
+    language: 'en',
+    rawComponents: [
+      {
+        type: 'BODY',
+        text: 'Hi {{1}} 👋 How can I help? Pick one of the options below, or just tell us what you need.',
+        example: { body_text: [['Yael']] },
+      },
+      {
+        type: 'BUTTONS',
+        buttons: [
+          { type: 'QUICK_REPLY', text: 'Book a lesson' },
+          { type: 'QUICK_REPLY', text: 'Cancel a lesson' },
+          { type: 'QUICK_REPLY', text: 'Balance & payment' },
+        ],
+      },
+    ],
+  },
   {
     // Portal OTP login (Sprint 31). Body copy is fixed by Meta for AUTHENTICATION
     // templates; the footer expiry must match the 10-minute OTP TTL in

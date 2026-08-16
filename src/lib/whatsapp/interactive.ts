@@ -103,6 +103,74 @@ export async function sendListMessage(
 }
 
 /**
+ * Sends an approved template whose registered quick-reply buttons carry our own
+ * payloads. This is the only way to put tappable buttons in front of a parent
+ * OUTSIDE the 24h window, where free-form interactive messages are rejected.
+ *
+ * Button payloads are bound at send time, not registration time: Meta stores
+ * only the labels, and echoes the payload back in `button.payload` on tap.
+ */
+export async function sendTemplateWithQuickReplies(
+  to: string,
+  opts: {
+    name: string
+    languageCode: string
+    bodyParams: string[]
+    /** Payloads in button order; index must match the registered buttons. */
+    payloads: string[]
+  },
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
+
+  const components: Record<string, unknown>[] = []
+  if (opts.bodyParams.length > 0) {
+    components.push({
+      type: 'body',
+      parameters: opts.bodyParams.map((text) => ({ type: 'text', text })),
+    })
+  }
+  opts.payloads.slice(0, REPLY_BUTTONS_MAX).forEach((payload, index) => {
+    components.push({
+      type: 'button',
+      sub_type: 'quick_reply',
+      index: String(index),
+      parameters: [{ type: 'payload', payload }],
+    })
+  })
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name: opts.name,
+        language: { code: opts.languageCode },
+        components,
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    console.error('[whatsapp] quick-reply template API error', {
+      to,
+      name: opts.name,
+      status: res.status,
+      detail,
+    })
+    throw new Error(`WhatsApp quick-reply template API error ${res.status}: ${detail}`)
+  }
+}
+
+/**
  * Sends up to three tappable reply buttons. Prefer this over a list when the
  * options fit — the buttons are visible without an extra tap.
  */

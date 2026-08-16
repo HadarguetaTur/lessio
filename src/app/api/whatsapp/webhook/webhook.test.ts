@@ -32,6 +32,7 @@ vi.mock('@/lib/whatsapp', async () => {
 vi.mock('@/lib/whatsapp/interactive', () => ({
   sendListMessage: vi.fn().mockResolvedValue(undefined),
   sendReplyButtons: vi.fn().mockResolvedValue(undefined),
+  sendTemplateWithQuickReplies: vi.fn().mockResolvedValue(undefined),
   REPLY_BUTTONS_MAX: 3,
 }))
 

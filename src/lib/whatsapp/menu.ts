@@ -12,7 +12,22 @@
 
 import type { AppLocale } from '@/lib/i18n/locale'
 import { botString } from './strings'
-import { sendListMessage, sendReplyButtons, REPLY_BUTTONS_MAX } from './interactive'
+import {
+  sendListMessage,
+  sendReplyButtons,
+  sendTemplateWithQuickReplies,
+  REPLY_BUTTONS_MAX,
+} from './interactive'
+
+/**
+ * Approved template twin of the menu, for sends outside the 24h window.
+ * Button order must match the registration in registerTemplates.ts.
+ */
+const MENU_TEMPLATE: Record<AppLocale, string> = {
+  he: 'lessio_menu_he_v2',
+  en: 'lessio_menu_en_v2',
+}
+const MENU_TEMPLATE_ACTIONS: MenuAction[] = ['book', 'cancel', 'balance']
 
 export type MenuAction = 'book' | 'cancel' | 'balance' | 'schedule' | 'portal'
 
@@ -104,10 +119,33 @@ export async function sendMainMenu(params: {
     )
   } catch (err) {
     // 131047 (outside the 24h window) or a client that cannot render lists.
-    console.warn('[whatsapp/menu] Interactive menu failed — falling back to text', {
+    // The approved template still carries buttons, so try it before plain text.
+    console.warn('[whatsapp/menu] Interactive menu failed — trying template', {
       phone,
       error: String(err),
     })
+
+    try {
+      await sendTemplateWithQuickReplies(
+        phone,
+        {
+          name: MENU_TEMPLATE[locale] ?? MENU_TEMPLATE.he,
+          languageCode: locale,
+          // Meta rejects empty body parameters.
+          bodyParams: [name || botString('the_student', locale)],
+          payloads: MENU_TEMPLATE_ACTIONS.map((a) => encodeMenuPayload(a)),
+        },
+        accessToken,
+        phoneNumberId
+      )
+      return
+    } catch (templateErr) {
+      console.warn('[whatsapp/menu] Menu template failed — falling back to text', {
+        phone,
+        error: String(templateErr),
+      })
+    }
+
     await onFallback()
   }
 }

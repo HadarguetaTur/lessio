@@ -32,6 +32,15 @@ import {
   hasPortalIntent,
 } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { botString } from '@/lib/whatsapp/strings'
+import {
+  detectLocaleFromText,
+  parseAppLocale,
+  resolveRecipientLocale,
+  toIntlLocale,
+  toLuxonLocale,
+  type AppLocale,
+} from '@/lib/i18n/locale'
 import {
   isDemoRescheduleEnabled,
   hasRescheduleIntent,
@@ -226,7 +235,8 @@ async function processMessage(
       automation_cancellation_enabled,
       automation_payment_request_enabled,
       automation_dunning_enabled,
-      automation_new_leads_enabled
+      automation_new_leads_enabled,
+      default_locale
     `)
     .eq('whatsapp_phone_number_id', msg.phoneNumberId)
     .maybeSingle()
@@ -289,7 +299,7 @@ async function processMessage(
   //    an unrecognized sender must create a lead, regardless of intent)
   const { data: parent, error: parentError } = await db
     .from('parents')
-    .select('id')
+    .select('id, preferred_locale')
     .eq('organization_id', org.id)
     .eq('phone', senderPhone)
     .eq('is_active', true)
@@ -300,11 +310,40 @@ async function processMessage(
       throw new Error('Failed to look up parent for inbound WhatsApp message')
     }
 
+  // Language of every reply below. A stored preference wins; otherwise the
+  // script of this message decides, falling back to the org default.
+  const detected = detectLocaleFromText(msg.text)
+  const locale = resolveRecipientLocale({
+    stored: parent?.preferred_locale as string | null | undefined,
+    detected,
+    orgDefault: org.default_locale as string | null,
+  })
+
   if (!parent) {
     if (org.automation_new_leads_enabled !== false) {
-      await handleUnknownSender(org.id, senderPhone, msg.text, accessToken, phoneNumberId)
+      await handleUnknownSender(org.id, senderPhone, msg.text, accessToken, phoneNumberId, locale)
     }
     return
+  }
+
+  // Remember the language for proactive sends (reminders) that have no inbound
+  // text to infer from. Only on a real signal — a bare "2" must not flip it.
+  // Fire-and-forget: never block a reply on this.
+  if (detected && parent.preferred_locale !== detected) {
+    void db
+      .from('parents')
+      .update({ preferred_locale: detected })
+      .eq('id', parent.id)
+      .eq('organization_id', org.id)
+      .then(({ error }) => {
+        if (error) {
+          console.warn('[whatsapp/webhook] Failed to persist parent locale', {
+            orgId: org.id,
+            parentId: parent.id,
+            error: error.message,
+          })
+        }
+      })
   }
 
   // 7. Known parent — check for active cancellation session first
@@ -315,7 +354,7 @@ async function processMessage(
       parent.id, org.id, senderPhone, msg.text,
       session,
       (org.timezone as string | null) ?? 'Asia/Jerusalem',
-      accessToken, phoneNumberId
+      accessToken, phoneNumberId, locale
     )
     return
   }
@@ -325,7 +364,7 @@ async function processMessage(
     await handleCancellationIntent(
       parent.id, org.id, senderPhone,
       (org.timezone as string | null) ?? 'Asia/Jerusalem',
-      accessToken, phoneNumberId
+      accessToken, phoneNumberId, locale
     )
     return
   }
@@ -346,13 +385,13 @@ async function processMessage(
 
   // 9a. Homework done intent
   if (hasHomeworkDoneIntent(msg.text)) {
-    await handleHomeworkDone(parent.id, org.id, senderPhone, accessToken, phoneNumberId)
+    await handleHomeworkDone(parent.id, org.id, senderPhone, accessToken, phoneNumberId, locale)
     return
   }
 
   // 9b. Balance query
   if (hasBalanceIntent(msg.text)) {
-    await handleBalanceQuery(parent.id, org.id, senderPhone, accessToken, phoneNumberId)
+    await handleBalanceQuery(parent.id, org.id, senderPhone, accessToken, phoneNumberId, locale)
     return
   }
 
@@ -364,7 +403,8 @@ async function processMessage(
       senderPhone,
       (org.timezone as string | null) ?? 'Asia/Jerusalem',
       accessToken,
-      phoneNumberId
+      phoneNumberId,
+      locale
     )
     return
   }
@@ -377,14 +417,15 @@ async function processMessage(
       senderPhone,
       (org.timezone as string | null) ?? 'Asia/Jerusalem',
       accessToken,
-      phoneNumberId
+      phoneNumberId,
+      locale
     )
     return
   }
 
   // 9e. Portal link
   if (hasPortalIntent(msg.text)) {
-    await handlePortalQuery(org.id, senderPhone, accessToken, phoneNumberId)
+    await handlePortalQuery(org.id, senderPhone, accessToken, phoneNumberId, locale)
     return
   }
 
@@ -409,7 +450,7 @@ async function processMessage(
       let shouldLogExchange = false
 
       try {
-        const aiResult = await aiAssistant(org.id, senderPhone, parent.id, msg.text)
+        const aiResult = await aiAssistant(org.id, senderPhone, parent.id, msg.text, locale)
         reply = aiResult.reply
         shouldLogExchange = true
       } catch (err) {
@@ -417,14 +458,14 @@ async function processMessage(
           orgId: org.id,
           err,
         })
-        reply = await resolveTemplate(org.id, 'unknown_intent_fallback', {})
+        reply = await resolveTemplate(org.id, 'unknown_intent_fallback', {}, locale)
       }
 
       await sendTextMessage(senderPhone, reply, accessToken, phoneNumberId)
 
       // Send satisfaction follow-up (Sprint 25)
       if (shouldLogExchange) {
-        const satisfactionBody = await resolveTemplate(org.id, 'ai_satisfaction_prompt', {})
+        const satisfactionBody = await resolveTemplate(org.id, 'ai_satisfaction_prompt', {}, locale)
         await sendTextMessage(senderPhone, satisfactionBody, accessToken, phoneNumberId).catch((err) => {
           console.error('[whatsapp/webhook] Failed to send satisfaction prompt', { orgId: org.id, err })
         })
@@ -445,7 +486,7 @@ async function processMessage(
           orgId: org.id,
         })
       }
-      const unknownBody = await resolveTemplate(org.id, 'unknown_intent_fallback', {})
+      const unknownBody = await resolveTemplate(org.id, 'unknown_intent_fallback', {}, locale)
       await sendTextMessage(senderPhone, unknownBody, accessToken, phoneNumberId)
     }
     return
@@ -470,7 +511,7 @@ async function processMessage(
       })
       await sendBookingUnavailableReply(
         senderPhone,
-        'לא הצלחתי ליצור קישור לקביעת שיעור כי אין תלמיד מקושר לחשבון. אנא פנה/י לצוות לסיוע.',
+        botString('booking_no_student', locale),
         accessToken,
         phoneNumberId
       )
@@ -485,7 +526,7 @@ async function processMessage(
       })
       await sendBookingUnavailableReply(
         senderPhone,
-        'לא הצלחתי ליצור קישור לקביעת שיעור כי לחשבון מקושרים כמה תלמידים. אנא פנה/י לצוות ונשמח לעזור.',
+        botString('booking_multiple_students', locale),
         accessToken,
         phoneNumberId
       )
@@ -505,7 +546,7 @@ async function processMessage(
   const bookingUrl = `${origin}/book/${token}`
 
   // 11. Send booking link via WhatsApp
-  const bookingLinkBody = await resolveTemplate(org.id, 'booking_link', { booking_url: bookingUrl })
+  const bookingLinkBody = await resolveTemplate(org.id, 'booking_link', { booking_url: bookingUrl }, locale)
   await sendTextMessage(senderPhone, bookingLinkBody, accessToken, phoneNumberId)
   console.info('[whatsapp/webhook] Booking link sent', { messageId: msg.messageId })
   } catch (error) {
@@ -519,7 +560,8 @@ async function handleUnknownSender(
   phone: string,
   rawMessage: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale
 ): Promise<void> {
   // Upsert lead — creates on first contact, updates updated_at only on repeat
   await upsertLead(organizationId, phone, rawMessage).catch(err => {
@@ -544,7 +586,7 @@ async function handleUnknownSender(
   })()
 
   // Send fixed reply to unknown sender (Decision #4)
-  await sendUnknownParentReply(phone, accessToken, phoneNumberId)
+  await sendUnknownParentReply(phone, accessToken, phoneNumberId, locale)
 }
 
 async function sendBookingUnavailableReply(
@@ -562,16 +604,17 @@ async function handleCancellationIntent(
   senderPhone: string,
   timezone: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale
 ): Promise<void> {
   const lessons = await getEligibleLessons(orgId, parentId)
 
   if (lessons.length === 0) {
-    await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
+    await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId, locale)
     return
   }
 
-  const message = formatLessonListMessage(lessons, timezone)
+  const message = formatLessonListMessage(lessons, timezone, locale)
   await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
   await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId)
   console.info('[whatsapp/webhook] Cancellation lesson list sent', { orgId, senderPhone })
@@ -585,23 +628,24 @@ async function handleCancellationSelection(
   session: { lesson_ids: string[] },
   timezone: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale
 ): Promise<void> {
   const num = parseInt(text.trim(), 10)
   const count = session.lesson_ids.length
 
   if (isNaN(num) || num < 1 || num > count) {
     // Invalid input — keep flow open
-    await sendInvalidSelectionReply(senderPhone, accessToken, phoneNumberId)
+    await sendInvalidSelectionReply(senderPhone, accessToken, phoneNumberId, locale)
 
     // Re-fetch eligible lessons to rebuild the list (lesson may have changed)
     const lessons = await getEligibleLessons(orgId, parentId)
     if (lessons.length === 0) {
-      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
+      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId, locale)
       await deleteCancellationSession(orgId, senderPhone)
       return
     }
-    const message = formatLessonListMessage(lessons, timezone)
+    const message = formatLessonListMessage(lessons, timezone, locale)
     await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
     await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId)
     return
@@ -622,14 +666,14 @@ async function handleCancellationSelection(
     // Lesson no longer eligible — error + rebuild list
     const lessons = await getEligibleLessons(orgId, parentId)
     if (lessons.length === 0) {
-      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId)
+      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId, locale)
       await deleteCancellationSession(orgId, senderPhone)
       return
     }
-    const errorMsg = 'השיעור שנבחר אינו זמין עוד לביטול.'
+    const errorMsg = botString('lesson_no_longer_cancellable', locale)
     await sendCancellationLessonList(
       senderPhone,
-      errorMsg + '\n\n' + formatLessonListMessage(lessons, timezone),
+      errorMsg + '\n\n' + formatLessonListMessage(lessons, timezone, locale),
       accessToken,
       phoneNumberId
     )
@@ -642,15 +686,18 @@ async function handleCancellationSelection(
 
   try {
     // Notify parent — WhatsApp failure must not roll back the completed cancellation
-    const ccDate = new Date(outcome.lessonStartAt).toLocaleDateString('he-IL', {
+    const ccDate = new Date(outcome.lessonStartAt).toLocaleDateString(toIntlLocale(locale), {
       timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long',
     })
-    const ccTime = new Date(outcome.lessonStartAt).toLocaleTimeString('he-IL', {
+    const ccTime = new Date(outcome.lessonStartAt).toLocaleTimeString(toIntlLocale(locale), {
       timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false,
     })
     let ccChargeLine = ''
     if (outcome.chargeResult.chargeType && outcome.chargeResult.amount > 0) {
-      const label = outcome.chargeResult.chargeType === 'full' ? 'חיוב ביטול מלא' : 'חיוב ביטול חלקי'
+      const label = botString(
+        outcome.chargeResult.chargeType === 'full' ? 'charge_full' : 'charge_partial',
+        locale
+      )
       ccChargeLine = `\n${label}: ₪${outcome.chargeResult.amount.toFixed(2)}`
     }
     const ccBody = await resolveTemplate(orgId, 'cancellation_confirmation', {
@@ -659,7 +706,7 @@ async function handleCancellationSelection(
       date: ccDate,
       time: ccTime,
       charge_line: ccChargeLine,
-    })
+    }, locale)
     await sendTextMessage(senderPhone, ccBody, accessToken, phoneNumberId).catch(err => {
       console.error('[whatsapp/webhook] Failed to send cancellation confirmation — cancellation committed', { orgId, senderPhone, lessonId: selectedLessonId, err })
     })
@@ -668,28 +715,39 @@ async function handleCancellationSelection(
     const db = createServiceRoleClient()
     const { data: ownerProfile } = await db
       .from('profiles')
-      .select('phone')
+      .select('phone, preferred_locale')
       .eq('organization_id', orgId)
       .eq('role', 'owner')
       .eq('is_active', true)
       .maybeSingle()
 
     if (ownerProfile?.phone) {
+      // The admin alert goes to the owner — their own UI language, not the parent's.
+      const adminLocale = parseAppLocale(ownerProfile.preferred_locale as string | undefined)
+      const adminDate = new Date(outcome.lessonStartAt).toLocaleDateString(toIntlLocale(adminLocale), {
+        timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long',
+      })
+      const adminTime = new Date(outcome.lessonStartAt).toLocaleTimeString(toIntlLocale(adminLocale), {
+        timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false,
+      })
       let caChargeLine = ''
       if (outcome.chargeResult.chargeType && outcome.chargeResult.amount > 0) {
-        const label = outcome.chargeResult.chargeType === 'full' ? 'חיוב מלא' : 'חיוב חלקי'
-        caChargeLine = `\nחיוב: ₪${outcome.chargeResult.amount.toFixed(2)} (${label})`
+        const label = botString(
+          outcome.chargeResult.chargeType === 'full' ? 'charge_full' : 'charge_partial',
+          adminLocale
+        )
+        caChargeLine = `\n${botString('charge_line_label', adminLocale)}: ₪${outcome.chargeResult.amount.toFixed(2)} (${label})`
       } else {
-        caChargeLine = '\nללא חיוב ביטול'
+        caChargeLine = `\n${botString('charge_none', adminLocale)}`
       }
       const caBody = await resolveTemplate(orgId, 'cancellation_admin_alert', {
         student_name: outcome.studentName,
         teacher_name: outcome.teacherName,
-        date: ccDate,
-        time: ccTime,
+        date: adminDate,
+        time: adminTime,
         charge_line: caChargeLine,
         parent_phone: senderPhone,
-      })
+      }, adminLocale)
       await sendTextMessage(ownerProfile.phone, caBody, accessToken, phoneNumberId).catch(err => {
         console.error('[whatsapp/webhook] Failed to send admin cancellation alert', err)
       })
@@ -736,7 +794,8 @@ async function handleHomeworkDone(
   orgId: string,
   senderPhone: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale
 ): Promise<void> {
   const db = createServiceRoleClient()
 
@@ -744,7 +803,7 @@ async function handleHomeworkDone(
   if (studentIds.length === 0) {
     await sendTextMessage(
       senderPhone,
-      'לא נמצאו שיעורי בית פתוחים לסימון.',
+      botString('no_open_homework', locale),
       accessToken,
       phoneNumberId
     )
@@ -769,7 +828,7 @@ async function handleHomeworkDone(
   if (!assignments || assignments.length === 0) {
     await sendTextMessage(
       senderPhone,
-      'לא נמצאו שיעורי בית פתוחים לסימון.',
+      botString('no_open_homework', locale),
       accessToken,
       phoneNumberId
     )
@@ -789,21 +848,25 @@ async function handleHomeworkDone(
     .eq('id', assignment.student_id)
     .single()
 
-  const studentName = (student as { full_name: string } | null)?.full_name ?? 'התלמיד'
+  const studentName = (student as { full_name: string } | null)?.full_name ?? botString('the_student', locale)
 
-  // Notify teacher
+  // Notify teacher — in the teacher's own UI language, not the parent's
   const { data: teacherProfile } = await db
     .from('teachers')
-    .select('profiles ( phone )')
+    .select('profiles ( phone, preferred_locale )')
     .eq('id', assignment.teacher_id)
     .single()
 
-  const teacherPhone = (
-    teacherProfile as { profiles: { phone: string | null } | null } | null
-  )?.profiles?.phone
+  const teacherRow = (
+    teacherProfile as { profiles: { phone: string | null; preferred_locale: string | null } | null } | null
+  )?.profiles
+  const teacherPhone = teacherRow?.phone
 
   if (teacherPhone) {
-    await sendHomeworkAlert(teacherPhone, studentName, assignment.title, accessToken, phoneNumberId).catch((err) => {
+    const teacherLocale = parseAppLocale(teacherRow?.preferred_locale ?? undefined)
+    await sendHomeworkAlert(
+      teacherPhone, studentName, assignment.title, accessToken, phoneNumberId, teacherLocale
+    ).catch((err) => {
       console.error('[whatsapp/webhook] handleHomeworkDone: sendHomeworkAlert failed', { orgId, err })
     })
   }
@@ -811,7 +874,7 @@ async function handleHomeworkDone(
   // Reply to parent
   await sendTextMessage(
     senderPhone,
-    `מעולה! שיעורי הבית של ${studentName} סומנו כהושלמו 🎉`,
+    botString('homework_marked_done', locale, { student_name: studentName }),
     accessToken,
     phoneNumberId
   ).catch((err) => {
@@ -826,7 +889,8 @@ async function handleBalanceQuery(
   orgId: string,
   senderPhone: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale
 ): Promise<void> {
   const db = createServiceRoleClient()
 
@@ -848,14 +912,14 @@ async function handleBalanceQuery(
   const total = chargeRows.reduce((sum, c) => sum + c.amount, 0)
   const chargeLines = chargeRows.slice(0, 3).map(c => {
     let line = `\n₪${c.amount.toFixed(2)}`
-    if (c.payment_link) line += ` — קישור לתשלום: ${c.payment_link}`
+    if (c.payment_link) line += `, ${botString('pay_here', locale)}: ${c.payment_link}`
     return line
   }).join('')
 
   const balanceBody = await resolveTemplate(orgId, 'balance_reply', {
     total: total.toFixed(2),
     charge_lines: chargeLines,
-  })
+  }, locale)
   await sendTextMessage(senderPhone, balanceBody, accessToken, phoneNumberId)
 
   console.info('[whatsapp/webhook] Balance query replied', { orgId, senderPhone, total })
@@ -867,13 +931,15 @@ async function handleScheduleQuery(
   senderPhone: string,
   timezone: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale
 ): Promise<void> {
   const db = createServiceRoleClient()
+  const noLessons = botString('no_upcoming_lessons', locale)
 
   const studentIds = await getParentStudentIds(db, orgId, parentId)
   if (studentIds.length === 0) {
-    const emptyBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: 'אין שיעורים מתוכננים כרגע.' })
+    const emptyBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: noLessons }, locale)
     await sendTextMessage(senderPhone, emptyBody, accessToken, phoneNumberId)
     return
   }
@@ -891,7 +957,7 @@ async function handleScheduleQuery(
   }
 
   if (!lessonStudents || lessonStudents.length === 0) {
-    const emptyBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: 'אין שיעורים מתוכננים כרגע.' })
+    const emptyBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: noLessons }, locale)
     await sendTextMessage(senderPhone, emptyBody, accessToken, phoneNumberId)
     return
   }
@@ -918,20 +984,26 @@ async function handleScheduleQuery(
     teachers: { profiles: { full_name: string } | null } | null
   }
 
+  const dateFormat = locale === 'he' ? 'EEEE, d בMMMM' : 'EEEE, MMMM d'
   const formatted = (lessons ?? []).map((l) => {
     const row = l as unknown as LessonRow
     const dt = DateTime.fromISO(row.start_at, { zone: 'utc' }).setZone(timezone)
     return {
-      date: dt.toFormat('EEEE, d בMMMM', { locale: 'he' }),
+      date: dt.toFormat(dateFormat, { locale: toLuxonLocale(locale) }),
       time: dt.toFormat('HH:mm'),
-      teacherName: (row.teachers?.profiles as { full_name: string } | null)?.full_name ?? 'המורה',
+      teacherName: (row.teachers?.profiles as { full_name: string } | null)?.full_name
+        ?? botString('the_teacher', locale),
     }
   })
 
   const lessonLines = formatted.length === 0
-    ? 'אין שיעורים מתוכננים כרגע.'
-    : formatted.map((l, i) => `${i + 1}. ${l.date} בשעה ${l.time} עם ${l.teacherName}`).join('\n')
-  const scheduleBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: lessonLines })
+    ? noLessons
+    : formatted.map((l, i) =>
+        locale === 'he'
+          ? `${i + 1}. ${l.date} בשעה ${l.time} עם ${l.teacherName}`
+          : `${i + 1}. ${l.date} at ${l.time} with ${l.teacherName}`
+      ).join('\n')
+  const scheduleBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: lessonLines }, locale)
   await sendTextMessage(senderPhone, scheduleBody, accessToken, phoneNumberId)
 
   console.info('[whatsapp/webhook] Schedule query replied', { orgId, senderPhone })
@@ -943,7 +1015,8 @@ async function handleReceiptQuery(
   senderPhone: string,
   timezone: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale
 ): Promise<void> {
   const db = createServiceRoleClient()
 
@@ -972,13 +1045,13 @@ async function handleReceiptQuery(
   })
 
   const receiptLines = formatted.length === 0
-    ? '\nלא נמצאו תשלומים קודמים.'
-    : '\n' + formatted.map(c => `${c.date}: ₪${c.amount.toFixed(2)} — שולם`).join('\n')
+    ? '\n' + botString('no_previous_payments', locale)
+    : '\n' + formatted.map(c => `${c.date}: ₪${c.amount.toFixed(2)} ${botString('paid_marker', locale)}`).join('\n')
   const receiptTotal = formatted.reduce((sum, c) => sum + c.amount, 0)
-  const receiptBody = await resolveTemplate(orgId, 'balance_reply', {
+  const receiptBody = await resolveTemplate(orgId, 'payment_history_reply', {
     total: receiptTotal.toFixed(2),
     charge_lines: receiptLines,
-  })
+  }, locale)
   await sendTextMessage(senderPhone, receiptBody, accessToken, phoneNumberId)
 
   console.info('[whatsapp/webhook] Receipt query replied', { orgId, senderPhone })
@@ -998,12 +1071,13 @@ async function handlePortalQuery(
   orgId: string,
   senderPhone: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale
 ): Promise<void> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const portalUrl = `${appUrl}/portal/${orgId}`
 
-  const portalBody = await resolveTemplate(orgId, 'portal_link_reply', { portal_url: portalUrl })
+  const portalBody = await resolveTemplate(orgId, 'portal_link_reply', { portal_url: portalUrl }, locale)
   await sendTextMessage(senderPhone, portalBody, accessToken, phoneNumberId)
 
   console.info('[whatsapp/webhook] Portal query replied', { orgId, senderPhone })

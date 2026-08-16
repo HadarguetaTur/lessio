@@ -6,6 +6,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { toIntlLocale, type AppLocale } from '@/lib/i18n/locale'
 
 export interface PaymentRequestCharge {
   id: string
@@ -15,11 +16,40 @@ export interface PaymentRequestCharge {
   student_name: string | null
 }
 
-const CHARGE_TYPE_LABELS: Record<string, string> = {
-  lesson: 'שיעור',
-  cancellation: 'חיוב ביטול',
-  manual: 'חיוב ידני',
-  monthly: 'חיוב חודשי',
+const CHARGE_TYPE_LABELS: Record<AppLocale, Record<string, string>> = {
+  he: {
+    lesson: 'שיעור',
+    cancellation: 'חיוב ביטול',
+    manual: 'חיוב ידני',
+    monthly: 'חיוב חודשי',
+  },
+  en: {
+    lesson: 'Lesson',
+    cancellation: 'Cancellation charge',
+    manual: 'Manual charge',
+    monthly: 'Monthly charge',
+  },
+}
+
+const MESSAGE_STRINGS: Record<AppLocale, Record<string, string>> = {
+  he: {
+    greeting: 'היי {{name}} 👋',
+    intro: 'הנה פירוט החיובים הפתוחים:',
+    of: 'של',
+    total: 'סה״כ לתשלום',
+    payHeader: 'לתשלום מאובטח:',
+    thanks: 'תודה 🙏',
+    noLink: 'להסדרת התשלום אפשר לפנות אלינו ישירות. תודה 🙏',
+  },
+  en: {
+    greeting: 'Hi {{name}} 👋',
+    intro: 'Here are your open charges:',
+    of: 'for',
+    total: 'Total due',
+    payHeader: 'Secure payment:',
+    thanks: 'Thank you 🙏',
+    noLink: 'To settle the payment, feel free to reach out to us directly. Thank you 🙏',
+  },
 }
 
 /**
@@ -62,39 +92,43 @@ export function buildPaymentRequestMessage(
   parentName: string,
   charges: PaymentRequestCharge[],
   timezone: string,
-  paymentUrl?: string | null
+  paymentUrl?: string | null,
+  locale: AppLocale = 'he'
 ): string {
+  const s = MESSAGE_STRINGS[locale] ?? MESSAGE_STRINGS.he
+  const typeLabels = CHARGE_TYPE_LABELS[locale] ?? CHARGE_TYPE_LABELS.he
+
   const lines = charges.map((charge, index) => {
-    const label = CHARGE_TYPE_LABELS[charge.charge_type] ?? charge.charge_type
+    const label = typeLabels[charge.charge_type] ?? charge.charge_type
     let detail = ''
     if (charge.student_name) {
-      detail += ` — ${charge.student_name}`
+      detail += ` ${s.of} ${charge.student_name}`
     }
     if (charge.lesson_start_at) {
-      const date = new Date(charge.lesson_start_at).toLocaleDateString('he-IL', {
+      const date = new Date(charge.lesson_start_at).toLocaleDateString(toIntlLocale(locale), {
         timeZone: timezone,
         day: 'numeric',
         month: 'long',
       })
       detail += `, ${date}`
     }
-    return `${index + 1}. ${label}${detail} — ₪${charge.amount.toFixed(2)}`
+    return `${index + 1}. ${label}${detail}: ₪${charge.amount.toFixed(2)}`
   })
 
   const total = charges.reduce((sum, c) => sum + c.amount, 0)
 
   const paymentLine = paymentUrl
-    ? [`לתשלום לחץ/י על הקישור:`, paymentUrl]
-    : ['לתשלום אנא פנה/י לבעל העסק.']
+    ? [s.payHeader, paymentUrl, '', s.thanks]
+    : [s.noLink]
 
   return [
-    `שלום ${parentName},`,
+    s.greeting.replace('{{name}}', parentName),
     '',
-    'להלן פירוט החיובים הפתוחים:',
+    s.intro,
     '',
     ...lines,
     '',
-    `סה״כ לתשלום: ₪${total.toFixed(2)}`,
+    `${s.total}: ₪${total.toFixed(2)}`,
     '',
     ...paymentLine,
   ].join('\n')

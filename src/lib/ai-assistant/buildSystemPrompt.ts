@@ -138,7 +138,12 @@ export async function buildSystemPrompt(
         .join('\n')
   }
 
-  return `אתה עוזר AI של ${orgName}. ענה תמיד בעברית בגובה העיניים.
+  // The language rule is "mirror the customer" rather than a fixed locale:
+  // bilingual households switch mid-thread, and the model sees the actual
+  // message where a stored preference would be a turn behind.
+  return `אתה עוזר AI של ${orgName}. ענה בגובה העיניים.
+
+שפה: ענה תמיד באותה שפה שבה הלקוח כתב את ההודעה האחרונה (עברית או אנגלית). אל תתרגם שמות של אנשים.
 
 מידע על הלקוח:
 - שם: ${parentName}${studentNames ? `\n- תלמידים: ${studentNames}` : ''}

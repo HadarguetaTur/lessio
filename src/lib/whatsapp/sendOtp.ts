@@ -18,16 +18,24 @@
  */
 
 import { sendTemplateMessage, sendTextMessage, type MetaTemplateComponent } from './index'
+import { botString } from './strings'
+import type { AppLocale } from '@/lib/i18n/locale'
 
 /** Registered by registerTemplatesForWABA — see registerTemplates.ts. */
 export const OTP_TEMPLATE_NAME = 'lessio_otp_he'
 export const OTP_TEMPLATE_LANGUAGE = 'he'
 
+const OTP_TEMPLATES: Record<AppLocale, { name: string; language: string }> = {
+  he: { name: 'lessio_otp_he', language: 'he' },
+  en: { name: 'lessio_otp_en', language: 'en' },
+}
+
 export async function sendOtp(
   phone: string,
   otp: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale = 'he'
 ): Promise<void> {
   // Meta auth-template send shape: the code is passed twice — once as the body
   // parameter and once as the copy-code button parameter (addressed sub_type 'url').
@@ -36,26 +44,29 @@ export async function sendOtp(
     { type: 'button', sub_type: 'url', index: 0, parameters: [{ type: 'text', text: otp }] },
   ]
 
+  const template = OTP_TEMPLATES[locale] ?? OTP_TEMPLATES.he
+
   try {
     await sendTemplateMessage(
       phone,
       accessToken,
       phoneNumberId,
-      OTP_TEMPLATE_NAME,
-      OTP_TEMPLATE_LANGUAGE,
+      template.name,
+      template.language,
       components
     )
     return
   } catch (err) {
     console.warn('[sendOtp] Auth template send failed — falling back to text', {
       phoneNumberId,
+      locale,
       error: String(err),
     })
   }
 
   await sendTextMessage(
     phone,
-    `קוד הכניסה שלך ל-LESSIO: *${otp}*\nהקוד בתוקף ל-10 דקות.`,
+    botString('otp_fallback', locale, { otp }),
     accessToken,
     phoneNumberId
   )

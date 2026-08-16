@@ -18,7 +18,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendSmartMessage } from '../_shared/whatsapp.ts'
-import { resolveTemplate } from '../_shared/templates.ts'
+import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
+import { botString } from '../_shared/botStrings.ts'
 import { sendEmail } from '../_shared/email.ts'
 
 Deno.serve(async (_req) => {
@@ -31,7 +32,7 @@ Deno.serve(async (_req) => {
   // (Sprint 31); reminders_enabled remains the legacy master switch.
   const { data: orgs, error: orgsError } = await db
     .from('organizations')
-    .select('id, timezone, lesson_reminder_hours, automation_lesson_reminder_hours, whatsapp_phone_number_id, whatsapp_access_token, email_notifications')
+    .select('id, timezone, lesson_reminder_hours, automation_lesson_reminder_hours, whatsapp_phone_number_id, whatsapp_access_token, email_notifications, default_locale')
     .eq('reminders_enabled', true)
     .eq('automation_lesson_reminder_enabled', true)
     .not('whatsapp_phone_number_id', 'is', null)
@@ -84,7 +85,7 @@ async function processOrg(db: any, org: any, now: Date) {
         student:students (
           relationships (
             is_primary,
-            parent:parents ( id, phone, full_name, email )
+            parent:parents ( id, phone, full_name, email, preferred_locale )
           )
         )
       )
@@ -139,18 +140,24 @@ async function processOrg(db: any, org: any, now: Date) {
       continue
     }
 
+    const locale = resolveRecipientLocale({
+      stored: resolvePrimaryParentLocale(lesson),
+      orgDefault: org.default_locale,
+    })
+    const intlLocale = locale === 'en' ? 'en-US' : 'he-IL'
+
     const teacherName: string =
-      lesson.teacher?.profile?.full_name ?? 'המורה'
+      lesson.teacher?.profile?.full_name ?? botString('the_teacher', locale)
 
     const startAt = new Date(lesson.start_at)
     const timezone: string = org.timezone ?? 'Asia/Jerusalem'
-    const timeStr = startAt.toLocaleTimeString('he-IL', {
+    const timeStr = startAt.toLocaleTimeString(intlLocale, {
       timeZone: timezone,
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
     })
-    const dateStr = startAt.toLocaleDateString('he-IL', {
+    const dateStr = startAt.toLocaleDateString(intlLocale, {
       timeZone: timezone,
       weekday: 'long',
       day: 'numeric',
@@ -161,7 +168,7 @@ async function processOrg(db: any, org: any, now: Date) {
       teacher_name: teacherName,
       date: dateStr,
       time: timeStr,
-    })
+    }, locale)
 
     // ── 5. Send WhatsApp message (session-window aware) ───────────────────────
     let sendError: string | null = null
@@ -174,7 +181,8 @@ async function processOrg(db: any, org: any, now: Date) {
         org.whatsapp_phone_number_id,
         'lesson_reminder',
         message,
-        [teacherName, dateStr, timeStr]
+        [teacherName, dateStr, timeStr],
+        locale
       )
     } catch (err) {
       sendError = String(err)
@@ -222,6 +230,23 @@ function resolvePrimaryParentPhone(lesson: any): string | null {
     for (const rel of relationships) {
       if (rel.is_primary && rel.parent?.phone) {
         return rel.parent.phone as string
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Same as resolvePrimaryParentPhone but returns the stored language.
+ */
+// deno-lint-ignore no-explicit-any
+function resolvePrimaryParentLocale(lesson: any): string | null {
+  const lessonStudents = lesson.lesson_students ?? []
+  for (const ls of lessonStudents) {
+    const relationships = ls.student?.relationships ?? []
+    for (const rel of relationships) {
+      if (rel.is_primary && rel.parent?.preferred_locale) {
+        return rel.parent.preferred_locale as string
       }
     }
   }

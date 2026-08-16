@@ -21,7 +21,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendSmartMessage } from '../_shared/whatsapp.ts'
-import { resolveTemplate } from '../_shared/templates.ts'
+import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
+import { botString } from '../_shared/botStrings.ts'
 import { sendEmail } from '../_shared/email.ts'
 
 Deno.serve(async (_req) => {
@@ -34,7 +35,7 @@ Deno.serve(async (_req) => {
   // nagging only runs for orgs that explicitly enabled it in /settings/whatsapp.
   const { data: orgs, error: orgsError } = await db
     .from('organizations')
-    .select('id, payment_reminder_days, whatsapp_phone_number_id, whatsapp_access_token, email_notifications')
+    .select('id, payment_reminder_days, whatsapp_phone_number_id, whatsapp_access_token, email_notifications, default_locale')
     .eq('reminders_enabled', true)
     .eq('automation_dunning_enabled', true)
     .not('whatsapp_phone_number_id', 'is', null)
@@ -75,7 +76,7 @@ async function processOrg(db: any, org: any, now: Date) {
   // ── 2. Fetch eligible charges ──────────────────────────────────────────────
   const { data: charges, error: chargesError } = await db
     .from('charges')
-    .select('id, amount, payment_link, parent:parents ( id, phone, email )')
+    .select('id, amount, payment_link, parent:parents ( id, full_name, phone, email, preferred_locale )')
     .eq('organization_id', org.id)
     .eq('status', 'pending')
     .not('payment_link', 'is', null)
@@ -127,10 +128,14 @@ async function processOrg(db: any, org: any, now: Date) {
     }
 
     const amount = Number(charge.amount).toFixed(2)
+    const locale = resolveRecipientLocale({
+      stored: charge.parent?.preferred_locale,
+      orgDefault: org.default_locale,
+    })
     const message = await resolveTemplate(db, org.id, 'payment_reminder', {
       amount,
       payment_link: charge.payment_link ?? '',
-    })
+    }, locale)
 
     // ── 5. Send WhatsApp message (session-window aware) ───────────────────────
     let sendError: string | null = null
@@ -143,7 +148,8 @@ async function processOrg(db: any, org: any, now: Date) {
         org.whatsapp_phone_number_id,
         'payment_reminder',
         message,
-        [charge.parent?.full_name ?? '', amount]
+        [charge.parent?.full_name || botString('dear_parents', locale), amount],
+        locale
       )
     } catch (err) {
       sendError = String(err)

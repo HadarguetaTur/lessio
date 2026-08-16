@@ -15,6 +15,8 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { decryptToken } from '@/lib/crypto'
+import { sendTextMessage } from '@/lib/whatsapp'
+import { resolveRecipientLocale } from '@/lib/i18n/locale'
 
 type ActionState = { error: string } | null
 
@@ -353,7 +355,7 @@ export async function sendPaymentRequestAction(
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('whatsapp_phone_number_id, whatsapp_access_token, timezone')
+    .select('whatsapp_phone_number_id, whatsapp_access_token, timezone, default_locale')
     .eq('id', orgId)
     .single()
 
@@ -362,7 +364,7 @@ export async function sendPaymentRequestAction(
   const timezone = (org?.timezone as string | null) ?? 'Asia/Jerusalem'
 
   if (!encryptedToken || !phoneNumberId) {
-    return { error: 'WhatsApp אינו מחובר. אנא הגדר/י את חיבור WhatsApp בהגדרות.' }
+    return { error: 'WhatsApp לא מחובר. אפשר לחבר אותו בעמוד ההגדרות.' }
   }
 
   let accessToken: string
@@ -370,7 +372,7 @@ export async function sendPaymentRequestAction(
     accessToken = decryptToken(encryptedToken)
   } catch (err) {
     console.error('[sendPaymentRequestAction] WhatsApp token decryption failed', { orgId, err })
-    return { error: 'שגיאה בפענוח token של WhatsApp — פנה/י למנהל המערכת' }
+    return { error: 'שגיאה בפענוח החיבור ל-WhatsApp. כדאי לפנות לתמיכה.' }
   }
 
   // Generate Cardcom payment link (fire-and-forget if provider not configured)
@@ -423,28 +425,21 @@ export async function sendPaymentRequestAction(
   }
 
   // Build and send WhatsApp message
-  const message = buildPaymentRequestMessage(parent.full_name, charges, timezone, paymentUrl)
+  const message = buildPaymentRequestMessage(
+    parent.full_name,
+    charges,
+    timezone,
+    paymentUrl,
+    resolveRecipientLocale({
+      stored: (parent as { preferred_locale?: string | null }).preferred_locale,
+      orgDefault: org?.default_locale as string | null,
+    })
+  )
 
-  const META_API_VERSION = 'v19.0'
-  const whatsappUrl = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
-
-  const res = await fetch(whatsappUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: parent.phone,
-      type: 'text',
-      text: { body: message },
-    }),
-  })
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    console.error('[sendPaymentRequestAction] WhatsApp API error', { orgId, parentId, status: res.status, detail })
+  try {
+    await sendTextMessage(parent.phone, message, accessToken, phoneNumberId)
+  } catch (sendErr) {
+    console.error('[sendPaymentRequestAction] WhatsApp API error', { orgId, parentId, error: String(sendErr) })
     return { error: 'שגיאה בשליחת ההודעה דרך WhatsApp' }
   }
 

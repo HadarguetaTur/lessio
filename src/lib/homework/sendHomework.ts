@@ -4,7 +4,9 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { sendTextMessage } from '@/lib/whatsapp'
+import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
+import { botString } from '@/lib/whatsapp/strings'
+import { resolveRecipientLocale } from '@/lib/i18n/locale'
 
 export async function sendHomeworkAssignment(params: {
   orgId: string
@@ -24,7 +26,7 @@ export async function sendHomeworkAssignment(params: {
         phone,
         relationships (
           is_primary,
-          parents ( phone )
+          parents ( phone, preferred_locale )
         )
       )
     `)
@@ -46,7 +48,7 @@ export async function sendHomeworkAssignment(params: {
       phone: string | null
       relationships: Array<{
         is_primary: boolean
-        parents: { phone: string | null } | null
+        parents: { phone: string | null; preferred_locale: string | null } | null
       }>
     } | null
   }
@@ -55,13 +57,13 @@ export async function sendHomeworkAssignment(params: {
 
   // 2. Resolve target phone: student phone → primary parent phone
   let targetPhone: string | null = a.students?.phone ?? null
+  let parentLocale: string | null = null
 
-  if (!targetPhone) {
-    for (const rel of a.students?.relationships ?? []) {
-      if (rel.is_primary && rel.parents?.phone) {
-        targetPhone = rel.parents.phone
-        break
-      }
+  for (const rel of a.students?.relationships ?? []) {
+    if (rel.is_primary && rel.parents?.phone) {
+      targetPhone = targetPhone ?? rel.parents.phone
+      parentLocale = rel.parents.preferred_locale
+      break
     }
   }
 
@@ -71,15 +73,32 @@ export async function sendHomeworkAssignment(params: {
     return false
   }
 
-  // 4. Build message
-  let message = `שיעורי בית: ${a.title}\n\n${a.body}`
-  if (a.due_date) {
-    message += `\n\nתאריך הגשה: ${a.due_date}`
-  }
+  // 4+5. Send via the org-customisable template (session-window aware)
+  const { data: org } = await db
+    .from('organizations')
+    .select('default_locale')
+    .eq('id', orgId)
+    .maybeSingle()
 
-  // 5. Send via WhatsApp
+  const locale = resolveRecipientLocale({
+    stored: parentLocale,
+    orgDefault: org?.default_locale as string | null | undefined,
+  })
+
   try {
-    await sendTextMessage(targetPhone, message, accessToken, phoneNumberId)
+    await sendSmartMessage({
+      orgId,
+      phone: targetPhone,
+      accessToken,
+      phoneNumberId,
+      templateType: 'homework_assignment',
+      vars: {
+        title: a.title,
+        body: a.body,
+        due_line: a.due_date ? `\n${botString('due_by', locale)}: ${a.due_date}` : '',
+      },
+      locale,
+    })
   } catch (sendErr) {
     console.error('[sendHomeworkAssignment] WhatsApp send failed', {
       assignmentId,

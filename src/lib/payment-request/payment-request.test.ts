@@ -44,7 +44,7 @@ describe('buildPaymentRequestMessage', () => {
 
   it('includes parent greeting', () => {
     const msg = buildPaymentRequestMessage('שרה כהן', charges, 'Asia/Jerusalem')
-    expect(msg).toContain('שלום שרה כהן')
+    expect(msg).toContain('היי שרה כהן')
   })
 
   it('includes all charge lines with amount', () => {

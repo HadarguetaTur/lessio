@@ -10,6 +10,8 @@ export { executeCancellation } from './executeCancellation'
 export type { ExecuteCancellationOutcome, ExecuteCancellationResult, ExecuteCancellationFailure, CancellationError } from './executeCancellation'
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { toIntlLocale, type AppLocale } from '@/lib/i18n/locale'
+import { botString } from '@/lib/whatsapp/strings'
 
 const SESSION_TIMEOUT_MINUTES = 10
 
@@ -98,25 +100,31 @@ export async function getEligibleLessons(
  */
 export function formatLessonListMessage(
   lessons: EligibleLesson[],
-  timezone: string
+  timezone: string,
+  locale: AppLocale = 'he'
 ): string {
+  const intlLocale = toIntlLocale(locale)
   const lines = lessons.map((lesson, index) => {
-    const date = new Date(lesson.start_at).toLocaleDateString('he-IL', {
+    const date = new Date(lesson.start_at).toLocaleDateString(intlLocale, {
       timeZone: timezone,
       weekday: 'long',
       day: 'numeric',
       month: 'long',
     })
-    const time = new Date(lesson.start_at).toLocaleTimeString('he-IL', {
+    const time = new Date(lesson.start_at).toLocaleTimeString(intlLocale, {
       timeZone: timezone,
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
     })
-    return `${index + 1}. ${lesson.student_name} — ${date}, ${time}, מורה: ${lesson.teacher_name}`
+    const at = locale === 'he' ? 'בשעה' : 'at'
+    const teacherLabel = locale === 'he' ? 'מורה' : 'teacher'
+    return `${index + 1}. ${lesson.student_name}, ${date} ${at} ${time}, ${teacherLabel}: ${lesson.teacher_name}`
   })
 
-  return `לביטול שיעור, בחר/י מספר מהרשימה:\n\n${lines.join('\n')}\n\nהשב/י עם מספר השיעור (תוקף: 10 דקות).`
+  const header = botString('cancellation_list_header', locale)
+  const footer = botString('cancellation_list_footer', locale)
+  return `${header}\n\n${lines.join('\n')}\n\n${footer}`
 }
 
 /**

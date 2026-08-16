@@ -19,6 +19,7 @@ import { getReceiptProvider } from './factory'
 import { ReceiptProviderNotConfiguredError } from './index'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { resolveRecipientLocale } from '@/lib/i18n/locale'
 
 /**
  * Issues a receipt for a paid charge and updates the charge row.
@@ -36,7 +37,7 @@ export async function issueReceiptForCharge(
   const { data: charge, error: chargeError } = await db
     .from('charges')
     .select(
-      'id, amount, charge_type, billing_month, notes, status, receipt_issued_at, parent_id, parents(full_name, phone, tax_id), organizations(name, timezone, whatsapp_phone_number_id, whatsapp_access_token, receipt_document_type, default_vat_rate)'
+      'id, amount, charge_type, billing_month, notes, status, receipt_issued_at, parent_id, parents(full_name, phone, tax_id, preferred_locale), organizations(name, timezone, whatsapp_phone_number_id, whatsapp_access_token, receipt_document_type, default_vat_rate, default_locale)'
     )
     .eq('id', chargeId)
     .eq('organization_id', orgId)
@@ -76,7 +77,12 @@ export async function issueReceiptForCharge(
 
   // ── 4. Issue receipt via provider ─────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const parent = (charge as any).parents as { full_name: string; phone: string | null; tax_id: string | null } | null
+  const parent = (charge as any).parents as {
+    full_name: string
+    phone: string | null
+    tax_id: string | null
+    preferred_locale: string | null
+  } | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const org = (charge as any).organizations as {
     name: string
@@ -85,6 +91,7 @@ export async function issueReceiptForCharge(
     whatsapp_access_token: string | null
     receipt_document_type: string | null
     default_vat_rate: number | null
+    default_locale: string | null
   } | null
 
   const parentName = parent?.full_name ?? 'לקוח'
@@ -162,7 +169,10 @@ export async function issueReceiptForCharge(
       const receiptBody = await resolveTemplate(orgId, 'receipt_notification', {
         amount: charge.amount.toFixed(2),
         receipt_url: receiptUrl,
-      })
+      }, resolveRecipientLocale({
+        stored: parent?.preferred_locale,
+        orgDefault: org?.default_locale,
+      }))
       await sendTextMessage(parentPhone, receiptBody, accessToken, phoneNumberId)
     } catch (err) {
       console.error('[receipts] Failed to send WhatsApp receipt message', {

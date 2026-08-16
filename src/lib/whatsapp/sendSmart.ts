@@ -13,6 +13,7 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import type { AppLocale } from '@/lib/i18n/locale'
 import { resolveTemplate, type MessageTemplateType } from './templates'
 import { sendTextMessage, sendTemplateMessage } from './index'
 import { getApprovedTemplate } from './approvedTemplates'
@@ -28,20 +29,23 @@ export async function sendSmartMessage(params: {
   phoneNumberId: string
   templateType: MessageTemplateType
   vars: Record<string, string>
+  locale?: AppLocale
 }): Promise<void> {
-  const { orgId, phone, accessToken, phoneNumberId, templateType, vars } = params
+  const { orgId, phone, accessToken, phoneNumberId, templateType, vars, locale = 'he' } = params
 
   const inWindow = await isInSessionWindow(orgId, phone)
 
   if (inWindow) {
     // Within 24h window — send customisable text message
-    const body = await resolveTemplate(orgId, templateType, vars)
+    const body = await resolveTemplate(orgId, templateType, vars, locale)
     await sendTextMessage(phone, body, accessToken, phoneNumberId)
     return
   }
 
-  // Outside window — use Meta-approved template if available
-  const approved = getApprovedTemplate(templateType)
+  // Outside window — use the approved template in the recipient's language,
+  // falling back to the Hebrew one. Falling back to TEXT here would fail with
+  // error 131047, so an approved template in the wrong language still beats it.
+  const approved = getApprovedTemplate(templateType, locale) ?? getApprovedTemplate(templateType, 'he')
 
   if (approved) {
     const components = approved.buildComponents(vars)
@@ -56,7 +60,7 @@ export async function sendSmartMessage(params: {
     orgId,
     templateType,
   })
-  const body = await resolveTemplate(orgId, templateType, vars)
+  const body = await resolveTemplate(orgId, templateType, vars, locale)
   await sendTextMessage(phone, body, accessToken, phoneNumberId)
 }
 

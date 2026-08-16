@@ -13,9 +13,9 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
+import { sendTextMessage } from '@/lib/whatsapp'
+import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { buildPaymentRequestMessage } from './index'
-
-const META_API_VERSION = 'v19.0'
 
 export async function autoSendPaymentRequest(lessonId: string, orgId: string): Promise<void> {
   const db = createServiceRoleClient()
@@ -24,7 +24,7 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
     // 1. Load org settings — single query covers all needed fields
     const { data: org } = await db
       .from('organizations')
-      .select('auto_send_payment_request, automation_payment_request_enabled, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone')
+      .select('auto_send_payment_request, automation_payment_request_enabled, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone, default_locale')
       .eq('id', orgId)
       .single()
 
@@ -63,7 +63,7 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
     // 3. Load billing parent
     const { data: parent } = await db
       .from('parents')
-      .select('id, full_name, phone')
+      .select('id, full_name, phone, preferred_locale')
       .eq('id', charge.parent_id)
       .eq('organization_id', orgId)
       .single()
@@ -118,31 +118,20 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
       parent.full_name,
       chargesForMessage,
       timezone,
-      paymentResult.url
+      paymentResult.url,
+      resolveRecipientLocale({
+        stored: parent.preferred_locale as string | null,
+        orgDefault: org.default_locale as string | null,
+      })
     )
 
-    const whatsappUrl = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
-    const res = await fetch(whatsappUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: parent.phone,
-        type: 'text',
-        text: { body: message },
-      }),
-    })
-
-    if (!res.ok) {
-      const detail = await res.text().catch(() => '')
+    try {
+      await sendTextMessage(parent.phone, message, accessToken, phoneNumberId)
+    } catch (sendErr) {
       console.error('[autoSendPaymentRequest] WhatsApp send failed', {
         orgId,
         lessonId,
-        status: res.status,
-        detail,
+        error: String(sendErr),
       })
       return
     }

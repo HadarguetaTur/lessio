@@ -6,6 +6,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizePhone } from '@/lib/phone'
 import { decryptToken } from '@/lib/crypto'
 import { sendOtp } from '@/lib/whatsapp/sendOtp'
+import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { generateOtp, storeOtp, verifyOtp, countRecentOtpRequests } from '@/lib/portal/otp'
 import { setPortalSessionCookie } from '@/lib/portal/session'
 import { requireFeature } from '@/lib/saas/featureGate'
@@ -18,7 +19,19 @@ const OtpSchema = z.object({
   otp: z.string().length(6).regex(/^\d{6}$/),
 })
 
-export type LoginState = { error: string | null }
+/** `error` is a key under portal.login.errors, translated by the client form. */
+export type LoginState = {
+  error:
+    | 'invalidPhone'
+    | 'tooManyAttempts'
+    | 'noAccount'
+    | 'serviceUnavailable'
+    | 'sendFailed'
+    | 'invalidCode'
+    | 'wrongCode'
+    | 'generic'
+    | null
+}
 
 /**
  * Step 1 — receive phone, verify parent exists, send OTP via WhatsApp.
@@ -33,13 +46,13 @@ export async function requestOtpAction(
   await requireFeature(orgId, 'parent_portal')
 
   const parsed = PhoneSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: 'מספר טלפון לא תקין' }
+  if (!parsed.success) return { error: 'invalidPhone' }
 
   let phone: string
   try {
     phone = normalizePhone(parsed.data.phone)
   } catch {
-    return { error: 'מספר טלפון לא תקין' }
+    return { error: 'invalidPhone' }
   }
 
   // Server-side rate limiting: max 3 OTP requests per phone per 15 minutes.
@@ -47,7 +60,7 @@ export async function requestOtpAction(
   // Generic error — do not reveal whether the phone is registered.
   const recentCount = await countRecentOtpRequests(phone, orgId)
   if (recentCount >= 3) {
-    return { error: 'ניסיונות רבים מדי. נסה/י שוב מאוחר יותר.' }
+    return { error: 'tooManyAttempts' }
   }
 
   const db = createServiceRoleClient()
@@ -55,25 +68,25 @@ export async function requestOtpAction(
   // Verify parent exists in this org
   const { data: parent } = await db
     .from('parents')
-    .select('id')
+    .select('id, preferred_locale')
     .eq('organization_id', orgId)
     .eq('phone', phone)
     .maybeSingle()
 
   if (!parent) {
     // Security: same message regardless of whether phone exists
-    return { error: 'לא נמצא חשבון משויך למספר זה. פנה/י לבית הספר.' }
+    return { error: 'noAccount' }
   }
 
   // Get org WhatsApp config
   const { data: org } = await db
     .from('organizations')
-    .select('whatsapp_phone_number_id, whatsapp_access_token')
+    .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale')
     .eq('id', orgId)
     .single()
 
   if (!org?.whatsapp_phone_number_id || !org?.whatsapp_access_token) {
-    return { error: 'שירות הכניסה אינו זמין כרגע. פנה/י לבית הספר.' }
+    return { error: 'serviceUnavailable' }
   }
 
   const otp = generateOtp()
@@ -81,11 +94,16 @@ export async function requestOtpAction(
 
   const accessToken = decryptToken(org.whatsapp_access_token as string)
 
+  const locale = resolveRecipientLocale({
+    stored: parent.preferred_locale as string | null,
+    orgDefault: org.default_locale as string | null,
+  })
+
   try {
-    await sendOtp(phone, otp, accessToken, org.whatsapp_phone_number_id as string)
+    await sendOtp(phone, otp, accessToken, org.whatsapp_phone_number_id as string, locale)
   } catch (err) {
     console.error('[requestOtpAction] Failed to send OTP via WhatsApp', { org_id: orgId, err })
-    return { error: 'שגיאה בשליחת הקוד. נסה/י שוב.' }
+    return { error: 'sendFailed' }
   }
 
   redirect(`/portal/${orgId}/login?step=verify&phone=${encodeURIComponent(phone)}`)
@@ -104,10 +122,10 @@ export async function verifyOtpAction(
   await requireFeature(orgId, 'parent_portal')
 
   const parsed = OtpSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: 'קוד לא תקין — חייב להיות 6 ספרות' }
+  if (!parsed.success) return { error: 'invalidCode' }
 
   const valid = await verifyOtp({ phone, orgId, otp: parsed.data.otp })
-  if (!valid) return { error: 'קוד שגוי או שפג תוקפו. חזור/י ובקש/י קוד חדש.' }
+  if (!valid) return { error: 'wrongCode' }
 
   const db = createServiceRoleClient()
   const { data: parent } = await db
@@ -117,7 +135,7 @@ export async function verifyOtpAction(
     .eq('phone', phone)
     .single()
 
-  if (!parent) return { error: 'שגיאה — נסה/י שוב' }
+  if (!parent) return { error: 'generic' }
 
   await setPortalSessionCookie({ parentId: parent.id, orgId })
   redirect(`/portal/${orgId}/home`)

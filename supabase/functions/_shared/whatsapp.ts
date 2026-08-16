@@ -87,13 +87,26 @@ export async function sendTemplateMessage(
  * (and template names with src/lib/whatsapp/registerTemplates.ts) —
  * update all files together.
  */
-const APPROVED_TEMPLATES: Record<string, { name: string; languageCode: string; bodyParamCount: number }> = {
-  lesson_reminder:  { name: 'lessio_lesson_reminder_he',  languageCode: 'he', bodyParamCount: 3 },
-  payment_reminder: { name: 'lessio_payment_reminder_he', languageCode: 'he', bodyParamCount: 2 },
-  payment_request:  { name: 'lessio_payment_request_he',  languageCode: 'he', bodyParamCount: 2 },
-  homework_reminder: { name: 'lessio_homework_reminder_he', languageCode: 'he', bodyParamCount: 3 },
-  homework_assignment: { name: 'lessio_homework_assignment_he', languageCode: 'he', bodyParamCount: 3 },
-  homework_graded: { name: 'lessio_homework_graded_he', languageCode: 'he', bodyParamCount: 3 },
+const APPROVED_TEMPLATES: Record<
+  string,
+  Record<string, { name: string; languageCode: string; bodyParamCount: number }>
+> = {
+  he: {
+    lesson_reminder:  { name: 'lessio_lesson_reminder_he_v2',  languageCode: 'he', bodyParamCount: 3 },
+    payment_reminder: { name: 'lessio_payment_reminder_he_v2', languageCode: 'he', bodyParamCount: 2 },
+    payment_request:  { name: 'lessio_payment_request_he_v2',  languageCode: 'he', bodyParamCount: 2 },
+    homework_reminder: { name: 'lessio_homework_reminder_he_v2', languageCode: 'he', bodyParamCount: 3 },
+    homework_assignment: { name: 'lessio_homework_assignment_he_v2', languageCode: 'he', bodyParamCount: 3 },
+    homework_graded: { name: 'lessio_homework_graded_he_v2', languageCode: 'he', bodyParamCount: 3 },
+  },
+  en: {
+    lesson_reminder:  { name: 'lessio_lesson_reminder_en_v2',  languageCode: 'en', bodyParamCount: 3 },
+    payment_reminder: { name: 'lessio_payment_reminder_en_v2', languageCode: 'en', bodyParamCount: 2 },
+    payment_request:  { name: 'lessio_payment_request_en_v2',  languageCode: 'en', bodyParamCount: 2 },
+    homework_reminder: { name: 'lessio_homework_reminder_en_v2', languageCode: 'en', bodyParamCount: 3 },
+    homework_assignment: { name: 'lessio_homework_assignment_en_v2', languageCode: 'en', bodyParamCount: 3 },
+    homework_graded: { name: 'lessio_homework_graded_en_v2', languageCode: 'en', bodyParamCount: 3 },
+  },
 }
 
 /**
@@ -107,6 +120,7 @@ const APPROVED_TEMPLATES: Record<string, { name: string; languageCode: string; b
  * @param templateType  key in APPROVED_TEMPLATES
  * @param textBody  resolved text body (used within session window)
  * @param templateVars  ordered list of variable values for the approved template body
+ * @param locale  recipient language — picks the approved template variant
  */
 // deno-lint-ignore no-explicit-any
 export async function sendSmartMessage(
@@ -118,7 +132,8 @@ export async function sendSmartMessage(
   phoneNumberId: string,
   templateType: string,
   textBody: string,
-  templateVars: string[] = []
+  templateVars: string[] = [],
+  locale: string = 'he'
 ): Promise<void> {
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
@@ -137,8 +152,9 @@ export async function sendSmartMessage(
     return
   }
 
-  // Outside window — approved template
-  const tmpl = APPROVED_TEMPLATES[templateType]
+  // Outside window — approved template in the recipient's language, falling
+  // back to Hebrew. Text here would fail with error 131047.
+  const tmpl = APPROVED_TEMPLATES[locale]?.[templateType] ?? APPROVED_TEMPLATES.he[templateType]
   if (tmpl) {
     const components: MetaTemplateComponent[] = templateVars.length > 0
       ? [{

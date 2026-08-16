@@ -25,6 +25,7 @@ import {
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { resolveRecipientLocale, toIntlLocale } from '@/lib/i18n/locale'
 
 /**
  * Errors thrown inside Server Actions cross to the client as opaque generic
@@ -181,9 +182,9 @@ async function sendWhatsAppConfirmation(
   startAt: string
 ): Promise<void> {
   const [parentResult, teacherResult, orgResult] = await Promise.all([
-    db.from('parents').select('phone').eq('id', parentId).eq('organization_id', organizationId).single(),
+    db.from('parents').select('phone, preferred_locale').eq('id', parentId).eq('organization_id', organizationId).single(),
     db.from('teachers').select('profiles(full_name)').eq('id', teacherId).single(),
-    db.from('organizations').select('whatsapp_phone_number_id, whatsapp_access_token').eq('id', organizationId).single(),
+    db.from('organizations').select('whatsapp_phone_number_id, whatsapp_access_token, default_locale').eq('id', organizationId).single(),
   ])
 
   if (parentResult.error || !parentResult.data) {
@@ -216,16 +217,22 @@ async function sendWhatsAppConfirmation(
 
   const phoneNumberId = orgData.whatsapp_phone_number_id as string
 
-  const date = new Date(startAt).toLocaleDateString('he-IL', {
+  const locale = resolveRecipientLocale({
+    stored: parentResult.data.preferred_locale as string | null,
+    orgDefault: orgData.default_locale as string | null,
+  })
+  const intlLocale = toIntlLocale(locale)
+
+  const date = new Date(startAt).toLocaleDateString(intlLocale, {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
   })
-  const time = new Date(startAt).toLocaleTimeString('he-IL', {
+  const time = new Date(startAt).toLocaleTimeString(intlLocale, {
     hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
   })
   const body = await resolveTemplate(organizationId, 'booking_confirmation', {
     teacher_name: teacherName,
     date,
     time,
-  })
+  }, locale)
   await sendTextMessage(phone, body, accessToken, phoneNumberId)
 }

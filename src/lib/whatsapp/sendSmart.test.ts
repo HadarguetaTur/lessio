@@ -73,7 +73,7 @@ describe('sendSmartMessage', () => {
 
     await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
 
-    expect(mockResolveTemplate).toHaveBeenCalledWith('org-1', 'lesson_reminder', BASE_PARAMS.vars)
+    expect(mockResolveTemplate).toHaveBeenCalledWith('org-1', 'lesson_reminder', BASE_PARAMS.vars, 'he')
     expect(mockSendTextMessage).toHaveBeenCalledWith(
       '+972501234567',
       'resolved body',
@@ -92,7 +92,7 @@ describe('sendSmartMessage', () => {
       '+972501234567',
       'token-1',
       'pn-1',
-      'lessio_lesson_reminder_he',
+      'lessio_lesson_reminder_he_v2',
       'he',
       [
         {
@@ -136,7 +136,7 @@ describe('sendSmartMessage', () => {
       '+972501234567',
       'token-1',
       'pn-1',
-      'lessio_lesson_reminder_he',
+      'lessio_lesson_reminder_he_v2',
       'he',
       expect.any(Array)
     )

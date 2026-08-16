@@ -19,6 +19,7 @@ import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { generateAndStoreInvoice } from '@/lib/billing/invoices/generateInvoicePdf'
 import { generateAndStoreCreditNote } from '@/lib/billing/invoices/generateCreditNotePdf'
@@ -494,7 +495,7 @@ async function sendBillingPaymentRequestCore(
   // Load org settings
   const { data: org } = await db
     .from('organizations')
-    .select('auto_send_payment_request, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone')
+    .select('auto_send_payment_request, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone, default_locale')
     .eq('id', orgId)
     .single()
 
@@ -535,12 +536,17 @@ async function sendBillingPaymentRequestCore(
   // Load parent
   const { data: parent } = await db
     .from('parents')
-    .select('id, full_name, phone')
+    .select('id, full_name, phone, preferred_locale')
     .eq('id', billing.parent_id)
     .eq('organization_id', orgId)
     .single()
 
   if (!parent?.phone) throw new Error('הורה לא נמצא או חסר מספר טלפון')
+
+  const locale = resolveRecipientLocale({
+    stored: parent.preferred_locale as string | null,
+    orgDefault: org.default_locale as string | null,
+  })
 
   // Create payment link. DEMO_PAYMENT_LINK_ENABLED=1 allows sending without a
   // configured payment provider by linking to the org's parent portal instead
@@ -587,9 +593,12 @@ async function sendBillingPaymentRequestCore(
   const accessToken = decryptToken(encryptedToken)
   const body = await resolveTemplate(orgId, 'payment_request', {
     amount: Number(charge.amount).toFixed(2),
-    description: `חיוב חודשי ${billing.billing_month}`,
+    description:
+      locale === 'en'
+        ? `monthly billing ${billing.billing_month}`
+        : `חיוב חודשי ${billing.billing_month}`,
     payment_link: paymentResult.url,
-  })
+  }, locale)
 
   await sendTextMessage(parent.phone, body, accessToken, phoneNumberId)
 

@@ -15,6 +15,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 const TemplateSchema = z.object({
   type: z.string().min(1),
+  locale: z.enum(['he', 'en']),
   body_template: z.string().min(1, 'תוכן ההודעה לא יכול להיות ריק'),
 })
 
@@ -28,8 +29,8 @@ export type ActionState = {
 // ── saveTemplateAction ────────────────────────────────────────────────────────
 
 /**
- * Upserts a custom template for this org.
- * Uses INSERT ... ON CONFLICT (organization_id, type) DO UPDATE.
+ * Upserts a custom template for this org in one language.
+ * Uses INSERT ... ON CONFLICT (organization_id, type, locale) DO UPDATE.
  */
 export async function saveTemplateAction(
   _prev: ActionState,
@@ -47,6 +48,7 @@ export async function saveTemplateAction(
 
   const parsed = TemplateSchema.safeParse({
     type: formData.get('type'),
+    locale: formData.get('locale'),
     body_template: String(formData.get('body_template') ?? '').trim(),
   })
 
@@ -54,22 +56,22 @@ export async function saveTemplateAction(
     return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
   }
 
-  const { type, body_template } = parsed.data
+  const { type, locale, body_template } = parsed.data
 
   const db = createServiceRoleClient()
   const { error } = await db
     .from('message_templates')
     .upsert(
-      { organization_id: orgId, type, body_template, updated_at: new Date().toISOString() },
-      { onConflict: 'organization_id,type' }
+      { organization_id: orgId, type, locale, body_template, updated_at: new Date().toISOString() },
+      { onConflict: 'organization_id,type,locale' }
     )
 
   if (error) {
-    console.error('[message-templates] Failed to upsert template', { orgId, type, error: error.message })
+    console.error('[message-templates] Failed to upsert template', { orgId, type, locale, error: error.message })
     return { error: 'שגיאה בשמירת התבנית' }
   }
 
-  console.info('[message-templates] Template saved', { orgId, type })
+  console.info('[message-templates] Template saved', { orgId, type, locale })
   revalidatePath('/settings/message-templates')
   return { error: null, success: true }
 }
@@ -79,7 +81,10 @@ export async function saveTemplateAction(
 /**
  * Deletes the custom template row — org reverts to system default.
  */
-export async function resetTemplateAction(type: string): Promise<{ error?: string }> {
+export async function resetTemplateAction(
+  type: string,
+  locale: 'he' | 'en' = 'he'
+): Promise<{ error?: string }> {
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -96,13 +101,14 @@ export async function resetTemplateAction(type: string): Promise<{ error?: strin
     .delete()
     .eq('organization_id', orgId)
     .eq('type', type)
+    .eq('locale', locale)
 
   if (error) {
-    console.error('[message-templates] Failed to reset template', { orgId, type, error: error.message })
+    console.error('[message-templates] Failed to reset template', { orgId, type, locale, error: error.message })
     return { error: 'שגיאה בבאיפוס התבנית' }
   }
 
-  console.info('[message-templates] Template reset to default', { orgId, type })
+  console.info('[message-templates] Template reset to default', { orgId, type, locale })
   revalidatePath('/settings/message-templates')
   return {}
 }

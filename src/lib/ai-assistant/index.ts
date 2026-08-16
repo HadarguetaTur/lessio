@@ -10,10 +10,13 @@ import { countAssistantReplies, getRecentHistory } from './conversationLog'
 import { getAiProvider, isAiConfiguredForOrg } from './providers/factory'
 import { logAiUsage } from './usage'
 import { estimateCost } from './costs'
+import { botString } from '@/lib/whatsapp/strings'
+import type { AppLocale } from '@/lib/i18n/locale'
 
 const SAFETY_CAP = 3
-export const HUMAN_REDIRECT_MESSAGE =
-  'לא הצלחתי לענות על השאלה שלך. אנא פנה/י ישירות לצוות בית הספר לסיוע.'
+
+/** Hebrew redirect text. For a recipient-language variant use botString(). */
+export const HUMAN_REDIRECT_MESSAGE = botString('ai_human_redirect', 'he')
 
 /**
  * Sync check: platform-level OpenAI key exists.
@@ -41,8 +44,11 @@ export async function aiAssistant(
   orgId: string,
   phone: string,
   parentId: string | null,
-  incomingMessage: string
+  incomingMessage: string,
+  locale: AppLocale = 'he'
 ): Promise<AiAssistantResult> {
+  const humanRedirect = botString('ai_human_redirect', locale)
+
   // 1. Safety cap — prevent runaway spend
   let replyCount: number
   try {
@@ -54,7 +60,7 @@ export async function aiAssistant(
       err,
     })
     return {
-      reply: HUMAN_REDIRECT_MESSAGE,
+      reply: humanRedirect,
       promptTokens: 0,
       completionTokens: 0,
       provider: 'unknown',
@@ -69,7 +75,7 @@ export async function aiAssistant(
       replyCount,
     })
     return {
-      reply: HUMAN_REDIRECT_MESSAGE,
+      reply: humanRedirect,
       promptTokens: 0,
       completionTokens: 0,
       provider: 'unknown',
@@ -94,7 +100,7 @@ export async function aiAssistant(
     temperature: 0.3,
   })
 
-  const reply = result.content || HUMAN_REDIRECT_MESSAGE
+  const reply = result.content || humanRedirect
 
   // 5. Structured log for cost tracking
   console.info('[ai-assistant] Reply generated', {

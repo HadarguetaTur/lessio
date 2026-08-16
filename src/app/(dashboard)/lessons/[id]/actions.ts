@@ -18,6 +18,8 @@ import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from 
 import { DateTime } from 'luxon'
 import { decryptToken } from '@/lib/crypto'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { botString } from '@/lib/whatsapp/strings'
+import { resolveRecipientLocale, toLuxonLocale } from '@/lib/i18n/locale'
 import { sendTextMessage } from '@/lib/whatsapp'
 
 const VALID_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
@@ -405,7 +407,7 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
 
   const { data: org } = await db
     .from('organizations')
-    .select('whatsapp_access_token, whatsapp_phone_number_id, timezone')
+    .select('whatsapp_access_token, whatsapp_phone_number_id, timezone, default_locale')
     .eq('id', session.orgId)
     .single()
 
@@ -418,7 +420,7 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
     .select(
       `id, start_at, status,
        teachers ( profiles ( full_name ) ),
-       lesson_students ( students ( full_name, relationships ( is_primary, parents ( phone, is_active ) ) ) )`
+       lesson_students ( students ( full_name, relationships ( is_primary, parents ( phone, is_active, preferred_locale ) ) ) )`
     )
     .eq('id', lessonId)
     .eq('organization_id', session.orgId)
@@ -437,7 +439,11 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
         full_name: string | null
         relationships: Array<{
           is_primary: boolean | null
-          parents: { phone: string | null; is_active: boolean | null } | null
+          parents: {
+            phone: string | null
+            is_active: boolean | null
+            preferred_locale: string | null
+          } | null
         }> | null
       } | null
     }>
@@ -445,10 +451,12 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
   const row = lesson as unknown as LessonRow
 
   let parentPhone: string | null = null
+  let parentLocale: string | null = null
   for (const ls of row.lesson_students ?? []) {
     for (const rel of ls.students?.relationships ?? []) {
       if (rel.is_primary && rel.parents?.is_active && rel.parents.phone) {
         parentPhone = rel.parents.phone
+        parentLocale = rel.parents.preferred_locale
         break
       }
     }
@@ -456,15 +464,21 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
   }
   if (!parentPhone) return { error: 'לא נמצא הורה ראשי פעיל עם מספר טלפון' }
 
+  const locale = resolveRecipientLocale({
+    stored: parentLocale,
+    orgDefault: org.default_locale as string | null,
+  })
   const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
-  const dt = DateTime.fromISO(row.start_at, { zone: 'utc' }).setZone(timezone).setLocale('he')
-  const teacherName = row.teachers?.profiles?.full_name ?? 'המורה'
+  const dt = DateTime.fromISO(row.start_at, { zone: 'utc' })
+    .setZone(timezone)
+    .setLocale(toLuxonLocale(locale))
+  const teacherName = row.teachers?.profiles?.full_name ?? botString('the_teacher', locale)
 
   const body = await resolveTemplate(session.orgId, 'lesson_reminder', {
     teacher_name: teacherName,
     date: dt.toFormat("cccc, d.M"),
     time: dt.toFormat('HH:mm'),
-  })
+  }, locale)
 
   try {
     await sendTextMessage(

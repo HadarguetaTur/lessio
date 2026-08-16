@@ -12,6 +12,7 @@ import { requireFeature } from '@/lib/saas/featureGate'
 import { gradeSubmission } from '@/lib/homework/submissions'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
+import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { decryptToken } from '@/lib/crypto'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { homeworkGradedEmail } from '@/lib/email/templates/homeworkGraded'
@@ -101,20 +102,21 @@ async function notifyGraded(
   // Resolve parent phone via student → primary relationship
   const { data: rel } = await db
     .from('relationships')
-    .select('parents ( phone )')
+    .select('parents ( phone, preferred_locale )')
     .eq('student_id', studentId)
     .eq('organization_id', orgId)
     .eq('is_primary', true)
     .maybeSingle()
 
-  type RelRow = { parents: { phone: string } | null }
-  const phone = (rel as unknown as RelRow | null)?.parents?.phone
+  type RelRow = { parents: { phone: string; preferred_locale: string | null } | null }
+  const parentRow = (rel as unknown as RelRow | null)?.parents
+  const phone = parentRow?.phone
   if (!phone) return
 
   // Get org WhatsApp config
   const { data: org } = await db
     .from('organizations')
-    .select('whatsapp_phone_number_id, whatsapp_access_token')
+    .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale')
     .eq('id', orgId)
     .single()
 
@@ -131,7 +133,12 @@ async function notifyGraded(
     return
   }
 
-  const feedbackLine = feedback.trim() ? `משוב: ${feedback}` : ''
+  const locale = resolveRecipientLocale({
+    stored: parentRow?.preferred_locale,
+    orgDefault: org.default_locale as string | null,
+  })
+  const feedbackLabel = locale === 'en' ? 'Feedback' : 'משוב'
+  const feedbackLine = feedback.trim() ? `${feedbackLabel}: ${feedback}` : ''
 
   await sendSmartMessage({
     orgId,
@@ -144,6 +151,7 @@ async function notifyGraded(
       score: String(score),
       feedback_line: feedbackLine,
     },
+    locale,
   })
 }
 

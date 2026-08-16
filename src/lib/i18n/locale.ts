@@ -9,6 +9,39 @@ export function parseAppLocale(value: string | undefined): AppLocale {
   return value === 'en' ? 'en' : 'he'
 }
 
+/**
+ * Infers a language from free text — used on the WhatsApp path, where no
+ * Accept-Language header exists (Meta's webhook POST carries no user locale).
+ *
+ * Any Hebrew letter wins, so a Hebrew speaker mixing in Latin words
+ * ("שלח לי link") still gets Hebrew. Returns null when the text carries no
+ * language signal at all — a bare "2" selecting a lesson from a numbered list,
+ * an emoji reaction, a phone number — so those never flip a parent's language.
+ */
+export function detectLocaleFromText(text: string): AppLocale | null {
+  if (/[֐-׿]/.test(text)) return 'he'
+  if (/[A-Za-z]/.test(text)) return 'en'
+  return null
+}
+
+/**
+ * Picks the language to write to a recipient in.
+ *
+ * A clear signal in the message being answered wins, so a parent who switches
+ * language is followed immediately. Otherwise the stored preference, then the
+ * org default. Proactive sends (reminders) have no text and omit `detected`.
+ */
+export function resolveRecipientLocale(params: {
+  stored?: string | null
+  detected?: AppLocale | null
+  orgDefault?: string | null
+}): AppLocale {
+  const { stored, detected, orgDefault } = params
+  if (detected) return detected
+  if (stored === 'he' || stored === 'en') return stored
+  return parseAppLocale(orgDefault ?? undefined)
+}
+
 export function toIntlLocale(locale: AppLocale): string {
   return locale === 'he' ? 'he-IL' : 'en-US'
 }

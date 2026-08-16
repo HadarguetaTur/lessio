@@ -19,7 +19,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendSmartMessage } from '../_shared/whatsapp.ts'
-import { resolveTemplate } from '../_shared/templates.ts'
+import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
+import { botString } from '../_shared/botStrings.ts'
 import { sendEmail } from '../_shared/email.ts'
 
 Deno.serve(async (_req) => {
@@ -31,7 +32,7 @@ Deno.serve(async (_req) => {
   // ── 1. Fetch orgs with reminders enabled + WhatsApp connected ────────────────
   const { data: orgs, error: orgsError } = await db
     .from('organizations')
-    .select('id, timezone, whatsapp_phone_number_id, whatsapp_access_token, email_notifications')
+    .select('id, timezone, whatsapp_phone_number_id, whatsapp_access_token, email_notifications, default_locale')
     .eq('reminders_enabled', true)
     .not('whatsapp_phone_number_id', 'is', null)
     .not('whatsapp_access_token', 'is', null)
@@ -99,10 +100,11 @@ async function processOrg(db: any, org: any): Promise<void> {
       title,
       due_date,
       students (
+        full_name,
         phone,
         relationships (
           is_primary,
-          parents ( phone, email )
+          parents ( phone, email, preferred_locale )
         )
       )
     `)
@@ -157,11 +159,15 @@ async function processOrg(db: any, org: any): Promise<void> {
     }
 
     // ── Send reminder (session-window aware) ─────────────────────────────────
+    const locale = resolveRecipientLocale({
+      stored: resolveParentLocale(assignment),
+      orgDefault: org.default_locale,
+    })
     const dueDateSuffix = assignment.due_date ? ` (${assignment.due_date})` : ''
     const message = await resolveTemplate(db, orgId, 'homework_reminder', {
       title: assignment.title,
       due_date_suffix: dueDateSuffix,
-    })
+    }, locale)
 
     let sendError: string | null = null
     try {
@@ -173,7 +179,12 @@ async function processOrg(db: any, org: any): Promise<void> {
         org.whatsapp_phone_number_id,
         'homework_reminder',
         message,
-        [assignment.student_name ?? '', assignment.title, assignment.due_date ?? '']
+        [
+          assignment.students?.full_name || botString('the_student', locale),
+          assignment.title,
+          assignment.due_date || dueTomorrowLabel(locale),
+        ],
+        locale
       )
     } catch (err) {
       sendError = String(err)
@@ -220,6 +231,25 @@ function resolvePhone(assignment: any): string | null {
     }
   }
   return null
+}
+
+/**
+ * Resolves the primary parent's stored language for an assignment.
+ */
+// deno-lint-ignore no-explicit-any
+function resolveParentLocale(assignment: any): string | null {
+  const relationships = assignment.students?.relationships ?? []
+  for (const rel of relationships) {
+    if (rel.is_primary && rel.parents?.preferred_locale) {
+      return rel.parents.preferred_locale as string
+    }
+  }
+  return null
+}
+
+/** Meta rejects empty template parameters, so an absent due date needs a word. */
+function dueTomorrowLabel(locale: string): string {
+  return locale === 'en' ? 'tomorrow' : 'מחר'
 }
 
 /**

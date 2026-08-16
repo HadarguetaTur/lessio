@@ -15,7 +15,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendSmartMessage } from '../_shared/whatsapp.ts'
-import { resolveTemplate } from '../_shared/templates.ts'
+import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
+import { botString } from '../_shared/botStrings.ts'
 
 Deno.serve(async (_req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -40,7 +41,7 @@ Deno.serve(async (_req) => {
         full_name,
         relationships (
           is_primary,
-          parents ( phone )
+          parents ( phone, preferred_locale )
         )
       )
     `)
@@ -72,7 +73,7 @@ Deno.serve(async (_req) => {
     // Fetch org WhatsApp config
     const { data: org } = await db
       .from('organizations')
-      .select('whatsapp_phone_number_id, whatsapp_access_token')
+      .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale')
       .eq('id', orgId)
       .single()
 
@@ -103,13 +104,23 @@ Deno.serve(async (_req) => {
           continue
         }
 
-        const dueDateSuffix = assignment.due_date ? ` (${assignment.due_date})` : ''
+        const locale = resolveRecipientLocale({
+          stored: resolveParentLocale(assignment),
+          orgDefault: org.default_locale,
+        })
+        const dueLabel = assignment.due_date
+          ? `${botString('due_by', locale)}: ${assignment.due_date}`
+          : botString('no_due_date', locale)
+
         const message = await resolveTemplate(db, orgId, 'homework_assignment', {
           title: assignment.title,
           body: assignment.body,
-          due_line: assignment.due_date ? `להגשה עד: ${assignment.due_date}` : '',
-        })
+          due_line: assignment.due_date ? `\n${dueLabel}` : '',
+        }, locale)
 
+        // Approved-template params must match lessio_homework_assignment_*_v2
+        // body order ({{1}}=title, {{2}}=body, {{3}}=due line) and must be
+        // non-empty, newline-free strings (Meta API constraint).
         await sendSmartMessage(
           db,
           orgId,
@@ -118,7 +129,8 @@ Deno.serve(async (_req) => {
           org.whatsapp_phone_number_id,
           'homework_assignment',
           message,
-          [assignment.students?.full_name ?? '', assignment.title, dueDateSuffix]
+          [assignment.title, assignment.body, dueLabel],
+          locale
         )
 
         await markSent(db, assignment.id)
@@ -147,6 +159,18 @@ function resolvePhone(assignment: any): string | null {
   for (const rel of relationships) {
     if (rel.is_primary && rel.parents?.phone) {
       return rel.parents.phone as string
+    }
+  }
+  return null
+}
+
+/** Primary parent's stored language, or null if unknown. */
+// deno-lint-ignore no-explicit-any
+function resolveParentLocale(assignment: any): string | null {
+  const relationships = assignment.students?.relationships ?? []
+  for (const rel of relationships) {
+    if (rel.is_primary && rel.parents?.preferred_locale) {
+      return rel.parents.preferred_locale as string
     }
   }
   return null

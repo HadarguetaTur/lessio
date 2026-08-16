@@ -104,7 +104,7 @@ Deno.serve(async (_req) => {
         .eq('id', sub.plan_id)
         .maybeSingle()
 
-      const planName = plan?.display_name_he ?? 'המנוי שלך'
+      const planLabel = plan?.display_name_he ? `מנוי ${plan.display_name_he}` : 'המנוי שלך'
       const renewalDate = sub.current_period_end
         ? new Date(sub.current_period_end).toLocaleDateString('he-IL', {
             day: 'numeric',
@@ -114,8 +114,8 @@ Deno.serve(async (_req) => {
         : 'בקרוב'
 
       const message =
-        `🔔 תזכורת חידוש מנוי LESSIO\n\n` +
-        `${planName} יתחדש אוטומטית ב-${renewalDate}.\n\n` +
+        `🔔 תזכורת מ-Lessio\n\n` +
+        `${planLabel} יתחדש אוטומטית ב-${renewalDate}.\n\n` +
         `לניהול המנוי: https://lessio.co.il/subscriptions`
 
       // ── 6. Decrypt token and send WhatsApp ─────────────────────────────────

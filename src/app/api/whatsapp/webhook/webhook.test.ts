@@ -266,7 +266,8 @@ describe('POST /api/whatsapp/webhook', () => {
     expect(mockSendUnknownParentReply).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
       'test-access-token',
-      'phone-number-id-1'
+      'phone-number-id-1',
+      'he'
     )
     expect(mockSendTextMessage).not.toHaveBeenCalled()
   })
@@ -342,7 +343,13 @@ describe('POST /api/whatsapp/webhook', () => {
     const res = await POST(req)
 
     expect(res.status).toBe(200)
-    expect(mockAiAssistant).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164, PARENT_ID, 'אפשר עזרה עם התשלום?')
+    expect(mockAiAssistant).toHaveBeenCalledWith(
+      ORG_ID,
+      SENDER_PHONE_E164,
+      PARENT_ID,
+      'אפשר עזרה עם התשלום?',
+      'he'
+    )
     expect(mockSendTextMessage).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
       'ai-reply',
@@ -684,10 +691,12 @@ describe('WhatsApp cancellation intent', () => {
     const req = makeRequest(makeWebhookPayload('xyz'))
     const res = await POST(req)
     expect(res.status).toBe(200)
+    // 'xyz' is Latin script, so the reply comes back in English.
     expect(mockSendInvalidSelectionReply).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
       'test-access-token',
-      'phone-number-id-1'
+      'phone-number-id-1',
+      'en'
     )
     expect(mockDeleteCancellationSession).not.toHaveBeenCalled()
     expect(mockUpsertCancellationSession).toHaveBeenCalledWith(
@@ -727,7 +736,7 @@ describe('WhatsApp cancellation intent', () => {
     expect(res.status).toBe(200)
     expect(mockSendCancellationLessonList).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
-      expect.stringContaining('השיעור שנבחר אינו זמין עוד לביטול.'),
+      expect.stringContaining('השיעור שנבחר כבר לא זמין לביטול.'),
       'test-access-token',
       'phone-number-id-1'
     )

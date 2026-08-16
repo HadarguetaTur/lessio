@@ -23,42 +23,93 @@ type TemplateDefinition = {
   rawComponents?: Record<string, unknown>[]
 }
 
+// Copy rewrite (Sprint 32): the `_v2` suffix is deliberate. Editing an already
+// approved Meta template resets it to PENDING and blocks out-of-window sends
+// until re-approval, so new copy ships under new names and the old templates
+// stay live as the fallback until the v2 set is approved.
 export const TEMPLATES: TemplateDefinition[] = [
   {
-    name: 'lessio_lesson_reminder_he',
+    name: 'lessio_lesson_reminder_he_v2',
     language: 'he',
-    bodyText: 'תזכורת לשיעור עם {{1}} ב-{{2}} בשעה {{3}}',
+    bodyText: 'תזכורת: שיעור עם {{1}} מתקיים {{2}} בשעה {{3}}. נתראה!',
     example: [['שרה כהן', 'יום שני 12/5', '16:00']],
   },
   {
-    name: 'lessio_payment_reminder_he',
+    name: 'lessio_payment_reminder_he_v2',
     language: 'he',
-    bodyText: 'שלום {{1}}, יש לך חוב פתוח בסך ₪{{2}}. נשמח שתסדיר את התשלום.',
+    bodyText: 'היי {{1}}, תזכורת קטנה: יש יתרה פתוחה של ₪{{2}}. תודה!',
     example: [['משה לוי', '350']],
   },
   {
-    name: 'lessio_payment_request_he',
+    // Meta rejects a variable at the very start or end of the body (2388299),
+    // hence the closing line after the link.
+    name: 'lessio_payment_request_he_v2',
     language: 'he',
-    bodyText: 'בקשת תשלום בסך ₪{{1}}. לתשלום לחץ על הקישור: {{2}}',
+    bodyText: 'היי! התקבלה בקשת תשלום בסך ₪{{1}}.\nלתשלום מאובטח בקישור:\n{{2}}\nתודה רבה!',
     example: [['350', 'https://pay.example.com/abc']],
   },
   {
-    name: 'lessio_homework_reminder_he',
+    name: 'lessio_homework_reminder_he_v2',
     language: 'he',
-    bodyText: 'תזכורת: שיעורי הבית של {{1}} - "{{2}}" - עד {{3}}',
+    bodyText: 'תזכורת: שיעורי הבית של {{1}}, "{{2}}", צריכים להיות מוכנים עד {{3}}. בהצלחה!',
     example: [['דוד כהן', 'פרק ג בספר', '15/5']],
   },
   {
-    name: 'lessio_homework_assignment_he',
+    // Body kept deliberately wordy: Meta rejects templates with too many
+    // variables relative to their static text (2388293).
+    name: 'lessio_homework_assignment_he_v2',
     language: 'he',
-    bodyText: 'שיעורי בית חדשים: {{1}}\n{{2}}\n{{3}}',
-    example: [['חיבור על הקיץ', 'כתוב חיבור של 300 מילים', 'עד 20/5']],
+    bodyText:
+      'שיעורי בית חדשים ממתינים לכם 📚\nנושא: {{1}}\nפירוט המשימה: {{2}}\nמועד הגשה: {{3}}\nבהצלחה, ונשמח לעדכון כשסיימתם.',
+    example: [['חיבור על הקיץ', 'כתיבת חיבור של 300 מילים', 'להגשה עד: 20/5']],
   },
   {
-    name: 'lessio_homework_graded_he',
+    name: 'lessio_homework_graded_he_v2',
     language: 'he',
-    bodyText: 'שיעורי הבית "{{1}}" נבדקו! ציון: {{2}}/100\n{{3}}',
-    example: [['חיבור על הקיץ', '92', 'כתיבה יפה, המשך כך!']],
+    bodyText:
+      'שיעורי הבית שלכם נבדקו ✅\nנושא: {{1}}\nציון שהתקבל: {{2}} מתוך 100\n{{3}}\nכל הכבוד על ההשקעה!',
+    example: [['חיבור על הקיץ', '92', 'משוב: כתיבה יפה, כל הכבוד!']],
+  },
+  // ── English set ─────────────────────────────────────────────────────────
+  // Parameter order matches the Hebrew templates one-for-one, so the shared
+  // buildComponents in approvedTemplates.ts works for both.
+  {
+    name: 'lessio_lesson_reminder_en_v2',
+    language: 'en',
+    bodyText: 'Reminder: your lesson with {{1}} is on {{2}} at {{3}}. See you there!',
+    example: [['Sarah Cohen', 'Monday 12/5', '16:00']],
+  },
+  {
+    name: 'lessio_payment_reminder_en_v2',
+    language: 'en',
+    bodyText: 'Hi {{1}}, a small reminder: you have an open balance of ₪{{2}}. Thank you!',
+    example: [['Moshe Levi', '350']],
+  },
+  {
+    name: 'lessio_payment_request_en_v2',
+    language: 'en',
+    bodyText: 'Hi! A payment request for ₪{{1}} is ready.\nYou can pay securely here:\n{{2}}\nThank you very much!',
+    example: [['350', 'https://pay.example.com/abc']],
+  },
+  {
+    name: 'lessio_homework_reminder_en_v2',
+    language: 'en',
+    bodyText: 'Reminder: {{1}}\'s homework, "{{2}}", is due by {{3}}. Good luck!',
+    example: [['David Cohen', 'Chapter 3', '15/5']],
+  },
+  {
+    name: 'lessio_homework_assignment_en_v2',
+    language: 'en',
+    bodyText:
+      'New homework is waiting for you 📚\nTopic: {{1}}\nWhat to do: {{2}}\nDue date: {{3}}\nGood luck, and let us know when it is done.',
+    example: [['Summer essay', 'Write a 300-word essay', 'Due by: 20/5']],
+  },
+  {
+    name: 'lessio_homework_graded_en_v2',
+    language: 'en',
+    bodyText:
+      'Your homework has been graded ✅\nTopic: {{1}}\nScore received: {{2}} out of 100\n{{3}}\nGreat work, keep it up!',
+    example: [['Summer essay', '92', 'Feedback: lovely writing!']],
   },
   {
     // Portal OTP login (Sprint 31). Body copy is fixed by Meta for AUTHENTICATION
@@ -70,30 +121,58 @@ export const TEMPLATES: TemplateDefinition[] = [
     rawComponents: [
       { type: 'BODY', add_security_recommendation: true },
       { type: 'FOOTER', code_expiration_minutes: 10 },
-      { type: 'BUTTONS', buttons: [{ type: 'OTP', otp_type: 'COPY_CODE', text: 'העתק קוד' }] },
+      // No custom button `text`: Meta rejects it (2388060) and generates the
+      // localised "copy code" label itself from the template language.
+      { type: 'BUTTONS', buttons: [{ type: 'OTP', otp_type: 'COPY_CODE' }] },
+    ],
+  },
+  {
+    name: 'lessio_otp_en',
+    language: 'en',
+    category: 'AUTHENTICATION',
+    rawComponents: [
+      { type: 'BODY', add_security_recommendation: true },
+      { type: 'FOOTER', code_expiration_minutes: 10 },
+      { type: 'BUTTONS', buttons: [{ type: 'OTP', otp_type: 'COPY_CODE' }] },
     ],
   },
 ]
 
+/**
+ * Registers every template on a WABA. Never throws — this runs fire-and-forget
+ * from the signup flow, where a template failure must not break the connection.
+ * Returns the per-template outcome so callers that DO care (the rollout script)
+ * can report it instead of assuming success.
+ */
 export async function registerTemplatesForWABA(
   wabaId: string,
   accessToken: string
-): Promise<void> {
+): Promise<{ ok: string[]; failed: Array<{ name: string; reason: string }> }> {
   const results = await Promise.allSettled(
     TEMPLATES.map((t) => registerOne(wabaId, accessToken, t))
   )
 
-  const failed = results.filter((r) => r.status === 'rejected')
+  const ok: string[] = []
+  const failed: Array<{ name: string; reason: string }> = []
+
+  results.forEach((r, i) => {
+    const name = TEMPLATES[i].name
+    if (r.status === 'fulfilled') ok.push(name)
+    else failed.push({ name, reason: String(r.reason) })
+  })
+
   if (failed.length > 0) {
     console.warn(
       `[registerTemplates] ${failed.length}/${TEMPLATES.length} templates failed for WABA ${wabaId}`,
-      failed.map((r) => (r as PromiseRejectedResult).reason)
+      failed
     )
   } else {
     console.info(
       `[registerTemplates] All ${TEMPLATES.length} templates registered for WABA ${wabaId}`
     )
   }
+
+  return { ok, failed }
 }
 
 async function registerOne(
@@ -131,8 +210,16 @@ async function registerOne(
 
   const body = await res.text().catch(() => '')
 
-  // Template already exists — not an error
-  if (body.includes('duplicate') || body.includes('already exists') || res.status === 409) {
+  // Template already exists — not an error. Match on Meta's numeric subcode
+  // (2388024 = "content already exists in this language"), never on the message
+  // text: Meta localises error_user_msg to the account language, so the old
+  // English substring check reported every duplicate as a hard failure.
+  if (
+    body.includes('"error_subcode":2388024') ||
+    body.includes('duplicate') ||
+    body.includes('already exists') ||
+    res.status === 409
+  ) {
     console.info(`[registerTemplates] Already exists: ${template.name}`)
     return
   }

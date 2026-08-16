@@ -6,6 +6,9 @@
  * appear in client components.
  */
 
+import type { AppLocale } from '@/lib/i18n/locale'
+import { botString } from './strings'
+
 const META_API_VERSION = 'v19.0'
 
 // ── Meta approved template message component types ────────────────────────────
@@ -96,11 +99,10 @@ export async function sendTextMessage(
 export async function sendUnknownParentReply(
   to: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale = 'he'
 ): Promise<void> {
-  const message =
-    'מספרך אינו מזוהה במערכת. אנא פנה/י לבעל העסק לצורך הרשמה.'
-  return sendTextMessage(to, message, accessToken, phoneNumberId)
+  return sendTextMessage(to, botString('unknown_parent', locale), accessToken, phoneNumberId)
 }
 
 /**
@@ -121,10 +123,10 @@ export async function sendCancellationLessonList(
 export async function sendNoEligibleLessonsReply(
   to: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale = 'he'
 ): Promise<void> {
-  const message = 'לא נמצאו שיעורים מתאימים לביטול (שיעורים מתוכננים ב-7 הימים הקרובים).'
-  return sendTextMessage(to, message, accessToken, phoneNumberId)
+  return sendTextMessage(to, botString('no_eligible_lessons', locale), accessToken, phoneNumberId)
 }
 
 /**
@@ -133,22 +135,10 @@ export async function sendNoEligibleLessonsReply(
 export async function sendInvalidSelectionReply(
   to: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale = 'he'
 ): Promise<void> {
-  const message = 'קלט לא תקין. אנא השב/י עם מספר השיעור מהרשימה.'
-  return sendTextMessage(to, message, accessToken, phoneNumberId)
-}
-
-/**
- * Sends a cancellation timeout notice.
- */
-export async function sendCancellationTimeoutReply(
-  to: string,
-  accessToken: string,
-  phoneNumberId: string
-): Promise<void> {
-  const message = 'הזמן לביטול פג. לביטול חדש, שלח/י "ביטול".'
-  return sendTextMessage(to, message, accessToken, phoneNumberId)
+  return sendTextMessage(to, botString('invalid_selection', locale), accessToken, phoneNumberId)
 }
 
 export { parseWebhookPayload, hasBookingIntent, hasCancellationIntent } from './parsePayload'
@@ -161,7 +151,7 @@ export type { WhatsAppMessage, MetaWebhookPayload } from './parsePayload'
  * Matches: סיימתי, גמרתי, עשיתי, הכנתי (case-insensitive, anywhere in text)
  */
 export function hasHomeworkDoneIntent(text: string): boolean {
-  return /סיימתי|גמרתי|עשיתי|הכנתי/i.test(text)
+  return /סיימתי|גמרתי|עשיתי|הכנתי|\b(done|finished|completed)\b/i.test(text)
 }
 
 /**
@@ -169,15 +159,18 @@ export function hasHomeworkDoneIntent(text: string): boolean {
  * Matches: חוב, כמה אני חייב, יתרה, תשלום עומד
  */
 export function hasBalanceIntent(text: string): boolean {
-  return /חוב|כמה אני חייב|יתרה|תשלום עומד/i.test(text)
+  return /חוב|כמה אני חייב|יתרה|תשלום עומד|\b(balance|debt|owe)\b/i.test(text)
 }
 
 /**
  * Returns true if the message contains a schedule query intent.
  * Matches: שיעורים, מתי שיעור, לוז, לו״ז, לוח זמנים
+ *
+ * English side deliberately omits a bare "lessons": this detector runs BEFORE
+ * hasBookingIntent in the webhook, so "book a lesson" must not be swallowed here.
  */
 export function hasScheduleIntent(text: string): boolean {
-  return /שיעורים|מתי שיעור|לוז|לו״ז|לוח זמנים/i.test(text)
+  return /שיעורים|מתי שיעור|לוז|לו״ז|לוח זמנים|\b(schedule|when is my|my lessons|upcoming lessons)\b/i.test(text)
 }
 
 /**
@@ -185,7 +178,7 @@ export function hasScheduleIntent(text: string): boolean {
  * Matches: קבלה, היסטוריה, מה שילמתי, תשלומים
  */
 export function hasReceiptIntent(text: string): boolean {
-  return /קבלה|היסטוריה|מה שילמתי|תשלומים/i.test(text)
+  return /קבלה|היסטוריה|מה שילמתי|תשלומים|\b(receipt|receipts|payment history|what i paid)\b/i.test(text)
 }
 
 /**
@@ -193,7 +186,7 @@ export function hasReceiptIntent(text: string): boolean {
  * Matches: פורטל, כניסה לפורטל, אזור אישי, לינק, קישור לפורטל
  */
 export function hasPortalIntent(text: string): boolean {
-  return /פורטל|כניסה לפורטל|אזור אישי|לינק|קישור לפורטל/i.test(text)
+  return /פורטל|כניסה לפורטל|אזור אישי|לינק|קישור לפורטל|\b(portal|my account)\b/i.test(text)
 }
 
 // ── Send helpers (Sprint 14) ──────────────────────────────────────────────────
@@ -206,9 +199,13 @@ export async function sendHomeworkAlert(
   studentName: string,
   homeworkTitle: string,
   accessToken: string,
-  phoneNumberId: string
+  phoneNumberId: string,
+  locale: AppLocale = 'he'
 ): Promise<void> {
-  const message = `✅ ${studentName} סיים/ה את שיעורי הבית: ${homeworkTitle}`
+  const message = botString('homework_done_teacher_alert', locale, {
+    student_name: studentName,
+    title: homeworkTitle,
+  })
   return sendTextMessage(teacherPhone, message, accessToken, phoneNumberId)
 }
 

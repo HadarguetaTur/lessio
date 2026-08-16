@@ -54,7 +54,7 @@ export async function handleRescheduleIntent(params: {
   if (!target) {
     await sendTextMessage(
       senderPhone,
-      'לאיזו שעה להזיז? נא לציין שעה, למשל: להזיז ל-18:00',
+      'לאיזו שעה להזיז את השיעור? אפשר לכתוב למשל: להזיז ל-18:00',
       accessToken,
       phoneNumberId
     )
@@ -71,7 +71,7 @@ export async function handleRescheduleIntent(params: {
   if (studentIds.length === 0) {
     await sendTextMessage(
       senderPhone,
-      'לא נמצא שיעור מתוכנן ב-48 השעות הקרובות.',
+      'לא מצאתי שיעור מתוכנן ב-48 השעות הקרובות.',
       accessToken,
       phoneNumberId
     )
@@ -111,7 +111,7 @@ export async function handleRescheduleIntent(params: {
   if (!next?.lessons) {
     await sendTextMessage(
       senderPhone,
-      'לא נמצא שיעור מתוכנן ב-48 השעות הקרובות.',
+      'לא מצאתי שיעור מתוכנן ב-48 השעות הקרובות.',
       accessToken,
       phoneNumberId
     )
@@ -144,7 +144,7 @@ export async function handleRescheduleIntent(params: {
     if (updateError.code === '23P01') {
       await sendTextMessage(
         senderPhone,
-        'השעה החדשה מתנגשת עם שיעור אחר של המורה. נסו שעה אחרת.',
+        'השעה החדשה מתנגשת עם שיעור אחר של המורה. אפשר לנסות שעה אחרת 🙂',
         accessToken,
         phoneNumberId
       )
@@ -156,22 +156,22 @@ export async function handleRescheduleIntent(params: {
     })
     await sendTextMessage(
       senderPhone,
-      'לא הצלחנו לעדכן את השיעור. אנא פנו לצוות.',
+      'משהו השתבש ולא הצלחנו לעדכן את השיעור. אפשר לפנות לצוות ונעזור.',
       accessToken,
       phoneNumberId
     )
     return
   }
 
-  const studentName = next.students?.full_name ?? 'התלמיד/ה'
+  const studentName = next.students?.full_name ?? 'התלמיד'
   const teacherName = lesson.teachers?.profiles?.full_name
   const dateLabel = newStart.setLocale('he').toFormat("cccc, d בLLLL")
   await sendTextMessage(
     senderPhone,
-    `✅ השיעור עודכן!\n` +
+    `✅ השיעור עודכן!\n\n` +
       `${studentName}${teacherName ? ` עם ${teacherName}` : ''}\n` +
       `${dateLabel}\n` +
-      `שעה: ${oldStart.toFormat('HH:mm')} ← ${newStart.toFormat('HH:mm')}`,
+      `שעה חדשה: ${newStart.toFormat('HH:mm')} (במקום ${oldStart.toFormat('HH:mm')})`,
     accessToken,
     phoneNumberId
   )

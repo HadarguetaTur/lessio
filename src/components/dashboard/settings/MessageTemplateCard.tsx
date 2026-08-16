@@ -16,9 +16,11 @@ import { useTranslations } from 'next-intl'
 import { saveTemplateAction, resetTemplateAction, type ActionState } from '@/app/(dashboard)/settings/message-templates/actions'
 import { substituteVars } from '@/lib/whatsapp/templates'
 import type { MessageTemplateType } from '@/lib/whatsapp/templates'
+import type { AppLocale } from '@/lib/i18n/locale'
 
 interface MessageTemplateCardProps {
   type: MessageTemplateType
+  locale: AppLocale
   label: string
   defaultBody: string
   customBody: string | null
@@ -30,6 +32,7 @@ const initialState: ActionState = { error: null }
 
 export function MessageTemplateCard({
   type,
+  locale,
   label,
   defaultBody,
   customBody,
@@ -54,7 +57,7 @@ export function MessageTemplateCard({
   async function handleReset() {
     setResetPending(true)
     setResetError(null)
-    const result = await resetTemplateAction(type)
+    const result = await resetTemplateAction(type, locale)
     setResetPending(false)
     if (result.error) {
       setResetError(result.error)
@@ -91,12 +94,13 @@ export function MessageTemplateCard({
       {/* Save form */}
       <form action={formAction} className="space-y-3">
         <input type="hidden" name="type" value={type} />
+        <input type="hidden" name="locale" value={locale} />
         <textarea
           name="body_template"
           value={body}
           onChange={e => setBody(e.target.value)}
           rows={4}
-          dir="rtl"
+          dir={locale === 'he' ? 'rtl' : 'ltr'}
           className={`w-full text-sm border rounded-md px-3 py-2 resize-y font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             customBody === null ? 'text-gray-400 border-gray-200 bg-gray-50' : 'text-gray-900 border-gray-300 bg-white'
           }`}
@@ -148,7 +152,7 @@ export function MessageTemplateCard({
       {showPreview && (
         <div className="border border-gray-200 rounded-md bg-gray-50 p-3">
           <p className="text-xs font-medium text-gray-500 mb-2">{t('preview')}:</p>
-          <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed" dir="rtl">
+          <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed" dir={locale === 'he' ? 'rtl' : 'ltr'}>
             {preview}
           </pre>
         </div>

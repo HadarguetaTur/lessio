@@ -415,6 +415,9 @@ async function main(): Promise<void> {
           phone: p.phone,
           email: p.email,
           is_active: true,
+          // A demo run that exercises the opt-out shot leaves this set, which
+          // would silently mute the parent for every later run.
+          opted_out_at: null,
         },
         { onConflict: 'id' }
       )

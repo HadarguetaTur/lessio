@@ -19,7 +19,7 @@
  * Optional env:
  *   WHATSAPP_DEMO_PHONE_NUMBER_ID   (default: 1338080832713619)
  *   WHATSAPP_DEMO_WABA_ID           (default: 1066332709132512)
- *   DEMO_ORG_OWNER_EMAIL            (default: hadart20@gmail.com)
+ *   DEMO_ORG_OWNER_EMAIL            (default: reviewer@getlessio.com)
  *
  * Safe to re-run: plain UPDATEs, idempotent.
  */
@@ -34,7 +34,9 @@ const GRAPH_BASE = 'https://graph.facebook.com/v19.0'
 
 const DEFAULT_PHONE_NUMBER_ID = '1338080832713619'
 const DEFAULT_WABA_ID = '1066332709132512'
-const DEFAULT_OWNER_EMAIL = 'hadart20@gmail.com'
+// The App Review demo tenant (scripts/seed-review-demo.ts). The earlier Hebrew
+// demo org and its owner account were deleted on 2026-08-17.
+const DEFAULT_OWNER_EMAIL = 'reviewer@getlessio.com'
 
 // ── Minimal .env.local loader (no dotenv dependency) ──────────────────────────
 

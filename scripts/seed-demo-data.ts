@@ -1,4 +1,13 @@
 /**
+ * OBSOLETE as of 2026-08-17 — kept only for reference.
+ *
+ * This script topped up the Hebrew demo data in the hadart20@gmail.com
+ * organization. That organization and its owner account were deleted when the
+ * App Review demo moved to the English tenant, so this now fails with
+ * "No auth user found". Use scripts/seed-review-demo.ts instead.
+ *
+ * ---
+ *
  * Seed demo data for the Meta App Review screencast into the demo organization.
  *
  * Target org = the organization owned by DEMO_ORG_OWNER_EMAIL (default

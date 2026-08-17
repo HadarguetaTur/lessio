@@ -19,7 +19,7 @@ import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { decryptToken } from '../src/lib/crypto'
 
-const DEFAULT_OWNER_EMAIL = 'hadart20@gmail.com'
+const DEFAULT_OWNER_EMAIL = 'reviewer@getlessio.com'
 
 function loadEnvLocal(): void {
   const envPath = resolve(process.cwd(), '.env.local')

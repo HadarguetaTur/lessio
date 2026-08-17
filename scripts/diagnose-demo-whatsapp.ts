@@ -8,7 +8,7 @@ import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { getSubscribedApps } from '../src/lib/whatsapp/subscribeApp'
 
-const OWNER_EMAIL = process.env.DEMO_ORG_OWNER_EMAIL ?? 'hadart20@gmail.com'
+const OWNER_EMAIL = process.env.DEMO_ORG_OWNER_EMAIL ?? 'reviewer@getlessio.com'
 const EXPECTED_PNID = '1338080832713619'
 const EXPECTED_WABA = '1066332709132512'
 const PROD_WEBHOOK = 'https://www.getlessio.com/api/whatsapp/webhook'

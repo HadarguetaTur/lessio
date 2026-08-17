@@ -345,8 +345,12 @@ npx tsx scripts/cleanup-review-demo.ts --yes   # deletes the Brightpath org + it
 
 Then, manually: disconnect the test number, remove `DEMO_RESCHEDULE_ENABLED` and
 `DEMO_PAYMENT_LINK_ENABLED` from Vercel, delete `src/lib/whatsapp/demoReschedule.ts` and its
-dispatch block in the webhook, move the webhook callback from the apex domain to `www`, upgrade
-Graph API `v19.0` → `v23.0` (hardcoded in 7 places), and delete the Hebrew demo rows (prefix
-`d1000000-`) from Hadar's own org.
+dispatch block in the webhook, move the webhook callback from the apex domain to `www`, and
+upgrade Graph API `v19.0` → `v23.0` (hardcoded in 7 places).
+
+There is no `d1000000-` cleanup left to do: the earlier Hebrew demo lived in the
+`hadart20@gmail.com` organization, and that organization and account were deleted on 2026-08-17
+when the demo moved to Brightpath. `scripts/seed-demo-data.ts` targeted that org and is now
+obsolete — it fails with "No auth user found".
 
 The opt-out work is **not** demo scaffolding — it stays.

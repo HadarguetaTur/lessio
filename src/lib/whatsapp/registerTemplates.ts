@@ -136,13 +136,17 @@ export const TEMPLATES: TemplateDefinition[] = [
     ],
   },
   {
-    name: 'lessio_menu_en_v2',
+    // _v3, and with no {{1}}: names are stored in Hebrew, so the v2 body put
+    // "Hi יעל 👋" in front of English speakers. Editing an approved template
+    // resets it to PENDING, hence a new name rather than a body change.
+    // A template with no variables at all is fine — what Meta rejects is a
+    // variable at the very start or end of the body.
+    name: 'lessio_menu_en_v3',
     language: 'en',
     rawComponents: [
       {
         type: 'BODY',
-        text: 'Hi {{1}} 👋 How can I help? Pick one of the options below, or just tell us what you need.',
-        example: { body_text: [['Yael']] },
+        text: 'Hi 👋 How can I help? Pick one of the options below, or just tell us what you need.',
       },
       {
         type: 'BUTTONS',
@@ -264,6 +268,16 @@ async function registerOne(
     res.status === 409
   ) {
     console.info(`[registerTemplates] Already exists: ${template.name}`)
+    return
+  }
+
+  // 2388026: the template exists, but Meta assigned it a different category than
+  // the one we asked for (it re-classifies menu-style copy as MARKETING). The
+  // category of an existing template cannot be changed by re-POSTing, so this is
+  // an "exists" outcome, not a failure — reporting it as one made every rerun of
+  // the rollout script look broken.
+  if (body.includes('"error_subcode":2388026')) {
+    console.info(`[registerTemplates] Already exists with a different category: ${template.name}`)
     return
   }
 

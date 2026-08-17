@@ -50,6 +50,8 @@ export type BotStringKey =
   // Interactive menu. Row titles are capped at 24 chars and the list button at
   // 20 by Meta, so these are deliberately terse.
   | 'menu_greeting'
+  | 'menu_greeting_noname'
+  | 'dear_parents'
   | 'menu_button'
   | 'menu_section'
   | 'menu_book'
@@ -66,6 +68,37 @@ export type BotStringKey =
   | 'child_picker_button'
   | 'child_picker_section'
   | 'child_not_found'
+  // Role-specific menu rows (student / teacher / staff)
+  | 'menu_homework'
+  | 'menu_homework_desc'
+  | 'menu_my_schedule'
+  | 'menu_my_schedule_desc'
+  | 'menu_my_students'
+  | 'menu_my_students_desc'
+  | 'menu_today_summary'
+  | 'menu_today_summary_desc'
+  | 'menu_switch_role'
+  | 'menu_switch_role_desc'
+  // Student replies
+  | 'student_homework_list'
+  | 'student_no_homework'
+  | 'student_homework_marked'
+  | 'homework_done_student_alert'
+  // Teacher replies
+  | 'teacher_schedule_body'
+  | 'teacher_no_lessons'
+  | 'teacher_students_body'
+  | 'teacher_no_students'
+  // Staff replies
+  | 'staff_summary_body'
+  // Cross-role
+  | 'action_not_for_role'
+  | 'role_switch_body'
+  | 'role_switched'
+  | 'role_label_parent'
+  | 'role_label_student'
+  | 'role_label_teacher'
+  | 'role_label_staff'
   // Generic fallback nouns
   | 'the_teacher'
   | 'the_student'
@@ -111,6 +144,8 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     cta_open_portal: 'לאזור האישי',
 
     menu_greeting: 'היי {{first_name}} 👋\nאיך אפשר לעזור?',
+    menu_greeting_noname: 'היי 👋\nאיך אפשר לעזור?',
+    dear_parents: 'הורים יקרים',
     menu_button: 'בחירת פעולה',
     menu_section: 'מה תרצו לעשות?',
     menu_book: 'קביעת שיעור',
@@ -127,6 +162,38 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     child_picker_button: 'בחירת תלמיד',
     child_picker_section: 'התלמידים שלי',
     child_not_found: 'לא הצלחתי לזהות את התלמיד שנבחר. אפשר לנסות שוב מהתפריט 🙂',
+
+    menu_homework: 'שיעורי הבית שלי',
+    menu_homework_desc: 'מה פתוח וסימון כהושלם',
+    menu_my_schedule: 'הלוז שלי',
+    menu_my_schedule_desc: 'השיעורים שלי היום ומחר',
+    menu_my_students: 'התלמידים שלי',
+    menu_my_students_desc: 'רשימה ומצב שיעורי בית',
+    menu_today_summary: 'סיכום היום',
+    menu_today_summary_desc: 'שיעורים, ביטולים ויתרה פתוחה',
+    menu_switch_role: 'החלפת תפקיד',
+    menu_switch_role_desc: 'המספר הזה משויך ליותר מתפקיד אחד',
+
+    student_homework_list: 'שיעורי הבית הפתוחים שלך:{{homework_lines}}\n\nאפשר לכתוב "סיימתי" כדי לסמן שהושלמו.',
+    student_no_homework: 'אין לך שיעורי בית פתוחים כרגע 🎉',
+    student_homework_marked: 'כל הכבוד! "{{title}}" סומן כהושלם 🎉',
+    homework_done_student_alert: '✅ עדכון: {{student_name}} סימן שהשיעורי בית "{{title}}" הושלמו.',
+
+    teacher_schedule_body: 'הלוז שלך:{{lesson_lines}}',
+    teacher_no_lessons: 'אין לך שיעורים מתוכננים היום או מחר 🙂',
+    teacher_students_body: 'התלמידים שלך:{{student_lines}}',
+    teacher_no_students: 'לא מצאתי תלמידים משויכים אליך 🙂',
+
+    staff_summary_body:
+      'סיכום להיום:\n• שיעורים: {{lessons_today}}\n• ביטולים: {{cancellations_today}}\n• יתרה פתוחה: ₪{{open_balance}}',
+
+    action_not_for_role: 'הפעולה הזו לא זמינה מהתפריט שלך 🙂 הנה מה שאפשר לעשות:',
+    role_switch_body: 'באיזה תפקיד להמשיך?',
+    role_switched: 'מעולה, ממשיכים בתפקיד {{role_label}}. הנה התפריט:',
+    role_label_parent: 'הורה',
+    role_label_student: 'תלמיד',
+    role_label_teacher: 'מורה',
+    role_label_staff: 'צוות',
 
     the_teacher: 'המורה',
     the_student: 'התלמיד',
@@ -173,7 +240,12 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     cta_book_lesson: 'Book a lesson',
     cta_open_portal: 'My personal area',
 
-    menu_greeting: 'Hi {{first_name}} 👋\nHow can I help?',
+    // Names are stored in Hebrew, so an English greeting deliberately omits
+    // them rather than reading "Hi יעל 👋". Transliterating is worse: Hebrew
+    // has no vowels, so "יעל" comes out "Y'l", not "Yael".
+    menu_greeting: 'Hi 👋\nHow can I help?',
+    menu_greeting_noname: 'Hi 👋\nHow can I help?',
+    dear_parents: 'there',
     menu_button: 'Choose an action',
     menu_section: 'What would you like?',
     menu_book: 'Book a lesson',
@@ -190,6 +262,39 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     child_picker_button: 'Choose student',
     child_picker_section: 'My students',
     child_not_found: 'I could not identify that student. Try again from the menu 🙂',
+
+    menu_homework: 'My homework',
+    menu_homework_desc: 'What is open, and mark it done',
+    menu_my_schedule: 'My schedule',
+    menu_my_schedule_desc: 'My lessons today and tomorrow',
+    menu_my_students: 'My students',
+    menu_my_students_desc: 'List and homework status',
+    menu_today_summary: "Today's summary",
+    menu_today_summary_desc: 'Lessons, cancellations, open balance',
+    menu_switch_role: 'Switch role',
+    menu_switch_role_desc: 'This number has more than one role',
+
+    student_homework_list:
+      'Your open homework:{{homework_lines}}\n\nReply "done" to mark it as completed.',
+    student_no_homework: 'You have no open homework right now 🎉',
+    student_homework_marked: 'Nice work! "{{title}}" is marked as done 🎉',
+    homework_done_student_alert: '✅ Update: {{student_name}} marked the homework "{{title}}" as done.',
+
+    teacher_schedule_body: 'Your schedule:{{lesson_lines}}',
+    teacher_no_lessons: 'You have no lessons scheduled today or tomorrow 🙂',
+    teacher_students_body: 'Your students:{{student_lines}}',
+    teacher_no_students: 'I could not find any students assigned to you 🙂',
+
+    staff_summary_body:
+      "Today's summary:\n• Lessons: {{lessons_today}}\n• Cancellations: {{cancellations_today}}\n• Open balance: ₪{{open_balance}}",
+
+    action_not_for_role: 'That action is not available from your menu 🙂 Here is what you can do:',
+    role_switch_body: 'Which role would you like to continue as?',
+    role_switched: 'Great, continuing as {{role_label}}. Here is your menu:',
+    role_label_parent: 'parent',
+    role_label_student: 'student',
+    role_label_teacher: 'teacher',
+    role_label_staff: 'staff',
 
     the_teacher: 'the teacher',
     the_student: 'the student',

@@ -121,11 +121,16 @@ import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { claimIncomingMessage, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
 import { notifySuperadmins, hasRecentUnreadSuperadminNotification } from '@/lib/notifications'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
-import { sendListMessage, sendReplyButtons } from '@/lib/whatsapp/interactive'
+import {
+  sendListMessage,
+  sendReplyButtons,
+  sendTemplateWithQuickReplies,
+} from '@/lib/whatsapp/interactive'
 import { signBookingToken } from '@/lib/jwt'
 import * as Sentry from '@sentry/nextjs'
 
 const mockSendListMessage = vi.mocked(sendListMessage)
+const mockSendTemplateWithQuickReplies = vi.mocked(sendTemplateWithQuickReplies)
 const mockSendReplyButtons = vi.mocked(sendReplyButtons)
 const mockSignBookingToken = vi.mocked(signBookingToken)
 const mockSendLinkReply = vi.mocked(sendLinkReply)
@@ -405,13 +410,36 @@ describe('POST /api/whatsapp/webhook', () => {
     const res = await POST(req)
 
     expect(res.status).toBe(200)
+    // The tappable menu IS the "I did not understand" reply. Sending the text
+    // template as well put two messages in front of the parent for one inbound
+    // message — assert exactly one goes out.
+    expect(mockSendListMessage).toHaveBeenCalledTimes(1)
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
+    expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the text template when the interactive menu is rejected', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    // e.g. 131047 outside the 24h window.
+    mockSendListMessage.mockRejectedValueOnce(new Error('131047'))
+    mockSendTemplateWithQuickReplies.mockRejectedValueOnce(new Error('template not approved'))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeWebhookPayload(NEUTRAL_TEXT)))
+
+    expect(res.status).toBe(200)
+    // Still exactly one message — the text version, now that buttons failed.
+    expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
     expect(mockSendTextMessage).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
       'mocked-template-body',
       'test-access-token',
       'phone-number-id-1'
     )
-    expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
   })
 
   it('sends an AI reply and logs the exchange when AI assistant is enabled', async () => {
@@ -514,12 +542,8 @@ describe('POST /api/whatsapp/webhook', () => {
 
     expect(res.status).toBe(200)
     expect(mockAiAssistant).not.toHaveBeenCalled()
-    expect(mockSendTextMessage).toHaveBeenCalledWith(
-      SENDER_PHONE_E164,
-      'mocked-template-body',
-      'test-access-token',
-      'phone-number-id-1'
-    )
+    expect(mockSendListMessage).toHaveBeenCalledTimes(1)
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
   })
 
   it('ignores duplicate webhook deliveries for the same message id', async () => {
@@ -599,8 +623,13 @@ describe('POST /api/whatsapp/webhook', () => {
     expect(mockSendTextMessage).not.toHaveBeenCalled()
   })
 
-  it('releases the inbound claim when sending the fallback reply fails', async () => {
+  it('releases the inbound claim when every reply path fails', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    // The unknown-intent reply is now the interactive menu, so the claim is only
+    // released once the menu, its template twin AND the text fallback all fail —
+    // at that point the parent got nothing and Meta's retry should re-enter.
+    mockSendListMessage.mockRejectedValueOnce(new Error('131047'))
+    mockSendTemplateWithQuickReplies.mockRejectedValueOnce(new Error('not approved'))
     mockSendTextMessage.mockRejectedValueOnce(new Error('send failed'))
     mockFrom.mockImplementation((table: string) => {
       if (table === 'organizations') {
@@ -734,9 +763,11 @@ describe('WhatsApp cancellation intent', () => {
     const req = makeRequest(makeWebhookPayload('תודה רבה'))
     const res = await POST(req)
     expect(res.status).toBe(200)
-    expect(mockSendTextMessage).toHaveBeenCalledWith(
+    expect(mockSendListMessage).toHaveBeenCalledTimes(1)
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
+    expect(mockSendListMessage).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
-      'mocked-template-body',
+      expect.objectContaining({ rows: expect.any(Array) }),
       'test-access-token',
       'phone-number-id-1'
     )
@@ -756,12 +787,8 @@ describe('WhatsApp cancellation intent', () => {
     expect(res.status).toBe(200)
     expect(mockUpsertLead).not.toHaveBeenCalled()
     expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
-    expect(mockSendTextMessage).toHaveBeenCalledWith(
-      SENDER_PHONE_E164,
-      'mocked-template-body',
-      'test-access-token',
-      'phone-number-id-1'
-    )
+    // Routed as a known parent: the menu goes out, not the unknown-sender reply.
+    expect(mockSendListMessage).toHaveBeenCalledTimes(1)
   })
 
   it('invalid selection input keeps cancellation flow open', async () => {
@@ -898,13 +925,9 @@ describe('WhatsApp automation toggles', () => {
     expect(res.status).toBe(200)
     expect(mockGetEligibleLessons).not.toHaveBeenCalled()
     expect(mockSendCancellationLessonList).not.toHaveBeenCalled()
-    // Falls through to the unknown-intent fallback template instead
-    expect(mockSendTextMessage).toHaveBeenCalledWith(
-      SENDER_PHONE_E164,
-      'mocked-template-body',
-      'test-access-token',
-      'phone-number-id-1'
-    )
+    // Falls through to the unknown-intent path, which is now the menu
+    expect(mockSendListMessage).toHaveBeenCalledTimes(1)
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
   })
 })
 

@@ -7,6 +7,7 @@ import {
   isGreeting,
   needsStudent,
 } from './menu'
+import { botString } from './strings'
 
 describe('menu payload encoding', () => {
   it('round-trips an action', () => {
@@ -64,6 +65,30 @@ describe('isGreeting', () => {
       '2',
     ]) {
       expect(isGreeting(t), t).toBe(false)
+    }
+  })
+})
+
+describe('greeting copy', () => {
+  const HEBREW = /[֐-׿]/
+
+  it('greets by first name in Hebrew', () => {
+    expect(botString('menu_greeting', 'he', { first_name: 'יעל' })).toContain('יעל')
+  })
+
+  it('never puts a name — or Hebrew — in the English greeting', () => {
+    // Names are stored in Hebrew, so interpolating one would render "Hi יעל 👋".
+    const en = botString('menu_greeting', 'en', { first_name: 'יעל' })
+    expect(en).not.toContain('יעל')
+    expect(HEBREW.test(en)).toBe(false)
+    expect(en).not.toContain('{{')
+  })
+
+  it('has a no-name variant in both languages that leaves no gap', () => {
+    for (const locale of ['he', 'en'] as const) {
+      const s = botString('menu_greeting_noname', locale)
+      expect(s).not.toContain('{{')
+      expect(s).not.toMatch(/ {2,}/)
     }
   })
 })

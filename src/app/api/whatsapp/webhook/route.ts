@@ -37,12 +37,31 @@ import { resolvePaymentLine, sumOpenCharges } from '@/lib/whatsapp/balance'
 import { botString } from '@/lib/whatsapp/strings'
 import {
   decodeMenuPayload,
+  decodeRolePayload,
+  isActionAllowedForRole,
   isGreeting,
   needsStudent,
   sendMainMenu,
+  sendRolePicker,
   sendStudentPicker,
   type MenuAction,
 } from '@/lib/whatsapp/menu'
+import {
+  resolveSender,
+  setSenderPreference,
+  type KnownSenderRole,
+  type ResolvedSender,
+} from '@/lib/whatsapp/sender'
+import { handleStudentMessage } from './handlers/student'
+import { handleTeacherMessage } from './handlers/teacher'
+import { handleStaffMessage } from './handlers/staff'
+import {
+  buildUpcomingLessonLines,
+  findOpenAssignments,
+  markAssignmentDoneAndAlert,
+  studentDisplayName,
+  type HandlerContext,
+} from './shared'
 import {
   detectLocaleFromText,
   parseAppLocale,
@@ -306,31 +325,21 @@ async function processMessage(
 
   try {
 
-  // 6. Look up parent by phone in this org (before intent check — any message from
-  //    an unrecognized sender must create a lead, regardless of intent)
-  const { data: parent, error: parentError } = await db
-    .from('parents')
-    .select('id, full_name, preferred_locale')
-    .eq('organization_id', org.id)
-    .eq('phone', senderPhone)
-    .eq('is_active', true)
-    .maybeSingle()
-
-    if (parentError) {
-      console.error('[whatsapp/webhook] DB error looking up parent', { error: parentError })
-      throw new Error('Failed to look up parent for inbound WhatsApp message')
-    }
+  // 6. Resolve WHO this is — parent, student, teacher or staff (before the
+  //    intent check: only a genuine stranger may become a lead, regardless of
+  //    what they wrote). Per /docs/decisions.md #26.
+  const sender = await resolveSender(org.id, senderPhone)
 
   // Language of every reply below. A stored preference wins; otherwise the
   // script of this message decides, falling back to the org default.
   const detected = detectLocaleFromText(msg.text)
   const locale = resolveRecipientLocale({
-    stored: parent?.preferred_locale as string | null | undefined,
+    stored: sender.role === 'unknown' ? null : sender.preferredLocale,
     detected,
     orgDefault: org.default_locale as string | null,
   })
 
-  if (!parent) {
+  if (sender.role === 'unknown') {
     if (org.automation_new_leads_enabled !== false) {
       await handleUnknownSender(org.id, senderPhone, msg.text, accessToken, phoneNumberId, locale)
     }
@@ -340,28 +349,109 @@ async function processMessage(
   // Remember the language for proactive sends (reminders) that have no inbound
   // text to infer from. Only on a real signal — a bare "2" must not flip it.
   // Fire-and-forget: never block a reply on this.
-  if (detected && parent.preferred_locale !== detected) {
-    void db
-      .from('parents')
-      .update({ preferred_locale: detected })
-      .eq('id', parent.id)
-      .eq('organization_id', org.id)
-      .then(({ error }) => {
-        if (error) {
-          console.warn('[whatsapp/webhook] Failed to persist parent locale', {
-            orgId: org.id,
-            parentId: parent.id,
-            error: error.message,
-          })
-        }
-      })
+  persistSenderLocale(db, org.id, sender, detected)
+
+  const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
+  const menuChoiceRaw = decodeMenuPayload(msg.replyId)
+
+  // 6a. Tapped a capacity in the role picker. Recorded, then straight to that
+  //     capacity's menu — nothing else in this message can be for the old role.
+  const rolePick = decodeRolePayload(msg.replyId)
+  if (rolePick) {
+    await handleRoleSwitch({
+      orgId: org.id,
+      senderPhone,
+      sender,
+      pick: rolePick,
+      accessToken,
+      phoneNumberId,
+      locale,
+    })
+    return
   }
+
+  // 6a'. Asked to switch capacity.
+  if (menuChoiceRaw?.action === 'switch_role') {
+    if (sender.alsoKnownAs.length === 0) {
+      // Stale payload from a phone that has since lost its other identity.
+      await sendMenuWithFallback({
+        orgId: org.id,
+        senderPhone,
+        accessToken,
+        phoneNumberId,
+        locale,
+        fullName: sender.fullName,
+        role: sender.role,
+      })
+      return
+    }
+    await sendRolePicker({
+      phone: senderPhone,
+      accessToken,
+      phoneNumberId,
+      locale,
+      roles: [sender.role, ...sender.alsoKnownAs],
+    })
+    return
+  }
+
+  // 6a''. Non-parent capacities have their own, much narrower flows.
+  if (sender.role !== 'parent') {
+    const ctx: HandlerContext = {
+      db,
+      org,
+      sender,
+      senderPhone,
+      accessToken,
+      phoneNumberId,
+      locale,
+      timezone,
+      origin,
+      msg,
+    }
+
+    const handled =
+      sender.role === 'student'
+        ? await handleStudentMessage(ctx, menuChoiceRaw?.action ?? null)
+        : sender.role === 'teacher'
+          ? await handleTeacherMessage(ctx, menuChoiceRaw?.action ?? null)
+          : await handleStaffMessage(ctx, menuChoiceRaw?.action ?? null)
+
+    if (handled) return
+
+    // Nothing matched. These capacities do not get the AI assistant — its
+    // system prompt is built from parent context — so the menu IS the answer.
+    await sendMenuWithFallback({
+      orgId: org.id,
+      senderPhone,
+      accessToken,
+      phoneNumberId,
+      locale,
+      fullName: sender.fullName,
+      role: sender.role,
+      canSwitchRole: sender.alsoKnownAs.length > 0,
+    })
+    return
+  }
+
+  // ── Parent path (unchanged behaviour) ──────────────────────────────────────
+  const parent = { id: sender.parentId, full_name: sender.fullName }
 
   // 6b. Tapped a menu row or button. An explicit choice outranks a cancellation
   //     session still open from an earlier exchange, so this runs first — the
   //     alternative is reading "book a lesson" as a lesson number.
-  const menuChoice = decodeMenuPayload(msg.replyId)
+  //     A payload naming an action outside the parent menu is dropped rather
+  //     than run: reply ids come from the client.
+  const menuChoice =
+    menuChoiceRaw && isActionAllowedForRole(menuChoiceRaw.action, 'parent') ? menuChoiceRaw : null
   let forcedStudentId: string | null = null
+
+  if (menuChoiceRaw && !menuChoice) {
+    console.warn('[whatsapp/webhook] Dropped menu action not available to a parent', {
+      orgId: org.id,
+      action: menuChoiceRaw.action,
+    })
+  }
 
   if (menuChoice) {
     await deleteCancellationSession(org.id, senderPhone).catch((err) => {
@@ -406,7 +496,8 @@ async function processMessage(
       accessToken,
       phoneNumberId,
       locale,
-      parentFullName: parent.full_name as string | null,
+      fullName: parent.full_name as string | null,
+      canSwitchRole: sender.alsoKnownAs.length > 0,
     })
     return
   }
@@ -551,17 +642,17 @@ async function processMessage(
           orgId: org.id,
         })
       }
-      const unknownBody = await resolveTemplate(org.id, 'unknown_intent_fallback', {}, locale)
-      await sendTextMessage(senderPhone, unknownBody, accessToken, phoneNumberId)
-      // The menu is the actionable half of "I did not understand".
+      // The menu IS the "I did not understand" reply — it names the same options
+      // the text template lists, but tappable. Sending both put two messages in
+      // front of the parent for one inbound message.
       await sendMenuWithFallback({
         orgId: org.id,
         senderPhone,
         accessToken,
         phoneNumberId,
         locale,
-        parentFullName: parent.full_name as string | null,
-        skipTextFallback: true,
+        fullName: parent.full_name as string | null,
+        canSwitchRole: sender.alsoKnownAs.length > 0,
       })
     }
     return
@@ -660,24 +751,123 @@ async function sendMenuWithFallback(params: {
   accessToken: string
   phoneNumberId: string
   locale: AppLocale
-  parentFullName: string | null
+  fullName: string | null
+  role?: KnownSenderRole
+  canSwitchRole?: boolean
   skipTextFallback?: boolean
 }): Promise<void> {
-  const { orgId, senderPhone, accessToken, phoneNumberId, locale, parentFullName } = params
+  const { orgId, senderPhone, accessToken, phoneNumberId, locale, fullName } = params
 
   await sendMainMenu({
     phone: senderPhone,
     accessToken,
     phoneNumberId,
     locale,
-    parentFullName,
+    fullName,
+    role: params.role ?? 'parent',
+    canSwitchRole: params.canSwitchRole,
     onFallback: async () => {
       if (params.skipTextFallback) return
       const body = await resolveTemplate(orgId, 'unknown_intent_fallback', {}, locale)
       await sendTextMessage(senderPhone, body, accessToken, phoneNumberId)
     },
-  }).catch((err) => {
-    console.error('[whatsapp/webhook] Menu send failed entirely', { orgId, err })
+  })
+  // Deliberately not swallowed: if the menu AND its text fallback both fail, the
+  // parent got no answer at all, and the caller's catch releases the inbound
+  // claim so Meta's retry can deliver one.
+}
+
+/**
+ * Persists the language detected from this message on the sender's own row.
+ * Fire-and-forget. Students have no locale column — their language is inferred
+ * from each message instead.
+ */
+function persistSenderLocale(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string,
+  sender: ResolvedSender,
+  detected: AppLocale | null
+): void {
+  if (!detected || sender.role === 'unknown' || sender.role === 'student') return
+  if (sender.preferredLocale === detected) return
+
+  const table = sender.role === 'parent' ? 'parents' : 'profiles'
+  const id = sender.role === 'parent' ? sender.parentId : sender.profileId
+
+  void db
+    .from(table)
+    .update({ preferred_locale: detected })
+    .eq('id', id)
+    .eq('organization_id', orgId)
+    .then(({ error }) => {
+      if (error) {
+        console.warn('[whatsapp/webhook] Failed to persist sender locale', {
+          orgId,
+          role: sender.role,
+          error: error.message,
+        })
+      }
+    })
+}
+
+/**
+ * Records an explicit capacity choice and shows that capacity's menu.
+ * A pick the phone no longer holds is ignored rather than stored.
+ */
+async function handleRoleSwitch(params: {
+  orgId: string
+  senderPhone: string
+  sender: ResolvedSender
+  pick: KnownSenderRole
+  accessToken: string
+  phoneNumberId: string
+  locale: AppLocale
+}): Promise<void> {
+  const { orgId, senderPhone, sender, pick, accessToken, phoneNumberId, locale } = params
+  if (sender.role === 'unknown') return
+
+  const held: KnownSenderRole[] = [sender.role, ...sender.alsoKnownAs]
+  if (!held.includes(pick)) {
+    console.warn('[whatsapp/webhook] Role pick not held by this phone — ignoring', {
+      orgId,
+      pick,
+      held,
+    })
+    await sendMenuWithFallback({
+      orgId,
+      senderPhone,
+      accessToken,
+      phoneNumberId,
+      locale,
+      fullName: sender.fullName,
+      role: sender.role,
+      canSwitchRole: sender.alsoKnownAs.length > 0,
+    })
+    return
+  }
+
+  await setSenderPreference(orgId, senderPhone, pick).catch((err) => {
+    // A failed write costs them the preference, not the reply.
+    console.error('[whatsapp/webhook] Could not store role preference', { orgId, pick, err })
+  })
+
+  await sendTextMessage(
+    senderPhone,
+    botString('role_switched', locale, { role_label: botString(`role_label_${pick}`, locale) }),
+    accessToken,
+    phoneNumberId
+  )
+
+  await sendMenuWithFallback({
+    orgId,
+    senderPhone,
+    accessToken,
+    phoneNumberId,
+    locale,
+    fullName: sender.fullName,
+    role: pick,
+    canSwitchRole: true,
+    skipTextFallback: true,
   })
 }
 
@@ -1001,7 +1191,11 @@ async function handleHomeworkDone(
   const db = createServiceRoleClient()
 
   const studentIds = await getParentStudentIds(db, orgId, parentId)
-  if (studentIds.length === 0) {
+
+  // Most recently created pending assignment across this parent's students.
+  const assignments = await findOpenAssignments({ db, orgId, studentIds, limit: 1 })
+
+  if (assignments.length === 0) {
     await sendTextMessage(
       senderPhone,
       botString('no_open_homework', locale),
@@ -1011,66 +1205,18 @@ async function handleHomeworkDone(
     return
   }
 
-  // Find most recently created pending assignment for this parent's students
-  const { data: assignments, error: asgError } = await db
-    .from('homework_assignments')
-    .select('id, title, student_id, teacher_id')
-    .in('student_id', studentIds)
-    .eq('organization_id', orgId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
-    .limit(1)
+  const assignment = assignments[0]
+  const studentName = await studentDisplayName(db, orgId, assignment.studentId, locale)
 
-  if (asgError) {
-    console.error('[whatsapp/webhook] handleHomeworkDone: DB error', { orgId, parentId, error: asgError })
-    throw new Error('Failed to load homework assignments for parent')
-  }
-
-  if (!assignments || assignments.length === 0) {
-    await sendTextMessage(
-      senderPhone,
-      botString('no_open_homework', locale),
-      accessToken,
-      phoneNumberId
-    )
-    return
-  }
-
-  type AssignmentRow = { id: string; title: string; student_id: string; teacher_id: string }
-  const assignment = assignments[0] as AssignmentRow
-
-  // Mark as done
-  await markAssignmentDone({ assignmentId: assignment.id, organizationId: orgId })
-
-  // Get student name
-  const { data: student } = await db
-    .from('students')
-    .select('full_name')
-    .eq('id', assignment.student_id)
-    .single()
-
-  const studentName = (student as { full_name: string } | null)?.full_name ?? botString('the_student', locale)
-
-  // Notify teacher — in the teacher's own UI language, not the parent's
-  const { data: teacherProfile } = await db
-    .from('teachers')
-    .select('profiles ( phone, preferred_locale )')
-    .eq('id', assignment.teacher_id)
-    .single()
-
-  const teacherRow = (
-    teacherProfile as { profiles: { phone: string | null; preferred_locale: string | null } | null } | null
-  )?.profiles
-  const teacherPhone = teacherRow?.phone
-
-  if (teacherPhone) {
-    const teacherLocale = parseAppLocale(teacherRow?.preferred_locale ?? undefined)
-    await sendHomeworkAlert(
-      teacherPhone, studentName, assignment.title, accessToken, phoneNumberId, teacherLocale
-    ).catch((err) => {
-      console.error('[whatsapp/webhook] handleHomeworkDone: sendHomeworkAlert failed', { orgId, err })
-    })
-  }
+  await markAssignmentDoneAndAlert({
+    db,
+    orgId,
+    assignment,
+    studentName,
+    markedBy: 'parent',
+    accessToken,
+    phoneNumberId,
+  })
 
   // Reply to parent
   await sendTextMessage(
@@ -1163,74 +1309,16 @@ async function handleScheduleQuery(
   locale: AppLocale
 ): Promise<void> {
   const db = createServiceRoleClient()
-  const noLessons = botString('no_upcoming_lessons', locale)
 
   const studentIds = await getParentStudentIds(db, orgId, parentId)
-  if (studentIds.length === 0) {
-    const emptyBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: noLessons }, locale)
-    await sendTextMessage(senderPhone, emptyBody, accessToken, phoneNumberId)
-    return
-  }
-
-  // Get lesson IDs for these students
-  const { data: lessonStudents, error: lsError } = await db
-    .from('lesson_students')
-    .select('lesson_id')
-    .in('student_id', studentIds)
-    .eq('organization_id', orgId)
-
-  if (lsError) {
-    console.error('[whatsapp/webhook] handleScheduleQuery: lesson_students DB error', { orgId, parentId, error: lsError })
-    throw new Error('Failed to load lesson relationships for schedule query')
-  }
-
-  if (!lessonStudents || lessonStudents.length === 0) {
-    const emptyBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: noLessons }, locale)
-    await sendTextMessage(senderPhone, emptyBody, accessToken, phoneNumberId)
-    return
-  }
-
-  const lessonIds = (lessonStudents as Array<{ lesson_id: string }>).map((r) => r.lesson_id)
-
-  const { data: lessons, error: lessonsError } = await db
-    .from('lessons')
-    .select('start_at, teachers ( profiles ( full_name ) )')
-    .in('id', lessonIds)
-    .eq('organization_id', orgId)
-    .eq('status', 'scheduled')
-    .gt('start_at', new Date().toISOString())
-    .order('start_at', { ascending: true })
-    .limit(3)
-
-  if (lessonsError) {
-    console.error('[whatsapp/webhook] handleScheduleQuery: DB error', { orgId, parentId, error: lessonsError })
-    throw new Error('Failed to load scheduled lessons for parent')
-  }
-
-  type LessonRow = {
-    start_at: string
-    teachers: { profiles: { full_name: string } | null } | null
-  }
-
-  const dateFormat = locale === 'he' ? 'EEEE, d בMMMM' : 'EEEE, MMMM d'
-  const formatted = (lessons ?? []).map((l) => {
-    const row = l as unknown as LessonRow
-    const dt = DateTime.fromISO(row.start_at, { zone: 'utc' }).setZone(timezone)
-    return {
-      date: dt.toFormat(dateFormat, { locale: toLuxonLocale(locale) }),
-      time: dt.toFormat('HH:mm'),
-      teacherName: (row.teachers?.profiles as { full_name: string } | null)?.full_name
-        ?? botString('the_teacher', locale),
-    }
+  const lessonLines = await buildUpcomingLessonLines({
+    db,
+    orgId,
+    studentIds,
+    timezone,
+    locale,
   })
 
-  const lessonLines = formatted.length === 0
-    ? noLessons
-    : formatted.map((l, i) =>
-        locale === 'he'
-          ? `${i + 1}. ${l.date} בשעה ${l.time} עם ${l.teacherName}`
-          : `${i + 1}. ${l.date} at ${l.time} with ${l.teacherName}`
-      ).join('\n')
   const scheduleBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: lessonLines }, locale)
   await sendTextMessage(senderPhone, scheduleBody, accessToken, phoneNumberId)
 

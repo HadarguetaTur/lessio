@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getTeacherById, type Teacher } from '@/lib/teachers'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 type ActionState = { error: string } | null
 

@@ -4,14 +4,14 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getSession } from '@/lib/auth/session'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 type ActionState = { error: string } | null
 
 const groupSchema = z.object({
-  name: z.string().min(1, 'שם קבוצה הוא שדה חובה').max(100),
+  name: z.string().min(1, 'validation.groupNameRequired').max(100),
   status: z.enum(['active', 'paused']).default('active'),
-  student_ids: z.array(z.string().uuid()).min(1, 'יש לבחור לפחות תלמיד אחד'),
+  student_ids: z.array(z.string().uuid()).min(1, 'validation.pickAtLeastOneStudent'),
 })
 
 async function requireOwnerOrAdmin() {
@@ -46,7 +46,7 @@ export async function createGroup(
 
   const parsed = groupSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const { name, status, student_ids } = parsed.data
@@ -91,7 +91,7 @@ export async function updateGroup(
 
   const parsed = groupSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const { name, status, student_ids } = parsed.data

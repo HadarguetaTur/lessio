@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendEmail } from '@/lib/email'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 export type GmailActionResult = { error: string | null; success?: boolean }
 

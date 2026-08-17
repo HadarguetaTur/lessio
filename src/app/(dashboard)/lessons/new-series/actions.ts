@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createLessonSeries } from '@/lib/lessons/createSeries'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 const SeriesFormSchema = z.object({
   teacher_id: z.string().uuid(),

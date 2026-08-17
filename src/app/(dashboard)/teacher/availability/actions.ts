@@ -11,7 +11,7 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { getTeacherAvailabilityByDay, hasOverlap } from '@/lib/availability'
 import { revalidatePath } from 'next/cache'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 type ActionState = { error: string } | null
 

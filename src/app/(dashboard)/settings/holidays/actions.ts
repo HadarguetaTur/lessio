@@ -9,22 +9,22 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 export type HolidayActionState = { error: string } | null
 
 const holidaySchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'תאריך לא תקין'),
-  name: z.string().min(1, 'שם החג הוא שדה חובה').max(100, 'שם החג ארוך מדי'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'validation.invalidDate'),
+  name: z.string().min(1, 'validation.holidayNameRequired').max(100, 'validation.holidayNameTooLong'),
 })
 
 const holidayRangeSchema = z
   .object({
-    date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'תאריך התחלה לא תקין'),
-    date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'תאריך סיום לא תקין'),
-    name: z.string().min(1, 'שם החופשה הוא שדה חובה').max(100, 'שם החופשה ארוך מדי'),
+    date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'validation.invalidStartDate'),
+    date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'validation.invalidEndDate'),
+    name: z.string().min(1, 'validation.vacationNameRequired').max(100, 'validation.vacationNameTooLong'),
   })
-  .refine((d) => d.date_from <= d.date_to, { message: 'תאריך הסיום חייב להיות אחרי תאריך ההתחלה' })
+  .refine((d) => d.date_from <= d.date_to, { message: 'validation.endAfterStart' })
   .refine(
     (d) => {
       const from = new Date(d.date_from)
@@ -32,7 +32,7 @@ const holidayRangeSchema = z
       const diffDays = (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)
       return diffDays <= 60
     },
-    { message: 'הטווח המקסימלי הוא 60 ימים' }
+    { message: 'validation.maxRange60Days' }
   )
 
 function getDatesInRange(from: string, to: string): string[] {
@@ -64,7 +64,7 @@ export async function addHoliday(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const supabase = await createClient()
@@ -102,7 +102,7 @@ export async function addHolidayRange(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const dates = getDatesInRange(parsed.data.date_from, parsed.data.date_to)

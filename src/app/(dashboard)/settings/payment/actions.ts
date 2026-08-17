@@ -19,7 +19,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptWithKey } from '@/lib/crypto'
 import { getRegistryEntry } from '@/lib/payments/registry'
 import { getProviderUI } from '@/lib/payments/registry-ui'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 // ── Result types ──────────────────────────────────────────────────────────────
 

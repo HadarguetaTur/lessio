@@ -15,7 +15,7 @@ import { uploadAttachment } from '@/lib/homework/attachments'
 import { sendHomeworkAssignment } from '@/lib/homework/sendHomework'
 import { decryptToken } from '@/lib/crypto'
 import { requireFeature } from '@/lib/saas/featureGate'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 export type AssignActionState = {
   error: string | null
@@ -25,7 +25,7 @@ export type AssignActionState = {
 
 const AssignSchema = z
   .object({
-    studentIds: z.array(z.string().uuid()).min(1, 'יש לבחור לפחות תלמיד אחד'),
+    studentIds: z.array(z.string().uuid()).min(1, 'validation.pickAtLeastOneStudent'),
     templateId: z.string().uuid().optional(),
     title:      z.string().min(1).max(200).optional(),
     body:       z.string().min(1).max(2000).optional(),
@@ -34,7 +34,7 @@ const AssignSchema = z
   })
   .refine(
     (data) => data.templateId || (data.title && data.body),
-    { message: 'נדרשת תבנית או כותרת + תוכן' }
+    { message: 'validation.templateOrTitleBody' }
   )
 
 export async function assignHomeworkAction(
@@ -64,7 +64,7 @@ export async function assignHomeworkAction(
 
   const parsed = AssignSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const { studentIds, templateId, title, body, dueDate, sendAt } = parsed.data

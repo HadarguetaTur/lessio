@@ -23,7 +23,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptToken, decryptToken } from '@/lib/crypto'
 import { registerTemplatesForWABA } from '@/lib/whatsapp/registerTemplates'
 import { subscribeAppToWABA, unsubscribeAppFromWABA } from '@/lib/whatsapp/subscribeApp'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
@@ -32,7 +32,7 @@ import { commonError } from '@/lib/i18n/actionErrors'
 // never receives messages.
 const SaveSchema = z.object({
   phoneNumberId: z.string().min(1, 'phone_number_id is required'),
-  wabaId:        z.string().min(1, 'חיבור ל-Meta לא החזיר מזהה חשבון WhatsApp Business — נסי להתחבר מחדש'),
+  wabaId:        z.string().min(1, 'validation.wabaIdMissing'),
   code:          z.string().min(1, 'OAuth code is required'),
 })
 
@@ -77,7 +77,7 @@ export async function saveWhatsAppConnection(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const { phoneNumberId, wabaId, code } = parsed.data

@@ -18,8 +18,9 @@ import { decryptToken } from '@/lib/crypto'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { isOptedOut } from '@/lib/whatsapp/optOut'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
+import { getT } from '@/lib/i18n/serverTranslator'
 import { getTranslations } from 'next-intl/server'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 type ActionState = { error: string } | null
 
@@ -31,22 +32,24 @@ function relationTypeFromForm(formData: FormData): string | null {
   return RELATION_VALUES.has(raw) ? raw : null
 }
 
-function parseOptionalEmail(formData: FormData): { email: string | null; error?: string } {
+// Sync, so it cannot await a translator — it returns a catalog key and the
+// calling action resolves it.
+function parseOptionalEmail(formData: FormData): { email: string | null; errorKey?: string } {
   const raw = (formData.get('email') as string | null)?.trim() ?? ''
   if (!raw) return { email: null }
   const r = z.string().email().safeParse(raw)
-  if (!r.success) return { email: null, error: 'כתובת אימייל לא תקינה' }
+  if (!r.success) return { email: null, errorKey: 'parents.errors.invalidEmail' }
   return { email: r.data }
 }
 
-function parseOptionalSecondPhone(formData: FormData): { phone: string | null; error?: string } {
+function parseOptionalSecondPhone(formData: FormData): { phone: string | null; errorKey?: string } {
   const raw = (formData.get('second_phone') as string | null)?.trim() ?? ''
   if (!raw) return { phone: null }
   try {
     return { phone: normalizePhone(raw) }
   } catch (e) {
     if (e instanceof PhoneNormalizationError) {
-      return { phone: null, error: 'מספר טלפון נוסף לא תקין' }
+      return { phone: null, errorKey: 'parents.errors.invalidSecondaryPhone' }
     }
     throw e
   }
@@ -56,29 +59,30 @@ export async function createParent(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const full_name = (formData.get('full_name') as string).trim()
   const rawPhone = (formData.get('phone') as string).trim()
   const notes = (formData.get('notes') as string).trim() || null
   const address = (formData.get('address') as string).trim() || null
   const relation_type = relationTypeFromForm(formData)
 
-  if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
-  if (!rawPhone) return { error: 'מספר טלפון הוא שדה חובה' }
+  if (!full_name) return { error: t('parents.errors.fullNameRequired') }
+  if (!rawPhone) return { error: t('parents.errors.phoneRequired') }
 
   const emailRes = parseOptionalEmail(formData)
-  if (emailRes.error) return { error: emailRes.error }
+  if (emailRes.errorKey) return { error: t(emailRes.errorKey) }
 
   const secondRes = parseOptionalSecondPhone(formData)
-  if (secondRes.error) return { error: secondRes.error }
+  if (secondRes.errorKey) return { error: t(secondRes.errorKey) }
 
   let phone: string
   try {
     phone = normalizePhone(rawPhone)
   } catch (e) {
     if (e instanceof PhoneNormalizationError) {
-      return { error: 'מספר טלפון לא תקין. יש להזין מספר ישראלי (לדוגמה: 0501234567)' }
+      return { error: t('parents.errors.invalidPhone') }
     }
-    return { error: 'שגיאה בעיבוד מספר הטלפון' }
+    return { error: t('parents.errors.phoneProcessing') }
   }
 
   const session = await getSession()
@@ -102,9 +106,9 @@ export async function createParent(
 
   if (error) {
     if (error.code === '23505') {
-      return { error: 'מספר טלפון זה כבר קיים במערכת' }
+      return { error: t('parents.errors.phoneExists') }
     }
-    return { error: 'שגיאה ביצירת ההורה' }
+    return { error: t('parents.errors.createFailed') }
   }
 
   redirect('/parents')
@@ -115,29 +119,30 @@ export async function updateParent(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const full_name = (formData.get('full_name') as string).trim()
   const rawPhone = (formData.get('phone') as string).trim()
   const notes = (formData.get('notes') as string).trim() || null
   const address = (formData.get('address') as string).trim() || null
   const relation_type = relationTypeFromForm(formData)
 
-  if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
-  if (!rawPhone) return { error: 'מספר טלפון הוא שדה חובה' }
+  if (!full_name) return { error: t('parents.errors.fullNameRequired') }
+  if (!rawPhone) return { error: t('parents.errors.phoneRequired') }
 
   const emailRes = parseOptionalEmail(formData)
-  if (emailRes.error) return { error: emailRes.error }
+  if (emailRes.errorKey) return { error: t(emailRes.errorKey) }
 
   const secondRes = parseOptionalSecondPhone(formData)
-  if (secondRes.error) return { error: secondRes.error }
+  if (secondRes.errorKey) return { error: t(secondRes.errorKey) }
 
   let phone: string
   try {
     phone = normalizePhone(rawPhone)
   } catch (e) {
     if (e instanceof PhoneNormalizationError) {
-      return { error: 'מספר טלפון לא תקין. יש להזין מספר ישראלי (לדוגמה: 0501234567)' }
+      return { error: t('parents.errors.invalidPhone') }
     }
-    return { error: 'שגיאה בעיבוד מספר הטלפון' }
+    return { error: t('parents.errors.phoneProcessing') }
   }
 
   const session = await getSession()
@@ -163,9 +168,9 @@ export async function updateParent(
 
   if (error) {
     if (error.code === '23505') {
-      return { error: 'מספר טלפון זה כבר קיים במערכת' }
+      return { error: t('parents.errors.phoneExists') }
     }
-    return { error: 'שגיאה בעדכון ההורה' }
+    return { error: t('parents.errors.updateFailed') }
   }
 
   redirect('/parents')
@@ -214,39 +219,40 @@ export async function updateParentAsTeacher(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const full_name = (formData.get('full_name') as string ?? '').trim()
   const rawPhone = (formData.get('phone') as string ?? '').trim()
   const notes = (formData.get('notes') as string ?? '').trim() || null
   const address = (formData.get('address') as string ?? '').trim() || null
   const relation_type = relationTypeFromForm(formData)
 
-  if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
-  if (!rawPhone) return { error: 'מספר טלפון הוא שדה חובה' }
+  if (!full_name) return { error: t('parents.errors.fullNameRequired') }
+  if (!rawPhone) return { error: t('parents.errors.phoneRequired') }
 
   const emailRes = parseOptionalEmail(formData)
-  if (emailRes.error) return { error: emailRes.error }
+  if (emailRes.errorKey) return { error: t(emailRes.errorKey) }
 
   const secondRes = parseOptionalSecondPhone(formData)
-  if (secondRes.error) return { error: secondRes.error }
+  if (secondRes.errorKey) return { error: t(secondRes.errorKey) }
 
   let phone: string
   try {
     phone = normalizePhone(rawPhone)
   } catch (e) {
     if (e instanceof PhoneNormalizationError) {
-      return { error: 'מספר טלפון לא תקין. יש להזין מספר ישראלי (לדוגמה: 0501234567)' }
+      return { error: t('parents.errors.invalidPhone') }
     }
-    return { error: 'שגיאה בעיבוד מספר הטלפון' }
+    return { error: t('parents.errors.phoneProcessing') }
   }
 
   const session = await getSession()
   if (session.role !== 'teacher') return { error: await commonError('noPermission') }
 
   const teacher = await getTeacherByProfileId(session.profileId, session.orgId, { activeOnly: true })
-  if (!teacher) return { error: 'לא נמצא פרופיל מורה פעיל' }
+  if (!teacher) return { error: t('parents.errors.noTeacherProfile') }
 
   const ok = await assertTeacherCanAccessParent(parentId, session.orgId, teacher.id)
-  if (!ok) return { error: 'אין הרשאה לעדכן הורה זה' }
+  if (!ok) return { error: t('parents.errors.cannotUpdateParent') }
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -265,8 +271,8 @@ export async function updateParentAsTeacher(
     .eq('organization_id', session.orgId)
 
   if (error) {
-    if (error.code === '23505') return { error: 'מספר טלפון זה כבר קיים במערכת' }
-    return { error: 'שגיאה בעדכון ההורה' }
+    if (error.code === '23505') return { error: t('parents.errors.phoneExists') }
+    return { error: t('parents.errors.updateFailed') }
   }
   revalidatePath('/parents')
   return null
@@ -278,15 +284,16 @@ export async function updateParentNotesAsTeacher(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const notes = (formData.get('notes') as string ?? '').trim() || null
   const { orgId, role, profileId } = await getSession()
   if (role !== 'teacher') return { error: await commonError('noPermission') }
 
   const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
-  if (!teacher) return { error: 'לא נמצא פרופיל מורה פעיל' }
+  if (!teacher) return { error: t('parents.errors.noTeacherProfile') }
 
   const ok = await assertTeacherCanAccessParent(parentId, orgId, teacher.id)
-  if (!ok) return { error: 'אין הרשאה לעדכן הורה זה' }
+  if (!ok) return { error: t('parents.errors.cannotUpdateParent') }
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -295,7 +302,7 @@ export async function updateParentNotesAsTeacher(
     .eq('id', parentId)
     .eq('organization_id', orgId)
 
-  if (error) return { error: 'שגיאה בעדכון ההערות' }
+  if (error) return { error: t('parents.errors.notesUpdateFailed') }
   revalidatePath('/parents')
   return null
 }
@@ -337,6 +344,7 @@ export async function restoreParent(id: string): Promise<void> {
 export async function sendPaymentRequestAction(
   parentId: string
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations()
   const { orgId, role, userId } = await getSession()
 
   if (role !== 'owner' && role !== 'admin') {
@@ -345,21 +353,20 @@ export async function sendPaymentRequestAction(
 
   // Load parent
   const parent = await getParentById(parentId, orgId)
-  if (!parent) return { error: 'הורה לא נמצא' }
-  if (!parent.phone) return { error: 'להורה אין מספר טלפון מוגדר' }
+  if (!parent) return { error: t('parents.errors.parentNotFound') }
+  if (!parent.phone) return { error: t('parents.errors.parentNoPhone') }
 
   // A payment request is business-initiated, so the opt-out applies. This send
   // uses sendTextMessage directly rather than sendSmartMessage, which is where
   // the gate normally lives — hence the explicit check here.
   if (await isOptedOut(orgId, parent.phone)) {
-    const t = await getTranslations('parents')
-    return { error: t('optedOutError') }
+    return { error: t('parents.optedOutError') }
   }
 
   // Load pending charges
   const charges = await getPendingChargesForParent(parentId, orgId)
   if (charges.length === 0) {
-    return { error: 'אין חיובים פתוחים עבור הורה זה' }
+    return { error: t('parents.errors.noOpenCharges') }
   }
 
   // Load org config: per-org WhatsApp token (Sprint 7) + timezone
@@ -374,8 +381,16 @@ export async function sendPaymentRequestAction(
   const phoneNumberId = org?.whatsapp_phone_number_id as string | null
   const timezone = (org?.timezone as string | null) ?? 'Asia/Jerusalem'
 
+  // The payment description and the WhatsApp body are both read by the parent,
+  // so they follow the parent's language rather than the sender's.
+  const recipientLocale = resolveRecipientLocale({
+    stored: (parent as { preferred_locale?: string | null }).preferred_locale,
+    orgDefault: org?.default_locale as string | null,
+  })
+  const tr = await getT('parents', recipientLocale)
+
   if (!encryptedToken || !phoneNumberId) {
-    return { error: 'WhatsApp לא מחובר. אפשר לחבר אותו בעמוד ההגדרות.' }
+    return { error: t('parents.errors.whatsappNotConnectedHint') }
   }
 
   let accessToken: string
@@ -383,7 +398,7 @@ export async function sendPaymentRequestAction(
     accessToken = decryptToken(encryptedToken)
   } catch (err) {
     console.error('[sendPaymentRequestAction] WhatsApp token decryption failed', { orgId, err })
-    return { error: 'שגיאה בפענוח החיבור ל-WhatsApp. כדאי לפנות לתמיכה.' }
+    return { error: t('parents.errors.whatsappDecryptFailed') }
   }
 
   // Generate Cardcom payment link (fire-and-forget if provider not configured)
@@ -395,7 +410,7 @@ export async function sendPaymentRequestAction(
     const { provider, providerName } = await getPaymentProvider(orgId)
     const totalAmount = charges.reduce((sum, c) => sum + c.amount, 0)
     const firstChargeId = charges[0]!.id
-    const description = `חיוב עבור ${parent.full_name}`
+    const description = tr('chargeDescription', { name: parent.full_name as string })
 
     const result = await provider.createPaymentLink({
       chargeId: firstChargeId,
@@ -441,17 +456,14 @@ export async function sendPaymentRequestAction(
     charges,
     timezone,
     paymentUrl,
-    resolveRecipientLocale({
-      stored: (parent as { preferred_locale?: string | null }).preferred_locale,
-      orgDefault: org?.default_locale as string | null,
-    })
+    recipientLocale
   )
 
   try {
     await sendTextMessage(parent.phone, message, accessToken, phoneNumberId)
   } catch (sendErr) {
     console.error('[sendPaymentRequestAction] WhatsApp API error', { orgId, parentId, error: String(sendErr) })
-    return { error: 'שגיאה בשליחת ההודעה דרך WhatsApp' }
+    return { error: t('parents.errors.whatsappSendFailed') }
   }
 
   // Log sent metadata on all included charges (idempotent)
@@ -475,6 +487,7 @@ export interface ParentSheetData {
 export async function fetchParentForSheet(
   parentId: string
 ): Promise<{ data: ParentSheetData } | { error: string }> {
+  const t = await getTranslations()
   try {
     const { orgId } = await getSession()
     const [parent, linkedStudents, debt] = await Promise.all([
@@ -482,9 +495,9 @@ export async function fetchParentForSheet(
       getParentStudents(parentId, orgId),
       getParentDebt(parentId, orgId),
     ])
-    if (!parent) return { error: 'הורה לא נמצא' }
+    if (!parent) return { error: t('parents.errors.parentNotFound') }
     return { data: { parent, linkedStudents, debt } }
   } catch {
-    return { error: 'שגיאה בטעינת פרטי ההורה' }
+    return { error: t('parents.errors.loadParentFailed') }
   }
 }

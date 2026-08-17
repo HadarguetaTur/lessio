@@ -13,7 +13,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
 import { DEFAULT_TEMPLATES, type MessageTemplateType } from '@/lib/whatsapp/templates'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import {
   buildMetaSubmission,
   customTemplateName,
@@ -31,7 +31,7 @@ import {
 const TemplateSchema = z.object({
   type: z.string().min(1),
   locale: z.enum(['he', 'en']),
-  body_template: z.string().min(1, 'תוכן ההודעה לא יכול להיות ריק'),
+  body_template: z.string().min(1, 'validation.messageBodyRequired'),
 })
 
 // ── Result types ──────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ export async function saveTemplateAction(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const { type, locale, body_template } = parsed.data

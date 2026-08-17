@@ -21,7 +21,7 @@ import { decryptToken } from '@/lib/crypto'
 import { botString } from '@/lib/whatsapp/strings'
 import { resolveRecipientLocale, toLuxonLocale } from '@/lib/i18n/locale'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 const VALID_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
 
@@ -35,6 +35,7 @@ export async function setLessonStatus(
   _prevState: SetLessonStatusResult,
   formData: FormData
 ): Promise<SetLessonStatusResult> {
+  const t = await getTranslations()
   const { orgId, role } = await getSession()
 
   if (role !== 'owner' && role !== 'admin') {
@@ -45,7 +46,7 @@ export async function setLessonStatus(
   const cancelReason = (formData.get('cancel_reason') as string) || undefined
 
   if (!status || !VALID_STATUSES.includes(status)) {
-    return { error: 'יש לבחור סטטוס תקין' }
+    return { error: t('lessons.errors.invalidStatus') }
   }
 
   try {
@@ -56,14 +57,14 @@ export async function setLessonStatus(
     revalidatePath('/teacher/schedule')
     revalidatePath(`/teacher/schedule/${lessonId}`)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה בעדכון הסטטוס' }
+    return { error: t('lessons.errors.statusUpdateFailed') }
   }
 
   // Automatic charge creation on completed
   if (status === 'completed') {
     const alert = await createLessonCharge(lessonId, orgId)
     if (alert) {
-      return { error: null, chargeAlert: alert.message }
+      return { error: null, chargeAlert: t(alert.message) }
     }
     // Fire-and-forget: auto payment request if org has it enabled
     void autoSendPaymentRequest(lessonId, orgId)
@@ -87,14 +88,15 @@ export async function cancelLesson(
   _prevState: CancelLessonResult,
   formData: FormData
 ): Promise<CancelLessonResult> {
+  const t = await getTranslations()
   const { orgId, role } = await getSession()
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביטול שיעורים' }
+    return { error: t('lessons.errors.noCancelPermission') }
   }
 
   const reason = (formData.get('cancel_reason') as string).trim()
-  if (!reason) return { error: 'יש להזין סיבת ביטול' }
+  if (!reason) return { error: t('lessons.errors.reasonRequired') }
 
   const waive = formData.get('waive') === 'true'
 
@@ -108,8 +110,8 @@ export async function cancelLesson(
     .eq('organization_id', orgId)
     .single()
 
-  if (lessonError || !lesson) return { error: 'שיעור לא נמצא' }
-  if (lesson.status === 'cancelled') return { error: 'השיעור כבר בוטל' }
+  if (lessonError || !lesson) return { error: 'validation.lessonNotFound' }
+  if (lesson.status === 'cancelled') return { error: t('lessons.errors.alreadyCancelled') }
 
   const lessonStudents = (lesson.lesson_students as Array<{ student_id: string }>)
   const primaryStudentId = lessonStudents[0]?.student_id
@@ -134,20 +136,20 @@ export async function cancelLesson(
     if (chargeResult.shouldCharge && chargeResult.amount > 0) {
       pendingCancellationCharge = chargeResult
       if (!primaryStudentId) {
-        chargeAlert = 'לא ניתן ליצור חיוב ביטול — לשיעור אין תלמידים מקושרים'
+        chargeAlert = t('lessons.chargeAlerts.noLinkedStudents')
       } else {
         try {
           cancellationParentId = await resolveBillingParent(primaryStudentId, orgId)
         } catch (e) {
           if (e instanceof MissingPrimaryParentError) {
-            chargeAlert = 'לא ניתן ליצור חיוב ביטול — לתלמיד אין הורה ראשי מוגדר. יש לקשר הורה לתלמיד דרך עמוד התלמיד > הורים.'
+            chargeAlert = t('lessons.chargeAlerts.noPrimaryParent')
           } else {
-            chargeAlert = 'שגיאה ביצירת חיוב הביטול'
+            chargeAlert = t('validation.createCancellationChargeFailed')
           }
         }
       }
     } else if (chargeResult.shouldCharge && chargeResult.reasonCode === 'missing_rate') {
-      chargeAlert = 'לא ניתן ליצור חיוב ביטול — למורה אין תעריף שעתי מוגדר'
+      chargeAlert = t('lessons.chargeAlerts.noTeacherRate')
     }
   }
 
@@ -158,7 +160,7 @@ export async function cancelLesson(
     .eq('id', lessonId)
     .eq('organization_id', orgId)
 
-  if (updateError) return { error: 'שגיאה בביטול השיעור' }
+  if (updateError) return { error: t('lessons.errors.cancelFailed') }
 
   if (pendingCancellationCharge && cancellationParentId) {
     const alert = await createCancellationCharge(
@@ -167,7 +169,7 @@ export async function cancelLesson(
       cancellationParentId,
       pendingCancellationCharge
     )
-    if (alert) chargeAlert = alert.message
+    if (alert) chargeAlert = t(alert.message)
   }
 
   // Create cancellation events for the monthly billing engine (all enrolled students).
@@ -201,7 +203,7 @@ export async function cancelLesson(
         orgId,
         recipients,
         'lesson_cancelled',
-        `שיעור בוטל — ${reason}`,
+        t('lessons.cancelledNotification', { reason }),
         undefined,
         `/lessons/${lessonId}`
       )
@@ -235,6 +237,7 @@ export async function cancelSeriesAction(
   _prevState: CancelSeriesActionResult,
   formData: FormData
 ): Promise<CancelSeriesActionResult> {
+  const t = await getTranslations()
   const { orgId, role } = await getSession()
 
   if (role !== 'owner' && role !== 'admin') {
@@ -243,7 +246,7 @@ export async function cancelSeriesAction(
 
   const scope = formData.get('scope') as CancelSeriesScope
   if (scope !== 'all' && scope !== 'from_date') {
-    return { error: 'scope לא תקין' }
+    return { error: t('lessons.errors.invalidScope') }
   }
 
   const supabase = createServiceRoleClient()
@@ -256,8 +259,8 @@ export async function cancelSeriesAction(
     .eq('organization_id', orgId)
     .single()
 
-  if (lessonError || !lesson) return { error: 'שיעור לא נמצא' }
-  if (!lesson.series_id) return { error: 'שיעור זה אינו חלק מסדרה' }
+  if (lessonError || !lesson) return { error: 'validation.lessonNotFound' }
+  if (!lesson.series_id) return { error: t('lessons.errors.notInSeries') }
 
   const fromDate =
     scope === 'from_date'
@@ -279,7 +282,7 @@ export async function cancelSeriesAction(
 
     return { error: null, cancelled }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה בביטול הסדרה' }
+    return { error: t('lessons.errors.cancelSeriesFailed') }
   }
 }
 
@@ -295,6 +298,7 @@ export async function addLessonNote(
   _prev: AddNoteResult,
   formData: FormData
 ): Promise<AddNoteResult> {
+  const t = await getTranslations()
   const session = await getSession()
 
   try {
@@ -304,13 +308,13 @@ export async function addLessonNote(
   }
 
   const parsed = NoteSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: 'תוכן ההערה אינו תקין' }
+  if (!parsed.success) return { error: t('lessons.errors.invalidNoteBody') }
 
   // Resolve teacherId — teachers use their own, owner/admin use a placeholder
   let teacherId: string | null = null
   if (session.role === 'teacher') {
     const teacher = await getTeacherByProfileId(session.profileId, session.orgId)
-    if (!teacher) return { error: 'לא נמצא פרופיל מורה' }
+    if (!teacher) return { error: t('lessons.errors.noTeacherProfile') }
     teacherId = teacher.id
   } else {
     // owner/admin: find the teacher associated with this lesson
@@ -325,7 +329,7 @@ export async function addLessonNote(
     teacherId = (lesson as { teacher_id: string } | null)?.teacher_id ?? null
   }
 
-  if (!teacherId) return { error: 'לא ניתן לאתר את המורה של השיעור' }
+  if (!teacherId) return { error: t('lessons.errors.cannotResolveTeacher') }
 
   try {
     await createNote({
@@ -338,7 +342,7 @@ export async function addLessonNote(
     revalidatePath(`/lessons/${lessonId}`)
     return { error: null, success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה בשמירת ההערה' }
+    return { error: t('lessons.errors.saveNoteFailed') }
   }
 }
 
@@ -347,6 +351,7 @@ export async function deleteLessonNote(
   _prev: DeleteNoteResult,
   formData: FormData
 ): Promise<DeleteNoteResult> {
+  const t = await getTranslations()
   const session = await getSession()
 
   try {
@@ -356,7 +361,7 @@ export async function deleteLessonNote(
   }
 
   const noteId = formData.get('noteId') as string | null
-  if (!noteId) return { error: 'מזהה הערה חסר' }
+  if (!noteId) return { error: t('lessons.errors.noteIdMissing') }
 
   // Teachers can only delete their own notes; owner/admin can delete any
   let actorTeacherId: string | undefined
@@ -370,7 +375,7 @@ export async function deleteLessonNote(
     revalidatePath(`/lessons/${lessonId}`)
     return { error: null }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה במחיקת ההערה' }
+    return { error: t('lessons.errors.deleteNoteFailed') }
   }
 }
 
@@ -392,6 +397,7 @@ export type SendReminderResult = { error: string | null }
  * so the hourly cron won't double-send for a lesson reminded manually.
  */
 export async function sendLessonReminderAction(lessonId: string): Promise<SendReminderResult> {
+  const t = await getTranslations()
   const session = await getSession()
 
   try {
@@ -413,7 +419,7 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
     .single()
 
   if (!org?.whatsapp_access_token || !org?.whatsapp_phone_number_id) {
-    return { error: 'WhatsApp לא מחובר — יש להתחבר בהגדרות' }
+    return { error: t('lessons.errors.whatsappNotConnected') }
   }
 
   const { data: lesson } = await db
@@ -427,9 +433,9 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
     .eq('organization_id', session.orgId)
     .single()
 
-  if (!lesson) return { error: 'שיעור לא נמצא' }
+  if (!lesson) return { error: 'validation.lessonNotFound' }
   if (lesson.status !== 'scheduled') {
-    return { error: 'ניתן לשלוח תזכורת רק לשיעור מתוכנן' }
+    return { error: t('lessons.errors.reminderOnlyScheduled') }
   }
 
   type LessonRow = {
@@ -463,7 +469,7 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
     }
     if (parentPhone) break
   }
-  if (!parentPhone) return { error: 'לא נמצא הורה ראשי פעיל עם מספר טלפון' }
+  if (!parentPhone) return { error: t('lessons.errors.noPrimaryParentPhone') }
 
   const locale = resolveRecipientLocale({
     stored: parentLocale,
@@ -500,7 +506,7 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
     }
   } catch (e) {
     console.error('[lessons] Manual reminder send failed', { lessonId, error: e })
-    return { error: 'שליחת התזכורת נכשלה' }
+    return { error: t('lessons.errors.reminderSendFailed') }
   }
 
   // Dedup parity with the lesson-reminders cron (UNIQUE org+type+entity)

@@ -5,12 +5,12 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { convertLead } from '@/lib/leads/convertLead'
 import { requireFeature } from '@/lib/saas/featureGate'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 const convertLeadSchema = z.object({
   leadId: z.string().uuid(),
-  parentFullName: z.string().trim().min(1, 'שם הורה הוא שדה חובה').max(120),
-  studentFullName: z.string().trim().min(1, 'שם תלמיד הוא שדה חובה').max(120),
+  parentFullName: z.string().trim().min(1, 'validation.parentNameRequired').max(120),
+  studentFullName: z.string().trim().min(1, 'validation.studentNameRequired').max(120),
   grade: z.string().trim().max(40).optional(),
 })
 
@@ -40,10 +40,10 @@ export async function convertLeadAction(
   if (!parsed.success) {
     const firstIssue = parsed.error.issues[0]
     if (firstIssue?.path[0] === 'parentFullName') {
-      return { error: 'שם הורה הוא שדה חובה' }
+      return { error: 'validation.parentNameRequired' }
     }
     if (firstIssue?.path[0] === 'studentFullName') {
-      return { error: 'שם תלמיד הוא שדה חובה' }
+      return { error: 'validation.studentNameRequired' }
     }
 
     return { error: 'פרטי ההמרה אינם תקינים' }

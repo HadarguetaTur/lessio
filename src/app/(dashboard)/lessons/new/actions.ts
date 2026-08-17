@@ -10,7 +10,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 import { checkTeacherAvailability } from '@/lib/availability/checkTeacherAvailability'
 import { checkLessonCalendarConflicts, CalendarConflict } from '@/lib/google-calendar/checkLessonCalendarConflicts'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 const lessonStatusZ = z.enum(['scheduled', 'completed', 'cancelled', 'no_show'])
 
@@ -27,7 +27,7 @@ const IndividualLessonSchema = z.object({
 const GroupLessonSchema = z.object({
   lesson_type:      z.literal('group'),
   teacher_id:       z.string().uuid(),
-  student_ids:      z.array(z.string().uuid()).min(1, 'יש לבחור קבוצה עם לפחות תלמיד אחד'),
+  student_ids:      z.array(z.string().uuid()).min(1, 'validation.pickGroupWithStudent'),
   date:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   start_time:       z.string().regex(/^\d{2}:\d{2}$/),
   duration_minutes: z.coerce.number().refine((v) => [30, 45, 60, 90].includes(v)),
@@ -109,7 +109,7 @@ export async function createLessonAction(
         duration_minutes: formData.get('duration_minutes'),
         status: formData.get('status'),
       })
-      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+      if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
 
       const { teacher_id, student_id, date, start_time, duration_minutes, status } = parsed.data
       if (teacher_id !== teacher.id) return { error: await commonError('noPermission') }
@@ -157,7 +157,7 @@ export async function createLessonAction(
         status: formData.get('status'),
         price_per_student: rawPrice && String(rawPrice).trim() ? rawPrice : null,
       })
-      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+      if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
 
       const { teacher_id, student_ids, date, start_time, duration_minutes, status, price_per_student } =
         parsed.data
@@ -201,7 +201,7 @@ export async function createLessonAction(
         duration_minutes: formData.get('duration_minutes'),
         status: formData.get('status'),
       })
-      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+      if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
 
       const { teacher_id, student_id, date, start_time, duration_minutes, status } = parsed.data
 

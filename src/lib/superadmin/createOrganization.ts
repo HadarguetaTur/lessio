@@ -22,10 +22,10 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { z } from 'zod'
 
 export const CreateOrganizationSchema = z.object({
-  name: z.string().min(2, 'שם חייב להכיל לפחות 2 תווים'),
-  timezone: z.string().min(1, 'אזור זמן נדרש'),
-  owner_email: z.string().email('כתובת אימייל לא תקינה'),
-  owner_full_name: z.string().min(2, 'שם מלא חייב להכיל לפחות 2 תווים'),
+  name: z.string().min(2, 'validation.nameMin2'),
+  timezone: z.string().min(1, 'validation.timezoneRequired'),
+  owner_email: z.string().email('validation.invalidEmail'),
+  owner_full_name: z.string().min(2, 'validation.fullNameMin2'),
 })
 
 export type CreateOrganizationInput = z.infer<typeof CreateOrganizationSchema>

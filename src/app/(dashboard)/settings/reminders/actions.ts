@@ -9,7 +9,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 export type ReminderActionState = {
   error: string | null
@@ -30,7 +30,7 @@ const RemindersSchema = z.object({
   lesson_reminder_hours: z.coerce
     .number()
     .refine((v) => [2, 4, 12, 24, 48].includes(v), {
-      message: 'ערך שעות לא חוקי',
+      message: 'validation.invalidHours',
     }),
   payment_reminder_days: z.coerce.number().int().min(1).max(30),
   email_notifications: EmailNotificationsSchema.optional(),
@@ -64,7 +64,7 @@ export async function saveReminderSettings(
 
   const parsed = RemindersSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const db = createServiceRoleClient()

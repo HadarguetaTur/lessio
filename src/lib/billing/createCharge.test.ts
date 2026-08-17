@@ -119,7 +119,8 @@ describe('createLessonCharge', () => {
 
     await expect(createLessonCharge('lesson-1', 'org-1')).resolves.toEqual({
       type: 'missing_rate',
-      message: 'לא ניתן ליצור חיוב — למורה אין תעריף שעתי מוגדר',
+      // A catalog key, not display copy — the calling action translates it.
+      message: 'validation.noTeacherRate',
     })
   })
 
@@ -141,7 +142,7 @@ describe('createLessonCharge', () => {
 
     await expect(createLessonCharge('lesson-1', 'org-1')).resolves.toEqual({
       type: 'missing_parent',
-      message: 'לא ניתן ליצור חיוב — לתלמיד אין הורה ראשי מוגדר. יש לקשר הורה לתלמיד דרך עמוד התלמיד > הורים.',
+      message: 'validation.noPrimaryParent',
     })
   })
 })

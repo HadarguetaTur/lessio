@@ -9,7 +9,7 @@ import { encryptWithKey } from '@/lib/crypto'
 import { ICountProvider } from '@/lib/receipts/icount'
 import { SumitProvider } from '@/lib/receipts/sumit'
 import type { ReceiptProviderType } from '@/lib/receipts/factory'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 function getEncryptionKey(): string {
   const key = process.env.PAYMENT_CONFIG_ENCRYPTION_KEY
@@ -23,21 +23,21 @@ function getEncryptionKey(): string {
 
 const GreenInvoiceSchema = z.object({
   provider: z.literal('green-invoice'),
-  id:       z.string().min(1, 'API ID נדרש'),
-  secret:   z.string().min(1, 'Secret נדרש'),
+  id:       z.string().min(1, 'validation.apiIdRequired'),
+  secret:   z.string().min(1, 'validation.secretRequired'),
 })
 
 const ICountSchema = z.object({
   provider: z.literal('icount'),
-  cid:      z.string().min(1, 'מזהה חברה (CID) נדרש'),
-  user:     z.string().min(1, 'שם משתמש נדרש'),
-  pass:     z.string().min(1, 'סיסמה נדרשת'),
+  cid:      z.string().min(1, 'validation.cidRequired'),
+  user:     z.string().min(1, 'validation.usernameRequired'),
+  pass:     z.string().min(1, 'validation.passwordRequired'),
 })
 
 const SumitSchema = z.object({
   provider:  z.literal('sumit'),
-  companyId: z.string().min(1, 'Company ID נדרש'),
-  apiKey:    z.string().min(1, 'API Key נדרש'),
+  companyId: z.string().min(1, 'validation.companyIdRequired'),
+  apiKey:    z.string().min(1, 'validation.apiKeyRequired'),
 })
 
 const ReceiptConfigSchema = z.discriminatedUnion('provider', [
@@ -127,7 +127,7 @@ export async function saveReceiptConfigAction(
 
   const parsed = ReceiptConfigSchema.safeParse(raw)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { success: false, error: await zodError(parsed.error.issues[0]) }
   }
 
   // ── Test credentials against the provider ────────────────────────────────

@@ -12,12 +12,17 @@ import { getStudentLessons, getStudentFinancial, getStudentPrimaryParent, type S
 import { getAssignments, type HomeworkAssignment } from '@/lib/homework'
 import { getSubscriptions, type Subscription } from '@/lib/subscriptions'
 import { getGoalsForStudent, type StudentGoal } from '@/lib/goals'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 type ActionState = { error: string } | null
 
+// Declared at module scope, where no translator exists — the message is a
+// catalog key that zodError() resolves when the failure is surfaced.
+const STUDENT_NAME_REQUIRED = 'students.errors.fullNameRequired'
+
 const studentSchema = z.object({
-  full_name: z.string().min(1, 'שם מלא הוא שדה חובה'),
+  full_name: z.string().min(1, STUDENT_NAME_REQUIRED),
   phone: z.string().optional().nullable(),
   grade: z.string().optional().nullable(),
   level: z.string().optional().nullable(),
@@ -34,6 +39,7 @@ export async function createStudent(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const raw = {
     full_name: (formData.get('full_name') as string ?? '').trim(),
     phone: (formData.get('phone') as string ?? '').trim() || null,
@@ -48,7 +54,7 @@ export async function createStudent(
 
   const parsed = studentSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   let phoneNorm: string | null = null
@@ -57,9 +63,9 @@ export async function createStudent(
       phoneNorm = normalizePhone(parsed.data.phone)
     } catch (e) {
       if (e instanceof PhoneNormalizationError) {
-        return { error: 'טלפון התלמיד לא תקין. יש להזין מספר ישראלי (לדוגמה: 0501234567)' }
+        return { error: t('students.errors.invalidStudentPhone') }
       }
-      return { error: 'שגיאה בעיבוד מספר הטלפון של התלמיד' }
+      return { error: t('students.errors.studentPhoneProcessing') }
     }
   }
 
@@ -81,7 +87,7 @@ export async function createStudent(
     if (!modeNew) {
       const parentId = (formData.get('parent_id') as string ?? '').trim()
       if (!parentId) {
-        return { error: 'בחרו הורה קיים מהרשימה או הפעילו יצירת הורה חדש עם שם וטלפון' }
+        return { error: t('students.errors.pickOrCreateParent') }
       }
       parentPlan = { mode: 'existing', parentId }
     } else {
@@ -91,7 +97,7 @@ export async function createStudent(
       const relRaw = (formData.get('new_parent_relation_type') as string ?? '').trim()
 
       if (!pfn || !pphoneRaw) {
-        return { error: 'בהוספת הורה חדש נדרשים שם והטלפון הראשי' }
+        return { error: t('students.errors.newParentNeedsNameAndPhone') }
       }
 
       let pPhone: string
@@ -99,15 +105,15 @@ export async function createStudent(
         pPhone = normalizePhone(pphoneRaw)
       } catch (e) {
         if (e instanceof PhoneNormalizationError) {
-          return { error: 'מספר הטלפון של ההורה לא תקין' }
+          return { error: t('students.errors.invalidParentPhone') }
         }
-        return { error: 'שגיאה בעיבוד מספר הטלפון של ההורה' }
+        return { error: t('students.errors.parentPhoneProcessing') }
       }
 
       let parentEmail: string | null = null
       if (pem) {
         const em = z.string().email().safeParse(pem)
-        if (!em.success) return { error: 'אימייל ההורה לא תקין' }
+        if (!em.success) return { error: t('students.errors.invalidParentEmail') }
         parentEmail = em.data
       }
 
@@ -149,7 +155,7 @@ export async function createStudent(
     .select('id')
     .single()
 
-  if (insErr || !insertedStudent) return { error: 'שגיאה ביצירת התלמיד' }
+  if (insErr || !insertedStudent) return { error: t('students.errors.createFailed') }
 
   const newStudentId = insertedStudent.id
 
@@ -169,7 +175,7 @@ export async function createStudent(
 
       if (pchkErr || !prow) {
         await rollbackStudent()
-        return { error: 'הורה שנבחר לא נמצא בארגון' }
+        return { error: t('students.errors.parentNotInOrg') }
       }
       parentUuid = prow.id as string
 
@@ -193,7 +199,7 @@ export async function createStudent(
 
       if (relErr) {
         await rollbackStudent()
-        return { error: 'התלמיד נוצר אך קישור ההורה נכשל' }
+        return { error: t('students.errors.studentCreatedLinkFailed') }
       }
     } else {
       const { data: np, error: pInsErr } = await supabase
@@ -213,10 +219,10 @@ export async function createStudent(
         await rollbackStudent()
         if (pInsErr?.code === '23505') {
           return {
-            error: 'מספר הטלפון של ההורה כבר קיים — בחרו הורה קיים מהרשימה',
+            error: t('students.errors.parentPhoneExistsPickExisting'),
           }
         }
-        return { error: 'שגיאה ביצירת רשומת ההורה' }
+        return { error: t('students.errors.createParentFailed') }
       }
 
       parentUuid = np.id as string
@@ -237,7 +243,7 @@ export async function createStudent(
       if (relErr) {
         await rollbackStudent()
         await supabase.from('parents').delete().eq('id', parentUuid).eq('organization_id', orgId)
-        return { error: 'יצירת התלמיד וההורה בוטלה בשל שגיאה בקישור' }
+        return { error: t('students.errors.rolledBack') }
       }
     }
   }
@@ -250,6 +256,7 @@ export async function updateStudent(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const raw = {
     full_name: (formData.get('full_name') as string ?? '').trim(),
     phone: (formData.get('phone') as string ?? '').trim() || null,
@@ -264,7 +271,7 @@ export async function updateStudent(
 
   const parsed = studentSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const session = await getSession()
@@ -274,7 +281,7 @@ export async function updateStudent(
 
   if (role === 'teacher') {
     const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
-    if (!teacher) return { error: 'לא נמצא פרופיל מורה פעיל' }
+    if (!teacher) return { error: t('students.errors.noTeacherProfile') }
 
     const { data: existing, error: fetchErr } = await supabase
       .from('students')
@@ -282,9 +289,9 @@ export async function updateStudent(
       .eq('id', id)
       .eq('organization_id', orgId)
       .single()
-    if (fetchErr || !existing) return { error: 'תלמיד לא נמצא' }
+    if (fetchErr || !existing) return { error: t('students.errors.studentNotFound') }
     if (existing.teacher_id !== teacher.id) {
-      return { error: 'ניתן לעדכן רק תלמידים המשויכים אליך' }
+      return { error: t('students.errors.onlyOwnStudents') }
     }
 
     const { error } = await supabase
@@ -300,7 +307,7 @@ export async function updateStudent(
       .eq('id', id)
       .eq('organization_id', orgId)
 
-    if (error) return { error: 'שגיאה בעדכון התלמיד' }
+    if (error) return { error: t('students.errors.updateFailed') }
     revalidatePath('/students')
     return null
   }
@@ -313,9 +320,9 @@ export async function updateStudent(
       phoneForDb = normalizePhone(parsed.data.phone)
     } catch (e) {
       if (e instanceof PhoneNormalizationError) {
-        return { error: 'טלפון התלמיד לא תקין. יש להזין מספר ישראלי (לדוגמה: 0501234567)' }
+        return { error: t('students.errors.invalidStudentPhone') }
       }
-      return { error: 'שגיאה בעיבוד מספר הטלפון של התלמיד' }
+      return { error: t('students.errors.studentPhoneProcessing') }
     }
   }
 
@@ -336,7 +343,7 @@ export async function updateStudent(
     .eq('id', id)
     .eq('organization_id', orgId)
 
-  if (error) return { error: 'שגיאה בעדכון התלמיד' }
+  if (error) return { error: t('students.errors.updateFailed') }
 
   // Handle primary parent linking
   const parentId = (formData.get('parent_id') as string ?? '').trim() || null
@@ -355,7 +362,7 @@ export async function updateStudent(
         { onConflict: 'parent_id,student_id' }
       )
 
-    if (relError) return { error: 'התלמיד עודכן, אך שיוך ההורה נכשל' }
+    if (relError) return { error: t('students.errors.studentUpdatedLinkFailed') }
   }
 
   revalidatePath('/students')
@@ -399,6 +406,7 @@ export async function restoreStudent(id: string): Promise<void> {
 export async function fetchOrgParents(): Promise<
   { data: { id: string; full_name: string; phone: string }[] } | { error: string }
 > {
+  const t = await getTranslations()
   try {
     const { orgId } = await getSession()
     const supabase = await createClient()
@@ -411,7 +419,7 @@ export async function fetchOrgParents(): Promise<
     if (error) throw new Error(error.message)
     return { data: data ?? [] }
   } catch {
-    return { error: 'שגיאה בטעינת רשימת ההורים' }
+    return { error: t('students.errors.loadParentsFailed') }
   }
 }
 
@@ -420,91 +428,99 @@ export async function fetchOrgParents(): Promise<
 export async function fetchStudentParent(
   studentId: string
 ): Promise<{ data: StudentPrimaryParent | null } | { error: string }> {
+  const t = await getTranslations()
   try {
     const { orgId } = await getSession()
     const data = await getStudentPrimaryParent(studentId, orgId)
     return { data }
   } catch {
-    return { error: 'שגיאה בטעינת פרטי ההורה' }
+    return { error: t('students.errors.loadParentFailed') }
   }
 }
 
 export async function fetchStudentLessons(
   studentId: string
 ): Promise<{ data: StudentLesson[] } | { error: string }> {
+  const t = await getTranslations()
   try {
     const { orgId } = await getSession()
     const data = await getStudentLessons(studentId, orgId)
     return { data }
   } catch {
-    return { error: 'שגיאה בטעינת השיעורים' }
+    return { error: t('students.errors.loadLessonsFailed') }
   }
 }
 
 export async function fetchStudentFinancial(
   studentId: string
 ): Promise<{ data: StudentFinancial } | { error: string }> {
+  const t = await getTranslations()
   try {
     const { orgId } = await getSession()
     const data = await getStudentFinancial(studentId, orgId)
     return { data }
   } catch {
-    return { error: 'שגיאה בטעינת הנתונים הפיננסיים' }
+    return { error: t('students.errors.loadFinanceFailed') }
   }
 }
 
 export async function fetchStudentHomework(
   studentId: string
 ): Promise<{ data: HomeworkAssignment[] } | { error: string }> {
+  const t = await getTranslations()
   try {
     const { orgId } = await getSession()
     const data = await getAssignments(orgId, { studentId })
     return { data }
   } catch {
-    return { error: 'שגיאה בטעינת שיעורי הבית' }
+    return { error: t('students.errors.loadHomeworkFailed') }
   }
 }
 
 export async function fetchStudentSubscriptions(
   studentId: string
 ): Promise<{ data: Subscription[] } | { error: string }> {
+  const t = await getTranslations()
   try {
     const { orgId } = await getSession()
     const data = await getSubscriptions(orgId, studentId)
     return { data }
   } catch {
-    return { error: 'שגיאה בטעינת המנויים' }
+    return { error: t('students.errors.loadSubscriptionsFailed') }
   }
 }
 
 export async function fetchStudentGoals(
   studentId: string
 ): Promise<{ data: StudentGoal[] } | { error: string }> {
+  const t = await getTranslations()
   try {
     const { orgId } = await getSession()
     const data = await getGoalsForStudent(orgId, studentId)
     return { data }
   } catch {
-    return { error: 'שגיאה בטעינת היעדים' }
+    return { error: t('students.errors.loadGoalsFailed') }
   }
 }
 
 export async function fetchStudentExams(
   studentId: string
 ): Promise<{ data: import('@/lib/students/exams').StudentExam[] } | { error: string }> {
+  const t = await getTranslations()
   try {
     const { orgId } = await getSession()
     const { listExams } = await import('@/lib/students/exams')
     const data = await listExams(orgId, studentId)
     return { data }
   } catch {
-    return { error: 'שגיאה בטעינת המבחנים' }
+    return { error: t('students.errors.loadExamsFailed') }
   }
 }
 
 export async function fetchStudentParentEmails(
   studentId: string
 ): Promise<{ data: { email: string; label: string }[] } | { error: string }> {
+  const t = await getTranslations()
   try {
     const { orgId } = await getSession()
     const db = (await import('@/lib/supabase/service-role')).createServiceRoleClient()
@@ -525,6 +541,6 @@ export async function fetchStudentParentEmails(
       .filter((x): x is { email: string; label: string } => x !== null)
     return { data: result }
   } catch {
-    return { error: 'שגיאה בטעינת אימיילים' }
+    return { error: t('students.errors.loadEmailsFailed') }
   }
 }

@@ -16,7 +16,7 @@ import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { decryptToken } from '@/lib/crypto'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { homeworkGradedEmail } from '@/lib/email/templates/homeworkGraded'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 export type GradeActionState = { error: string | null; success?: boolean }
 
@@ -47,7 +47,7 @@ export async function gradeSubmissionAction(
 
   const parsed = GradeSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const { submissionId, assignmentId, score, feedback } = parsed.data

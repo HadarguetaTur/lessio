@@ -38,7 +38,7 @@ export async function updateTeacherLessonOutcome(
 
   const lesson = await getLessonById(lessonId, orgId)
   if (!lesson) {
-    return { error: 'שיעור לא נמצא' }
+    return { error: 'validation.lessonNotFound' }
   }
 
   // Enforce ownership — teacher may only update their own lessons

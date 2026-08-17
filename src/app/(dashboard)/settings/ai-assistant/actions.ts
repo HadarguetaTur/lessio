@@ -15,7 +15,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { AI_PROVIDER_NAMES, isValidModel, PROVIDER_MODELS } from '@/lib/ai-assistant/providers/models'
 import type { AiProviderName } from '@/lib/ai-assistant/providers/types'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 export type AiAssistantActionState = {
   error: string | null
@@ -126,7 +126,7 @@ export async function saveAiProviderAction(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const { ai_provider, ai_model, api_key } = parsed.data

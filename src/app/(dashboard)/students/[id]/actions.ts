@@ -29,7 +29,7 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { progressReportEmail } from '@/lib/email/templates/progressReport'
 import { parseAppLocale } from '@/lib/i18n/locale'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 export type GoalActionState = { error: string | null; success?: boolean }
 
@@ -57,7 +57,7 @@ export async function createGoalAction(
   }
 
   const parsed = GoalSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+  if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
 
   const { studentId, subject, description, targetDate } = parsed.data
 
@@ -238,7 +238,7 @@ export async function createExamAction(
     notes: raw.notes,
   })
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   try {
@@ -286,7 +286,7 @@ export async function updateExamAction(
     notes: raw.notes,
   })
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   const { examId, studentId, ...rest } = parsed.data
@@ -399,7 +399,7 @@ export async function sendProgressReportEmailAction(
   }
 
   const emailParsed = z.string().trim().email().safeParse(recipientEmail)
-  if (!emailParsed.success) return { error: 'כתובת אימייל לא תקינה' }
+  if (!emailParsed.success) return { error: 'validation.invalidEmail' }
 
   const db = createServiceRoleClient()
   const { data: row } = await db

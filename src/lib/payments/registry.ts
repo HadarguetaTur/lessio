@@ -70,9 +70,9 @@ const cardcomEntry: RegistryEntry = {
 
   validateConfig(data) {
     const schema = z.object({
-      terminal: z.string().min(1, 'מספר טרמינל נדרש'),
-      apiName: z.string().min(1, 'API Name נדרש'),
-      apiPassword: z.string().min(1, 'API Password נדרשת'),
+      terminal: z.string().min(1, 'validation.terminalRequired'),
+      apiName: z.string().min(1, 'validation.apiNameRequired'),
+      apiPassword: z.string().min(1, 'validation.apiPasswordRequired'),
     })
     const result = schema.safeParse(data)
     if (!result.success) {
@@ -105,9 +105,9 @@ const payPlusEntry: RegistryEntry = {
 
   validateConfig(data) {
     const schema = z.object({
-      apiKey: z.string().min(1, 'API Key נדרש'),
-      secretKey: z.string().min(1, 'Secret Key נדרש'),
-      pageUid: z.string().min(1, 'Payment Page UID נדרש'),
+      apiKey: z.string().min(1, 'validation.apiKeyRequired'),
+      secretKey: z.string().min(1, 'validation.secretKeyRequired'),
+      pageUid: z.string().min(1, 'validation.paymentPageUidRequired'),
     })
     const result = schema.safeParse(data)
     if (!result.success) {
@@ -140,9 +140,9 @@ const bitEntry: RegistryEntry = {
 
   validateConfig(data) {
     const schema = z.object({
-      apiKey:     z.string().min(1, 'API Key נדרש'),
-      secret:     z.string().min(1, 'Secret נדרש'),
-      merchantId: z.string().min(1, 'Merchant ID נדרש'),
+      apiKey:     z.string().min(1, 'validation.apiKeyRequired'),
+      secret:     z.string().min(1, 'validation.secretRequired'),
+      merchantId: z.string().min(1, 'validation.merchantIdRequired'),
     })
     const result = schema.safeParse(data)
     if (!result.success) {
@@ -196,9 +196,9 @@ const payboxEntry: RegistryEntry = {
 
   validateConfig(data) {
     const schema = z.object({
-      apiKey:     z.string().min(1, 'API Key נדרש'),
-      secret:     z.string().min(1, 'Secret נדרש'),
-      merchantId: z.string().min(1, 'Merchant ID נדרש'),
+      apiKey:     z.string().min(1, 'validation.apiKeyRequired'),
+      secret:     z.string().min(1, 'validation.secretRequired'),
+      merchantId: z.string().min(1, 'validation.merchantIdRequired'),
     })
     const result = schema.safeParse(data)
     if (!result.success) {
@@ -250,8 +250,8 @@ const stripeEntry: RegistryEntry = {
 
   validateConfig(data) {
     const schema = z.object({
-      secretKey:     z.string().min(1, 'Secret Key נדרש'),
-      webhookSecret: z.string().min(1, 'Webhook Secret נדרש'),
+      secretKey:     z.string().min(1, 'validation.secretKeyRequired'),
+      webhookSecret: z.string().min(1, 'validation.webhookSecretRequired'),
       currency:      z.string().min(3).max(3, 'Currency code must be 3 letters (e.g. ILS, USD)'),
     })
     const result = schema.safeParse(data)

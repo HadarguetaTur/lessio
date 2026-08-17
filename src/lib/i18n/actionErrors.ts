@@ -30,3 +30,25 @@ export async function commonError(key: CommonErrorKey): Promise<string> {
   const t = await getTranslations('common.errors')
   return t(key)
 }
+
+/** Looks like `students.errors.fullNameRequired` rather than display copy. */
+const CATALOG_KEY = /^[a-z][\w]*(\.[\w]+)+$/
+
+/**
+ * Surfaces the first Zod issue from a `safeParse` failure.
+ *
+ * Schemas are usually declared at module scope, where no translator exists, so
+ * their messages are written as catalog keys instead of display copy. This
+ * resolves such a key, and falls back to the generic message for Zod's own
+ * built-in messages ("Invalid uuid") or a missing key — neither is worth
+ * showing a user verbatim.
+ */
+export async function zodError(issue?: { message: string }): Promise<string> {
+  if (!issue || !CATALOG_KEY.test(issue.message)) return commonError('invalidData')
+  const t = await getTranslations()
+  try {
+    return t(issue.message)
+  } catch {
+    return commonError('invalidData')
+  }
+}

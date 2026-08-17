@@ -10,7 +10,7 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { createTemplate, updateTemplate, deleteTemplate } from '@/lib/homework'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 export type ActionState = {
   error: string | null
@@ -18,9 +18,9 @@ export type ActionState = {
 }
 
 const TemplateSchema = z.object({
-  title:   z.string().min(1, 'כותרת נדרשת').max(200),
+  title:   z.string().min(1, 'validation.titleRequired').max(200),
   subject: z.string().max(100).optional(),
-  body:    z.string().min(1, 'תוכן נדרש').max(2000),
+  body:    z.string().min(1, 'validation.bodyRequired').max(2000),
 })
 
 export async function createTemplateAction(
@@ -45,7 +45,7 @@ export async function createTemplateAction(
 
   const parsed = TemplateSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   try {
@@ -87,7 +87,7 @@ export async function updateTemplateAction(
 
   const parsed = TemplateSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
+    return { error: await zodError(parsed.error.issues[0]) }
   }
 
   try {

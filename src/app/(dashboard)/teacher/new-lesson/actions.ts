@@ -7,7 +7,7 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 import { checkLessonCalendarConflicts } from '@/lib/google-calendar/checkLessonCalendarConflicts'
 import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 const TeacherLessonSchema = z.object({
   student_id:       z.string().uuid(),

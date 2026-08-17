@@ -8,7 +8,7 @@ import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { receiptEmail } from '@/lib/email/templates/receipt'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { notifyMultiple, getOwnerAndAdminProfileIds } from '@/lib/notifications'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 export async function markAsPaid(
   chargeId: string,

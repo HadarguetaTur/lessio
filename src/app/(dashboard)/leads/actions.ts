@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { updateLeadStatus as libUpdateLeadStatus, updateLeadNotes as libUpdateLeadNotes, LeadStatus } from '@/lib/leads'
-import { commonError } from '@/lib/i18n/actionErrors'
+import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 export async function updateLeadStatus(
   leadId: string,

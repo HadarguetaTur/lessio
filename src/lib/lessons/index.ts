@@ -285,7 +285,7 @@ export async function updateLessonStatus(
     .eq('organization_id', organizationId)
     .single()
 
-  if (!current) throw new Error('שיעור לא נמצא')
+  if (!current) throw new Error('validation.lessonNotFound')
   if (!isValidStatusTransition(current.status, status)) {
     throw new Error('לא ניתן לשנות סטטוס של שיעור שבוטל')
   }

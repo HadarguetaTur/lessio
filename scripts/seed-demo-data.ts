@@ -227,7 +227,20 @@ async function main(): Promise<void> {
     TOMORROW_LESSON_ID,
     ...Array.from({ length: HISTORY_WEEKS }, (_, i) => historyLessonId(i)),
   ]
-  await db.from('lessons').delete().in('id', allDemoLessonIds)
+  // charges.lesson_id is a plain FK with no ON DELETE rule, so a single leftover
+  // charge (e.g. the cancellation charge the bot writes during a demo run) aborts
+  // the whole batched DELETE — every lesson then fails re-insert as a duplicate and
+  // the "tomorrow" lesson silently keeps yesterday's date. Clear our own charges
+  // first; step 5 regenerates them through the real billing engine.
+  const { error: chargeDelErr } = await db
+    .from('charges')
+    .delete()
+    .eq('organization_id', orgId)
+    .in('lesson_id', allDemoLessonIds)
+  if (chargeDelErr) fail(`Failed to clear demo lesson charges: ${chargeDelErr.message}`)
+
+  const { error: lessonDelErr } = await db.from('lessons').delete().in('id', allDemoLessonIds)
+  if (lessonDelErr) fail(`Failed to clear demo lessons: ${lessonDelErr.message}`)
 
   const now = DateTime.now().setZone(timezone)
   // History anchor: a Monday safely in the past (≥8 days ago) so it can never

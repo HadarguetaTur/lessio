@@ -29,6 +29,7 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { progressReportEmail } from '@/lib/email/templates/progressReport'
 import { parseAppLocale } from '@/lib/i18n/locale'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export type GoalActionState = { error: string | null; success?: boolean }
 
@@ -46,17 +47,17 @@ export async function createGoalAction(
   const session = await getSession()
 
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const parsed = GoalSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
 
   const { studentId, subject, description, targetDate } = parsed.data
 
@@ -89,17 +90,17 @@ export async function updateGoalStatusAction(
   const session = await getSession()
 
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const parsed = UpdateStatusSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: 'נתונים לא תקינים' }
+  if (!parsed.success) return { error: await commonError('invalidData') }
 
   const { goalId, studentId, status } = parsed.data
 
@@ -166,17 +167,17 @@ export async function deleteGoalAction(
   const session = await getSession()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const parsed = DeleteGoalSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: 'נתונים לא תקינים' }
+  if (!parsed.success) return { error: await commonError('invalidData') }
 
   try {
     await deleteGoal(session.orgId, parsed.data.goalId)
@@ -218,12 +219,12 @@ export async function createExamAction(
 ): Promise<ExamActionState> {
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const raw = Object.fromEntries(formData)
@@ -237,7 +238,7 @@ export async function createExamAction(
     notes: raw.notes,
   })
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   try {
@@ -265,12 +266,12 @@ export async function updateExamAction(
 ): Promise<ExamActionState> {
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const raw = Object.fromEntries(formData)
@@ -285,7 +286,7 @@ export async function updateExamAction(
     notes: raw.notes,
   })
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const { examId, studentId, ...rest } = parsed.data
@@ -309,16 +310,16 @@ export async function deleteExamAction(
 ): Promise<ExamActionState> {
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const parsed = DeleteExamSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: 'נתונים לא תקינים' }
+  if (!parsed.success) return { error: await commonError('invalidData') }
 
   try {
     await deleteExam(session.orgId, parsed.data.examId)
@@ -343,12 +344,12 @@ export async function generateProgressReportAction(
 ): Promise<ProgressReportActionResult> {
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const db = createServiceRoleClient()
@@ -389,12 +390,12 @@ export async function sendProgressReportEmailAction(
 ): Promise<SendProgressReportResult> {
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const emailParsed = z.string().trim().email().safeParse(recipientEmail)

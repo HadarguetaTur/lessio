@@ -30,6 +30,8 @@ import {
   hasOptOutIntent,
   hasResumeIntent,
 } from '@/lib/whatsapp'
+import { parseTemplateStatusUpdates, type TemplateStatusUpdate } from '@/lib/whatsapp/parsePayload'
+import { upsertTemplateStatus } from '@/lib/whatsapp/templateStatus'
 import { isOptedOut, setParentOptOut } from '@/lib/whatsapp/optOut'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
@@ -144,6 +146,7 @@ export async function POST(request: NextRequest) {
   }
 
   const messages = parseWebhookPayload(body)
+  const templateStatusUpdates = parseTemplateStatusUpdates(body)
 
   // Process messages in the background so Meta gets its 200 immediately —
   // slow handlers (AI assistant, outbound sends) must not delay the ack,
@@ -154,6 +157,15 @@ export async function POST(request: NextRequest) {
     for (const msg of messages) {
       await processMessage(msg, origin).catch(err => {
         console.error('[whatsapp/webhook] Error processing message', { messageId: msg.messageId, err })
+      })
+    }
+
+    for (const update of templateStatusUpdates) {
+      await recordTemplateStatusUpdate(update).catch(err => {
+        console.error('[whatsapp/webhook] Error recording template status', {
+          templateName: update.templateName,
+          err,
+        })
       })
     }
   })()
@@ -212,6 +224,46 @@ async function notifyUnroutablePhoneNumber(phoneNumberId: string): Promise<void>
       err,
     })
   }
+}
+
+/**
+ * Records a template approval transition Meta pushed for one of our WABAs.
+ *
+ * Routed by `whatsapp_waba_id`, not `whatsapp_phone_number_id`: a template
+ * status change names the business account, not a phone line. An unknown WABA
+ * is logged and dropped rather than escalated — unlike an unroutable inbound
+ * message, nobody is waiting on a reply.
+ */
+async function recordTemplateStatusUpdate(update: TemplateStatusUpdate): Promise<void> {
+  const db = createServiceRoleClient()
+
+  const { data: org, error } = await db
+    .from('organizations')
+    .select('id')
+    .eq('whatsapp_waba_id', update.wabaId)
+    .maybeSingle()
+
+  if (error || !org) {
+    console.warn('[whatsapp/webhook] Template status update for unknown WABA — ignoring', {
+      wabaId: update.wabaId,
+      templateName: update.templateName,
+    })
+    return
+  }
+
+  await upsertTemplateStatus(org.id, {
+    templateName: update.templateName,
+    language: update.language,
+    status: update.status,
+    reason: update.reason,
+  })
+
+  console.info('[whatsapp/webhook] Template status recorded', {
+    orgId: org.id,
+    templateName: update.templateName,
+    language: update.language,
+    status: update.status,
+  })
 }
 
 async function processMessage(

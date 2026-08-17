@@ -2042,3 +2042,124 @@ describe('WhatsApp opt-out', () => {
     )
   })
 })
+
+// ── Template approval status ──────────────────────────────────────────────────
+
+describe('POST /api/whatsapp/webhook — template status updates', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.WHATSAPP_APP_SECRET = APP_SECRET
+    mockIsRateLimited.mockResolvedValue(false)
+    mockClaimIncomingMessage.mockResolvedValue(true)
+  })
+
+  function makeStatusPayload(overrides: Record<string, unknown> = {}) {
+    return {
+      object: 'whatsapp_business_account',
+      entry: [{
+        id: 'waba-1',
+        changes: [{
+          field: 'message_template_status_update',
+          value: {
+            event: 'APPROVED',
+            message_template_id: 987,
+            message_template_name: 'lessio_lesson_reminder_en_c1',
+            message_template_language: 'en',
+            reason: 'NONE',
+            ...overrides,
+          },
+        }],
+      }],
+    }
+  }
+
+  it('records the new status against the org that owns the WABA', async () => {
+    const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID }, error: null })
+      if (table === 'whatsapp_template_statuses') return { upsert }
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeStatusPayload()))
+
+    expect(res.status).toBe(200)
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organization_id: ORG_ID,
+        template_name: 'lessio_lesson_reminder_en_c1',
+        language: 'en',
+        status: 'APPROVED',
+        reason: null,
+      }),
+      { onConflict: 'organization_id,template_name,language' }
+    )
+  })
+
+  it('stores the rejection reason Meta gave', async () => {
+    const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID }, error: null })
+      if (table === 'whatsapp_template_statuses') return { upsert }
+      return buildChain({ data: null, error: null })
+    })
+
+    await POST(makeRequest(makeStatusPayload({ event: 'REJECTED', reason: 'INVALID_FORMAT' })))
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'REJECTED', reason: 'INVALID_FORMAT' }),
+      expect.anything()
+    )
+  })
+
+  it('ignores a status update for a WABA we do not know, still returning 200', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: null, error: null })
+      if (table === 'whatsapp_template_statuses') return { upsert }
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeStatusPayload()))
+
+    expect(res.status).toBe(200)
+    expect(upsert).not.toHaveBeenCalled()
+
+    warnSpy.mockRestore()
+  })
+
+  // Regression for the schema fix: a status change used to fail the whole
+  // safeParse, silently dropping any real message batched alongside it.
+  it('still handles an inbound message batched with a status change', async () => {
+    const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' },
+          error: null,
+        })
+      }
+      if (table === 'whatsapp_template_statuses') return { upsert }
+      return buildChain({ data: null, error: null })
+    })
+
+    const payload = {
+      object: 'whatsapp_business_account',
+      entry: [{
+        id: 'waba-1',
+        changes: [
+          makeStatusPayload().entry[0].changes[0],
+          makeWebhookPayload(NEUTRAL_TEXT).entry[0].changes[0],
+        ],
+      }],
+    }
+
+    const res = await POST(makeRequest(payload))
+
+    expect(res.status).toBe(200)
+    // The message reached the pipeline: an unknown sender becomes a lead.
+    expect(mockSendUnknownParentReply).toHaveBeenCalled()
+    expect(upsert).toHaveBeenCalled()
+  })
+})

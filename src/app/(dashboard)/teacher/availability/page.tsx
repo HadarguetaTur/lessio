@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { Trash2 } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
-import { getTeacherAvailability, DAY_NAMES, AvailabilityWindow } from '@/lib/availability'
+import { getTeacherAvailability, DAY_KEYS, AvailabilityWindow } from '@/lib/availability'
 import { AddAvailabilityForm } from '@/components/dashboard/availability/AddAvailabilityForm'
 import { addTeacherAvailability, deleteTeacherAvailability } from './actions'
 
@@ -14,6 +14,7 @@ function fmt(t: string) {
 export default async function TeacherAvailabilityPage() {
   const { userId, orgId, role } = await getSession()
   const t = await getTranslations('teacherSelf.availability')
+  const tCommon = await getTranslations('common')
 
   if (role !== 'teacher') {
     redirect('/dashboard')
@@ -49,7 +50,7 @@ export default async function TeacherAvailabilityPage() {
             className="flex items-start gap-4 bg-white rounded-lg border border-gray-200 px-4 py-3"
           >
             <span className="w-16 shrink-0 text-sm font-medium text-gray-700 pt-0.5">
-              {DAY_NAMES[day]}
+              {tCommon(`days.${DAY_KEYS[day]}`)}
             </span>
 
             {dayWindows.length === 0 ? (

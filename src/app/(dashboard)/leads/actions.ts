@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { updateLeadStatus as libUpdateLeadStatus, updateLeadNotes as libUpdateLeadNotes, LeadStatus } from '@/lib/leads'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export async function updateLeadStatus(
   leadId: string,
@@ -14,7 +15,7 @@ export async function updateLeadStatus(
   requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'leads')
@@ -41,7 +42,7 @@ export async function saveLeadNotes(
   requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'leads')

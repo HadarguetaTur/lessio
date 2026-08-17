@@ -184,7 +184,8 @@ async function processOrg(db: any, org: any): Promise<void> {
           assignment.title,
           assignment.due_date || dueTomorrowLabel(locale),
         ],
-        locale
+        locale,
+        { title: assignment.title, due_date_suffix: dueDateSuffix }
       )
     } catch (err) {
       sendError = String(err)

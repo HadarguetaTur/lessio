@@ -9,6 +9,7 @@ import { encryptWithKey } from '@/lib/crypto'
 import { ICountProvider } from '@/lib/receipts/icount'
 import { SumitProvider } from '@/lib/receipts/sumit'
 import type { ReceiptProviderType } from '@/lib/receipts/factory'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 function getEncryptionKey(): string {
   const key = process.env.PAYMENT_CONFIG_ENCRYPTION_KEY
@@ -126,7 +127,7 @@ export async function saveReceiptConfigAction(
 
   const parsed = ReceiptConfigSchema.safeParse(raw)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   // ── Test credentials against the provider ────────────────────────────────

@@ -12,6 +12,7 @@ import { getStudentLessons, getStudentFinancial, getStudentPrimaryParent, type S
 import { getAssignments, type HomeworkAssignment } from '@/lib/homework'
 import { getSubscriptions, type Subscription } from '@/lib/subscriptions'
 import { getGoalsForStudent, type StudentGoal } from '@/lib/goals'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 type ActionState = { error: string } | null
 
@@ -47,7 +48,7 @@ export async function createStudent(
 
   const parsed = studentSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   let phoneNorm: string | null = null
@@ -63,7 +64,7 @@ export async function createStudent(
   }
 
   const session = await getSession()
-  if (session.role !== 'owner' && session.role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (session.role !== 'owner' && session.role !== 'admin') return { error: await commonError('noPermission') }
   requireMutation(session)
   await requireQuotaCapacity(session.orgId, 'students')
   const orgId = session.orgId
@@ -263,7 +264,7 @@ export async function updateStudent(
 
   const parsed = studentSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const session = await getSession()
@@ -304,7 +305,7 @@ export async function updateStudent(
     return null
   }
 
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (role !== 'owner' && role !== 'admin') return { error: await commonError('noPermission') }
 
   let phoneForDb: string | null = parsed.data.phone ?? null
   if (parsed.data.phone) {

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createLessonSeries } from '@/lib/lessons/createSeries'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 const SeriesFormSchema = z.object({
   teacher_id: z.string().uuid(),
@@ -34,7 +35,7 @@ export async function createSeriesAction(
   requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const parsed = SeriesFormSchema.safeParse({
@@ -49,7 +50,7 @@ export async function createSeriesAction(
 
   if (!parsed.success) {
     const firstError = parsed.error.issues[0]
-    return { error: firstError?.message ?? 'נתונים לא תקינים' }
+    return { error: firstError?.message ?? await commonError('invalidData') }
   }
 
   const { teacher_id, student_id, day_of_week, start_time, duration_minutes, frequency, until } =

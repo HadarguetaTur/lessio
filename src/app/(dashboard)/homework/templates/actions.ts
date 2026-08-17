@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { createTemplate, updateTemplate, deleteTemplate } from '@/lib/homework'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export type ActionState = {
   error: string | null
@@ -31,7 +32,7 @@ export async function createTemplateAction(
   requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'homework')
@@ -44,7 +45,7 @@ export async function createTemplateAction(
 
   const parsed = TemplateSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   try {
@@ -73,7 +74,7 @@ export async function updateTemplateAction(
   requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'homework')
@@ -86,7 +87,7 @@ export async function updateTemplateAction(
 
   const parsed = TemplateSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   try {
@@ -113,7 +114,7 @@ export async function deleteTemplateAction(
   requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'homework')

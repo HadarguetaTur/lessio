@@ -3,13 +3,14 @@
 import { useActionState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
-import { DAY_NAMES } from '@/lib/availability/constants'
+import { DAY_KEYS } from '@/lib/availability/constants'
 
 type ActionState = { error: string } | null
 type FormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
 
 export function AddAvailabilityForm({ action }: { action: FormAction }) {
   const t = useTranslations('teacherSelf.availability')
+  const tCommon = useTranslations('common')
   const [state, formAction, pending] = useActionState(action, null)
 
   return (
@@ -33,9 +34,9 @@ export function AddAvailabilityForm({ action }: { action: FormAction }) {
             required
             className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {DAY_NAMES.map((name, i) => (
-              <option key={i} value={i}>
-                {name}
+            {DAY_KEYS.map((key, i) => (
+              <option key={key} value={i}>
+                {tCommon(`days.${key}`)}
               </option>
             ))}
           </select>

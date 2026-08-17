@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 const RetentionSchema = z.object({
   retention_days: z.union([
@@ -23,7 +24,7 @@ export async function saveDataRetentionAction(
   const session = await getSession()
 
   if (session.role !== 'owner') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   try {

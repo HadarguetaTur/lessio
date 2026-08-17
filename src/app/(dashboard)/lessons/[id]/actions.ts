@@ -21,6 +21,7 @@ import { decryptToken } from '@/lib/crypto'
 import { botString } from '@/lib/whatsapp/strings'
 import { resolveRecipientLocale, toLuxonLocale } from '@/lib/i18n/locale'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 const VALID_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
 
@@ -37,7 +38,7 @@ export async function setLessonStatus(
   const { orgId, role } = await getSession()
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const status = formData.get('status') as LessonStatus
@@ -237,7 +238,7 @@ export async function cancelSeriesAction(
   const { orgId, role } = await getSession()
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const scope = formData.get('scope') as CancelSeriesScope
@@ -299,7 +300,7 @@ export async function addLessonNote(
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const parsed = NoteSchema.safeParse(Object.fromEntries(formData))
@@ -351,7 +352,7 @@ export async function deleteLessonNote(
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const noteId = formData.get('noteId') as string | null
@@ -396,11 +397,11 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const db = createServiceRoleClient()

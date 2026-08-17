@@ -6,7 +6,8 @@
  *   1. Check whatsapp_processed_messages for a row from `phone` in `orgId`
  *      within the last 24 hours.
  *   2. Within window  → sendTextMessage (customisable org template body)
- *   3. Outside window → sendTemplateMessage (Meta-approved template)
+ *   3. Outside window → sendTemplateMessage (Meta-approved template), preferring
+ *      one the org authored and got approved itself over Lessio's built-in copy.
  *
  * Falls back to sendTextMessage if no approved template is registered for
  * the given templateType (fail-safe — still sends something).
@@ -17,6 +18,8 @@ import type { AppLocale } from '@/lib/i18n/locale'
 import { resolveTemplate, type MessageTemplateType } from './templates'
 import { sendTextMessage, sendTemplateMessage } from './index'
 import { getApprovedTemplate } from './approvedTemplates'
+import { getApprovedCustomTemplate } from './templateStatus'
+import { buildCustomComponents } from './submitTemplate'
 import { isOptedOut } from './optOut'
 
 /** Why a send did not happen. `sent: true` means it was handed to Meta. */
@@ -55,9 +58,31 @@ export async function sendSmartMessage(params: {
     return { sent: true }
   }
 
-  // Outside window — use the approved template in the recipient's language,
-  // falling back to the Hebrew one. Falling back to TEXT here would fail with
-  // error 131047, so an approved template in the wrong language still beats it.
+  // Outside window — a template the org wrote itself and got approved wins, so
+  // what a parent receives out of window is the copy the owner edited in
+  // settings rather than Lessio's stock wording.
+  //
+  // Only an exact language match counts: an org that approved Hebrew copy but
+  // not English should still get the built-in English template below, not
+  // Hebrew. The lookup never throws — on failure it returns null and we fall
+  // through to the built-in chain.
+  const custom = await getApprovedCustomTemplate(orgId, templateType, locale)
+
+  if (custom) {
+    await sendTemplateMessage(
+      phone,
+      accessToken,
+      phoneNumberId,
+      custom.name,
+      custom.language,
+      buildCustomComponents(custom.varOrder, vars, locale)
+    )
+    return { sent: true }
+  }
+
+  // Use the built-in approved template in the recipient's language, falling back
+  // to the Hebrew one. Falling back to TEXT here would fail with error 131047,
+  // so an approved template in the wrong language still beats it.
   const approved = getApprovedTemplate(templateType, locale) ?? getApprovedTemplate(templateType, 'he')
 
   if (approved) {

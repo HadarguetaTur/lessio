@@ -16,6 +16,7 @@ import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { decryptToken } from '@/lib/crypto'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { homeworkGradedEmail } from '@/lib/email/templates/homeworkGraded'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export type GradeActionState = { error: string | null; success?: boolean }
 
@@ -33,20 +34,20 @@ export async function gradeSubmissionAction(
   const session = await getSession()
 
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   await requireFeature(session.orgId, 'homework')
 
   const parsed = GradeSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const { submissionId, assignmentId, score, feedback } = parsed.data

@@ -8,6 +8,7 @@
  */
 
 import { useActionState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { Trash2 } from 'lucide-react'
 import type { LessonNote } from '@/lib/lessons/notes'
 import type { AddNoteResult, DeleteNoteResult } from '@/app/(dashboard)/lessons/[id]/actions'
@@ -26,15 +27,18 @@ export function LessonNotesSection({
   deleteNoteAction,
   canAdd,
 }: Props) {
+  const t = useTranslations('lessons')
+  const tCommon = useTranslations('common')
+  const locale = useLocale()
   const [addState, addAction, addPending] = useActionState(addNoteAction, { error: null })
   const [deleteState, deleteAction] = useActionState(deleteNoteAction, { error: null })
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-semibold text-gray-700">הערות שיעור</h2>
+      <h2 className="text-sm font-semibold text-gray-700">{t('lessonNotesTitle')}</h2>
 
       {notes.length === 0 && (
-        <p className="text-sm text-gray-400">אין הערות לשיעור זה.</p>
+        <p className="text-sm text-gray-400">{t('lessonNotesEmpty')}</p>
       )}
 
       {notes.length > 0 && (
@@ -45,9 +49,9 @@ export function LessonNotesSection({
                 <div className="space-y-1 min-w-0">
                   <p className="text-gray-700 whitespace-pre-wrap">{note.body}</p>
                   <p className="text-xs text-gray-400">
-                    {note.teacherName} · {new Date(note.createdAt).toLocaleDateString('he-IL')}
+                    {note.teacherName} · {new Date(note.createdAt).toLocaleDateString(locale === 'he' ? 'he-IL' : 'en-US')}
                     {note.visibleToParent && (
-                      <span className="ms-1.5 text-[10px] text-primary bg-primary/10 px-1 py-0.5 rounded">גלוי להורה</span>
+                      <span className="ms-1.5 text-[10px] text-primary bg-primary/10 px-1 py-0.5 rounded">{t('lessonNoteVisibleToParent')}</span>
                     )}
                   </p>
                 </div>
@@ -55,7 +59,7 @@ export function LessonNotesSection({
                   <input type="hidden" name="noteId" value={note.id} />
                   <button
                     type="submit"
-                    title="מחק הערה"
+                    title={t('lessonNoteDelete')}
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 p-1 rounded"
                   >
                     <Trash2 size={14} />
@@ -77,25 +81,25 @@ export function LessonNotesSection({
             name="body"
             rows={3}
             required
-            placeholder="הוסף הערה על השיעור..."
+            placeholder={t('lessonNotePlaceholder')}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
             <input type="checkbox" name="visibleToParent" value="true" className="rounded border-gray-300" />
-            הצג להורה
+            {t('lessonNoteShowToParent')}
           </label>
           {addState.error && (
             <p className="text-xs text-red-600">{addState.error}</p>
           )}
           {addState.success && (
-            <p className="text-xs text-green-600">ההערה נשמרה.</p>
+            <p className="text-xs text-green-600">{t('lessonNoteSaved')}</p>
           )}
           <button
             type="submit"
             disabled={addPending}
             className="text-sm px-4 py-1.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
-            {addPending ? 'שומר...' : 'הוסף הערה'}
+            {addPending ? tCommon('actions.saving') : t('lessonNoteAdd')}
           </button>
         </form>
       )}

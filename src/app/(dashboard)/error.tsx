@@ -33,26 +33,21 @@ export default function DashboardError({
         <div className="mx-auto w-full max-w-md rounded-xl border border-border bg-card p-8 shadow-sm">
           <ArrowUpCircle className="mx-auto h-12 w-12 text-orange-500 mb-4" />
           <h1 className="text-xl font-bold text-foreground mb-2">
-            {t('quotaExceeded.title', { fallback: 'הגעת למכסה של החבילה' })}
+            {t('quotaExceeded.title')}
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
             {quotaKind === 'students'
-              ? t('quotaExceeded.students', {
-                  fallback: 'הגעת למספר התלמידים המרבי בחבילה הנוכחית. שדרג כדי להוסיף עוד תלמידים.',
-                })
-              : t('quotaExceeded.lessons', {
-                  fallback:
-                    'הגעת למספר השיעורים החודשי המרבי בחבילה הנוכחית. שדרג כדי לתזמן עוד שיעורים.',
-                })}
+              ? t('quotaExceeded.students')
+              : t('quotaExceeded.lessons')}
           </p>
           <div className="flex flex-col gap-3">
             <Button asChild>
               <Link href="/account/billing?upgrade=quota">
-                {t('quotaExceeded.upgrade', { fallback: 'שדרג חבילה' })}
+                {t('quotaExceeded.upgrade')}
               </Link>
             </Button>
             <Button variant="outline" onClick={reset}>
-              {t('quotaExceeded.retry', { fallback: 'נסה שוב' })}
+              {t('quotaExceeded.retry')}
             </Button>
           </div>
         </div>
@@ -64,18 +59,18 @@ export default function DashboardError({
     <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
       <AlertTriangle className="mx-auto h-10 w-10 text-destructive mb-4" />
       <h1 className="text-xl font-bold text-foreground mb-2">
-        {t('generic.title', { fallback: 'משהו השתבש' })}
+        {t('generic.title')}
       </h1>
       <p className="text-sm text-muted-foreground mb-6">
-        {t('generic.description', { fallback: 'אירעה שגיאה בלתי צפויה. ניתן לנסות שוב.' })}
+        {t('generic.description')}
       </p>
       <div className="flex gap-3">
         <Button onClick={reset}>
-          {t('generic.retry', { fallback: 'נסה שוב' })}
+          {t('generic.retry')}
         </Button>
         <Button variant="outline" asChild>
           <Link href="/dashboard">
-            {t('generic.backToDashboard', { fallback: 'חזרה לדשבורד' })}
+            {t('generic.backToDashboard')}
           </Link>
         </Button>
       </div>

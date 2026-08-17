@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getSession } from '@/lib/auth/session'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 type ActionState = { error: string } | null
 
@@ -16,7 +17,7 @@ const groupSchema = z.object({
 async function requireOwnerOrAdmin() {
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin') {
-    throw new Error('אין הרשאה לביצוע פעולה זו')
+    throw new Error(await commonError('noPermission'))
   }
   return session
 }
@@ -34,7 +35,7 @@ export async function createGroup(
   try {
     session = await requireOwnerOrAdmin()
   } catch {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const raw = {
@@ -45,7 +46,7 @@ export async function createGroup(
 
   const parsed = groupSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const { name, status, student_ids } = parsed.data
@@ -79,7 +80,7 @@ export async function updateGroup(
   try {
     await requireOwnerOrAdmin()
   } catch {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const raw = {
@@ -90,7 +91,7 @@ export async function updateGroup(
 
   const parsed = groupSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const { name, status, student_ids } = parsed.data
@@ -119,7 +120,7 @@ export async function deleteGroup(id: string): Promise<ActionState> {
   try {
     await requireOwnerOrAdmin()
   } catch {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const db = createServiceRoleClient()
@@ -138,7 +139,7 @@ export async function toggleGroupStatus(
   try {
     await requireOwnerOrAdmin()
   } catch {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const newStatus = currentStatus === 'active' ? 'paused' : 'active'

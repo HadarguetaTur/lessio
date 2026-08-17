@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { saveAutomationSettings, type AutomationSettingsResult } from './automations-actions'
 
 type OrgAutomations = {
@@ -13,54 +14,28 @@ type OrgAutomations = {
   ai_assistant_enabled:                boolean
 }
 
+// Labels and descriptions live in the catalog under
+// `settings.automations.flows.<key>` — the key is the single source of truth
+// here so the two never drift.
 const FLOWS = [
-  {
-    key: 'automation_lesson_reminder_enabled' as const,
-    label: 'תזכורת לשיעור',
-    description: 'שליחת הודעת WhatsApp להורה לפני השיעור',
-    hasHours: true,
-  },
-  {
-    key: 'automation_cancellation_enabled' as const,
-    label: 'ביטול שיעור דרך WhatsApp',
-    description: 'הורים יכולים לבטל שיעורים בשיחה עם הבוט',
-    hasHours: false,
-  },
-  {
-    key: 'automation_payment_request_enabled' as const,
-    label: 'בקשת תשלום אחרי שיעור',
-    description: 'שליחת לינק תשלום אוטומטי לאחר השיעור',
-    hasHours: false,
-  },
-  {
-    key: 'automation_dunning_enabled' as const,
-    label: 'הודעות גביה',
-    description: 'תזכורות חוב אוטומטיות ב-3, 7 ו-14 יום (ברירת מחדל: כבוי)',
-    hasHours: false,
-  },
-  {
-    key: 'automation_new_leads_enabled' as const,
-    label: 'מענה לפניות חדשות',
-    description: 'תגובה אוטומטית להורים שפונים בפעם הראשונה',
-    hasHours: false,
-  },
-  {
-    key: 'ai_assistant_enabled' as const,
-    label: 'AI Assistant',
-    description: 'מענה חופשי בשפה טבעית לשאלות שאינן מכוסות בפלואים הקיימים',
-    hasHours: false,
-  },
+  { key: 'automation_lesson_reminder_enabled' as const, hasHours: true },
+  { key: 'automation_cancellation_enabled' as const, hasHours: false },
+  { key: 'automation_payment_request_enabled' as const, hasHours: false },
+  { key: 'automation_dunning_enabled' as const, hasHours: false },
+  { key: 'automation_new_leads_enabled' as const, hasHours: false },
+  { key: 'ai_assistant_enabled' as const, hasHours: false },
 ]
 
 const initialState: AutomationSettingsResult = { error: null }
 
 export function AutomationsSettings({ org }: { org: OrgAutomations }) {
+  const t = useTranslations('settings.automations')
   const [state, formAction, isPending] = useActionState(saveAutomationSettings, initialState)
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h2 className="text-base font-semibold text-gray-900 mb-1">אוטומציות WhatsApp</h2>
-      <p className="text-sm text-gray-500 mb-6">בחר אילו פלואים פעילים עבור הארגון שלך</p>
+      <h2 className="text-base font-semibold text-gray-900 mb-1">{t('title')}</h2>
+      <p className="text-sm text-gray-500 mb-6">{t('subtitle')}</p>
 
       <form action={formAction} className="space-y-0">
         {FLOWS.map((flow, i) => (
@@ -71,20 +46,22 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
             }`}
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">{flow.label}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{flow.description}</p>
+              <p className="text-sm font-medium text-gray-900">{t(`flows.${flow.key}.label`)}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t(`flows.${flow.key}.description`)}</p>
 
               {flow.hasHours && org[flow.key] && (
                 <div className="mt-2 flex items-center gap-2">
-                  <label className="text-xs text-gray-500">שליחה</label>
+                  <label className="text-xs text-gray-500">{t('sendLabel')}</label>
                   <select
                     name="automation_lesson_reminder_hours"
                     defaultValue={org.automation_lesson_reminder_hours}
                     className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
                   >
-                    <option value={24}>24 שעות לפני</option>
-                    <option value={12}>12 שעות לפני</option>
-                    <option value={2}>2 שעות לפני</option>
+                    {[24, 12, 2].map((h) => (
+                      <option key={h} value={h}>
+                        {t('hoursBefore', { h })}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
@@ -118,7 +95,7 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
             disabled={isPending}
             className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'שומר…' : 'שמור הגדרות'}
+            {isPending ? t('saving') : t('save')}
           </button>
         </div>
       </form>

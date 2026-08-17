@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { sendPortalMessage } from '@/lib/portal/messages'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export type ReplyResult = { error: string | null }
 
@@ -17,7 +18,7 @@ export async function replyToPortalMessageAction(
   try {
     requireMutation(session)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const body = (formData.get('body') as string | null)?.trim()

@@ -19,6 +19,7 @@ import {
   getSumitCredentialsFromEnv,
 } from '@/lib/saas/sumit-checkout'
 import { confirmSumitPayment } from '@/lib/saas/sumit'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 
 
@@ -30,7 +31,7 @@ export async function startFreeTrialSaas(): Promise<{ error: string } | { ok: tr
   try {
     ;({ orgId } = await getOwnerOnboardingSession())
   } catch {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   const plan = await getSaasPlanByName('free')
@@ -61,7 +62,7 @@ export async function beginPaidSaasCheckout(
   try {
     ;({ orgId } = await getOwnerOnboardingSession())
   } catch {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   const plan = await getSaasPlanByName(parsedName.data)
@@ -206,7 +207,7 @@ export async function submitCustomSaasPlanInquiry(
   try {
     ;({ orgId } = await getOwnerOnboardingSession())
   } catch {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   const db = createServiceRoleClient()

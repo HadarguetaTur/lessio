@@ -10,6 +10,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 import { checkTeacherAvailability } from '@/lib/availability/checkTeacherAvailability'
 import { checkLessonCalendarConflicts, CalendarConflict } from '@/lib/google-calendar/checkLessonCalendarConflicts'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 const lessonStatusZ = z.enum(['scheduled', 'completed', 'cancelled', 'no_show'])
 
@@ -57,7 +58,7 @@ async function assertStudentsAssignedToTeacher(
   teacherId: string,
   studentIds: string[]
 ): Promise<string | null> {
-  if (studentIds.length === 0) return 'נתונים לא תקינים'
+  if (studentIds.length === 0) return await commonError('invalidData')
   const db = createServiceRoleClient()
   const { data, error } = await db
     .from('students')
@@ -79,7 +80,7 @@ export async function createLessonAction(
   const { orgId, role, profileId } = session
   requireMutation(session)
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
   await requireQuotaCapacity(orgId, 'lessons_monthly')
 
@@ -108,10 +109,10 @@ export async function createLessonAction(
         duration_minutes: formData.get('duration_minutes'),
         status: formData.get('status'),
       })
-      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
 
       const { teacher_id, student_id, date, start_time, duration_minutes, status } = parsed.data
-      if (teacher_id !== teacher.id) return { error: 'אין הרשאה' }
+      if (teacher_id !== teacher.id) return { error: await commonError('noPermission') }
       const assignErr = await assertStudentsAssignedToTeacher(orgId, teacher.id, [student_id])
       if (assignErr) return { error: assignErr }
 
@@ -156,7 +157,7 @@ export async function createLessonAction(
         status: formData.get('status'),
         price_per_student: rawPrice && String(rawPrice).trim() ? rawPrice : null,
       })
-      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
 
       const { teacher_id, student_ids, date, start_time, duration_minutes, status, price_per_student } =
         parsed.data
@@ -200,7 +201,7 @@ export async function createLessonAction(
         duration_minutes: formData.get('duration_minutes'),
         status: formData.get('status'),
       })
-      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+      if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
 
       const { teacher_id, student_id, date, start_time, duration_minutes, status } = parsed.data
 

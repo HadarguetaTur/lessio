@@ -20,6 +20,7 @@ import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
+import { getT } from '@/lib/i18n/serverTranslator'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { isOptedOut } from '@/lib/whatsapp/optOut'
 import { getTranslations } from 'next-intl/server'
@@ -48,9 +49,10 @@ export async function generateMonthlyBilling(billingMonth: string) {
   const session = await getSession()
   requireMutation(session)
   await assertOrgNotSaasReadOnly(session.orgId)
+  const t = await getTranslations()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: t('common.errors.noPermission') }
   }
 
   const supabase = createServiceRoleClient()
@@ -76,7 +78,7 @@ export async function generateMonthlyBilling(billingMonth: string) {
       skipped: result.skipped.length,
     }
   } catch {
-    return { error: 'שגיאה ביצירת החיובים החודשיים' }
+    return { error: t('billing.errors.generateFailed') }
   }
 }
 
@@ -86,9 +88,10 @@ export async function recalculateStudentBilling(
 ) {
   const session = await getSession()
   requireMutation(session)
+  const t = await getTranslations()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: t('common.errors.noPermission') }
   }
 
   const supabase = createServiceRoleClient()
@@ -105,7 +108,7 @@ export async function recalculateStudentBilling(
     revalidateBillingSurfaces(studentId)
     return { error: null }
   } catch {
-    return { error: 'שגיאה בחישוב מחדש' }
+    return { error: t('billing.errors.recalculateFailed') }
   }
 }
 
@@ -113,9 +116,10 @@ export async function markBillingAsPaid(billingId: string) {
   const session = await getSession()
   requireMutation(session)
   await assertOrgNotSaasReadOnly(session.orgId)
+  const t = await getTranslations()
 
   if (session.role !== 'owner') {
-    return { error: 'רק בעלים יכול לסמן כשולם' }
+    return { error: t('billing.errors.markPaidOwnerOnly') }
   }
 
   const supabase = createServiceRoleClient()
@@ -127,7 +131,7 @@ export async function markBillingAsPaid(billingId: string) {
     .eq('organization_id', session.orgId)
     .single()
 
-  if (billingError || !billing) return { error: 'שגיאה בטעינת החיוב החודשי' }
+  if (billingError || !billing) return { error: t('billing.errors.loadBillingFailed') }
 
   const { data: existingCharge, error: chargeError } = await supabase
     .from('charges')
@@ -136,7 +140,7 @@ export async function markBillingAsPaid(billingId: string) {
     .eq('billing_record_id', billingId)
     .maybeSingle()
 
-  if (chargeError) return { error: 'שגיאה בטעינת חיוב ledger' }
+  if (chargeError) return { error: t('billing.errors.loadLedgerChargeFailed') }
 
   let chargeId = existingCharge?.id as string | undefined
   if (!chargeId) {
@@ -153,18 +157,18 @@ export async function markBillingAsPaid(billingId: string) {
       })
       chargeId = syncResult.chargeId ?? undefined
     } catch {
-      return { error: 'שגיאה בסנכרון החיוב ל-ledger' }
+      return { error: t('billing.errors.ledgerSyncFailed') }
     }
   }
 
   if (!chargeId) {
-    return { error: 'לא ניתן לסמן כשולם לפני שיוך הורה ואישור החיוב' }
+    return { error: t('billing.errors.markPaidTooEarly') }
   }
 
   try {
     await markChargeAsPaid(chargeId, session.orgId)
   } catch {
-    return { error: 'שגיאה בעדכון סטטוס התשלום' }
+    return { error: t('billing.errors.updatePaymentStatusFailed') }
   }
 
   revalidateBillingSurfaces(billing.student_id as string)
@@ -194,13 +198,14 @@ export async function setManualAdjustment(
 ) {
   const session = await getSession()
   requireMutation(session)
+  const t = await getTranslations()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: t('common.errors.noPermission') }
   }
 
   const parsed = manualAdjustmentSchema.safeParse({ billingId, amount, reason })
-  if (!parsed.success) return { error: 'נתונים לא תקינים' }
+  if (!parsed.success) return { error: t('common.errors.invalidData') }
 
   const supabase = createServiceRoleClient()
 
@@ -212,7 +217,7 @@ export async function setManualAdjustment(
     .eq('organization_id', session.orgId)
     .single()
 
-  if (!billing) return { error: 'רשומת חיוב לא נמצאה' }
+  if (!billing) return { error: t('billing.errors.billingNotFound') }
 
   const computedTotal =
     Number(billing.lessons_amount) +
@@ -234,7 +239,7 @@ export async function setManualAdjustment(
     .select('id, student_id, parent_id, billing_month, total_amount, is_paid, is_approved, updated_at')
     .single()
 
-  if (error) return { error: 'שגיאה בעדכון התאמה ידנית' }
+  if (error) return { error: t('billing.errors.updateAdjustmentFailed') }
 
   try {
     await syncMonthlyCharge({
@@ -248,7 +253,7 @@ export async function setManualAdjustment(
       paidAtHint: (updatedBilling.updated_at as string | null) ?? null,
     })
   } catch {
-    return { error: 'ההתאמה נשמרה אך סנכרון ledger נכשל' }
+    return { error: t('billing.errors.adjustmentSavedLedgerFailed') }
   }
 
   revalidateBillingSurfaces(updatedBilling.student_id as string)
@@ -264,9 +269,10 @@ export async function confirmCancellationCharge(
 ) {
   const session = await getSession()
   requireMutation(session)
+  const t = await getTranslations()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: t('common.errors.noPermission') }
   }
 
   const supabase = createServiceRoleClient()
@@ -282,7 +288,7 @@ export async function confirmCancellationCharge(
     .eq('id', eventId)
     .eq('organization_id', session.orgId)
 
-  if (error) return { error: 'שגיאה בעדכון אירוע הביטול' }
+  if (error) return { error: t('billing.errors.updateCancellationEventFailed') }
 
   revalidatePath('/billing')
   return { error: null }
@@ -311,13 +317,14 @@ export async function createSubscriptionAction(formData: {
 }) {
   const session = await getSession()
   requireMutation(session)
+  const t = await getTranslations()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: t('common.errors.noPermission') }
   }
 
   const parsed = createSubscriptionSchema.safeParse(formData)
-  if (!parsed.success) return { error: 'נתונים לא תקינים' }
+  if (!parsed.success) return { error: t('common.errors.invalidData') }
 
   try {
     await createSubscription({
@@ -328,7 +335,7 @@ export async function createSubscriptionAction(formData: {
     revalidatePath('/billing')
     return { error: null }
   } catch {
-    return { error: 'שגיאה ביצירת המנוי' }
+    return { error: t('billing.errors.createSubscriptionFailed') }
   }
 }
 
@@ -359,13 +366,14 @@ export async function updateSubscriptionAction(
 ) {
   const session = await getSession()
   requireMutation(session)
+  const t = await getTranslations()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: t('common.errors.noPermission') }
   }
 
   const parsed = updateSubscriptionSchema.safeParse(data)
-  if (!parsed.success) return { error: 'נתונים לא תקינים' }
+  if (!parsed.success) return { error: t('common.errors.invalidData') }
 
   try {
     await updateSubscription(id, session.orgId, parsed.data)
@@ -373,16 +381,17 @@ export async function updateSubscriptionAction(
     revalidatePath('/billing')
     return { error: null }
   } catch {
-    return { error: 'שגיאה בעדכון המנוי' }
+    return { error: t('billing.errors.updateSubscriptionFailed') }
   }
 }
 
 export async function deleteSubscriptionAction(id: string) {
   const session = await getSession()
   requireMutation(session)
+  const t = await getTranslations()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: t('common.errors.noPermission') }
   }
 
   try {
@@ -391,7 +400,7 @@ export async function deleteSubscriptionAction(id: string) {
     revalidatePath('/billing')
     return { error: null }
   } catch {
-    return { error: 'שגיאה במחיקת המנוי' }
+    return { error: t('billing.errors.deleteSubscriptionFailed') }
   }
 }
 
@@ -400,10 +409,11 @@ export async function deleteSubscriptionAction(id: string) {
 export async function approveBillingAction(billingId: string) {
   const session = await getSession()
   requireMutation(session)
+  const t = await getTranslations()
   await assertOrgNotSaasReadOnly(session.orgId)
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: t('common.errors.noPermission') }
   }
 
   const supabase = createServiceRoleClient()
@@ -415,8 +425,8 @@ export async function approveBillingAction(billingId: string) {
     .eq('organization_id', session.orgId)
     .single()
 
-  if (!billing) return { error: 'רשומת חיוב לא נמצאה' }
-  if (billing.is_paid) return { error: 'החיוב כבר סומן כשולם' }
+  if (!billing) return { error: t('billing.errors.billingNotFound') }
+  if (billing.is_paid) return { error: t('billing.errors.alreadyPaid') }
   if (billing.is_approved) return { error: null } // idempotent
 
   const { error: updateError } = await supabase
@@ -425,7 +435,7 @@ export async function approveBillingAction(billingId: string) {
     .eq('id', billingId)
     .eq('organization_id', session.orgId)
 
-  if (updateError) return { error: 'שגיאה בעדכון אישור החיוב' }
+  if (updateError) return { error: t('billing.errors.approveFailed') }
 
   let chargeId: string | null = null
   try {
@@ -440,7 +450,7 @@ export async function approveBillingAction(billingId: string) {
     })
     chargeId = syncResult.chargeId
   } catch {
-    return { error: 'החיוב אושר אך סנכרון ledger נכשל' }
+    return { error: t('billing.errors.approvedLedgerFailed') }
   }
 
   // Fire-and-forget: generate PDF invoice
@@ -470,21 +480,21 @@ export async function sendBillingPaymentRequestAction(billingId: string) {
   const session = await getSession()
   requireMutation(session)
   await assertOrgNotSaasReadOnly(session.orgId)
+  const t = await getTranslations()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: t('common.errors.noPermission') }
   }
 
   try {
     const outcome = await sendBillingPaymentRequestCore(billingId, session.orgId)
     if (outcome === 'opted_out') {
-      const t = await getTranslations('parents')
-      return { error: t('optedOutError') }
+      return { error: t('parents.optedOutError') }
     }
     return { error: null }
   } catch (err) {
     console.error('[billing] sendBillingPaymentRequestAction failed', { billingId, orgId: session.orgId, err })
-    return { error: 'שגיאה בשליחת בקשת התשלום' }
+    return { error: t('billing.errors.sendPaymentRequestFailed') }
   }
 }
 
@@ -500,6 +510,9 @@ async function sendBillingPaymentRequestCore(
   orgId: string
 ): Promise<'sent' | 'opted_out' | 'skipped'> {
   const db = createServiceRoleClient()
+  // Failures here surface to the acting dashboard user, so they use the viewer's
+  // locale. The parent-facing copy below uses `tr` (the recipient's locale).
+  const t = await getTranslations()
 
   // Load org settings
   const { data: org } = await db
@@ -518,7 +531,7 @@ async function sendBillingPaymentRequestCore(
   const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
 
   if (!encryptedToken || !phoneNumberId) {
-    throw new Error('WhatsApp לא מחובר')
+    throw new Error(t('common.errors.whatsappNotConnected'))
   }
 
   // Load billing + linked charge
@@ -529,8 +542,8 @@ async function sendBillingPaymentRequestCore(
     .eq('organization_id', orgId)
     .single()
 
-  if (!billing) throw new Error('רשומת חיוב לא נמצאה')
-  if (!billing.parent_id) throw new Error('לא שויך הורה לחיוב זה')
+  if (!billing) throw new Error(t('billing.errors.billingNotFound'))
+  if (!billing.parent_id) throw new Error(t('billing.errors.noParentLinked'))
 
   const { data: charge } = await db
     .from('charges')
@@ -539,8 +552,8 @@ async function sendBillingPaymentRequestCore(
     .eq('billing_record_id', billingId)
     .maybeSingle()
 
-  if (!charge) throw new Error('חיוב ב-ledger לא נמצא — יש לאשר תחילה')
-  if (charge.status === 'paid') throw new Error('החיוב כבר שולם')
+  if (!charge) throw new Error(t('billing.errors.ledgerChargeNotFound'))
+  if (charge.status === 'paid') throw new Error(t('billing.errors.chargeAlreadyPaid'))
 
   // Load parent
   const { data: parent } = await db
@@ -550,7 +563,7 @@ async function sendBillingPaymentRequestCore(
     .eq('organization_id', orgId)
     .single()
 
-  if (!parent?.phone) throw new Error('הורה לא נמצא או חסר מספר טלפון')
+  if (!parent?.phone) throw new Error(t('billing.errors.parentMissingPhone'))
 
   // Business-initiated, and it sends via sendTextMessage rather than
   // sendSmartMessage, so the opt-out gate has to be applied explicitly. Checked
@@ -564,6 +577,8 @@ async function sendBillingPaymentRequestCore(
     stored: parent.preferred_locale as string | null,
     orgDefault: org.default_locale as string | null,
   })
+  // Everything below is read by the parent, not by whoever clicked Send.
+  const tr = await getT('billing', locale)
 
   // Create payment link. DEMO_PAYMENT_LINK_ENABLED=1 allows sending without a
   // configured payment provider by linking to the org's parent portal instead
@@ -576,7 +591,7 @@ async function sendBillingPaymentRequestCore(
     paymentResult = await p.provider.createPaymentLink({
       chargeId: charge.id,
       amount: Number(charge.amount),
-      description: `חיוב חודשי ${billing.billing_month} — ${parent.full_name}`,
+      description: tr('paymentDescription', { month: billing.billing_month as string, parent: parent.full_name as string }),
       orgId,
     })
   } catch (err) {
@@ -610,10 +625,7 @@ async function sendBillingPaymentRequestCore(
   const accessToken = decryptToken(encryptedToken)
   const body = await resolveTemplate(orgId, 'payment_request', {
     amount: Number(charge.amount).toFixed(2),
-    description:
-      locale === 'en'
-        ? `monthly billing ${billing.billing_month}`
-        : `חיוב חודשי ${billing.billing_month}`,
+    description: tr('paymentDescriptionShort', { month: billing.billing_month as string }),
     payment_link: paymentResult.url,
   }, locale)
 
@@ -634,9 +646,10 @@ async function sendBillingPaymentRequestCore(
 
 export async function downloadInvoiceAction(billingId: string) {
   const session = await getSession()
+  const t = await getTranslations()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה', url: null }
+    return { error: t('common.errors.noPermission'), url: null }
   }
 
   const supabase = createServiceRoleClient()
@@ -648,28 +661,29 @@ export async function downloadInvoiceAction(billingId: string) {
     .single()
 
   if (!billing?.invoice_pdf_url) {
-    return { error: 'לא נמצאה חשבונית', url: null }
+    return { error: t('billing.errors.invoiceNotFound'), url: null }
   }
 
   try {
     const url = await getInvoiceSignedUrl(billing.invoice_pdf_url as string)
     return { error: null, url }
   } catch {
-    return { error: 'שגיאה ביצירת קישור הורדה', url: null }
+    return { error: t('billing.errors.invoiceUrlFailed'), url: null }
   }
 }
 
 export async function issueCreditNoteAction(billingId: string, reason: string) {
   const session = await getSession()
   requireMutation(session)
+  const t = await getTranslations()
   await assertOrgNotSaasReadOnly(session.orgId)
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: t('common.errors.noPermission') }
   }
 
   if (!reason || reason.trim().length === 0) {
-    return { error: 'יש לציין סיבה לביטול החשבונית' }
+    return { error: t('billing.errors.creditNoteReasonRequired') }
   }
 
   const supabase = createServiceRoleClient()
@@ -680,15 +694,15 @@ export async function issueCreditNoteAction(billingId: string, reason: string) {
     .eq('organization_id', session.orgId)
     .single()
 
-  if (!billing) return { error: 'רשומת חיוב לא נמצאה' }
-  if (!billing.invoice_number) return { error: 'לא ניתן לבטל — אין חשבונית' }
-  if (billing.credit_note_number) return { error: 'חשבונית זיכוי כבר הונפקה' }
+  if (!billing) return { error: t('billing.errors.billingNotFound') }
+  if (!billing.invoice_number) return { error: t('billing.errors.noInvoiceToCredit') }
+  if (billing.credit_note_number) return { error: t('billing.errors.creditNoteAlreadyIssued') }
 
   try {
     await generateAndStoreCreditNote(billingId, session.orgId, reason.trim())
   } catch (err) {
     console.error('[billing] credit note generation failed', { billingId, orgId: session.orgId, err })
-    return { error: 'שגיאה ביצירת חשבונית זיכוי' }
+    return { error: t('billing.errors.creditNoteFailed') }
   }
 
   // Notify parent
@@ -706,7 +720,7 @@ export async function issueCreditNoteAction(billingId: string, reason: string) {
         orgId: session.orgId,
         recipientProfileId: recipientId,
         type: 'invoice_cancelled',
-        title: 'חשבונית זיכוי הונפקה',
+        title: t('billing.creditNoteIssuedNotification'),
         body: reason.trim(),
         actionUrl: `/billing/${billing.student_id}`,
       }).catch(() => {})

@@ -19,6 +19,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptWithKey } from '@/lib/crypto'
 import { getRegistryEntry } from '@/lib/payments/registry'
 import { getProviderUI } from '@/lib/payments/registry-ui'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ export async function savePaymentProvider(
   const { orgId, role } = session
 
   if (role !== 'owner') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const provider = formData.get('provider')
@@ -108,7 +109,7 @@ export async function saveAutoSendSetting(
   const { orgId, role } = session
 
   if (role !== 'owner') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const autoSend = formData.get('auto_send_payment_request') === 'on'
@@ -140,7 +141,7 @@ export async function disconnectPayment(
   const { orgId, role } = session
 
   if (role !== 'owner') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const db = createServiceRoleClient()

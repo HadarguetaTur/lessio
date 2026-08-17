@@ -23,6 +23,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptToken, decryptToken } from '@/lib/crypto'
 import { registerTemplatesForWABA } from '@/lib/whatsapp/registerTemplates'
 import { subscribeAppToWABA, unsubscribeAppFromWABA } from '@/lib/whatsapp/subscribeApp'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
@@ -64,7 +65,7 @@ export async function saveWhatsAppConnection(
   const { orgId, role } = session
 
   if (role !== 'owner') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'whatsapp_automation')
@@ -76,7 +77,7 @@ export async function saveWhatsAppConnection(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const { phoneNumberId, wabaId, code } = parsed.data
@@ -163,7 +164,7 @@ export async function disconnectWhatsApp(
   const { orgId, role } = session
 
   if (role !== 'owner') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'whatsapp_automation')

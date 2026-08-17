@@ -149,7 +149,8 @@ async function processOrg(db: any, org: any, now: Date) {
         'payment_reminder',
         message,
         [charge.parent?.full_name || botString('dear_parents', locale), amount],
-        locale
+        locale,
+        { amount, payment_link: charge.payment_link ?? '' }
       )
     } catch (err) {
       sendError = String(err)

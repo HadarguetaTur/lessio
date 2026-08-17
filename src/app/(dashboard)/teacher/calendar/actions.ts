@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 /**
  * Regenerates the teacher's ical_token.
@@ -20,7 +21,7 @@ export async function regenerateCalendarTokenAction(): Promise<{ error?: string 
   requireMutation(session)
 
   if (role !== 'teacher') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const db = createServiceRoleClient()

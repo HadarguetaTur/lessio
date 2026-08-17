@@ -94,9 +94,14 @@ export const requireDashboardSession = getSession
  */
 export function requireMutation(session: UserSession): void {
   if (session.isSupportMode) {
-    throw new Error('מצב תמיכה הוא קריאה בלבד. פעולות עריכה אינן מותרות.')
+    // A stable code, not display copy: this is synchronous, so it cannot await a
+    // translator. Callers surface it with `commonError('supportModeReadOnly')`.
+    throw new Error(SUPPORT_MODE_READ_ONLY)
   }
 }
+
+/** Thrown by {@link requireMutation}. Never shown to a user as-is. */
+export const SUPPORT_MODE_READ_ONLY = 'SUPPORT_MODE_READ_ONLY'
 
 /**
  * Returns the current superadmin session.

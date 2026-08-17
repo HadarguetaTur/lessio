@@ -15,6 +15,7 @@ import { uploadAttachment } from '@/lib/homework/attachments'
 import { sendHomeworkAssignment } from '@/lib/homework/sendHomework'
 import { decryptToken } from '@/lib/crypto'
 import { requireFeature } from '@/lib/saas/featureGate'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export type AssignActionState = {
   error: string | null
@@ -45,7 +46,7 @@ export async function assignHomeworkAction(
   requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
-    return { error: 'אין הרשאה' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'homework')
@@ -63,7 +64,7 @@ export async function assignHomeworkAction(
 
   const parsed = AssignSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const { studentIds, templateId, title, body, dueDate, sendAt } = parsed.data

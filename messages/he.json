@@ -37,7 +37,6 @@
       "select": "בחר/י",
       "lockFailed": "לא ניתן לשמור את המועד. נסה/י שוב.",
       "noSlotsThisDay": "אין מועדים פנויים ביום זה",
-      "tryAnotherDay": "נסו לבחור יום אחר",
       "choose": "בחרו",
       "slotsTitle": "שעות זמינות לבחירה",
       "slotsInstructions": "בחרו רצועת זמן מהלוח כדי לראות את השעות הפנויות בתוך אותה רצועה.",
@@ -194,7 +193,16 @@
     },
     "errors": {
       "unexpected": "אירעה שגיאה. נסה שוב.",
-      "required": "שדה חובה"
+      "required": "שדה חובה",
+      "noPermission": "אין הרשאה לביצוע פעולה זו",
+      "ownerOnly": "רק בעל/ת הארגון יכול/ה לבצע פעולה זו",
+      "supportModeReadOnly": "מצב תמיכה הוא קריאה בלבד. פעולות עריכה אינן מותרות.",
+      "invalidData": "נתונים לא תקינים",
+      "notFound": "הפריט המבוקש לא נמצא",
+      "saveFailed": "השמירה נכשלה. נסה שוב.",
+      "loadFailed": "הטעינה נכשלה. נסה שוב.",
+      "deleteFailed": "המחיקה נכשלה. נסה שוב.",
+      "whatsappNotConnected": "אין חשבון WhatsApp Business מחובר."
     },
     "logout": "יציאה",
     "nav": {
@@ -617,8 +625,6 @@
     "lessonType": "סוג שיעור",
     "typeIndividual": "אישי",
     "typeGroup": "קבוצתי",
-    "selectTeacher": "בחר מורה...",
-    "selectStudent": "בחר תלמיד...",
     "creating": "יוצר שיעור...",
     "create": "יצירת שיעור",
     "pricePerStudent": "מחיר לתלמיד (₪)",
@@ -636,7 +642,17 @@
       "orgCalendar": "יומן ארגוני",
       "teacherCalendar": "יומן מורה",
       "scheduleAnyway": "קבע בכל זאת"
-    }
+    },
+    "lessonNotesTitle": "הערות שיעור",
+    "lessonNotesEmpty": "אין הערות לשיעור זה.",
+    "lessonNoteVisibleToParent": "גלוי להורה",
+    "lessonNoteDelete": "מחק הערה",
+    "lessonNotePlaceholder": "הוסף הערה על השיעור...",
+    "lessonNoteShowToParent": "הצג להורה",
+    "lessonNoteSaved": "ההערה נשמרה.",
+    "lessonNoteAdd": "הוסף הערה",
+    "threadEmpty": "אין הודעות בשיחה זו.",
+    "threadPlaceholder": "כתבו תגובה..."
   },
   "charges": {
     "title": "חיובים",
@@ -785,30 +801,346 @@
     "accountingExport": "ייצוא לחשבונאות",
     "accountingFrom": "מתאריך",
     "accountingTo": "עד תאריך",
-    "accountingDownload": "הורד דוח חשבונאי"
+    "accountingDownload": "הורד דוח חשבונאי",
+    "errors": {
+      "generateFailed": "שגיאה ביצירת החיובים החודשיים",
+      "recalculateFailed": "שגיאה בחישוב מחדש",
+      "markPaidOwnerOnly": "רק בעלים יכול לסמן כשולם",
+      "loadBillingFailed": "שגיאה בטעינת החיוב החודשי",
+      "loadLedgerChargeFailed": "שגיאה בטעינת חיוב ledger",
+      "ledgerSyncFailed": "שגיאה בסנכרון החיוב ל-ledger",
+      "markPaidTooEarly": "לא ניתן לסמן כשולם לפני שיוך הורה ואישור החיוב",
+      "updatePaymentStatusFailed": "שגיאה בעדכון סטטוס התשלום",
+      "billingNotFound": "רשומת חיוב לא נמצאה",
+      "updateAdjustmentFailed": "שגיאה בעדכון התאמה ידנית",
+      "adjustmentSavedLedgerFailed": "ההתאמה נשמרה אך סנכרון ledger נכשל",
+      "updateCancellationEventFailed": "שגיאה בעדכון אירוע הביטול",
+      "createSubscriptionFailed": "שגיאה ביצירת המנוי",
+      "updateSubscriptionFailed": "שגיאה בעדכון המנוי",
+      "deleteSubscriptionFailed": "שגיאה במחיקת המנוי",
+      "alreadyPaid": "החיוב כבר סומן כשולם",
+      "approveFailed": "שגיאה בעדכון אישור החיוב",
+      "approvedLedgerFailed": "החיוב אושר אך סנכרון ledger נכשל",
+      "sendPaymentRequestFailed": "שגיאה בשליחת בקשת התשלום",
+      "noParentLinked": "לא שויך הורה לחיוב זה",
+      "ledgerChargeNotFound": "חיוב ב-ledger לא נמצא — יש לאשר תחילה",
+      "chargeAlreadyPaid": "החיוב כבר שולם",
+      "parentMissingPhone": "הורה לא נמצא או חסר מספר טלפון",
+      "invoiceNotFound": "לא נמצאה חשבונית",
+      "invoiceUrlFailed": "שגיאה ביצירת קישור הורדה",
+      "creditNoteReasonRequired": "יש לציין סיבה לביטול החשבונית",
+      "noInvoiceToCredit": "לא ניתן לבטל — אין חשבונית",
+      "creditNoteAlreadyIssued": "חשבונית זיכוי כבר הונפקה",
+      "creditNoteFailed": "שגיאה ביצירת חשבונית זיכוי"
+    },
+    "paymentDescription": "חיוב חודשי {month} — {parent}",
+    "paymentDescriptionShort": "חיוב חודשי {month}",
+    "creditNoteIssuedNotification": "חשבונית זיכוי הונפקה"
   },
   "settings": {
+    "title": "הגדרות",
+    "cardHint": "פתחו את ההגדרה כדי לעדכן את התצורה הרלוונטית.",
+    "cards": {
+      "whatsapp": {
+        "title": "WhatsApp",
+        "description": "חיבור מספר WhatsApp לארגון"
+      },
+      "messages": {
+        "title": "הודעות WhatsApp",
+        "description": "התאמה אישית של הודעות אוטומטיות"
+      },
+      "payment": {
+        "title": "תשלומים",
+        "description": "ספק תשלומים ובקשות תשלום"
+      },
+      "receipts": {
+        "title": "קבלות",
+        "description": "הפקת קבלות אוטומטיות"
+      },
+      "cancellation": {
+        "title": "מדיניות ביטולים",
+        "description": "כללי חיוב על ביטול"
+      },
+      "holidays": {
+        "title": "חגים וחופשות",
+        "description": "ימים שאין בהם שיעורים"
+      },
+      "reminders": {
+        "title": "תזכורות",
+        "description": "הגדרות תזכורות אוטומטיות"
+      },
+      "aiAssistant": {
+        "title": "עוזר AI",
+        "description": "עוזר WhatsApp חכם לתשובות אוטומטיות"
+      },
+      "locale": {
+        "title": "שפה ותצוגה",
+        "description": "בחירת שפת הממשק וכיוון הקריאה"
+      },
+      "privacy": {
+        "title": "פרטיות ושמירת נתונים",
+        "description": "מדיניות שמירת נתוני פעילות ו-GDPR"
+      },
+      "email": {
+        "title": "מייל",
+        "description": "חיבור Gmail לשליחת מיילים מהכתובת שלך"
+      },
+      "calendar": {
+        "title": "יומן Google",
+        "description": "חיבור Google Calendar לבדיקת חפיפות"
+      },
+      "businessProfile": {
+        "title": "פרופיל עסקי",
+        "description": "לוגו, שם עסק, מספר עוסק ומטבע"
+      }
+    },
     "businessProfile": {
-      "title": "פרופיל העסק",
-      "subtitle": "פרטים עסקיים לחשבוניות ומסמכים",
-      "legalName": "שם עסק / חברה",
-      "legalNamePlaceholder": "שם עסק כפי שמופיע ברשם החברות",
-      "taxId": "ח.פ / ע.מ",
-      "taxIdPlaceholder": "מספר עוסק מורשה / חברה",
-      "address": "כתובת עסק",
-      "addressPlaceholder": "רחוב, עיר, מיקוד",
+      "title": "פרופיל עסקי",
+      "subtitle": "הגדרת מיתוג העסק ופרטי מס לחשבוניות",
+      "logoTitle": "לוגו הארגון",
+      "noLogo": "אין לוגו",
+      "uploadLogo": "העלאת לוגו",
+      "uploading": "מעלה...",
+      "logoHint": "PNG, JPEG או WebP — עד 2 MB",
+      "logoUploaded": "הלוגו הועלה בהצלחה",
+      "detailsTitle": "פרטי העסק",
+      "businessLegalName": "שם עסק רשמי",
+      "businessLegalNamePlaceholder": "לדוגמה: אקדמיית המוזיקה בע\"מ",
+      "taxId": "מספר עוסק / ח.פ.",
+      "taxIdPlaceholder": "לדוגמה: 515123456",
+      "businessAddress": "כתובת העסק",
+      "businessAddressPlaceholder": "לדוגמה: הרצל 10, תל אביב",
       "currency": "מטבע",
-      "vatRate": "שיעור מע\"מ (%)",
-      "logo": "לוגו",
-      "uploadLogo": "העלה לוגו",
-      "changeLogo": "החלף לוגו",
-      "logoHint": "PNG / JPEG, עד 2MB",
-      "saved": "הפרטים נשמרו בהצלחה"
+      "defaultVatRate": "שיעור מע\"מ ברירת מחדל",
+      "vatHint": "יוחל על חשבוניות חדשות (0–25%)",
+      "saved": "פרופיל העסק נשמר"
+    },
+    "whatsapp": {
+      "title": "WhatsApp",
+      "connected": "מחובר",
+      "notConnected": "לא מחובר",
+      "connect": "חבר מספר WhatsApp",
+      "disconnect": "נתק",
+      "disconnectConfirm": "לנתק את WhatsApp?",
+      "portalUrl": "קישור פורטל הורים",
+      "copyPortalUrl": "העתק קישור",
+      "templates": {
+        "title": "תבניות הודעה",
+        "description": "Lessio רושמת את תבניות ההודעה בחשבון ה-WhatsApp Business שלך, כדי שאפשר יהיה לשלוח אותן גם מחוץ לחלון 24 השעות. הרישום מתבצע אוטומטית בעת החיבור — כאן אפשר להריץ אותו שוב.",
+        "action": "רישום תבניות ההודעה בחשבון ה-WhatsApp שלי",
+        "registered": "{count, plural, one {תבנית אחת נרשמה} other {# תבניות נרשמו}}",
+        "failed": "{count, plural, one {תבנית אחת נדחתה על ידי Meta} other {# תבניות נדחו על ידי Meta}}",
+        "errors": {
+          "forbidden": "רק בעל/ת הארגון יכול/ה לרשום תבניות.",
+          "notConnected": "אין חשבון WhatsApp Business מחובר.",
+          "decryptFailed": "לא ניתן לקרוא את פרטי החיבור השמורים — יש לחבר את המספר מחדש.",
+          "registerFailed": "Meta דחתה את הבקשה. נסו שוב."
+        }
+      }
+    },
+    "payment": {
+      "title": "הגדרות תשלום",
+      "provider": "ספק תשלומים",
+      "autoSend": "שלח בקשת תשלום אוטומטית לאחר שיעור",
+      "disconnect": "נתק ספק",
+      "disconnectConfirm": "לנתק את ספק התשלומים?"
     },
     "receipts": {
-      "documentType": "סוג מסמך ברירת מחדל",
-      "receipt": "קבלה",
-      "taxInvoice": "חשבונית מס"
+      "title": "הגדרות קבלות",
+      "provider": "Green Invoice",
+      "apiKey": "מפתח API",
+      "connected": "מחובר",
+      "disconnect": "נתק",
+      "disconnectConfirm": "לנתק את ספק הקבלות?"
+    },
+    "cancellationPolicy": {
+      "title": "מדיניות ביטולים",
+      "chargeType": "סוג חיוב",
+      "percentage": "אחוז מהשיעור",
+      "fixed": "סכום קבוע",
+      "hours": "שעות מינימום לביטול ללא קנס",
+      "noticeHoursFull": "שעות הודעה מוקדמת לביטול ללא חיוב",
+      "noticeHoursFullHint": "ביטול מעל X שעות לפני השיעור — אין חיוב",
+      "noticeHoursPartial": "שעות הודעה מוקדמת לחיוב חלקי",
+      "noticeHoursPartialHint": "ביטול בין X לבין הסף המלא — חיוב חלקי. ביטול פחות מ-X שעות — חיוב מלא",
+      "partialChargePercent": "אחוז חיוב חלקי (%)",
+      "partialChargePercentHint": "אחוז מסכום השיעור שייגבה בחיוב חלקי (0–100)",
+      "howItWorks": "כיצד פועלת המדיניות:",
+      "ruleNoCharge": "ביטול מעל {hours} שעות לפני השיעור — אין חיוב",
+      "rulePartial": "ביטול בין {partialHours} ל-{fullHours} שעות — חיוב {percent}%",
+      "ruleFull": "ביטול פחות מ-{hours} שעות לפני — חיוב מלא",
+      "saved": "המדיניות נשמרה בהצלחה",
+      "saving": "שומר...",
+      "saveButton": "שמירת מדיניות"
+    },
+    "holidays": {
+      "title": "חגים וחופשות",
+      "addHoliday": "הוסף חג",
+      "fields": {
+        "name": "שם",
+        "date": "תאריך",
+        "endDate": "תאריך סיום (רשות)"
+      },
+      "deleteConfirm": "למחוק את החג?",
+      "noHolidays": "אין חגים מוגדרים"
+    },
+    "reminders": {
+      "title": "תזכורות",
+      "lessonReminder": "תזכורת לפני שיעור",
+      "paymentReminder": "תזכורת לחוב פתוח",
+      "hoursBeforeLesson": "שעות לפני שיעור",
+      "daysAfterInvoice": "ימים לאחר חיוב",
+      "notificationLog": "יומן התראות",
+      "logHeaders": {
+        "type": "סוג",
+        "recipient": "נמען",
+        "sentAt": "נשלח ב"
+      },
+      "noLog": "אין רשומות",
+      "emailNotifications": "התראות באימייל",
+      "emailDescription": "שלח אימייל לצד WhatsApp עבור סוגי ההתראות הנבחרים",
+      "parentsWithEmail": "הורים עם אימייל",
+      "emailTypes": {
+        "lesson_reminder": "תזכורת שיעור",
+        "payment_reminder": "תזכורת תשלום",
+        "homework_assignment": "שיעורי בית חדשים",
+        "receipt": "קבלה על תשלום",
+        "homework_graded": "ציון שיעורי בית",
+        "progress_report": "דוח התקדמות (שליחה מהדשבורד)"
+      }
+    },
+    "messageTemplates": {
+      "title": "התאמה אישית של הודעות",
+      "description": "התאם את הטקסט של כל הודעה שנשלחת אוטומטית דרך WhatsApp. שינויים ייכנסו לתוקף מיד. הבוט בוחר את השפה לפי השפה שבה ההורה כותב.",
+      "preview": "תצוגה מקדימה",
+      "variables": "משתנים זמינים",
+      "reset": "אפס לברירת מחדל",
+      "saved": "התבנית נשמרה",
+      "sections": {
+        "approvalTitle": "הודעות יזומות — נדרש אישור Meta",
+        "approvalDescription": "הודעות אלה נשלחות גם כשחלון 24 השעות סגור, ולכן Meta חייבת לאשר את הנוסח שלהן מראש.",
+        "inWindowTitle": "תשובות בתוך חלון 24 השעות",
+        "inWindowDescription": "הודעות אלה נשלחות רק כתשובה להודעה שהתקבלה, ולכן אפשר לשנות אותן בחופשיות בלי אישור."
+      },
+      "metaStatus": "סטטוס ב-Meta",
+      "status": {
+        "UNKNOWN": "לא ידוע — יש לרענן סטטוסים",
+        "PENDING": "ממתין לאישור",
+        "APPROVED": "מאושר",
+        "REJECTED": "נדחה",
+        "PAUSED": "מושהה",
+        "DISABLED": "מושבת"
+      },
+      "submitForApproval": "שליחה לאישור Meta",
+      "submittedToMeta": "נשלח ל-Meta. האישור מגיע בדרך כלל תוך דקות.",
+      "saveBeforeSubmit": "יש לשמור את השינויים לפני השליחה",
+      "refreshStatus": "רענון סטטוסים",
+      "rejectionReason": "סיבת הדחייה",
+      "staleWarning": "הנוסח שונה מאז האישור — שלח/י לאישור מחדש כדי שההודעות היזומות ישתמשו בו.",
+      "builtInTemplate": "תבנית ברירת המחדל של Lessio",
+      "builtInOnly": "הודעה זו כוללת כפתור, ולכן היא נשלחת תמיד בתבנית ברירת המחדל של Lessio.",
+      "inWindowOnly": "נשלח רק בתוך חלון 24 השעות — לא נדרש אישור Meta.",
+      "errors": {
+        "forbidden": "אין הרשאה לביצוע פעולה זו",
+        "notConnected": "WhatsApp אינו מחובר — יש לחבר את המספר בהגדרות WhatsApp",
+        "decryptFailed": "שגיאה בגישה לחיבור ה-WhatsApp",
+        "notSubmittable": "לא ניתן לשלוח תבנית מסוג זה לאישור",
+        "emptyBody": "תוכן ההודעה לא יכול להיות ריק",
+        "tooLong": "ההודעה ארוכה מדי — Meta מגבילה ל-1024 תווים",
+        "unknownVariable": "לא ניתן להשתמש במשתנה {variable} בתבנית של Meta",
+        "startsWithVariable": "Meta לא מאשרת הודעה שמתחילה במשתנה — הוסף/י טקסט לפניו",
+        "endsWithVariable": "Meta לא מאשרת הודעה שמסתיימת במשתנה — הוסף/י טקסט אחריו",
+        "submitFailed": "השליחה ל-Meta נכשלה",
+        "recordFailed": "התבנית נשלחה ל-Meta אך לא נשמרה כאן — לחצ/י על רענון סטטוסים",
+        "refreshFailed": "רענון הסטטוסים נכשל"
+      }
+    },
+    "aiAssistant": {
+      "title": "עוזר AI",
+      "description": "עוזר חכם ב-WhatsApp למענה אוטומטי",
+      "enable": "הפעל עוזר AI",
+      "enabled": "פעיל",
+      "disabled": "כבוי",
+      "keyMissingWarning": "AI מופעל אך מפתח OPENAI_API_KEY לא מוגדר בשרת. פנה למנהל המערכת.",
+      "conversationLog": "יומן שיחות",
+      "logHeaders": {
+        "time": "שעה",
+        "phone": "טלפון",
+        "parentMessage": "הודעת הורה",
+        "aiReply": "תשובת AI"
+      },
+      "noLog": "אין שיחות מתועדות",
+      "roleParent": "הורה",
+      "tabSettings": "הגדרות",
+      "tabUsage": "שימוש",
+      "providerSettings": "הגדרות ספק AI",
+      "provider": "ספק",
+      "model": "מודל",
+      "apiKey": "מפתח API",
+      "apiKeyPlaceholder": "הדבק את מפתח ה-API שלך",
+      "apiKeyPlaceholderSaved": "מפתח שמור (הדבק להחלפה)",
+      "openaiKeyOptional": "אופציונלי — ישתמש במפתח הפלטפורמה אם ריק",
+      "apiKeyRequired": "חובה — ספק זה דורש מפתח API משלך",
+      "providerSaved": "הגדרות הספק נשמרו",
+      "testConnection": "בדוק חיבור",
+      "testSuccess": "החיבור הצליח — ה-AI מגיב"
+    },
+    "aiUsage": {
+      "title": "שימוש ב-AI",
+      "totalRequests": "סה\"כ בקשות",
+      "totalTokens": "סה\"כ טוקנים",
+      "estimatedCost": "עלות משוערת",
+      "satisfaction": "שביעות רצון",
+      "dailyRequests": "בקשות יומיות (30 ימים אחרונים)",
+      "requests": "בקשות",
+      "noData": "אין נתוני שימוש לחודש זה"
+    },
+    "locale": {
+      "title": "שפה ותצוגה",
+      "subtitle": "שינוי שפת הממשק נשמר ברמת המשתמש ויחול בכל אזורי העבודה שלך.",
+      "current": "נבחרה כעת",
+      "available": "זמינה לבחירה",
+      "currentButton": "השפה הנוכחית",
+      "switchButton": "מעבר לשפה זו"
+    },
+    "automations": {
+      "title": "אוטומציות WhatsApp",
+      "subtitle": "בחר אילו פלואים פעילים עבור הארגון שלך",
+      "sendLabel": "שליחה",
+      "hoursBefore": "{h} שעות לפני",
+      "save": "שמור הגדרות",
+      "saving": "שומר…",
+      "flows": {
+        "automation_lesson_reminder_enabled": {
+          "label": "תזכורת לשיעור",
+          "description": "שליחת הודעת WhatsApp להורה לפני השיעור"
+        },
+        "automation_cancellation_enabled": {
+          "label": "ביטול שיעור דרך WhatsApp",
+          "description": "הורים יכולים לבטל שיעורים בשיחה עם הבוט"
+        },
+        "automation_payment_request_enabled": {
+          "label": "בקשת תשלום אחרי שיעור",
+          "description": "שליחת לינק תשלום אוטומטי לאחר השיעור"
+        },
+        "automation_dunning_enabled": {
+          "label": "הודעות גביה",
+          "description": "תזכורות חוב אוטומטיות ב-3, 7 ו-14 יום (ברירת מחדל: כבוי)"
+        },
+        "automation_new_leads_enabled": {
+          "label": "מענה לפניות חדשות",
+          "description": "תגובה אוטומטית להורים שפונים בפעם הראשונה"
+        },
+        "ai_assistant_enabled": {
+          "label": "AI Assistant",
+          "description": "מענה חופשי בשפה טבעית לשאלות שאינן מכוסות בפלואים הקיימים"
+        }
+      },
+      "errors": {
+        "ownerOnly": "רק בעל עסק יכול לשנות הגדרות אוטומציות",
+        "hoursInvalid": "חייב להיות 2, 12 או 24",
+        "saveFailed": "שגיאה בשמירת ההגדרות"
+      }
     }
   },
   "quota": {
@@ -1023,234 +1355,6 @@
       "orgAvgCancellation": "ממוצע ארגוני ביטולים"
     }
   },
-  "settings": {
-    "title": "הגדרות",
-    "cardHint": "פתחו את ההגדרה כדי לעדכן את התצורה הרלוונטית.",
-    "cards": {
-      "whatsapp": {
-        "title": "WhatsApp",
-        "description": "חיבור מספר WhatsApp לארגון"
-      },
-      "messages": {
-        "title": "הודעות WhatsApp",
-        "description": "התאמה אישית של הודעות אוטומטיות"
-      },
-      "payment": {
-        "title": "תשלומים",
-        "description": "ספק תשלומים ובקשות תשלום"
-      },
-      "receipts": {
-        "title": "קבלות",
-        "description": "הפקת קבלות אוטומטיות"
-      },
-      "cancellation": {
-        "title": "מדיניות ביטולים",
-        "description": "כללי חיוב על ביטול"
-      },
-      "holidays": {
-        "title": "חגים וחופשות",
-        "description": "ימים שאין בהם שיעורים"
-      },
-      "reminders": {
-        "title": "תזכורות",
-        "description": "הגדרות תזכורות אוטומטיות"
-      },
-      "aiAssistant": {
-        "title": "עוזר AI",
-        "description": "עוזר WhatsApp חכם לתשובות אוטומטיות"
-      },
-      "locale": {
-        "title": "שפה ותצוגה",
-        "description": "בחירת שפת הממשק וכיוון הקריאה"
-      },
-      "privacy": {
-        "title": "פרטיות ושמירת נתונים",
-        "description": "מדיניות שמירת נתוני פעילות ו-GDPR"
-      },
-      "email": {
-        "title": "מייל",
-        "description": "חיבור Gmail לשליחת מיילים מהכתובת שלך"
-      },
-      "calendar": {
-        "title": "יומן Google",
-        "description": "חיבור Google Calendar לבדיקת חפיפות"
-      },
-      "businessProfile": {
-        "title": "פרופיל עסקי",
-        "description": "לוגו, שם עסק, מספר עוסק ומטבע"
-      }
-    },
-    "businessProfile": {
-      "title": "פרופיל עסקי",
-      "subtitle": "הגדרת מיתוג העסק ופרטי מס לחשבוניות",
-      "logoTitle": "לוגו הארגון",
-      "noLogo": "אין לוגו",
-      "uploadLogo": "העלאת לוגו",
-      "uploading": "מעלה...",
-      "logoHint": "PNG, JPEG או WebP — עד 2 MB",
-      "logoUploaded": "הלוגו הועלה בהצלחה",
-      "detailsTitle": "פרטי העסק",
-      "businessLegalName": "שם עסק רשמי",
-      "businessLegalNamePlaceholder": "לדוגמה: אקדמיית המוזיקה בע\"מ",
-      "taxId": "מספר עוסק / ח.פ.",
-      "taxIdPlaceholder": "לדוגמה: 515123456",
-      "businessAddress": "כתובת העסק",
-      "businessAddressPlaceholder": "לדוגמה: הרצל 10, תל אביב",
-      "currency": "מטבע",
-      "defaultVatRate": "שיעור מע\"מ ברירת מחדל",
-      "vatHint": "יוחל על חשבוניות חדשות (0–25%)",
-      "saved": "פרופיל העסק נשמר"
-    },
-    "whatsapp": {
-      "title": "WhatsApp",
-      "connected": "מחובר",
-      "notConnected": "לא מחובר",
-      "connect": "חבר מספר WhatsApp",
-      "disconnect": "נתק",
-      "disconnectConfirm": "לנתק את WhatsApp?",
-      "portalUrl": "קישור פורטל הורים",
-      "copyPortalUrl": "העתק קישור",
-      "templates": {
-        "title": "תבניות הודעה",
-        "description": "Lessio רושמת את תבניות ההודעה בחשבון ה-WhatsApp Business שלך, כדי שאפשר יהיה לשלוח אותן גם מחוץ לחלון 24 השעות. הרישום מתבצע אוטומטית בעת החיבור — כאן אפשר להריץ אותו שוב.",
-        "action": "רישום תבניות ההודעה בחשבון ה-WhatsApp שלי",
-        "registered": "{count, plural, one {תבנית אחת נרשמה} other {# תבניות נרשמו}}",
-        "failed": "{count, plural, one {תבנית אחת נדחתה על ידי Meta} other {# תבניות נדחו על ידי Meta}}",
-        "errors": {
-          "forbidden": "רק בעל/ת הארגון יכול/ה לרשום תבניות.",
-          "notConnected": "אין חשבון WhatsApp Business מחובר.",
-          "decryptFailed": "לא ניתן לקרוא את פרטי החיבור השמורים — יש לחבר את המספר מחדש.",
-          "registerFailed": "Meta דחתה את הבקשה. נסו שוב."
-        }
-      }
-    },
-    "payment": {
-      "title": "הגדרות תשלום",
-      "provider": "ספק תשלומים",
-      "autoSend": "שלח בקשת תשלום אוטומטית לאחר שיעור",
-      "disconnect": "נתק ספק",
-      "disconnectConfirm": "לנתק את ספק התשלומים?"
-    },
-    "receipts": {
-      "title": "הגדרות קבלות",
-      "provider": "Green Invoice",
-      "apiKey": "מפתח API",
-      "connected": "מחובר",
-      "disconnect": "נתק",
-      "disconnectConfirm": "לנתק את ספק הקבלות?"
-    },
-    "cancellationPolicy": {
-      "title": "מדיניות ביטולים",
-      "chargeType": "סוג חיוב",
-      "percentage": "אחוז מהשיעור",
-      "fixed": "סכום קבוע",
-      "hours": "שעות מינימום לביטול ללא קנס",
-      "noticeHoursFull": "שעות הודעה מוקדמת לביטול ללא חיוב",
-      "noticeHoursFullHint": "ביטול מעל X שעות לפני השיעור — אין חיוב",
-      "noticeHoursPartial": "שעות הודעה מוקדמת לחיוב חלקי",
-      "noticeHoursPartialHint": "ביטול בין X לבין הסף המלא — חיוב חלקי. ביטול פחות מ-X שעות — חיוב מלא",
-      "partialChargePercent": "אחוז חיוב חלקי (%)",
-      "partialChargePercentHint": "אחוז מסכום השיעור שייגבה בחיוב חלקי (0–100)",
-      "howItWorks": "כיצד פועלת המדיניות:",
-      "ruleNoCharge": "ביטול מעל {hours} שעות לפני השיעור — אין חיוב",
-      "rulePartial": "ביטול בין {partialHours} ל-{fullHours} שעות — חיוב {percent}%",
-      "ruleFull": "ביטול פחות מ-{hours} שעות לפני — חיוב מלא",
-      "saved": "המדיניות נשמרה בהצלחה",
-      "saving": "שומר...",
-      "saveButton": "שמירת מדיניות"
-    },
-    "holidays": {
-      "title": "חגים וחופשות",
-      "addHoliday": "הוסף חג",
-      "fields": {
-        "name": "שם",
-        "date": "תאריך",
-        "endDate": "תאריך סיום (רשות)"
-      },
-      "deleteConfirm": "למחוק את החג?",
-      "noHolidays": "אין חגים מוגדרים"
-    },
-    "reminders": {
-      "title": "תזכורות",
-      "lessonReminder": "תזכורת לפני שיעור",
-      "paymentReminder": "תזכורת לחוב פתוח",
-      "hoursBeforeLesson": "שעות לפני שיעור",
-      "daysAfterInvoice": "ימים לאחר חיוב",
-      "notificationLog": "יומן התראות",
-      "logHeaders": {
-        "type": "סוג",
-        "recipient": "נמען",
-        "sentAt": "נשלח ב"
-      },
-      "noLog": "אין רשומות",
-      "emailNotifications": "התראות באימייל",
-      "emailDescription": "שלח אימייל לצד WhatsApp עבור סוגי ההתראות הנבחרים",
-      "parentsWithEmail": "הורים עם אימייל",
-      "emailTypes": {
-        "lesson_reminder": "תזכורת שיעור",
-        "payment_reminder": "תזכורת תשלום",
-        "homework_assignment": "שיעורי בית חדשים",
-        "receipt": "קבלה על תשלום",
-        "homework_graded": "ציון שיעורי בית",
-        "progress_report": "דוח התקדמות (שליחה מהדשבורד)"
-      }
-    },
-    "messageTemplates": {
-      "title": "התאמה אישית של הודעות",
-      "preview": "תצוגה מקדימה",
-      "variables": "משתנים זמינים",
-      "reset": "אפס לברירת מחדל",
-      "saved": "התבנית נשמרה"
-    },
-    "aiAssistant": {
-      "title": "עוזר AI",
-      "description": "עוזר חכם ב-WhatsApp למענה אוטומטי",
-      "enable": "הפעל עוזר AI",
-      "enabled": "פעיל",
-      "disabled": "כבוי",
-      "keyMissingWarning": "AI מופעל אך מפתח OPENAI_API_KEY לא מוגדר בשרת. פנה למנהל המערכת.",
-      "conversationLog": "יומן שיחות",
-      "logHeaders": {
-        "time": "שעה",
-        "phone": "טלפון",
-        "parentMessage": "הודעת הורה",
-        "aiReply": "תשובת AI"
-      },
-      "noLog": "אין שיחות מתועדות",
-      "roleParent": "הורה",
-      "tabSettings": "הגדרות",
-      "tabUsage": "שימוש",
-      "providerSettings": "הגדרות ספק AI",
-      "provider": "ספק",
-      "model": "מודל",
-      "apiKey": "מפתח API",
-      "apiKeyPlaceholder": "הדבק את מפתח ה-API שלך",
-      "apiKeyPlaceholderSaved": "מפתח שמור (הדבק להחלפה)",
-      "openaiKeyOptional": "אופציונלי — ישתמש במפתח הפלטפורמה אם ריק",
-      "apiKeyRequired": "חובה — ספק זה דורש מפתח API משלך",
-      "providerSaved": "הגדרות הספק נשמרו",
-      "testConnection": "בדוק חיבור",
-      "testSuccess": "החיבור הצליח — ה-AI מגיב"
-    },
-    "aiUsage": {
-      "title": "שימוש ב-AI",
-      "totalRequests": "סה\"כ בקשות",
-      "totalTokens": "סה\"כ טוקנים",
-      "estimatedCost": "עלות משוערת",
-      "satisfaction": "שביעות רצון",
-      "dailyRequests": "בקשות יומיות (30 ימים אחרונים)",
-      "requests": "בקשות",
-      "noData": "אין נתוני שימוש לחודש זה"
-    },
-    "locale": {
-      "title": "שפה ותצוגה",
-      "subtitle": "שינוי שפת הממשק נשמר ברמת המשתמש ויחול בכל אזורי העבודה שלך.",
-      "current": "נבחרה כעת",
-      "available": "זמינה לבחירה",
-      "currentButton": "השפה הנוכחית",
-      "switchButton": "מעבר לשפה זו"
-    }
-  },
   "teacherSelf": {
     "dashboard": {
       "title": "דאשבורד",
@@ -1354,7 +1458,13 @@
     }
   },
   "admin": {
-    "nav": { "title": "LESSIO Admin", "dashboard": "לוח בקרה", "orgs": "ארגונים", "billing": "בילינג", "saasInquiries": "פניות מנוי" },
+    "nav": {
+      "title": "LESSIO Admin",
+      "dashboard": "לוח בקרה",
+      "orgs": "ארגונים",
+      "billing": "בילינג",
+      "saasInquiries": "פניות מנוי"
+    },
     "saasInquiries": {
       "title": "פניות תוכנית מותאמת",
       "description": "ארגונים שביקשו מנוי מותאם אישית",
@@ -1409,7 +1519,11 @@
         "missingSetup": "חסר הגדרה",
         "missingSetupOnly": "חסרה הגדרה בלבד"
       },
-      "status": { "active": "פעיל", "needs_setup": "בהגדרה", "inactive": "לא פעיל" },
+      "status": {
+        "active": "פעיל",
+        "needs_setup": "בהגדרה",
+        "inactive": "לא פעיל"
+      },
       "table": {
         "name": "שם",
         "status": "סטטוס",
@@ -1464,7 +1578,11 @@
         "lastPayment": "תשלום אחרון"
       }
     },
-    "supportBanner": "מצב תמיכה: {orgName} — נותרו {timeRemaining} דקות"
+    "supportBanner": "מצב תמיכה: {orgName} — נותרו {timeRemaining} דקות",
+    "platformNotificationsTitle": "התראות פלטפורמה",
+    "platformNotificationsSubtitle": "אירועים שדורשים את תשומת הלב שלך",
+    "markRead": "סמן כנקרא",
+    "fullNamePlaceholder": "ישראל ישראלי"
   },
   "auth": {
     "common": {
@@ -1771,7 +1889,7 @@
       },
       "errors": {
         "unauthorized": "אין הרשאה",
-      "already_cancelled": "השיעור כבר בוטל",
+        "already_cancelled": "השיעור כבר בוטל",
         "not_eligible": "לא ניתן לבטל שיעור זה",
         "not_found": "השיעור לא נמצא",
         "generic": "שגיאה בביטול"
@@ -1886,7 +2004,6 @@
       "cancelPending": "ביטול מתוזמן לסוף התקופה",
       "upgradeHint": "לשדרוג מותגים אחרים או מנוי מותאם אישית צרו קשר עם התמיכה.",
       "upgradeHintSelfServe": "ניתן לשדרג לתוכנית גבוהה יותר מהמקטע למטה, ללא פנייה לתמיכה.",
-
       "upgrade": {
         "sectionTitle": "שדרוג תוכנית",
         "sectionSubtitle": "בחרו תוכנית מתקדמת יותר והשלימו תשלום מאובטח.",
@@ -1942,20 +2059,18 @@
           "checkoutUrl": "יצירת קישור התשלום נכשלה."
         }
       },
-
       "mockPayment": {
         "back": "ביטול וחזרה לחשבון וחיובים"
       },
-
       "paymentCallback": {
         "processing": "מאמתים תשלום…",
-        "hint": "אם הסתם לשלם, תועברו אוטומטית חזרה לדף החשבון.",
+        "hint": "אם סיימתם לשלם, תועברו אוטומטית חזרה לדף החשבון.",
         "slow": "לוקח יותר מדי זמן. ניתן לרענן את הדף או לנסות שוב מאוחר יותר.",
         "failedTitle": "התשלום לא הושלם",
         "failedBody": "לא בוצע חיוב. ניתן לנסות לשדרג שוב מתוך דף החשבון והחיובים.",
         "backToBilling": "חזרה לחשבון וחיובים"
       },
-
+      "ownerOnly": "רק בעל/ת הארגון יכול/ה לצפות בעמוד זה.",
       "legacyNoSubscription": "לא נמצאה רשומת מנוי פלטפורמה (ארגון שנפתח לפני תכונת המנויים). ניתן להמשיך לעבוד כרגיל."
     }
   },
@@ -2424,6 +2539,33 @@
         "save": "שמור",
         "saving": "שומר…"
       }
+    },
+    "goals": {
+      "title": "יעדי למידה ({count} פעילים)",
+      "newGoal": "יעד חדש",
+      "subjectPlaceholder": "מקצוע (מתמטיקה, אנגלית...)",
+      "descriptionPlaceholder": "תיאור היעד...",
+      "create": "צור יעד",
+      "saving": "שומר...",
+      "empty": "אין יעדים פעילים.",
+      "targetDate": "יעד: {date}",
+      "markAchieved": "סמן כהושג",
+      "markAbandoned": "נטוש",
+      "pastGoals": "יעדים שהושלמו / ננטשו ({count})",
+      "status": {
+        "active": "פעיל",
+        "achieved": "הושג",
+        "abandoned": "ננטש"
+      }
+    },
+    "lessonNotesSection": {
+      "title": "הערות שיעור",
+      "placeholder": "הוסיפו הערה על השיעור...",
+      "add": "הוסף הערה",
+      "saving": "שומר...",
+      "empty": "אין הערות עדיין.",
+      "deleteNote": "מחק הערה",
+      "visibleToParent": "גלוי להורה"
     }
   },
   "notifications": {
@@ -2458,5 +2600,12 @@
       "upgrade": "שדרג חבילה",
       "retry": "נסה שוב"
     }
+  },
+  "meta": {
+    "title": "LESSIO — תשתית עסקית למורים פרטיים ומרכזי למידה",
+    "description": "מערכת אחת שמרכזת תיאום, ביטולים, גבייה ותקשורת עם הורים. ההורים נשארים ב-WhatsApp — בלי כאוס תפעולי.",
+    "twitterTitle": "LESSIO — תשתית עסקית למורים פרטיים",
+    "twitterDescription": "כל השוטף במקום אחד. ההורים נשארים ב-WhatsApp.",
+    "ogLocale": "he_IL"
   }
 }

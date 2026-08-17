@@ -8,6 +8,7 @@ import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { receiptEmail } from '@/lib/email/templates/receipt'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { notifyMultiple, getOwnerAndAdminProfileIds } from '@/lib/notifications'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export async function markAsPaid(
   chargeId: string,
@@ -18,7 +19,7 @@ export async function markAsPaid(
   requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   try {

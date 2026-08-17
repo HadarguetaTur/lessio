@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export type ReminderActionState = {
   error: string | null
@@ -44,7 +45,7 @@ export async function saveReminderSettings(
   const { orgId, role } = session
 
   if (role !== 'owner') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const raw = {
@@ -63,7 +64,7 @@ export async function saveReminderSettings(
 
   const parsed = RemindersSchema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const db = createServiceRoleClient()

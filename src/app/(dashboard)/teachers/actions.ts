@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getTeacherById, type Teacher } from '@/lib/teachers'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 type ActionState = { error: string } | null
 
@@ -52,7 +53,7 @@ export async function inviteTeacher(
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (role !== 'owner' && role !== 'admin') return { error: await commonError('noPermission') }
   const adminClient = createServiceRoleClient()
 
   // Step 1: Send invite email via Supabase Auth admin API
@@ -113,7 +114,7 @@ export async function updateTeacher(
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (role !== 'owner' && role !== 'admin') return { error: await commonError('noPermission') }
 
   const supabase = await createClient()
 

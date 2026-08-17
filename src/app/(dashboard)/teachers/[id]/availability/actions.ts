@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherAvailabilityByDay, hasOverlap } from '@/lib/availability'
 import { revalidatePath } from 'next/cache'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 type ActionState = { error: string } | null
 
@@ -29,7 +30,7 @@ export async function createAvailability(
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
-  if (role !== 'owner' && role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (role !== 'owner' && role !== 'admin') return { error: await commonError('noPermission') }
 
   // Overlap validation (non-negotiable per sprint-2-scope.md)
   const existing = await getTeacherAvailabilityByDay(teacherId, orgId, day_of_week)

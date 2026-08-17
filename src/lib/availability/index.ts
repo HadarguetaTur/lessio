@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-export { DAY_NAMES } from './constants'
+export { DAY_KEYS, type DayKey } from './constants'
 
 export interface AvailabilityWindow {
   id: string

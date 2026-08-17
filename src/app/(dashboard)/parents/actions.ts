@@ -19,6 +19,7 @@ import { sendTextMessage } from '@/lib/whatsapp'
 import { isOptedOut } from '@/lib/whatsapp/optOut'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getTranslations } from 'next-intl/server'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 type ActionState = { error: string } | null
 
@@ -81,7 +82,7 @@ export async function createParent(
   }
 
   const session = await getSession()
-  if (session.role !== 'owner' && session.role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (session.role !== 'owner' && session.role !== 'admin') return { error: await commonError('noPermission') }
   requireMutation(session)
 
   const supabase = await createClient()
@@ -140,7 +141,7 @@ export async function updateParent(
   }
 
   const session = await getSession()
-  if (session.role !== 'owner' && session.role !== 'admin') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (session.role !== 'owner' && session.role !== 'admin') return { error: await commonError('noPermission') }
   requireMutation(session)
 
   const supabase = await createClient()
@@ -239,7 +240,7 @@ export async function updateParentAsTeacher(
   }
 
   const session = await getSession()
-  if (session.role !== 'teacher') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (session.role !== 'teacher') return { error: await commonError('noPermission') }
 
   const teacher = await getTeacherByProfileId(session.profileId, session.orgId, { activeOnly: true })
   if (!teacher) return { error: 'לא נמצא פרופיל מורה פעיל' }
@@ -279,7 +280,7 @@ export async function updateParentNotesAsTeacher(
 ): Promise<ActionState> {
   const notes = (formData.get('notes') as string ?? '').trim() || null
   const { orgId, role, profileId } = await getSession()
-  if (role !== 'teacher') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (role !== 'teacher') return { error: await commonError('noPermission') }
 
   const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
   if (!teacher) return { error: 'לא נמצא פרופיל מורה פעיל' }
@@ -339,7 +340,7 @@ export async function sendPaymentRequestAction(
   const { orgId, role, userId } = await getSession()
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   // Load parent

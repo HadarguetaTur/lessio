@@ -110,6 +110,96 @@ const APPROVED_TEMPLATES: Record<
 }
 
 /**
+ * Placeholder for a variable that resolved to nothing at send time. Meta rejects
+ * an empty body parameter, so every position must carry something.
+ *
+ * SYNC: mirrors VAR_FALLBACKS in src/lib/whatsapp/submitTemplate.ts —
+ * update both together.
+ */
+const VAR_FALLBACKS: Record<string, Record<string, string>> = {
+  he: {
+    teacher_name: 'המורה',
+    student_name: 'התלמיד',
+    parent_name: 'הורים יקרים',
+    title: 'שיעורי בית',
+    body: 'ראו פרטים באזור האישי',
+    amount: '0',
+    total: '0',
+    score: '0',
+    due_line: 'ללא תאריך הגשה',
+    due_date: 'מחר',
+    due_date_suffix: '',
+    feedback_line: 'אין משוב נוסף.',
+    decision: 'עודכנה',
+    description: 'שיעור',
+  },
+  en: {
+    teacher_name: 'your teacher',
+    student_name: 'the student',
+    parent_name: 'there',
+    title: 'homework',
+    body: 'See details in your personal area',
+    amount: '0',
+    total: '0',
+    score: '0',
+    due_line: 'No due date',
+    due_date: 'tomorrow',
+    due_date_suffix: '',
+    feedback_line: 'No additional feedback.',
+    decision: 'updated',
+    description: 'a lesson',
+  },
+}
+
+/**
+ * Normalises one body parameter: Meta rejects newlines, tabs and empty strings.
+ * SYNC: mirrors `param` in src/lib/whatsapp/approvedTemplates.ts.
+ */
+function metaParam(value: string | undefined, fallback: string): { type: 'text'; text: string } {
+  const text = (value ?? '').replace(/\s+/g, ' ').trim()
+  return { type: 'text', text: text || fallback }
+}
+
+/**
+ * The org's own approved template for a type, or null to use the built-in one.
+ *
+ * SYNC: mirrors getApprovedCustomTemplate in src/lib/whatsapp/templateStatus.ts.
+ * Never throws — on any failure the caller falls through to APPROVED_TEMPLATES,
+ * because a lookup problem must not cost a parent their reminder.
+ */
+async function getApprovedCustomTemplate(
+  // deno-lint-ignore no-explicit-any
+  db: any,
+  orgId: string,
+  templateType: string,
+  locale: string
+): Promise<{ name: string; language: string; varOrder: string[] } | null> {
+  try {
+    const { data, error } = await db
+      .from('whatsapp_template_statuses')
+      .select('template_name, language, var_order')
+      .eq('organization_id', orgId)
+      .eq('type', templateType)
+      .eq('language', locale)
+      .eq('status', 'APPROVED')
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      console.warn(`[sendSmart] Approved-template lookup failed — using built-in: ${error.message}`)
+      return null
+    }
+    if (!data?.var_order) return null
+
+    return { name: data.template_name, language: data.language, varOrder: data.var_order }
+  } catch (err) {
+    console.warn(`[sendSmart] Approved-template lookup threw — using built-in: ${String(err)}`)
+    return null
+  }
+}
+
+/**
  * Session-window aware send. Mirrors src/lib/whatsapp/sendSmart.ts.
  *
  * @param db  Supabase service-role client
@@ -119,8 +209,12 @@ const APPROVED_TEMPLATES: Record<
  * @param phoneNumberId
  * @param templateType  key in APPROVED_TEMPLATES
  * @param textBody  resolved text body (used within session window)
- * @param templateVars  ordered list of variable values for the approved template body
+ * @param templateVars  ordered list of variable values for the built-in approved template body
  * @param locale  recipient language — picks the approved template variant
+ * @param namedVars  the same variables keyed by name, as passed to resolveTemplate.
+ *   Required to use a template the org authored itself: its parameter order comes
+ *   from the org's own body, so positional `templateVars` cannot be reused. Omit
+ *   it and the built-in template is always used.
  */
 // deno-lint-ignore no-explicit-any
 export async function sendSmartMessage(
@@ -133,7 +227,8 @@ export async function sendSmartMessage(
   templateType: string,
   textBody: string,
   templateVars: string[] = [],
-  locale: string = 'he'
+  locale: string = 'he',
+  namedVars?: Record<string, string>
 ): Promise<void> {
   // Opt-out gate. The crons are the highest-volume business-initiated sender in
   // the product, so enforcing only in the Node path (src/lib/whatsapp/sendSmart.ts)
@@ -170,8 +265,28 @@ export async function sendSmartMessage(
     return
   }
 
-  // Outside window — approved template in the recipient's language, falling
-  // back to Hebrew. Text here would fail with error 131047.
+  // Outside window — a template the org wrote itself and got approved wins, so
+  // the copy an owner edited in settings is what actually reaches a parent.
+  // Exact language match only: an org that approved Hebrew but not English
+  // should still get the built-in English template below.
+  if (namedVars) {
+    const custom = await getApprovedCustomTemplate(db, orgId, templateType, locale)
+    if (custom) {
+      const components: MetaTemplateComponent[] = custom.varOrder.length > 0
+        ? [{
+            type: 'body',
+            parameters: custom.varOrder.map((name) =>
+              metaParam(namedVars[name], VAR_FALLBACKS[locale]?.[name] || VAR_FALLBACKS.he[name] || '-')
+            ),
+          }]
+        : []
+      await sendTemplateMessage(phone, accessToken, phoneNumberId, custom.name, custom.language, components)
+      return
+    }
+  }
+
+  // Built-in approved template in the recipient's language, falling back to
+  // Hebrew. Text here would fail with error 131047.
   const tmpl = APPROVED_TEMPLATES[locale]?.[templateType] ?? APPROVED_TEMPLATES.he[templateType]
   if (tmpl) {
     const components: MetaTemplateComponent[] = templateVars.length > 0

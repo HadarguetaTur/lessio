@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { revalidatePath } from 'next/cache'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 type ActionState = { error: string } | null
 
@@ -21,7 +22,7 @@ export async function addTeacherOverride(
   const { userId, orgId, role } = session
   requireMutation(session)
 
-  if (role !== 'teacher') return { error: 'אין הרשאה' }
+  if (role !== 'teacher') return { error: await commonError('noPermission') }
 
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) return { error: 'לא נמצאה רשומת מורה פעילה' }

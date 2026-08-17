@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { MessageTemplateCard } from '@/components/dashboard/settings/MessageTemplateCard'
+import { RefreshTemplateStatusButton } from './RefreshTemplateStatusButton'
 import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
 import {
   DEFAULT_TEMPLATES,
@@ -12,6 +13,12 @@ import {
   TEMPLATE_PREVIEW_VARS,
   type MessageTemplateType,
 } from '@/lib/whatsapp/templates'
+import {
+  getApprovedTemplate,
+  LESSON_CANCELLED_BY_TEACHER_TEMPLATE,
+} from '@/lib/whatsapp/approvedTemplates'
+import { buildMetaSubmission, SUBMITTABLE_TYPES } from '@/lib/whatsapp/submitTemplate'
+import { getTemplateStatuses, type TemplateStatusRow } from '@/lib/whatsapp/templateStatus'
 
 /**
  * Message templates settings page — owner only.
@@ -20,14 +27,91 @@ import {
  * Templates are per-language: the ?lang tab picks which set is edited. The bot
  * resolves a recipient's language at send time, so both sets can be customised
  * independently.
+ *
+ * The page is split by where a template is sent from. Types Lessio only ever
+ * sends as a reply (inside the 24h window) are pure free text and need nothing
+ * from Meta. Types sent proactively must exist as a Meta-approved template, so
+ * those cards also carry an approval status and a submit action.
  */
 
 const ALL_TYPES = Object.keys(DEFAULT_TEMPLATES.he) as MessageTemplateType[]
+
+/**
+ * Sent outside the 24h window, so Meta approval applies.
+ * `lesson_cancelled_by_teacher` is here for its status only — its Meta template
+ * carries a quick-reply button, which is a different submission shape, so it
+ * stays on Lessio's built-in copy.
+ */
+const OUT_OF_WINDOW_TYPES: MessageTemplateType[] = [
+  ...SUBMITTABLE_TYPES,
+  'lesson_cancelled_by_teacher',
+]
 
 const LANG_TABS: Array<{ locale: AppLocale; label: string }> = [
   { locale: 'he', label: 'עברית' },
   { locale: 'en', label: 'English' },
 ]
+
+/** The Meta template Lessio itself registers for a type, if there is one. */
+function builtInTemplateName(type: MessageTemplateType, locale: AppLocale): string | null {
+  if (type === 'lesson_cancelled_by_teacher') {
+    return LESSON_CANCELLED_BY_TEACHER_TEMPLATE[locale].name
+  }
+  return getApprovedTemplate(type, locale)?.name ?? null
+}
+
+/**
+ * Picks the status to show for one card.
+ *
+ * An org-authored submission wins over the built-in template — it is what the
+ * send path will use once approved. Highest version first, which is the order
+ * getTemplateStatuses returns.
+ */
+function statusForType(
+  rows: TemplateStatusRow[],
+  type: MessageTemplateType,
+  locale: AppLocale,
+  currentBody: string
+): {
+  status: string
+  metaName: string
+  reason: string | null
+  source: 'custom' | 'builtin'
+  isStale: boolean
+} | null {
+  const custom = rows.find((r) => r.type === type && r.language === locale)
+
+  if (custom) {
+    // Approved copy that no longer matches what the org has saved: the bot is
+    // sending last-approved wording out of window. Worth flagging, not blocking.
+    let isStale = false
+    if (custom.status === 'APPROVED' && custom.bodyText) {
+      const rebuilt = buildMetaSubmission(type, locale, currentBody)
+      isStale = rebuilt.ok && rebuilt.bodyText !== custom.bodyText
+    }
+    return {
+      status: custom.status,
+      metaName: custom.templateName,
+      reason: custom.reason,
+      source: 'custom',
+      isStale,
+    }
+  }
+
+  const builtIn = builtInTemplateName(type, locale)
+  if (!builtIn) return null
+
+  const row = rows.find((r) => r.templateName === builtIn && r.language === locale)
+  if (!row) return null
+
+  return {
+    status: row.status,
+    metaName: row.templateName,
+    reason: row.reason,
+    source: 'builtin',
+    isStale: false,
+  }
+}
 
 export default async function MessageTemplatesPage({
   searchParams,
@@ -41,26 +125,56 @@ export default async function MessageTemplatesPage({
 
   const { lang } = await searchParams
   const locale = parseAppLocale(lang)
+  // The dashboard's own language, not the language being edited — labels and
+  // status chips should read in the language the person is working in.
+  const uiLocale = parseAppLocale(await getLocale())
 
   const db = createServiceRoleClient()
-  const { data: rows } = await db
-    .from('message_templates')
-    .select('type, body_template')
-    .eq('organization_id', orgId)
-    .eq('locale', locale)
+  const [{ data: rows }, statusRows] = await Promise.all([
+    db
+      .from('message_templates')
+      .select('type, body_template')
+      .eq('organization_id', orgId)
+      .eq('locale', locale),
+    getTemplateStatuses(orgId),
+  ])
 
   const customMap = new Map<string, string>(
     (rows ?? []).map(r => [r.type, r.body_template])
   )
 
+  const renderCard = (type: MessageTemplateType) => {
+    const customBody = customMap.get(type) ?? null
+    const savedBody = customBody ?? DEFAULT_TEMPLATES[locale][type]
+    const approval = OUT_OF_WINDOW_TYPES.includes(type)
+      ? statusForType(statusRows, type, locale, savedBody)
+      : null
+
+    return (
+      <MessageTemplateCard
+        key={`${locale}:${type}`}
+        type={type}
+        locale={locale}
+        label={TEMPLATE_LABELS[uiLocale][type]}
+        defaultBody={DEFAULT_TEMPLATES[locale][type]}
+        customBody={customBody}
+        variables={TEMPLATE_VARIABLES[type]}
+        previewVars={TEMPLATE_PREVIEW_VARS[type]}
+        submittable={SUBMITTABLE_TYPES.includes(type)}
+        needsApproval={OUT_OF_WINDOW_TYPES.includes(type)}
+        approval={approval}
+      />
+    )
+  }
+
+  const outOfWindow = ALL_TYPES.filter(t => OUT_OF_WINDOW_TYPES.includes(t))
+  const inWindow = ALL_TYPES.filter(t => !OUT_OF_WINDOW_TYPES.includes(t))
+
   return (
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          התאם את הטקסט של כל הודעה שנשלחת אוטומטית דרך WhatsApp. שינויים ייכנסו לתוקף מיד.
-          הבוט בוחר את השפה לפי השפה שבה ההורה כותב.
-        </p>
+        <p className="text-sm text-gray-500 mt-1">{t('description')}</p>
       </div>
 
       {/* Language tabs */}
@@ -80,20 +194,24 @@ export default async function MessageTemplatesPage({
         ))}
       </div>
 
-      <div className="space-y-4">
-        {ALL_TYPES.map(type => (
-          <MessageTemplateCard
-            key={`${locale}:${type}`}
-            type={type}
-            locale={locale}
-            label={TEMPLATE_LABELS[type]}
-            defaultBody={DEFAULT_TEMPLATES[locale][type]}
-            customBody={customMap.get(type) ?? null}
-            variables={TEMPLATE_VARIABLES[type]}
-            previewVars={TEMPLATE_PREVIEW_VARS[type]}
-          />
-        ))}
-      </div>
+      <section className="space-y-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">{t('sections.approvalTitle')}</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{t('sections.approvalDescription')}</p>
+          </div>
+          <RefreshTemplateStatusButton />
+        </div>
+        {outOfWindow.map(renderCard)}
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">{t('sections.inWindowTitle')}</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{t('sections.inWindowDescription')}</p>
+        </div>
+        {inWindow.map(renderCard)}
+      </section>
     </div>
   )
 }

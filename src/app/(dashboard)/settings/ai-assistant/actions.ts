@@ -15,6 +15,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { AI_PROVIDER_NAMES, isValidModel, PROVIDER_MODELS } from '@/lib/ai-assistant/providers/models'
 import type { AiProviderName } from '@/lib/ai-assistant/providers/types'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export type AiAssistantActionState = {
   error: string | null
@@ -42,14 +43,14 @@ export async function saveAiAssistantSettings(
   const session = await getSession()
 
   if (session.role !== 'owner') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   try {
     requireMutation(session)
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : 'מצב תמיכה הוא קריאה בלבד.',
+      error: await commonError('supportModeReadOnly'),
     }
   }
 
@@ -60,7 +61,7 @@ export async function saveAiAssistantSettings(
   })
 
   if (!parsed.success) {
-    return { error: 'נתונים לא תקינים' }
+    return { error: await commonError('invalidData') }
   }
 
   const { ai_assistant_enabled } = parsed.data
@@ -108,12 +109,12 @@ export async function saveAiProviderAction(
   formData: FormData
 ): Promise<AiProviderActionState> {
   const session = await getSession()
-  if (session.role !== 'owner') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (session.role !== 'owner') return { error: await commonError('noPermission') }
 
   try {
     requireMutation(session)
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'מצב תמיכה הוא קריאה בלבד.' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   await requireFeature(session.orgId, 'ai_assistant')
@@ -125,7 +126,7 @@ export async function saveAiProviderAction(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const { ai_provider, ai_model, api_key } = parsed.data
@@ -166,7 +167,7 @@ export async function testAiConnectionAction(
   formData: FormData
 ): Promise<TestConnectionActionState> {
   const session = await getSession()
-  if (session.role !== 'owner') return { error: 'אין הרשאה' }
+  if (session.role !== 'owner') return { error: await commonError('noPermission') }
 
   await requireFeature(session.orgId, 'ai_assistant')
 

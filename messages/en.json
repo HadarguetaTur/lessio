@@ -33,11 +33,10 @@
       "summaryError": "We couldn't load the availability right now. Please try again in a moment.",
       "retry": "Try again",
       "noSlotsForDay": "No open times",
-      "tryAnotherDay": "Try picking another day",
+      "tryAnotherDay": "Try another day",
       "select": "Select",
       "lockFailed": "We couldn't hold that time. Please try again.",
       "noSlotsThisDay": "No open times on this day",
-      "tryAnotherDay": "Try another day",
       "choose": "Choose",
       "slotsTitle": "Available times",
       "slotsInstructions": "Pick a time band from the calendar to see the open times within it.",
@@ -194,7 +193,16 @@
     },
     "errors": {
       "unexpected": "An error occurred. Please try again.",
-      "required": "Required"
+      "required": "Required",
+      "noPermission": "You don't have permission to perform this action",
+      "ownerOnly": "Only the business owner can perform this action",
+      "supportModeReadOnly": "Support mode is read-only. Editing is not allowed.",
+      "invalidData": "Invalid data",
+      "notFound": "The requested item was not found",
+      "saveFailed": "Could not save. Please try again.",
+      "loadFailed": "Could not load. Please try again.",
+      "deleteFailed": "Could not delete. Please try again.",
+      "whatsappNotConnected": "No WhatsApp Business Account is connected yet."
     },
     "logout": "Sign out",
     "nav": {
@@ -617,8 +625,6 @@
     "lessonType": "Lesson Type",
     "typeIndividual": "Individual",
     "typeGroup": "Group",
-    "selectTeacher": "Select teacher...",
-    "selectStudent": "Select student...",
     "creating": "Creating lesson...",
     "create": "Create Lesson",
     "pricePerStudent": "Price per student (₪)",
@@ -636,7 +642,17 @@
       "orgCalendar": "Org calendar",
       "teacherCalendar": "Teacher calendar",
       "scheduleAnyway": "Schedule anyway"
-    }
+    },
+    "lessonNotesTitle": "Lesson notes",
+    "lessonNotesEmpty": "No notes for this lesson.",
+    "lessonNoteVisibleToParent": "Visible to parent",
+    "lessonNoteDelete": "Delete note",
+    "lessonNotePlaceholder": "Add a note about this lesson…",
+    "lessonNoteShowToParent": "Show to parent",
+    "lessonNoteSaved": "Note saved.",
+    "lessonNoteAdd": "Add note",
+    "threadEmpty": "No messages in this conversation.",
+    "threadPlaceholder": "Write a reply…"
   },
   "charges": {
     "title": "Charges",
@@ -785,30 +801,346 @@
     "accountingExport": "Export for Accounting",
     "accountingFrom": "From Date",
     "accountingTo": "To Date",
-    "accountingDownload": "Download Accounting Report"
+    "accountingDownload": "Download Accounting Report",
+    "errors": {
+      "generateFailed": "Could not generate the monthly charges",
+      "recalculateFailed": "Could not recalculate",
+      "markPaidOwnerOnly": "Only the business owner can mark a charge as paid",
+      "loadBillingFailed": "Could not load the monthly billing record",
+      "loadLedgerChargeFailed": "Could not load the ledger charge",
+      "ledgerSyncFailed": "Could not sync the charge to the ledger",
+      "markPaidTooEarly": "Link a parent and approve the charge before marking it paid",
+      "updatePaymentStatusFailed": "Could not update the payment status",
+      "billingNotFound": "Billing record not found",
+      "updateAdjustmentFailed": "Could not update the manual adjustment",
+      "adjustmentSavedLedgerFailed": "The adjustment was saved, but syncing it to the ledger failed",
+      "updateCancellationEventFailed": "Could not update the cancellation event",
+      "createSubscriptionFailed": "Could not create the subscription",
+      "updateSubscriptionFailed": "Could not update the subscription",
+      "deleteSubscriptionFailed": "Could not delete the subscription",
+      "alreadyPaid": "This charge is already marked as paid",
+      "approveFailed": "Could not approve the charge",
+      "approvedLedgerFailed": "The charge was approved, but syncing it to the ledger failed",
+      "sendPaymentRequestFailed": "Could not send the payment request",
+      "noParentLinked": "No parent is linked to this charge",
+      "ledgerChargeNotFound": "Ledger charge not found — approve the charge first",
+      "chargeAlreadyPaid": "This charge has already been paid",
+      "parentMissingPhone": "Parent not found, or has no phone number",
+      "invoiceNotFound": "No invoice found",
+      "invoiceUrlFailed": "Could not create a download link",
+      "creditNoteReasonRequired": "Enter a reason for voiding the invoice",
+      "noInvoiceToCredit": "Nothing to void — there is no invoice",
+      "creditNoteAlreadyIssued": "A credit note has already been issued",
+      "creditNoteFailed": "Could not create the credit note"
+    },
+    "paymentDescription": "Monthly charge {month} — {parent}",
+    "paymentDescriptionShort": "Monthly charge {month}",
+    "creditNoteIssuedNotification": "Credit note issued"
   },
   "settings": {
+    "title": "Settings",
+    "cardHint": "Open the setting to update the relevant configuration.",
+    "cards": {
+      "whatsapp": {
+        "title": "WhatsApp",
+        "description": "Connect a WhatsApp number to your organization"
+      },
+      "messages": {
+        "title": "WhatsApp Messages",
+        "description": "Customize automated messages"
+      },
+      "payment": {
+        "title": "Payments",
+        "description": "Payment provider and payment requests"
+      },
+      "receipts": {
+        "title": "Receipts",
+        "description": "Automatic receipt generation"
+      },
+      "cancellation": {
+        "title": "Cancellation Policy",
+        "description": "Cancellation charge rules"
+      },
+      "holidays": {
+        "title": "Holidays",
+        "description": "Days with no lessons"
+      },
+      "reminders": {
+        "title": "Reminders",
+        "description": "Automated reminder settings"
+      },
+      "aiAssistant": {
+        "title": "AI Assistant",
+        "description": "Smart WhatsApp assistant for automatic replies"
+      },
+      "locale": {
+        "title": "Language & Display",
+        "description": "Choose the interface language and reading direction"
+      },
+      "privacy": {
+        "title": "Privacy & Data Retention",
+        "description": "Activity data retention policy and GDPR"
+      },
+      "email": {
+        "title": "Email",
+        "description": "Connect Gmail to send emails from your own address"
+      },
+      "calendar": {
+        "title": "Google Calendar",
+        "description": "Connect Google Calendar to detect scheduling conflicts"
+      },
+      "businessProfile": {
+        "title": "Business Profile",
+        "description": "Logo, legal name, tax ID and currency"
+      }
+    },
     "businessProfile": {
       "title": "Business Profile",
-      "subtitle": "Business details for invoices and documents",
-      "legalName": "Legal Business Name",
-      "legalNamePlaceholder": "Name as registered",
-      "taxId": "Tax ID",
-      "taxIdPlaceholder": "Tax identification number",
-      "address": "Business Address",
-      "addressPlaceholder": "Street, City, ZIP",
-      "currency": "Currency",
-      "vatRate": "VAT Rate (%)",
-      "logo": "Logo",
+      "subtitle": "Configure your business branding and tax details for invoices",
+      "logoTitle": "Organization Logo",
+      "noLogo": "No logo",
       "uploadLogo": "Upload Logo",
-      "changeLogo": "Change Logo",
-      "logoHint": "PNG / JPEG, max 2MB",
-      "saved": "Profile saved successfully"
+      "uploading": "Uploading...",
+      "logoHint": "PNG, JPEG or WebP — max 2 MB",
+      "logoUploaded": "Logo uploaded successfully",
+      "detailsTitle": "Business Details",
+      "businessLegalName": "Legal Business Name",
+      "businessLegalNamePlaceholder": "e.g. Music Academy Ltd.",
+      "taxId": "Tax ID",
+      "taxIdPlaceholder": "e.g. 515123456",
+      "businessAddress": "Business Address",
+      "businessAddressPlaceholder": "e.g. 10 Herzl St., Tel Aviv",
+      "currency": "Currency",
+      "defaultVatRate": "Default VAT Rate",
+      "vatHint": "Applied to new invoices (0–25%)",
+      "saved": "Business profile saved"
+    },
+    "whatsapp": {
+      "title": "WhatsApp",
+      "connected": "Connected",
+      "notConnected": "Not Connected",
+      "connect": "Connect WhatsApp Number",
+      "disconnect": "Disconnect",
+      "disconnectConfirm": "Disconnect WhatsApp?",
+      "portalUrl": "Parent Portal Link",
+      "copyPortalUrl": "Copy Link",
+      "templates": {
+        "title": "Message templates",
+        "description": "Lessio registers its message templates on your own WhatsApp Business Account so they can be sent outside the 24-hour window. This runs automatically when you connect — use this to register them again.",
+        "action": "Register message templates on my WhatsApp account",
+        "registered": "{count, plural, one {# template registered} other {# templates registered}}",
+        "failed": "{count, plural, one {# template was rejected by Meta} other {# templates were rejected by Meta}}",
+        "errors": {
+          "forbidden": "Only the organization owner can register templates.",
+          "notConnected": "No WhatsApp Business Account is connected yet.",
+          "decryptFailed": "Could not read the stored WhatsApp credentials — reconnect your number.",
+          "registerFailed": "Meta rejected the request. Please try again."
+        }
+      }
+    },
+    "payment": {
+      "title": "Payment Settings",
+      "provider": "Payment Provider",
+      "autoSend": "Automatically send payment request after lesson",
+      "disconnect": "Disconnect Provider",
+      "disconnectConfirm": "Disconnect the payment provider?"
     },
     "receipts": {
-      "documentType": "Default Document Type",
-      "receipt": "Receipt",
-      "taxInvoice": "Tax Invoice"
+      "title": "Receipt Settings",
+      "provider": "Green Invoice",
+      "apiKey": "API Key",
+      "connected": "Connected",
+      "disconnect": "Disconnect",
+      "disconnectConfirm": "Disconnect the receipt provider?"
+    },
+    "cancellationPolicy": {
+      "title": "Cancellation Policy",
+      "chargeType": "Charge Type",
+      "percentage": "Percentage of lesson",
+      "fixed": "Fixed amount",
+      "hours": "Minimum hours for penalty-free cancellation",
+      "noticeHoursFull": "Notice hours for free cancellation",
+      "noticeHoursFullHint": "Cancellations more than X hours before the lesson — no charge",
+      "noticeHoursPartial": "Notice hours for partial charge",
+      "noticeHoursPartialHint": "Cancellations between X and the full threshold — partial charge. Less than X hours — full charge",
+      "partialChargePercent": "Partial charge percentage (%)",
+      "partialChargePercentHint": "Percentage of the lesson amount charged for partial cancellation (0–100)",
+      "howItWorks": "How the policy works:",
+      "ruleNoCharge": "Cancellation more than {hours} hours before lesson — no charge",
+      "rulePartial": "Cancellation between {partialHours} and {fullHours} hours — {percent}% charge",
+      "ruleFull": "Cancellation less than {hours} hours before — full charge",
+      "saved": "Policy saved successfully",
+      "saving": "Saving...",
+      "saveButton": "Save Policy"
+    },
+    "holidays": {
+      "title": "Holidays",
+      "addHoliday": "Add Holiday",
+      "fields": {
+        "name": "Name",
+        "date": "Date",
+        "endDate": "End Date (optional)"
+      },
+      "deleteConfirm": "Delete this holiday?",
+      "noHolidays": "No holidays defined"
+    },
+    "reminders": {
+      "title": "Reminders",
+      "lessonReminder": "Lesson reminder",
+      "paymentReminder": "Payment debt reminder",
+      "hoursBeforeLesson": "Hours before lesson",
+      "daysAfterInvoice": "Days after invoice",
+      "notificationLog": "Notification Log",
+      "logHeaders": {
+        "type": "Type",
+        "recipient": "Recipient",
+        "sentAt": "Sent At"
+      },
+      "noLog": "No entries",
+      "emailNotifications": "Email Notifications",
+      "emailDescription": "Send email alongside WhatsApp for selected notification types",
+      "parentsWithEmail": "parents with email",
+      "emailTypes": {
+        "lesson_reminder": "Lesson reminder",
+        "payment_reminder": "Payment reminder",
+        "homework_assignment": "New homework assignments",
+        "receipt": "Payment receipt",
+        "homework_graded": "Homework graded",
+        "progress_report": "Progress report (sent from dashboard)"
+      }
+    },
+    "messageTemplates": {
+      "title": "Customize Messages",
+      "description": "Adjust the wording of every message sent automatically over WhatsApp. Changes take effect immediately. The bot picks the language from the one the parent writes in.",
+      "preview": "Preview",
+      "variables": "Available Variables",
+      "reset": "Reset to Default",
+      "saved": "Template saved",
+      "sections": {
+        "approvalTitle": "Proactive messages — Meta approval required",
+        "approvalDescription": "These are sent even when the 24-hour window is closed, so Meta has to approve their wording in advance.",
+        "inWindowTitle": "Replies inside the 24-hour window",
+        "inWindowDescription": "These are only sent in reply to an incoming message, so you can change them freely without approval."
+      },
+      "metaStatus": "Meta status",
+      "status": {
+        "UNKNOWN": "Unknown — refresh statuses",
+        "PENDING": "Pending review",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "PAUSED": "Paused",
+        "DISABLED": "Disabled"
+      },
+      "submitForApproval": "Submit to Meta for approval",
+      "submittedToMeta": "Sent to Meta. Approval usually arrives within minutes.",
+      "saveBeforeSubmit": "Save your changes before submitting",
+      "refreshStatus": "Refresh statuses",
+      "rejectionReason": "Rejection reason",
+      "staleWarning": "The wording changed since approval — submit again so proactive messages use it.",
+      "builtInTemplate": "Lessio's built-in template",
+      "builtInOnly": "This message includes a button, so it always goes out using Lessio's built-in template.",
+      "inWindowOnly": "Only sent inside the 24-hour window — no Meta approval needed.",
+      "errors": {
+        "forbidden": "You do not have permission to do this",
+        "notConnected": "WhatsApp is not connected — connect your number in WhatsApp settings",
+        "decryptFailed": "Could not access the WhatsApp connection",
+        "notSubmittable": "This template type cannot be submitted for approval",
+        "emptyBody": "The message body cannot be empty",
+        "tooLong": "The message is too long — Meta allows up to 1024 characters",
+        "unknownVariable": "The variable {variable} cannot be used in a Meta template",
+        "startsWithVariable": "Meta rejects a message that starts with a variable — add some text before it",
+        "endsWithVariable": "Meta rejects a message that ends with a variable — add some text after it",
+        "submitFailed": "Submitting to Meta failed",
+        "recordFailed": "Sent to Meta but not recorded here — press Refresh statuses",
+        "refreshFailed": "Could not refresh statuses"
+      }
+    },
+    "aiAssistant": {
+      "title": "AI Assistant",
+      "description": "Smart WhatsApp assistant for automatic replies",
+      "enable": "Enable AI Assistant",
+      "enabled": "Active",
+      "disabled": "Off",
+      "keyMissingWarning": "AI is enabled but OPENAI_API_KEY is not configured on this server. Contact the platform administrator.",
+      "conversationLog": "Conversation Log",
+      "logHeaders": {
+        "time": "Time",
+        "phone": "Phone",
+        "parentMessage": "Parent Message",
+        "aiReply": "AI Reply"
+      },
+      "noLog": "No conversations recorded",
+      "roleParent": "Parent",
+      "tabSettings": "Settings",
+      "tabUsage": "Usage",
+      "providerSettings": "AI Provider Settings",
+      "provider": "Provider",
+      "model": "Model",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Paste your API key",
+      "apiKeyPlaceholderSaved": "Key saved (paste to replace)",
+      "openaiKeyOptional": "Optional — falls back to platform key if empty",
+      "apiKeyRequired": "Required — this provider needs your own API key",
+      "providerSaved": "Provider settings saved",
+      "testConnection": "Test Connection",
+      "testSuccess": "Connection successful — AI is responding"
+    },
+    "aiUsage": {
+      "title": "AI Usage",
+      "totalRequests": "Total Requests",
+      "totalTokens": "Total Tokens",
+      "estimatedCost": "Estimated Cost",
+      "satisfaction": "Satisfaction",
+      "dailyRequests": "Daily Requests (last 30 days)",
+      "requests": "requests",
+      "noData": "No usage data for this month"
+    },
+    "locale": {
+      "title": "Language & Display",
+      "subtitle": "Your language preference is saved per user and applies across your workspaces.",
+      "current": "Current",
+      "available": "Available",
+      "currentButton": "Current language",
+      "switchButton": "Switch to this language"
+    },
+    "automations": {
+      "title": "WhatsApp automations",
+      "subtitle": "Choose which flows are active for your business",
+      "sendLabel": "Send",
+      "hoursBefore": "{h} hours before",
+      "save": "Save settings",
+      "saving": "Saving…",
+      "flows": {
+        "automation_lesson_reminder_enabled": {
+          "label": "Lesson reminder",
+          "description": "Send the parent a WhatsApp message before the lesson"
+        },
+        "automation_cancellation_enabled": {
+          "label": "Lesson cancellation over WhatsApp",
+          "description": "Parents can cancel lessons by chatting with the bot"
+        },
+        "automation_payment_request_enabled": {
+          "label": "Payment request after a lesson",
+          "description": "Automatically send a payment link once the lesson ends"
+        },
+        "automation_dunning_enabled": {
+          "label": "Debt reminders",
+          "description": "Automatic overdue reminders at 3, 7 and 14 days (default: off)"
+        },
+        "automation_new_leads_enabled": {
+          "label": "Reply to new enquiries",
+          "description": "Automatic reply to parents getting in touch for the first time"
+        },
+        "ai_assistant_enabled": {
+          "label": "AI Assistant",
+          "description": "Free-form natural-language answers to questions the existing flows do not cover"
+        }
+      },
+      "errors": {
+        "ownerOnly": "Only the business owner can change automation settings",
+        "hoursInvalid": "Must be 2, 12 or 24",
+        "saveFailed": "Could not save the settings"
+      }
     }
   },
   "quota": {
@@ -1023,234 +1355,6 @@
       "orgAvgCancellation": "Org avg cancellation"
     }
   },
-  "settings": {
-    "title": "Settings",
-    "cardHint": "Open the setting to update the relevant configuration.",
-    "cards": {
-      "whatsapp": {
-        "title": "WhatsApp",
-        "description": "Connect a WhatsApp number to your organization"
-      },
-      "messages": {
-        "title": "WhatsApp Messages",
-        "description": "Customize automated messages"
-      },
-      "payment": {
-        "title": "Payments",
-        "description": "Payment provider and payment requests"
-      },
-      "receipts": {
-        "title": "Receipts",
-        "description": "Automatic receipt generation"
-      },
-      "cancellation": {
-        "title": "Cancellation Policy",
-        "description": "Cancellation charge rules"
-      },
-      "holidays": {
-        "title": "Holidays",
-        "description": "Days with no lessons"
-      },
-      "reminders": {
-        "title": "Reminders",
-        "description": "Automated reminder settings"
-      },
-      "aiAssistant": {
-        "title": "AI Assistant",
-        "description": "Smart WhatsApp assistant for automatic replies"
-      },
-      "locale": {
-        "title": "Language & Display",
-        "description": "Choose the interface language and reading direction"
-      },
-      "privacy": {
-        "title": "Privacy & Data Retention",
-        "description": "Activity data retention policy and GDPR"
-      },
-      "email": {
-        "title": "Email",
-        "description": "Connect Gmail to send emails from your own address"
-      },
-      "calendar": {
-        "title": "Google Calendar",
-        "description": "Connect Google Calendar to detect scheduling conflicts"
-      },
-      "businessProfile": {
-        "title": "Business Profile",
-        "description": "Logo, legal name, tax ID and currency"
-      }
-    },
-    "businessProfile": {
-      "title": "Business Profile",
-      "subtitle": "Configure your business branding and tax details for invoices",
-      "logoTitle": "Organization Logo",
-      "noLogo": "No logo",
-      "uploadLogo": "Upload Logo",
-      "uploading": "Uploading...",
-      "logoHint": "PNG, JPEG or WebP — max 2 MB",
-      "logoUploaded": "Logo uploaded successfully",
-      "detailsTitle": "Business Details",
-      "businessLegalName": "Legal Business Name",
-      "businessLegalNamePlaceholder": "e.g. Music Academy Ltd.",
-      "taxId": "Tax ID",
-      "taxIdPlaceholder": "e.g. 515123456",
-      "businessAddress": "Business Address",
-      "businessAddressPlaceholder": "e.g. 10 Herzl St., Tel Aviv",
-      "currency": "Currency",
-      "defaultVatRate": "Default VAT Rate",
-      "vatHint": "Applied to new invoices (0–25%)",
-      "saved": "Business profile saved"
-    },
-    "whatsapp": {
-      "title": "WhatsApp",
-      "connected": "Connected",
-      "notConnected": "Not Connected",
-      "connect": "Connect WhatsApp Number",
-      "disconnect": "Disconnect",
-      "disconnectConfirm": "Disconnect WhatsApp?",
-      "portalUrl": "Parent Portal Link",
-      "copyPortalUrl": "Copy Link",
-      "templates": {
-        "title": "Message templates",
-        "description": "Lessio registers its message templates on your own WhatsApp Business Account so they can be sent outside the 24-hour window. This runs automatically when you connect — use this to register them again.",
-        "action": "Register message templates on my WhatsApp account",
-        "registered": "{count, plural, one {# template registered} other {# templates registered}}",
-        "failed": "{count, plural, one {# template was rejected by Meta} other {# templates were rejected by Meta}}",
-        "errors": {
-          "forbidden": "Only the organization owner can register templates.",
-          "notConnected": "No WhatsApp Business Account is connected yet.",
-          "decryptFailed": "Could not read the stored WhatsApp credentials — reconnect your number.",
-          "registerFailed": "Meta rejected the request. Please try again."
-        }
-      }
-    },
-    "payment": {
-      "title": "Payment Settings",
-      "provider": "Payment Provider",
-      "autoSend": "Automatically send payment request after lesson",
-      "disconnect": "Disconnect Provider",
-      "disconnectConfirm": "Disconnect the payment provider?"
-    },
-    "receipts": {
-      "title": "Receipt Settings",
-      "provider": "Green Invoice",
-      "apiKey": "API Key",
-      "connected": "Connected",
-      "disconnect": "Disconnect",
-      "disconnectConfirm": "Disconnect the receipt provider?"
-    },
-    "cancellationPolicy": {
-      "title": "Cancellation Policy",
-      "chargeType": "Charge Type",
-      "percentage": "Percentage of lesson",
-      "fixed": "Fixed amount",
-      "hours": "Minimum hours for penalty-free cancellation",
-      "noticeHoursFull": "Notice hours for free cancellation",
-      "noticeHoursFullHint": "Cancellations more than X hours before the lesson — no charge",
-      "noticeHoursPartial": "Notice hours for partial charge",
-      "noticeHoursPartialHint": "Cancellations between X and the full threshold — partial charge. Less than X hours — full charge",
-      "partialChargePercent": "Partial charge percentage (%)",
-      "partialChargePercentHint": "Percentage of the lesson amount charged for partial cancellation (0–100)",
-      "howItWorks": "How the policy works:",
-      "ruleNoCharge": "Cancellation more than {hours} hours before lesson — no charge",
-      "rulePartial": "Cancellation between {partialHours} and {fullHours} hours — {percent}% charge",
-      "ruleFull": "Cancellation less than {hours} hours before — full charge",
-      "saved": "Policy saved successfully",
-      "saving": "Saving...",
-      "saveButton": "Save Policy"
-    },
-    "holidays": {
-      "title": "Holidays",
-      "addHoliday": "Add Holiday",
-      "fields": {
-        "name": "Name",
-        "date": "Date",
-        "endDate": "End Date (optional)"
-      },
-      "deleteConfirm": "Delete this holiday?",
-      "noHolidays": "No holidays defined"
-    },
-    "reminders": {
-      "title": "Reminders",
-      "lessonReminder": "Lesson reminder",
-      "paymentReminder": "Payment debt reminder",
-      "hoursBeforeLesson": "Hours before lesson",
-      "daysAfterInvoice": "Days after invoice",
-      "notificationLog": "Notification Log",
-      "logHeaders": {
-        "type": "Type",
-        "recipient": "Recipient",
-        "sentAt": "Sent At"
-      },
-      "noLog": "No entries",
-      "emailNotifications": "Email Notifications",
-      "emailDescription": "Send email alongside WhatsApp for selected notification types",
-      "parentsWithEmail": "parents with email",
-      "emailTypes": {
-        "lesson_reminder": "Lesson reminder",
-        "payment_reminder": "Payment reminder",
-        "homework_assignment": "New homework assignments",
-        "receipt": "Payment receipt",
-        "homework_graded": "Homework graded",
-        "progress_report": "Progress report (sent from dashboard)"
-      }
-    },
-    "messageTemplates": {
-      "title": "Customize Messages",
-      "preview": "Preview",
-      "variables": "Available Variables",
-      "reset": "Reset to Default",
-      "saved": "Template saved"
-    },
-    "aiAssistant": {
-      "title": "AI Assistant",
-      "description": "Smart WhatsApp assistant for automatic replies",
-      "enable": "Enable AI Assistant",
-      "enabled": "Active",
-      "disabled": "Off",
-      "keyMissingWarning": "AI is enabled but OPENAI_API_KEY is not configured on this server. Contact the platform administrator.",
-      "conversationLog": "Conversation Log",
-      "logHeaders": {
-        "time": "Time",
-        "phone": "Phone",
-        "parentMessage": "Parent Message",
-        "aiReply": "AI Reply"
-      },
-      "noLog": "No conversations recorded",
-      "roleParent": "Parent",
-      "tabSettings": "Settings",
-      "tabUsage": "Usage",
-      "providerSettings": "AI Provider Settings",
-      "provider": "Provider",
-      "model": "Model",
-      "apiKey": "API Key",
-      "apiKeyPlaceholder": "Paste your API key",
-      "apiKeyPlaceholderSaved": "Key saved (paste to replace)",
-      "openaiKeyOptional": "Optional — falls back to platform key if empty",
-      "apiKeyRequired": "Required — this provider needs your own API key",
-      "providerSaved": "Provider settings saved",
-      "testConnection": "Test Connection",
-      "testSuccess": "Connection successful — AI is responding"
-    },
-    "aiUsage": {
-      "title": "AI Usage",
-      "totalRequests": "Total Requests",
-      "totalTokens": "Total Tokens",
-      "estimatedCost": "Estimated Cost",
-      "satisfaction": "Satisfaction",
-      "dailyRequests": "Daily Requests (last 30 days)",
-      "requests": "requests",
-      "noData": "No usage data for this month"
-    },
-    "locale": {
-      "title": "Language & Display",
-      "subtitle": "Your language preference is saved per user and applies across your workspaces.",
-      "current": "Current",
-      "available": "Available",
-      "currentButton": "Current language",
-      "switchButton": "Switch to this language"
-    }
-  },
   "teacherSelf": {
     "dashboard": {
       "title": "Dashboard",
@@ -1354,7 +1458,13 @@
     }
   },
   "admin": {
-    "nav": { "title": "LESSIO Admin", "dashboard": "Dashboard", "orgs": "Organizations", "billing": "Billing", "saasInquiries": "Plan inquiries" },
+    "nav": {
+      "title": "LESSIO Admin",
+      "dashboard": "Dashboard",
+      "orgs": "Organizations",
+      "billing": "Billing",
+      "saasInquiries": "Plan inquiries"
+    },
     "saasInquiries": {
       "title": "Custom plan inquiries",
       "description": "Organizations that requested a custom plan",
@@ -1409,7 +1519,11 @@
         "missingSetup": "Missing setup",
         "missingSetupOnly": "Missing setup only"
       },
-      "status": { "active": "Active", "needs_setup": "Needs Setup", "inactive": "Inactive" },
+      "status": {
+        "active": "Active",
+        "needs_setup": "Needs Setup",
+        "inactive": "Inactive"
+      },
       "table": {
         "name": "Name",
         "status": "Status",
@@ -1464,7 +1578,11 @@
         "lastPayment": "Last Payment"
       }
     },
-    "supportBanner": "Support mode: {orgName} — {timeRemaining} minutes remaining"
+    "supportBanner": "Support mode: {orgName} — {timeRemaining} minutes remaining",
+    "platformNotificationsTitle": "Platform alerts",
+    "platformNotificationsSubtitle": "Events that need your attention",
+    "markRead": "Mark as read",
+    "fullNamePlaceholder": "Jane Smith"
   },
   "auth": {
     "common": {
@@ -1886,7 +2004,6 @@
       "cancelPending": "Cancellation scheduled for period end",
       "upgradeHint": "Contact support for bespoke plans or the Center package.",
       "upgradeHintSelfServe": "Upgrade to a higher plan in the section below — no support ticket needed.",
-
       "upgrade": {
         "sectionTitle": "Upgrade plan",
         "sectionSubtitle": "Pick a higher plan and finish secure checkout.",
@@ -1942,11 +2059,9 @@
           "checkoutUrl": "Couldn't create checkout link."
         }
       },
-
       "mockPayment": {
         "back": "Cancel and return to Account & billing"
       },
-
       "paymentCallback": {
         "processing": "Confirming payment…",
         "hint": "If you finished paying, you'll be redirected back automatically.",
@@ -1955,7 +2070,6 @@
         "failedBody": "You were not charged. You can try upgrading again from Account & billing.",
         "backToBilling": "Back to Account & billing"
       },
-
       "ownerOnly": "Only the business owner can view this page.",
       "legacyNoSubscription": "No platform subscription record (org created before SaaS plans). You can keep using the product as usual."
     }
@@ -2425,6 +2539,33 @@
         "save": "Save",
         "saving": "Saving…"
       }
+    },
+    "goals": {
+      "title": "Learning goals ({count} active)",
+      "newGoal": "New goal",
+      "subjectPlaceholder": "Subject (Maths, English…)",
+      "descriptionPlaceholder": "Describe the goal…",
+      "create": "Create goal",
+      "saving": "Saving…",
+      "empty": "No active goals.",
+      "targetDate": "Target: {date}",
+      "markAchieved": "Mark as achieved",
+      "markAbandoned": "Abandon",
+      "pastGoals": "Achieved / abandoned goals ({count})",
+      "status": {
+        "active": "Active",
+        "achieved": "Achieved",
+        "abandoned": "Abandoned"
+      }
+    },
+    "lessonNotesSection": {
+      "title": "Lesson notes",
+      "placeholder": "Add a note about this lesson…",
+      "add": "Add note",
+      "saving": "Saving…",
+      "empty": "No notes yet.",
+      "deleteNote": "Delete note",
+      "visibleToParent": "Visible to parent"
     }
   },
   "notifications": {
@@ -2459,5 +2600,12 @@
       "upgrade": "Upgrade plan",
       "retry": "Try again"
     }
+  },
+  "meta": {
+    "title": "LESSIO — business infrastructure for private tutors and learning centres",
+    "description": "One system for scheduling, cancellations, billing and parent communication. Parents stay in WhatsApp — without the operational chaos.",
+    "twitterTitle": "LESSIO — business infrastructure for private tutors",
+    "twitterDescription": "Everything day-to-day in one place. Parents stay in WhatsApp.",
+    "ogLocale": "en_US"
   }
 }

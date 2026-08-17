@@ -44,6 +44,26 @@ const MetaMessageSchema = z.object({
   button: z.object({ payload: z.string().optional(), text: z.string().optional() }).optional(),
 })
 
+/** The `value` of a `messages` change. Validated per-change, not payload-wide. */
+const MessagesValueSchema = z.object({
+  messaging_product: z.string(),
+  metadata: z.object({
+    display_phone_number: z.string().min(1),
+    phone_number_id: z.string().min(1),
+  }),
+  messages: z.array(MetaMessageSchema).optional(),
+})
+
+/**
+ * The envelope only. `value` stays unknown here and is validated per change
+ * against the shape that change's `field` implies.
+ *
+ * This matters: Meta delivers other subscribed fields — most notably
+ * `message_template_status_update` — through the same envelope, and they carry
+ * nothing resembling the messages shape. Requiring that shape payload-wide made
+ * one status change fail the whole safeParse, silently dropping any real
+ * messages batched into the same delivery.
+ */
 const MetaWebhookPayloadSchema = z.object({
   object: z.literal('whatsapp_business_account'),
   entry: z.array(
@@ -52,14 +72,7 @@ const MetaWebhookPayloadSchema = z.object({
       changes: z.array(
         z.object({
           field: z.string(),
-          value: z.object({
-            messaging_product: z.string(),
-            metadata: z.object({
-              display_phone_number: z.string().min(1),
-              phone_number_id: z.string().min(1),
-            }),
-            messages: z.array(MetaMessageSchema).optional(),
-          }),
+          value: z.unknown(),
         })
       ).default([]),
     })
@@ -79,7 +92,13 @@ export function parseWebhookPayload(body: unknown): WhatsAppMessage[] {
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
       if (change.field !== 'messages') continue
-      const { metadata, messages } = change.value
+
+      // A malformed `messages` change is skipped on its own, leaving the rest of
+      // the delivery to be processed.
+      const value = MessagesValueSchema.safeParse(change.value)
+      if (!value.success) continue
+
+      const { metadata, messages } = value.data
       if (!messages) continue
 
       for (const msg of messages) {
@@ -93,6 +112,61 @@ export function parseWebhookPayload(body: unknown): WhatsAppMessage[] {
           phoneNumberId: metadata.phone_number_id,
         })
       }
+    }
+  }
+
+  return results
+}
+
+// ── Template status updates ───────────────────────────────────────────────────
+
+/** One `message_template_status_update` change, already resolved to its WABA. */
+export interface TemplateStatusUpdate {
+  /** entry[].id — the WhatsApp Business Account the template belongs to. */
+  wabaId: string
+  templateName: string
+  language: string
+  /** Meta's new status, e.g. APPROVED / REJECTED / PAUSED / DISABLED. */
+  status: string
+  /** Rejection reason. Meta sends the literal "NONE" when there is none. */
+  reason: string | null
+}
+
+const TemplateStatusValueSchema = z.object({
+  event: z.string().min(1),
+  message_template_name: z.string().min(1),
+  message_template_language: z.string().min(1),
+  reason: z.string().nullish(),
+})
+
+/**
+ * Extracts template approval transitions from a webhook payload.
+ *
+ * Meta identifies the account by `entry[].id` (the WABA id) rather than by a
+ * phone_number_id, so callers resolve the org via `organizations.whatsapp_waba_id`
+ * — not the `whatsapp_phone_number_id` used for inbound messages.
+ */
+export function parseTemplateStatusUpdates(body: unknown): TemplateStatusUpdate[] {
+  const parsed = MetaWebhookPayloadSchema.safeParse(body)
+  if (!parsed.success) return []
+
+  const results: TemplateStatusUpdate[] = []
+
+  for (const entry of parsed.data.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      if (change.field !== 'message_template_status_update') continue
+
+      const value = TemplateStatusValueSchema.safeParse(change.value)
+      if (!value.success) continue
+
+      const reason = value.data.reason
+      results.push({
+        wabaId: entry.id,
+        templateName: value.data.message_template_name,
+        language: value.data.message_template_language,
+        status: value.data.event.toUpperCase(),
+        reason: reason && reason.toUpperCase() !== 'NONE' ? reason : null,
+      })
     }
   }
 

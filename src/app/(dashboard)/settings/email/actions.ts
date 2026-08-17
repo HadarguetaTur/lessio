@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendEmail } from '@/lib/email'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export type GmailActionResult = { error: string | null; success?: boolean }
 
@@ -15,7 +16,7 @@ export async function disconnectGmail(
   requireMutation(session)
   const { orgId, role } = session
 
-  if (role !== 'owner') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (role !== 'owner') return { error: await commonError('noPermission') }
 
   const db = createServiceRoleClient()
   const { error } = await db
@@ -41,7 +42,7 @@ export async function sendTestEmail(
   requireMutation(session)
   const { orgId, role } = session
 
-  if (role !== 'owner') return { error: 'אין הרשאה לביצוע פעולה זו' }
+  if (role !== 'owner') return { error: await commonError('noPermission') }
 
   const to = (formData.get('to') as string)?.trim()
   if (!to || !to.includes('@')) return { error: 'כתובת מייל לא תקינה' }

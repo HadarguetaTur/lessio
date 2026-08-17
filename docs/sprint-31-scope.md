@@ -103,15 +103,26 @@ Today `portal/[orgId]/login/actions.ts:83-86` sends a hardcoded string via `send
 
 ---
 
-## Story 5 — Template Approval Status Tracking 🟡 (M, one migration, may slip)
+## Story 5 — Template Approval Status Tracking ✅ Done (shipped 2026-08-18, expanded)
 
-- **Mandatory side-fix regardless of the rest:** `MetaWebhookPayloadSchema` in `src/lib/whatsapp/parsePayload.ts` requires the messages shape on *every* change — a payload containing a `message_template_status_update` change fails the whole `safeParse`, silently dropping any real messages in the same payload. Loosen so unknown changes are skipped per-change, not fatal.
-- New `parseTemplateStatusUpdates(body)` — reads `entry[].id` (= WABA id) and changes where `field === 'message_template_status_update'` (`event`, `message_template_name`, `message_template_language`, `reason`)
-- **Migration** `YYYYMMDDHHMMSS_whatsapp_template_statuses.sql`: table `whatsapp_template_statuses (organization_id FK CASCADE, template_name, language, status, reason, updated_at, PK(org, name, language))`, RLS deny-all/service-role (copy the `in_app_notifications` pattern)
-- `route.ts` POST — resolve org by `whatsapp_waba_id`, upsert status inside the same `after()` block
-- `settings/whatsapp/page.tsx` `ConnectedState` — compact template list with colored status chips + rejection reason (server component, plain select)
-- Meta console: subscribe the app to the `message_template_status_update` webhook field (runbook §2)
-- **Tests:** `parseTemplateStatusUpdates` extraction; mixed messages+status payload still yields the message (schema-looseness regression); status webhook upserts + 200
+Shipped beyond the original scope: rather than only *tracking* the status of Lessio's
+hardcoded templates, an owner can now submit **their own edited copy** to Meta and the
+send path uses it once approved. That closes the split where an org rewrote a reminder
+in settings and parents still received Lessio's stock wording outside the 24h window.
+
+- ✅ **Side-fix:** `MetaWebhookPayloadSchema` in `src/lib/whatsapp/parsePayload.ts` no longer demands the messages shape on every change — `value` is `unknown` in the envelope and validated per change, so a `message_template_status_update` riding along no longer fails the whole `safeParse` and drops real messages.
+- ✅ `parseTemplateStatusUpdates(body)` — reads `entry[].id` (= WABA id) and `message_template_status_update` changes.
+- ✅ **Migration** `20260818000001_whatsapp_template_statuses.sql`. PK `(organization_id, template_name, language)`, RLS deny-all/service-role. Carries the planned status columns **plus** `type` / `version` / `body_text` / `var_order` for org-authored submissions, with a CHECK that those four are all-set or all-null.
+- ✅ `route.ts` POST — resolves the org by `whatsapp_waba_id` and upserts inside the existing `after()` block.
+- ✅ Status chips + rejection reason live on `settings/message-templates` (next to the body being approved) rather than `settings/whatsapp`, which is where they are actionable.
+- **New this story, beyond the original plan:**
+  - `src/lib/whatsapp/submitTemplate.ts` — converts an org's `{{named}}` body to Meta's positional `{{1}}` form, validates against the rules Meta enforces (unknown variable, variable at start/end → 2388299, 1024-char cap), and rebuilds parameters at send time. Variable order comes from the org's own body, not a fixed per-type list, because the editable body and the built-in Meta template do not use the same variable sets.
+  - `src/lib/whatsapp/templateStatus.ts` — status reads/writes plus `refreshTemplateStatusesFromMeta` (`GET /{WABA_ID}/message_templates`), exposed as a *Refresh statuses* button so approval is visible without waiting on the webhook.
+  - Submissions ship as `lessio_<type>_<lang>_c<n>`, versioned for the same reason as `_v2`: editing an approved template resets it to PENDING at Meta, so the previously approved one stays live until the replacement clears.
+  - `sendSmartMessage` (Node **and** the Deno mirror) prefers the org's approved template over the built-in one, exact language match only. Deno callers now pass `namedVars` alongside the positional list.
+  - `TEMPLATE_LABELS` is now per-UI-locale — English reviewers previously saw Hebrew type names on every card.
+- ⏳ **Still ops work:** subscribe the app to the `message_template_status_update` webhook field in the Meta console (runbook §2). Until then the Refresh button is the only status path.
+- ✅ **Tests:** `submitTemplate.test.ts` (conversion + every rejection + all submittable defaults); `parseTemplateStatusUpdates` extraction; mixed messages+status payload still yields the message; `sendSmart` custom-template precedence; webhook status upsert + 200.
 
 ---
 

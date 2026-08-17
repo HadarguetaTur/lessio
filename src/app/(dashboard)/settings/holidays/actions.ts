@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 export type HolidayActionState = { error: string } | null
 
@@ -54,7 +55,7 @@ export async function addHoliday(
   const { orgId, role } = session
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const parsed = holidaySchema.safeParse({
@@ -63,7 +64,7 @@ export async function addHoliday(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const supabase = await createClient()
@@ -91,7 +92,7 @@ export async function addHolidayRange(
   const { orgId, role } = session
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   const parsed = holidayRangeSchema.safeParse({
@@ -101,7 +102,7 @@ export async function addHolidayRange(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const dates = getDatesInRange(parsed.data.date_from, parsed.data.date_to)

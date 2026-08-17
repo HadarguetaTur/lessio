@@ -7,6 +7,7 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 import { checkLessonCalendarConflicts } from '@/lib/google-calendar/checkLessonCalendarConflicts'
 import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 const TeacherLessonSchema = z.object({
   student_id:       z.string().uuid(),
@@ -22,13 +23,13 @@ export async function createTeacherLessonAction(
   const session = await getSession()
   const { orgId, profileId, role } = session
   requireMutation(session)
-  if (role !== 'teacher') return { error: 'אין הרשאה' }
+  if (role !== 'teacher') return { error: await commonError('noPermission') }
 
   const teacher = await getTeacherByProfileId(profileId, orgId)
   if (!teacher) return { error: 'לא נמצא פרופיל מורה' }
 
   const parsed = TeacherLessonSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: 'נתונים לא תקינים' }
+  if (!parsed.success) return { error: await commonError('invalidData') }
 
   const { student_id, date, start_time, duration_minutes } = parsed.data
   const confirmedCalendarConflict = formData.get('confirm_calendar_conflict') === '1'

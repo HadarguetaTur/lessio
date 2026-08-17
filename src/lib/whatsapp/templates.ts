@@ -240,28 +240,54 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
 }
 
 /**
- * Hebrew display labels for each template type (for the settings UI).
+ * Display labels for each template type, in the language of the person using the
+ * dashboard — not the language of the template being edited. Both sets are needed:
+ * the settings page is what Meta's App Review reviewers see, in English, and a
+ * Hebrew-only label map put Hebrew type names on every card for them.
  */
-export const TEMPLATE_LABELS: Record<MessageTemplateType, string> = {
-  booking_link: 'קישור הזמנת שיעור',
-  booking_confirmation: 'אישור הזמנת שיעור',
-  lesson_reminder: 'תזכורת שיעור',
-  payment_reminder: 'תזכורת תשלום',
-  payment_request: 'בקשת תשלום',
-  cancellation_confirmation: 'אישור ביטול שיעור (להורה)',
-  cancellation_admin_alert: 'התראת ביטול (למנהל)',
-  receipt_notification: 'קבלה לאחר תשלום',
-  homework_assignment: 'שיעורי בית חדשים',
-  homework_reminder: 'תזכורת שיעורי בית',
-  homework_graded: 'ציון על שיעורי בית',
-  balance_reply: 'תשובה לשאלת יתרה',
-  payment_history_reply: 'תשובה לשאלת היסטוריית תשלומים',
-  schedule_reply: 'תשובה לשאלת לוח זמנים',
-  portal_link_reply: 'קישור לפורטל האישי',
-  ai_satisfaction_prompt: 'בקשת משוב על תשובת AI',
-  unknown_intent_fallback: 'הודעת ברירת מחדל (כוונה לא מזוהה)',
-  lesson_cancelled_by_teacher: 'ביטול שיעורים בעקבות חופשת מורה (להורה)',
-  day_off_decision: 'החלטה על בקשת חופש (למורה)',
+export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, string>> = {
+  he: {
+    booking_link: 'קישור הזמנת שיעור',
+    booking_confirmation: 'אישור הזמנת שיעור',
+    lesson_reminder: 'תזכורת שיעור',
+    payment_reminder: 'תזכורת תשלום',
+    payment_request: 'בקשת תשלום',
+    cancellation_confirmation: 'אישור ביטול שיעור (להורה)',
+    cancellation_admin_alert: 'התראת ביטול (למנהל)',
+    receipt_notification: 'קבלה לאחר תשלום',
+    homework_assignment: 'שיעורי בית חדשים',
+    homework_reminder: 'תזכורת שיעורי בית',
+    homework_graded: 'ציון על שיעורי בית',
+    balance_reply: 'תשובה לשאלת יתרה',
+    payment_history_reply: 'תשובה לשאלת היסטוריית תשלומים',
+    schedule_reply: 'תשובה לשאלת לוח זמנים',
+    portal_link_reply: 'קישור לפורטל האישי',
+    ai_satisfaction_prompt: 'בקשת משוב על תשובת AI',
+    unknown_intent_fallback: 'הודעת ברירת מחדל (כוונה לא מזוהה)',
+    lesson_cancelled_by_teacher: 'ביטול שיעורים בעקבות חופשת מורה (להורה)',
+    day_off_decision: 'החלטה על בקשת חופש (למורה)',
+  },
+  en: {
+    booking_link: 'Booking link',
+    booking_confirmation: 'Booking confirmation',
+    lesson_reminder: 'Lesson reminder',
+    payment_reminder: 'Payment reminder',
+    payment_request: 'Payment request',
+    cancellation_confirmation: 'Cancellation confirmation (to parent)',
+    cancellation_admin_alert: 'Cancellation alert (to admin)',
+    receipt_notification: 'Receipt after payment',
+    homework_assignment: 'New homework',
+    homework_reminder: 'Homework reminder',
+    homework_graded: 'Homework graded',
+    balance_reply: 'Reply to a balance question',
+    payment_history_reply: 'Reply to a payment-history question',
+    schedule_reply: 'Reply to a schedule question',
+    portal_link_reply: 'Personal area link',
+    ai_satisfaction_prompt: 'Feedback prompt after an AI reply',
+    unknown_intent_fallback: 'Default reply (intent not recognised)',
+    lesson_cancelled_by_teacher: 'Lessons cancelled for teacher time off (to parent)',
+    day_off_decision: 'Time-off request decision (to teacher)',
+  },
 }
 
 /**

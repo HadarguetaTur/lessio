@@ -73,7 +73,7 @@ export function NewOrganizationForm({ action }: Props) {
           name="owner_full_name"
           required
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          placeholder="ישראל ישראלי"
+          placeholder={t('fullNamePlaceholder')}
         />
       </div>
 

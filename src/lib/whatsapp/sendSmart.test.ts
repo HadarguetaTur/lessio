@@ -6,16 +6,22 @@ const {
   mockSendTextMessage,
   mockSendTemplateMessage,
   mockIsOptedOut,
+  mockGetApprovedCustomTemplate,
 } = vi.hoisted(() => ({
   mockCreateServiceRoleClient: vi.fn(),
   mockResolveTemplate: vi.fn(),
   mockSendTextMessage: vi.fn(),
   mockSendTemplateMessage: vi.fn(),
   mockIsOptedOut: vi.fn(),
+  mockGetApprovedCustomTemplate: vi.fn(),
 }))
 
 vi.mock('./optOut', () => ({
   isOptedOut: mockIsOptedOut,
+}))
+
+vi.mock('./templateStatus', () => ({
+  getApprovedCustomTemplate: mockGetApprovedCustomTemplate,
 }))
 
 vi.mock('@/lib/supabase/service-role', () => ({
@@ -62,6 +68,7 @@ describe('sendSmartMessage', () => {
     mockSendTextMessage.mockResolvedValue(undefined)
     mockSendTemplateMessage.mockResolvedValue(undefined)
     mockIsOptedOut.mockResolvedValue(false)
+    mockGetApprovedCustomTemplate.mockResolvedValue(null)
   })
 
   describe('opt-out', () => {
@@ -172,6 +179,89 @@ describe('sendSmartMessage', () => {
     expect(warnSpy).toHaveBeenCalled()
 
     warnSpy.mockRestore()
+  })
+
+  describe('org-authored approved templates', () => {
+    it('prefers the org\'s own approved template over the built-in one', async () => {
+      buildQueryMock({ data: null, error: null })
+      mockGetApprovedCustomTemplate.mockResolvedValue({
+        name: 'lessio_lesson_reminder_he_c1',
+        language: 'he',
+        varOrder: ['date', 'teacher_name'],
+      })
+
+      await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
+
+      expect(mockGetApprovedCustomTemplate).toHaveBeenCalledWith('org-1', 'lesson_reminder', 'he')
+      expect(mockSendTemplateMessage).toHaveBeenCalledWith(
+        '+972501234567',
+        'token-1',
+        'pn-1',
+        'lessio_lesson_reminder_he_c1',
+        'he',
+        // Parameters follow the org's own variable order, not the built-in one.
+        [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: '12/5' },
+              { type: 'text', text: 'שרה' },
+            ],
+          },
+        ]
+      )
+      expect(mockSendTextMessage).not.toHaveBeenCalled()
+    })
+
+    it('substitutes a non-empty placeholder for a variable that resolved to nothing', async () => {
+      buildQueryMock({ data: null, error: null })
+      mockGetApprovedCustomTemplate.mockResolvedValue({
+        name: 'lessio_lesson_reminder_en_c2',
+        language: 'en',
+        varOrder: ['teacher_name'],
+      })
+
+      await sendSmartMessage({
+        ...BASE_PARAMS,
+        vars: { teacher_name: '' },
+        locale: 'en',
+        templateType: 'lesson_reminder',
+      })
+
+      expect(mockSendTemplateMessage).toHaveBeenCalledWith(
+        '+972501234567',
+        'token-1',
+        'pn-1',
+        'lessio_lesson_reminder_en_c2',
+        'en',
+        [{ type: 'body', parameters: [{ type: 'text', text: 'your teacher' }] }]
+      )
+    })
+
+    it('uses the built-in template when the org has no approved one', async () => {
+      buildQueryMock({ data: null, error: null })
+      mockGetApprovedCustomTemplate.mockResolvedValue(null)
+
+      await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
+
+      expect(mockSendTemplateMessage).toHaveBeenCalledWith(
+        '+972501234567',
+        'token-1',
+        'pn-1',
+        'lessio_lesson_reminder_he_v2',
+        'he',
+        expect.any(Array)
+      )
+    })
+
+    it('is not consulted while the 24h window is open', async () => {
+      buildQueryMock({ data: { message_id: 'msg-1' }, error: null })
+
+      await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
+
+      expect(mockGetApprovedCustomTemplate).not.toHaveBeenCalled()
+      expect(mockSendTextMessage).toHaveBeenCalled()
+    })
   })
 
   it('assumes the window is closed when the session query errors', async () => {

@@ -274,11 +274,33 @@ export async function registerTemplatesForWABA(
   return { ok, failed }
 }
 
-async function registerOne(
+/** Outcome of a single POST to Meta's message_templates endpoint. */
+export type PostTemplateResult =
+  /** Meta accepted the template; it is now PENDING (or auto-approved) at Meta. */
+  | { outcome: 'created'; id: string | null }
+  /** A template with this name/language/content is already registered on the WABA. */
+  | { outcome: 'exists'; detail: string }
+  /** Meta rejected it. `userMessage` is Meta's own explanation, safe to show a user. */
+  | { outcome: 'error'; status: number; body: string; userMessage: string | null }
+
+/**
+ * POSTs one template to a WABA and classifies the response.
+ *
+ * Shared by the built-in registry rollout (registerOne, below) and by
+ * org-authored submissions from the settings page (src/lib/whatsapp/submitTemplate.ts),
+ * so both benefit from the duplicate/category subcode handling learned here.
+ * Never throws on an HTTP-level rejection — it reports; callers decide.
+ */
+export async function postTemplateToMeta(
   wabaId: string,
   accessToken: string,
-  template: TemplateDefinition
-): Promise<void> {
+  template: {
+    name: string
+    language: string
+    category?: 'UTILITY' | 'AUTHENTICATION'
+    components: Record<string, unknown>[]
+  }
+): Promise<PostTemplateResult> {
   const res = await fetch(
     `https://graph.facebook.com/${META_API_VERSION}/${wabaId}/message_templates`,
     {
@@ -291,23 +313,22 @@ async function registerOne(
         name: template.name,
         language: template.language,
         category: template.category ?? 'UTILITY',
-        components: template.rawComponents ?? [
-          {
-            type: 'BODY',
-            text: template.bodyText,
-            example: { body_text: template.example },
-          },
-        ],
+        components: template.components,
       }),
     }
   )
 
-  if (res.ok) {
-    console.info(`[registerTemplates] Registered: ${template.name}`)
-    return
-  }
-
   const body = await res.text().catch(() => '')
+
+  if (res.ok) {
+    let id: string | null = null
+    try {
+      id = (JSON.parse(body) as { id?: string }).id ?? null
+    } catch {
+      // A 2xx with an unparseable body still means Meta accepted it.
+    }
+    return { outcome: 'created', id }
+  }
 
   // Template already exists — not an error. Match on Meta's numeric subcode
   // (2388024 = "content already exists in this language"), never on the message
@@ -319,8 +340,7 @@ async function registerOne(
     body.includes('already exists') ||
     res.status === 409
   ) {
-    console.info(`[registerTemplates] Already exists: ${template.name}`)
-    return
+    return { outcome: 'exists', detail: 'duplicate' }
   }
 
   // 2388026: the template exists, but Meta assigned it a different category than
@@ -329,9 +349,59 @@ async function registerOne(
   // an "exists" outcome, not a failure — reporting it as one made every rerun of
   // the rollout script look broken.
   if (body.includes('"error_subcode":2388026')) {
-    console.info(`[registerTemplates] Already exists with a different category: ${template.name}`)
+    return { outcome: 'exists', detail: 'different_category' }
+  }
+
+  return { outcome: 'error', status: res.status, body, userMessage: extractUserMessage(body) }
+}
+
+/**
+ * Pulls Meta's human-readable rejection text out of an error response.
+ * `error_user_msg` is written for an end user (and localised to the account
+ * language); `message` is the developer-facing fallback.
+ */
+export function extractUserMessage(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: { error_user_msg?: string; error_user_title?: string; message?: string }
+    }
+    return parsed.error?.error_user_msg ?? parsed.error?.message ?? null
+  } catch {
+    return null
+  }
+}
+
+async function registerOne(
+  wabaId: string,
+  accessToken: string,
+  template: TemplateDefinition
+): Promise<void> {
+  const result = await postTemplateToMeta(wabaId, accessToken, {
+    name: template.name,
+    language: template.language,
+    category: template.category,
+    components: template.rawComponents ?? [
+      {
+        type: 'BODY',
+        text: template.bodyText,
+        example: { body_text: template.example },
+      },
+    ],
+  })
+
+  if (result.outcome === 'created') {
+    console.info(`[registerTemplates] Registered: ${template.name}`)
     return
   }
 
-  throw new Error(`[registerTemplates] Failed ${template.name}: ${res.status} ${body}`)
+  if (result.outcome === 'exists') {
+    console.info(
+      result.detail === 'different_category'
+        ? `[registerTemplates] Already exists with a different category: ${template.name}`
+        : `[registerTemplates] Already exists: ${template.name}`
+    )
+    return
+  }
+
+  throw new Error(`[registerTemplates] Failed ${template.name}: ${result.status} ${result.body}`)
 }

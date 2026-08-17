@@ -9,14 +9,31 @@
  * - Variable hint showing available {{vars}} for this type
  * - Live preview using client-side substituteVars (no server round-trip)
  * - Save and Reset actions
+ * - For templates sent outside the 24h window: Meta approval status and a
+ *   submit-for-approval action
  */
 
-import React, { useActionState, useState, useEffect } from 'react'
+import React, { useActionState, useState, useEffect, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
-import { saveTemplateAction, resetTemplateAction, type ActionState } from '@/app/(dashboard)/settings/message-templates/actions'
+import {
+  saveTemplateAction,
+  resetTemplateAction,
+  submitTemplateForApprovalAction,
+  type ActionState,
+} from '@/app/(dashboard)/settings/message-templates/actions'
 import { substituteVars } from '@/lib/whatsapp/templates'
 import type { MessageTemplateType } from '@/lib/whatsapp/templates'
 import type { AppLocale } from '@/lib/i18n/locale'
+
+export interface TemplateApproval {
+  status: string
+  metaName: string
+  reason: string | null
+  /** 'custom' = a body this org submitted; 'builtin' = Lessio's own template. */
+  source: 'custom' | 'builtin'
+  /** Approved copy no longer matches the saved body. */
+  isStale: boolean
+}
 
 interface MessageTemplateCardProps {
   type: MessageTemplateType
@@ -26,9 +43,29 @@ interface MessageTemplateCardProps {
   customBody: string | null
   variables: string[]
   previewVars: Record<string, string>
+  /** This type can be submitted to Meta as an org-authored template. */
+  submittable?: boolean
+  /** This type is sent outside the 24h window, so Meta approval is relevant. */
+  needsApproval?: boolean
+  approval?: TemplateApproval | null
 }
 
 const initialState: ActionState = { error: null }
+
+/**
+ * Tailwind classes per Meta status. Statuses are stored verbatim from Meta, so
+ * one we have no translation for still renders — as its raw name, in neutral
+ * colours — rather than blowing up the page.
+ */
+const STATUS_STYLES: Record<string, string> = {
+  APPROVED: 'bg-green-50 text-green-700 border-green-200',
+  PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
+  REJECTED: 'bg-red-50 text-red-700 border-red-200',
+  PAUSED: 'bg-orange-50 text-orange-700 border-orange-200',
+  DISABLED: 'bg-gray-100 text-gray-600 border-gray-300',
+}
+
+const TRANSLATED_STATUSES = Object.keys(STATUS_STYLES)
 
 export function MessageTemplateCard({
   type,
@@ -38,6 +75,9 @@ export function MessageTemplateCard({
   customBody,
   variables,
   previewVars,
+  submittable = false,
+  needsApproval = false,
+  approval = null,
 }: MessageTemplateCardProps) {
   const t = useTranslations('settings.messageTemplates')
   const tCommon = useTranslations('common')
@@ -46,6 +86,11 @@ export function MessageTemplateCard({
   const [resetError, setResetError] = useState<string | null>(null)
   const [resetPending, setResetPending] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [submitPending, startSubmit] = useTransition()
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitVariable, setSubmitVariable] = useState<string | undefined>(undefined)
+  const [submitMetaMessage, setSubmitMetaMessage] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
   const isCustom = customBody !== null
 
   // Reflect optimistic reset: if saved body becomes null, revert textarea to default
@@ -53,6 +98,11 @@ export function MessageTemplateCard({
     if (!isCustom && body !== defaultBody) setBody(defaultBody)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCustom])
+
+  // The saved body is what gets submitted, so unsaved edits must not be
+  // silently left behind — the submit button waits for a save.
+  const savedBody = customBody ?? defaultBody
+  const hasUnsavedEdits = body !== savedBody
 
   async function handleReset() {
     setResetPending(true)
@@ -64,7 +114,32 @@ export function MessageTemplateCard({
     }
   }
 
+  function handleSubmitForApproval() {
+    setSubmitError(null)
+    setSubmitVariable(undefined)
+    setSubmitMetaMessage(null)
+    setSubmitted(false)
+    startSubmit(async () => {
+      const result = await submitTemplateForApprovalAction(type, locale)
+      if (result.error) {
+        setSubmitError(result.error)
+        setSubmitVariable(result.variable)
+        setSubmitMetaMessage(result.metaMessage ?? null)
+        return
+      }
+      setSubmitted(true)
+    })
+  }
+
   const preview = substituteVars(body, previewVars)
+  const statusClass = approval
+    ? STATUS_STYLES[approval.status] ?? 'bg-gray-100 text-gray-600 border-gray-300'
+    : ''
+  const statusLabel = approval
+    ? TRANSLATED_STATUSES.includes(approval.status)
+      ? t(`status.${approval.status}`)
+      : approval.status
+    : null
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
@@ -156,6 +231,81 @@ export function MessageTemplateCard({
             {preview}
           </pre>
         </div>
+      )}
+
+      {/* Meta approval */}
+      {needsApproval ? (
+        <div className="border-t border-gray-100 pt-3 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-gray-500">{t('metaStatus')}:</span>
+
+            {approval ? (
+              <span className={`text-xs border rounded px-2 py-0.5 font-medium ${statusClass}`}>
+                {statusLabel}
+              </span>
+            ) : (
+              // No row yet. That may mean nothing was ever submitted, or just
+              // that we have not read this WABA's templates — the two are
+              // indistinguishable from here, so the chip says so rather than
+              // claiming a built-in template was never registered.
+              <span className="text-xs bg-gray-100 text-gray-600 border border-gray-300 rounded px-2 py-0.5 font-medium">
+                {t('status.UNKNOWN')}
+              </span>
+            )}
+
+            {approval && (
+              <code className="text-[11px] text-gray-400 font-mono" dir="ltr">
+                {approval.metaName}
+              </code>
+            )}
+
+            {approval?.source === 'builtin' && (
+              <span className="text-[11px] text-gray-400">{t('builtInTemplate')}</span>
+            )}
+          </div>
+
+          {approval?.reason && (
+            <p className="text-xs text-red-600">
+              {t('rejectionReason')}: {approval.reason}
+            </p>
+          )}
+
+          {approval?.isStale && (
+            <p className="text-xs text-amber-700">{t('staleWarning')}</p>
+          )}
+
+          {submittable ? (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleSubmitForApproval}
+                  disabled={submitPending || hasUnsavedEdits}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  {submitPending ? `${t('submitForApproval')}…` : t('submitForApproval')}
+                </button>
+                {hasUnsavedEdits && (
+                  <span className="text-xs text-gray-500">{t('saveBeforeSubmit')}</span>
+                )}
+              </div>
+
+              {submitError && (
+                <p className="text-xs text-red-600">
+                  {submitError === 'unknownVariable'
+                    ? t('errors.unknownVariable', { variable: submitVariable ?? '' })
+                    : t(`errors.${submitError}`)}
+                  {submitMetaMessage && <span className="block text-gray-500">{submitMetaMessage}</span>}
+                </p>
+              )}
+              {submitted && <p className="text-xs text-green-600">{t('submittedToMeta')}</p>}
+            </>
+          ) : (
+            <p className="text-xs text-gray-500">{t('builtInOnly')}</p>
+          )}
+        </div>
+      ) : (
+        <p className="border-t border-gray-100 pt-3 text-xs text-gray-500">{t('inWindowOnly')}</p>
       )}
     </div>
   )

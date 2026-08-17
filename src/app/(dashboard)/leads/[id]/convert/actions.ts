@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { convertLead } from '@/lib/leads/convertLead'
 import { requireFeature } from '@/lib/saas/featureGate'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 const convertLeadSchema = z.object({
   leadId: z.string().uuid(),
@@ -24,7 +25,7 @@ export async function convertLeadAction(
   requireMutation(session)
 
   if (role !== 'owner' && role !== 'admin') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'leads')

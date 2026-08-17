@@ -6,6 +6,7 @@
  */
 
 import { useState, useTransition, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { Target, Plus, Trash2, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import type { StudentGoal } from '@/lib/goals'
 import type { GoalActionState } from '@/app/(dashboard)/students/[id]/actions'
@@ -20,11 +21,6 @@ type Props = {
   onSuccess?: () => void
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  active: 'פעיל',
-  achieved: 'הושג',
-  abandoned: 'ננטש',
-}
 const STATUS_CLASS: Record<string, string> = {
   active: 'bg-blue-50 text-blue-700',
   achieved: 'bg-green-50 text-green-700',
@@ -40,6 +36,8 @@ export function GoalsSection({
   canEdit,
   onSuccess,
 }: Props) {
+  const t = useTranslations('studentProfile.goals')
+  const tCommon = useTranslations('common')
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -94,7 +92,7 @@ export function GoalsSection({
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
           <Target size={14} />
-          יעדי למידה ({activeGoals.length} פעילים)
+          {t('title', { count: activeGoals.length })}
         </h3>
         {canEdit && (
           <button
@@ -103,7 +101,7 @@ export function GoalsSection({
             className="text-xs text-primary hover:underline flex items-center gap-1"
           >
             <Plus size={12} />
-            יעד חדש
+            {t('newGoal')}
           </button>
         )}
       </div>
@@ -117,14 +115,14 @@ export function GoalsSection({
           <input
             name="subject"
             required
-            placeholder="מקצוע (מתמטיקה, אנגלית...)"
+            placeholder={t('subjectPlaceholder')}
             className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm"
           />
           <textarea
             name="description"
             required
             rows={2}
-            placeholder="תיאור היעד..."
+            placeholder={t('descriptionPlaceholder')}
             className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm resize-none"
           />
           <input
@@ -139,10 +137,10 @@ export function GoalsSection({
               className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1"
             >
               {isPending && <Loader2 size={12} className="animate-spin" />}
-              {isPending ? 'שומר...' : 'צור יעד'}
+              {isPending ? t('saving') : t('create')}
             </button>
             <button type="button" onClick={() => setShowForm(false)} className="text-xs text-gray-500 hover:text-gray-700">
-              ביטול
+              {tCommon('actions.cancel')}
             </button>
           </div>
         </form>
@@ -150,7 +148,7 @@ export function GoalsSection({
 
       {/* Active goals */}
       {activeGoals.length === 0 && !showForm && (
-        <p className="text-sm text-gray-400">אין יעדים פעילים.</p>
+        <p className="text-sm text-gray-400">{t('empty')}</p>
       )}
 
       {activeGoals.map((goal) => (
@@ -160,7 +158,7 @@ export function GoalsSection({
               <span className="text-xs font-medium text-gray-500">{goal.subject}</span>
               <p className="text-sm text-gray-800">{goal.description}</p>
               {goal.targetDate && (
-                <p className="text-xs text-gray-400 mt-1">יעד: {goal.targetDate}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('targetDate', { date: goal.targetDate })}</p>
               )}
             </div>
             {canEdit && (
@@ -169,7 +167,7 @@ export function GoalsSection({
                   type="button"
                   onClick={() => handleStatusUpdate(goal.id, 'achieved')}
                   disabled={isPending}
-                  title="סמן כהושג"
+                  title={t('markAchieved')}
                   className="text-green-500 hover:text-green-700 p-1 disabled:opacity-50"
                 >
                   <CheckCircle size={14} />
@@ -178,7 +176,7 @@ export function GoalsSection({
                   type="button"
                   onClick={() => handleStatusUpdate(goal.id, 'abandoned')}
                   disabled={isPending}
-                  title="נטוש"
+                  title={t('markAbandoned')}
                   className="text-gray-400 hover:text-gray-600 p-1 disabled:opacity-50"
                 >
                   <XCircle size={14} />
@@ -187,7 +185,7 @@ export function GoalsSection({
                   type="button"
                   onClick={() => handleDelete(goal.id)}
                   disabled={isPending}
-                  title="מחק"
+                  title={tCommon('actions.delete')}
                   className="text-gray-400 hover:text-red-500 p-1 disabled:opacity-50"
                 >
                   <Trash2 size={14} />
@@ -202,14 +200,14 @@ export function GoalsSection({
       {pastGoals.length > 0 && (
         <details className="text-sm">
           <summary className="text-gray-500 cursor-pointer hover:text-gray-700">
-            יעדים שהושלמו / ננטשו ({pastGoals.length})
+            {t('pastGoals', { count: pastGoals.length })}
           </summary>
           <div className="mt-2 space-y-2">
             {pastGoals.map((goal) => (
               <div key={goal.id} className="border border-gray-50 rounded-lg p-3 opacity-60">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_CLASS[goal.status]}`}>
-                    {STATUS_LABEL[goal.status]}
+                    {t(`status.${goal.status}`)}
                   </span>
                   <span className="text-xs text-gray-500">{goal.subject}</span>
                 </div>

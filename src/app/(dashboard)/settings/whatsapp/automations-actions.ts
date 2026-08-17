@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { commonError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 const Schema = z.object({
   automation_lesson_reminder_enabled:  z.enum(['on', 'off']).transform(v => v === 'on'),
@@ -12,7 +14,7 @@ const Schema = z.object({
   automation_dunning_enabled:          z.enum(['on', 'off']).transform(v => v === 'on'),
   automation_new_leads_enabled:        z.enum(['on', 'off']).transform(v => v === 'on'),
   automation_lesson_reminder_hours:    z.coerce.number().refine(v => [2, 12, 24].includes(v), {
-    message: 'חייב להיות 2, 12 או 24',
+    message: 'AUTOMATION_HOURS_INVALID',
   }),
   ai_assistant_enabled:                z.enum(['on', 'off']).transform(v => v === 'on'),
 })
@@ -26,9 +28,10 @@ export async function saveAutomationSettings(
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
+  const t = await getTranslations('settings.automations')
 
   if (role !== 'owner') {
-    return { error: 'רק בעל עסק יכול לשנות הגדרות אוטומציות' }
+    return { error: t('errors.ownerOnly') }
   }
 
   const raw = {
@@ -43,7 +46,12 @@ export async function saveAutomationSettings(
 
   const parsed = Schema.safeParse(raw)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return {
+      error:
+        parsed.error.issues[0]?.message === 'AUTOMATION_HOURS_INVALID'
+          ? t('errors.hoursInvalid')
+          : await commonError('invalidData'),
+    }
   }
 
   const db = createServiceRoleClient()
@@ -54,7 +62,7 @@ export async function saveAutomationSettings(
 
   if (error) {
     console.error('[automations] DB update failed', { orgId, error: error.message })
-    return { error: 'שגיאה בשמירת ההגדרות' }
+    return { error: t('errors.saveFailed') }
   }
 
   revalidatePath('/settings/whatsapp')

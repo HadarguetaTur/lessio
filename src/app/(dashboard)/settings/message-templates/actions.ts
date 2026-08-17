@@ -10,6 +10,21 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { decryptToken } from '@/lib/crypto'
+import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
+import { DEFAULT_TEMPLATES, type MessageTemplateType } from '@/lib/whatsapp/templates'
+import { commonError } from '@/lib/i18n/actionErrors'
+import {
+  buildMetaSubmission,
+  customTemplateName,
+  isSubmittableType,
+  submitCustomTemplate,
+} from '@/lib/whatsapp/submitTemplate'
+import {
+  nextTemplateVersion,
+  recordSubmission,
+  refreshTemplateStatusesFromMeta,
+} from '@/lib/whatsapp/templateStatus'
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -41,7 +56,7 @@ export async function saveTemplateAction(
   const { orgId, role } = session
 
   if (role !== 'owner') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'whatsapp_automation')
@@ -53,7 +68,7 @@ export async function saveTemplateAction(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+    return { error: parsed.error.issues[0]?.message ?? await commonError('invalidData') }
   }
 
   const { type, locale, body_template } = parsed.data
@@ -90,7 +105,7 @@ export async function resetTemplateAction(
   const { orgId, role } = session
 
   if (role !== 'owner') {
-    return { error: 'אין הרשאה לביצוע פעולה זו' }
+    return { error: await commonError('noPermission') }
   }
 
   await requireFeature(orgId, 'whatsapp_automation')
@@ -111,4 +126,188 @@ export async function resetTemplateAction(
   console.info('[message-templates] Template reset to default', { orgId, type, locale })
   revalidatePath('/settings/message-templates')
   return {}
+}
+
+// ── Meta approval ─────────────────────────────────────────────────────────────
+
+/**
+ * Outcome of a Meta submission.
+ *
+ * `error` carries a stable code, not a sentence — the card renders it through
+ * next-intl so an English-speaking owner gets an English explanation, matching
+ * `registerTemplates` in ../whatsapp/actions.ts. (The two older actions above
+ * predate that convention and still return Hebrew strings.)
+ */
+export type SubmitTemplateResult = {
+  error: string | null
+  /** Set with `error: 'unknownVariable'` — the offending {{name}}. */
+  variable?: string
+  /** Meta's own rejection text, when it gave one. Already user-facing. */
+  metaMessage?: string | null
+  /** The Meta template name that is now PENDING. */
+  templateName?: string
+  success?: boolean
+}
+
+/**
+ * Submits the org's saved body for one template type to Meta for approval.
+ *
+ * Deliberately reads the *saved* body rather than taking one from the client:
+ * what gets approved must be what the bot will actually send, and the card
+ * blocks submitting while the textarea has unsaved edits.
+ */
+export async function submitTemplateForApprovalAction(
+  type: string,
+  localeInput: string
+): Promise<SubmitTemplateResult> {
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role, profileId } = session
+
+  if (role !== 'owner') return { error: 'forbidden' }
+
+  await requireFeature(orgId, 'whatsapp_automation')
+
+  if (!isSubmittableType(type)) return { error: 'notSubmittable' }
+  const templateType = type as MessageTemplateType
+  const locale: AppLocale = parseAppLocale(localeInput)
+
+  const db = createServiceRoleClient()
+
+  const { data: org } = await db
+    .from('organizations')
+    .select('whatsapp_waba_id, whatsapp_access_token')
+    .eq('id', orgId)
+    .maybeSingle()
+
+  if (!org?.whatsapp_waba_id || !org?.whatsapp_access_token) {
+    return { error: 'notConnected' }
+  }
+
+  let accessToken: string
+  try {
+    accessToken = decryptToken(org.whatsapp_access_token)
+  } catch (err) {
+    console.error('[message-templates] Token decryption failed', { orgId, err })
+    return { error: 'decryptFailed' }
+  }
+
+  // Same fallback the bot uses: a custom row for this language, else the
+  // system default. An org that never edited the copy can still submit it.
+  const { data: customRow } = await db
+    .from('message_templates')
+    .select('body_template')
+    .eq('organization_id', orgId)
+    .eq('type', templateType)
+    .eq('locale', locale)
+    .maybeSingle()
+
+  const body = customRow?.body_template ?? DEFAULT_TEMPLATES[locale][templateType]
+
+  const submission = buildMetaSubmission(templateType, locale, body)
+  if (!submission.ok) {
+    return { error: submission.code, variable: submission.variable }
+  }
+
+  let version: number
+  try {
+    version = await nextTemplateVersion(orgId, templateType, locale)
+  } catch (err) {
+    console.error('[message-templates] Could not determine template version', { orgId, type, err })
+    return { error: 'submitFailed' }
+  }
+
+  const templateName = customTemplateName(templateType, locale, version)
+
+  const outcome = await submitCustomTemplate({
+    wabaId: org.whatsapp_waba_id,
+    accessToken,
+    name: templateName,
+    language: locale,
+    bodyText: submission.bodyText,
+    example: submission.example,
+  })
+
+  if (!outcome.ok) {
+    console.error('[message-templates] Meta rejected template submission', {
+      orgId,
+      templateName,
+      detail: outcome.detail,
+    })
+    return { error: 'submitFailed', metaMessage: outcome.userMessage }
+  }
+
+  // Recorded after Meta accepted it, so a failed POST cannot burn a version
+  // number and leave a phantom PENDING row the owner cannot clear.
+  try {
+    await recordSubmission(orgId, {
+      templateName,
+      language: locale,
+      type: templateType,
+      version,
+      bodyText: submission.bodyText,
+      varOrder: submission.varOrder,
+      metaTemplateId: outcome.metaTemplateId,
+      submittedBy: profileId ?? null,
+    })
+  } catch (err) {
+    // Meta has it; we lost our copy of the fact. Refresh recovers it.
+    console.error('[message-templates] Submitted to Meta but failed to record locally', {
+      orgId,
+      templateName,
+      err,
+    })
+    return { error: 'recordFailed', templateName }
+  }
+
+  console.info('[message-templates] Template submitted to Meta', { orgId, templateName, version })
+  revalidatePath('/settings/message-templates')
+  return { error: null, success: true, templateName }
+}
+
+/**
+ * Re-reads every template status straight from the org's WABA.
+ *
+ * The `message_template_status_update` webhook is the normal path, but it only
+ * fires on transitions and needs that field subscribed in the Meta console —
+ * so this is both the catch-up for orgs that connected earlier and the way to
+ * see an approval land without waiting.
+ */
+export async function refreshTemplateStatusesAction(): Promise<SubmitTemplateResult> {
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
+
+  if (role !== 'owner') return { error: 'forbidden' }
+
+  await requireFeature(orgId, 'whatsapp_automation')
+
+  const db = createServiceRoleClient()
+  const { data: org } = await db
+    .from('organizations')
+    .select('whatsapp_waba_id, whatsapp_access_token')
+    .eq('id', orgId)
+    .maybeSingle()
+
+  if (!org?.whatsapp_waba_id || !org?.whatsapp_access_token) {
+    return { error: 'notConnected' }
+  }
+
+  let accessToken: string
+  try {
+    accessToken = decryptToken(org.whatsapp_access_token)
+  } catch (err) {
+    console.error('[message-templates] Token decryption failed', { orgId, err })
+    return { error: 'decryptFailed' }
+  }
+
+  try {
+    await refreshTemplateStatusesFromMeta(orgId, org.whatsapp_waba_id, accessToken)
+  } catch (err) {
+    console.error('[message-templates] Status refresh failed', { orgId, err })
+    return { error: 'refreshFailed' }
+  }
+
+  revalidatePath('/settings/message-templates')
+  return { error: null, success: true }
 }

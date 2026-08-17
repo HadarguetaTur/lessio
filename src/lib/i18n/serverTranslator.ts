@@ -15,15 +15,29 @@ export async function loadMessages(locale: AppLocale) {
 
 export type ImportT = (key: string, values?: Record<string, string | number | Date>) => string
 
-/** Translator for the `import` namespace (Route Handlers, etc.). */
-export async function getImportTranslator(): Promise<ImportT> {
-  const locale = await getAppLocale()
-  const messages = await loadMessages(locale)
+/**
+ * Translator for lib code and Route Handlers — anywhere outside a React tree,
+ * where `getTranslations()` from `next-intl/server` is unavailable.
+ *
+ * Pass `locale` explicitly for recipient-facing text (emails, PDFs, WhatsApp,
+ * iCal): those go out in the *recipient's* language, which
+ * `resolveRecipientLocale()` decides — not the language the acting user happens
+ * to be viewing the dashboard in. Omit it only for text rendered straight back
+ * to the current request's user, where the `locale` cookie is the right source.
+ */
+export async function getT(namespace: string, locale?: AppLocale): Promise<ImportT> {
+  const resolved = locale ?? (await getAppLocale())
+  const messages = await loadMessages(resolved)
   const t = createTranslator({
-    locale,
+    locale: resolved,
     messages: messages as Record<string, unknown>,
-    namespace: 'import',
+    namespace,
   })
   return (key, values) =>
     (t as (k: string, v?: Record<string, string | number | Date>) => string)(key, values)
+}
+
+/** Translator for the `import` namespace (Route Handlers, etc.). */
+export async function getImportTranslator(): Promise<ImportT> {
+  return getT('import')
 }

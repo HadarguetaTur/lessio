@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useRef, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { Send } from 'lucide-react'
 import type { PortalMessage } from '@/lib/portal/messages'
 
@@ -10,6 +11,8 @@ type Props = {
 }
 
 export function DashboardMessageThread({ messages, replyAction }: Props) {
+  const t = useTranslations('lessons')
+  const tCommon = useTranslations('common')
   const [state, action, isPending] = useActionState(replyAction, { error: null })
   const scrollRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -30,7 +33,7 @@ export function DashboardMessageThread({ messages, replyAction }: Props) {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[600px]">
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-12">
-            אין הודעות בשיחה זו.
+            {t('threadEmpty')}
           </p>
         )}
         {messages.map((msg) => (
@@ -77,7 +80,7 @@ export function DashboardMessageThread({ messages, replyAction }: Props) {
             name="body"
             required
             maxLength={2000}
-            placeholder="כתבו תגובה..."
+            placeholder={t('threadPlaceholder')}
             className="flex-1 border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             autoComplete="off"
           />
@@ -87,7 +90,7 @@ export function DashboardMessageThread({ messages, replyAction }: Props) {
             className="shrink-0 px-4 py-2.5 flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             <Send size={14} />
-            שלח
+            {tCommon('actions.send')}
           </button>
         </form>
       </div>

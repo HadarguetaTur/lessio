@@ -182,7 +182,8 @@ async function processOrg(db: any, org: any, now: Date) {
         'lesson_reminder',
         message,
         [teacherName, dateStr, timeStr],
-        locale
+        locale,
+        { teacher_name: teacherName, date: dateStr, time: timeStr }
       )
     } catch (err) {
       sendError = String(err)

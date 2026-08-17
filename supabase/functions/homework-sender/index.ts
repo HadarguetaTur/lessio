@@ -130,7 +130,12 @@ Deno.serve(async (_req) => {
           'homework_assignment',
           message,
           [assignment.title, assignment.body, dueLabel],
-          locale
+          locale,
+          {
+            title: assignment.title,
+            body: assignment.body,
+            due_line: assignment.due_date ? `\n${dueLabel}` : '',
+          }
         )
 
         await markSent(db, assignment.id)

@@ -1,6 +1,7 @@
 import { getSuperadminNotifications, type InAppNotification } from '@/lib/notifications'
 import { markPlatformNotificationRead } from '@/app/(admin)/admin/dashboard/actions'
 import { DateTime } from 'luxon'
+import { getTranslations } from 'next-intl/server'
 
 interface Props {
   profileId: string
@@ -12,6 +13,7 @@ interface Props {
  * phone_number_id. Minimal list, no bell/badge (Sprint 31 Story 4b).
  */
 export async function PlatformNotificationsList({ profileId }: Props) {
+  const t = await getTranslations('admin')
   const notifications = await getSuperadminNotifications(profileId, { unreadOnly: true, limit: 20 })
 
   if (notifications.length === 0) return null
@@ -19,8 +21,8 @@ export async function PlatformNotificationsList({ profileId }: Props) {
   return (
     <div className="bg-white rounded-xl border border-red-200 mb-6">
       <div className="px-5 py-4 border-b border-red-100">
-        <h2 className="text-sm font-semibold text-red-700">התראות פלטפורמה</h2>
-        <p className="text-xs text-gray-500 mt-0.5">אירועים שדורשים את תשומת הלב שלך</p>
+        <h2 className="text-sm font-semibold text-red-700">{t('platformNotificationsTitle')}</h2>
+        <p className="text-xs text-gray-500 mt-0.5">{t('platformNotificationsSubtitle')}</p>
       </div>
       <ul className="divide-y divide-gray-50">
         {notifications.map((n) => (
@@ -31,7 +33,8 @@ export async function PlatformNotificationsList({ profileId }: Props) {
   )
 }
 
-function NotificationRow({ notification }: { notification: InAppNotification }) {
+async function NotificationRow({ notification }: { notification: InAppNotification }) {
+  const t = await getTranslations('admin')
   const markRead = markPlatformNotificationRead.bind(null, notification.id)
 
   return (
@@ -50,7 +53,7 @@ function NotificationRow({ notification }: { notification: InAppNotification }) 
           type="submit"
           className="text-xs text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap"
         >
-          סמן כנקרא
+          {t('markRead')}
         </button>
       </form>
     </li>

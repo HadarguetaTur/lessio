@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { ArrowRight, Trash2 } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getTeacherById } from '@/lib/teachers'
-import { getTeacherAvailability, DAY_NAMES, AvailabilityWindow } from '@/lib/availability'
+import { getTeacherAvailability, DAY_KEYS, AvailabilityWindow } from '@/lib/availability'
 import { AddAvailabilityForm } from '@/components/dashboard/availability/AddAvailabilityForm'
 import { createAvailability, deleteAvailability } from './actions'
 import { getTranslations } from 'next-intl/server'
@@ -76,7 +76,7 @@ export default async function TeacherAvailabilityPage(props: {
             key={day}
             className="flex items-start gap-4 rounded-xl border border-border bg-card shadow-sm px-4 py-3"
           >
-            <span className="w-16 shrink-0 text-sm font-medium text-foreground pt-0.5">{DAY_NAMES[day]}</span>
+            <span className="w-16 shrink-0 text-sm font-medium text-foreground pt-0.5">{tCommon(`days.${DAY_KEYS[day]}`)}</span>
 
             {dayWindows.length === 0 ? (
               <span className="text-sm text-muted-foreground">—</span>

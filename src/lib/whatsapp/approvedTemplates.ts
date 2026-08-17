@@ -34,7 +34,7 @@ export type ApprovedTemplate = {
  * same vars map feeds the free-text templates where a leading "\n" is normal
  * (due_line, feedback_line). Normalise at this single choke point.
  */
-function param(value: string | undefined, fallback: string): { type: 'text'; text: string } {
+export function param(value: string | undefined, fallback: string): { type: 'text'; text: string } {
   const text = (value ?? '').replace(/\s+/g, ' ').trim()
   return { type: 'text', text: text || fallback }
 }

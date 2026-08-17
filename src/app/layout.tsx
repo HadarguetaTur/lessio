@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,30 +17,35 @@ const geistMono = Geist_Mono({
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://lessio.app";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  applicationName: "LESSIO",
-  title: {
-    default: "LESSIO — תשתית עסקית למורים פרטיים ומרכזי למידה",
-    template: "%s · LESSIO",
-  },
-  description:
-    "מערכת אחת שמרכזת תיאום, ביטולים, גבייה ותקשורת עם הורים. ההורים נשארים ב-WhatsApp — בלי כאוס תפעולי.",
-  openGraph: {
-    type: "website",
-    siteName: "LESSIO",
-    title: "LESSIO — תשתית עסקית למורים פרטיים ומרכזי למידה",
-    description:
-      "מערכת אחת שמרכזת תיאום, ביטולים, גבייה ותקשורת עם הורים. ההורים נשארים ב-WhatsApp — בלי כאוס תפעולי.",
-    url: "/",
-    locale: "he_IL",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "LESSIO — תשתית עסקית למורים פרטיים",
-    description: "כל השוטף במקום אחד. ההורים נשארים ב-WhatsApp.",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  // Must be a function, not a static object: the title, description and OG card
+  // follow the request's locale, and a static export is evaluated once at build
+  // time — which is how every English visitor used to get Hebrew metadata.
+  const t = await getTranslations("meta");
+
+  return {
+    metadataBase: new URL(siteUrl),
+    applicationName: "LESSIO",
+    title: {
+      default: t("title"),
+      template: "%s · LESSIO",
+    },
+    description: t("description"),
+    openGraph: {
+      type: "website",
+      siteName: "LESSIO",
+      title: t("title"),
+      description: t("description"),
+      url: "/",
+      locale: t("ogLocale"),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("twitterTitle"),
+      description: t("twitterDescription"),
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#0d9488",

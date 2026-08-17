@@ -49,6 +49,7 @@ export default async function ChargesPage(props: {
   const canMarkPaid = role === 'owner' || role === 'admin'
   const selectedParent = parents.find((parent) => parent.id === searchParams.parent)
   const t = await getTranslations('charges')
+  const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
 
   const CHARGE_TYPE_LABELS: Record<string, string> = {
@@ -222,7 +223,7 @@ export default async function ChargesPage(props: {
                       <StatusBadge status={charge.status} />
                       {charge.status === 'paid' && charge.payment_provider && (
                         <div className="mt-1 text-[10px] text-muted-foreground">
-                          {t('via', { provider: getProviderUI(charge.payment_provider)?.label ?? charge.payment_provider })}
+                          {t('via', { provider: getProviderUI(charge.payment_provider) ? tp(`${charge.payment_provider}.label`) : charge.payment_provider })}
                         </div>
                       )}
                       {charge.status === 'paid' && !charge.payment_provider && charge.paid_at && (

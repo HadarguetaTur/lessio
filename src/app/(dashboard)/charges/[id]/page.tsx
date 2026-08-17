@@ -28,6 +28,7 @@ export default async function ChargeDetailPage({
 
   const canMarkPaid = role === 'owner' || role === 'admin'
   const t = await getTranslations('charges')
+  const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
 
   const STATUS_LABELS: Record<ChargeStatus, string> = {
@@ -87,7 +88,7 @@ export default async function ChargeDetailPage({
               </span>
               {charge.status === 'paid' && charge.payment_provider && (
                 <span className="block text-xs text-gray-400 mt-1">
-                  {t('via', { provider: getProviderUI(charge.payment_provider)?.label ?? charge.payment_provider })}
+                  {t('via', { provider: getProviderUI(charge.payment_provider) ? tp(`${charge.payment_provider}.label`) : charge.payment_provider })}
                 </span>
               )}
               {charge.status === 'paid' && !charge.payment_provider && charge.paid_at && (

@@ -20,6 +20,7 @@ export function PaymentProviderForm() {
   const t = useTranslations('settings.payment')
   const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(savePaymentProvider, initialState)
+  const tp = useTranslations('settings.paymentProviders')
   const [selectedId, setSelectedId] = useState<string>(PROVIDERS_UI[0]?.id ?? '')
 
   const selectedProvider = PROVIDERS_UI.find(p => p.id === selectedId)
@@ -46,12 +47,12 @@ export function PaymentProviderForm() {
         >
           {PROVIDERS_UI.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.label}
+              {tp(`${p.id}.label`)}
             </option>
           ))}
         </select>
-        {selectedProvider?.description && (
-          <p className="mt-1 text-xs text-gray-500">{selectedProvider.description}</p>
+        {selectedProvider && (
+          <p className="mt-1 text-xs text-gray-500">{tp(`${selectedProvider.id}.description`)}</p>
         )}
       </div>
 
@@ -69,13 +70,15 @@ export function PaymentProviderForm() {
 }
 
 function ProviderFields({ provider }: { provider: ProviderUIDef }) {
+  const t = useTranslations('settings.payment')
+  const tp = useTranslations(`settings.paymentProviders.${provider.id}`)
   return (
     <div className="space-y-4">
       <hr className="border-gray-100" />
 
-      {provider.setupHint && (
+      {(
         <div className="text-xs text-gray-500 bg-gray-50 rounded-md p-3 leading-relaxed">
-          {provider.setupHint}
+          {tp('setupHint')}
           {provider.docsUrl && (
             <a
               href={provider.docsUrl}
@@ -84,7 +87,7 @@ function ProviderFields({ provider }: { provider: ProviderUIDef }) {
               className="inline-flex items-center gap-1 text-blue-600 hover:underline mr-1"
             >
               <ExternalLink size={11} />
-              תיעוד מפתחים
+              {t('developerDocs')}
             </a>
           )}
         </div>
@@ -96,7 +99,7 @@ function ProviderFields({ provider }: { provider: ProviderUIDef }) {
             htmlFor={field.name}
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            {field.label}
+            {tp(`fields.${field.name}.label`)}
           </label>
           <input
             id={field.name}
@@ -104,11 +107,11 @@ function ProviderFields({ provider }: { provider: ProviderUIDef }) {
             type={field.type}
             autoComplete={field.type === 'password' ? 'new-password' : 'off'}
             required
-            placeholder={field.placeholder}
+            placeholder={field.hasPlaceholder ? tp(`fields.${field.name}.placeholder`) : undefined}
             className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
           />
-          {field.hint && (
-            <p className="mt-1 text-xs text-gray-400">{field.hint}</p>
+          {field.hasHint && (
+            <p className="mt-1 text-xs text-gray-400">{tp(`fields.${field.name}.hint`)}</p>
           )}
         </div>
       ))}

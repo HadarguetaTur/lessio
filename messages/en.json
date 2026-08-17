@@ -943,7 +943,21 @@
       "provider": "Payment Provider",
       "autoSend": "Automatically send payment request after lesson",
       "disconnect": "Disconnect Provider",
-      "disconnectConfirm": "Disconnect the payment provider?"
+      "disconnectConfirm": "Disconnect the payment provider?",
+      "developerDocs": "Developer documentation",
+      "pageTitle": "Payment settings",
+      "pageSubtitle": "Connect a payment provider so you can send parents real payment links over WhatsApp. Credentials are encrypted and stored securely.",
+      "automationTitle": "Automation",
+      "securityTitle": "Security",
+      "security1": "API credentials are encrypted with AES-256-GCM before storage",
+      "security2": "Credentials are never stored as plain text in the database",
+      "security3": "Each organization manages its own payment provider",
+      "providerLabel": "Payment provider",
+      "servicesLabel": "Services",
+      "apiDetailsLabel": "API credentials",
+      "apiDetailsValue": "Encrypted and stored securely",
+      "disconnectHint": "Disconnecting stops payment links being created until you reconnect.",
+      "disconnectedHint": "Choose a payment provider and enter its API credentials. They are encrypted before being saved."
     },
     "receipts": {
       "title": "Receipt Settings",
@@ -1140,6 +1154,142 @@
         "ownerOnly": "Only the business owner can change automation settings",
         "hoursInvalid": "Must be 2, 12 or 24",
         "saveFailed": "Could not save the settings"
+      }
+    },
+    "googleOAuthErrors": {
+      "denied": "You did not grant access to Google. You can try again.",
+      "invalid": "Invalid OAuth code. Please try again.",
+      "state_mismatch": "A security check failed during sign-in. Please try again.",
+      "exchange": "We could not verify the code with Google. Please try again.",
+      "encrypt": "Internal error. Contact your system administrator.",
+      "db": "Could not save the data. Please try again.",
+      "config": "Google settings are missing on the server. Contact your system administrator.",
+      "forbidden": "You do not have permission to perform this action.",
+      "unauthenticated": "You need to sign in again.",
+      "generic": "Something went wrong during the connection. Please try again."
+    },
+    "googleCommon": {
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "connectHint": "Click the button to sign in with your Google account. You will be taken to Google to approve access.",
+      "missingClientId": "GOOGLE_CLIENT_ID is not configured on the server — contact your system administrator."
+    },
+    "calendarPage": {
+      "title": "Organization Google Calendar",
+      "subtitle": "Connect your organization Google Calendar so the system checks for conflicts automatically before a lesson is scheduled. The organization calendar is always checked first, then the teacher personal calendar.",
+      "connectedBanner": "Google Calendar connected successfully.",
+      "howTitle": "How does conflict checking work?",
+      "how1": "When a lesson is scheduled, the organization calendar is checked first (if connected)",
+      "how2": "Then the teacher personal calendar is checked (if they connected one)",
+      "how3": "If a conflict is found a warning is shown — you can still schedule the lesson",
+      "accountLabel": "Google account",
+      "disconnectHint": "Disconnecting turns off conflict checking against the organization calendar.",
+      "connectButton": "Connect Google Calendar"
+    },
+    "emailPage": {
+      "title": "Send email from your own account",
+      "connectedBanner": "Gmail account connected successfully.",
+      "whatTitle": "What gets sent from your account once connected?",
+      "what1": "Payment receipts",
+      "what2": "Homework grade updates",
+      "what3": "Progress reports",
+      "accountLabel": "Gmail address",
+      "connectButton": "Sign in with Google",
+      "subtitle": "Connect a Gmail account so email to your customers (receipts, homework, reports) goes out from your own address instead of Lessio.",
+      "systemMailsNote": "System email (password resets and the like) continues to be sent from Lessio.",
+      "disconnectHint": "Disconnecting sends email from the central Lessio account until you reconnect."
+    },
+    "paymentProviders": {
+      "cardcom": {
+        "label": "Cardcom",
+        "description": "Israeli payment provider — credit cards, Bit, PayPal",
+        "setupHint": "You will find these in the Cardcom admin console under API settings.",
+        "fields": {
+          "terminal": {
+            "label": "Terminal number",
+            "placeholder": "e.g. 1000"
+          },
+          "apiName": {
+            "label": "API Name"
+          },
+          "apiPassword": {
+            "label": "API Password"
+          }
+        }
+      },
+      "payplus": {
+        "label": "PayPlus",
+        "description": "Israeli payment provider — credit cards, Bit, Apple Pay, Google Pay",
+        "setupHint": "You will find these at app.payplus.co.il under Settings → API keys. The Payment Page UID is in the payment page settings.",
+        "fields": {
+          "apiKey": {
+            "label": "API Key"
+          },
+          "secretKey": {
+            "label": "Secret Key"
+          },
+          "pageUid": {
+            "label": "Payment Page UID",
+            "placeholder": "e.g. 7a0bc4d4-f35f-4301-a945-926378a2416d",
+            "hint": "The unique UID of the payment page you configured in PayPlus"
+          }
+        }
+      },
+      "bit": {
+        "label": "Bit Business",
+        "description": "Payments through the Bit app — widely used in Israel",
+        "setupHint": "You will find these in the Bit Business developer portal. Open a Bit Business account first.",
+        "fields": {
+          "apiKey": {
+            "label": "API Key"
+          },
+          "secret": {
+            "label": "Secret"
+          },
+          "merchantId": {
+            "label": "Merchant ID",
+            "placeholder": "Merchant identifier"
+          }
+        }
+      },
+      "paybox": {
+        "label": "PayBox",
+        "description": "Payments through the PayBox app — widely used in Israel",
+        "setupHint": "You will find these in the PayBox developer portal.",
+        "fields": {
+          "apiKey": {
+            "label": "API Key"
+          },
+          "secret": {
+            "label": "Secret"
+          },
+          "merchantId": {
+            "label": "Merchant ID",
+            "placeholder": "Merchant identifier"
+          }
+        }
+      },
+      "stripe": {
+        "label": "Stripe",
+        "description": "International credit cards — USD, EUR, GBP, ILS and more",
+        "setupHint": "The Secret Key is in the Stripe dashboard under Developers → API keys. The Webhook Secret is under Developers → Webhooks once you add an endpoint.",
+        "fields": {
+          "secretKey": {
+            "label": "Secret Key",
+            "placeholder": "sk_live_… or sk_test_…",
+            "hint": "Secret key from the Stripe dashboard (Developers → API keys)"
+          },
+          "webhookSecret": {
+            "label": "Webhook Signing Secret",
+            "placeholder": "whsec_…",
+            "hint": "Signing secret from the Stripe webhook endpoint (Developers → Webhooks)"
+          },
+          "currency": {
+            "label": "Currency",
+            "placeholder": "ILS / USD / EUR / GBP / AUD",
+            "hint": "ISO 4217 currency code — 3 uppercase letters"
+          }
+        }
       }
     }
   },
@@ -1455,6 +1605,14 @@
         "cancelled": "Cancelled",
         "noShow": "No-show"
       }
+    },
+    "teacherCalendar": {
+      "title": "My Google Calendar",
+      "subtitle": "Connect your personal Google Calendar so the system spots conflicts when lessons are scheduled with you.",
+      "connectedBanner": "Google Calendar connected successfully.",
+      "accountLabel": "Google account",
+      "disconnectHint": "Disconnecting turns off conflict checking against your personal calendar.",
+      "connectButton": "Connect Google Calendar"
     }
   },
   "admin": {

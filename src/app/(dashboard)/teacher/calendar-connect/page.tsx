@@ -1,4 +1,5 @@
 import { CheckCircle, AlertCircle, CalendarDays } from 'lucide-react'
+import { getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { DisconnectTeacherCalendarButton } from './DisconnectTeacherCalendarButton'
@@ -9,6 +10,9 @@ export default async function TeacherCalendarConnectPage({
   searchParams: Promise<{ connected?: string; error?: string }>
 }) {
   const { profileId } = await getSession()
+
+  const t = await getTranslations('teacherSelf.teacherCalendar')
+  const tErr = await getTranslations('settings.googleOAuthErrors')
 
   const db = createServiceRoleClient()
   const { data: teacherProfile } = await db
@@ -30,21 +34,19 @@ export default async function TeacherCalendarConnectPage({
     <div className="max-w-xl p-6">
       <div className="flex items-center gap-3 mb-1">
         <CalendarDays size={22} className="text-primary" />
-        <h1 className="text-2xl font-bold text-gray-900">היומן שלי ב-Google</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
       </div>
-      <p className="text-sm text-gray-500 mb-8">
-        חבר את יומן Google האישי שלך כדי שהמערכת תזהה חפיפות כשמקבעים שיעורים עם המורה שלך.
-      </p>
+      <p className="text-sm text-gray-500 mb-8">{t('subtitle')}</p>
 
       {justConnected && (
         <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
-          יומן Google חובר בהצלחה.
+          {t('connectedBanner')}
         </div>
       )}
 
       {errorCode && !justConnected && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
-          {errorMessages[errorCode] ?? 'אירעה שגיאה בתהליך החיבור. נסה שנית.'}
+          {ERROR_KEYS.includes(errorCode) ? tErr(errorCode) : tErr('generic')}
         </div>
       )}
 
@@ -59,17 +61,19 @@ export default async function TeacherCalendarConnectPage({
   )
 }
 
-function ConnectedState({ email }: { email: string }) {
+async function ConnectedState({ email }: { email: string }) {
+  const t = await getTranslations('teacherSelf.teacherCalendar')
+  const tG = await getTranslations('settings.googleCommon')
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-green-700">
         <CheckCircle size={20} />
-        <span className="font-medium text-sm">מחובר</span>
+        <span className="font-medium text-sm">{tG('connected')}</span>
       </div>
 
       <dl className="text-sm">
         <div className="flex justify-between">
-          <dt className="text-gray-500">חשבון Google</dt>
+          <dt className="text-gray-500">{t('accountLabel')}</dt>
           <dd className="font-mono text-gray-900 text-xs">{email}</dd>
         </div>
       </dl>
@@ -77,26 +81,24 @@ function ConnectedState({ email }: { email: string }) {
       <hr className="border-gray-100" />
 
       <div>
-        <p className="text-xs text-gray-500 mb-2">
-          ניתוק יגרום לביטול בדיקת החפיפות מול היומן האישי שלך.
-        </p>
+        <p className="text-xs text-gray-500 mb-2">{t('disconnectHint')}</p>
         <DisconnectTeacherCalendarButton />
       </div>
     </div>
   )
 }
 
-function DisconnectedState({ canConnect }: { canConnect: boolean }) {
+async function DisconnectedState({ canConnect }: { canConnect: boolean }) {
+  const t = await getTranslations('teacherSelf.teacherCalendar')
+  const tG = await getTranslations('settings.googleCommon')
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-gray-500">
         <AlertCircle size={20} />
-        <span className="font-medium text-sm">לא מחובר</span>
+        <span className="font-medium text-sm">{tG('notConnected')}</span>
       </div>
 
-      <p className="text-sm text-gray-600">
-        לחץ על הכפתור כדי להתחבר עם חשבון Google. תועבר לממשק Google לאישור הגישה.
-      </p>
+      <p className="text-sm text-gray-600">{tG('connectHint')}</p>
 
       {canConnect ? (
         <a
@@ -104,12 +106,10 @@ function DisconnectedState({ canConnect }: { canConnect: boolean }) {
           className="inline-flex items-center gap-2 rounded-md bg-white border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
         >
           <GoogleIcon />
-          חבר יומן Google
+          {t('connectButton')}
         </a>
       ) : (
-        <p className="text-sm text-red-600">
-          GOOGLE_CLIENT_ID אינו מוגדר בשרת — פנה למנהל המערכת.
-        </p>
+        <p className="text-sm text-red-600">{tG('missingClientId')}</p>
       )}
     </div>
   )
@@ -126,13 +126,14 @@ function GoogleIcon() {
   )
 }
 
-const errorMessages: Record<string, string> = {
-  denied:          'לא אישרת את הגישה ל-Google. ניתן לנסות שנית.',
-  invalid:         'קוד OAuth לא תקין. נסה שנית.',
-  state_mismatch:  'בעיית אבטחה בתהליך ההתחברות. נסה שנית.',
-  exchange:        'לא הצלחנו לאמת את הקוד מול Google. נסה שנית.',
-  encrypt:         'שגיאה פנימית. פנה למנהל המערכת.',
-  db:              'שגיאה בשמירת הנתונים. נסה שנית.',
-  config:          'הגדרות Google חסרות בשרת. פנה למנהל המערכת.',
-  unauthenticated: 'נדרשת התחברות מחדש.',
-}
+/** OAuth failure codes the callback route can put in `?error=`. */
+const ERROR_KEYS = [
+  'denied',
+  'invalid',
+  'state_mismatch',
+  'exchange',
+  'encrypt',
+  'db',
+  'config',
+  'unauthenticated',
+]

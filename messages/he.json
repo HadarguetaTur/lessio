@@ -943,7 +943,21 @@
       "provider": "ספק תשלומים",
       "autoSend": "שלח בקשת תשלום אוטומטית לאחר שיעור",
       "disconnect": "נתק ספק",
-      "disconnectConfirm": "לנתק את ספק התשלומים?"
+      "disconnectConfirm": "לנתק את ספק התשלומים?",
+      "developerDocs": "תיעוד מפתחים",
+      "pageTitle": "הגדרות תשלום",
+      "pageSubtitle": "חבר ספק תשלום כדי לשלוח קישורי תשלום אמיתיים להורים דרך WhatsApp. הפרטים מוצפנים ומאוחסנים בצורה מאובטחת.",
+      "automationTitle": "אוטומציה",
+      "securityTitle": "אבטחה",
+      "security1": "פרטי ה-API מוצפנים עם AES-256-GCM לפני האחסון",
+      "security2": "הפרטים לעולם אינם נשמרים כטקסט גלוי במסד הנתונים",
+      "security3": "כל ארגון מנהל ספק תשלום נפרד",
+      "providerLabel": "ספק תשלום",
+      "servicesLabel": "שירותים",
+      "apiDetailsLabel": "פרטי API",
+      "apiDetailsValue": "מוצפנים ומאוחסנים בצורה מאובטחת",
+      "disconnectHint": "ניתוק יפסיק את יצירת קישורי תשלום עד לחיבור מחדש.",
+      "disconnectedHint": "בחר ספק תשלום והזן את פרטי ה-API. הפרטים יוצפנו לפני השמירה."
     },
     "receipts": {
       "title": "הגדרות קבלות",
@@ -1140,6 +1154,142 @@
         "ownerOnly": "רק בעל עסק יכול לשנות הגדרות אוטומציות",
         "hoursInvalid": "חייב להיות 2, 12 או 24",
         "saveFailed": "שגיאה בשמירת ההגדרות"
+      }
+    },
+    "googleOAuthErrors": {
+      "denied": "לא אישרת את הגישה ל-Google. ניתן לנסות שנית.",
+      "invalid": "קוד OAuth לא תקין. נסה שנית.",
+      "state_mismatch": "בעיית אבטחה בתהליך ההתחברות. נסה שנית.",
+      "exchange": "לא הצלחנו לאמת את הקוד מול Google. נסה שנית.",
+      "encrypt": "שגיאה פנימית. פנה למנהל המערכת.",
+      "db": "שגיאה בשמירת הנתונים. נסה שנית.",
+      "config": "הגדרות Google חסרות בשרת. פנה למנהל המערכת.",
+      "forbidden": "אין לך הרשאה לבצע פעולה זו.",
+      "unauthenticated": "נדרשת התחברות מחדש.",
+      "generic": "אירעה שגיאה בתהליך החיבור. נסה שנית."
+    },
+    "googleCommon": {
+      "connected": "מחובר",
+      "notConnected": "לא מחובר",
+      "connectHint": "לחץ על הכפתור כדי להתחבר עם חשבון Google. תועבר לממשק Google לאישור הגישה.",
+      "missingClientId": "GOOGLE_CLIENT_ID אינו מוגדר בשרת — פנה למנהל המערכת."
+    },
+    "calendarPage": {
+      "title": "יומן Google ארגוני",
+      "subtitle": "חבר יומן Google של הארגון כדי שהמערכת תבדוק חפיפות אוטומטית לפני קביעת שיעורים. הבדיקה מתבצעת תמיד מול היומן הארגוני ואחר כך מול היומן האישי של המורה.",
+      "connectedBanner": "יומן Google חובר בהצלחה.",
+      "howTitle": "איך עובדת בדיקת חפיפות?",
+      "how1": "בקביעת שיעור נבדק תחילה היומן הארגוני (אם מחובר)",
+      "how2": "לאחר מכן נבדק היומן האישי של המורה (אם חיבר)",
+      "how3": "אם נמצאת חפיפה מוצגת אזהרה — ניתן לקבוע בכל זאת",
+      "accountLabel": "חשבון Google",
+      "disconnectHint": "ניתוק יגרום לביטול בדיקת החפיפות מול היומן הארגוני.",
+      "connectButton": "חבר יומן Google"
+    },
+    "emailPage": {
+      "title": "שליחת מייל מהחשבון שלך",
+      "connectedBanner": "חשבון Gmail חובר בהצלחה.",
+      "whatTitle": "מה נשלח מהחשבון שלך לאחר החיבור?",
+      "what1": "קבלות על תשלום",
+      "what2": "עדכון ציון שיעורי בית",
+      "what3": "דוחות התקדמות",
+      "accountLabel": "כתובת Gmail",
+      "connectButton": "התחבר עם Google",
+      "subtitle": "חבר חשבון Gmail כדי ששליחות מיילים ללקוחותיך (קבלות, שיעורי בית, דוחות) יצאו מהכתובת שלך ולא מהכתובת של Lessio.",
+      "systemMailsNote": "מיילים של המערכת (איפוס סיסמה וכד׳) ממשיכים להישלח מ-Lessio.",
+      "disconnectHint": "ניתוק יגרום למיילים להישלח מחשבון Lessio המרכזי עד לחיבור מחדש."
+    },
+    "paymentProviders": {
+      "cardcom": {
+        "label": "Cardcom",
+        "description": "ספק תשלום ישראלי — כרטיסי אשראי, ביט, PayPal",
+        "setupHint": "הפרטים נמצאים ב-Cardcom במערכת הניהול תחת הגדרות API.",
+        "fields": {
+          "terminal": {
+            "label": "מספר טרמינל",
+            "placeholder": "לדוגמה: 1000"
+          },
+          "apiName": {
+            "label": "API Name"
+          },
+          "apiPassword": {
+            "label": "API Password"
+          }
+        }
+      },
+      "payplus": {
+        "label": "PayPlus (פייפלוס)",
+        "description": "ספק תשלום ישראלי — כרטיסי אשראי, ביט, Apple Pay, Google Pay",
+        "setupHint": "הפרטים נמצאים ב-app.payplus.co.il תחת הגדרות → מפתחות API. Payment Page UID נמצא בהגדרות דף התשלום.",
+        "fields": {
+          "apiKey": {
+            "label": "API Key"
+          },
+          "secretKey": {
+            "label": "Secret Key"
+          },
+          "pageUid": {
+            "label": "Payment Page UID",
+            "placeholder": "לדוגמה: 7a0bc4d4-f35f-4301-a945-926378a2416d",
+            "hint": "UID ייחודי של דף התשלום שהגדרת ב-PayPlus"
+          }
+        }
+      },
+      "bit": {
+        "label": "Bit Business (ביט)",
+        "description": "תשלומים דרך אפליקציית ביט — פופולרי בישראל",
+        "setupHint": "הפרטים נמצאים בפורטל המפתחים של ביט Business. יש לפתוח חשבון ביט Business תחילה.",
+        "fields": {
+          "apiKey": {
+            "label": "API Key"
+          },
+          "secret": {
+            "label": "Secret"
+          },
+          "merchantId": {
+            "label": "Merchant ID",
+            "placeholder": "מזהה בית העסק"
+          }
+        }
+      },
+      "paybox": {
+        "label": "PayBox (פייבוקס)",
+        "description": "תשלומים דרך אפליקציית PayBox — פופולרי בישראל",
+        "setupHint": "הפרטים נמצאים בפורטל המפתחים של PayBox.",
+        "fields": {
+          "apiKey": {
+            "label": "API Key"
+          },
+          "secret": {
+            "label": "Secret"
+          },
+          "merchantId": {
+            "label": "Merchant ID",
+            "placeholder": "מזהה בית העסק"
+          }
+        }
+      },
+      "stripe": {
+        "label": "Stripe",
+        "description": "כרטיסי אשראי בינלאומיים — USD, EUR, GBP, ILS ועוד",
+        "setupHint": "Secret Key נמצא בפאנל Stripe תחת Developers → API keys. Webhook Secret נמצא תחת Developers → Webhooks לאחר הוספת Endpoint.",
+        "fields": {
+          "secretKey": {
+            "label": "Secret Key",
+            "placeholder": "sk_live_... או sk_test_...",
+            "hint": "Secret key מלוח הבקרה של Stripe (Developers → API keys)"
+          },
+          "webhookSecret": {
+            "label": "Webhook Signing Secret",
+            "placeholder": "whsec_...",
+            "hint": "Signing secret מה-Webhook endpoint ב-Stripe (Developers → Webhooks)"
+          },
+          "currency": {
+            "label": "מטבע",
+            "placeholder": "ILS / USD / EUR / GBP / AUD",
+            "hint": "קוד מטבע ISO 4217 — 3 אותיות גדולות"
+          }
+        }
       }
     }
   },
@@ -1455,6 +1605,14 @@
         "cancelled": "בוטלו",
         "noShow": "לא הגיעו"
       }
+    },
+    "teacherCalendar": {
+      "title": "היומן שלי ב-Google",
+      "subtitle": "חבר את יומן Google האישי שלך כדי שהמערכת תזהה חפיפות כשמקבעים שיעורים עם המורה שלך.",
+      "connectedBanner": "יומן Google חובר בהצלחה.",
+      "accountLabel": "חשבון Google",
+      "disconnectHint": "ניתוק יגרום לביטול בדיקת החפיפות מול היומן האישי שלך.",
+      "connectButton": "חבר יומן Google"
     }
   },
   "admin": {

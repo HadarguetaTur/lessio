@@ -55,7 +55,7 @@ vi.mock('@/lib/whatsapp/subscribeApp', () => ({
   unsubscribeAppFromWABA: mockUnsubscribeAppFromWABA,
 }))
 
-import { saveWhatsAppConnection, disconnectWhatsApp } from './actions'
+import { saveWhatsAppConnection, disconnectWhatsApp, registerTemplates } from './actions'
 
 const mockFetch = vi.fn()
 
@@ -240,5 +240,93 @@ describe('disconnectWhatsApp', () => {
     expect(result).toEqual({ error: null })
     expect(mockUnsubscribeAppFromWABA).not.toHaveBeenCalled()
     expect(db.spies.update).toHaveBeenCalled()
+  })
+})
+
+describe('registerTemplates', () => {
+  const initialState = { error: null, registered: [], failed: [] }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetSession.mockResolvedValue({ orgId: 'org-1', role: 'owner', isSupportMode: false })
+    mockRequireMutation.mockImplementation(() => {})
+    mockRequireFeature.mockResolvedValue(undefined)
+    mockDecryptToken.mockReturnValue('decrypted-token')
+  })
+
+  it('registers on the stored WABA with the decrypted token', async () => {
+    const db = makeDisconnectDbClient({
+      whatsapp_waba_id: 'waba-1',
+      whatsapp_access_token: 'encrypted-token',
+    })
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+    mockRegisterTemplatesForWABA.mockResolvedValue({ ok: ['lessio_menu_en_v3'], failed: [] })
+
+    const result = await registerTemplates(initialState, new FormData())
+
+    expect(mockDecryptToken).toHaveBeenCalledWith('encrypted-token')
+    expect(mockRegisterTemplatesForWABA).toHaveBeenCalledWith('waba-1', 'decrypted-token')
+    expect(result).toEqual({ error: null, registered: ['lessio_menu_en_v3'], failed: [] })
+  })
+
+  it('surfaces per-template failures instead of swallowing them', async () => {
+    const db = makeDisconnectDbClient({
+      whatsapp_waba_id: 'waba-1',
+      whatsapp_access_token: 'encrypted-token',
+    })
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+    mockRegisterTemplatesForWABA.mockResolvedValue({
+      ok: ['lessio_menu_en_v3'],
+      failed: [{ name: 'lessio_otp_he', reason: 'Error: 400 invalid components' }],
+    })
+
+    const result = await registerTemplates(initialState, new FormData())
+
+    expect(result.error).toBeNull()
+    expect(result.failed).toEqual([
+      { name: 'lessio_otp_he', reason: 'Error: 400 invalid components' },
+    ])
+  })
+
+  it('reports notConnected when no WABA is stored', async () => {
+    const db = makeDisconnectDbClient({
+      whatsapp_waba_id: null,
+      whatsapp_access_token: 'encrypted-token',
+    })
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+
+    const result = await registerTemplates(initialState, new FormData())
+
+    expect(result).toEqual({ error: 'notConnected', registered: [], failed: [] })
+    expect(mockRegisterTemplatesForWABA).not.toHaveBeenCalled()
+  })
+
+  it('rejects non-owner sessions before touching the DB', async () => {
+    mockGetSession.mockResolvedValue({ orgId: 'org-1', role: 'admin', isSupportMode: false })
+
+    const result = await registerTemplates(initialState, new FormData())
+
+    expect(result).toEqual({ error: 'forbidden', registered: [], failed: [] })
+    expect(mockCreateServiceRoleClient).not.toHaveBeenCalled()
+    expect(mockRegisterTemplatesForWABA).not.toHaveBeenCalled()
+  })
+
+  it('reports decryptFailed rather than throwing when the stored token is unreadable', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const db = makeDisconnectDbClient({
+      whatsapp_waba_id: 'waba-1',
+      whatsapp_access_token: 'corrupt',
+    })
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+    mockDecryptToken.mockImplementation(() => {
+      throw new Error('bad key')
+    })
+
+    const result = await registerTemplates(initialState, new FormData())
+
+    expect(result).toEqual({ error: 'decryptFailed', registered: [], failed: [] })
+    expect(mockRegisterTemplatesForWABA).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
   })
 })

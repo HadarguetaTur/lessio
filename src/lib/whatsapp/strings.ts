@@ -30,6 +30,10 @@ export type BotStringKey =
   | 'ai_human_redirect'
   | 'otp_fallback'
   | 'balance_none'
+  | 'opt_out_confirmed'
+  | 'opt_out_already'
+  | 'opt_in_confirmed'
+  | 'opt_in_already'
   // Fragments injected into template variables
   | 'balance_pay_link'
   | 'balance_pay_portal'
@@ -167,6 +171,12 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     ai_human_redirect: 'לא הצלחתי לענות על השאלה הזו 🙂 הצוות שלנו ישמח לעזור — אפשר לפנות ישירות.',
     otp_fallback: 'קוד הכניסה שלך ל-Lessio: *{{otp}}*\nהקוד בתוקף ל-10 דקות.',
     balance_none: 'אין לך יתרה פתוחה לתשלום 🎉',
+    opt_out_confirmed:
+      'סגור, הפסקנו לשלוח 👍\nלא יישלחו אליך יותר תזכורות, בקשות תשלום או עדכונים אוטומטיים.\nאפשר תמיד לכתוב "התחל" כדי לחדש, ואם תכתבו לנו — נענה תמיד.',
+    opt_out_already:
+      'ההודעות האוטומטיות כבר מושבתות עבורך 👍\nכדי לחדש אותן אפשר לכתוב "התחל".',
+    opt_in_confirmed: 'מעולה, חידשנו את ההודעות 🎉\nתקבלו שוב תזכורות ועדכונים על השיעורים.',
+    opt_in_already: 'ההודעות כבר פעילות אצלך 🙂',
 
     balance_pay_link: 'להסדרת התשלום אפשר לשלם כאן:\n{{payment_link}}',
     balance_pay_portal:
@@ -317,6 +327,13 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'I could not answer that one 🙂 Our team would be happy to help — feel free to reach out.',
     otp_fallback: 'Your Lessio login code: *{{otp}}*\nThe code is valid for 10 minutes.',
     balance_none: 'You have no outstanding balance 🎉',
+    opt_out_confirmed:
+      "Done — we've stopped 👍\nYou will no longer receive reminders, payment requests or any automated updates from us.\nReply START at any time to turn them back on, and if you message us we will always reply.",
+    opt_out_already:
+      'Automated messages are already switched off for you 👍\nReply START to turn them back on.',
+    opt_in_confirmed:
+      'Great — messages are back on 🎉\nYou will receive lesson reminders and updates again.',
+    opt_in_already: 'Your messages are already switched on 🙂',
 
     balance_pay_link: 'To settle it, you can pay here:\n{{payment_link}}',
     balance_pay_portal:

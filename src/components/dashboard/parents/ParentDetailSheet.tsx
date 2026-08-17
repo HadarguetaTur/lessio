@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { Star, Phone } from 'lucide-react'
+import { Star, Phone, BellOff } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -131,7 +131,20 @@ export function ParentDetailSheet({
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold text-foreground leading-snug truncate">{displayName}</h2>
             {state.status === 'loaded' && (
-              <p className="text-sm text-muted-foreground font-mono" dir="ltr">{state.data.parent.phone}</p>
+              <div className="flex items-center gap-2 min-w-0">
+                <p className="text-sm text-muted-foreground font-mono truncate" dir="ltr">
+                  {state.data.parent.phone}
+                </p>
+                {state.data.parent.opted_out_at && (
+                  <span
+                    title={t('optedOutTooltip')}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400"
+                  >
+                    <BellOff size={11} className="shrink-0" />
+                    {t('optedOut')}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>

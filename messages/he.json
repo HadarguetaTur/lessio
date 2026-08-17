@@ -493,6 +493,9 @@
     "viewCharges": "צפה בחיובים",
     "noDebt": "אין חוב",
     "primaryBadge": "עיקרי",
+    "optedOut": "ביקש/ה להפסיק",
+    "optedOutTooltip": "השיב/ה \"הסר\" בוואטסאפ. הודעות אוטומטיות חסומות; תשובות להודעות שהוא/היא שולח/ת עדיין נשלחות.",
+    "optedOutError": "ההורה ביקש/ה להפסיק לקבל הודעות וואטסאפ, ולכן לא נשלחה הודעה.",
     "emptyNotes": "אין הערות",
     "statusActive": "פעיל",
     "statusInactive": "לא פעיל",
@@ -1106,7 +1109,20 @@
       "disconnect": "נתק",
       "disconnectConfirm": "לנתק את WhatsApp?",
       "portalUrl": "קישור פורטל הורים",
-      "copyPortalUrl": "העתק קישור"
+      "copyPortalUrl": "העתק קישור",
+      "templates": {
+        "title": "תבניות הודעה",
+        "description": "Lessio רושמת את תבניות ההודעה בחשבון ה-WhatsApp Business שלך, כדי שאפשר יהיה לשלוח אותן גם מחוץ לחלון 24 השעות. הרישום מתבצע אוטומטית בעת החיבור — כאן אפשר להריץ אותו שוב.",
+        "action": "רישום תבניות ההודעה בחשבון ה-WhatsApp שלי",
+        "registered": "{count, plural, one {תבנית אחת נרשמה} other {# תבניות נרשמו}}",
+        "failed": "{count, plural, one {תבנית אחת נדחתה על ידי Meta} other {# תבניות נדחו על ידי Meta}}",
+        "errors": {
+          "forbidden": "רק בעל/ת הארגון יכול/ה לרשום תבניות.",
+          "notConnected": "אין חשבון WhatsApp Business מחובר.",
+          "decryptFailed": "לא ניתן לקרוא את פרטי החיבור השמורים — יש לחבר את המספר מחדש.",
+          "registerFailed": "Meta דחתה את הבקשה. נסו שוב."
+        }
+      }
     },
     "payment": {
       "title": "הגדרות תשלום",

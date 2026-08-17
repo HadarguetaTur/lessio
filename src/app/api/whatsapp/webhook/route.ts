@@ -27,7 +27,10 @@ import {
   hasScheduleIntent,
   hasReceiptIntent,
   hasPortalIntent,
+  hasOptOutIntent,
+  hasResumeIntent,
 } from '@/lib/whatsapp'
+import { isOptedOut, setParentOptOut } from '@/lib/whatsapp/optOut'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
 import { resolvePaymentLine, sumOpenCharges } from '@/lib/whatsapp/balance'
@@ -342,6 +345,49 @@ async function processMessage(
   persistSenderLocale(db, org.id, sender, detected)
 
   const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
+
+  // 6a₀. Stop / resume business-initiated messages.
+  //
+  //  Runs before menu payloads and the cancellation session, because a stop word
+  //  is most often reached for in the middle of something — an opt-out that only
+  //  works from a clean slate is not an opt-out.
+  //
+  //  Parents only: they are the only capacity that receives proactive messages.
+  //  Typed text only (`!msg.replyId`), so a tapped row whose title happens to
+  //  read "Start" cannot unsubscribe anyone.
+  //
+  //  The confirmation goes out via sendTextMessage rather than sendSmartMessage
+  //  precisely so it is not swallowed by the flag we just set — and the parent
+  //  just messaged us, so the 24h window is open by construction.
+  if (sender.role === 'parent' && !msg.replyId) {
+    if (hasOptOutIntent(msg.text)) {
+      const alreadyOptedOut = await isOptedOut(org.id, senderPhone)
+      if (!alreadyOptedOut) await setParentOptOut(org.id, senderPhone, true)
+      await deleteCancellationSession(org.id, senderPhone).catch((err) => {
+        console.warn('[whatsapp/webhook] Could not clear session on opt-out', { orgId: org.id, err })
+      })
+      await sendTextMessage(
+        senderPhone,
+        botString(alreadyOptedOut ? 'opt_out_already' : 'opt_out_confirmed', locale),
+        accessToken,
+        phoneNumberId
+      )
+      return
+    }
+
+    if (hasResumeIntent(msg.text)) {
+      const wasOptedOut = await isOptedOut(org.id, senderPhone)
+      if (wasOptedOut) await setParentOptOut(org.id, senderPhone, false)
+      await sendTextMessage(
+        senderPhone,
+        botString(wasOptedOut ? 'opt_in_confirmed' : 'opt_in_already', locale),
+        accessToken,
+        phoneNumberId
+      )
+      return
+    }
+  }
+
   const menuChoiceRaw = decodeMenuPayload(msg.replyId)
 
   // 6a. Tapped a capacity in the role picker. Recorded, then straight to that
@@ -534,6 +580,7 @@ async function processMessage(
       timezone: (org.timezone as string | null) ?? 'Asia/Jerusalem',
       accessToken,
       phoneNumberId,
+      locale,
     })
     return
   }

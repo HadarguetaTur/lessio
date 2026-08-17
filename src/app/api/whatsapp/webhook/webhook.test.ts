@@ -141,6 +141,7 @@ import {
   hasRecentUnreadSuperadminNotification,
 } from '@/lib/notifications'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
+import { botString } from '@/lib/whatsapp/strings'
 import {
   sendListMessage,
   sendReplyButtons,
@@ -1896,5 +1897,148 @@ describe('WhatsApp sender roles', () => {
       expect(res.status).toBe(200)
       expect(mockApproveDayOffRequest).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('WhatsApp opt-out', () => {
+  const ORG_DATA = {
+    id: ORG_ID,
+    whatsapp_access_token: 'encrypted-token',
+    timezone: 'Asia/Jerusalem',
+    ai_assistant_enabled: false,
+  }
+
+  /** `parents` serves both resolveSender and the opt-out lookup. */
+  function mockParent(overrides: Record<string, unknown> = {}, orgOverrides: Record<string, unknown> = {}) {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({ data: { ...ORG_DATA, ...orgOverrides }, error: null })
+      }
+      if (table === 'parents') {
+        return buildChain({
+          data: { id: PARENT_ID, full_name: 'דנה', preferred_locale: 'he', opted_out_at: null, ...overrides },
+          error: null,
+        })
+      }
+      return buildChain({ data: null, error: null })
+    })
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.WHATSAPP_APP_SECRET = APP_SECRET
+    mockClaimIncomingMessage.mockResolvedValue(true)
+    mockReleaseIncomingMessageClaim.mockResolvedValue(undefined)
+    mockIsRateLimited.mockResolvedValue(false)
+    mockAiAssistantConfigured.mockReturnValue(false)
+    mockGetActiveCancellationSession.mockResolvedValue(null)
+  })
+
+  it('confirms the opt-out and stops there', async () => {
+    mockParent()
+
+    const res = await POST(makeRequest(makeWebhookPayload('הסר')))
+
+    expect(res.status).toBe(200)
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      botString('opt_out_confirmed', 'he'),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+    // No menu, no AI, no intent handling — the stop word is the whole message.
+    expect(mockSendListMessage).not.toHaveBeenCalled()
+    expect(mockAiAssistant).not.toHaveBeenCalled()
+  })
+
+  // The stop word is itself a language signal, and the usual rule is that the
+  // script of the message being answered outranks the stored preference — so a
+  // Hebrew-speaking parent who types the English "stop" gets an English answer.
+  it('answers in the language of the stop word, not the stored preference', async () => {
+    mockParent({ preferred_locale: 'he' })
+
+    await POST(makeRequest(makeWebhookPayload('stop')))
+
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      botString('opt_out_confirmed', 'en'),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('says so when the parent had already opted out', async () => {
+    mockParent({ opted_out_at: '2026-08-01T09:00:00Z' })
+
+    await POST(makeRequest(makeWebhookPayload('הסר')))
+
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      botString('opt_out_already', 'he'),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('clears a cancellation session, so a stop word works mid-flow', async () => {
+    mockParent()
+
+    await POST(makeRequest(makeWebhookPayload('stop')))
+
+    expect(mockDeleteCancellationSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164)
+  })
+
+  it('turns messages back on for an opted-out parent', async () => {
+    mockParent({ opted_out_at: '2026-08-01T09:00:00Z' })
+
+    await POST(makeRequest(makeWebhookPayload('start')))
+
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      botString('opt_in_confirmed', 'en'),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('tells a parent who never opted out that nothing changed', async () => {
+    mockParent()
+
+    await POST(makeRequest(makeWebhookPayload('התחל')))
+
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      botString('opt_in_already', 'he'),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('ignores a tapped row whose label happens to read "stop"', async () => {
+    // Reply ids come from the client; a title is not consent to unsubscribe.
+    mockParent()
+
+    const res = await POST(makeRequest(makeInteractivePayload('m:schedule', 'stop')))
+
+    expect(res.status).toBe(200)
+    expect(mockSendTextMessage).not.toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      botString('opt_out_confirmed', 'he'),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('does not treat a sentence containing "stop" as an opt-out', async () => {
+    mockParent()
+
+    await POST(makeRequest(makeWebhookPayload('can you stop the 8am reminder only?')))
+
+    expect(mockSendTextMessage).not.toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      botString('opt_out_confirmed', 'he'),
+      'test-access-token',
+      'phone-number-id-1'
+    )
   })
 })

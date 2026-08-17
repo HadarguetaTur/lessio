@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { EmbeddedSignupButton } from './EmbeddedSignupButton'
 import { DisconnectButton } from './DisconnectButton'
+import { RegisterTemplatesButton } from './RegisterTemplatesButton'
 import { PortalUrlCopy } from '@/components/dashboard/settings/PortalUrlCopy'
 import { AutomationsSettings } from './AutomationsSettings'
 import { getTranslations } from 'next-intl/server'
@@ -62,6 +63,13 @@ export default async function WhatsAppSettingsPage() {
           <DisconnectedState metaAppId={metaAppId} metaConfigId={metaConfigId} />
         )}
       </div>
+
+      {/* Message templates — shown when WhatsApp is connected */}
+      {isConnected && (
+        <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
+          <RegisterTemplatesButton />
+        </div>
+      )}
 
       {/* Portal URL — shown when WhatsApp is connected */}
       {isConnected && org?.id && (

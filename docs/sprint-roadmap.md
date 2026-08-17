@@ -87,7 +87,9 @@
 - Story 5: Template approval status tracking (webhook field + status chips in settings) — may slip
 - Story 6: Bot improvements (intent collisions, non-greedy cancellation session, group-lesson guard, non-text replies, outbound message log)
 - Story 7: Sender role awareness — the bot resolves parent/student/teacher/staff instead of "parent or lead", with a per-role menu (`resolveSender`, `ROLE_MENUS`); teachers and owners stop being filed as leads in their own CRM, and a student can answer the homework reminder sent to their own phone
+- Story 8: WhatsApp opt-out — `stop`/`הסר` sets `parents.opted_out_at` and blocks every business-initiated send (Node `sendSmartMessage` + payment-request actions + the Deno cron path); `start`/`התחל` restores. "Opted out" badge on `/parents`. Required by Meta's messaging policy — the App Review screencast previously had no implementation behind it
 - Ops: Meta Business App + Business Verification + App Review + Embedded Signup Configuration, cron registration, migrations, WABA backfill
+- Ops: English demo tenant for App Review (`scripts/seed-review-demo.ts` / `cleanup-review-demo.ts`) — see `docs/meta-app-review-submission.md`
 
 ---
 

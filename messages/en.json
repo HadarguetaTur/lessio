@@ -493,6 +493,9 @@
     "viewCharges": "View charges",
     "noDebt": "No outstanding balance",
     "primaryBadge": "Primary",
+    "optedOut": "Opted out",
+    "optedOutTooltip": "Replied STOP on WhatsApp. Automated messages are blocked; replies to their own messages still go through.",
+    "optedOutError": "This parent asked to stop receiving WhatsApp messages, so nothing was sent.",
     "emptyNotes": "No notes",
     "statusActive": "Active",
     "statusInactive": "Inactive",
@@ -1106,7 +1109,20 @@
       "disconnect": "Disconnect",
       "disconnectConfirm": "Disconnect WhatsApp?",
       "portalUrl": "Parent Portal Link",
-      "copyPortalUrl": "Copy Link"
+      "copyPortalUrl": "Copy Link",
+      "templates": {
+        "title": "Message templates",
+        "description": "Lessio registers its message templates on your own WhatsApp Business Account so they can be sent outside the 24-hour window. This runs automatically when you connect — use this to register them again.",
+        "action": "Register message templates on my WhatsApp account",
+        "registered": "{count, plural, one {# template registered} other {# templates registered}}",
+        "failed": "{count, plural, one {# template was rejected by Meta} other {# templates were rejected by Meta}}",
+        "errors": {
+          "forbidden": "Only the organization owner can register templates.",
+          "notConnected": "No WhatsApp Business Account is connected yet.",
+          "decryptFailed": "Could not read the stored WhatsApp credentials — reconnect your number.",
+          "registerFailed": "Meta rejected the request. Please try again."
+        }
+      }
     },
     "payment": {
       "title": "Payment Settings",

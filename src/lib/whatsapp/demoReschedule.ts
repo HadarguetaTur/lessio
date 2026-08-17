@@ -15,17 +15,60 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendTextMessage } from '@/lib/whatsapp'
+import type { AppLocale } from '@/lib/i18n/locale'
+import { toLuxonLocale } from '@/lib/i18n/locale'
 
 export function isDemoRescheduleEnabled(): boolean {
   return process.env.DEMO_RESCHEDULE_ENABLED === '1'
 }
 
-// "להזיז"/"לדחות"/"לשנות (את) השיעור"/"להעביר (את) השיעור".
-// Verified against the existing detectors: none of these words trigger
-// hasScheduleIntent (שיעורים/לוז/…), hasCancellationIntent, hasBookingIntent,
+/**
+ * Demo-only copy. Kept local rather than added to src/lib/whatsapp/strings.ts so
+ * the demo surface stays confined to this file — the whole thing is deleted once
+ * App Review is approved.
+ */
+const DEMO_STRINGS: Record<AppLocale, Record<string, string>> = {
+  he: {
+    ask_time: 'לאיזו שעה להזיז את השיעור? אפשר לכתוב למשל: להזיז ל-18:00',
+    no_lesson: 'לא מצאתי שיעור מתוכנן ב-48 השעות הקרובות.',
+    conflict: 'השעה החדשה מתנגשת עם שיעור אחר של המורה. אפשר לנסות שעה אחרת 🙂',
+    failed: 'משהו השתבש ולא הצלחנו לעדכן את השיעור. אפשר לפנות לצוות ונעזור.',
+    updated: '✅ השיעור עודכן!',
+    with_teacher: 'עם',
+    new_time: 'שעה חדשה',
+    instead_of: 'במקום',
+    the_student: 'התלמיד',
+  },
+  en: {
+    ask_time: 'What time would you like to move the lesson to? For example: reschedule to 18:00',
+    no_lesson: 'I could not find a lesson scheduled in the next 48 hours.',
+    conflict: 'That time clashes with another lesson for this teacher. Feel free to try another one 🙂',
+    failed: 'Something went wrong and we could not update the lesson. Reach out to the team and we will help.',
+    updated: '✅ Lesson updated!',
+    with_teacher: 'with',
+    new_time: 'New time',
+    instead_of: 'instead of',
+    the_student: 'the student',
+  },
+}
+
+const demoString = (key: string, locale: AppLocale): string =>
+  DEMO_STRINGS[locale][key] ?? DEMO_STRINGS.he[key]
+
+// "להזיז"/"לדחות"/"לשנות (את) השיעור"/"להעביר (את) השיעור", plus the English
+// equivalents.
+//
+// "reschedule" contains "schedule", so it would otherwise be swallowed by
+// hasScheduleIntent — safe only because the webhook checks this detector first
+// (route.ts § 9, before the schedule branch). Verified against the rest:
+// none of these trigger hasCancellationIntent, hasBookingIntent,
 // hasBalanceIntent, hasPortalIntent or hasHomeworkDoneIntent.
 export function hasRescheduleIntent(text: string): boolean {
-  return /להזיז|לדחות|לשנות את השיעור|להעביר את השיעור/.test(text)
+  return (
+    /להזיז|לדחות|לשנות את השיעור|להעביר את השיעור/.test(text) ||
+    /\b(reschedule|postpone)\b/i.test(text) ||
+    /\b(move|change|shift)\s+(my\s+|the\s+)?lesson\b/i.test(text)
+  )
 }
 
 /** First HH:MM occurrence in the message ("ל-18:00", "לשעה 18:30"). */
@@ -46,18 +89,14 @@ export async function handleRescheduleIntent(params: {
   timezone: string
   accessToken: string
   phoneNumberId: string
+  locale: AppLocale
 }): Promise<void> {
-  const { parentId, orgId, senderPhone, text, timezone, accessToken, phoneNumberId } = params
+  const { parentId, orgId, senderPhone, text, timezone, accessToken, phoneNumberId, locale } = params
   const db = createServiceRoleClient()
 
   const target = parseTargetTime(text)
   if (!target) {
-    await sendTextMessage(
-      senderPhone,
-      'לאיזו שעה להזיז את השיעור? אפשר לכתוב למשל: להזיז ל-18:00',
-      accessToken,
-      phoneNumberId
-    )
+    await sendTextMessage(senderPhone, demoString('ask_time', locale), accessToken, phoneNumberId)
     return
   }
 
@@ -69,12 +108,7 @@ export async function handleRescheduleIntent(params: {
     .eq('parent_id', parentId)
   const studentIds = (relationships ?? []).map((r) => r.student_id as string)
   if (studentIds.length === 0) {
-    await sendTextMessage(
-      senderPhone,
-      'לא מצאתי שיעור מתוכנן ב-48 השעות הקרובות.',
-      accessToken,
-      phoneNumberId
-    )
+    await sendTextMessage(senderPhone, demoString('no_lesson', locale), accessToken, phoneNumberId)
     return
   }
 
@@ -109,12 +143,7 @@ export async function handleRescheduleIntent(params: {
 
   const next = candidates[0]
   if (!next?.lessons) {
-    await sendTextMessage(
-      senderPhone,
-      'לא מצאתי שיעור מתוכנן ב-48 השעות הקרובות.',
-      accessToken,
-      phoneNumberId
-    )
+    await sendTextMessage(senderPhone, demoString('no_lesson', locale), accessToken, phoneNumberId)
     return
   }
 
@@ -142,36 +171,29 @@ export async function handleRescheduleIntent(params: {
   if (updateError) {
     // 23P01 = no_teacher_lesson_overlap exclusion constraint
     if (updateError.code === '23P01') {
-      await sendTextMessage(
-        senderPhone,
-        'השעה החדשה מתנגשת עם שיעור אחר של המורה. אפשר לנסות שעה אחרת 🙂',
-        accessToken,
-        phoneNumberId
-      )
+      await sendTextMessage(senderPhone, demoString('conflict', locale), accessToken, phoneNumberId)
       return
     }
     console.error('[whatsapp/demoReschedule] Failed to update lesson', {
       lessonId: lesson.id,
       error: updateError,
     })
-    await sendTextMessage(
-      senderPhone,
-      'משהו השתבש ולא הצלחנו לעדכן את השיעור. אפשר לפנות לצוות ונעזור.',
-      accessToken,
-      phoneNumberId
-    )
+    await sendTextMessage(senderPhone, demoString('failed', locale), accessToken, phoneNumberId)
     return
   }
 
-  const studentName = next.students?.full_name ?? 'התלמיד'
+  const studentName = next.students?.full_name ?? demoString('the_student', locale)
   const teacherName = lesson.teachers?.profiles?.full_name
-  const dateLabel = newStart.setLocale('he').toFormat("cccc, d בLLLL")
+  const dateLabel = newStart
+    .setLocale(toLuxonLocale(locale))
+    .toFormat(locale === 'he' ? "cccc, d בLLLL" : 'cccc, d LLLL')
   await sendTextMessage(
     senderPhone,
-    `✅ השיעור עודכן!\n\n` +
-      `${studentName}${teacherName ? ` עם ${teacherName}` : ''}\n` +
+    `${demoString('updated', locale)}\n\n` +
+      `${studentName}${teacherName ? ` ${demoString('with_teacher', locale)} ${teacherName}` : ''}\n` +
       `${dateLabel}\n` +
-      `שעה חדשה: ${newStart.toFormat('HH:mm')} (במקום ${oldStart.toFormat('HH:mm')})`,
+      `${demoString('new_time', locale)}: ${newStart.toFormat('HH:mm')} ` +
+      `(${demoString('instead_of', locale)} ${oldStart.toFormat('HH:mm')})`,
     accessToken,
     phoneNumberId
   )

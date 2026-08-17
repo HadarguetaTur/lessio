@@ -135,6 +135,24 @@ export async function sendSmartMessage(
   templateVars: string[] = [],
   locale: string = 'he'
 ): Promise<void> {
+  // Opt-out gate. The crons are the highest-volume business-initiated sender in
+  // the product, so enforcing only in the Node path (src/lib/whatsapp/sendSmart.ts)
+  // would leave an opted-out parent still receiving daily reminders.
+  // Fails open on a DB error, matching src/lib/whatsapp/optOut.ts.
+  const { data: parent, error: optOutError } = await db
+    .from('parents')
+    .select('opted_out_at')
+    .eq('organization_id', orgId)
+    .eq('phone', phone)
+    .maybeSingle()
+
+  if (optOutError) {
+    console.warn(`[sendSmart] opt-out lookup failed — allowing the send: ${optOutError.message}`)
+  } else if (parent?.opted_out_at) {
+    console.info(`[sendSmart] Recipient opted out — skipping ${templateType}`)
+    return
+  }
+
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
   const { data: recent } = await db

@@ -195,7 +195,13 @@ export async function sendInvalidSelectionReply(
   return sendTextMessage(to, botString('invalid_selection', locale), accessToken, phoneNumberId)
 }
 
-export { parseWebhookPayload, hasBookingIntent, hasCancellationIntent } from './parsePayload'
+export {
+  parseWebhookPayload,
+  hasBookingIntent,
+  hasCancellationIntent,
+  hasOptOutIntent,
+  hasResumeIntent,
+} from './parsePayload'
 export type { WhatsAppMessage, MetaWebhookPayload } from './parsePayload'
 
 // ── Intent detectors (Sprint 14) ──────────────────────────────────────────────

@@ -161,6 +161,9 @@ async function main(): Promise<void> {
   console.log(`✓ Demo org resolved: "${org?.name ?? '(unnamed)'}" [${orgId}] (owner ${ownerEmail})`)
 
   // 3. whatsapp_phone_number_id is UNIQUE — release it if any *other* org holds it.
+  //    Clear the whole connection, not just the id: a leftover waba_id + token
+  //    leaves the previous org showing as connected in /settings/whatsapp and lets
+  //    its send paths keep using a number it no longer owns.
   const { data: holders } = await db
     .from('organizations')
     .select('id, name')
@@ -170,10 +173,18 @@ async function main(): Promise<void> {
     console.warn(
       `⚠  Releasing phone_number_id ${phoneNumberId} from org "${holder.name}" [${holder.id}]`
     )
-    await db
+    const { error: releaseErr } = await db
       .from('organizations')
-      .update({ whatsapp_phone_number_id: null })
+      .update({
+        whatsapp_phone_number_id: null,
+        whatsapp_waba_id: null,
+        whatsapp_access_token: null,
+      })
       .eq('id', holder.id)
+    if (releaseErr) {
+      console.error(`Failed to release the number from ${holder.id}: ${releaseErr.message}`)
+      process.exit(1)
+    }
   }
 
   // 4. Write the connection.

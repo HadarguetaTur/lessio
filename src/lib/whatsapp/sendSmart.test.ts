@@ -5,11 +5,17 @@ const {
   mockResolveTemplate,
   mockSendTextMessage,
   mockSendTemplateMessage,
+  mockIsOptedOut,
 } = vi.hoisted(() => ({
   mockCreateServiceRoleClient: vi.fn(),
   mockResolveTemplate: vi.fn(),
   mockSendTextMessage: vi.fn(),
   mockSendTemplateMessage: vi.fn(),
+  mockIsOptedOut: vi.fn(),
+}))
+
+vi.mock('./optOut', () => ({
+  isOptedOut: mockIsOptedOut,
 }))
 
 vi.mock('@/lib/supabase/service-role', () => ({
@@ -55,6 +61,48 @@ describe('sendSmartMessage', () => {
     mockResolveTemplate.mockResolvedValue('resolved body')
     mockSendTextMessage.mockResolvedValue(undefined)
     mockSendTemplateMessage.mockResolvedValue(undefined)
+    mockIsOptedOut.mockResolvedValue(false)
+  })
+
+  describe('opt-out', () => {
+    it('sends nothing when the recipient opted out, inside the window', async () => {
+      buildQueryMock({ data: { message_id: 'msg-1' }, error: null })
+      mockIsOptedOut.mockResolvedValue(true)
+
+      const result = await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
+
+      expect(result).toEqual({ sent: false, reason: 'opted_out' })
+      expect(mockSendTextMessage).not.toHaveBeenCalled()
+      expect(mockSendTemplateMessage).not.toHaveBeenCalled()
+    })
+
+    it('sends nothing when the recipient opted out, outside the window', async () => {
+      buildQueryMock({ data: null, error: null })
+      mockIsOptedOut.mockResolvedValue(true)
+
+      const result = await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
+
+      expect(result).toEqual({ sent: false, reason: 'opted_out' })
+      expect(mockSendTemplateMessage).not.toHaveBeenCalled()
+    })
+
+    it('checks the opt-out before spending a session-window query', async () => {
+      const query = buildQueryMock({ data: null, error: null })
+      mockIsOptedOut.mockResolvedValue(true)
+
+      await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
+
+      expect(mockIsOptedOut).toHaveBeenCalledWith('org-1', '+972501234567')
+      expect(query.maybeSingle).not.toHaveBeenCalled()
+    })
+
+    it('reports a successful send so callers can tell the two apart', async () => {
+      buildQueryMock({ data: { message_id: 'msg-1' }, error: null })
+
+      const result = await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
+
+      expect(result).toEqual({ sent: true })
+    })
   })
 
   it('queries the session window on the real columns (phone / message_id)', async () => {

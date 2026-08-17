@@ -16,6 +16,7 @@ import { cancelLessonSeries, type CancelSeriesScope } from '@/lib/lessons/cancel
 import { createCancellationEvent } from '@/lib/billing/monthly/cancellationEvents'
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
 import { DateTime } from 'luxon'
+import { getTranslations } from 'next-intl/server'
 import { decryptToken } from '@/lib/crypto'
 import { botString } from '@/lib/whatsapp/strings'
 import { resolveRecipientLocale, toLuxonLocale } from '@/lib/i18n/locale'
@@ -476,7 +477,7 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
   // sendSmartMessage, not sendTextMessage: a reminder is usually sent to a parent
   // who has not written to the business in 24h, and free text there fails with 131047.
   try {
-    await sendSmartMessage({
+    const result = await sendSmartMessage({
       orgId: session.orgId,
       phone: parentPhone,
       accessToken: decryptToken(org.whatsapp_access_token as string),
@@ -489,6 +490,13 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
       },
       locale,
     })
+
+    // Nothing was sent, so say so and write no notification_log row — otherwise
+    // the button reports success and the hourly cron skips the lesson forever.
+    if (!result.sent) {
+      const t = await getTranslations('parents')
+      return { error: t('optedOutError') }
+    }
   } catch (e) {
     console.error('[lessons] Manual reminder send failed', { lessonId, error: e })
     return { error: 'שליחת התזכורת נכשלה' }

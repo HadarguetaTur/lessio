@@ -2,6 +2,7 @@
 
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { useTranslations } from 'next-intl'
+import { BellOff } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { TableRow, TableCell } from '@/components/ui/table'
 import { ParentRowActions, TeacherParentNotesRowActions } from '@/components/dashboard/parents/ParentSheet'
@@ -82,16 +83,27 @@ export function ParentsTableRow({
           {parent.phone}
         </TableCell>
         <TableCell className="px-5 py-3.5">
-          <span
-            className={cn(
-              'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium',
-              parent.is_active
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-muted text-muted-foreground border-border',
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span
+              className={cn(
+                'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium',
+                parent.is_active
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-muted text-muted-foreground border-border',
+              )}
+            >
+              {parent.is_active ? statusActiveLabel : statusInactiveLabel}
+            </span>
+            {parent.opted_out_at && (
+              <span
+                title={t('optedOutTooltip')}
+                className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400"
+              >
+                <BellOff size={11} className="shrink-0" />
+                {t('optedOut')}
+              </span>
             )}
-          >
-            {parent.is_active ? statusActiveLabel : statusInactiveLabel}
-          </span>
+          </div>
         </TableCell>
         <TableCell className="px-5 py-3.5" data-parent-row-ignore-click onClick={(e) => e.stopPropagation()}>
           {isTeacher ? (

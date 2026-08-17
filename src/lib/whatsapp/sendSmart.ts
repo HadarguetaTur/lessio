@@ -17,10 +17,18 @@ import type { AppLocale } from '@/lib/i18n/locale'
 import { resolveTemplate, type MessageTemplateType } from './templates'
 import { sendTextMessage, sendTemplateMessage } from './index'
 import { getApprovedTemplate } from './approvedTemplates'
+import { isOptedOut } from './optOut'
+
+/** Why a send did not happen. `sent: true` means it was handed to Meta. */
+export type SmartSendResult = { sent: true } | { sent: false; reason: 'opted_out' }
 
 /**
  * Sends a WhatsApp message using the correct method based on whether the
  * 24h customer-service window is open.
+ *
+ * Every caller is business-initiated (reminders, notifications, dashboard
+ * buttons), so this is the enforcement point for opt-out. Direct replies to an
+ * inbound message do not come through here and are never blocked.
  */
 export async function sendSmartMessage(params: {
   orgId: string
@@ -30,8 +38,13 @@ export async function sendSmartMessage(params: {
   templateType: MessageTemplateType
   vars: Record<string, string>
   locale?: AppLocale
-}): Promise<void> {
+}): Promise<SmartSendResult> {
   const { orgId, phone, accessToken, phoneNumberId, templateType, vars, locale = 'he' } = params
+
+  if (await isOptedOut(orgId, phone)) {
+    console.info('[sendSmart] Recipient opted out — not sending', { orgId, templateType })
+    return { sent: false, reason: 'opted_out' }
+  }
 
   const inWindow = await isInSessionWindow(orgId, phone)
 
@@ -39,7 +52,7 @@ export async function sendSmartMessage(params: {
     // Within 24h window — send customisable text message
     const body = await resolveTemplate(orgId, templateType, vars, locale)
     await sendTextMessage(phone, body, accessToken, phoneNumberId)
-    return
+    return { sent: true }
   }
 
   // Outside window — use the approved template in the recipient's language,
@@ -50,7 +63,7 @@ export async function sendSmartMessage(params: {
   if (approved) {
     const components = approved.buildComponents(vars)
     await sendTemplateMessage(phone, accessToken, phoneNumberId, approved.name, approved.languageCode, components)
-    return
+    return { sent: true }
   }
 
   // Fallback: no approved template registered — send text anyway
@@ -62,6 +75,7 @@ export async function sendSmartMessage(params: {
   })
   const body = await resolveTemplate(orgId, templateType, vars, locale)
   await sendTextMessage(phone, body, accessToken, phoneNumberId)
+  return { sent: true }
 }
 
 /**

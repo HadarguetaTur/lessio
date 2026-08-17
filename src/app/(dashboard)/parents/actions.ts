@@ -16,7 +16,9 @@ import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { decryptToken } from '@/lib/crypto'
 import { sendTextMessage } from '@/lib/whatsapp'
+import { isOptedOut } from '@/lib/whatsapp/optOut'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
+import { getTranslations } from 'next-intl/server'
 
 type ActionState = { error: string } | null
 
@@ -344,6 +346,14 @@ export async function sendPaymentRequestAction(
   const parent = await getParentById(parentId, orgId)
   if (!parent) return { error: 'הורה לא נמצא' }
   if (!parent.phone) return { error: 'להורה אין מספר טלפון מוגדר' }
+
+  // A payment request is business-initiated, so the opt-out applies. This send
+  // uses sendTextMessage directly rather than sendSmartMessage, which is where
+  // the gate normally lives — hence the explicit check here.
+  if (await isOptedOut(orgId, parent.phone)) {
+    const t = await getTranslations('parents')
+    return { error: t('optedOutError') }
+  }
 
   // Load pending charges
   const charges = await getPendingChargesForParent(parentId, orgId)

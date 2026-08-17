@@ -9,6 +9,10 @@
  *   phone_number_id and the encrypted token on the organization row.
  *
  * disconnectWhatsApp — clears both fields so the org is back to unconnected.
+ *
+ * registerTemplates — re-runs template registration on the already connected
+ *   WABA and reports the outcome. Registration also happens automatically at
+ *   signup, but fire-and-forget: when it fails there the org never finds out.
  */
 
 import { revalidatePath } from 'next/cache'
@@ -35,6 +39,14 @@ const SaveSchema = z.object({
 
 export type WhatsAppActionResult = {
   error: string | null
+}
+
+export type RegisterTemplatesResult = {
+  error: string | null
+  /** Names of templates that now exist on the WABA — newly created or already there. */
+  registered: string[]
+  /** Templates Meta refused, with its reason. Surfaced, never swallowed. */
+  failed: Array<{ name: string; reason: string }>
 }
 
 // ── saveWhatsAppConnection ────────────────────────────────────────────────────
@@ -195,6 +207,73 @@ export async function disconnectWhatsApp(
   console.info('[whatsapp/settings] WhatsApp disconnected', { orgId })
   revalidatePath('/settings/whatsapp')
   return { error: null }
+}
+
+// ── registerTemplates ─────────────────────────────────────────────────────────
+
+/**
+ * Registers Lessio's message templates on the org's already connected WABA.
+ *
+ * saveWhatsAppConnection does this too, but fire-and-forget — a failure there is
+ * invisible to the org and there is no way to retry short of disconnecting and
+ * redoing Embedded Signup. This is that retry, and it reports what happened.
+ *
+ * Unlike the sibling actions, `error` carries a stable code rather than a
+ * user-facing sentence: the button renders in the viewer's own language, and
+ * this screen is recorded in English for Meta's App Review screencast.
+ */
+export async function registerTemplates(
+  _prevState: RegisterTemplatesResult,
+  _formData: FormData
+): Promise<RegisterTemplatesResult> {
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
+
+  const empty = { registered: [], failed: [] }
+
+  if (role !== 'owner') {
+    return { error: 'forbidden', ...empty }
+  }
+
+  await requireFeature(orgId, 'whatsapp_automation')
+
+  const db = createServiceRoleClient()
+  const { data: org } = await db
+    .from('organizations')
+    .select('whatsapp_waba_id, whatsapp_access_token')
+    .eq('id', orgId)
+    .maybeSingle()
+
+  if (!org?.whatsapp_waba_id || !org?.whatsapp_access_token) {
+    return { error: 'notConnected', ...empty }
+  }
+
+  let accessToken: string
+  try {
+    accessToken = decryptToken(org.whatsapp_access_token)
+  } catch (err) {
+    console.error('[whatsapp/settings] Token decryption failed', { orgId, err })
+    return { error: 'decryptFailed', ...empty }
+  }
+
+  // Awaited, unlike at signup: the whole point here is showing the outcome.
+  let result: Awaited<ReturnType<typeof registerTemplatesForWABA>>
+  try {
+    result = await registerTemplatesForWABA(org.whatsapp_waba_id, accessToken)
+  } catch (err) {
+    console.error('[whatsapp/settings] Template registration failed', { orgId, err })
+    return { error: 'registerFailed', ...empty }
+  }
+
+  console.info('[whatsapp/settings] Templates registered on demand', {
+    orgId,
+    wabaId: org.whatsapp_waba_id,
+    ok: result.ok.length,
+    failed: result.failed.length,
+  })
+
+  return { error: null, registered: result.ok, failed: result.failed }
 }
 
 // ── Token exchange helper ─────────────────────────────────────────────────────

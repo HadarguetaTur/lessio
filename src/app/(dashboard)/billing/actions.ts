@@ -21,6 +21,8 @@ import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { sendTextMessage } from '@/lib/whatsapp'
+import { isOptedOut } from '@/lib/whatsapp/optOut'
+import { getTranslations } from 'next-intl/server'
 import { generateAndStoreInvoice } from '@/lib/billing/invoices/generateInvoicePdf'
 import { generateAndStoreCreditNote } from '@/lib/billing/invoices/generateCreditNotePdf'
 import { getInvoiceSignedUrl } from '@/lib/billing/invoices/uploadInvoicePdf'
@@ -474,7 +476,11 @@ export async function sendBillingPaymentRequestAction(billingId: string) {
   }
 
   try {
-    await sendBillingPaymentRequestCore(billingId, session.orgId)
+    const outcome = await sendBillingPaymentRequestCore(billingId, session.orgId)
+    if (outcome === 'opted_out') {
+      const t = await getTranslations('parents')
+      return { error: t('optedOutError') }
+    }
     return { error: null }
   } catch (err) {
     console.error('[billing] sendBillingPaymentRequestAction failed', { billingId, orgId: session.orgId, err })
@@ -485,11 +491,14 @@ export async function sendBillingPaymentRequestAction(billingId: string) {
 /**
  * Shared core: creates payment link + sends WhatsApp for a monthly billing record.
  * Throws on failure — callers decide whether to fire-and-forget or surface the error.
+ *
+ * Returns why nothing was sent when that is a normal outcome rather than a
+ * failure, so the button can say "this parent opted out" instead of a generic error.
  */
 async function sendBillingPaymentRequestCore(
   billingId: string,
   orgId: string
-): Promise<void> {
+): Promise<'sent' | 'opted_out' | 'skipped'> {
   const db = createServiceRoleClient()
 
   // Load org settings
@@ -501,7 +510,7 @@ async function sendBillingPaymentRequestCore(
 
   if (!org?.auto_send_payment_request && !org?.payment_provider) {
     // Called from approve fire-and-forget: skip silently
-    return
+    return 'skipped'
   }
 
   const encryptedToken = org.whatsapp_access_token as string | null
@@ -542,6 +551,14 @@ async function sendBillingPaymentRequestCore(
     .single()
 
   if (!parent?.phone) throw new Error('הורה לא נמצא או חסר מספר טלפון')
+
+  // Business-initiated, and it sends via sendTextMessage rather than
+  // sendSmartMessage, so the opt-out gate has to be applied explicitly. Checked
+  // before the payment link is created — creating one nobody will be sent is waste.
+  if (await isOptedOut(orgId, parent.phone as string)) {
+    console.info('[billing] payment request skipped — parent opted out', { billingId, orgId })
+    return 'opted_out'
+  }
 
   const locale = resolveRecipientLocale({
     stored: parent.preferred_locale as string | null,
@@ -610,6 +627,7 @@ async function sendBillingPaymentRequestCore(
     .eq('organization_id', orgId)
 
   console.info('[billing] payment request sent', { billingId, orgId, chargeId: charge.id, providerName })
+  return 'sent'
 }
 
 // ─── Invoice actions ────────────────────────────────────────────────────────

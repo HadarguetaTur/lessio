@@ -150,3 +150,25 @@ export function hasCancellationIntent(text: string): boolean {
   const lower = text.toLowerCase()
   return lower.includes('ביטול') || lower.includes('לבטל') || lower.includes('cancel')
 }
+
+/**
+ * Returns true if the message asks to stop business-initiated messages.
+ *
+ * Anchored to the whole message, unlike the other detectors: "stop" appears
+ * inside ordinary sentences ("stop sending me the 8am one, the evening one is
+ * fine"), and silently unsubscribing someone who was mid-conversation is worse
+ * than missing an opt-out they can repeat. Meta's own stop words are single
+ * words sent alone, which is what this matches.
+ */
+export function hasOptOutIntent(text: string): boolean {
+  const normalized = text.trim().toLowerCase().replace(/[.!?]+$/, '')
+  return /^(stop|unsubscribe|stop messages|opt out|הסר|הסר אותי|הפסק|הפסיקו|עצור|הסירו אותי)$/.test(
+    normalized
+  )
+}
+
+/** Returns true if the message asks to resume messages after an opt-out. */
+export function hasResumeIntent(text: string): boolean {
+  const normalized = text.trim().toLowerCase().replace(/[.!?]+$/, '')
+  return /^(start|resume|subscribe|unstop|התחל|חדשו|המשך|הצטרף)$/.test(normalized)
+}

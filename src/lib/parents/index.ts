@@ -10,6 +10,8 @@ export interface Parent {
   relation_type: string | null
   notes: string | null
   is_active: boolean
+  /** Set when the parent replied STOP on WhatsApp — blocks business-initiated sends. */
+  opted_out_at: string | null
   created_at: string
 }
 
@@ -26,7 +28,7 @@ export async function getParents(
   let query = supabase
     .from('parents')
     .select(
-      'id, full_name, phone, email, second_phone, address, relation_type, notes, is_active, created_at'
+      'id, full_name, phone, email, second_phone, address, relation_type, notes, is_active, opted_out_at, created_at'
     )
     .eq('organization_id', organizationId)
     .order('full_name', { ascending: true })
@@ -52,7 +54,7 @@ export async function getParentById(
   const { data } = await supabase
     .from('parents')
     .select(
-      'id, full_name, phone, email, second_phone, address, relation_type, notes, is_active, created_at'
+      'id, full_name, phone, email, second_phone, address, relation_type, notes, is_active, opted_out_at, created_at'
     )
     .eq('id', id)
     .eq('organization_id', organizationId)

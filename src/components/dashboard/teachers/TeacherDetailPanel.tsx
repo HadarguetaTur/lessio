@@ -20,7 +20,7 @@ export interface TeacherDetailPanelProps {
     bio: string | null
     hourly_rate: number | null
     is_active: boolean
-    profile: { full_name: string }
+    profile: { full_name: string; phone: string | null }
   }
   updateAction: FormAction
   archiveAction: VoidAction
@@ -130,6 +130,12 @@ export function TeacherDetailPanel({
               {rateDisplay ?? <span className="text-amber-600 font-normal">{t('noRateWarning')}</span>}
             </dd>
           </div>
+          <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <dt className="text-sm text-muted-foreground shrink-0">{t('fields.phone')}</dt>
+            <dd className="text-sm font-medium text-foreground text-end break-words min-w-0 sm:max-w-[70%]" dir="ltr">
+              {teacher.profile.phone ?? <span className="text-muted-foreground font-normal">—</span>}
+            </dd>
+          </div>
           <div className="px-4 py-4 min-h-[4.5rem]">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{t('bio')}</p>
             {teacher.bio?.trim() ? (
@@ -178,6 +184,7 @@ export function TeacherDetailPanel({
               defaultValues={{
                 bio: teacher.bio,
                 hourly_rate: teacher.hourly_rate,
+                phone: teacher.profile.phone,
               }}
               onSuccess={handleSaved}
               onCancel={() => setEditing(false)}

@@ -6,8 +6,28 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getTeacherById, type Teacher } from '@/lib/teachers'
+import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 
 type ActionState = { error: string } | null
+
+/**
+ * Normalizes an optional phone from a form field.
+ * A teacher's phone is what the WhatsApp bot matches an inbound message
+ * against (see resolveSender), so it must be stored in E.164 like every other
+ * phone in the DB — an un-normalized "052-123-4567" would simply never match.
+ */
+function parseOptionalPhone(raw: FormDataEntryValue | null): { phone: string | null } | { error: string } {
+  const trimmed = ((raw as string) ?? '').trim()
+  if (!trimmed) return { phone: null }
+  try {
+    return { phone: normalizePhone(trimmed) }
+  } catch (err) {
+    if (err instanceof PhoneNormalizationError) {
+      return { error: 'מספר הטלפון אינו תקין' }
+    }
+    throw err
+  }
+}
 
 /**
  * Invite flow (Decision #12):
@@ -25,6 +45,9 @@ export async function inviteTeacher(
 
   if (!email) return { error: 'אימייל הוא שדה חובה' }
   if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
+
+  const parsedPhone = parseOptionalPhone(formData.get('phone'))
+  if ('error' in parsedPhone) return parsedPhone
 
   const session = await getSession()
   const { orgId, role } = session
@@ -50,6 +73,7 @@ export async function inviteTeacher(
     id: userId,
     organization_id: orgId,
     full_name,
+    phone: parsedPhone.phone,
     role: 'teacher',
   })
 
@@ -83,6 +107,9 @@ export async function updateTeacher(
     return { error: 'תעריף שעתי חייב להיות מספר חיובי' }
   }
 
+  const parsedPhone = parseOptionalPhone(formData.get('phone'))
+  if ('error' in parsedPhone) return parsedPhone
+
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
@@ -97,6 +124,26 @@ export async function updateTeacher(
     .eq('organization_id', orgId)
 
   if (error) return { error: 'שגיאה בעדכון המורה' }
+
+  // The phone lives on the linked profile, not on teachers. Service role: a
+  // teacher's own profile row is not writable under the caller's RLS.
+  const teacher = await getTeacherById(id, orgId)
+  if (teacher) {
+    const { error: profileError } = await createServiceRoleClient()
+      .from('profiles')
+      .update({ phone: parsedPhone.phone })
+      .eq('id', teacher.profile.id)
+      .eq('organization_id', orgId)
+
+    if (profileError) {
+      console.error('[teachers/updateTeacher] Failed to update profile phone', {
+        orgId,
+        teacherId: id,
+        error: profileError,
+      })
+      return { error: 'שגיאה בעדכון פרטי הקשר של המורה' }
+    }
+  }
 
   revalidatePath('/teachers')
   revalidatePath(`/teachers/${id}/edit`)

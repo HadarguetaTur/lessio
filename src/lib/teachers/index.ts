@@ -9,6 +9,8 @@ export interface Teacher {
   profile: {
     id: string
     full_name: string
+    /** Normalized E.164. Also how the WhatsApp bot recognises them as a teacher. */
+    phone: string | null
   }
 }
 
@@ -28,7 +30,7 @@ function mapTeacher(data: TeacherRow): Teacher {
     hourly_rate: data.hourly_rate ?? null,
     is_active: data.is_active,
     created_at: data.created_at,
-    profile: (data.profiles as unknown) as { id: string; full_name: string },
+    profile: (data.profiles as unknown) as { id: string; full_name: string; phone: string | null },
   }
 }
 
@@ -37,7 +39,7 @@ export async function getTeachers(organizationId: string): Promise<Teacher[]> {
 
   const { data, error } = await supabase
     .from('teachers')
-    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name)')
+    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name, phone)')
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: true })
 
@@ -55,7 +57,7 @@ export async function getTeacherByProfileId(
 
   let query = supabase
     .from('teachers')
-    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name)')
+    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name, phone)')
     .eq('profile_id', profileId)
     .eq('organization_id', organizationId)
   if (options?.activeOnly) {
@@ -77,7 +79,7 @@ export async function getTeacherById(
 
   const { data } = await supabase
     .from('teachers')
-    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name)')
+    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name, phone)')
     .eq('id', id)
     .eq('organization_id', organizationId)
     .single()

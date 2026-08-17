@@ -84,6 +84,9 @@ describe('inviteTeacher', () => {
         id: 'user-123',
         organization_id: 'org-1',
         full_name: 'מורה חדש',
+        // Optional, and omitted here — the WhatsApp bot simply cannot recognise
+        // this teacher until a phone is filled in.
+        phone: null,
         role: 'teacher',
       },
     ])
@@ -93,6 +96,54 @@ describe('inviteTeacher', () => {
         profile_id: 'user-123',
       },
     ])
+  })
+
+  /**
+   * The phone is what resolveSender() matches an inbound WhatsApp message
+   * against, so it has to land in the DB in E.164 like every other phone —
+   * an un-normalized "052-123-4567" would never match.
+   */
+  it('normalizes the phone before storing it on the profile', async () => {
+    const insertedProfiles: Record<string, unknown>[] = []
+
+    mockInviteUserByEmail.mockResolvedValue({
+      data: { user: { id: 'user-123' } },
+      error: null,
+    })
+
+    mockFrom.mockImplementation((table: string) => ({
+      insert: async (payload: Record<string, unknown>) => {
+        if (table === 'profiles') insertedProfiles.push(payload)
+        return { error: null }
+      },
+    }))
+
+    const formData = new FormData()
+    formData.set('email', 'teacher@example.com')
+    formData.set('full_name', 'מורה חדש')
+    formData.set('phone', '052-123-4567')
+
+    await expect(inviteTeacher(null, formData)).rejects.toThrow('REDIRECT:/teachers')
+
+    expect(insertedProfiles[0].phone).toBe('+972521234567')
+  })
+
+  it('rejects an unparseable phone instead of storing it', async () => {
+    mockInviteUserByEmail.mockResolvedValue({
+      data: { user: { id: 'user-123' } },
+      error: null,
+    })
+
+    const formData = new FormData()
+    formData.set('email', 'teacher@example.com')
+    formData.set('full_name', 'מורה חדש')
+    formData.set('phone', 'not-a-phone')
+
+    await expect(inviteTeacher(null, formData)).resolves.toEqual({
+      error: 'מספר הטלפון אינו תקין',
+    })
+    // Bailed before creating the auth user.
+    expect(mockInviteUserByEmail).not.toHaveBeenCalled()
   })
 
   it('returns a friendly error when the email is already registered', async () => {

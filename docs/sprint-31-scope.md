@@ -141,6 +141,45 @@ Today `portal/[orgId]/login/actions.ts:83-86` sends a hardcoded string via `send
 
 ---
 
+## Story 7 — Sender Role Awareness 🟠 (M, one migration) — ✅ DONE
+
+The webhook resolved every inbound phone against `parents` alone. Everyone else was a lead, so a
+teacher or the org owner writing to the business number got *"this number is not registered with
+us yet"* plus a lead row in their own CRM — and a student replying to the homework reminder the bot
+had just sent **to their own phone** (`homework-reminders`/`homework-sender` prefer `students.phone`)
+was treated as a stranger. Decision #26's "resolve actor identity" was half-implemented.
+
+### 7a: Identity layer
+- `src/lib/whatsapp/sender.ts` — `resolveSender(orgId, phone)` → `parent | student | teacher | staff | unknown`, four lookups in parallel, all org-scoped. `alsoKnownAs` carries the other capacities a phone holds
+- Precedence `parent > student > teacher > staff`. Parent first is load-bearing — it preserves the reply a teacher-who-is-also-a-parent already got
+- Only `parents` is unique on `(organization_id, phone)`. `students.phone`/`profiles.phone` have **no** uniqueness, so those use `order('id').limit(1)` — `maybeSingle()` errors on multiple matches
+- A failed lookup **throws** rather than reading as "not this role": a transient DB error must not downgrade a teacher to a sales lead
+
+### 7b: Per-role flows
+- `ROLE_MENUS` in `menu.ts` is the single source of truth; `isActionAllowedForRole` re-checks every tapped payload, since reply ids come from the client
+- Student → own schedule + homework (list and "סיימתי"). Teacher → own schedule + students, **read-only**. Staff → today's summary, **read-only**
+- Handlers in `src/app/api/whatsapp/webhook/handlers/{student,teacher,staff}.ts`; shared query/format cores in `../shared.ts` — the parent path now calls the same `buildUpcomingLessonLines` / `findOpenAssignments` / `markAssignmentDoneAndAlert`, so there is no duplicated schedule or homework logic
+- The teacher's homework alert distinguishes student-marked from parent-marked (`sendHomeworkAlert(..., markedBy)`)
+
+### 7c: `profiles.phone` was never written 🔴
+- The column was read in three places (cancellation owner alert, homework teacher alert, `saas-renewal-reminder`) but **no code ever wrote it** — no UI, no invite field, no import. Those alerts were dead in practice, and teacher/staff recognition could never fire
+- Added to the teacher invite + edit forms, normalized to E.164 via `normalizePhone` on write (decision #8), surfaced on the teacher detail panel
+
+### 7d: Collision handling
+- **Migration** `20260817000001_whatsapp_sender_roles.sql`: `whatsapp_sender_preference (organization_id, phone, role)` RLS deny-all, written only on an explicit "switch role" tap; plus `idx_students_org_phone` and `idx_profiles_org_phone` (the students lookup had no index at all and now runs on every inbound message)
+
+### Tests
+- `sender.test.ts` (22): each capacity, every collision pair, stored-preference override and its staleness guard, duplicate-phone rows, per-table DB errors
+- `webhook.test.ts` (+16): student/teacher/owner recognised and **not** filed as leads; unknown number still is; role-scoped menu contents; a student's `m:balance` tap refused; switcher only when several capacities; the student homework-done flow end to end
+- The 36 pre-existing webhook tests pass with no assertion changes — the parent path is unchanged
+
+### Deliberately out of scope
+- **Teacher/staff mutations** (attendance, cancellation) — no real confirmation step in WhatsApp; a mistyped reply would move a parent's charge
+- **AI assistant for non-parents** — `buildSystemPrompt` builds parent context; per-role prompts need defined information boundaries (what may a teacher ask about another parent?)
+- **Per-role approved templates** — role menus work inside the 24h window immediately, but fall back to plain text outside it until `lessio_menu_teacher_{he,en}` etc. are approved at Meta. Registration is an ops task with lead time; the parent template is unaffected
+
+---
+
 ## Ops / Meta Runbook (starts day one, runs in parallel)
 
 1. **Meta Business App:** create a Business-type app in the Meta Developer Console; add the WhatsApp product → `META_APP_ID`, `META_APP_SECRET`, `WHATSAPP_APP_SECRET` (the App Secret serves both OAuth exchange and webhook HMAC)
@@ -148,7 +187,8 @@ Today `portal/[orgId]/login/actions.ts:83-86` sends a hardcoded string via `send
 3. **Business Verification + App Review** 🔴 the long pole: verify the Lessio business (legal details must match `NEXT_PUBLIC_BUSINESS_*`); request Advanced Access for `whatsapp_business_management` + `whatsapp_business_messaging` (screencast of the Embedded Signup flow typically required). Until approval, only developer-account numbers work.
 4. **Embedded Signup Configuration:** App Dashboard → WhatsApp → Embedded Signup → create a Configuration → `NEXT_PUBLIC_META_CONFIG_ID`; add the production domain to Allowed Domains (FB.login requires it)
 5. **Existing orgs:** extend `scripts/backfill-waba-subscriptions.ts` to also call `registerTemplatesForWABA` (it already loads each org's decrypted token), then run it — fixes both `subscribed_apps` and missing templates (incl. the new `lessio_otp_he`)
-6. **Migrations to staging/prod, in order:** `20260513120000_add_whatsapp_waba_id.sql`, `20260514000001_automation_toggles.sql`, then the new ones from Stories 4/5/6e
+6. **Migrations to staging/prod, in order:** `20260513120000_add_whatsapp_waba_id.sql`, `20260514000001_automation_toggles.sql`, then the new ones from Stories 4/5/6e, then `20260817000001_whatsapp_sender_roles.sql` (Story 7)
+6b. **Backfill `profiles.phone`** (Story 7c): the column was never written, so every existing teacher/owner row is NULL and the bot cannot recognise them until it is filled in — either per teacher in the dashboard, or by a one-off script. Until then they fall through to the lead path exactly as before, so this is not a blocker for deploying Story 7.
 7. **Crons:** register all 8 in the Supabase Dashboard (list per `docs/release-checklist.md`): `lesson-reminders` (hourly), `payment-reminders` (09:00), `homework-reminders` (08:00), `homework-sender` (hourly), `saas-subscription-checker` (00:00), `saas-renewal-reminder` (08:00), `data-retention` (03:00), `notification-cleanup` (04:00) — `config.toml` cannot express schedules (CLI v2.x)
 8. **Prod env vars:** existing `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_TOKEN_ENCRYPTION_KEY`, `META_APP_ID`, `META_APP_SECRET` + new `NEXT_PUBLIC_META_CONFIG_ID`
 9. **Smoke (staging, HTTPS — release-checklist scenario 7):** connect a test org end-to-end (verify `waba_id` persisted, templates registered, `getSubscribedApps` lists the app) → inbound message → bot reply → OTP login from a phone that never messaged the org (proves Story 3 cold-start) → lesson-reminder cron dry run → `data-retention` run and confirm old rows show `phone = '***'` (proves Story 0a)

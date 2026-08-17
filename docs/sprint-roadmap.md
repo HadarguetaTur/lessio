@@ -86,6 +86,7 @@
 - Story 4: Webhook hardening (rate limit 30/phone/5min, unknown `phone_number_id` → Sentry + superadmin notification)
 - Story 5: Template approval status tracking (webhook field + status chips in settings) — may slip
 - Story 6: Bot improvements (intent collisions, non-greedy cancellation session, group-lesson guard, non-text replies, outbound message log)
+- Story 7: Sender role awareness — the bot resolves parent/student/teacher/staff instead of "parent or lead", with a per-role menu (`resolveSender`, `ROLE_MENUS`); teachers and owners stop being filed as leads in their own CRM, and a student can answer the homework reminder sent to their own phone
 - Ops: Meta Business App + Business Verification + App Review + Embedded Signup Configuration, cron registration, migrations, WABA backfill
 
 ---

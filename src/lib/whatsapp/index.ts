@@ -247,6 +247,9 @@ export function hasPortalIntent(text: string): boolean {
 
 /**
  * Sends a homework done alert to the teacher.
+ *
+ * `markedBy` distinguishes the parent reporting on the child's behalf from the
+ * student reporting for themselves — the teacher reads those differently.
  */
 export async function sendHomeworkAlert(
   teacherPhone: string,
@@ -254,12 +257,17 @@ export async function sendHomeworkAlert(
   homeworkTitle: string,
   accessToken: string,
   phoneNumberId: string,
-  locale: AppLocale = 'he'
+  locale: AppLocale = 'he',
+  markedBy: 'parent' | 'student' = 'parent'
 ): Promise<void> {
-  const message = botString('homework_done_teacher_alert', locale, {
-    student_name: studentName,
-    title: homeworkTitle,
-  })
+  const message = botString(
+    markedBy === 'student' ? 'homework_done_student_alert' : 'homework_done_teacher_alert',
+    locale,
+    {
+      student_name: studentName,
+      title: homeworkTitle,
+    }
+  )
   return sendTextMessage(teacherPhone, message, accessToken, phoneNumberId)
 }
 

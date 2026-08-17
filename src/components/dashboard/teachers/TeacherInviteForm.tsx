@@ -69,6 +69,18 @@ export function TeacherInviteForm({ action, onSuccess, onCancel }: TeacherInvite
         <p className="text-xs text-muted-foreground">{t('inviteEmailHint')}</p>
       </div>
 
+      <div className="space-y-1.5">
+        <Label htmlFor="phone">{t('fields.phone')}</Label>
+        <Input
+          id="phone"
+          name="phone"
+          type="tel"
+          dir="ltr"
+          placeholder="050-1234567"
+        />
+        <p className="text-xs text-muted-foreground">{t('phoneBotHint')}</p>
+      </div>
+
       <div className="flex gap-3 pt-1">
         <Button type="submit" disabled={pending}>
           {pending ? t('sendingInvite') : t('sendInvite')}

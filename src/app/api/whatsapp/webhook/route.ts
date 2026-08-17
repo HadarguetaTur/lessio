@@ -20,7 +20,6 @@ import {
   sendCancellationLessonList,
   sendNoEligibleLessonsReply,
   sendInvalidSelectionReply,
-  sendHomeworkAlert,
   sendTextMessage,
   parseWebhookPayload,
   hasBookingIntent,
@@ -67,7 +66,6 @@ import {
   parseAppLocale,
   resolveRecipientLocale,
   toIntlLocale,
-  toLuxonLocale,
   type AppLocale,
 } from '@/lib/i18n/locale'
 import {
@@ -84,7 +82,6 @@ import {
   deleteCancellationSession,
   executeCancellation,
 } from '@/lib/cancellation-flow'
-import { markAssignmentDone } from '@/lib/homework'
 import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { isAiConfiguredForOrg } from '@/lib/ai-assistant/providers/factory'
 import { findRecentUsageLog, updateSatisfaction } from '@/lib/ai-assistant/usage'

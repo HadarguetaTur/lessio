@@ -16,6 +16,7 @@ interface TeacherEditFormProps {
   defaultValues?: {
     bio?: string | null
     hourly_rate?: number | null
+    phone?: string | null
   }
   onSuccess?: () => void
   onCancel?: () => void
@@ -60,6 +61,19 @@ export function TeacherEditForm({ action, defaultValues, onSuccess, onCancel }: 
         {defaultValues?.hourly_rate == null && (
           <p className="text-xs text-amber-600">{t('noRateWarning')}</p>
         )}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="phone">{t('fields.phone')}</Label>
+        <Input
+          id="phone"
+          name="phone"
+          type="tel"
+          dir="ltr"
+          defaultValue={defaultValues?.phone ?? ''}
+          placeholder="050-1234567"
+        />
+        <p className="text-xs text-muted-foreground">{t('phoneBotHint')}</p>
       </div>
 
       <div className="space-y-1.5">

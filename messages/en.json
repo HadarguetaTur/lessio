@@ -527,7 +527,8 @@
     "noRateWarning": "No hourly rate set — billing calculations may be incorrect",
     "inviteEmailHint": "This email will be used to sign in",
     "sendingInvite": "Sending invitation...",
-    "sendInvite": "Send Invitation"
+    "sendInvite": "Send Invitation",
+    "phoneBotHint": "The phone number lets this teacher receive alerts and use the WhatsApp bot"
   },
   "lessons": {
     "title": "Lessons",

@@ -50,6 +50,12 @@ Rules:
 2. Send admin an alert in the dashboard (new lead)
 3. Send the parent a fixed message: "Your number is not recognized in our system, please contact the business owner"
 
+🔄 AMENDED (Sprint 31 Story 7): "unrecognized" now means the phone matches **nobody** in the
+org — not merely "no `parents` row". Until this amendment the webhook resolved every inbound
+phone against `parents` alone, so a teacher, an owner, or a student writing in was filed as a
+sales lead in their own org's CRM. The lead path above is unchanged; it is simply reached only
+by a genuine stranger. See decision #26 for how the actor is resolved.
+
 ---
 
 ## 5. Teacher Selection in WebView
@@ -322,6 +328,32 @@ Rules:
 * operational actions such as booking, cancellation, payment lookup, and homework lookup run through named flows
 * every flow step must resolve organization scope and actor identity before side effects
 * conversational AI may assist with classification later, but it does not replace rule-based execution in the initial SaaS phase
+
+### Actor identity (Sprint 31 Story 7)
+
+"Actor identity" above was half-implemented for a long time: org scope was resolved from
+`phone_number_id`, but identity was only ever a `parents` lookup. `resolveSender(orgId, phone)`
+in `src/lib/whatsapp/sender.ts` now resolves one of four capacities, or `unknown`.
+
+Rules:
+
+* an inbound phone resolves to `parent`, `student`, `teacher`, `staff` (owner/admin), or `unknown`
+* only `unknown` reaches the lead path (decision #4)
+* each capacity has its own closed menu — `ROLE_MENUS` in `src/lib/whatsapp/menu.ts`. Reply ids
+  are client-supplied, so the sender's capacity is re-checked against that list before any action
+  runs; a student echoing back `m:balance` is refused
+* **students** get their own schedule and homework only. Money and cancellations are not a child's
+  to act on, and the portal is a parent portal with no student login path
+* **teachers and staff are read-only over WhatsApp.** WhatsApp has no real confirmation step and a
+  mistyped reply on a write path would move a parent's charge. Attendance stays in the dashboard
+* the AI assistant stays parent-only — its system prompt is built from parent context. Other
+  capacities fall through to their menu, never to a parent-shaped AI answer
+* precedence on a phone holding several capacities is `parent > student > teacher > staff`. Parent
+  first is load-bearing: it preserves the reply a teacher-who-is-also-a-parent already got. An
+  explicit choice via the bot's "switch role" row is stored in `whatsapp_sender_preference` and
+  overrides it, but only while that identity is still active
+* a teacher's or owner's phone lives on `profiles.phone` and must be normalized to E.164 on write
+  like every other phone (decision #8) — an un-normalized number simply never matches
 
 ---
 

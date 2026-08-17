@@ -24,6 +24,7 @@ vi.mock('@/lib/whatsapp', async () => {
     sendCancellationLessonList: vi.fn().mockResolvedValue(undefined),
     sendNoEligibleLessonsReply: vi.fn().mockResolvedValue(undefined),
     sendInvalidSelectionReply: vi.fn().mockResolvedValue(undefined),
+    sendHomeworkAlert: vi.fn().mockResolvedValue(undefined),
   }
 })
 
@@ -101,6 +102,10 @@ vi.mock('@/lib/jwt', () => ({
   verifyBookingToken: vi.fn(),
 }))
 
+vi.mock('@/lib/homework', () => ({
+  markAssignmentDone: vi.fn().mockResolvedValue({ id: 'hw-1', status: 'done' }),
+}))
+
 import { GET, POST } from './route'
 import { decryptToken } from '@/lib/crypto'
 import {
@@ -108,6 +113,7 @@ import {
   sendUnknownParentReply,
   sendInvalidSelectionReply,
   sendCancellationLessonList,
+  sendHomeworkAlert,
 } from '@/lib/whatsapp'
 import {
   getActiveCancellationSession,
@@ -119,7 +125,11 @@ import {
 import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { claimIncomingMessage, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
-import { notifySuperadmins, hasRecentUnreadSuperadminNotification } from '@/lib/notifications'
+import {
+  notifyMultiple,
+  notifySuperadmins,
+  hasRecentUnreadSuperadminNotification,
+} from '@/lib/notifications'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
 import {
   sendListMessage,
@@ -127,6 +137,7 @@ import {
   sendTemplateWithQuickReplies,
 } from '@/lib/whatsapp/interactive'
 import { signBookingToken } from '@/lib/jwt'
+import { markAssignmentDone } from '@/lib/homework'
 import * as Sentry from '@sentry/nextjs'
 
 const mockSendListMessage = vi.mocked(sendListMessage)
@@ -138,6 +149,7 @@ const mockSendTextMessage = vi.mocked(sendTextMessage)
 const mockSendUnknownParentReply = vi.mocked(sendUnknownParentReply)
 const mockSendInvalidSelectionReply = vi.mocked(sendInvalidSelectionReply)
 const mockSendCancellationLessonList = vi.mocked(sendCancellationLessonList)
+const mockSendHomeworkAlert = vi.mocked(sendHomeworkAlert)
 const mockGetActiveCancellationSession = vi.mocked(getActiveCancellationSession)
 const mockDeleteCancellationSession = vi.mocked(deleteCancellationSession)
 const mockUpsertCancellationSession = vi.mocked(upsertCancellationSession)
@@ -149,6 +161,8 @@ const mockLogExchange = vi.mocked(logExchange)
 const mockClaimIncomingMessage = vi.mocked(claimIncomingMessage)
 const mockReleaseIncomingMessageClaim = vi.mocked(releaseIncomingMessageClaim)
 const mockIsRateLimited = vi.mocked(isRateLimited)
+const mockMarkAssignmentDone = vi.mocked(markAssignmentDone)
+const mockNotifyMultiple = vi.mocked(notifyMultiple)
 const mockNotifySuperadmins = vi.mocked(notifySuperadmins)
 const mockHasRecentUnreadSuperadminNotification = vi.mocked(hasRecentUnreadSuperadminNotification)
 const mockSentryCaptureException = vi.mocked(Sentry.captureException)
@@ -249,7 +263,7 @@ function makeRequest(body: object, { signed = true } = {}): NextRequest {
 function buildChain(result: unknown) {
   const self: Record<string, unknown> = {}
   const pass = () => self
-  ;['select', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'order', 'insert', 'update', 'delete', 'upsert'].forEach(m => { self[m] = pass })
+  ;['select', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'order', 'limit', 'insert', 'update', 'delete', 'upsert'].forEach(m => { self[m] = pass })
   self['maybeSingle'] = () => Promise.resolve(result)
   self['single'] = () => Promise.resolve(result)
   self['then'] = (res: (v: unknown) => unknown) => Promise.resolve(result).then(res)
@@ -1164,5 +1178,309 @@ describe('WhatsApp interactive menu', () => {
     expect(mockSignBookingToken).not.toHaveBeenCalled()
     expect(mockSendLinkReply).not.toHaveBeenCalled()
     expect(mockSendTextMessage).toHaveBeenCalled()
+  })
+})
+
+// ── Sender role awareness ─────────────────────────────────────────────────────
+
+/**
+ * The webhook used to resolve every inbound phone against `parents` alone, so a
+ * teacher, owner or student was indistinguishable from a cold prospect and got
+ * filed as a sales lead. These cover who is recognised as what.
+ */
+describe('WhatsApp sender roles', () => {
+  const TEACHER_ID = 'teacher-1'
+  const PROFILE_ID = 'profile-1'
+
+  const ORG_DATA = {
+    id: ORG_ID,
+    whatsapp_access_token: 'encrypted-token',
+    timezone: 'Asia/Jerusalem',
+    ai_assistant_enabled: false,
+  }
+
+  // parents is unique on (organization_id, phone) → maybeSingle, a single row.
+  const PARENT_ROW = { data: { id: PARENT_ID, full_name: 'דנה', preferred_locale: 'he' }, error: null }
+  // students.phone / profiles.phone have no uniqueness → limit(1) list results.
+  const STUDENT_ROW = { data: [{ id: STUDENT_ID, full_name: 'יעל' }], error: null }
+  const TEACHER_ROW = {
+    data: [
+      {
+        id: TEACHER_ID,
+        profile_id: PROFILE_ID,
+        profiles: { id: PROFILE_ID, full_name: 'מיכל', preferred_locale: 'he' },
+      },
+    ],
+    error: null,
+  }
+  const OWNER_ROW = {
+    data: [{ id: PROFILE_ID, full_name: 'הדר', role: 'owner', preferred_locale: 'he' }],
+    error: null,
+  }
+
+  /** Routes tables to canned results; anything unlisted resolves to empty. */
+  function mockIdentity(tables: Record<string, unknown>, orgOverrides: Record<string, unknown> = {}) {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({ data: { ...ORG_DATA, ...orgOverrides }, error: null })
+      }
+      return buildChain(tables[table] ?? { data: null, error: null })
+    })
+  }
+
+  /** The reply-id of every row in the menu that went out. */
+  function menuRowIds(): string[] {
+    const rows = mockSendListMessage.mock.calls[0][1].rows as Array<{ id: string }>
+    return rows.map((r) => r.id)
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.WHATSAPP_APP_SECRET = APP_SECRET
+    mockClaimIncomingMessage.mockResolvedValue(true)
+    mockReleaseIncomingMessageClaim.mockResolvedValue(undefined)
+    mockIsRateLimited.mockResolvedValue(false)
+    mockAiAssistantConfigured.mockReturnValue(false)
+    mockGetActiveCancellationSession.mockResolvedValue(null)
+  })
+
+  it('recognises a student instead of filing them as a lead', async () => {
+    mockIdentity({ students: STUDENT_ROW })
+
+    const res = await POST(makeRequest(makeWebhookPayload('שלום')))
+
+    expect(res.status).toBe(200)
+    expect(mockUpsertLead).not.toHaveBeenCalled()
+    expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
+    expect(mockSendListMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers a student homework and schedule, never balance or cancellation', async () => {
+    mockIdentity({ students: STUDENT_ROW })
+
+    await POST(makeRequest(makeWebhookPayload('שלום')))
+
+    expect(menuRowIds()).toEqual(['m:schedule', 'm:homework'])
+    expect(menuRowIds()).not.toContain('m:balance')
+    expect(menuRowIds()).not.toContain('m:cancel')
+    expect(menuRowIds()).not.toContain('m:portal')
+  })
+
+  it('refuses a student tapping a balance payload — reply ids come from the client', async () => {
+    mockIdentity({ students: STUDENT_ROW })
+
+    const res = await POST(makeRequest(makeInteractivePayload('m:balance')))
+
+    expect(res.status).toBe(200)
+    expect(mockSendLinkReply).not.toHaveBeenCalled()
+    // Told it is unavailable, then shown what they can actually do.
+    expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
+    expect(menuRowIds()).toEqual(['m:schedule', 'm:homework'])
+  })
+
+  it('recognises a teacher instead of filing them as a lead', async () => {
+    mockIdentity({ teachers: TEACHER_ROW })
+
+    const res = await POST(makeRequest(makeWebhookPayload('שלום')))
+
+    expect(res.status).toBe(200)
+    expect(mockUpsertLead).not.toHaveBeenCalled()
+    expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
+    expect(menuRowIds()).toEqual(['m:my_schedule', 'm:my_students'])
+  })
+
+  it('does not file an owner as a lead on themselves', async () => {
+    mockIdentity({ profiles: OWNER_ROW })
+
+    const res = await POST(makeRequest(makeWebhookPayload('שלום')))
+
+    expect(res.status).toBe(200)
+    expect(mockUpsertLead).not.toHaveBeenCalled()
+    // …and no "new lead" notification pointing them at /leads for themselves.
+    expect(mockNotifyMultiple).not.toHaveBeenCalled()
+    expect(menuRowIds()).toEqual(['m:today_summary'])
+  })
+
+  it('still files a genuinely unknown number as a lead', async () => {
+    mockIdentity({})
+
+    const res = await POST(makeRequest(makeWebhookPayload('אני מחפש מורה לחשבון')))
+
+    expect(res.status).toBe(200)
+    expect(mockUpsertLead).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164, 'אני מחפש מורה לחשבון')
+    expect(mockSendUnknownParentReply).toHaveBeenCalled()
+  })
+
+  it('lets the lead toggle silence leads without silencing a teacher', async () => {
+    mockIdentity({ teachers: TEACHER_ROW }, { automation_new_leads_enabled: false })
+
+    const res = await POST(makeRequest(makeWebhookPayload('שלום')))
+
+    expect(res.status).toBe(200)
+    expect(mockUpsertLead).not.toHaveBeenCalled()
+    expect(mockSendListMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a parent-who-also-teaches on the parent menu, plus the switcher', async () => {
+    mockIdentity({ parents: PARENT_ROW, teachers: TEACHER_ROW })
+
+    await POST(makeRequest(makeWebhookPayload('שלום')))
+
+    // Parent menu unchanged, with the switcher appended.
+    expect(menuRowIds()).toEqual([
+      'm:book',
+      'm:cancel',
+      'm:balance',
+      'm:schedule',
+      'm:portal',
+      'm:switch_role',
+    ])
+  })
+
+  it('never offers the switcher to a phone with a single capacity', async () => {
+    mockIdentity({ parents: PARENT_ROW })
+
+    await POST(makeRequest(makeWebhookPayload('שלום')))
+
+    expect(menuRowIds()).not.toContain('m:switch_role')
+  })
+
+  it('offers every capacity held when switch_role is tapped', async () => {
+    mockIdentity({ parents: PARENT_ROW, teachers: TEACHER_ROW })
+
+    const res = await POST(makeRequest(makeInteractivePayload('m:switch_role')))
+
+    expect(res.status).toBe(200)
+    expect(mockSendReplyButtons).toHaveBeenCalledTimes(1)
+    const buttons = mockSendReplyButtons.mock.calls[0][1].buttons as Array<{ id: string }>
+    expect(buttons.map((b) => b.id)).toEqual(['r:parent', 'r:teacher'])
+  })
+
+  it('ignores a role pick the phone does not hold', async () => {
+    mockIdentity({ parents: PARENT_ROW })
+
+    const res = await POST(makeRequest(makeInteractivePayload('r:staff')))
+
+    expect(res.status).toBe(200)
+    // Falls back to the capacity they actually hold.
+    expect(menuRowIds()).toContain('m:book')
+  })
+
+  /**
+   * The sharpest case: homework-reminders and homework-sender already prefer
+   * students.phone as the send target, so the bot was messaging students and
+   * then answering their replies with "this number is not registered".
+   */
+  describe('a student replying to the homework reminder they were sent', () => {
+    const OPEN_HOMEWORK = {
+      data: [
+        {
+          id: 'hw-1',
+          title: 'תרגילים 12-14',
+          student_id: STUDENT_ID,
+          teacher_id: TEACHER_ID,
+          due_date: '2026-08-20',
+        },
+      ],
+      error: null,
+    }
+
+    it('marks it done and confirms to the student', async () => {
+      mockIdentity({ students: STUDENT_ROW, homework_assignments: OPEN_HOMEWORK })
+
+      const res = await POST(makeRequest(makeWebhookPayload('סיימתי')))
+
+      expect(res.status).toBe(200)
+      expect(mockUpsertLead).not.toHaveBeenCalled()
+      expect(mockMarkAssignmentDone).toHaveBeenCalledWith({
+        assignmentId: 'hw-1',
+        organizationId: ORG_ID,
+      })
+      // Confirmation names the assignment, addressed to the student.
+      expect(mockSendTextMessage).toHaveBeenCalledWith(
+        SENDER_PHONE_E164,
+        expect.stringContaining('תרגילים 12-14'),
+        'test-access-token',
+        'phone-number-id-1'
+      )
+    })
+
+    it('tells the teacher the student marked it, not the parent', async () => {
+      mockIdentity({
+        students: STUDENT_ROW,
+        homework_assignments: OPEN_HOMEWORK,
+        teachers: {
+          data: { profiles: { phone: '+972529999999', preferred_locale: 'en' } },
+          error: null,
+        },
+      })
+
+      await POST(makeRequest(makeWebhookPayload('סיימתי')))
+
+      // In the teacher's own UI language, and worded as the student reporting —
+      // a teacher reads "the student marked it" differently from "the parent did".
+      expect(mockSendHomeworkAlert).toHaveBeenCalledWith(
+        '+972529999999',
+        'יעל',
+        'תרגילים 12-14',
+        'test-access-token',
+        'phone-number-id-1',
+        'en',
+        'student'
+      )
+    })
+
+    it('does not alert a teacher who has no phone on file', async () => {
+      mockIdentity({
+        students: STUDENT_ROW,
+        homework_assignments: OPEN_HOMEWORK,
+        teachers: { data: { profiles: { phone: null, preferred_locale: 'he' } }, error: null },
+      })
+
+      await POST(makeRequest(makeWebhookPayload('סיימתי')))
+
+      expect(mockSendHomeworkAlert).not.toHaveBeenCalled()
+      // The student is still confirmed — the missing phone is not their problem.
+      expect(mockMarkAssignmentDone).toHaveBeenCalled()
+      expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
+    })
+
+    it('reads "סיימתי את השיעורים" as done, not as a schedule query', async () => {
+      // The bare-שיעורים schedule keyword matches this too; for a student
+      // answering a homework reminder, done has to win.
+      mockIdentity({ students: STUDENT_ROW, homework_assignments: OPEN_HOMEWORK })
+
+      await POST(makeRequest(makeWebhookPayload('סיימתי את השיעורים')))
+
+      expect(mockMarkAssignmentDone).toHaveBeenCalledWith({
+        assignmentId: 'hw-1',
+        organizationId: ORG_ID,
+      })
+    })
+
+    it('says so plainly when nothing is open', async () => {
+      mockIdentity({ students: STUDENT_ROW, homework_assignments: { data: [], error: null } })
+
+      const res = await POST(makeRequest(makeWebhookPayload('סיימתי')))
+
+      expect(res.status).toBe(200)
+      expect(mockMarkAssignmentDone).not.toHaveBeenCalled()
+      expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
+    })
+
+    it('lists the open homework when the menu row is tapped', async () => {
+      mockIdentity({ students: STUDENT_ROW, homework_assignments: OPEN_HOMEWORK })
+
+      const res = await POST(makeRequest(makeInteractivePayload('m:homework')))
+
+      expect(res.status).toBe(200)
+      expect(mockMarkAssignmentDone).not.toHaveBeenCalled()
+      expect(mockSendTextMessage).toHaveBeenCalledWith(
+        SENDER_PHONE_E164,
+        expect.stringContaining('תרגילים 12-14'),
+        'test-access-token',
+        'phone-number-id-1'
+      )
+    })
   })
 })

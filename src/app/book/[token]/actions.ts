@@ -6,6 +6,7 @@
  * Per AGENTS.md: all booking writes via service role, server-side only.
  */
 
+import { after } from 'next/server'
 import { verifyBookingToken, BookingTokenError } from '@/lib/jwt'
 import { decryptToken } from '@/lib/crypto'
 import {
@@ -25,7 +26,7 @@ import {
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
-import { resolveRecipientLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { parseAppLocale, resolveRecipientLocale, toIntlLocale } from '@/lib/i18n/locale'
 
 /**
  * Errors thrown inside Server Actions cross to the client as opaque generic
@@ -149,7 +150,8 @@ export type ConfirmBookingActionResult =
 export async function confirmBookingAction(
   token: string,
   lockId: string,
-  teacherId: string
+  teacherId: string,
+  uiLocale?: string
 ): Promise<ConfirmBookingActionResult> {
   try {
     const { organizationId, parentId, studentId } = await verifyBookingToken(token)
@@ -157,11 +159,19 @@ export async function confirmBookingAction(
 
     const result = await confirmBooking({ lockId, studentId, teacherId, organizationId })
 
-    // Sprint 1 flow step 12: send WhatsApp confirmation to parent
-    // Fire-and-forget — a send failure must not roll back a confirmed booking
-    sendWhatsAppConfirmation(db, organizationId, parentId, teacherId, result.startAt).catch(err => {
+    // Sprint 1 flow step 12: send WhatsApp confirmation to parent.
+    // A send failure must not roll back a confirmed booking, and the send must
+    // run via after() — a plain fire-and-forget promise dies when Vercel
+    // freezes the lambda right after the action's response.
+    const sendWork = sendWhatsAppConfirmation(db, organizationId, parentId, teacherId, result.startAt, uiLocale).catch(err => {
       console.error('[confirmBookingAction] Failed to send WhatsApp confirmation', { orgId: organizationId, lessonId: result.lessonId, parentId, err })
     })
+    try {
+      after(sendWork)
+    } catch {
+      // Outside a Next.js request scope (vitest) after() throws — process inline.
+      await sendWork
+    }
 
     return { success: true, result }
   } catch (err) {
@@ -179,7 +189,8 @@ async function sendWhatsAppConfirmation(
   organizationId: string,
   parentId: string,
   teacherId: string,
-  startAt: string
+  startAt: string,
+  uiLocale?: string
 ): Promise<void> {
   const [parentResult, teacherResult, orgResult] = await Promise.all([
     db.from('parents').select('phone, preferred_locale').eq('id', parentId).eq('organization_id', organizationId).single(),
@@ -217,8 +228,12 @@ async function sendWhatsAppConfirmation(
 
   const phoneNumberId = orgData.whatsapp_phone_number_id as string
 
+  // The language the parent just booked in is a live signal, exactly like the
+  // language of a WhatsApp message being answered — it outranks the stored
+  // preference. No uiLocale (older clients) falls back to stored → org default.
   const locale = resolveRecipientLocale({
     stored: parentResult.data.preferred_locale as string | null,
+    detected: uiLocale ? parseAppLocale(uiLocale) : null,
     orgDefault: orgData.default_locale as string | null,
   })
   const intlLocale = toIntlLocale(locale)

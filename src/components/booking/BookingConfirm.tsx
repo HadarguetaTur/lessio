@@ -39,7 +39,8 @@ export function BookingConfirm({
   onError,
 }: BookingConfirmProps) {
   const t = useTranslations('booking.confirm')
-  const intlLocale = toIntlLocale(parseAppLocale(useLocale()))
+  const appLocale = parseAppLocale(useLocale())
+  const intlLocale = toIntlLocale(appLocale)
   const [confirming, setConfirming] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(0)
 
@@ -63,7 +64,7 @@ export function BookingConfirm({
 
   async function handleConfirm() {
     setConfirming(true)
-    const res = await confirmBookingAction(token, lock.id, teacherId)
+    const res = await confirmBookingAction(token, lock.id, teacherId, appLocale)
     setConfirming(false)
 
     if (res.success) {

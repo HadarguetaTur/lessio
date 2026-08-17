@@ -53,12 +53,14 @@ import {
   InactiveParticipantError,
 } from '@/lib/booking'
 import { sendTextMessage } from '@/lib/whatsapp'
+import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { confirmBookingAction, getAvailabilitySummaryAction } from './actions'
 
 const mockVerify = vi.mocked(verifyBookingToken)
 const mockConfirmBooking = vi.mocked(confirmBooking)
 const mockGetAvailabilitySummary = vi.mocked(getAvailabilitySummary)
 const mockSendTextMessage = vi.mocked(sendTextMessage)
+const mockResolveTemplate = vi.mocked(resolveTemplate)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -131,6 +133,34 @@ describe('confirmBookingAction', () => {
       'test-token',
       'test-phone-id'
     )
+  })
+
+  it('sends the confirmation in English when the WebView locale is en', async () => {
+    mockConfirmBooking.mockResolvedValue(BOOKING_RESULT)
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'parents') return buildChain({ data: { phone: PARENT_PHONE, preferred_locale: 'he' }, error: null })
+      if (table === 'teachers') return buildChain({ data: { profiles: { full_name: TEACHER_NAME } }, error: null })
+      if (table === 'organizations') return buildChain({
+        data: { whatsapp_phone_number_id: 'test-phone-id', whatsapp_access_token: 'encrypted-test-token' },
+        error: null,
+      })
+      return buildChain({ data: null, error: null })
+    })
+
+    const result = await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID, 'en')
+
+    expect(result.success).toBe(true)
+
+    // The live booking language outranks the stored Hebrew preference
+    await new Promise(r => setTimeout(r, 10))
+    expect(mockResolveTemplate).toHaveBeenCalledWith(
+      ORG_ID,
+      'booking_confirmation',
+      expect.any(Object),
+      'en'
+    )
+    expect(mockSendTextMessage).toHaveBeenCalled()
   })
 
   it('returns success even if WhatsApp confirmation send fails', async () => {

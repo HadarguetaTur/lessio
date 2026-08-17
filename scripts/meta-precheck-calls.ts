@@ -7,10 +7,14 @@
  * goes through the *system user* token of connected orgs, not this app's
  * developer token, and the demo number is the only live WABA.
  *
- * This script exercises all three requested permissions against the demo WABA:
+ * This script exercises both requested permissions against the demo WABA:
  *   whatsapp_business_management  → read templates / phone numbers / subscriptions
  *   whatsapp_business_messaging   → send a real message to the verified recipient
- *   business_management           → read the owning business asset
+ *
+ * `business_management` is deliberately absent: no production code path needs it.
+ * Per Meta's Embedded Signup docs a Cloud API flow needs only the two WhatsApp
+ * permissions — business_management is for Solution Partners sharing a credit
+ * line, which Lessio does not do.
  *
  * Usage (from the repo root):
  *   npx tsx scripts/meta-precheck-calls.ts          # read-only calls + one send
@@ -144,14 +148,14 @@ async function main(): Promise<void> {
     token
   )
 
-  // ── business_management ─────────────────────────────────────────────────────
+  // owner_business_info is omitted on purpose — it is the one field here that
+  // would require business_management.
   await call(
-    'business_management',
-    'GET /{waba}?fields=owner_business_info',
-    `${WABA_ID}?fields=id,name,owner_business_info,timezone_id,message_template_namespace`,
+    'whatsapp_business_management',
+    'GET /{waba} (settings)',
+    `${WABA_ID}?fields=id,name,timezone_id,message_template_namespace`,
     token
   )
-  await call('business_management', 'GET /me/businesses', 'me/businesses?fields=id,name,verification_status', token)
 
   // ── whatsapp_business_messaging ─────────────────────────────────────────────
   await call(
@@ -228,7 +232,6 @@ async function main(): Promise<void> {
   for (const permission of [
     'whatsapp_business_management',
     'whatsapp_business_messaging',
-    'business_management',
   ]) {
     const forPermission = results.filter((r) => r.permission === permission)
     const okCount = forPermission.filter((r) => r.ok).length
@@ -244,7 +247,7 @@ async function main(): Promise<void> {
 
   console.log(
     allCovered
-      ? '\nAll three permissions now have successful calls on record.\n' +
+      ? '\nBoth permissions now have successful calls on record.\n' +
           'Meta refreshes the pre-check with a delay — re-check App Review status in a few hours.'
       : '\nSome permissions still have no successful call. Fix the failures above and re-run.'
   )

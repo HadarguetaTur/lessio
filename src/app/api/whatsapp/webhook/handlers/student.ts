@@ -5,21 +5,40 @@
  * `students.phone` as the send target (homework-reminders, homework-sender) —
  * the bot was messaging students and then failing to recognise their replies.
  *
- * Scope is deliberately narrow: their own schedule, and their own homework.
- * Balance, cancellation, booking and the portal are parent concerns; see
+ * Scope: their own schedule, their own homework, and — since they are the one
+ * who actually attends — booking and cancelling their own lessons. Both of
+ * those run through their billing parent: the booking token carries a parent
+ * id, a cancellation charge is created against a parent, and the parent is
+ * copied on the confirmation. Balance and the portal stay parent-only; see
  * ROLE_MENUS in @/lib/whatsapp/menu.
  */
 
-import { hasHomeworkDoneIntent, hasScheduleIntent, sendTextMessage } from '@/lib/whatsapp'
+import {
+  hasBookingIntent,
+  hasCancellationIntent,
+  hasHomeworkDoneIntent,
+  hasScheduleIntent,
+  sendNoEligibleLessonsReply,
+  sendTextMessage,
+} from '@/lib/whatsapp'
 import { botString } from '@/lib/whatsapp/strings'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
 import { isActionAllowedForRole, type MenuAction } from '@/lib/whatsapp/menu'
+import { signBookingToken } from '@/lib/jwt'
+import {
+  deleteCancellationSession,
+  getActiveCancellationSession,
+} from '@/lib/cancellation-flow'
+import { applyCancellationSelection, startCancellationFlow, type CancellationActor } from '../cancellation'
 import {
   buildUpcomingLessonLines,
+  findBillingParent,
   findOpenAssignments,
   formatHomeworkLines,
   markAssignmentDoneAndAlert,
   replyWith,
+  type BillingParent,
   type HandlerContext,
 } from '../shared'
 
@@ -38,26 +57,181 @@ export async function handleStudentMessage(
     return false // caller re-sends the student's own menu
   }
 
-  if (menuAction === 'homework') {
-    await sendHomeworkList(ctx, studentIds)
+  if (menuAction) {
+    // An explicit tap outranks a cancellation list still open from an earlier
+    // exchange — otherwise tapping "book a lesson" is read as a lesson number.
+    await deleteCancellationSession(ctx.org.id, ctx.senderPhone).catch((err) => {
+      console.warn('[whatsapp/webhook] Could not clear session on menu tap', {
+        orgId: ctx.org.id,
+        err,
+      })
+    })
+
+    switch (menuAction) {
+      case 'homework':
+        await sendHomeworkList(ctx, studentIds)
+        return true
+      case 'book':
+        await sendBookingLink(ctx)
+        return true
+      case 'cancel':
+        await startCancellation(ctx)
+        return true
+      case 'schedule':
+        await sendStudentSchedule(ctx, studentIds)
+        return true
+      default:
+        return false
+    }
+  }
+
+  // A bare number answers the lesson list we just sent, so the open session is
+  // checked before any keyword — same precedence as the parent path.
+  const session = await getActiveCancellationSession(ctx.org.id, ctx.senderPhone)
+  if (session) {
+    await continueCancellation(ctx, session)
     return true
   }
 
   // Homework-done is checked before the schedule intent, unlike the parent path:
   // "סיימתי את השיעורים" matches the bare-שיעורים schedule keyword too, and for a
   // student answering the homework reminder we just sent them, done wins.
-  if (!menuAction && hasHomeworkDoneIntent(ctx.msg.text)) {
+  if (hasHomeworkDoneIntent(ctx.msg.text)) {
     await markOwnHomeworkDone(ctx, studentIds)
     return true
   }
 
-  if (menuAction === 'schedule' || (!menuAction && hasScheduleIntent(ctx.msg.text))) {
+  if (hasCancellationIntent(ctx.msg.text)) {
+    await startCancellation(ctx)
+    return true
+  }
+
+  if (hasBookingIntent(ctx.msg.text)) {
+    await sendBookingLink(ctx)
+    return true
+  }
+
+  if (hasScheduleIntent(ctx.msg.text)) {
     await sendStudentSchedule(ctx, studentIds)
     return true
   }
 
   return false
 }
+
+// ── Booking ───────────────────────────────────────────────────────────────────
+
+/**
+ * Sends the student a signed booking link for themselves.
+ *
+ * The token is signed with their billing parent, which is what makes the slot
+ * they pick land on the right account — and is why the booking confirmation
+ * afterwards goes to the parent's phone, not the student's.
+ */
+async function sendBookingLink(ctx: HandlerContext): Promise<void> {
+  if (ctx.sender.role !== 'student') return
+
+  const parent = await requireBillingParent(ctx)
+  if (!parent) return
+
+  const token = await signBookingToken({
+    organizationId: ctx.org.id,
+    parentId: parent.id,
+    studentId: ctx.sender.studentId,
+  })
+
+  await sendLinkReply({
+    orgId: ctx.org.id,
+    to: ctx.senderPhone,
+    templateType: 'booking_link',
+    urlVar: 'booking_url',
+    url: `${ctx.origin}/book/${token}`,
+    buttonKey: 'cta_book_lesson',
+    locale: ctx.locale,
+    accessToken: ctx.accessToken,
+    phoneNumberId: ctx.phoneNumberId,
+  })
+
+  console.info('[whatsapp/webhook] Booking link sent to student', {
+    orgId: ctx.org.id,
+    studentId: ctx.sender.studentId,
+  })
+}
+
+// ── Cancellation ──────────────────────────────────────────────────────────────
+
+/** The student cancels their own lesson; their parent carries the charge. */
+function actorFor(ctx: HandlerContext, parent: BillingParent): CancellationActor {
+  if (ctx.sender.role !== 'student') throw new Error('actorFor called off the student path')
+  return {
+    parentId: parent.id,
+    studentIds: [ctx.sender.studentId],
+    cancelledBy: 'student',
+    copyTo: parent.phone ? { phone: parent.phone, locale: parent.locale } : null,
+  }
+}
+
+async function startCancellation(ctx: HandlerContext): Promise<void> {
+  if (ctx.org.automation_cancellation_enabled === false) {
+    await sendNoEligibleLessonsReply(
+      ctx.senderPhone,
+      ctx.accessToken,
+      ctx.phoneNumberId,
+      ctx.locale
+    )
+    return
+  }
+
+  const parent = await requireBillingParent(ctx)
+  if (!parent) return
+
+  await startCancellationFlow({
+    actor: actorFor(ctx, parent),
+    orgId: ctx.org.id,
+    senderPhone: ctx.senderPhone,
+    timezone: ctx.timezone,
+    accessToken: ctx.accessToken,
+    phoneNumberId: ctx.phoneNumberId,
+    locale: ctx.locale,
+  })
+}
+
+async function continueCancellation(
+  ctx: HandlerContext,
+  session: { lesson_ids: string[] }
+): Promise<void> {
+  const parent = await requireBillingParent(ctx)
+  if (!parent) return
+
+  await applyCancellationSelection({
+    actor: actorFor(ctx, parent),
+    orgId: ctx.org.id,
+    senderPhone: ctx.senderPhone,
+    text: ctx.msg.text,
+    session,
+    timezone: ctx.timezone,
+    accessToken: ctx.accessToken,
+    phoneNumberId: ctx.phoneNumberId,
+    locale: ctx.locale,
+  })
+}
+
+/** Resolves the billing parent, or explains why booking and cancelling cannot run. */
+async function requireBillingParent(ctx: HandlerContext): Promise<BillingParent | null> {
+  if (ctx.sender.role !== 'student') return null
+
+  const parent = await findBillingParent(ctx.db, ctx.org.id, ctx.sender.studentId)
+  if (parent) return parent
+
+  await replyWith(ctx, 'student_no_parent_linked')
+  console.warn('[whatsapp/webhook] Student has no billing parent linked', {
+    orgId: ctx.org.id,
+    studentId: ctx.sender.studentId,
+  })
+  return null
+}
+
+// ── Schedule and homework ─────────────────────────────────────────────────────
 
 async function sendStudentSchedule(ctx: HandlerContext, studentIds: string[]): Promise<void> {
   const lessonLines = await buildUpcomingLessonLines({

@@ -4,7 +4,9 @@ import {
   decodeMenuPayload,
   encodeMenuPayload,
   firstName,
+  isActionAllowedForRole,
   isGreeting,
+  menuActionsFor,
   needsStudent,
 } from './menu'
 import { botString } from './strings'
@@ -45,6 +47,69 @@ describe('needsStudent', () => {
     expect(needsStudent('schedule')).toBe(false)
     expect(needsStudent('balance')).toBe(false)
     expect(needsStudent('portal')).toBe(false)
+  })
+})
+
+describe('role menus', () => {
+  const ROLES = ['parent', 'student', 'teacher', 'staff'] as const
+
+  it('gives every role a menu whose rows fit one Meta list', () => {
+    for (const role of ROLES) {
+      const actions = menuActionsFor(role, true)
+      expect(actions.length, role).toBeGreaterThan(0)
+      // Meta caps a list section at 10 rows, switcher included.
+      expect(actions.length, role).toBeLessThanOrEqual(10)
+    }
+  })
+
+  it('labels every row it offers, in both languages', () => {
+    // A missing string renders as an empty row title, which Meta rejects.
+    for (const role of ROLES) {
+      for (const action of menuActionsFor(role, true)) {
+        for (const locale of ['he', 'en'] as const) {
+          const title = botString(`menu_${action}` as const, locale)
+          expect(title, `${role}/${action}/${locale}`).not.toContain('{{')
+          expect(title.length, `${role}/${action}/${locale} length`).toBeGreaterThan(0)
+          // LIST_ROW_TITLE_MAX — longer titles are silently truncated.
+          expect(title.length, `${role}/${action}/${locale} too long`).toBeLessThanOrEqual(24)
+        }
+      }
+    }
+  })
+
+  it('lets a teacher ask for time off, and only a teacher', () => {
+    expect(isActionAllowedForRole('day_off', 'teacher')).toBe(true)
+    expect(isActionAllowedForRole('day_off', 'parent')).toBe(false)
+    expect(isActionAllowedForRole('day_off', 'student')).toBe(false)
+    expect(isActionAllowedForRole('day_off', 'staff')).toBe(false)
+  })
+
+  it('keeps the decision on time off with staff alone', () => {
+    // A teacher approving their own request would defeat the point of the gate.
+    expect(isActionAllowedForRole('pending_requests', 'staff')).toBe(true)
+    expect(isActionAllowedForRole('pending_requests', 'teacher')).toBe(false)
+    expect(isActionAllowedForRole('pending_requests', 'parent')).toBe(false)
+  })
+
+  it('keeps money and the parent portal away from students and teachers', () => {
+    for (const role of ['student', 'teacher', 'staff'] as const) {
+      expect(isActionAllowedForRole('balance', role), role).toBe(false)
+      expect(isActionAllowedForRole('portal', role), role).toBe(false)
+    }
+  })
+
+  it('offers the dashboard shell to staff and teachers, not to families', () => {
+    expect(isActionAllowedForRole('dashboard', 'teacher')).toBe(true)
+    expect(isActionAllowedForRole('dashboard', 'staff')).toBe(true)
+    expect(isActionAllowedForRole('dashboard', 'parent')).toBe(false)
+    expect(isActionAllowedForRole('dashboard', 'student')).toBe(false)
+  })
+
+  it('appends the role switcher only when asked', () => {
+    expect(menuActionsFor('teacher', true)).toContain('switch_role')
+    expect(menuActionsFor('teacher', false)).not.toContain('switch_role')
+    // Allowed for anyone holding a second capacity, whatever their menu says.
+    expect(isActionAllowedForRole('switch_role', 'student')).toBe(true)
   })
 })
 

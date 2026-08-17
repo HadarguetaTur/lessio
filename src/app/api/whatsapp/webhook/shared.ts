@@ -224,6 +224,52 @@ export async function markAssignmentDoneAndAlert(params: {
   })
 }
 
+// ── Parents ───────────────────────────────────────────────────────────────────
+
+/** The parent a student's money hangs off. */
+export type BillingParent = { id: string; phone: string | null; locale: AppLocale }
+
+/**
+ * The parent whose account a student's booking and cancellation run through —
+ * `is_primary` first, then whichever active relationship exists.
+ *
+ * A student writing in is the subject of the action but never the account: the
+ * booking token carries a parent id, and a cancellation charge is created
+ * against a parent. Returns null when the student has no active parent linked,
+ * in which case there is nobody to bill and nothing to sign.
+ */
+export async function findBillingParent(
+  db: Db,
+  orgId: string,
+  studentId: string
+): Promise<BillingParent | null> {
+  const { data, error } = await db
+    .from('relationships')
+    .select('is_primary, parents!inner ( id, phone, preferred_locale, is_active )')
+    .eq('organization_id', orgId)
+    .eq('student_id', studentId)
+    .eq('parents.is_active', true)
+    .order('is_primary', { ascending: false })
+    .limit(1)
+
+  if (error) {
+    console.error('[whatsapp/shared] billing parent lookup failed', { orgId, studentId, error })
+    throw new Error('Failed to resolve the billing parent for a student')
+  }
+
+  type Row = {
+    parents: { id: string; phone: string | null; preferred_locale: string | null } | null
+  }
+  const parent = ((data ?? []) as unknown as Row[])[0]?.parents
+  if (!parent) return null
+
+  return {
+    id: parent.id,
+    phone: parent.phone,
+    locale: parseAppLocale(parent.preferred_locale ?? undefined),
+  }
+}
+
 /** Looks up a student's display name, falling back to the generic noun. */
 export async function studentDisplayName(
   db: Db,

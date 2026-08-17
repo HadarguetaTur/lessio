@@ -135,6 +135,39 @@ const HE_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = {
       },
     ],
   },
+
+  day_off_decision: {
+    // The decision can reach the teacher days after they last wrote in, so it
+    // must survive a closed 24h window.
+    name: 'lessio_day_off_decision_he_v2',
+    languageCode: 'he',
+    buildComponents: (vars) => [
+      {
+        type: 'body',
+        parameters: [
+          param(vars.date_range, ''),
+          param(vars.decision, 'עודכנה'),
+        ],
+      },
+    ],
+  },
+}
+
+/**
+ * Meta template names for the parent notice sent when an owner approves a
+ * teacher's day off.
+ *
+ * It lives outside APPROVED_TEMPLATES because it is registered WITH a
+ * quick-reply button: sendTemplateMessage would post it without the button
+ * component and Meta rejects that mismatch, so it goes out through
+ * sendTemplateWithQuickReplies, which binds the payload at send time.
+ */
+export const LESSON_CANCELLED_BY_TEACHER_TEMPLATE: Record<
+  AppLocale,
+  { name: string; languageCode: string }
+> = {
+  he: { name: 'lessio_lesson_cancelled_by_teacher_he_v2', languageCode: 'he' },
+  en: { name: 'lessio_lesson_cancelled_by_teacher_en_v2', languageCode: 'en' },
 }
 
 /**
@@ -161,6 +194,7 @@ const EN_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = Obj
           due_line: vars.due_line || 'No due date',
           due_date: vars.due_date || 'tomorrow',
           feedback_line: vars.feedback_line || 'No additional feedback.',
+          decision: vars.decision || 'updated',
         }),
     } satisfies ApprovedTemplate,
   ])

@@ -17,10 +17,9 @@ import { createCancellationEvent } from '@/lib/billing/monthly/cancellationEvent
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
 import { DateTime } from 'luxon'
 import { decryptToken } from '@/lib/crypto'
-import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { botString } from '@/lib/whatsapp/strings'
 import { resolveRecipientLocale, toLuxonLocale } from '@/lib/i18n/locale'
-import { sendTextMessage } from '@/lib/whatsapp'
+import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
 
 const VALID_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
 
@@ -474,19 +473,22 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
     .setLocale(toLuxonLocale(locale))
   const teacherName = row.teachers?.profiles?.full_name ?? botString('the_teacher', locale)
 
-  const body = await resolveTemplate(session.orgId, 'lesson_reminder', {
-    teacher_name: teacherName,
-    date: dt.toFormat("cccc, d.M"),
-    time: dt.toFormat('HH:mm'),
-  }, locale)
-
+  // sendSmartMessage, not sendTextMessage: a reminder is usually sent to a parent
+  // who has not written to the business in 24h, and free text there fails with 131047.
   try {
-    await sendTextMessage(
-      parentPhone,
-      body,
-      decryptToken(org.whatsapp_access_token as string),
-      org.whatsapp_phone_number_id as string
-    )
+    await sendSmartMessage({
+      orgId: session.orgId,
+      phone: parentPhone,
+      accessToken: decryptToken(org.whatsapp_access_token as string),
+      phoneNumberId: org.whatsapp_phone_number_id as string,
+      templateType: 'lesson_reminder',
+      vars: {
+        teacher_name: teacherName,
+        date: dt.toFormat('cccc, d.M'),
+        time: dt.toFormat('HH:mm'),
+      },
+      locale,
+    })
   } catch (e) {
     console.error('[lessons] Manual reminder send failed', { lessonId, error: e })
     return { error: 'שליחת התזכורת נכשלה' }

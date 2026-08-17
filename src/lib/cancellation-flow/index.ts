@@ -33,10 +33,16 @@ export interface CancellationSession {
 /**
  * Fetches scheduled lessons within the next 7 days for a parent's students.
  * Returns lessons ordered by start_at ascending.
+ *
+ * `onlyStudentIds` narrows the result to a subset — the student path passes
+ * their own id so a student never sees a sibling's lesson. It intersects with
+ * the parent's students rather than replacing them, so it can only ever
+ * restrict what comes back, never widen it.
  */
 export async function getEligibleLessons(
   orgId: string,
-  parentId: string
+  parentId: string,
+  onlyStudentIds?: string[]
 ): Promise<EligibleLesson[]> {
   const db = createServiceRoleClient()
 
@@ -49,7 +55,13 @@ export async function getEligibleLessons(
 
   if (relError || !rels || rels.length === 0) return []
 
-  const studentIds = rels.map((r: { student_id: string }) => r.student_id)
+  let studentIds = rels.map((r: { student_id: string }) => r.student_id)
+
+  if (onlyStudentIds) {
+    const allowed = new Set(onlyStudentIds)
+    studentIds = studentIds.filter((id: string) => allowed.has(id))
+    if (studentIds.length === 0) return []
+  }
 
   const now = new Date()
   const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)

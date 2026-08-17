@@ -111,6 +111,58 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Your homework has been graded ✅\nTopic: {{1}}\nScore received: {{2}} out of 100\n{{3}}\nGreat work, keep it up!',
     example: [['Summer essay', '92', 'Feedback: lovely writing!']],
   },
+  // ── Teacher day off ─────────────────────────────────────────────────────
+  // The parent notice goes out when an owner approves a teacher's day off, so
+  // by definition it is proactive and usually lands outside the 24h window —
+  // plain text there fails with 131047. The quick-reply button carries the
+  // rebooking offer: Meta stores only the label, and the payload (m:book) is
+  // bound at send time, so the tap runs the normal booking flow and mints a
+  // fresh 15-minute link. Embedding a link in the body instead would ship an
+  // already-expired token.
+  {
+    name: 'lessio_lesson_cancelled_by_teacher_he_v2',
+    language: 'he',
+    rawComponents: [
+      {
+        type: 'BODY',
+        text: 'עדכון חשוב: המורה {{1}} לא זמין/ה בתאריכים {{2}}, ולכן השיעורים שנקבעו בתקופה הזו בוטלו. לא יבוצע חיוב על השיעורים האלה, ונשמח לקבוע מועד חלופי.',
+        example: { body_text: [['שרה כהן', '20/08–22/08']] },
+      },
+      {
+        type: 'BUTTONS',
+        buttons: [{ type: 'QUICK_REPLY', text: 'קביעת שיעור חדש' }],
+      },
+    ],
+  },
+  {
+    name: 'lessio_lesson_cancelled_by_teacher_en_v2',
+    language: 'en',
+    rawComponents: [
+      {
+        type: 'BODY',
+        text: 'An important update: {{1}} is unavailable on {{2}}, so the lessons scheduled in that period have been cancelled. You will not be charged for them, and we would be glad to find a new time.',
+        example: { body_text: [['Sarah Cohen', '20/08–22/08']] },
+      },
+      {
+        type: 'BUTTONS',
+        buttons: [{ type: 'QUICK_REPLY', text: 'Book a new lesson' }],
+      },
+    ],
+  },
+  {
+    // The decision can land days after the teacher last wrote in, so this needs
+    // a template too rather than plain text.
+    name: 'lessio_day_off_decision_he_v2',
+    language: 'he',
+    bodyText: 'עדכון לגבי בקשת החופש שלך לתאריכים {{1}}: הבקשה {{2}}. תודה!',
+    example: [['20/08–22/08', 'אושרה']],
+  },
+  {
+    name: 'lessio_day_off_decision_en_v2',
+    language: 'en',
+    bodyText: 'An update on your time-off request for {{1}}: the request was {{2}}. Thank you!',
+    example: [['20/08–22/08', 'approved']],
+  },
   // ── Menu with quick-reply buttons ───────────────────────────────────────
   // Free-form interactive messages are rejected outside the 24h window, so the
   // tappable menu needs a template twin. Meta stores only the labels; the

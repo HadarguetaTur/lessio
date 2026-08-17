@@ -106,6 +106,16 @@ vi.mock('@/lib/homework', () => ({
   markAssignmentDone: vi.fn().mockResolvedValue({ id: 'hw-1', status: 'done' }),
 }))
 
+vi.mock('@/lib/day-off', () => ({
+  createDayOffRequest: vi.fn(),
+  notifyStaffOfRequest: vi.fn().mockResolvedValue(undefined),
+  countLessonsInRange: vi.fn().mockResolvedValue(0),
+  getPendingRequests: vi.fn().mockResolvedValue([]),
+  getRequestById: vi.fn().mockResolvedValue(null),
+  approveDayOffRequest: vi.fn().mockResolvedValue({ status: 'not_found' }),
+  rejectDayOffRequest: vi.fn().mockResolvedValue({ status: 'not_found' }),
+}))
+
 import { GET, POST } from './route'
 import { decryptToken } from '@/lib/crypto'
 import {
@@ -138,6 +148,15 @@ import {
 } from '@/lib/whatsapp/interactive'
 import { signBookingToken } from '@/lib/jwt'
 import { markAssignmentDone } from '@/lib/homework'
+import {
+  approveDayOffRequest,
+  countLessonsInRange,
+  createDayOffRequest,
+  getPendingRequests,
+  getRequestById,
+  notifyStaffOfRequest,
+  rejectDayOffRequest,
+} from '@/lib/day-off'
 import * as Sentry from '@sentry/nextjs'
 
 const mockSendListMessage = vi.mocked(sendListMessage)
@@ -162,6 +181,13 @@ const mockClaimIncomingMessage = vi.mocked(claimIncomingMessage)
 const mockReleaseIncomingMessageClaim = vi.mocked(releaseIncomingMessageClaim)
 const mockIsRateLimited = vi.mocked(isRateLimited)
 const mockMarkAssignmentDone = vi.mocked(markAssignmentDone)
+const mockCreateDayOffRequest = vi.mocked(createDayOffRequest)
+const mockNotifyStaffOfRequest = vi.mocked(notifyStaffOfRequest)
+const mockCountLessonsInRange = vi.mocked(countLessonsInRange)
+const mockGetPendingRequests = vi.mocked(getPendingRequests)
+const mockGetRequestById = vi.mocked(getRequestById)
+const mockApproveDayOffRequest = vi.mocked(approveDayOffRequest)
+const mockRejectDayOffRequest = vi.mocked(rejectDayOffRequest)
 const mockNotifyMultiple = vi.mocked(notifyMultiple)
 const mockNotifySuperadmins = vi.mocked(notifySuperadmins)
 const mockHasRecentUnreadSuperadminNotification = vi.mocked(hasRecentUnreadSuperadminNotification)
@@ -1255,14 +1281,15 @@ describe('WhatsApp sender roles', () => {
     expect(mockSendListMessage).toHaveBeenCalledTimes(1)
   })
 
-  it('offers a student homework and schedule, never balance or cancellation', async () => {
+  it('offers a student their own lessons and homework, never balance or the portal', async () => {
     mockIdentity({ students: STUDENT_ROW })
 
     await POST(makeRequest(makeWebhookPayload('שלום')))
 
-    expect(menuRowIds()).toEqual(['m:schedule', 'm:homework'])
+    // Booking and cancelling are the student's own lesson; what the family owes
+    // is not theirs to see, and the portal has no student login path at all.
+    expect(menuRowIds()).toEqual(['m:book', 'm:cancel', 'm:schedule', 'm:homework'])
     expect(menuRowIds()).not.toContain('m:balance')
-    expect(menuRowIds()).not.toContain('m:cancel')
     expect(menuRowIds()).not.toContain('m:portal')
   })
 
@@ -1275,7 +1302,7 @@ describe('WhatsApp sender roles', () => {
     expect(mockSendLinkReply).not.toHaveBeenCalled()
     // Told it is unavailable, then shown what they can actually do.
     expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
-    expect(menuRowIds()).toEqual(['m:schedule', 'm:homework'])
+    expect(menuRowIds()).toEqual(['m:book', 'm:cancel', 'm:schedule', 'm:homework'])
   })
 
   it('recognises a teacher instead of filing them as a lead', async () => {
@@ -1286,7 +1313,7 @@ describe('WhatsApp sender roles', () => {
     expect(res.status).toBe(200)
     expect(mockUpsertLead).not.toHaveBeenCalled()
     expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
-    expect(menuRowIds()).toEqual(['m:my_schedule', 'm:my_students'])
+    expect(menuRowIds()).toEqual(['m:my_schedule', 'm:my_students', 'm:day_off', 'm:dashboard'])
   })
 
   it('does not file an owner as a lead on themselves', async () => {
@@ -1298,7 +1325,7 @@ describe('WhatsApp sender roles', () => {
     expect(mockUpsertLead).not.toHaveBeenCalled()
     // …and no "new lead" notification pointing them at /leads for themselves.
     expect(mockNotifyMultiple).not.toHaveBeenCalled()
-    expect(menuRowIds()).toEqual(['m:today_summary'])
+    expect(menuRowIds()).toEqual(['m:today_summary', 'm:pending_requests', 'm:dashboard'])
   })
 
   it('still files a genuinely unknown number as a lead', async () => {
@@ -1481,6 +1508,393 @@ describe('WhatsApp sender roles', () => {
         'test-access-token',
         'phone-number-id-1'
       )
+    })
+  })
+
+  /**
+   * A student books and cancels their own lesson, but never their own account:
+   * the booking token carries a parent id and a cancellation charge is created
+   * against a parent, so both run through the billing parent — who is copied on
+   * the confirmation rather than finding out from the next invoice.
+   */
+  describe('a student booking or cancelling their own lesson', () => {
+    const PARENT_PHONE = '+972521111111'
+
+    /** relationships → the student's active parent, primary first. */
+    const BILLING_PARENT = {
+      data: [
+        {
+          is_primary: true,
+          parents: { id: PARENT_ID, phone: PARENT_PHONE, preferred_locale: 'he' },
+        },
+      ],
+      error: null,
+    }
+
+    it('signs a booking link for the student against their billing parent', async () => {
+      mockIdentity({ students: STUDENT_ROW, relationships: BILLING_PARENT })
+
+      const res = await POST(makeRequest(makeInteractivePayload('m:book')))
+
+      expect(res.status).toBe(200)
+      expect(mockSignBookingToken).toHaveBeenCalledWith({
+        organizationId: ORG_ID,
+        parentId: PARENT_ID,
+        studentId: STUDENT_ID,
+      })
+      expect(mockSendLinkReply).toHaveBeenCalledWith(
+        expect.objectContaining({ templateType: 'booking_link', to: SENDER_PHONE_E164 })
+      )
+    })
+
+    it('signs nothing when the student has no parent linked', async () => {
+      mockIdentity({ students: STUDENT_ROW, relationships: { data: [], error: null } })
+
+      const res = await POST(makeRequest(makeInteractivePayload('m:book')))
+
+      expect(res.status).toBe(200)
+      expect(mockSignBookingToken).not.toHaveBeenCalled()
+      expect(mockSendLinkReply).not.toHaveBeenCalled()
+      expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
+    })
+
+    it('narrows the cancellation list to the student themselves, never a sibling', async () => {
+      mockIdentity({ students: STUDENT_ROW, relationships: BILLING_PARENT })
+      mockGetEligibleLessons.mockResolvedValue([
+        { id: 'lesson-1', start_at: '2026-08-20T10:00:00Z', student_name: 'יעל', teacher_name: 'מיכל' },
+      ])
+
+      const res = await POST(makeRequest(makeInteractivePayload('m:cancel')))
+
+      expect(res.status).toBe(200)
+      expect(mockGetEligibleLessons).toHaveBeenCalledWith(ORG_ID, PARENT_ID, [STUDENT_ID])
+      expect(mockUpsertCancellationSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164, [
+        'lesson-1',
+      ])
+      expect(mockSendCancellationLessonList).toHaveBeenCalled()
+    })
+
+    it('honours the org switch that turns cancellations off', async () => {
+      mockIdentity(
+        { students: STUDENT_ROW, relationships: BILLING_PARENT },
+        { automation_cancellation_enabled: false }
+      )
+
+      await POST(makeRequest(makeInteractivePayload('m:cancel')))
+
+      expect(mockGetEligibleLessons).not.toHaveBeenCalled()
+      expect(mockUpsertCancellationSession).not.toHaveBeenCalled()
+    })
+
+    it('reads a bare number as a lesson pick and copies the parent in', async () => {
+      mockIdentity({ students: STUDENT_ROW, relationships: BILLING_PARENT })
+      mockGetActiveCancellationSession.mockResolvedValue({
+        id: 'session-1',
+        organization_id: ORG_ID,
+        phone: SENDER_PHONE_E164,
+        lesson_ids: ['lesson-1'],
+        expires_at: '2099-01-01T00:00:00Z',
+      })
+      mockExecuteCancellation.mockResolvedValue({
+        success: true,
+        lessonStartAt: '2026-08-20T10:00:00Z',
+        studentName: 'יעל',
+        teacherName: 'מיכל',
+        chargeResult: { shouldCharge: false, amount: 0, chargeType: null, reasonCode: 'no_policy' },
+      })
+
+      const res = await POST(makeRequest(makeWebhookPayload('1')))
+
+      expect(res.status).toBe(200)
+      // Authorised through the parent relationship, not the student's say-so.
+      expect(mockExecuteCancellation).toHaveBeenCalledWith('lesson-1', PARENT_ID, ORG_ID)
+      expect(mockDeleteCancellationSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164)
+      // The student is confirmed…
+      expect(mockSendTextMessage).toHaveBeenCalledWith(
+        SENDER_PHONE_E164,
+        expect.any(String),
+        'test-access-token',
+        'phone-number-id-1'
+      )
+      // …and the parent, who carries the charge, is told who did it.
+      expect(mockSendTextMessage).toHaveBeenCalledWith(
+        PARENT_PHONE,
+        expect.stringContaining('יעל'),
+        'test-access-token',
+        'phone-number-id-1'
+      )
+    })
+
+    it('does not cancel on a number that is not on the list', async () => {
+      mockIdentity({ students: STUDENT_ROW, relationships: BILLING_PARENT })
+      mockGetActiveCancellationSession.mockResolvedValue({
+        id: 'session-1',
+        organization_id: ORG_ID,
+        phone: SENDER_PHONE_E164,
+        lesson_ids: ['lesson-1'],
+        expires_at: '2099-01-01T00:00:00Z',
+      })
+      mockGetEligibleLessons.mockResolvedValue([
+        { id: 'lesson-1', start_at: '2026-08-20T10:00:00Z', student_name: 'יעל', teacher_name: 'מיכל' },
+      ])
+
+      await POST(makeRequest(makeWebhookPayload('7')))
+
+      expect(mockExecuteCancellation).not.toHaveBeenCalled()
+      // The flow stays open with a freshly rebuilt list.
+      expect(mockSendInvalidSelectionReply).toHaveBeenCalled()
+      expect(mockSendCancellationLessonList).toHaveBeenCalled()
+    })
+  })
+
+  /**
+   * A teacher asking for time off, and an owner deciding on it. The teacher's
+   * tap files a request and nothing more — the approval gate is what makes a
+   * write path safe on a channel with no confirmation step.
+   */
+  describe('a teacher requesting time off', () => {
+    const REQUEST_ID = '0142401d-89d0-47ad-bd3f-20edfb4ca444'
+
+    /** An ISO date `days` from today, so payloads stay in the future as time passes. */
+    function isoDaysFromNow(days: number): string {
+      const d = new Date()
+      d.setDate(d.getDate() + days)
+      return d.toISOString().slice(0, 10)
+    }
+
+    /** The reply ids of every row in the interactive list that went out. */
+    function listRowIds(): string[] {
+      const rows = mockSendListMessage.mock.calls[0][1].rows as Array<{ id: string }>
+      return rows.map((r) => r.id)
+    }
+
+    it('offers a run of dates to pick from, plus paging and a way out', async () => {
+      mockIdentity({ teachers: TEACHER_ROW })
+
+      const res = await POST(makeRequest(makeInteractivePayload('m:day_off')))
+
+      expect(res.status).toBe(200)
+      const ids = listRowIds()
+      expect(ids.filter((id) => id.startsWith('d:start:'))).toHaveLength(8)
+      expect(ids).toContain('d:pick:8')
+      expect(ids).toContain('d:abort')
+    })
+
+    it('offers "just one day" as the first end-date option', async () => {
+      mockIdentity({ teachers: TEACHER_ROW })
+      const start = isoDaysFromNow(3)
+
+      await POST(makeRequest(makeInteractivePayload(`d:start:${start}`)))
+
+      const ids = listRowIds()
+      expect(ids[0]).toBe(`d:end:${start}:${start}`)
+      expect(ids).toContain('d:abort')
+    })
+
+    it('confirms before filing anything', async () => {
+      mockIdentity({ teachers: TEACHER_ROW })
+      const start = isoDaysFromNow(3)
+      const end = isoDaysFromNow(5)
+
+      await POST(makeRequest(makeInteractivePayload(`d:end:${start}:${end}`)))
+
+      // Still just a question — nothing is filed until they confirm.
+      expect(mockCreateDayOffRequest).not.toHaveBeenCalled()
+      const buttons = mockSendReplyButtons.mock.calls[0][1].buttons as Array<{ id: string }>
+      expect(buttons.map((b) => b.id)).toEqual([`d:confirm:${start}:${end}`, 'd:abort'])
+    })
+
+    it('files the request against the sender’s own teacher id and alerts staff', async () => {
+      mockIdentity({ teachers: TEACHER_ROW })
+      const start = isoDaysFromNow(3)
+      const end = isoDaysFromNow(5)
+      mockCreateDayOffRequest.mockResolvedValue({
+        ok: true,
+        request: {
+          id: REQUEST_ID,
+          organizationId: ORG_ID,
+          teacherId: TEACHER_ID,
+          startDate: start,
+          endDate: end,
+          status: 'pending',
+          teacherName: 'מיכל',
+        },
+      })
+      mockCountLessonsInRange.mockResolvedValue(4)
+
+      const res = await POST(makeRequest(makeInteractivePayload(`d:confirm:${start}:${end}`)))
+
+      expect(res.status).toBe(200)
+      expect(mockCreateDayOffRequest).toHaveBeenCalledWith({
+        orgId: ORG_ID,
+        teacherId: TEACHER_ID,
+        startDate: start,
+        endDate: end,
+      })
+      // The owner is told what approving would cost before they decide.
+      expect(mockNotifyStaffOfRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ id: REQUEST_ID }),
+        expect.objectContaining({ orgId: ORG_ID }),
+        4
+      )
+      expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
+    })
+
+    it('says so plainly when a request is already waiting', async () => {
+      mockIdentity({ teachers: TEACHER_ROW })
+      mockCreateDayOffRequest.mockResolvedValue({ ok: false, reason: 'already_pending' })
+
+      await POST(
+        makeRequest(makeInteractivePayload(`d:confirm:${isoDaysFromNow(3)}:${isoDaysFromNow(3)}`))
+      )
+
+      expect(mockNotifyStaffOfRequest).not.toHaveBeenCalled()
+      expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
+    })
+
+    it('files nothing from a stale list whose dates have passed', async () => {
+      // The list stays tappable long after its dates stop being bookable.
+      mockIdentity({ teachers: TEACHER_ROW })
+
+      const res = await POST(makeRequest(makeInteractivePayload('d:confirm:2020-01-01:2020-01-02')))
+
+      expect(res.status).toBe(200)
+      expect(mockCreateDayOffRequest).not.toHaveBeenCalled()
+      expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
+    })
+
+    it('links a teacher to their own shell, not the owner dashboard', async () => {
+      mockIdentity({ teachers: TEACHER_ROW })
+
+      await POST(makeRequest(makeInteractivePayload('m:dashboard')))
+
+      expect(mockSendTextMessage).toHaveBeenCalledWith(
+        SENDER_PHONE_E164,
+        expect.stringContaining('/teacher/schedule'),
+        'test-access-token',
+        'phone-number-id-1'
+      )
+    })
+
+    it('ignores a day-off payload echoed back by a parent', async () => {
+      // Reply ids are client-supplied; the parent path must not decode them.
+      mockIdentity({ parents: PARENT_ROW })
+
+      const res = await POST(
+        makeRequest(makeInteractivePayload(`d:confirm:${isoDaysFromNow(3)}:${isoDaysFromNow(4)}`))
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockCreateDayOffRequest).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('an owner deciding on a time-off request', () => {
+    const REQUEST_ID = '0142401d-89d0-47ad-bd3f-20edfb4ca444'
+
+    const PENDING = {
+      id: REQUEST_ID,
+      organizationId: ORG_ID,
+      teacherId: TEACHER_ID,
+      startDate: '2026-08-20',
+      endDate: '2026-08-22',
+      status: 'pending' as const,
+      teacherName: 'מיכל',
+    }
+
+    it('lists what is waiting, one row per request', async () => {
+      mockIdentity({ profiles: OWNER_ROW })
+      mockGetPendingRequests.mockResolvedValue([PENDING])
+
+      const res = await POST(makeRequest(makeInteractivePayload('m:pending_requests')))
+
+      expect(res.status).toBe(200)
+      const rows = mockSendListMessage.mock.calls[0][1].rows as Array<{ id: string; title: string }>
+      expect(rows).toEqual([
+        expect.objectContaining({ id: `a:show:${REQUEST_ID}`, title: 'מיכל' }),
+      ])
+    })
+
+    it('says so when nothing is waiting', async () => {
+      mockIdentity({ profiles: OWNER_ROW })
+      mockGetPendingRequests.mockResolvedValue([])
+
+      await POST(makeRequest(makeInteractivePayload('m:pending_requests')))
+
+      expect(mockSendListMessage).not.toHaveBeenCalled()
+      expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
+    })
+
+    it('shows the cost before offering the two buttons', async () => {
+      mockIdentity({ profiles: OWNER_ROW })
+      mockGetRequestById.mockResolvedValue(PENDING)
+      mockCountLessonsInRange.mockResolvedValue(6)
+
+      await POST(makeRequest(makeInteractivePayload(`a:show:${REQUEST_ID}`)))
+
+      const call = mockSendReplyButtons.mock.calls[0][1]
+      expect(call.body).toContain('6')
+      expect((call.buttons as Array<{ id: string }>).map((b) => b.id)).toEqual([
+        `a:approve:${REQUEST_ID}`,
+        `a:reject:${REQUEST_ID}`,
+      ])
+    })
+
+    it('approves against the owner’s own profile and org', async () => {
+      mockIdentity({ profiles: OWNER_ROW })
+      mockApproveDayOffRequest.mockResolvedValue({
+        status: 'approved',
+        request: PENDING,
+        lessonsCancelled: 3,
+        parentsNotified: 2,
+        parentsFailed: 0,
+      })
+
+      const res = await POST(makeRequest(makeInteractivePayload(`a:approve:${REQUEST_ID}`)))
+
+      expect(res.status).toBe(200)
+      expect(mockApproveDayOffRequest).toHaveBeenCalledWith({
+        requestId: REQUEST_ID,
+        decidedByProfileId: PROFILE_ID,
+        ctx: expect.objectContaining({ orgId: ORG_ID, accessToken: 'test-access-token' }),
+      })
+      // The reply reports what actually happened, not just "done".
+      expect(mockSendTextMessage).toHaveBeenCalledWith(
+        SENDER_PHONE_E164,
+        expect.stringContaining('3'),
+        'test-access-token',
+        'phone-number-id-1'
+      )
+    })
+
+    it('rejects without touching a lesson', async () => {
+      mockIdentity({ profiles: OWNER_ROW })
+      mockRejectDayOffRequest.mockResolvedValue({ status: 'rejected', request: PENDING })
+
+      await POST(makeRequest(makeInteractivePayload(`a:reject:${REQUEST_ID}`)))
+
+      expect(mockRejectDayOffRequest).toHaveBeenCalled()
+      expect(mockApproveDayOffRequest).not.toHaveBeenCalled()
+    })
+
+    it('tells the second admin the request was already handled', async () => {
+      mockIdentity({ profiles: OWNER_ROW })
+      mockApproveDayOffRequest.mockResolvedValue({ status: 'already_decided' })
+
+      const res = await POST(makeRequest(makeInteractivePayload(`a:approve:${REQUEST_ID}`)))
+
+      expect(res.status).toBe(200)
+      expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
+    })
+
+    it('refuses a decision payload tapped by a teacher', async () => {
+      // A teacher could echo back an approve payload they were never shown.
+      mockIdentity({ teachers: TEACHER_ROW })
+
+      const res = await POST(makeRequest(makeInteractivePayload(`a:approve:${REQUEST_ID}`)))
+
+      expect(res.status).toBe(200)
+      expect(mockApproveDayOffRequest).not.toHaveBeenCalled()
     })
   })
 })

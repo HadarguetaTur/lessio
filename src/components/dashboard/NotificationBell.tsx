@@ -41,6 +41,8 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   student_at_risk: '\u26A0\uFE0F',
   new_lead: '\uD83D\uDC64',
   goal_achieved: '\uD83C\uDFC6',
+  day_off_requested: '\uD83C\uDFD6\uFE0F',
+  day_off_decided: '\uD83D\uDDD3\uFE0F',
 }
 
 export function NotificationBell({

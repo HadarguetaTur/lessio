@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { hasCancellationIntent } from '@/lib/whatsapp'
-import { formatLessonListMessage, getActiveCancellationSession } from '@/lib/cancellation-flow'
+import {
+  formatLessonListMessage,
+  getActiveCancellationSession,
+  getEligibleLessons,
+} from '@/lib/cancellation-flow'
 import type { EligibleLesson } from '@/lib/cancellation-flow'
 
 // ── Mock for DB-backed session tests ─────────────────────────────────────────
@@ -71,6 +75,67 @@ describe('formatLessonListMessage', () => {
     const idx2 = msg.indexOf('2.')
     expect(idx1).toBeGreaterThanOrEqual(0)
     expect(idx2).toBeGreaterThan(idx1)
+  })
+})
+
+// ── Scoping ───────────────────────────────────────────────────────────────────
+
+/**
+ * A student cancelling from their own phone passes their own id. The narrowing
+ * intersects with the parent's students rather than replacing them, so it can
+ * only ever restrict what comes back — a student can never reach a lesson that
+ * is not on their parent's account.
+ */
+describe('getEligibleLessons — student narrowing', () => {
+  /** Routes each table to a canned result and records the ids it was asked for. */
+  function mockTables(rows: Record<string, unknown>): Record<string, unknown[]> {
+    const askedFor: Record<string, unknown[]> = {}
+    mockFrom.mockImplementation((table: string) => {
+      const self: Record<string, unknown> = {}
+      const pass = () => self
+      ;['select', 'eq', 'gte', 'lt', 'order'].forEach((m) => {
+        self[m] = pass
+      })
+      self['in'] = (_column: string, ids: unknown[]) => {
+        askedFor[table] = ids
+        return self
+      }
+      self['then'] = (r: (v: unknown) => unknown) =>
+        Promise.resolve(rows[table] ?? { data: [], error: null }).then(r)
+      return self
+    })
+    return askedFor
+  }
+
+  const TWO_CHILDREN = {
+    data: [{ student_id: 'student-1' }, { student_id: 'student-2' }],
+    error: null,
+  }
+
+  it('looks up only the named student', async () => {
+    const askedFor = mockTables({ relationships: TWO_CHILDREN })
+
+    await getEligibleLessons('org-1', 'parent-1', ['student-2'])
+
+    expect(askedFor['lesson_students']).toEqual(['student-2'])
+  })
+
+  it('looks up every one of the parent’s students when none is named', async () => {
+    const askedFor = mockTables({ relationships: TWO_CHILDREN })
+
+    await getEligibleLessons('org-1', 'parent-1')
+
+    expect(askedFor['lesson_students']).toEqual(['student-1', 'student-2'])
+  })
+
+  it('returns nothing for a student the parent is not linked to', async () => {
+    const askedFor = mockTables({ relationships: TWO_CHILDREN })
+
+    const result = await getEligibleLessons('org-1', 'parent-1', ['someone-elses-child'])
+
+    expect(result).toEqual([])
+    // Not even queried — the intersection is empty before any lesson lookup.
+    expect(askedFor['lesson_students']).toBeUndefined()
   })
 })
 

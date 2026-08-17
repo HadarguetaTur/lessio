@@ -12,10 +12,29 @@ Status as of 2026-08-16 (read from the Meta DevTools API, not the dashboard):
 | Submission | `UNSUBMITTED` — never reviewed (`has_been_previously_reviewed: false`) |
 | `whatsapp_business_messaging` | no Advanced Access |
 | `whatsapp_business_management` | no Advanced Access |
-| `business_management` | no Advanced Access |
 
-Two steps are incomplete on **each** of the three permissions: `screencast` and `api_precheck`.
+Two steps are incomplete on **each** permission: `screencast` and `api_precheck`.
 Everything else is done.
+
+## 0. Drop `business_management` first
+
+The app currently also requests `business_management`. **Remove it before submitting** —
+it is the cheapest win available here, cutting a third of the review surface.
+
+No production code path uses it. Every Graph call Lessio makes is
+`/{waba}/message_templates`, `/{waba}/subscribed_apps`, `/{phone_number_id}/messages`, or the
+token exchange — all covered by the two WhatsApp permissions. Meta's own Embedded Signup docs
+say a Cloud API flow needs only those two; `business_management` exists for Solution Partners
+sharing a credit line, which Lessio does not do.
+
+Two places to remove it, both dashboard-only:
+
+1. **App Review** → click the permission's trash-can icon to drop it from the submission.
+2. **Facebook Login for Business → Configurations** (or WhatsApp → Embedded Signup) → edit the
+   configuration and untick `business_management`. Do not create a new configuration — the
+   Configuration ID is hardcoded as `NEXT_PUBLIC_META_CONFIG_ID`. Leaving it here means
+   customers keep seeing a permission request Lessio never uses, which costs conversion on the
+   signup dialog.
 
 ---
 
@@ -34,10 +53,10 @@ Run this to generate the traffic:
 npx tsx scripts/meta-precheck-calls.ts
 ```
 
-It makes real calls covering all three permissions and prints per-permission coverage:
+It makes real calls covering both permissions and prints per-permission coverage:
 
-- `whatsapp_business_management` — read message templates, phone numbers, subscribed apps
-- `business_management` — read the owning business asset and its verification status
+- `whatsapp_business_management` — read message templates, phone numbers, subscribed apps,
+  WABA settings
 - `whatsapp_business_messaging` — read the phone number, then send one approved-template
   message to the verified demo recipient (+972504343547)
 
@@ -48,7 +67,7 @@ Meta updates the pre-check with a lag; re-check status a few hours later.
 
 ## 2. Screencast
 
-One recording can cover all three permissions. Record in **Hebrew or English with English
+One recording can cover both permissions. Record in **Hebrew or English with English
 subtitles**, 3–5 minutes, screen + narration, 1080p. Reviewers are not customers: state which
 permission each step exercises, out loud and on screen.
 
@@ -59,32 +78,40 @@ Record against **production** (`www.getlessio.com`), not localhost — a reviewe
 
 1. **Framing (20s).** Landing page. Say what Lessio is: a management system for private tutors
    and study centres in Israel — scheduling, billing, and parent communication over WhatsApp.
-   Name the three permissions you are requesting and why.
+   Name the two permissions you are requesting and why.
 
-2. **Embedded Signup — `whatsapp_business_management` + `business_management` (90s).**
+2. **Embedded Signup — `whatsapp_business_management` (90s).**
    Log in as an org owner → `/settings/whatsapp` → "Connect WhatsApp". Walk through Meta's
    Embedded Signup dialog end to end: business selection, WABA selection, phone number.
    Land back on the settings page showing the number connected.
    Say on camera: *"Lessio uses `whatsapp_business_management` to register message templates on
-   the customer's own WABA and to subscribe our webhook; `business_management` is used to read
-   the business assets the customer selects during this flow. Lessio never accesses businesses
-   the customer did not select."*
+   the customer's own WhatsApp Business Account and to subscribe our webhook to it. Lessio
+   accesses only the WhatsApp Business Account the customer selects in this dialog — it does
+   not read or manage any other business asset."*
 
 3. **Templates — `whatsapp_business_management` (30s).**
    Show the templates Lessio registered on the WABA (WhatsApp Manager → Message Templates,
    or the in-app view). Point out they are UTILITY-category and customer-specific.
 
-4. **Outbound — `whatsapp_business_messaging` (60s).**
-   From the dashboard, trigger a real send to the demo parent and show the message arriving on
-   the phone. Best single example: a lesson reminder or a payment request.
-   Say: *"Every message is sent to a parent who is an existing customer of the tutor and who
-   provided their number to that tutor. Lessio does not send marketing or bulk messages."*
-
-5. **Inbound — `whatsapp_business_messaging` (60s).**
+4. **Inbound — `whatsapp_business_messaging` (60s).**
    On the phone, send `היי` to the business number. Show the bot menu reply, then complete one
    full flow — cancelling a lesson is the strongest one — and cut back to the dashboard showing
    the lesson now marked cancelled. This proves the webhook round-trip, which reviewers
    specifically look for.
+
+5. **Outbound — `whatsapp_business_messaging` (60s).**
+   Dashboard → the seeded demo lesson scheduled for **tomorrow**
+   (`d1000000-0000-4000-8000-000000000003`, from `scripts/seed-demo-data.ts`) → lesson detail →
+   **"שליחת תזכורת בוואטסאפ"**. Show the button turn to "התזכורת נשלחה ✓", then pan or cut to
+   the phone showing the message land. **Keep both halves in one continuous take** — a video
+   showing only the sending screen is rejected.
+   Say: *"Every message is sent to a parent who is an existing customer of the tutor and who
+   provided their number to that tutor. Lessio does not send marketing or bulk messages."*
+
+   Inbound is filmed **before** outbound on purpose. The manual reminder no longer depends on
+   the 24h window (`sendLessonReminderAction` goes through `sendSmartMessage`), but with the
+   window already open the reviewer sees the org's own Hebrew template copy rather than the
+   fixed Meta-approved wording — the better demonstration of the product.
 
 6. **Opt-out (20s).** Show a parent replying to stop messages and the system honouring it.
    Reviewers weight this heavily; do not skip it.
@@ -98,6 +125,20 @@ npx tsx scripts/diagnose-demo-whatsapp.ts  # must be all ✓
 
 Confirm `DEMO_RESCHEDULE_ENABLED=1` and `DEMO_PAYMENT_LINK_ENABLED=1` are still set in Vercel —
 reviewers test the live flows themselves after watching.
+
+For shot 5 specifically:
+
+- Log in as **owner or admin**. The reminder button is role-gated, and it only renders while the
+  lesson is still `scheduled`.
+- Confirm the demo lesson is still in the future — re-run `npx tsx scripts/seed-demo-data.ts` if
+  the date has rolled past.
+- Confirm the approved fallback template is live on the WABA, since the send now depends on it
+  outside the window:
+  `GET https://graph.facebook.com/v19.0/1066332709132512/message_templates?fields=name,status,language`
+  → `lessio_lesson_reminder_he_v2` must be `APPROVED`.
+
+Retakes are safe: the `notification_log` row is an upsert that records the send for cron dedup
+but does not block a repeat, and the button's "sent" state resets on page refresh.
 
 ## 3. Use-case text
 

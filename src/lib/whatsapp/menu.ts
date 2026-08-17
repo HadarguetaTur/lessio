@@ -47,8 +47,12 @@ export type MenuAction =
   // Teacher
   | 'my_schedule'
   | 'my_students'
+  | 'day_off'
   // Staff (owner/admin)
   | 'today_summary'
+  | 'pending_requests'
+  // Teacher and staff — each to their own shell
+  | 'dashboard'
   // Any role whose phone holds several capacities
   | 'switch_role'
 
@@ -61,26 +65,36 @@ const ALL_ACTIONS: readonly MenuAction[] = [
   'homework',
   'my_schedule',
   'my_students',
+  'day_off',
   'today_summary',
+  'pending_requests',
+  'dashboard',
   'switch_role',
 ]
 
 /**
  * What each capacity may do over WhatsApp.
  *
- * The student list deliberately omits balance, cancellation, booking and the
- * portal: money and cancellations are not a child's to act on, and the portal
- * is a parent portal with no student login path at all.
+ * The student list still omits balance and the portal: what the family owes is
+ * not a child's to see or settle, and the portal is a parent portal with no
+ * student login path at all. Booking and cancelling are theirs — it is their
+ * lesson — but both are scoped to their own row, and both run through their
+ * billing parent, who is copied on every cancellation because the charge lands
+ * on them.
  *
- * The teacher and staff lists are read-only on purpose — WhatsApp has no real
- * confirmation step, and a mistyped reply on a teacher path would move a
+ * The teacher and staff lists are otherwise read-only on purpose — WhatsApp has
+ * no real confirmation step, and a mistyped reply on a teacher path would move a
  * parent's charge. Attendance stays in the dashboard.
+ *
+ * `day_off` is the one deliberate exception, and it is not really a write: it
+ * files a request. Nothing moves until an owner or admin taps approve, which is
+ * what makes it safe to expose on a channel with no confirmation step.
  */
 const ROLE_MENUS: Record<KnownSenderRole, readonly MenuAction[]> = {
   parent: ['book', 'cancel', 'balance', 'schedule', 'portal'],
-  student: ['schedule', 'homework'],
-  teacher: ['my_schedule', 'my_students'],
-  staff: ['today_summary'],
+  student: ['book', 'cancel', 'schedule', 'homework'],
+  teacher: ['my_schedule', 'my_students', 'day_off', 'dashboard'],
+  staff: ['today_summary', 'pending_requests', 'dashboard'],
 }
 
 /** The actions a role may invoke, plus the role switcher when it applies. */
@@ -99,7 +113,11 @@ export function isActionAllowedForRole(action: MenuAction, role: KnownSenderRole
 const PREFIX = 'm'
 const ROLE_PREFIX = 'r'
 
-/** Actions that operate on one specific student and therefore need a picker. */
+/**
+ * Actions that operate on one specific student and therefore need a picker.
+ * Only the parent path consults this — a student writing in is already the
+ * subject, so there is nothing to pick.
+ */
 const PER_STUDENT_ACTIONS: ReadonlySet<MenuAction> = new Set<MenuAction>(['book'])
 
 export function needsStudent(action: MenuAction): boolean {

@@ -75,8 +75,14 @@ export type BotStringKey =
   | 'menu_my_schedule_desc'
   | 'menu_my_students'
   | 'menu_my_students_desc'
+  | 'menu_day_off'
+  | 'menu_day_off_desc'
   | 'menu_today_summary'
   | 'menu_today_summary_desc'
+  | 'menu_pending_requests'
+  | 'menu_pending_requests_desc'
+  | 'menu_dashboard'
+  | 'menu_dashboard_desc'
   | 'menu_switch_role'
   | 'menu_switch_role_desc'
   // Student replies
@@ -84,13 +90,50 @@ export type BotStringKey =
   | 'student_no_homework'
   | 'student_homework_marked'
   | 'homework_done_student_alert'
+  | 'student_no_parent_linked'
+  | 'cancelled_by_student_note'
   // Teacher replies
   | 'teacher_schedule_body'
   | 'teacher_no_lessons'
   | 'teacher_students_body'
   | 'teacher_no_students'
+  | 'teacher_dashboard_link'
+  // Teacher day-off request flow
+  | 'day_off_pick_start_body'
+  | 'day_off_pick_start_button'
+  | 'day_off_pick_end_body'
+  | 'day_off_pick_end_button'
+  | 'day_off_more_days'
+  | 'day_off_more_days_desc'
+  | 'day_off_single_day'
+  | 'day_off_single_day_desc'
+  | 'day_off_abort_row'
+  | 'day_off_confirm_body'
+  | 'day_off_confirm_button'
+  | 'day_off_cancel_button'
+  | 'day_off_submitted'
+  | 'day_off_already_pending'
+  | 'day_off_invalid'
+  | 'day_off_aborted'
+  | 'day_off_approved_teacher'
+  | 'day_off_rejected_teacher'
+  | 'decision_approved'
+  | 'decision_rejected'
   // Staff replies
   | 'staff_summary_body'
+  | 'staff_dashboard_link'
+  | 'staff_day_off_alert'
+  | 'staff_approve_button'
+  | 'staff_reject_button'
+  | 'staff_pending_list_body'
+  | 'staff_pending_list_button'
+  | 'staff_no_pending_requests'
+  | 'staff_request_detail'
+  | 'staff_request_approved'
+  | 'staff_request_rejected'
+  | 'staff_request_already_decided'
+  | 'staff_request_stale'
+  | 'staff_request_not_found'
   // Cross-role
   | 'action_not_for_role'
   | 'role_switch_body'
@@ -166,11 +209,17 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     menu_homework: 'שיעורי הבית שלי',
     menu_homework_desc: 'מה פתוח וסימון כהושלם',
     menu_my_schedule: 'הלוז שלי',
-    menu_my_schedule_desc: 'השיעורים שלי היום ומחר',
+    menu_my_schedule_desc: 'השיעורים שלי בשבוע הקרוב',
     menu_my_students: 'התלמידים שלי',
     menu_my_students_desc: 'רשימה ומצב שיעורי בית',
+    menu_day_off: 'בקשת חופש',
+    menu_day_off_desc: 'יום חופש או כמה ימים ברצף',
     menu_today_summary: 'סיכום היום',
     menu_today_summary_desc: 'שיעורים, ביטולים ויתרה פתוחה',
+    menu_pending_requests: 'בקשות ממתינות',
+    menu_pending_requests_desc: 'בקשות חופש שמחכות להחלטה',
+    menu_dashboard: 'האזור האישי',
+    menu_dashboard_desc: 'כניסה למערכת מהדפדפן',
     menu_switch_role: 'החלפת תפקיד',
     menu_switch_role_desc: 'המספר הזה משויך ליותר מתפקיד אחד',
 
@@ -178,14 +227,62 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     student_no_homework: 'אין לך שיעורי בית פתוחים כרגע 🎉',
     student_homework_marked: 'כל הכבוד! "{{title}}" סומן כהושלם 🎉',
     homework_done_student_alert: '✅ עדכון: {{student_name}} סימן שהשיעורי בית "{{title}}" הושלמו.',
+    student_no_parent_linked:
+      'לא מצאתי הורה מקושר לחשבון שלך, ולכן אי אפשר לקבוע או לבטל שיעור מכאן.\nאפשר לפנות לצוות ונסדר את זה 😊',
+    cancelled_by_student_note: '❗ {{student_name}} ביטל/ה את השיעור דרך וואטסאפ.',
 
-    teacher_schedule_body: 'הלוז שלך:{{lesson_lines}}',
-    teacher_no_lessons: 'אין לך שיעורים מתוכננים היום או מחר 🙂',
+    teacher_schedule_body: 'הלוז שלך לשבוע הקרוב:{{lesson_lines}}',
+    teacher_no_lessons: 'אין לך שיעורים מתוכננים בשבוע הקרוב 🙂',
     teacher_students_body: 'התלמידים שלך:{{student_lines}}',
     teacher_no_students: 'לא מצאתי תלמידים משויכים אליך 🙂',
+    teacher_dashboard_link:
+      'האזור האישי שלך:\n{{url}}\n\nהכניסה עם האימייל והסיסמה שלך למערכת.',
+
+    day_off_pick_start_body: 'מאיזה תאריך תרצה/י חופש?',
+    day_off_pick_start_button: 'בחירת תאריך',
+    day_off_pick_end_body: 'עד מתי? החופש יתחיל ב-{{start_date}}.',
+    day_off_pick_end_button: 'בחירת סיום',
+    day_off_more_days: 'עוד תאריכים →',
+    day_off_more_days_desc: 'הצגת שבוע נוסף קדימה',
+    day_off_single_day: 'יום אחד בלבד',
+    day_off_single_day_desc: 'רק {{start_date}}',
+    day_off_abort_row: 'ביטול הבקשה',
+    day_off_confirm_body:
+      'לבקש חופש בתאריכים {{date_range}}?\nהבקשה תישלח לאישור ההנהלה, ורק אחרי אישור השיעורים יבוטלו.',
+    day_off_confirm_button: 'שליחת הבקשה',
+    day_off_cancel_button: 'ביטול',
+    day_off_submitted:
+      'הבקשה לתאריכים {{date_range}} נשלחה לאישור 🤞\nנעדכן אותך ברגע שתתקבל החלטה.',
+    day_off_already_pending:
+      'כבר יש לך בקשת חופש שממתינה להחלטה. אפשר לחכות לתשובה, או לפנות להנהלה ישירות 🙂',
+    day_off_invalid: 'משהו השתבש בבחירה 🙂 אפשר להתחיל שוב מהתפריט.',
+    day_off_aborted: 'הבקשה בוטלה. אם תשנה/י את דעתך, אפשר להתחיל שוב מהתפריט 🙂',
+    day_off_approved_teacher:
+      'בקשת החופש שלך לתאריכים {{date_range}} אושרה ✅\nבוטלו {{lessons}} שיעורים וההורים עודכנו.',
+    day_off_rejected_teacher:
+      'בקשת החופש שלך לתאריכים {{date_range}} לא אושרה.\nכדאי לדבר עם ההנהלה 🙂',
+    decision_approved: 'אושרה',
+    decision_rejected: 'נדחתה',
 
     staff_summary_body:
       'סיכום להיום:\n• שיעורים: {{lessons_today}}\n• ביטולים: {{cancellations_today}}\n• יתרה פתוחה: ₪{{open_balance}}',
+    staff_dashboard_link: 'הכניסה למערכת:\n{{url}}\n\nעם האימייל והסיסמה שלך.',
+    staff_day_off_alert:
+      '🏖️ בקשת חופש חדשה\n\n{{teacher_name}} מבקש/ת חופש בתאריכים {{date_range}}.\nבטווח הזה מתוכננים {{lessons}} שיעורים — אישור יבטל אותם ויעדכן את ההורים, ללא חיוב.',
+    staff_approve_button: 'אישור',
+    staff_reject_button: 'דחייה',
+    staff_pending_list_body: 'בקשות חופש שממתינות להחלטה:',
+    staff_pending_list_button: 'בחירת בקשה',
+    staff_no_pending_requests: 'אין בקשות חופש שממתינות להחלטה 🙂',
+    staff_request_detail:
+      '🏖️ {{teacher_name}} מבקש/ת חופש בתאריכים {{date_range}}.\nבטווח הזה מתוכננים {{lessons}} שיעורים — אישור יבטל אותם ויעדכן את ההורים, ללא חיוב.',
+    staff_request_approved:
+      'הבקשה אושרה ✅\nבוטלו {{lessons}} שיעורים, ונשלחו הודעות ל-{{parents}} הורים.',
+    staff_request_rejected: 'הבקשה נדחתה. {{teacher_name}} קיבל/ה עדכון.',
+    staff_request_already_decided: 'הבקשה הזו כבר טופלה 🙂',
+    staff_request_stale:
+      'התאריכים בבקשה כבר עברו, ולכן היא סומנה כנדחתה. לא בוטלו שיעורים.',
+    staff_request_not_found: 'לא מצאתי את הבקשה הזו. אפשר לנסות שוב מהתפריט 🙂',
 
     action_not_for_role: 'הפעולה הזו לא זמינה מהתפריט שלך 🙂 הנה מה שאפשר לעשות:',
     role_switch_body: 'באיזה תפקיד להמשיך?',
@@ -266,11 +363,17 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     menu_homework: 'My homework',
     menu_homework_desc: 'What is open, and mark it done',
     menu_my_schedule: 'My schedule',
-    menu_my_schedule_desc: 'My lessons today and tomorrow',
+    menu_my_schedule_desc: 'My lessons over the coming week',
     menu_my_students: 'My students',
     menu_my_students_desc: 'List and homework status',
+    menu_day_off: 'Request time off',
+    menu_day_off_desc: 'A day off, or a few days in a row',
     menu_today_summary: "Today's summary",
     menu_today_summary_desc: 'Lessons, cancellations, open balance',
+    menu_pending_requests: 'Pending requests',
+    menu_pending_requests_desc: 'Time-off requests awaiting a decision',
+    menu_dashboard: 'My dashboard',
+    menu_dashboard_desc: 'Open the system in your browser',
     menu_switch_role: 'Switch role',
     menu_switch_role_desc: 'This number has more than one role',
 
@@ -279,14 +382,62 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     student_no_homework: 'You have no open homework right now 🎉',
     student_homework_marked: 'Nice work! "{{title}}" is marked as done 🎉',
     homework_done_student_alert: '✅ Update: {{student_name}} marked the homework "{{title}}" as done.',
+    student_no_parent_linked:
+      'I could not find a parent linked to your account, so I cannot book or cancel a lesson from here.\nReach out to the team and we will sort it out 😊',
+    cancelled_by_student_note: '❗ {{student_name}} cancelled this lesson over WhatsApp.',
 
-    teacher_schedule_body: 'Your schedule:{{lesson_lines}}',
-    teacher_no_lessons: 'You have no lessons scheduled today or tomorrow 🙂',
+    teacher_schedule_body: 'Your schedule for the coming week:{{lesson_lines}}',
+    teacher_no_lessons: 'You have no lessons scheduled in the coming week 🙂',
     teacher_students_body: 'Your students:{{student_lines}}',
     teacher_no_students: 'I could not find any students assigned to you 🙂',
+    teacher_dashboard_link:
+      'Your personal area:\n{{url}}\n\nSign in with your system email and password.',
+
+    day_off_pick_start_body: 'Which day would you like off?',
+    day_off_pick_start_button: 'Choose a date',
+    day_off_pick_end_body: 'Until when? Your time off starts on {{start_date}}.',
+    day_off_pick_end_button: 'Choose the end',
+    day_off_more_days: 'More dates →',
+    day_off_more_days_desc: 'Show another week ahead',
+    day_off_single_day: 'Just one day',
+    day_off_single_day_desc: '{{start_date}} only',
+    day_off_abort_row: 'Cancel the request',
+    day_off_confirm_body:
+      'Request time off on {{date_range}}?\nIt goes to management for approval — lessons are only cancelled once they approve.',
+    day_off_confirm_button: 'Send request',
+    day_off_cancel_button: 'Cancel',
+    day_off_submitted:
+      'Your request for {{date_range}} has been sent for approval 🤞\nWe will let you know as soon as there is a decision.',
+    day_off_already_pending:
+      'You already have a time-off request awaiting a decision. Wait for the answer, or talk to management directly 🙂',
+    day_off_invalid: 'Something went wrong with that choice 🙂 Start again from the menu.',
+    day_off_aborted: 'Request cancelled. If you change your mind, start again from the menu 🙂',
+    day_off_approved_teacher:
+      'Your time-off request for {{date_range}} was approved ✅\n{{lessons}} lessons were cancelled and the parents have been told.',
+    day_off_rejected_teacher:
+      'Your time-off request for {{date_range}} was not approved.\nWorth having a word with management 🙂',
+    decision_approved: 'approved',
+    decision_rejected: 'declined',
 
     staff_summary_body:
       "Today's summary:\n• Lessons: {{lessons_today}}\n• Cancellations: {{cancellations_today}}\n• Open balance: ₪{{open_balance}}",
+    staff_dashboard_link: 'Sign in here:\n{{url}}\n\nWith your email and password.',
+    staff_day_off_alert:
+      '🏖️ New time-off request\n\n{{teacher_name}} is asking for time off on {{date_range}}.\n{{lessons}} lessons are scheduled in that period — approving cancels them and tells the parents, with no charge.',
+    staff_approve_button: 'Approve',
+    staff_reject_button: 'Decline',
+    staff_pending_list_body: 'Time-off requests awaiting a decision:',
+    staff_pending_list_button: 'Choose a request',
+    staff_no_pending_requests: 'No time-off requests are waiting for a decision 🙂',
+    staff_request_detail:
+      '🏖️ {{teacher_name}} is asking for time off on {{date_range}}.\n{{lessons}} lessons are scheduled in that period — approving cancels them and tells the parents, with no charge.',
+    staff_request_approved:
+      'Approved ✅\n{{lessons}} lessons cancelled, {{parents}} parents notified.',
+    staff_request_rejected: 'Request declined. {{teacher_name}} has been told.',
+    staff_request_already_decided: 'That request has already been handled 🙂',
+    staff_request_stale:
+      'The dates in that request have already passed, so it was marked as declined. No lessons were cancelled.',
+    staff_request_not_found: 'I could not find that request. Try again from the menu 🙂',
 
     action_not_for_role: 'That action is not available from your menu 🙂 Here is what you can do:',
     role_switch_body: 'Which role would you like to continue as?',

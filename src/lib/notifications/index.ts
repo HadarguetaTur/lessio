@@ -17,6 +17,8 @@ export type NotificationType =
   | 'portal_message'
   | 'invoice_cancelled'
   | 'webhook_unroutable'
+  | 'day_off_requested'
+  | 'day_off_decided'
 
 export interface CreateNotificationParams {
   orgId: string

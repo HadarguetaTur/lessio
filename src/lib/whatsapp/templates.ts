@@ -35,6 +35,8 @@ export type MessageTemplateType =
   | 'homework_graded'
   | 'ai_satisfaction_prompt'
   | 'unknown_intent_fallback'
+  | 'lesson_cancelled_by_teacher'
+  | 'day_off_decision'
 
 /**
  * System-default strings per language (used when no custom template is
@@ -77,6 +79,10 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'האם התשובה עזרה? אפשר להגיב 👍 או 👎',
     unknown_intent_fallback:
       'היי 👋 לא הצלחתי להבין את הבקשה.\nהנה מה שאפשר לכתוב לי:\n\n• "הזמנה" לקביעת שיעור\n• "ביטול" לביטול שיעור\n• "חוב" לבירור יתרה ותשלום\n• "שיעורים" ללוח השיעורים הקרובים\n• "פורטל" לכניסה לאזור האישי',
+    lesson_cancelled_by_teacher:
+      'עדכון חשוב 🗓️\nהמורה {{teacher_name}} לא זמין/ה בתאריכים {{date_range}}, ולכן השיעורים שנקבעו בתקופה הזו בוטלו.\nלא יבוצע חיוב על השיעורים האלה.\n\nלקביעת מועד חלופי אפשר לכתוב "הזמנה" 😊',
+    day_off_decision:
+      'עדכון לגבי בקשת החופש שלך לתאריכים {{date_range}}:\nהבקשה {{decision}}.',
   },
   en: {
     booking_link:
@@ -113,6 +119,10 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'Did that help? Feel free to reply 👍 or 👎',
     unknown_intent_fallback:
       'Hi 👋 I did not quite catch that.\nHere is what you can write me:\n\n• "book" to schedule a lesson\n• "cancel" to cancel a lesson\n• "balance" to check what is owed and pay\n• "schedule" for your upcoming lessons\n• "portal" to reach your personal area',
+    lesson_cancelled_by_teacher:
+      'An important update 🗓️\n{{teacher_name}} is unavailable on {{date_range}}, so the lessons scheduled in that period have been cancelled.\nYou will not be charged for them.\n\nTo book a new time, just write "book" 😊',
+    day_off_decision:
+      'An update on your time-off request for {{date_range}}:\nthe request was {{decision}}.',
   },
 }
 
@@ -225,6 +235,8 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   portal_link_reply: ['portal_url'],
   ai_satisfaction_prompt: [],
   unknown_intent_fallback: [],
+  lesson_cancelled_by_teacher: ['teacher_name', 'date_range'],
+  day_off_decision: ['date_range', 'decision'],
 }
 
 /**
@@ -248,6 +260,8 @@ export const TEMPLATE_LABELS: Record<MessageTemplateType, string> = {
   portal_link_reply: 'קישור לפורטל האישי',
   ai_satisfaction_prompt: 'בקשת משוב על תשובת AI',
   unknown_intent_fallback: 'הודעת ברירת מחדל (כוונה לא מזוהה)',
+  lesson_cancelled_by_teacher: 'ביטול שיעורים בעקבות חופשת מורה (להורה)',
+  day_off_decision: 'החלטה על בקשת חופש (למורה)',
 }
 
 /**
@@ -271,4 +285,6 @@ export const TEMPLATE_PREVIEW_VARS: Record<MessageTemplateType, Record<string, s
   portal_link_reply: { portal_url: 'https://app.lessio.co/portal/org-id' },
   ai_satisfaction_prompt: {},
   unknown_intent_fallback: {},
+  lesson_cancelled_by_teacher: { teacher_name: 'אהרון כהן', date_range: '20/08–22/08' },
+  day_off_decision: { date_range: '20/08–22/08', decision: 'אושרה ✅' },
 }

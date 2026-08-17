@@ -17,9 +17,7 @@ import { signBookingToken } from '@/lib/jwt'
 import { decryptToken } from '@/lib/crypto'
 import {
   sendUnknownParentReply,
-  sendCancellationLessonList,
   sendNoEligibleLessonsReply,
-  sendInvalidSelectionReply,
   sendTextMessage,
   parseWebhookPayload,
   hasBookingIntent,
@@ -63,9 +61,7 @@ import {
 } from './shared'
 import {
   detectLocaleFromText,
-  parseAppLocale,
   resolveRecipientLocale,
-  toIntlLocale,
   type AppLocale,
 } from '@/lib/i18n/locale'
 import {
@@ -75,13 +71,10 @@ import {
 } from '@/lib/whatsapp/demoReschedule'
 import { upsertLead } from '@/lib/leads'
 import {
-  getEligibleLessons,
-  formatLessonListMessage,
-  upsertCancellationSession,
   getActiveCancellationSession,
   deleteCancellationSession,
-  executeCancellation,
 } from '@/lib/cancellation-flow'
+import { applyCancellationSelection, startCancellationFlow } from './cancellation'
 import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { isAiConfiguredForOrg } from '@/lib/ai-assistant/providers/factory'
 import { findRecentUsageLog, updateSatisfaction } from '@/lib/ai-assistant/usage'
@@ -503,22 +496,31 @@ async function processMessage(
   const session = forcedStudentId ? null : await getActiveCancellationSession(org.id, senderPhone)
 
   if (session) {
-    await handleCancellationSelection(
-      parent.id, org.id, senderPhone, msg.text,
+    await applyCancellationSelection({
+      actor: { parentId: parent.id, cancelledBy: 'parent' },
+      orgId: org.id,
+      senderPhone,
+      text: msg.text,
       session,
-      (org.timezone as string | null) ?? 'Asia/Jerusalem',
-      accessToken, phoneNumberId, locale
-    )
+      timezone,
+      accessToken,
+      phoneNumberId,
+      locale,
+    })
     return
   }
 
   // 8. Check cancellation intent
   if (hasCancellationIntent(msg.text) && org.automation_cancellation_enabled !== false) {
-    await handleCancellationIntent(
-      parent.id, org.id, senderPhone,
-      (org.timezone as string | null) ?? 'Asia/Jerusalem',
-      accessToken, phoneNumberId, locale
-    )
+    await startCancellationFlow({
+      actor: { parentId: parent.id, cancelledBy: 'parent' },
+      orgId: org.id,
+      senderPhone,
+      timezone,
+      accessToken,
+      phoneNumberId,
+      locale,
+    })
     return
   }
 
@@ -957,9 +959,15 @@ async function runMenuAction(params: {
         await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId, locale)
         return
       }
-      await handleCancellationIntent(
-        parentId, org.id, senderPhone, timezone, accessToken, phoneNumberId, locale
-      )
+      await startCancellationFlow({
+        actor: { parentId, cancelledBy: 'parent' },
+        orgId: org.id,
+        senderPhone,
+        timezone,
+        accessToken,
+        phoneNumberId,
+        locale,
+      })
       return
     case 'balance':
       await handleBalanceQuery(parentId, org.id, senderPhone, accessToken, phoneNumberId, locale, origin)
@@ -984,172 +992,6 @@ async function sendBookingUnavailableReply(
   phoneNumberId: string
 ): Promise<void> {
   await sendTextMessage(phone, body, accessToken, phoneNumberId)
-}
-
-async function handleCancellationIntent(
-  parentId: string,
-  orgId: string,
-  senderPhone: string,
-  timezone: string,
-  accessToken: string,
-  phoneNumberId: string,
-  locale: AppLocale
-): Promise<void> {
-  const lessons = await getEligibleLessons(orgId, parentId)
-
-  if (lessons.length === 0) {
-    await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId, locale)
-    return
-  }
-
-  const message = formatLessonListMessage(lessons, timezone, locale)
-  await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
-  await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId)
-  console.info('[whatsapp/webhook] Cancellation lesson list sent', { orgId, senderPhone })
-}
-
-async function handleCancellationSelection(
-  parentId: string,
-  orgId: string,
-  senderPhone: string,
-  text: string,
-  session: { lesson_ids: string[] },
-  timezone: string,
-  accessToken: string,
-  phoneNumberId: string,
-  locale: AppLocale
-): Promise<void> {
-  const num = parseInt(text.trim(), 10)
-  const count = session.lesson_ids.length
-
-  if (isNaN(num) || num < 1 || num > count) {
-    // Invalid input — keep flow open
-    await sendInvalidSelectionReply(senderPhone, accessToken, phoneNumberId, locale)
-
-    // Re-fetch eligible lessons to rebuild the list (lesson may have changed)
-    const lessons = await getEligibleLessons(orgId, parentId)
-    if (lessons.length === 0) {
-      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId, locale)
-      await deleteCancellationSession(orgId, senderPhone)
-      return
-    }
-    const message = formatLessonListMessage(lessons, timezone, locale)
-    await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
-    await sendCancellationLessonList(senderPhone, message, accessToken, phoneNumberId)
-    return
-  }
-
-  // Valid selection — execute cancellation
-  const selectedLessonId = session.lesson_ids[num - 1]
-
-  const outcome = await executeCancellation(selectedLessonId, parentId, orgId)
-
-  if (!outcome.success) {
-    if (outcome.error === 'already_cancelled') {
-      // Idempotency: already processed, close flow silently
-      await deleteCancellationSession(orgId, senderPhone)
-      return
-    }
-
-    // Lesson no longer eligible — error + rebuild list
-    const lessons = await getEligibleLessons(orgId, parentId)
-    if (lessons.length === 0) {
-      await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId, locale)
-      await deleteCancellationSession(orgId, senderPhone)
-      return
-    }
-    const errorMsg = botString('lesson_no_longer_cancellable', locale)
-    await sendCancellationLessonList(
-      senderPhone,
-      errorMsg + '\n\n' + formatLessonListMessage(lessons, timezone, locale),
-      accessToken,
-      phoneNumberId
-    )
-    await upsertCancellationSession(orgId, senderPhone, lessons.map(l => l.id))
-    return
-  }
-
-  // Success — delete session
-  await deleteCancellationSession(orgId, senderPhone)
-
-  try {
-    // Notify parent — WhatsApp failure must not roll back the completed cancellation
-    const ccDate = new Date(outcome.lessonStartAt).toLocaleDateString(toIntlLocale(locale), {
-      timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long',
-    })
-    const ccTime = new Date(outcome.lessonStartAt).toLocaleTimeString(toIntlLocale(locale), {
-      timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false,
-    })
-    let ccChargeLine = ''
-    if (outcome.chargeResult.chargeType && outcome.chargeResult.amount > 0) {
-      const label = botString(
-        outcome.chargeResult.chargeType === 'full' ? 'charge_full' : 'charge_partial',
-        locale
-      )
-      ccChargeLine = `\n${label}: ₪${outcome.chargeResult.amount.toFixed(2)}`
-    }
-    const ccBody = await resolveTemplate(orgId, 'cancellation_confirmation', {
-      student_name: outcome.studentName,
-      teacher_name: outcome.teacherName,
-      date: ccDate,
-      time: ccTime,
-      charge_line: ccChargeLine,
-    }, locale)
-    await sendTextMessage(senderPhone, ccBody, accessToken, phoneNumberId).catch(err => {
-      console.error('[whatsapp/webhook] Failed to send cancellation confirmation — cancellation committed', { orgId, senderPhone, lessonId: selectedLessonId, err })
-    })
-
-    // Notify admin (best-effort — do not throw if admin phone missing)
-    const db = createServiceRoleClient()
-    const { data: ownerProfile } = await db
-      .from('profiles')
-      .select('phone, preferred_locale')
-      .eq('organization_id', orgId)
-      .eq('role', 'owner')
-      .eq('is_active', true)
-      .maybeSingle()
-
-    if (ownerProfile?.phone) {
-      // The admin alert goes to the owner — their own UI language, not the parent's.
-      const adminLocale = parseAppLocale(ownerProfile.preferred_locale as string | undefined)
-      const adminDate = new Date(outcome.lessonStartAt).toLocaleDateString(toIntlLocale(adminLocale), {
-        timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long',
-      })
-      const adminTime = new Date(outcome.lessonStartAt).toLocaleTimeString(toIntlLocale(adminLocale), {
-        timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false,
-      })
-      let caChargeLine = ''
-      if (outcome.chargeResult.chargeType && outcome.chargeResult.amount > 0) {
-        const label = botString(
-          outcome.chargeResult.chargeType === 'full' ? 'charge_full' : 'charge_partial',
-          adminLocale
-        )
-        caChargeLine = `\n${botString('charge_line_label', adminLocale)}: ₪${outcome.chargeResult.amount.toFixed(2)} (${label})`
-      } else {
-        caChargeLine = `\n${botString('charge_none', adminLocale)}`
-      }
-      const caBody = await resolveTemplate(orgId, 'cancellation_admin_alert', {
-        student_name: outcome.studentName,
-        teacher_name: outcome.teacherName,
-        date: adminDate,
-        time: adminTime,
-        charge_line: caChargeLine,
-        parent_phone: senderPhone,
-      }, adminLocale)
-      await sendTextMessage(ownerProfile.phone, caBody, accessToken, phoneNumberId).catch(err => {
-        console.error('[whatsapp/webhook] Failed to send admin cancellation alert', err)
-      })
-    }
-  } catch (err) {
-    console.error('[whatsapp/webhook] Post-cancellation notification flow failed after commit', {
-      orgId,
-      senderPhone,
-      lessonId: selectedLessonId,
-      err,
-    })
-  }
-
-  console.info('[whatsapp/webhook] Cancellation completed', { orgId, selectedLessonId, senderPhone })
 }
 
 // ── Sprint 14: helper ─────────────────────────────────────────────────────────

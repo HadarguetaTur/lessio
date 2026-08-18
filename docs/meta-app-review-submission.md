@@ -120,6 +120,11 @@ Never run `connect-demo-whatsapp.ts` against the variant. The Meta test number b
 one org — the webhook resolves it by `phone_number_id` with `.single()` — so connecting it here
 would silently break the bot on the tenant handed to Meta.
 
+The variant also seeds every reminder automation **off**, unlike the base tenant. The reminder
+crons sweep every org that has a number attached, so the moment a real business account is
+connected on camera, an hourly `lesson-reminders` run would otherwise message the twelve
+fictional parent numbers from it. Toggle them on in `/settings/whatsapp` if a shot needs them.
+
 Clean it up with the same variable: `REVIEW_DEMO_VARIANT=2 npx tsx scripts/cleanup-review-demo.ts --yes`.
 
 ### Credentials block for the submission form

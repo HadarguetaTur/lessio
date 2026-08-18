@@ -20,12 +20,6 @@ import { ReceiptProviderNotConfiguredError, type ReceiptProvider } from './index
 
 export type ReceiptProviderType = 'green-invoice' | 'icount' | 'sumit'
 
-export const RECEIPT_PROVIDER_LABELS: Record<ReceiptProviderType, string> = {
-  'green-invoice': 'חשבוניות ירוקות (Morning)',
-  'icount':        'iCount',
-  'sumit':         'Sumit (סאמיט)',
-}
-
 function getEncryptionKey(): string {
   const key = process.env.PAYMENT_CONFIG_ENCRYPTION_KEY
   if (!key) {

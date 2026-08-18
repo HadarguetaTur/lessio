@@ -13,6 +13,7 @@ import { gradeSubmission } from '@/lib/homework/submissions'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
+import { getT } from '@/lib/i18n/serverTranslator'
 import { decryptToken } from '@/lib/crypto'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { homeworkGradedEmail } from '@/lib/email/templates/homeworkGraded'
@@ -138,7 +139,7 @@ async function notifyGraded(
     stored: parentRow?.preferred_locale,
     orgDefault: org.default_locale as string | null,
   })
-  const feedbackLabel = locale === 'en' ? 'Feedback' : 'משוב'
+  const feedbackLabel = (await getT('common', locale))('feedback')
   const feedbackLine = feedback.trim() ? `${feedbackLabel}: ${feedback}` : ''
 
   await sendSmartMessage({

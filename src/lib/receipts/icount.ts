@@ -158,7 +158,7 @@ export class ICountProvider implements ReceiptProvider {
     originalInvoiceNumber: string
   }): Promise<{ creditNoteUrl: string; creditNoteId: string }> {
     const sid = await this.login()
-    const description = `${params.description} (מבטלת חשבונית ${params.originalInvoiceNumber})`
+    const description = `${params.description} (credits invoice ${params.originalInvoiceNumber})`
     const result = await this.createDocument(sid, '330', {
       ...params,
       description,

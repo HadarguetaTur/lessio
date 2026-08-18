@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { getTranslations } from 'next-intl/server'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 function getSubscriptionStatus(sub: {
   is_paused: boolean
@@ -24,7 +25,7 @@ export default async function SubscriptionsPage(props: {
   const { orgId, role } = await getSession()
 
   if (role !== 'owner' && role !== 'admin') {
-    return <div className="p-6 text-sm text-muted-foreground">אין הרשאה</div>
+    return <div className="p-6 text-sm text-muted-foreground">{await commonError('noPermission')}</div>
   }
 
   const [t, tCommon] = await Promise.all([

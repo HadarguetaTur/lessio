@@ -12,7 +12,7 @@ interface PageProps {
 }
 
 export default async function ParentsImportPage({ searchParams }: PageProps) {
-  const t = await getTranslations()
+  const t = await getTranslations('parents.importPage')
   const { role } = await getSession()
   if (role === 'teacher') {
     redirect('/parents')
@@ -26,11 +26,9 @@ export default async function ParentsImportPage({ searchParams }: PageProps) {
   // Mode: family-list or parents
   if (mode === 'family-list' || mode === 'parents') {
     const entityType = mode === 'family-list' ? 'family-list' : 'parents'
-    const title = mode === 'family-list' ? 'יבוא רשימת משפחות' : 'יבוא הורים'
+    const title = mode === 'family-list' ? t('familyListTitle') : t('parentsTitle')
     const subtitle =
-      mode === 'family-list'
-        ? 'שורה אחת = תלמיד + הורה. המערכת תיצור תלמידים, הורים וקישורים ביניהם אוטומטית.'
-        : 'יבוא הורים עם קישור לתלמידים קיימים לפי שם.'
+      mode === 'family-list' ? t('familyListSubtitle') : t('parentsSubtitle')
 
     return (
       <div>
@@ -41,7 +39,7 @@ export default async function ParentsImportPage({ searchParams }: PageProps) {
             <Link href="/parents/import">
               <Button variant="outline" size="sm">
                 <ArrowRight size={14} className="ml-1.5" />
-                שנה מצב יבוא
+                {t('changeMode')}
               </Button>
             </Link>
           }
@@ -57,13 +55,13 @@ export default async function ParentsImportPage({ searchParams }: PageProps) {
   return (
     <div>
       <PageHeader
-        title="יבוא הורים ותלמידים"
-        subtitle="בחר את מצב היבוא המתאים לנתונים שלך"
+        title={t('chooserTitle')}
+        subtitle={t('chooserSubtitle')}
         actions={
           <Link href="/parents">
             <Button variant="outline" size="sm">
               <ArrowRight size={14} className="ml-1.5" />
-              חזרה להורים
+              {t('back')}
             </Button>
           </Link>
         }
@@ -79,15 +77,14 @@ export default async function ParentsImportPage({ searchParams }: PageProps) {
               <Users size={20} className="text-primary" />
             </div>
             <div>
-              <p className="font-semibold text-sm text-foreground">רשימת משפחות</p>
+              <p className="font-semibold text-sm text-foreground">{t('familyListCard')}</p>
               <span className="text-[10px] font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5">
-                מומלץ
+                {t('familyListBadge')}
               </span>
             </div>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            כל שורה = תלמיד + הורה. המערכת תיצור את שניהם ותקשר ביניהם אוטומטית. הכי נוח
-            לייבוא ראשוני.
+            {t('familyListDesc')}
           </p>
         </Link>
 
@@ -99,11 +96,10 @@ export default async function ParentsImportPage({ searchParams }: PageProps) {
             <div className="rounded-lg bg-muted p-2 group-hover:bg-muted/80 transition-colors">
               <User size={20} className="text-muted-foreground" />
             </div>
-            <p className="font-semibold text-sm text-foreground">הורים בלבד</p>
+            <p className="font-semibold text-sm text-foreground">{t('parentsOnlyCard')}</p>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            ייבוא הורים עם קישור לתלמידים קיימים לפי שם. מתאים אם התלמידים כבר קיימים
-            במערכת.
+            {t('parentsOnlyDesc')}
           </p>
         </Link>
 
@@ -115,10 +111,10 @@ export default async function ParentsImportPage({ searchParams }: PageProps) {
             <div className="rounded-lg bg-muted p-2 group-hover:bg-muted/80 transition-colors">
               <GraduationCap size={20} className="text-muted-foreground" />
             </div>
-            <p className="font-semibold text-sm text-foreground">תלמידים בלבד</p>
+            <p className="font-semibold text-sm text-foreground">{t('studentsOnlyCard')}</p>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            ייבוא תלמידים ללא הורים. ניתן להוסיף הורים בנפרד לאחר מכן.
+            {t('studentsOnlyDesc')}
           </p>
         </Link>
       </div>

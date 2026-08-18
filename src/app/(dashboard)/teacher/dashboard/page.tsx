@@ -50,7 +50,11 @@ export default async function TeacherDashboardPage() {
   const weekdayKey = WEEKDAY_KEYS[dt.weekday - 1]
   const todayLabel =
     locale === 'he'
-      ? `יום ${tc(`days.${weekdayKey}`)}, ${dt.day} ב${tc(`months.${dt.month}`)}`
+      ? tc('todayLabel', {
+          day: tc(`days.${weekdayKey}`),
+          dayNum: dt.day,
+          month: tc(`months.${dt.month}`),
+        })
       : dt.setLocale('en').toFormat('cccc, LLLL d')
 
   const todayStr = getCurrentDayStr(timezone)

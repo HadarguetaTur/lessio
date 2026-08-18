@@ -368,7 +368,7 @@ export async function generateProgressReportAction(
     .eq('id', studentId)
     .eq('organization_id', session.orgId)
     .maybeSingle()
-  if (!row) return { error: 'תלמיד לא נמצא' }
+  if (!row) return { error: t('students.errors.studentNotFound') }
 
   const timezone = await getOrgTimezone(session.orgId)
   const bounds = parseReportDates(fromDate, toDate, timezone)
@@ -418,7 +418,7 @@ export async function sendProgressReportEmailAction(
     .eq('id', studentId)
     .eq('organization_id', session.orgId)
     .maybeSingle()
-  if (!row) return { error: 'תלמיד לא נמצא' }
+  if (!row) return { error: t('students.errors.studentNotFound') }
 
   const canSend = await shouldSendEmail(session.orgId, 'progress_report', emailParsed.data)
   if (!canSend) {

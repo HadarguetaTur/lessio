@@ -207,7 +207,10 @@
     "logout": "יציאה",
     "nav": {
       "students": "תלמידים"
-    }
+    },
+    "todayLabel": "יום {day}, {dayNum} ב{month}",
+    "longDateFormat": "d 'ב'LLLL yyyy",
+    "feedback": "משוב"
   },
   "nav": {
     "sections": {
@@ -622,7 +625,12 @@
       "familyListCard": "רשימת משפחות",
       "parentsOnlyCard": "הורים בלבד",
       "studentsOnlyCard": "תלמידים בלבד",
-      "importLabel": "יבוא"
+      "importLabel": "יבוא",
+      "familyListBadge": "מומלץ",
+      "familyListDesc": "כל שורה = תלמיד + הורה. המערכת תיצור את שניהם ותקשר ביניהם אוטומטית. הכי נוח לייבוא ראשוני.",
+      "parentsOnlyDesc": "ייבוא הורים עם קישור לתלמידים קיימים לפי שם. מתאים אם התלמידים כבר קיימים במערכת.",
+      "studentsOnlyDesc": "ייבוא תלמידים ללא הורים. ניתן להוסיף הורים בנפרד לאחר מכן.",
+      "changeMode": "שנה מצב יבוא"
     }
   },
   "teachers": {
@@ -1637,7 +1645,20 @@
       "sumitApiKeyPlaceholder": "מפתח ה-API מהגדרות המפתח ב-Sumit",
       "cidLabel": "מזהה חברה (CID)",
       "userLabel": "שם משתמש",
-      "passLabel": "סיסמה"
+      "passLabel": "סיסמה",
+      "greenInvoiceHelp": "הפרטים נמצאים בלוח הבקרה של חשבוניות ירוקות תחת",
+      "greenInvoiceLink": "הגדרות → API",
+      "icountHelp": "הפרטים נמצאים בלוח הבקרה של iCount תחת",
+      "icountLink": "iCount",
+      "sumitHelp": "הפרטים נמצאים בלוח הבקרה של Sumit תחת",
+      "sumitLink": "Sumit",
+      "greenPrefix": "ניתן למצוא את הפרטים בלוח הבקרה של ",
+      "greenLink": "חשבוניות ירוקות",
+      "greenSuffix": " תחת הגדרות API.",
+      "icountPrefix": "השתמש בפרטי ההתחברות שלך ל-",
+      "icountSuffix": ". ה-CID מופיע בלוח הבקרה תחת הגדרות החברה.",
+      "sumitPrefix": "ניתן למצוא את הפרטים ב-",
+      "sumitSuffix": " תחת הגדרות → API."
     },
     "whatsappPage": {
       "subtitle": "חבר את מספר ה-WhatsApp של הארגון שלך כדי לשלוח ולקבל הודעות. כל ארגון מחובר למספר משלו.",
@@ -2054,7 +2075,10 @@
       "reason": "סיבה"
     },
     "noTeacherRecord": "לא נמצאה רשומת מורה פעילה עבור משתמש זה.",
-    "dashboardDate": "יום {day}, {dayNum} ב{month}"
+    "dashboardDate": "יום {day}, {dayNum} ב{month}",
+    "noTeacherRecordContact": "לא נמצאה רשומת מורה פעילה. פנה למנהל המערכת.",
+    "availabilityHint": "הגדר את החלונות השבועיים בהם תלמידים יוכלו להזמין שיעורים.",
+    "overridesHint": "חריגים ליום מסוים — חופשה, שעות מיוחדות, או חסימה מלאה."
   },
   "admin": {
     "nav": {

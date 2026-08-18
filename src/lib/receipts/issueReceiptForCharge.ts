@@ -20,6 +20,8 @@ import { ReceiptProviderNotConfiguredError } from './index'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
+import { getT } from '@/lib/i18n/serverTranslator'
+import { renderChargeNote } from '@/lib/charges/renderNote'
 
 /**
  * Issues a receipt for a paid charge and updates the charge row.
@@ -94,7 +96,15 @@ export async function issueReceiptForCharge(
     default_locale: string | null
   } | null
 
-  const parentName = parent?.full_name ?? 'לקוח'
+  // Printed on the real tax document the parent receives, so it follows their
+  // language rather than whoever triggered the receipt.
+  const locale = resolveRecipientLocale({
+    stored: parent?.preferred_locale,
+    orgDefault: org?.default_locale,
+  })
+  const t = await getT('receipts', locale)
+
+  const parentName = parent?.full_name ?? t('customer')
   const orgName = org?.name ?? ''
   const tz = org?.timezone ?? 'Asia/Jerusalem'
   const chargeType = charge.charge_type as string
@@ -103,14 +113,18 @@ export async function issueReceiptForCharge(
     DateTime.now().setZone(tz).toISODate() ??
     new Date().toISOString().slice(0, 10)
 
+  // `charge.notes` holds a code for generated notes, so it has to go through
+  // renderChargeNote rather than being printed raw.
+  const noteText = renderChargeNote(charge.notes as string | null, t)
+
   const description =
     chargeType === 'monthly'
-      ? ((charge.notes as string | null) ?? `חיוב חודשי ${billingMonth ?? ''}`).trim()
+      ? (noteText ?? t('monthlyCharge', { month: billingMonth ?? '' })).trim()
       : chargeType === 'cancellation'
-        ? `תשלום ביטול — ${parentName}`
+        ? t('cancellationPayment', { name: parentName })
         : chargeType === 'manual'
-          ? ((charge.notes as string | null) ?? `חיוב ידני — ${parentName}`).trim()
-          : `תשלום שיעור — ${parentName}`
+          ? (noteText ?? t('manualCharge', { name: parentName })).trim()
+          : t('lessonPayment', { name: parentName })
 
   const documentType = (org?.receipt_document_type === 'tax_invoice' ? 'tax_invoice' : 'receipt') as import('./index').DocumentType
   const vatRate = Number(org?.default_vat_rate ?? 0)

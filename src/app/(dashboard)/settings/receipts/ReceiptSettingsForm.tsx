@@ -5,11 +5,9 @@ import { useTranslations } from 'next-intl'
 import { saveReceiptConfigAction, type ReceiptActionState } from './actions'
 import type { ReceiptProviderType } from '@/lib/receipts/factory'
 
-const PROVIDERS: Array<{ value: ReceiptProviderType; label: string }> = [
-  { value: 'green-invoice', label: 'חשבוניות ירוקות (Morning)' },
-  { value: 'icount',        label: 'iCount' },
-  { value: 'sumit',         label: 'Sumit (סאמיט)' },
-]
+// Labels come from settings.receiptProviders.<value> — the picker renders in
+// the viewer's language.
+const PROVIDERS: ReceiptProviderType[] = ['green-invoice', 'icount', 'sumit']
 
 const initialState: ReceiptActionState = { success: false }
 
@@ -18,6 +16,7 @@ const INPUT_CLS =
 const LABEL_CLS = 'block text-sm font-medium text-gray-700 mb-1'
 
 export function ReceiptSettingsForm() {
+  const tp = useTranslations('settings')
   const t = useTranslations('settings.receipts')
   const tCommon = useTranslations('common')
   const [provider, setProvider] = useState<ReceiptProviderType>('green-invoice')
@@ -38,8 +37,8 @@ export function ReceiptSettingsForm() {
           className={INPUT_CLS}
         >
           {PROVIDERS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
+            <option key={p} value={p}>
+              {tp(`receiptProviders.${p}`)}
             </option>
           ))}
         </select>
@@ -58,7 +57,7 @@ export function ReceiptSettingsForm() {
               type="text"
               required
               autoComplete="off"
-              placeholder="מזהה ה-API מלוח הבקרה של חשבוניות ירוקות"
+              placeholder={tp('receiptsForm.greenInvoiceIdPlaceholder')}
               className={INPUT_CLS}
             />
           </div>
@@ -72,21 +71,21 @@ export function ReceiptSettingsForm() {
               type="password"
               required
               autoComplete="off"
-              placeholder="הסיסמה הסודית מלוח הבקרה של חשבוניות ירוקות"
+              placeholder={tp('receiptsForm.greenInvoiceSecretPlaceholder')}
               className={INPUT_CLS}
             />
           </div>
           <p className="text-xs text-gray-500">
-            ניתן למצוא את הפרטים בלוח הבקרה של{' '}
+            {tp('receiptsForm.greenPrefix')}
             <a
               href="https://app.greeninvoice.co.il"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
             >
-              חשבוניות ירוקות
-            </a>{' '}
-            תחת הגדרות API.
+              {tp('receiptsForm.greenLink')}
+            </a>
+            {tp('receiptsForm.greenSuffix')}
           </p>
         </>
       )}
@@ -96,7 +95,7 @@ export function ReceiptSettingsForm() {
         <>
           <div>
             <label htmlFor="receipt-cid" className={LABEL_CLS}>
-              מזהה חברה (CID)
+              {tp('receiptsForm.cidLabel')}
             </label>
             <input
               id="receipt-cid"
@@ -104,13 +103,13 @@ export function ReceiptSettingsForm() {
               type="text"
               required
               autoComplete="off"
-              placeholder="מזהה החברה ב-iCount"
+              placeholder={tp('receiptsForm.icountCidPlaceholder')}
               className={INPUT_CLS}
             />
           </div>
           <div>
             <label htmlFor="receipt-user" className={LABEL_CLS}>
-              שם משתמש
+              {tp('receiptsForm.userLabel')}
             </label>
             <input
               id="receipt-user"
@@ -118,13 +117,13 @@ export function ReceiptSettingsForm() {
               type="text"
               required
               autoComplete="off"
-              placeholder="שם המשתמש שלך ב-iCount"
+              placeholder={tp('receiptsForm.icountUserPlaceholder')}
               className={INPUT_CLS}
             />
           </div>
           <div>
             <label htmlFor="receipt-pass" className={LABEL_CLS}>
-              סיסמה
+              {tp('receiptsForm.passLabel')}
             </label>
             <input
               id="receipt-pass"
@@ -132,12 +131,12 @@ export function ReceiptSettingsForm() {
               type="password"
               required
               autoComplete="off"
-              placeholder="הסיסמה שלך ב-iCount"
+              placeholder={tp('receiptsForm.icountPassPlaceholder')}
               className={INPUT_CLS}
             />
           </div>
           <p className="text-xs text-gray-500">
-            השתמש בפרטי ההתחברות שלך ל-
+            {tp('receiptsForm.icountPrefix')}
             <a
               href="https://app.icount.co.il"
               target="_blank"
@@ -146,7 +145,7 @@ export function ReceiptSettingsForm() {
             >
               iCount
             </a>
-            . ה-CID מופיע בלוח הבקרה תחת הגדרות החברה.
+            {tp('receiptsForm.icountSuffix')}
           </p>
         </>
       )}
@@ -164,7 +163,7 @@ export function ReceiptSettingsForm() {
               type="text"
               required
               autoComplete="off"
-              placeholder="מזהה החברה ב-Sumit"
+              placeholder={tp('receiptsForm.sumitCompanyPlaceholder')}
               className={INPUT_CLS}
             />
           </div>
@@ -178,12 +177,12 @@ export function ReceiptSettingsForm() {
               type="password"
               required
               autoComplete="off"
-              placeholder="מפתח ה-API מהגדרות המפתח ב-Sumit"
+              placeholder={tp('receiptsForm.sumitApiKeyPlaceholder')}
               className={INPUT_CLS}
             />
           </div>
           <p className="text-xs text-gray-500">
-            ניתן למצוא את הפרטים ב-
+            {tp('receiptsForm.sumitPrefix')}
             <a
               href="https://app.sumit.co.il"
               target="_blank"
@@ -191,8 +190,8 @@ export function ReceiptSettingsForm() {
               className="text-blue-600 hover:underline"
             >
               Sumit
-            </a>{' '}
-            תחת הגדרות &rarr; API.
+            </a>
+            {tp('receiptsForm.sumitSuffix')}
           </p>
         </>
       )}

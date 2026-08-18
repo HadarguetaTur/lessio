@@ -148,7 +148,7 @@ export class GreenInvoiceProvider implements ReceiptProvider {
     customerTaxId?: string
     originalInvoiceNumber: string
   }): Promise<{ creditNoteUrl: string; creditNoteId: string }> {
-    const description = `${params.description} (מבטלת חשבונית ${params.originalInvoiceNumber})`
+    const description = `${params.description} (credits invoice ${params.originalInvoiceNumber})`
     // Green Invoice type 330 = חשבונית זיכוי (credit note)
     const result = await this.createDocument(330, { ...params, description })
     return { creditNoteUrl: result.url, creditNoteId: result.id }

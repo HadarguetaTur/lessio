@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { CheckCircle, AlertCircle } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { RECEIPT_PROVIDER_LABELS, type ReceiptProviderType } from '@/lib/receipts/factory'
+import { type ReceiptProviderType } from '@/lib/receipts/factory'
 import { ReceiptSettingsForm } from './ReceiptSettingsForm'
 import { DisconnectReceiptButton } from './DisconnectReceiptButton'
 
@@ -32,7 +32,7 @@ export default async function ReceiptSettingsPage() {
 
   const isConnected = Boolean(org?.receipt_config_encrypted)
   const providerType = (org?.receipt_provider ?? 'green-invoice') as ReceiptProviderType
-  const providerLabel = RECEIPT_PROVIDER_LABELS[providerType] ?? providerType
+  const providerLabel = providerType ? tp(`receiptProviders.${providerType}`) : ''
 
   return (
     <div className="max-w-xl">

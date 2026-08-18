@@ -5,6 +5,8 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { DateTime } from 'luxon'
+import { getT } from '@/lib/i18n/serverTranslator'
+import type { AppLocale } from '@/lib/i18n/locale'
 
 export interface AccountingExportRow {
   type: 'invoice' | 'credit_note'
@@ -24,8 +26,10 @@ export interface AccountingExportRow {
 export async function getAccountingExport(
   orgId: string,
   timezone: string,
-  range: { from: string; to: string }
+  range: { from: string; to: string },
+  locale: AppLocale = 'he'
 ): Promise<AccountingExportRow[]> {
+  const t = await getT('receipts', locale)
   const db = createServiceRoleClient()
 
   // Fetch billing records that have an invoice or credit note within the date range
@@ -127,7 +131,7 @@ export async function getAccountingExport(
           documentNumber: rec.invoice_number as string,
           customerName,
           customerTaxId,
-          description: `חיוב חודשי ${rec.billing_month}`,
+          description: t('monthlyCharge', { month: rec.billing_month as string }),
           amountNet: netAmount.toFixed(2),
           vatAmount: vatAmount.toFixed(2),
           amountGross: totalAmount.toFixed(2),
@@ -158,7 +162,11 @@ export async function getAccountingExport(
           documentNumber: rec.credit_note_number as string,
           customerName,
           customerTaxId,
-          description: `זיכוי — ${(rec.credit_note_reason as string) || `חיוב ${rec.billing_month}`}`,
+          description: t('creditNoteLine', {
+            reason:
+              (rec.credit_note_reason as string) ||
+              t('chargeFallback', { month: rec.billing_month as string }),
+          }),
           amountNet: (-netAmount).toFixed(2),
           vatAmount: (-vatAmount).toFixed(2),
           amountGross: (-totalAmount).toFixed(2),

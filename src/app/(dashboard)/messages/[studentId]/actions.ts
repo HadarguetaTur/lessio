@@ -36,7 +36,7 @@ export async function replyToPortalMessageAction(
     .eq('organization_id', session.orgId)
     .maybeSingle()
 
-  if (!student) return { error: 'תלמיד לא נמצא' }
+  if (!student) return { error: t('lessons.messageErrors.studentNotFound') }
 
   try {
     await sendPortalMessage({

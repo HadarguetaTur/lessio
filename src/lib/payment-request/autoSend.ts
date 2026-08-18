@@ -15,6 +15,7 @@ import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
+import { getT } from '@/lib/i18n/serverTranslator'
 import { buildPaymentRequestMessage } from './index'
 
 export async function autoSendPaymentRequest(lessonId: string, orgId: string): Promise<void> {
@@ -77,12 +78,21 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
       return
     }
 
+    // The description shows on the checkout page the parent lands on, so it
+    // follows their language rather than the org's.
+    const recipientLocale = resolveRecipientLocale({
+      stored: parent.preferred_locale as string | null,
+      orgDefault: org.default_locale as string | null,
+    })
+
     // 4. Create payment link via provider
     const { provider, providerName } = await getPaymentProvider(orgId)
     const paymentResult = await provider.createPaymentLink({
       chargeId: charge.id,
       amount: Number(charge.amount),
-      description: `חיוב שיעור — ${parent.full_name}`,
+      description: (await getT('receipts', recipientLocale))('lessonPayment', {
+        name: parent.full_name as string,
+      }),
       orgId,
     })
 
@@ -119,10 +129,7 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
       chargesForMessage,
       timezone,
       paymentResult.url,
-      resolveRecipientLocale({
-        stored: parent.preferred_locale as string | null,
-        orgDefault: org.default_locale as string | null,
-      })
+      recipientLocale
     )
 
     try {

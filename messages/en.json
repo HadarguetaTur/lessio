@@ -207,7 +207,10 @@
     "logout": "Sign out",
     "nav": {
       "students": "Students"
-    }
+    },
+    "todayLabel": "{day}, {month} {dayNum}",
+    "longDateFormat": "LLLL d, yyyy",
+    "feedback": "Feedback"
   },
   "nav": {
     "sections": {
@@ -622,7 +625,12 @@
       "familyListCard": "Family list",
       "parentsOnlyCard": "Parents only",
       "studentsOnlyCard": "Students only",
-      "importLabel": "Import"
+      "importLabel": "Import",
+      "familyListBadge": "Recommended",
+      "familyListDesc": "Each row = one student + one parent. Both are created and linked automatically. The easiest way to do an initial import.",
+      "parentsOnlyDesc": "Import parents and link them to existing students by name. Use this when the students are already in the system.",
+      "studentsOnlyDesc": "Import students without parents. You can add parents separately afterwards.",
+      "changeMode": "Change import mode"
     }
   },
   "teachers": {
@@ -1637,7 +1645,20 @@
       "sumitApiKeyPlaceholder": "The API key from the developer settings in Sumit",
       "cidLabel": "Company ID (CID)",
       "userLabel": "Username",
-      "passLabel": "Password"
+      "passLabel": "Password",
+      "greenInvoiceHelp": "You will find these in the Green Invoice dashboard under",
+      "greenInvoiceLink": "Settings → API",
+      "icountHelp": "You will find these in the iCount dashboard under",
+      "icountLink": "iCount",
+      "sumitHelp": "You will find these in the Sumit dashboard under",
+      "sumitLink": "Sumit",
+      "greenPrefix": "You will find these in the dashboard of ",
+      "greenLink": "Green Invoice",
+      "greenSuffix": " under API settings.",
+      "icountPrefix": "Use your sign-in details for ",
+      "icountSuffix": ". The CID appears in the dashboard under company settings.",
+      "sumitPrefix": "You will find these in ",
+      "sumitSuffix": " under Settings → API."
     },
     "whatsappPage": {
       "subtitle": "Connect your organization WhatsApp number to send and receive messages. Each organization is connected to its own number.",
@@ -2054,7 +2075,10 @@
       "reason": "Reason"
     },
     "noTeacherRecord": "No active teacher record was found for this user.",
-    "dashboardDate": "{day}, {dayNum} {month}"
+    "dashboardDate": "{day}, {dayNum} {month}",
+    "noTeacherRecordContact": "No active teacher record found. Contact your system administrator.",
+    "availabilityHint": "Set the weekly windows in which students can book lessons.",
+    "overridesHint": "Exceptions for a specific day — a holiday, special hours, or a full block."
   },
   "admin": {
     "nav": {

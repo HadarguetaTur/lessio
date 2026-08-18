@@ -24,7 +24,7 @@ export default async function TeacherAvailabilityPage() {
   if (!teacher) {
     return (
       <div className="text-center mt-16 text-sm text-gray-500">
-        לא נמצאה רשומת מורה פעילה. פנה למנהל המערכת.
+        {t('noTeacherRecordContact')}
       </div>
     )
   }
@@ -38,9 +38,7 @@ export default async function TeacherAvailabilityPage() {
   return (
     <div className="max-w-2xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        הגדר את החלונות השבועיים בהם תלמידים יוכלו להזמין שיעורים.
-      </p>
+      <p className="text-sm text-gray-500 mb-6">{t('availabilityHint')}</p>
 
       {/* Weekly grid */}
       <div className="space-y-2 mb-6">

@@ -31,16 +31,18 @@ export default async function StudentsReportPage() {
   const timezone = await getOrgTimezone(session.orgId)
   const { rows, atRiskCount } = await getStudentsReport(session.orgId, timezone)
 
-  const [locale, t] = await Promise.all([getLocale(), getTranslations('reports')])
+  const [locale, t, tCommon] = await Promise.all([
+    getLocale(),
+    getTranslations('reports'),
+    getTranslations('common'),
+  ])
   const appLocale = parseAppLocale(locale)
   const luxonLoc = toLuxonLocale(appLocale)
 
   function formatDate(iso: string | null): string {
     if (!iso) return t('dash')
     const dt = DateTime.fromISO(iso, { zone: 'utc' }).setZone(timezone).setLocale(luxonLoc)
-    return appLocale === 'he'
-      ? dt.toFormat('d בLLLL yyyy')
-      : dt.toFormat('LLLL d, yyyy')
+    return dt.toFormat(tCommon('longDateFormat'))
   }
 
   const subtitle =

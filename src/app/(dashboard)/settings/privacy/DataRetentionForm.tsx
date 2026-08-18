@@ -9,12 +9,8 @@ interface Props {
   action: (prev: DataRetentionState, formData: FormData) => Promise<DataRetentionState>
 }
 
-const OPTIONS = [
-  { value: '90', label: '90 יום' },
-  { value: '180', label: '180 יום' },
-  { value: '365', label: '365 יום (ברירת מחדל)' },
-  { value: 'never', label: 'לעולם לא (שמירה ללא הגבלה)' },
-]
+// Labels come from settings.dataRetention — `365` is the product default.
+const OPTIONS = ['90', '180', '365', 'never'] as const
 
 function currentValueFromDays(days: number | null): string {
   if (days === null) return 'never'
@@ -38,7 +34,13 @@ export function DataRetentionForm({ currentDays, action }: Props) {
           className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
         >
           {OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o} value={o}>
+              {o === 'never'
+                ? tp('dataRetention.never')
+                : o === '365'
+                  ? tp('dataRetention.daysDefault', { n: o })
+                  : tp('dataRetention.days', { n: o })}
+            </option>
           ))}
         </select>
       </div>

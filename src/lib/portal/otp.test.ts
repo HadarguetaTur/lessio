@@ -76,10 +76,16 @@ describe('countRecentOtpRequests', () => {
 
     const before = Date.now()
     const count = await countRecentOtpRequests('+972500000000', 'org-1', 15)
+    const after = Date.now()
 
+    // The implementation reads its own Date.now() somewhere between `before`
+    // and `after`, so the cutoff is only bounded by those two. Comparing the
+    // lower bound against `before` made this pass only when both clock reads
+    // happened to land in the same millisecond.
     const since = new Date(db.filters['gte:created_at'] as string).getTime()
-    expect(before - since).toBeGreaterThanOrEqual(15 * 60 * 1000)
-    expect(before - since).toBeLessThan(15 * 60 * 1000 + 5_000)
+    expect(after - since).toBeGreaterThanOrEqual(15 * 60 * 1000)
+    expect(before - since).toBeLessThanOrEqual(15 * 60 * 1000)
+    expect(after - since).toBeLessThan(15 * 60 * 1000 + 5_000)
     expect(count).toBe(2)
   })
 })

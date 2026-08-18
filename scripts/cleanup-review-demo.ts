@@ -14,20 +14,41 @@
  * cascade cleanly from organizations.
  *
  * Usage: npx tsx scripts/cleanup-review-demo.ts --yes
+ * With REVIEW_DEMO_VARIANT=N it instead deletes the variant copy that
+ * seed-review-demo.ts created under the same value (org d200000N-…).
  */
 
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const ORG_ID = 'd2000000-0000-4000-8000-000000000000'
+// The variant decides which copy gets deleted, so env must load first.
+loadEnvLocal()
+
+/**
+ * REVIEW_DEMO_VARIANT (digit 1-9) targets the side-by-side copy that
+ * seed-review-demo.ts built with the same value — org d200000N-… and the
+ * reviewerN@ / *N@demo emails. Unset, it deletes the original tenant.
+ */
+const VARIANT = process.env.REVIEW_DEMO_VARIANT ?? ''
+if (VARIANT && !/^[1-9]$/.test(VARIANT)) {
+  fail(`REVIEW_DEMO_VARIANT must be a single digit 1-9, got "${VARIANT}"`)
+}
+const variantEmail = (email: string): string =>
+  VARIANT ? email.replace('@', `${VARIANT}@`) : email
+
+const ORG_ID = `d200000${VARIANT || '0'}-0000-4000-8000-000000000000`
 const EXPECTED_ORG_NAME = 'Brightpath Tutoring'
 
 const DEMO_EMAILS = [
-  process.env.REVIEW_DEMO_OWNER_EMAIL ?? 'reviewer@getlessio.com',
-  'sarah.klein@demo.getlessio.com',
-  'david.mor@demo.getlessio.com',
-  'noa.barak@demo.getlessio.com',
+  // A variant ignores REVIEW_DEMO_OWNER_EMAIL — that override belongs to the
+  // base tenant, and honoring it here would delete the wrong auth user.
+  VARIANT
+    ? variantEmail('reviewer@getlessio.com')
+    : (process.env.REVIEW_DEMO_OWNER_EMAIL ?? 'reviewer@getlessio.com'),
+  variantEmail('sarah.klein@demo.getlessio.com'),
+  variantEmail('david.mor@demo.getlessio.com'),
+  variantEmail('noa.barak@demo.getlessio.com'),
 ]
 
 /** Deleted in this order; each references something deleted after it. */

@@ -67,7 +67,12 @@ export async function POST(request: NextRequest) {
       entityType as EntityType,
       validatedRows,
       existingWarning,
-      (name: string) => t('warnings.studentNotFound', { name } as Record<string, string>)
+      (name: string) => t('warnings.studentNotFound', { name } as Record<string, string>),
+      {
+        parent: t('warnings.roleParent'),
+        parent2: t('warnings.roleParent2'),
+        student: t('warnings.roleStudent'),
+      }
     )
 
     const summary = {

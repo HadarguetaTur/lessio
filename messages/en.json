@@ -2968,7 +2968,10 @@
     },
     "warnings": {
       "existingRecord": "Record already exists in the system",
-      "studentNotFound": "Student \"{name}\" was not found — the link will not be created"
+      "studentNotFound": "Student \"{name}\" was not found — the link will not be created",
+      "roleParent": " (parent)",
+      "roleParent2": " (parent 2)",
+      "roleStudent": " (student)"
     },
     "fields": {
       "full_name": "Full name",
@@ -3042,6 +3045,282 @@
       "studentNotFound": "Student \"{name}\" was not found",
       "invalidDayOfWeek": "Invalid day of week",
       "dbError": "{message}"
+    },
+    "templates": {
+      "dataSheet": "Data",
+      "notesSheet": "Notes",
+      "notesColumn": "Column",
+      "notesEnglishName": "Field name",
+      "notesRequired": "Required?",
+      "notesDescription": "Description",
+      "yes": "Yes",
+      "no": "No",
+      "columns": {
+        "students": {
+          "full_name": {
+            "header": "full_name",
+            "description": "Student full name",
+            "ex1": "Jane Smith",
+            "ex2": "Tom Brown"
+          },
+          "grade": {
+            "header": "grade",
+            "description": "Year group (e.g. 7, 8, 10)",
+            "ex1": "8",
+            "ex2": "10"
+          },
+          "phone": {
+            "header": "phone",
+            "description": "Phone number (E.164 or local)",
+            "ex1": "0501234567",
+            "ex2": ""
+          },
+          "level": {
+            "header": "level",
+            "description": "Student level",
+            "ex1": "Beginner",
+            "ex2": "Advanced"
+          },
+          "focused_subject": {
+            "header": "focused_subject",
+            "description": "Main subject",
+            "ex1": "Maths",
+            "ex2": "English"
+          },
+          "weekly_quota": {
+            "header": "weekly_quota",
+            "description": "Lessons per week (1-20)",
+            "ex1": "2",
+            "ex2": "3"
+          },
+          "notes": {
+            "header": "notes",
+            "description": "Free-text notes",
+            "ex1": "New",
+            "ex2": ""
+          },
+          "status": {
+            "header": "status",
+            "description": "active / on_hold / inactive (default: active)",
+            "ex1": "active",
+            "ex2": "active"
+          },
+          "teacher_name": {
+            "header": "teacher_name",
+            "description": "Assigned teacher name (matched automatically)",
+            "ex1": "Dana Cohen",
+            "ex2": ""
+          }
+        },
+        "parents": {
+          "full_name": {
+            "header": "full_name",
+            "description": "Parent full name",
+            "ex1": "Avi Cohen",
+            "ex2": "Rachel Levy"
+          },
+          "phone": {
+            "header": "phone",
+            "description": "Phone number (required)",
+            "ex1": "0501234567",
+            "ex2": "0521234567"
+          },
+          "notes": {
+            "header": "notes",
+            "description": "Free-text notes",
+            "ex1": "",
+            "ex2": "Single parent"
+          },
+          "student_names": {
+            "header": "student_names",
+            "description": "Student names, comma separated",
+            "ex1": "Jane Smith",
+            "ex2": "Tom Brown"
+          }
+        },
+        "teachers": {
+          "full_name": {
+            "header": "full_name",
+            "description": "Teacher full name",
+            "ex1": "Dana Cohen",
+            "ex2": "Yossi Levy"
+          },
+          "email": {
+            "header": "email",
+            "description": "Email address (used to sign in)",
+            "ex1": "dana@example.com",
+            "ex2": "yossi@example.com"
+          },
+          "bio": {
+            "header": "bio",
+            "description": "Short description of the teacher",
+            "ex1": "Maths teacher with 10 years of experience",
+            "ex2": ""
+          },
+          "hourly_rate": {
+            "header": "hourly_rate",
+            "description": "Hourly rate (number)",
+            "ex1": "150",
+            "ex2": "200"
+          }
+        },
+        "lessons-schedule": {
+          "teacher_name": {
+            "header": "teacher_name",
+            "description": "Teacher name",
+            "ex1": "Dana Cohen",
+            "ex2": "Dana Cohen"
+          },
+          "student_name": {
+            "header": "student_name",
+            "description": "Student name",
+            "ex1": "Jane Smith",
+            "ex2": "Tom Brown"
+          },
+          "day_of_week": {
+            "header": "day_of_week",
+            "description": "Day of week (0-6 or the day name)",
+            "ex1": "Sunday",
+            "ex2": "Tuesday"
+          },
+          "start_time": {
+            "header": "start_time",
+            "description": "Start time as HH:MM",
+            "ex1": "14:00",
+            "ex2": "16:30"
+          },
+          "duration_minutes": {
+            "header": "duration_minutes",
+            "description": "Lesson length in minutes",
+            "ex1": "45",
+            "ex2": "60"
+          },
+          "lesson_type": {
+            "header": "lesson_type",
+            "description": "individual / pair / group (default: individual)",
+            "ex1": "individual",
+            "ex2": "individual"
+          }
+        },
+        "family-list": {
+          "student_name": {
+            "header": "student_name",
+            "description": "Student full name",
+            "ex1": "Jane Smith",
+            "ex2": "Tom Brown"
+          },
+          "grade": {
+            "header": "grade",
+            "description": "Year group (e.g. 7, 8, 10)",
+            "ex1": "8",
+            "ex2": "10"
+          },
+          "parent_name": {
+            "header": "parent_name",
+            "description": "Parent full name",
+            "ex1": "Rachel Cohen",
+            "ex2": "David Levy"
+          },
+          "parent_phone": {
+            "header": "parent_phone",
+            "description": "Parent phone number",
+            "ex1": "0501234567",
+            "ex2": "0521234567"
+          },
+          "parent_email": {
+            "header": "parent_email",
+            "description": "Parent email address",
+            "ex1": "",
+            "ex2": "david@example.com"
+          },
+          "parent_relation_type": {
+            "header": "parent_relation_type",
+            "description": "Parent relationship to the student (e.g. father, mother)",
+            "ex1": "Father",
+            "ex2": "Mother"
+          },
+          "parent_name_2": {
+            "header": "parent_name_2",
+            "description": "Second parent (optional)",
+            "ex1": "",
+            "ex2": "Mira Levy"
+          },
+          "parent_phone_2": {
+            "header": "parent_phone_2",
+            "description": "Second parent phone (optional)",
+            "ex1": "",
+            "ex2": "0531234567"
+          },
+          "parent_second_phone": {
+            "header": "parent_second_phone",
+            "description": "Additional phone for the primary parent",
+            "ex1": "",
+            "ex2": ""
+          },
+          "parent_address": {
+            "header": "parent_address",
+            "description": "Home address",
+            "ex1": "",
+            "ex2": "Tel Aviv"
+          },
+          "student_notes": {
+            "header": "student_notes",
+            "description": "Notes about the student",
+            "ex1": "",
+            "ex2": ""
+          },
+          "parent_notes": {
+            "header": "parent_notes",
+            "description": "Notes about the parent",
+            "ex1": "",
+            "ex2": ""
+          }
+        },
+        "lessons-history": {
+          "teacher_name": {
+            "header": "teacher_name",
+            "description": "Teacher name",
+            "ex1": "Dana Cohen",
+            "ex2": "Dana Cohen"
+          },
+          "student_name": {
+            "header": "student_name",
+            "description": "Student name",
+            "ex1": "Jane Smith",
+            "ex2": "Tom Brown"
+          },
+          "date": {
+            "header": "date",
+            "description": "Date as DD/MM/YYYY",
+            "ex1": "01/04/2026",
+            "ex2": "03/04/2026"
+          },
+          "start_time": {
+            "header": "start_time",
+            "description": "Start time HH:MM",
+            "ex1": "14:00",
+            "ex2": "16:30"
+          },
+          "end_time": {
+            "header": "end_time",
+            "description": "End time HH:MM",
+            "ex1": "14:45",
+            "ex2": "17:30"
+          },
+          "status": {
+            "header": "status",
+            "description": "scheduled / completed / cancelled / no_show (default: completed)",
+            "ex1": "completed",
+            "ex2": "completed"
+          },
+          "cancel_reason": {
+            "header": "cancel_reason",
+            "description": "Cancellation reason (if relevant)",
+            "ex1": "",
+            "ex2": ""
+          }
+        }
+      }
     }
   },
   "studentProfile": {

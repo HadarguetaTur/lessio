@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { commonError } from '@/lib/i18n/actionErrors'
+import { getAppLocale } from '@/lib/i18n/serverTranslator'
 import { getSession } from '@/lib/auth/session'
 import { generateTemplate, getTemplateFilename } from '@/lib/import/templates'
 import type { EntityType } from '@/lib/import/validators'
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: await commonError('invalidData') }, { status: 400 })
   }
 
-  const buffer = generateTemplate(entityType as EntityType)
+  const buffer = await generateTemplate(entityType as EntityType, await getAppLocale())
   const filename = getTemplateFilename(entityType as EntityType)
 
   return new NextResponse(buffer, {

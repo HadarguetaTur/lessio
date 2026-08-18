@@ -13,7 +13,12 @@ export async function detectDuplicates(
   entityType: EntityType,
   rows: ValidatedRow[],
   existingRecordWarning: string,
-  studentNotFoundWarning?: (name: string) => string
+  studentNotFoundWarning?: (name: string) => string,
+  /**
+   * Appended to `existingRecordWarning` to say which record matched. Hardcoding
+   * these produced a half-Hebrew warning on an otherwise translated string.
+   */
+  roleSuffix?: { parent: string; parent2: string; student: string }
 ): Promise<ValidatedRow[]> {
   switch (entityType) {
     case 'parents':
@@ -23,7 +28,7 @@ export async function detectDuplicates(
     case 'students':
       return detectStudentDuplicates(orgId, rows, existingRecordWarning)
     case 'family-list':
-      return detectFamilyListDuplicates(orgId, rows, existingRecordWarning)
+      return detectFamilyListDuplicates(orgId, rows, existingRecordWarning, roleSuffix)
     default:
       return rows
   }
@@ -33,7 +38,12 @@ async function detectParentDuplicates(
   orgId: string,
   rows: ValidatedRow[],
   existingRecordWarning: string,
-  studentNotFoundWarning?: (name: string) => string
+  studentNotFoundWarning?: (name: string) => string,
+  /**
+   * Appended to `existingRecordWarning` to say which record matched. Hardcoding
+   * these produced a half-Hebrew warning on an otherwise translated string.
+   */
+  roleSuffix?: { parent: string; parent2: string; student: string }
 ): Promise<ValidatedRow[]> {
   const phoneToRow = new Map<string, number[]>()
 
@@ -215,7 +225,8 @@ async function detectStudentDuplicates(
 async function detectFamilyListDuplicates(
   orgId: string,
   rows: ValidatedRow[],
-  existingRecordWarning: string
+  existingRecordWarning: string,
+  roleSuffix?: { parent: string; parent2: string; student: string }
 ): Promise<ValidatedRow[]> {
   const db = createServiceRoleClient()
 
@@ -264,7 +275,7 @@ async function detectFamilyListDuplicates(
         const parentId = phoneToParentId.get(phone)
         if (parentId) {
           enriched = { ...enriched, existingParentId: parentId }
-          warnings.push(existingRecordWarning + ' (הורה)')
+          warnings.push(`${existingRecordWarning}${roleSuffix?.parent ?? ''}`)
         }
       }
     } catch { /* skip */ }
@@ -275,7 +286,7 @@ async function detectFamilyListDuplicates(
         const phone2 = normalizePhone(row.data.parent_phone_2)
         const parentId2 = phoneToParentId.get(phone2)
         if (parentId2) {
-          warnings.push(existingRecordWarning + ' (הורה 2)')
+          warnings.push(`${existingRecordWarning}${roleSuffix?.parent2 ?? ''}`)
         }
       }
     } catch { /* skip */ }
@@ -287,7 +298,7 @@ async function detectFamilyListDuplicates(
         nameToStudentId.get(studentName) ?? nameToStudentId.get(studentName.toLowerCase())
       if (studentId) {
         enriched = { ...enriched, existingStudentId: studentId }
-        warnings.push(existingRecordWarning + ' (תלמיד)')
+        warnings.push(`${existingRecordWarning}${roleSuffix?.student ?? ''}`)
       }
     }
 

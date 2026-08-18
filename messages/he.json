@@ -2968,7 +2968,10 @@
     },
     "warnings": {
       "existingRecord": "רשומה קיימת במערכת",
-      "studentNotFound": "התלמיד \"{name}\" לא נמצא — הקישור לא ייווצר"
+      "studentNotFound": "התלמיד \"{name}\" לא נמצא — הקישור לא ייווצר",
+      "roleParent": " (הורה)",
+      "roleParent2": " (הורה 2)",
+      "roleStudent": " (תלמיד)"
     },
     "fields": {
       "full_name": "שם מלא",
@@ -3042,6 +3045,282 @@
       "studentNotFound": "תלמיד \"{name}\" לא נמצא",
       "invalidDayOfWeek": "יום בשבוע לא תקין",
       "dbError": "{message}"
+    },
+    "templates": {
+      "dataSheet": "נתונים",
+      "notesSheet": "הערות",
+      "notesColumn": "עמודה",
+      "notesEnglishName": "שם באנגלית",
+      "notesRequired": "חובה?",
+      "notesDescription": "תיאור",
+      "yes": "כן",
+      "no": "לא",
+      "columns": {
+        "students": {
+          "full_name": {
+            "header": "שם מלא",
+            "description": "שם מלא של התלמיד",
+            "ex1": "יוסי כהן",
+            "ex2": "שרה לוי"
+          },
+          "grade": {
+            "header": "כיתה",
+            "description": "כיתה (לדוגמה: ז, ח, י)",
+            "ex1": "ח",
+            "ex2": "י"
+          },
+          "phone": {
+            "header": "טלפון",
+            "description": "מספר טלפון (E.164 או מקומי)",
+            "ex1": "0501234567",
+            "ex2": ""
+          },
+          "level": {
+            "header": "רמה",
+            "description": "רמת התלמיד",
+            "ex1": "מתחיל",
+            "ex2": "מתקדם"
+          },
+          "focused_subject": {
+            "header": "מקצוע",
+            "description": "מקצוע מרכזי",
+            "ex1": "מתמטיקה",
+            "ex2": "אנגלית"
+          },
+          "weekly_quota": {
+            "header": "מכסה שבועית",
+            "description": "מספר שיעורים בשבוע (1-20)",
+            "ex1": "2",
+            "ex2": "3"
+          },
+          "notes": {
+            "header": "הערות",
+            "description": "הערות חופשיות",
+            "ex1": "חדש",
+            "ex2": ""
+          },
+          "status": {
+            "header": "סטטוס",
+            "description": "active / on_hold / inactive (ברירת מחדל: active)",
+            "ex1": "active",
+            "ex2": "active"
+          },
+          "teacher_name": {
+            "header": "שם מורה",
+            "description": "שם המורה המשויך (ימופה אוטומטית)",
+            "ex1": "דנה כהן",
+            "ex2": ""
+          }
+        },
+        "parents": {
+          "full_name": {
+            "header": "שם מלא",
+            "description": "שם מלא של ההורה",
+            "ex1": "אבי כהן",
+            "ex2": "רחל לוי"
+          },
+          "phone": {
+            "header": "טלפון",
+            "description": "מספר טלפון (חובה)",
+            "ex1": "0501234567",
+            "ex2": "0521234567"
+          },
+          "notes": {
+            "header": "הערות",
+            "description": "הערות חופשיות",
+            "ex1": "",
+            "ex2": "אם חד הורית"
+          },
+          "student_names": {
+            "header": "שמות תלמידים",
+            "description": "שמות תלמידים מופרדים בפסיק",
+            "ex1": "יוסי כהן",
+            "ex2": "שרה לוי"
+          }
+        },
+        "teachers": {
+          "full_name": {
+            "header": "שם מלא",
+            "description": "שם מלא של המורה",
+            "ex1": "דנה כהן",
+            "ex2": "יוסי לוי"
+          },
+          "email": {
+            "header": "אימייל",
+            "description": "כתובת אימייל (ישמש להתחברות)",
+            "ex1": "dana@example.com",
+            "ex2": "yossi@example.com"
+          },
+          "bio": {
+            "header": "ביוגרפיה",
+            "description": "תיאור קצר על המורה",
+            "ex1": "מורה למתמטיקה בניסיון של 10 שנים",
+            "ex2": ""
+          },
+          "hourly_rate": {
+            "header": "תעריף שעתי",
+            "description": "תעריף לשעה (מספר)",
+            "ex1": "150",
+            "ex2": "200"
+          }
+        },
+        "lessons-schedule": {
+          "teacher_name": {
+            "header": "שם מורה",
+            "description": "שם המורה",
+            "ex1": "דנה כהן",
+            "ex2": "דנה כהן"
+          },
+          "student_name": {
+            "header": "שם תלמיד",
+            "description": "שם התלמיד",
+            "ex1": "יוסי כהן",
+            "ex2": "שרה לוי"
+          },
+          "day_of_week": {
+            "header": "יום בשבוע",
+            "description": "יום בשבוע (0-6 או שם היום)",
+            "ex1": "ראשון",
+            "ex2": "שלישי"
+          },
+          "start_time": {
+            "header": "שעת התחלה",
+            "description": "שעת התחלה בפורמט HH:MM",
+            "ex1": "14:00",
+            "ex2": "16:30"
+          },
+          "duration_minutes": {
+            "header": "משך (דקות)",
+            "description": "משך השיעור בדקות",
+            "ex1": "45",
+            "ex2": "60"
+          },
+          "lesson_type": {
+            "header": "סוג שיעור",
+            "description": "individual / pair / group (ברירת מחדל: individual)",
+            "ex1": "individual",
+            "ex2": "individual"
+          }
+        },
+        "family-list": {
+          "student_name": {
+            "header": "שם תלמיד",
+            "description": "שם מלא של התלמיד",
+            "ex1": "יוסי כהן",
+            "ex2": "שרה לוי"
+          },
+          "grade": {
+            "header": "כיתה",
+            "description": "כיתה (לדוגמה: ז, ח, י)",
+            "ex1": "ח",
+            "ex2": "י"
+          },
+          "parent_name": {
+            "header": "שם הורה",
+            "description": "שם מלא של ההורה",
+            "ex1": "רחל כהן",
+            "ex2": "דוד לוי"
+          },
+          "parent_phone": {
+            "header": "טלפון הורה",
+            "description": "מספר טלפון של ההורה",
+            "ex1": "0501234567",
+            "ex2": "0521234567"
+          },
+          "parent_email": {
+            "header": "אימייל הורה",
+            "description": "כתובת אימייל של ההורה",
+            "ex1": "",
+            "ex2": "dvid@example.com"
+          },
+          "parent_relation_type": {
+            "header": "סוג קשר",
+            "description": "יחס ההורה לתלמיד (לדוגמה: אב, אם)",
+            "ex1": "אב",
+            "ex2": "אם"
+          },
+          "parent_name_2": {
+            "header": "שם הורה 2",
+            "description": "הורה שני (אופציונלי)",
+            "ex1": "",
+            "ex2": "מירה לוי"
+          },
+          "parent_phone_2": {
+            "header": "טלפון הורה 2",
+            "description": "טלפון הורה שני (אופציונלי)",
+            "ex1": "",
+            "ex2": "0531234567"
+          },
+          "parent_second_phone": {
+            "header": "טלפון נוסף הורה",
+            "description": "מספר טלפון נוסף של ההורה הראשי",
+            "ex1": "",
+            "ex2": ""
+          },
+          "parent_address": {
+            "header": "כתובת הורה",
+            "description": "כתובת מגורים",
+            "ex1": "",
+            "ex2": "תל אביב"
+          },
+          "student_notes": {
+            "header": "הערות תלמיד",
+            "description": "הערות על התלמיד",
+            "ex1": "",
+            "ex2": ""
+          },
+          "parent_notes": {
+            "header": "הערות הורה",
+            "description": "הערות על ההורה",
+            "ex1": "",
+            "ex2": ""
+          }
+        },
+        "lessons-history": {
+          "teacher_name": {
+            "header": "שם מורה",
+            "description": "שם המורה",
+            "ex1": "דנה כהן",
+            "ex2": "דנה כהן"
+          },
+          "student_name": {
+            "header": "שם תלמיד",
+            "description": "שם התלמיד",
+            "ex1": "יוסי כהן",
+            "ex2": "שרה לוי"
+          },
+          "date": {
+            "header": "תאריך",
+            "description": "תאריך בפורמט DD/MM/YYYY",
+            "ex1": "01/04/2026",
+            "ex2": "03/04/2026"
+          },
+          "start_time": {
+            "header": "שעת התחלה",
+            "description": "שעת התחלה HH:MM",
+            "ex1": "14:00",
+            "ex2": "16:30"
+          },
+          "end_time": {
+            "header": "שעת סיום",
+            "description": "שעת סיום HH:MM",
+            "ex1": "14:45",
+            "ex2": "17:30"
+          },
+          "status": {
+            "header": "סטטוס",
+            "description": "scheduled / completed / cancelled / no_show (ברירת מחדל: completed)",
+            "ex1": "completed",
+            "ex2": "completed"
+          },
+          "cancel_reason": {
+            "header": "סיבת ביטול",
+            "description": "סיבת ביטול (אם רלוונטי)",
+            "ex1": "",
+            "ex2": ""
+          }
+        }
+      }
     }
   },
   "studentProfile": {

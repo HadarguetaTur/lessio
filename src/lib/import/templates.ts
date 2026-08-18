@@ -1,118 +1,123 @@
 import * as XLSX from 'xlsx'
 import type { EntityType } from './validators'
+import { getT } from '@/lib/i18n/serverTranslator'
+import type { AppLocale } from '@/lib/i18n/locale'
+
+/**
+ * The XLSX import templates users download.
+ *
+ * Only the column order and whether a column is required live here. The header
+ * text, description and sample values come from
+ * `import.templates.columns.<entity>.<field>` in the message catalogs, so the
+ * template arrives in the language the user is working in.
+ *
+ * The Hebrew headers are still accepted on the way back in — `parseFile.ts` and
+ * `validators.ts` match both — so a customer's existing Hebrew spreadsheet keeps
+ * importing after this change.
+ */
 
 interface ColumnDef {
-  headerHe: string
-  headerEn: string
+  /** Catalog key, and the field name used in the English template. */
+  field: string
   required: boolean
-  description: string
-  exampleValues: string[]
 }
 
-const STUDENT_COLUMNS: ColumnDef[] = [
-  { headerHe: 'שם מלא', headerEn: 'full_name', required: true, description: 'שם מלא של התלמיד', exampleValues: ['יוסי כהן', 'שרה לוי'] },
-  { headerHe: 'כיתה', headerEn: 'grade', required: false, description: 'כיתה (לדוגמה: ז, ח, י)', exampleValues: ['ח', 'י'] },
-  { headerHe: 'טלפון', headerEn: 'phone', required: false, description: 'מספר טלפון (E.164 או מקומי)', exampleValues: ['0501234567', ''] },
-  { headerHe: 'רמה', headerEn: 'level', required: false, description: 'רמת התלמיד', exampleValues: ['מתחיל', 'מתקדם'] },
-  { headerHe: 'מקצוע', headerEn: 'focused_subject', required: false, description: 'מקצוע מרכזי', exampleValues: ['מתמטיקה', 'אנגלית'] },
-  { headerHe: 'מכסה שבועית', headerEn: 'weekly_quota', required: false, description: 'מספר שיעורים בשבוע (1-20)', exampleValues: ['2', '3'] },
-  { headerHe: 'הערות', headerEn: 'notes', required: false, description: 'הערות חופשיות', exampleValues: ['חדש', ''] },
-  { headerHe: 'סטטוס', headerEn: 'status', required: false, description: 'active / on_hold / inactive (ברירת מחדל: active)', exampleValues: ['active', 'active'] },
-  { headerHe: 'שם מורה', headerEn: 'teacher_name', required: false, description: 'שם המורה המשויך (ימופה אוטומטית)', exampleValues: ['דנה כהן', ''] },
-]
-
-const PARENT_COLUMNS: ColumnDef[] = [
-  { headerHe: 'שם מלא', headerEn: 'full_name', required: true, description: 'שם מלא של ההורה', exampleValues: ['אבי כהן', 'רחל לוי'] },
-  { headerHe: 'טלפון', headerEn: 'phone', required: true, description: 'מספר טלפון (חובה)', exampleValues: ['0501234567', '0521234567'] },
-  { headerHe: 'הערות', headerEn: 'notes', required: false, description: 'הערות חופשיות', exampleValues: ['', 'אם חד הורית'] },
-  { headerHe: 'שמות תלמידים', headerEn: 'student_names', required: false, description: 'שמות תלמידים מופרדים בפסיק', exampleValues: ['יוסי כהן', 'שרה לוי'] },
-]
-
-const TEACHER_COLUMNS: ColumnDef[] = [
-  { headerHe: 'שם מלא', headerEn: 'full_name', required: true, description: 'שם מלא של המורה', exampleValues: ['דנה כהן', 'יוסי לוי'] },
-  { headerHe: 'אימייל', headerEn: 'email', required: true, description: 'כתובת אימייל (ישמש להתחברות)', exampleValues: ['dana@example.com', 'yossi@example.com'] },
-  { headerHe: 'ביוגרפיה', headerEn: 'bio', required: false, description: 'תיאור קצר על המורה', exampleValues: ['מורה למתמטיקה בניסיון של 10 שנים', ''] },
-  { headerHe: 'תעריף שעתי', headerEn: 'hourly_rate', required: false, description: 'תעריף לשעה (מספר)', exampleValues: ['150', '200'] },
-]
-
-const LESSON_SCHEDULE_COLUMNS: ColumnDef[] = [
-  { headerHe: 'שם מורה', headerEn: 'teacher_name', required: true, description: 'שם המורה', exampleValues: ['דנה כהן', 'דנה כהן'] },
-  { headerHe: 'שם תלמיד', headerEn: 'student_name', required: true, description: 'שם התלמיד', exampleValues: ['יוסי כהן', 'שרה לוי'] },
-  { headerHe: 'יום בשבוע', headerEn: 'day_of_week', required: true, description: 'יום בשבוע (0-6 או שם היום)', exampleValues: ['ראשון', 'שלישי'] },
-  { headerHe: 'שעת התחלה', headerEn: 'start_time', required: true, description: 'שעת התחלה בפורמט HH:MM', exampleValues: ['14:00', '16:30'] },
-  { headerHe: 'משך (דקות)', headerEn: 'duration_minutes', required: true, description: 'משך השיעור בדקות', exampleValues: ['45', '60'] },
-  { headerHe: 'סוג שיעור', headerEn: 'lesson_type', required: false, description: 'individual / pair / group (ברירת מחדל: individual)', exampleValues: ['individual', 'individual'] },
-]
-
-const FAMILY_LIST_COLUMNS: ColumnDef[] = [
-  { headerHe: 'שם תלמיד', headerEn: 'student_name', required: true, description: 'שם מלא של התלמיד', exampleValues: ['יוסי כהן', 'שרה לוי'] },
-  { headerHe: 'כיתה', headerEn: 'grade', required: false, description: 'כיתה (לדוגמה: ז, ח, י)', exampleValues: ['ח', 'י'] },
-  { headerHe: 'שם הורה', headerEn: 'parent_name', required: true, description: 'שם מלא של ההורה', exampleValues: ['רחל כהן', 'דוד לוי'] },
-  { headerHe: 'טלפון הורה', headerEn: 'parent_phone', required: true, description: 'מספר טלפון של ההורה', exampleValues: ['0501234567', '0521234567'] },
-  { headerHe: 'אימייל הורה', headerEn: 'parent_email', required: false, description: 'כתובת אימייל של ההורה', exampleValues: ['', 'dvid@example.com'] },
-  { headerHe: 'סוג קשר', headerEn: 'parent_relation_type', required: false, description: 'יחס ההורה לתלמיד (לדוגמה: אב, אם)', exampleValues: ['אב', 'אם'] },
-  { headerHe: 'שם הורה 2', headerEn: 'parent_name_2', required: false, description: 'הורה שני (אופציונלי)', exampleValues: ['', 'מירה לוי'] },
-  { headerHe: 'טלפון הורה 2', headerEn: 'parent_phone_2', required: false, description: 'טלפון הורה שני (אופציונלי)', exampleValues: ['', '0531234567'] },
-  { headerHe: 'טלפון נוסף הורה', headerEn: 'parent_second_phone', required: false, description: 'מספר טלפון נוסף של ההורה הראשי', exampleValues: ['', ''] },
-  { headerHe: 'כתובת הורה', headerEn: 'parent_address', required: false, description: 'כתובת מגורים', exampleValues: ['', 'תל אביב'] },
-  { headerHe: 'הערות תלמיד', headerEn: 'student_notes', required: false, description: 'הערות על התלמיד', exampleValues: ['', ''] },
-  { headerHe: 'הערות הורה', headerEn: 'parent_notes', required: false, description: 'הערות על ההורה', exampleValues: ['', ''] },
-]
-
-const LESSON_HISTORY_COLUMNS: ColumnDef[] = [
-  { headerHe: 'שם מורה', headerEn: 'teacher_name', required: true, description: 'שם המורה', exampleValues: ['דנה כהן', 'דנה כהן'] },
-  { headerHe: 'שם תלמיד', headerEn: 'student_name', required: true, description: 'שם התלמיד', exampleValues: ['יוסי כהן', 'שרה לוי'] },
-  { headerHe: 'תאריך', headerEn: 'date', required: true, description: 'תאריך בפורמט DD/MM/YYYY', exampleValues: ['01/04/2026', '03/04/2026'] },
-  { headerHe: 'שעת התחלה', headerEn: 'start_time', required: true, description: 'שעת התחלה HH:MM', exampleValues: ['14:00', '16:30'] },
-  { headerHe: 'שעת סיום', headerEn: 'end_time', required: true, description: 'שעת סיום HH:MM', exampleValues: ['14:45', '17:30'] },
-  { headerHe: 'סטטוס', headerEn: 'status', required: false, description: 'scheduled / completed / cancelled / no_show (ברירת מחדל: completed)', exampleValues: ['completed', 'completed'] },
-  { headerHe: 'סיבת ביטול', headerEn: 'cancel_reason', required: false, description: 'סיבת ביטול (אם רלוונטי)', exampleValues: ['', ''] },
-]
-
-function getColumns(entityType: EntityType): ColumnDef[] {
-  switch (entityType) {
-    case 'students': return STUDENT_COLUMNS
-    case 'parents': return PARENT_COLUMNS
-    case 'teachers': return TEACHER_COLUMNS
-    case 'lessons-schedule': return LESSON_SCHEDULE_COLUMNS
-    case 'lessons-history': return LESSON_HISTORY_COLUMNS
-    case 'family-list': return FAMILY_LIST_COLUMNS
-  }
+const COLUMNS: Record<EntityType, ColumnDef[]> = {
+  students: [
+    { field: 'full_name', required: true },
+    { field: 'grade', required: false },
+    { field: 'phone', required: false },
+    { field: 'level', required: false },
+    { field: 'focused_subject', required: false },
+    { field: 'weekly_quota', required: false },
+    { field: 'notes', required: false },
+    { field: 'status', required: false },
+    { field: 'teacher_name', required: false },
+  ],
+  parents: [
+    { field: 'full_name', required: true },
+    { field: 'phone', required: true },
+    { field: 'notes', required: false },
+    { field: 'student_names', required: false },
+  ],
+  teachers: [
+    { field: 'full_name', required: true },
+    { field: 'email', required: true },
+    { field: 'bio', required: false },
+    { field: 'hourly_rate', required: false },
+  ],
+  'lessons-schedule': [
+    { field: 'teacher_name', required: true },
+    { field: 'student_name', required: true },
+    { field: 'day_of_week', required: true },
+    { field: 'start_time', required: true },
+    { field: 'duration_minutes', required: true },
+    { field: 'lesson_type', required: false },
+  ],
+  'family-list': [
+    { field: 'student_name', required: true },
+    { field: 'grade', required: false },
+    { field: 'parent_name', required: true },
+    { field: 'parent_phone', required: true },
+    { field: 'parent_email', required: false },
+    { field: 'parent_relation_type', required: false },
+    { field: 'parent_name_2', required: false },
+    { field: 'parent_phone_2', required: false },
+    { field: 'parent_second_phone', required: false },
+    { field: 'parent_address', required: false },
+    { field: 'student_notes', required: false },
+    { field: 'parent_notes', required: false },
+  ],
+  'lessons-history': [
+    { field: 'teacher_name', required: true },
+    { field: 'student_name', required: true },
+    { field: 'date', required: true },
+    { field: 'start_time', required: true },
+    { field: 'end_time', required: true },
+    { field: 'status', required: false },
+    { field: 'cancel_reason', required: false },
+  ],
 }
 
 // Entity titles and required fields live in entityMeta.ts for client-safe access
 
 /**
  * Generate a downloadable XLSX template for the given entity type.
- * Includes a data sheet with headers + example rows and a notes sheet.
  */
-export function generateTemplate(entityType: EntityType): ArrayBuffer {
-  const columns = getColumns(entityType)
+export async function generateTemplate(
+  entityType: EntityType,
+  locale: AppLocale = 'he'
+): Promise<ArrayBuffer> {
+  const t = await getT('import.templates', locale)
+  const columns = COLUMNS[entityType]
+  const col = (field: string, part: string) =>
+    t(`columns.${entityType}.${field}.${part}`)
+
   const wb = XLSX.utils.book_new()
 
   // Data sheet
-  const dataHeaders = columns.map((c) => c.headerHe)
-  const row1 = columns.map((c) => c.exampleValues[0] ?? '')
-  const row2 = columns.map((c) => c.exampleValues[1] ?? '')
+  const dataHeaders = columns.map((c) => col(c.field, 'header'))
+  const row1 = columns.map((c) => col(c.field, 'ex1'))
+  const row2 = columns.map((c) => col(c.field, 'ex2'))
   const dataSheet = XLSX.utils.aoa_to_sheet([dataHeaders, row1, row2])
 
   // Set column widths
   dataSheet['!cols'] = columns.map(() => ({ wch: 18 }))
-  XLSX.utils.book_append_sheet(wb, dataSheet, 'נתונים')
+  XLSX.utils.book_append_sheet(wb, dataSheet, t('dataSheet'))
 
   // Notes sheet
   const notesData = [
-    ['עמודה', 'שם באנגלית', 'חובה?', 'תיאור'],
+    [t('notesColumn'), t('notesEnglishName'), t('notesRequired'), t('notesDescription')],
     ...columns.map((c) => [
-      c.headerHe,
-      c.headerEn,
-      c.required ? 'כן' : 'לא',
-      c.description,
+      col(c.field, 'header'),
+      c.field,
+      c.required ? t('yes') : t('no'),
+      col(c.field, 'description'),
     ]),
   ]
   const notesSheet = XLSX.utils.aoa_to_sheet(notesData)
   notesSheet['!cols'] = [{ wch: 15 }, { wch: 18 }, { wch: 6 }, { wch: 45 }]
-  XLSX.utils.book_append_sheet(wb, notesSheet, 'הערות')
+  XLSX.utils.book_append_sheet(wb, notesSheet, t('notesSheet'))
 
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
   return buf as ArrayBuffer
@@ -121,4 +126,3 @@ export function generateTemplate(entityType: EntityType): ArrayBuffer {
 export function getTemplateFilename(entityType: EntityType): string {
   return `lessio-template-${entityType}.xlsx`
 }
-

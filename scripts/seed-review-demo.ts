@@ -16,7 +16,10 @@
  *
  * Usage:  REVIEW_DEMO_PASSWORD=... npx tsx scripts/seed-review-demo.ts
  * Env (falling back to .env.local): NEXT_PUBLIC_SUPABASE_URL,
- * SUPABASE_SERVICE_ROLE_KEY, REVIEW_DEMO_PASSWORD, optional REVIEW_DEMO_OWNER_EMAIL.
+ * SUPABASE_SERVICE_ROLE_KEY, REVIEW_DEMO_PASSWORD, optional REVIEW_DEMO_OWNER_EMAIL,
+ * optional REVIEW_DEMO_VARIANT (digit 1-9: builds an identical side-by-side copy
+ * with its own org id, slug and emails — e.g. reviewer2@getlessio.com — kept
+ * deliberately unconnected to WhatsApp so the connect flow can be demoed).
  *
  * The WhatsApp connection is NOT set here — run scripts/connect-demo-whatsapp.ts
  * with DEMO_ORG_OWNER_EMAIL pointed at the reviewer account afterwards.
@@ -812,10 +815,16 @@ async function main(): Promise<void> {
       `  • WhatsApp parent:  Rachel Adams ${VERIFIED_PARENT_PHONE}\n` +
       `  • Showcase lesson:  ${showcaseStart.toFormat('cccc dd/MM')} 16:00 — /lessons/${SHOWCASE_LESSON_ID}\n` +
       `  • Open balance:     ${months.slice(-UNPAID_RECENT_MONTHS).join(', ')}\n` +
-      '\nNext steps\n' +
-      '  1. DEMO_ORG_OWNER_EMAIL=' + ownerEmail + ' npx tsx scripts/connect-demo-whatsapp.ts\n' +
-      '  2. npx tsx scripts/diagnose-demo-whatsapp.ts\n' +
-      '\nCleanup after approval: npx tsx scripts/cleanup-review-demo.ts\n' +
+      (VARIANT
+        ? '\nVariant tenant — WhatsApp left unconnected on purpose.\n' +
+          '  Film the connect-a-number flow from this account; do NOT run\n' +
+          '  connect-demo-whatsapp.ts against it (the test number belongs to the\n' +
+          '  base tenant, and a number can only live on one org).\n' +
+          `\nCleanup: REVIEW_DEMO_VARIANT=${VARIANT} npx tsx scripts/cleanup-review-demo.ts --yes\n`
+        : '\nNext steps\n' +
+          '  1. DEMO_ORG_OWNER_EMAIL=' + ownerEmail + ' npx tsx scripts/connect-demo-whatsapp.ts\n' +
+          '  2. npx tsx scripts/diagnose-demo-whatsapp.ts\n' +
+          '\nCleanup after approval: npx tsx scripts/cleanup-review-demo.ts\n') +
       '─'.repeat(70)
   )
 }

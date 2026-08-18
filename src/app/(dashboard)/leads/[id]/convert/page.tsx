@@ -38,11 +38,11 @@ export default async function ConvertLeadPage(props: { params: Promise<{ id: str
             <span dir="ltr">{lead.phone}</span>
           </div>
           <div>
-            <span className="font-medium text-gray-700">הודעה ראשונה: </span>
+            <span className="font-medium text-gray-700">{t('leads.firstMessage')}</span>
             {lead.raw_message.length > 80 ? lead.raw_message.slice(0, 80) + '…' : lead.raw_message}
           </div>
           <div>
-            <span className="font-medium text-gray-700">נוצר: </span>
+            <span className="font-medium text-gray-700">{t('leads.createdAt')}</span>
             {new Date(lead.created_at).toLocaleDateString('he-IL')}
           </div>
         </div>

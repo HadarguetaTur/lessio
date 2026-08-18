@@ -6,6 +6,7 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { AssignForm } from '@/components/dashboard/homework/AssignForm'
 import { assignHomeworkAction } from './actions'
 import { getTranslations } from 'next-intl/server'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 /**
  * Assign homework page — assign a template or ad-hoc homework to one or more students.
@@ -15,7 +16,7 @@ export default async function AssignHomeworkPage() {
   const { orgId, role, userId } = await getSession()
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
-    return <div className="text-sm text-red-600">אין הרשאה</div>
+    return <div className="text-sm text-red-600">{await commonError('noPermission')}</div>
   }
 
   let teacherId: string | undefined

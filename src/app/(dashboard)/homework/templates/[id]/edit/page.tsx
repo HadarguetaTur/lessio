@@ -4,6 +4,7 @@ import { getTemplate } from '@/lib/homework'
 import { TemplateForm } from '@/components/dashboard/homework/TemplateForm'
 import { updateTemplateAction } from '../../actions'
 import { getTranslations } from 'next-intl/server'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 /**
  * Edit homework template page.
@@ -16,7 +17,7 @@ export default async function EditTemplatePage(props: {
   const { orgId, role } = await getSession()
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
-    return <div className="text-sm text-red-600">אין הרשאה</div>
+    return <div className="text-sm text-red-600">{await commonError('noPermission')}</div>
   }
 
   const template = await getTemplate(orgId, id)

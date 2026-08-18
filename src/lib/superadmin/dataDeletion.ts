@@ -11,6 +11,13 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
+/**
+ * Placeholder written over a deleted person's name. A stable marker rather than
+ * display copy — it is stored and read back by whoever views the record, in
+ * whatever language they use.
+ */
+const DELETED_NAME = '[deleted]'
+
 export type DeletionRequest = {
   id: string
   organizationId: string
@@ -77,7 +84,7 @@ export async function processDeletionRequest(
     if (parent) {
       await db
         .from('parents')
-        .update({ full_name: '[מחוק]', phone: '***' })
+        .update({ full_name: DELETED_NAME, phone: '***' })
         .eq('id', parent.id)
 
       // Mask all linked students
@@ -92,7 +99,7 @@ export async function processDeletionRequest(
       for (const studentId of studentIds) {
         await db
           .from('students')
-          .update({ full_name: '[מחוק]' })
+          .update({ full_name: DELETED_NAME })
           .eq('id', studentId)
           .eq('organization_id', orgId)
       }

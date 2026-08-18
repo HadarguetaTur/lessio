@@ -6,6 +6,7 @@ import { requireSuperAdminSession } from '@/lib/superadmin/session'
 import { setSupportSessionCookie, clearSupportSessionCookie } from '@/lib/support-session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { processDeletionRequest } from '@/lib/superadmin/dataDeletion'
+import { getTranslations } from 'next-intl/server'
 
 export async function startSupportModeAction(orgId: string): Promise<never> {
   const session = await requireSuperAdminSession()
@@ -50,6 +51,7 @@ export async function processDeletionRequestAction(
   action: 'anonymise' | 'dismiss',
   orgId: string
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations()
   const session = await requireSuperAdminSession()
 
   try {
@@ -58,7 +60,7 @@ export async function processDeletionRequestAction(
     return { error: null }
   } catch (err) {
     console.error('[admin/deletion] processDeletionRequest failed', { requestId, action, err })
-    return { error: err instanceof Error ? err.message : 'שגיאה בעיבוד הבקשה' }
+    return { error: t('admin.errors.requestFailed') }
   }
 }
 

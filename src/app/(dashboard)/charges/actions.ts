@@ -9,11 +9,13 @@ import { receiptEmail } from '@/lib/email/templates/receipt'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { notifyMultiple, getOwnerAndAdminProfileIds } from '@/lib/notifications'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 export async function markAsPaid(
   chargeId: string,
   notes?: string
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
@@ -27,7 +29,7 @@ export async function markAsPaid(
     revalidatePath('/charges')
     revalidatePath('/parents')
   } catch {
-    return { error: 'שגיאה בעדכון סטטוס החיוב' }
+    return { error: t('charges.errors.updateStatusFailed') }
   }
 
   // Fire-and-forget receipt issuance — must not block or fail the mark-paid response
@@ -52,7 +54,7 @@ export async function markAsPaid(
         orgId,
         recipients,
         'payment_received',
-        'תשלום התקבל',
+        t('charges.paymentReceivedNotification'),
         undefined,
         `/charges/${chargeId}`
       )

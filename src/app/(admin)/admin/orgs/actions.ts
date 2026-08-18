@@ -5,6 +5,8 @@ import { requireSuperAdminSession } from '@/lib/superadmin/session'
 import { createOrganization, CreateOrganizationSchema } from '@/lib/superadmin/createOrganization'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { z } from 'zod'
+import { getTranslations } from 'next-intl/server'
+import { zodError } from '@/lib/i18n/actionErrors'
 
 export type ActionState = { error: string } | null
 
@@ -23,7 +25,7 @@ export async function createOrganizationAction(
 
   const parsed = CreateOrganizationSchema.safeParse(raw)
   if (!parsed.success) {
-    const first = parsed.error.issues[0]?.message ?? 'קלט לא תקין'
+    const first = await zodError(parsed.error.issues[0])
     return { error: first }
   }
 
@@ -47,6 +49,7 @@ export async function updateOrganizationAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   await requireSuperAdminSession()
 
   const raw = {
@@ -61,7 +64,7 @@ export async function updateOrganizationAction(
 
   const parsed = UpdateOrgSchema.safeParse(raw)
   if (!parsed.success) {
-    const first = parsed.error.issues[0]?.message ?? 'קלט לא תקין'
+    const first = await zodError(parsed.error.issues[0])
     return { error: first }
   }
 
@@ -75,7 +78,7 @@ export async function updateOrganizationAction(
 
   if (error) {
     console.error('[updateOrganizationAction] failed', { id, error })
-    return { error: 'עדכון הארגון נכשל. ייתכן שה-slug כבר תפוס.' }
+    return { error: t('admin.errors.updateOrgFailed') }
   }
 
   return null

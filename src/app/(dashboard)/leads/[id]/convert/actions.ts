@@ -6,6 +6,7 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { convertLead } from '@/lib/leads/convertLead'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 const convertLeadSchema = z.object({
   leadId: z.string().uuid(),
@@ -20,6 +21,7 @@ export async function convertLeadAction(
   studentFullName: string,
   grade: string
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
@@ -46,7 +48,7 @@ export async function convertLeadAction(
       return { error: 'validation.studentNameRequired' }
     }
 
-    return { error: 'פרטי ההמרה אינם תקינים' }
+    return { error: t('leads.errors.invalidConversion') }
   }
 
   try {
@@ -62,11 +64,11 @@ export async function convertLeadAction(
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
     if (msg.includes('already exists as a parent')) {
-      return { error: 'מספר הטלפון כבר רשום כהורה במערכת' }
+      return { error: t('leads.errors.phoneAlreadyParent') }
     }
     if (msg.includes('already converted')) {
-      return { error: 'הליד כבר הומר' }
+      return { error: t('leads.errors.alreadyConverted') }
     }
-    return { error: 'שגיאה בהמרת הליד' }
+    return { error: t('leads.errors.convertFailed') }
   }
 }

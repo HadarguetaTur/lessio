@@ -5,11 +5,13 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { updateLeadStatus as libUpdateLeadStatus, updateLeadNotes as libUpdateLeadNotes, LeadStatus } from '@/lib/leads'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 export async function updateLeadStatus(
   leadId: string,
   status: LeadStatus
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
@@ -21,7 +23,7 @@ export async function updateLeadStatus(
   await requireFeature(orgId, 'leads')
 
   if (status === 'converted') {
-    return { error: 'לא ניתן לשנות סטטוס ל"הומר" באופן ידני' }
+    return { error: t('leads.errors.cannotSetConverted') }
   }
 
   try {
@@ -29,7 +31,7 @@ export async function updateLeadStatus(
     revalidatePath('/leads')
     return { error: null }
   } catch {
-    return { error: 'שגיאה בעדכון סטטוס הליד' }
+    return { error: t('leads.errors.updateStatusFailed') }
   }
 }
 
@@ -37,6 +39,7 @@ export async function saveLeadNotes(
   leadId: string,
   notes: string
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
@@ -52,6 +55,6 @@ export async function saveLeadNotes(
     revalidatePath('/leads')
     return { error: null }
   } catch {
-    return { error: 'שגיאה בשמירת ההערות' }
+    return { error: t('leads.errors.saveNotesFailed') }
   }
 }

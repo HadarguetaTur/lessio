@@ -11,6 +11,7 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { createTemplate, updateTemplate, deleteTemplate } from '@/lib/homework'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 export type ActionState = {
   error: string | null
@@ -27,6 +28,7 @@ export async function createTemplateAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, role, profileId } = session
   requireMutation(session)
@@ -60,7 +62,7 @@ export async function createTemplateAction(
     return { error: null, success: true }
   } catch (err) {
     console.error('[homework/templates] createTemplateAction failed', { orgId, err })
-    return { error: err instanceof Error ? err.message : 'שגיאה ביצירת התבנית' }
+    return { error: t('homework.errors.createTemplateFailed') }
   }
 }
 
@@ -69,6 +71,7 @@ export async function updateTemplateAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
@@ -102,13 +105,14 @@ export async function updateTemplateAction(
     return { error: null, success: true }
   } catch (err) {
     console.error('[homework/templates] updateTemplateAction failed', { orgId, templateId, err })
-    return { error: err instanceof Error ? err.message : 'שגיאה בעדכון התבנית' }
+    return { error: t('homework.errors.updateTemplateFailed') }
   }
 }
 
 export async function deleteTemplateAction(
   templateId: string
 ): Promise<{ error?: string }> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
@@ -125,6 +129,6 @@ export async function deleteTemplateAction(
     return {}
   } catch (err) {
     console.error('[homework/templates] deleteTemplateAction failed', { orgId, templateId, err })
-    return { error: err instanceof Error ? err.message : 'שגיאה במחיקת התבנית' }
+    return { error: t('homework.errors.deleteTemplateFailed') }
   }
 }

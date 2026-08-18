@@ -2,6 +2,7 @@ import { getSession } from '@/lib/auth/session'
 import { TemplateForm } from '@/components/dashboard/homework/TemplateForm'
 import { createTemplateAction } from '../actions'
 import { getTranslations } from 'next-intl/server'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 /**
  * New homework template page.
@@ -11,7 +12,7 @@ export default async function NewTemplatePage() {
   const { role } = await getSession()
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
-    return <div className="text-sm text-red-600">אין הרשאה</div>
+    return <div className="text-sm text-red-600">{await commonError('noPermission')}</div>
   }
 
   const t = await getTranslations('homework')

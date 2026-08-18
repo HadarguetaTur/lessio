@@ -90,7 +90,7 @@ export async function assignHomeworkAction(
       .limit(1)
       .maybeSingle()
 
-    if (!firstTeacher) return { error: 'לא נמצאו מורים פעילים בארגון' }
+    if (!firstTeacher) return { error: t('homework.errors.noActiveTeachers') }
     teacherId = (firstTeacher as { id: string }).id
   }
 
@@ -109,7 +109,7 @@ export async function assignHomeworkAction(
     })
   } catch (err) {
     console.error('[homework/assign] createAssignment failed', { orgId, err })
-    return { error: err instanceof Error ? err.message : 'שגיאה ביצירת שיעורי הבית' }
+    return { error: t('homework.errors.assignFailed') }
   }
 
   // Upload file attachments to each created assignment

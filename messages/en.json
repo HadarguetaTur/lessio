@@ -922,7 +922,11 @@
     "viewReceipt": "View Receipt ↗",
     "noReceiptIssued": "No receipt issued (or pending generation)",
     "pendingReceipt": "Receipt will be issued after marking as paid",
-    "monthlyChargeNote": "Monthly charge {month}"
+    "monthlyChargeNote": "Monthly charge {month}",
+    "errors": {
+      "updateStatusFailed": "Could not update the charge status"
+    },
+    "paymentReceivedNotification": "Payment received"
   },
   "billing": {
     "title": "Monthly Billing",
@@ -1725,10 +1729,20 @@
     "filter": "Filter",
     "reset": "Reset",
     "autoCreated": "Leads are created automatically from WhatsApp messages",
-    "firstMessage": "First Message",
+    "firstMessage": "First message: ",
     "changeStatus": "Change Status",
     "noPermission": "You do not have permission to view this page",
-    "convertLink": "Convert →"
+    "convertLink": "Convert →",
+    "errors": {
+      "cannotSetConverted": "The status cannot be set to \"converted\" manually",
+      "updateStatusFailed": "Could not update the lead status",
+      "saveNotesFailed": "Could not save the notes",
+      "invalidConversion": "The conversion details are not valid",
+      "phoneAlreadyParent": "This phone number is already registered as a parent",
+      "alreadyConverted": "This lead has already been converted",
+      "convertFailed": "Could not convert the lead"
+    },
+    "createdAt": "Created: "
   },
   "homework": {
     "title": "Homework",
@@ -1792,7 +1806,15 @@
     "gradeSaved": "Grade saved successfully and notification sent to parent.",
     "feedbackPlaceholder": "Feedback (optional)...",
     "saveGrade": "Save grade",
-    "detail": "Homework Details"
+    "detail": "Homework Details",
+    "errors": {
+      "noActiveTeachers": "No active teachers found in this organization",
+      "assignFailed": "Could not create the homework",
+      "createTemplateFailed": "Could not create the template",
+      "updateTemplateFailed": "Could not update the template",
+      "deleteTemplateFailed": "Could not delete the template"
+    },
+    "templatesSubtitle": "Reusable templates for assigning homework"
   },
   "reports": {
     "title": "Reports",
@@ -2159,7 +2181,17 @@
     "platformNotificationsTitle": "Platform alerts",
     "platformNotificationsSubtitle": "Events that need your attention",
     "markRead": "Mark as read",
-    "fullNamePlaceholder": "Jane Smith"
+    "fullNamePlaceholder": "Jane Smith",
+    "errors": {
+      "requestFailed": "Could not process the request",
+      "updateOrgFailed": "Could not update the organization. The slug may already be taken.",
+      "createOrgFailed": "Could not create the organization. Please try again.",
+      "inviteFailed": "Could not send the invitation: {message}",
+      "unknownError": "Unknown error",
+      "createProfileFailed": "Could not create the profile. The organization was removed. Please try again."
+    },
+    "supportSuffix": "{name} (support)",
+    "deletedName": "[deleted]"
   },
   "auth": {
     "common": {
@@ -3543,5 +3575,15 @@
     "invalidEndDate": "Invalid end date",
     "messageBodyRequired": "The message body cannot be empty",
     "bodyRequired": "Body is required"
+  },
+  "receipts": {
+    "customer": "Customer",
+    "creditsInvoice": "{description} (credits invoice {number})",
+    "monthlyCharge": "Monthly charge {month}",
+    "cancellationPayment": "Cancellation payment — {name}",
+    "manualCharge": "Manual charge — {name}",
+    "lessonPayment": "Lesson payment — {name}",
+    "creditNoteLine": "Credit — {reason}",
+    "chargeFallback": "Charge {month}"
   }
 }

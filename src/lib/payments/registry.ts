@@ -34,11 +34,11 @@ export interface RegistryEntry {
   /**
    * Validates raw form fields extracted from FormData.
    * Returns the typed config object on success (ready to be JSON-serialised and encrypted),
-   * or an error message on failure.
+   * or a catalog key on failure — this is sync, so it cannot await a translator.
    */
   validateConfig(
     data: Record<string, string | undefined>
-  ): { success: true; config: Record<string, string> } | { success: false; error: string }
+  ): { success: true; config: Record<string, string> } | { success: false; errorKey?: string }
 
   /**
    * Instantiates the payment provider adapter from a decrypted config object.
@@ -76,7 +76,7 @@ const cardcomEntry: RegistryEntry = {
     })
     const result = schema.safeParse(data)
     if (!result.success) {
-      return { success: false, error: result.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+      return { success: false, errorKey: result.error.issues[0]?.message }
     }
     return { success: true, config: result.data }
   },
@@ -111,7 +111,7 @@ const payPlusEntry: RegistryEntry = {
     })
     const result = schema.safeParse(data)
     if (!result.success) {
-      return { success: false, error: result.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+      return { success: false, errorKey: result.error.issues[0]?.message }
     }
     return { success: true, config: result.data }
   },
@@ -146,7 +146,7 @@ const bitEntry: RegistryEntry = {
     })
     const result = schema.safeParse(data)
     if (!result.success) {
-      return { success: false, error: result.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+      return { success: false, errorKey: result.error.issues[0]?.message }
     }
     return { success: true, config: result.data }
   },
@@ -202,7 +202,7 @@ const payboxEntry: RegistryEntry = {
     })
     const result = schema.safeParse(data)
     if (!result.success) {
-      return { success: false, error: result.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+      return { success: false, errorKey: result.error.issues[0]?.message }
     }
     return { success: true, config: result.data }
   },
@@ -256,7 +256,7 @@ const stripeEntry: RegistryEntry = {
     })
     const result = schema.safeParse(data)
     if (!result.success) {
-      return { success: false, error: result.error.issues[0]?.message ?? 'נתונים לא תקינים' }
+      return { success: false, errorKey: result.error.issues[0]?.message }
     }
     return { success: true, config: result.data }
   },

@@ -64,7 +64,7 @@ export async function savePaymentProvider(
   // Validate using the registry entry's validator (Zod under the hood)
   const validation = entry.validateConfig(fieldData)
   if (!validation.success) {
-    return { error: validation.error }
+    return { error: await zodError(validation.errorKey ? { message: validation.errorKey } : undefined) }
   }
 
   const encryptionKey = process.env.PAYMENT_CONFIG_ENCRYPTION_KEY

@@ -922,7 +922,11 @@
     "viewReceipt": "צפה בקבלה ↗",
     "noReceiptIssued": "לא הופקה קבלה (או ממתין להפקה)",
     "pendingReceipt": "קבלה תופק לאחר סימון תשלום",
-    "monthlyChargeNote": "חיוב חודשי {month}"
+    "monthlyChargeNote": "חיוב חודשי {month}",
+    "errors": {
+      "updateStatusFailed": "שגיאה בעדכון סטטוס החיוב"
+    },
+    "paymentReceivedNotification": "תשלום התקבל"
   },
   "billing": {
     "title": "חיוב חודשי",
@@ -1725,10 +1729,20 @@
     "filter": "סנן",
     "reset": "איפוס",
     "autoCreated": "לידים נוצרים אוטומטית מהודעות WhatsApp",
-    "firstMessage": "הודעה ראשונה",
+    "firstMessage": "הודעה ראשונה: ",
     "changeStatus": "שינוי סטטוס",
     "noPermission": "אין הרשאה לצפות בדף זה",
-    "convertLink": "המר ←"
+    "convertLink": "המר ←",
+    "errors": {
+      "cannotSetConverted": "לא ניתן לשנות סטטוס ל\"הומר\" באופן ידני",
+      "updateStatusFailed": "שגיאה בעדכון סטטוס הליד",
+      "saveNotesFailed": "שגיאה בשמירת ההערות",
+      "invalidConversion": "פרטי ההמרה אינם תקינים",
+      "phoneAlreadyParent": "מספר הטלפון כבר רשום כהורה במערכת",
+      "alreadyConverted": "הליד כבר הומר",
+      "convertFailed": "שגיאה בהמרת הליד"
+    },
+    "createdAt": "נוצר: "
   },
   "homework": {
     "title": "שיעורי בית",
@@ -1792,7 +1806,15 @@
     "gradeSaved": "הציון נשמר בהצלחה ונשלחה הודעה להורה.",
     "feedbackPlaceholder": "משוב (אופציונלי)...",
     "saveGrade": "שמור ציון",
-    "detail": "פרטי שיעורי בית"
+    "detail": "פרטי שיעורי בית",
+    "errors": {
+      "noActiveTeachers": "לא נמצאו מורים פעילים בארגון",
+      "assignFailed": "שגיאה ביצירת שיעורי הבית",
+      "createTemplateFailed": "שגיאה ביצירת התבנית",
+      "updateTemplateFailed": "שגיאה בעדכון התבנית",
+      "deleteTemplateFailed": "שגיאה במחיקת התבנית"
+    },
+    "templatesSubtitle": "תבניות לשימוש חוזר בהקצאת שיעורי בית"
   },
   "reports": {
     "title": "דוחות",
@@ -2159,7 +2181,17 @@
     "platformNotificationsTitle": "התראות פלטפורמה",
     "platformNotificationsSubtitle": "אירועים שדורשים את תשומת הלב שלך",
     "markRead": "סמן כנקרא",
-    "fullNamePlaceholder": "ישראל ישראלי"
+    "fullNamePlaceholder": "ישראל ישראלי",
+    "errors": {
+      "requestFailed": "שגיאה בעיבוד הבקשה",
+      "updateOrgFailed": "עדכון הארגון נכשל. ייתכן שה-slug כבר תפוס.",
+      "createOrgFailed": "שגיאה ביצירת הארגון. נסה שוב.",
+      "inviteFailed": "שליחת ההזמנה נכשלה: {message}",
+      "unknownError": "שגיאה לא ידועה",
+      "createProfileFailed": "יצירת הפרופיל נכשלה. הארגון נמחק. נסה שוב."
+    },
+    "supportSuffix": "{name} (תמיכה)",
+    "deletedName": "[מחוק]"
   },
   "auth": {
     "common": {
@@ -3543,5 +3575,15 @@
     "invalidEndDate": "תאריך סיום לא תקין",
     "messageBodyRequired": "תוכן ההודעה לא יכול להיות ריק",
     "bodyRequired": "תוכן נדרש"
+  },
+  "receipts": {
+    "customer": "לקוח",
+    "creditsInvoice": "{description} (מבטלת חשבונית {number})",
+    "monthlyCharge": "חיוב חודשי {month}",
+    "cancellationPayment": "תשלום ביטול — {name}",
+    "manualCharge": "חיוב ידני — {name}",
+    "lessonPayment": "תשלום שיעור — {name}",
+    "creditNoteLine": "זיכוי — {reason}",
+    "chargeFallback": "חיוב {month}"
   }
 }

@@ -101,6 +101,27 @@ Two settings do the language work, and neither has a UI:
 `organizations.onboarding_completed = true` matters just as much: without it the reviewer lands
 in the setup wizard instead of the product.
 
+### The unconnected twin, for filming the connect flow
+
+`REVIEW_DEMO_VARIANT` builds a second, identical tenant that deliberately has **no** WhatsApp
+number attached, which is what Video A's Embedded Signup shot needs — the connected tenant can
+only ever show the already-connected state.
+
+```bash
+REVIEW_DEMO_VARIANT=2 npx tsx scripts/seed-review-demo.ts
+```
+
+It gets its own org id (`d2000002-…`), slug (`brightpath-tutoring-2`) and auth accounts
+(`reviewer2@getlessio.com`, `sarah.klein2@demo.getlessio.com`, …) on the same
+`REVIEW_DEMO_PASSWORD`, so the two live side by side and neither run disturbs the other. The
+data is identical: 226 lessons, 15 students, four months of billing.
+
+Never run `connect-demo-whatsapp.ts` against the variant. The Meta test number belongs to exactly
+one org — the webhook resolves it by `phone_number_id` with `.single()` — so connecting it here
+would silently break the bot on the tenant handed to Meta.
+
+Clean it up with the same variable: `REVIEW_DEMO_VARIANT=2 npx tsx scripts/cleanup-review-demo.ts --yes`.
+
 ### Credentials block for the submission form
 
 ```
@@ -141,8 +162,9 @@ captions burned in, recorded against **production** (`www.getlessio.com`) — a 
 
 ### Video A — `whatsapp_business_management` (~2:10)
 
-1. **Sign-in (15s).** Start **logged out**. Log in as `reviewer@getlessio.com` and land on the
-   populated English dashboard. Caption: *"Tutoring business owner signs in to Lessio."*
+1. **Sign-in (15s).** Start **logged out**. Log in as `reviewer2@getlessio.com` — the unconnected
+   twin, so `/settings/whatsapp` still offers "Connect WhatsApp" — and land on the populated
+   English dashboard. Caption: *"Tutoring business owner signs in to Lessio."*
 
 2. **Embedded Signup (35s).** `/settings/whatsapp` → "Connect WhatsApp". Walk Meta's dialog end to
    end: business selection, WABA selection, phone number. **Hold 2–3 s on the permissions screen,
@@ -219,6 +241,9 @@ npx tsx scripts/seed-review-demo.ts         # rolls tomorrow's lesson forward, c
 npx tsx scripts/connect-demo-whatsapp.ts    # refresh the 24h token first
 npx tsx scripts/diagnose-demo-whatsapp.ts   # must be all ✓
 npx tsx scripts/check-stored-whatsapp-token.ts  # proves the stored token can SEND, not just read
+
+# Only for Video A's sign-in + Embedded Signup shots, on the unconnected twin:
+REVIEW_DEMO_VARIANT=2 npx tsx scripts/seed-review-demo.ts
 ```
 
 Confirm `DEMO_RESCHEDULE_ENABLED=1` and `DEMO_PAYMENT_LINK_ENABLED=1` are still set in Vercel —
@@ -341,6 +366,7 @@ approval, then re-run the diagnostic.
 
 ```bash
 npx tsx scripts/cleanup-review-demo.ts --yes   # deletes the Brightpath org + its 4 Auth users
+REVIEW_DEMO_VARIANT=2 npx tsx scripts/cleanup-review-demo.ts --yes   # and the unconnected twin
 ```
 
 Then, manually: disconnect the test number, remove `DEMO_RESCHEDULE_ENABLED` and

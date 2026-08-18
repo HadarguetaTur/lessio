@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/session'
 import { getTemplates } from '@/lib/homework'
 import { DeleteTemplateButton } from './DeleteTemplateButton'
 import { getTranslations } from 'next-intl/server'
+import { commonError } from '@/lib/i18n/actionErrors'
 
 /**
  * Homework templates list page.
@@ -13,7 +14,7 @@ export default async function HomeworkTemplatesPage() {
   const { orgId, role } = await getSession()
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
-    return <div className="text-sm text-red-600">אין הרשאה</div>
+    return <div className="text-sm text-red-600">{await commonError('noPermission')}</div>
   }
 
   const templates = await getTemplates(orgId)
@@ -25,7 +26,7 @@ export default async function HomeworkTemplatesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('templates')}</h1>
-          <p className="text-sm text-gray-500 mt-1">תבניות לשימוש חוזר בהקצאת שיעורי בית</p>
+          <p className="text-sm text-gray-500 mt-1">{t('homework.templatesSubtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link

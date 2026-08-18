@@ -20,6 +20,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { z } from 'zod'
+import { getTranslations } from 'next-intl/server'
 
 export const CreateOrganizationSchema = z.object({
   name: z.string().min(2, 'validation.nameMin2'),
@@ -62,6 +63,7 @@ async function uniqueSlug(db: ReturnType<typeof createServiceRoleClient>, base: 
 export async function createOrganization(
   input: CreateOrganizationInput
 ): Promise<CreateOrganizationResult> {
+  const t = await getTranslations()
   const db = createServiceRoleClient()
 
   // Step 2 — slug
@@ -84,7 +86,7 @@ export async function createOrganization(
 
   if (orgError || !org) {
     console.error('[createOrganization] org insert failed', { error: orgError })
-    return { success: false, error: 'שגיאה ביצירת הארגון. נסה שוב.' }
+    return { success: false, error: t('admin.errors.createOrgFailed') }
   }
 
   const orgId = org.id
@@ -107,7 +109,7 @@ export async function createOrganization(
     console.error('[createOrganization] invite failed', { orgId, error: inviteError })
     // Compensate: delete org (cascades cancellation_policies)
     await db.from('organizations').delete().eq('id', orgId)
-    return { success: false, error: `שליחת ההזמנה נכשלה: ${inviteError?.message ?? 'שגיאה לא ידועה'}` }
+    return { success: false, error: t('admin.errors.inviteFailed', { message: inviteError?.message ?? t('admin.errors.unknownError') }) }
   }
 
   const ownerId = inviteData.user.id
@@ -126,7 +128,7 @@ export async function createOrganization(
     // Compensate: delete invited user + org
     await db.auth.admin.deleteUser(ownerId)
     await db.from('organizations').delete().eq('id', orgId)
-    return { success: false, error: 'יצירת הפרופיל נכשלה. הארגון נמחק. נסה שוב.' }
+    return { success: false, error: t('admin.errors.createProfileFailed') }
   }
 
   console.info('[createOrganization] success', { orgId, ownerId, ownerEmail: input.owner_email })

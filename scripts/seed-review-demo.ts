@@ -290,13 +290,18 @@ async function main(): Promise<void> {
         break_duration_minutes: 0,
         min_booking_notice_hours: 2,
         onboarding_completed: true,
-        reminders_enabled: true,
-        automation_lesson_reminder_enabled: true,
+        // A variant exists to have a number connected to it on camera, and the
+        // reminder crons sweep every org that has one — leaving these on would
+        // fire lesson/homework/payment reminders at the twelve fictional parent
+        // numbers from whatever real business account gets connected. Off by
+        // default; turning them on in /settings/whatsapp is itself a good shot.
+        reminders_enabled: !VARIANT,
+        automation_lesson_reminder_enabled: !VARIANT,
         automation_lesson_reminder_hours: 24,
-        automation_cancellation_enabled: true,
-        automation_payment_request_enabled: true,
-        automation_dunning_enabled: true,
-        automation_new_leads_enabled: true,
+        automation_cancellation_enabled: !VARIANT,
+        automation_payment_request_enabled: !VARIANT,
+        automation_dunning_enabled: !VARIANT,
+        automation_new_leads_enabled: !VARIANT,
         ai_assistant_enabled: true,
         auto_send_payment_request: false,
         business_legal_name: 'Brightpath Tutoring Ltd.',
@@ -820,6 +825,9 @@ async function main(): Promise<void> {
           '  Film the connect-a-number flow from this account; do NOT run\n' +
           '  connect-demo-whatsapp.ts against it (the test number belongs to the\n' +
           '  base tenant, and a number can only live on one org).\n' +
+          '  Reminder automations are OFF so that connecting a real number cannot\n' +
+          '  broadcast to the fictional parent numbers. Enable them on camera in\n' +
+          '  /settings/whatsapp if the shot needs it.\n' +
           `\nCleanup: REVIEW_DEMO_VARIANT=${VARIANT} npx tsx scripts/cleanup-review-demo.ts --yes\n`
         : '\nNext steps\n' +
           '  1. DEMO_ORG_OWNER_EMAIL=' + ownerEmail + ' npx tsx scripts/connect-demo-whatsapp.ts\n' +

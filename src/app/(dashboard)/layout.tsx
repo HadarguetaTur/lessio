@@ -8,7 +8,7 @@ import { MobileAdminQuickSheet } from '@/components/dashboard/MobileAdminQuickSh
 import { SupportModeBanner } from '@/components/dashboard/SupportModeBanner'
 import { getSupportSession } from '@/lib/support-session'
 import { PATHNAME_HEADER } from '@/proxy'
-import { getLocale } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { SaasOwnerBanners } from '@/components/dashboard/SaasOwnerBanners'
 import { NotificationBell } from '@/components/dashboard/NotificationBell'
 import { getUnreadCount } from '@/lib/notifications'
@@ -25,6 +25,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
+  const t = await getTranslations()
   const locale = await getLocale()
   const dir = locale === 'he' ? 'rtl' : 'ltr'
 
@@ -56,7 +57,7 @@ export default async function DashboardLayout({
         />
         <div className="flex flex-1">
           <Sidebar
-            userName={`${adminProfile?.full_name ?? 'Admin'} (תמיכה)`}
+            userName={t('admin.supportSuffix', { name: adminProfile?.full_name ?? 'Admin' })}
             userRole="owner"
             saasFeatures={saasFeaturesSupport}
           />
@@ -66,7 +67,7 @@ export default async function DashboardLayout({
           userRole="owner"
           mobileNavigation={
             <Sidebar
-              userName={`${adminProfile?.full_name ?? 'Admin'} (תמיכה)`}
+              userName={t('admin.supportSuffix', { name: adminProfile?.full_name ?? 'Admin' })}
               userRole="owner"
               mobile
               saasFeatures={saasFeaturesSupport}

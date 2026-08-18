@@ -10,6 +10,7 @@ import { ICountProvider } from '@/lib/receipts/icount'
 import { SumitProvider } from '@/lib/receipts/sumit'
 import type { ReceiptProviderType } from '@/lib/receipts/factory'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 function getEncryptionKey(): string {
   const key = process.env.PAYMENT_CONFIG_ENCRYPTION_KEY
@@ -53,6 +54,7 @@ export type ReceiptActionState = { success: boolean; error?: string }
 async function testCredentials(
   data: z.infer<typeof ReceiptConfigSchema>
 ): Promise<string | null> {
+  const t = await getTranslations()
   try {
     switch (data.provider) {
       case 'green-invoice': {
@@ -62,7 +64,7 @@ async function testCredentials(
           body: JSON.stringify({ id: data.id, secret: data.secret }),
         })
         if (!res.ok) {
-          return 'פרטי ה-API שגויים — לא ניתן להתחבר לחשבוניות ירוקות (Morning)'
+          return t('settings.receiptsActions.errors.badCredentialsGreenInvoice')
         }
         return null
       }
@@ -80,7 +82,7 @@ async function testCredentials(
       }
     }
   } catch {
-    return 'שגיאת רשת — לא ניתן לאמת מול הספק'
+    return t('settings.receiptsActions.errors.networkError')
   }
 }
 
@@ -103,6 +105,7 @@ export async function saveReceiptConfigAction(
   _prev: ReceiptActionState,
   formData: FormData
 ): Promise<ReceiptActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -151,7 +154,7 @@ export async function saveReceiptConfigAction(
     .eq('id', orgId)
 
   if (error) {
-    return { success: false, error: 'שגיאה בשמירת ההגדרות' }
+    return { success: false, error: t('settings.receiptsActions.errors.saveFailed') }
   }
 
   revalidatePath('/settings/receipts')
@@ -159,6 +162,7 @@ export async function saveReceiptConfigAction(
 }
 
 export async function disconnectReceiptAction(): Promise<{ error?: string }> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -177,7 +181,7 @@ export async function disconnectReceiptAction(): Promise<{ error?: string }> {
     .eq('id', orgId)
 
   if (error) {
-    return { error: 'שגיאה בניתוק ספק הקבלות' }
+    return { error: t('settings.receiptsActions.errors.disconnectFailed') }
   }
 
   revalidatePath('/settings/receipts')

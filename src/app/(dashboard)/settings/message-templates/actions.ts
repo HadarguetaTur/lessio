@@ -14,6 +14,7 @@ import { decryptToken } from '@/lib/crypto'
 import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
 import { DEFAULT_TEMPLATES, type MessageTemplateType } from '@/lib/whatsapp/templates'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 import {
   buildMetaSubmission,
   customTemplateName,
@@ -51,6 +52,7 @@ export async function saveTemplateAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -83,7 +85,7 @@ export async function saveTemplateAction(
 
   if (error) {
     console.error('[message-templates] Failed to upsert template', { orgId, type, locale, error: error.message })
-    return { error: 'שגיאה בשמירת התבנית' }
+    return { error: t('settings.messageTemplatesActions.errors.saveFailed') }
   }
 
   console.info('[message-templates] Template saved', { orgId, type, locale })
@@ -100,6 +102,7 @@ export async function resetTemplateAction(
   type: string,
   locale: 'he' | 'en' = 'he'
 ): Promise<{ error?: string }> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -120,7 +123,7 @@ export async function resetTemplateAction(
 
   if (error) {
     console.error('[message-templates] Failed to reset template', { orgId, type, locale, error: error.message })
-    return { error: 'שגיאה בבאיפוס התבנית' }
+    return { error: t('settings.messageTemplatesActions.errors.resetFailed') }
   }
 
   console.info('[message-templates] Template reset to default', { orgId, type, locale })

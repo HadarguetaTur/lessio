@@ -4,15 +4,17 @@ import { useActionState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { sendTestEmail } from './actions'
+import { useTranslations } from 'next-intl'
 
 const initial = { error: null }
 
 export function SendTestEmailForm() {
+  const tp = useTranslations('settings')
   const [state, formAction, pending] = useActionState(sendTestEmail, initial)
 
   return (
     <form action={formAction} className="space-y-2">
-      <p className="text-xs text-gray-500 mb-1">שלחי מייל בדיקה לכתובת כלשהי</p>
+      <p className="text-xs text-gray-500 mb-1">{tp('emailActions.testFormHint')}</p>
       <div className="flex gap-2">
         <Input
           name="to"
@@ -23,11 +25,11 @@ export function SendTestEmailForm() {
           required
         />
         <Button type="submit" variant="outline" size="sm" disabled={pending}>
-          {pending ? 'שולח...' : 'שלח בדיקה'}
+          {pending ? tp('emailActions.testFormSending') : tp('emailActions.testFormSend')}
         </Button>
       </div>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state.success && <p className="text-sm text-green-600">המייל נשלח בהצלחה!</p>}
+      {state.success && <p className="text-sm text-green-600">{tp('emailActions.testFormSuccess')}</p>}
     </form>
   )
 }

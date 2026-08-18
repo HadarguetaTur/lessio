@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 export type ReminderActionState = {
   error: string | null
@@ -40,6 +41,7 @@ export async function saveReminderSettings(
   _prevState: ReminderActionState,
   formData: FormData
 ): Promise<ReminderActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -83,7 +85,7 @@ export async function saveReminderSettings(
       orgId,
       error: updateError.message,
     })
-    return { error: 'שגיאה בשמירת ההגדרות' }
+    return { error: t('settings.remindersActions.errors.saveFailed') }
   }
 
   console.info('[reminders/settings] Reminder settings saved', {

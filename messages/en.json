@@ -1047,24 +1047,14 @@
       "disconnectConfirm": "Disconnect the receipt provider?"
     },
     "cancellationPolicy": {
-      "title": "Cancellation Policy",
-      "chargeType": "Charge Type",
-      "percentage": "Percentage of lesson",
-      "fixed": "Fixed amount",
-      "hours": "Minimum hours for penalty-free cancellation",
-      "noticeHoursFull": "Notice hours for free cancellation",
-      "noticeHoursFullHint": "Cancellations more than X hours before the lesson — no charge",
-      "noticeHoursPartial": "Notice hours for partial charge",
-      "noticeHoursPartialHint": "Cancellations between X and the full threshold — partial charge. Less than X hours — full charge",
-      "partialChargePercent": "Partial charge percentage (%)",
-      "partialChargePercentHint": "Percentage of the lesson amount charged for partial cancellation (0–100)",
-      "howItWorks": "How the policy works:",
-      "ruleNoCharge": "Cancellation more than {hours} hours before lesson — no charge",
-      "rulePartial": "Cancellation between {partialHours} and {fullHours} hours — {percent}% charge",
-      "ruleFull": "Cancellation less than {hours} hours before — full charge",
-      "saved": "Policy saved successfully",
-      "saving": "Saving...",
-      "saveButton": "Save Policy"
+      "errors": {
+        "ownerOnly": "Only the business owner can update the cancellation policy",
+        "fullHoursPositive": "Notice hours for a full cancellation must be a positive number",
+        "partialHoursPositive": "Notice hours for a partial cancellation must be a positive number",
+        "partialLessThanFull": "The partial cancellation threshold must be lower than the full one",
+        "percentRange": "The partial charge percentage must be between 0 and 100",
+        "saveFailed": "Could not save the policy"
+      }
     },
     "holidays": {
       "title": "Holidays",
@@ -1149,34 +1139,16 @@
       }
     },
     "aiAssistant": {
-      "title": "AI Assistant",
-      "description": "Smart WhatsApp assistant for automatic replies",
-      "enable": "Enable AI Assistant",
-      "enabled": "Active",
-      "disabled": "Off",
-      "keyMissingWarning": "AI is enabled but OPENAI_API_KEY is not configured on this server. Contact the platform administrator.",
-      "conversationLog": "Conversation Log",
-      "logHeaders": {
-        "time": "Time",
-        "phone": "Phone",
-        "parentMessage": "Parent Message",
-        "aiReply": "AI Reply"
+      "errors": {
+        "needsApiKey": "The AI assistant cannot be enabled until an API key is configured (in the provider settings or on the server).",
+        "saveFailed": "Could not save the settings",
+        "modelUnsupported": "The model \"{model}\" is not supported by provider {provider}",
+        "saveProviderFailed": "Could not save the provider settings",
+        "emptyResponse": "The provider returned an empty response",
+        "unknownError": "Unknown error",
+        "testFailed": "Connection test failed: {message}"
       },
-      "noLog": "No conversations recorded",
-      "roleParent": "Parent",
-      "tabSettings": "Settings",
-      "tabUsage": "Usage",
-      "providerSettings": "AI Provider Settings",
-      "provider": "Provider",
-      "model": "Model",
-      "apiKey": "API Key",
-      "apiKeyPlaceholder": "Paste your API key",
-      "apiKeyPlaceholderSaved": "Key saved (paste to replace)",
-      "openaiKeyOptional": "Optional — falls back to platform key if empty",
-      "apiKeyRequired": "Required — this provider needs your own API key",
-      "providerSaved": "Provider settings saved",
-      "testConnection": "Test Connection",
-      "testSuccess": "Connection successful — AI is responding"
+      "saved": "Settings saved successfully."
     },
     "aiUsage": {
       "title": "AI Usage",
@@ -1370,6 +1342,169 @@
           }
         }
       }
+    },
+    "emailActions": {
+      "errors": {
+        "disconnectFailed": "Could not disconnect the account",
+        "invalidEmail": "Invalid email address",
+        "sendFailed": "Could not send the email — check that Gmail is connected"
+      },
+      "testSubject": "Test email from Lessio",
+      "testHeading": "It works! 🎉",
+      "testBody": "This email was sent from your organization's connected Gmail account in Lessio.",
+      "testFormHint": "Send a test email to any address",
+      "testFormSend": "Send test",
+      "testFormSending": "Sending…",
+      "testFormSuccess": "Email sent successfully!",
+      "disconnecting": "Disconnecting…",
+      "disconnectGoogle": "Disconnect Google account"
+    },
+    "holidaysActions": {
+      "errors": {
+        "duplicateDate": "A holiday already exists on this date",
+        "saveHolidayFailed": "Could not save the holiday",
+        "saveRangeFailed": "Could not save the range"
+      },
+      "holidayNamePlaceholder": "e.g. Rosh Hashanah",
+      "vacationNamePlaceholder": "e.g. Summer break"
+    },
+    "messageTemplatesActions": {
+      "errors": {
+        "saveFailed": "Could not save the template",
+        "resetFailed": "Could not reset the template"
+      }
+    },
+    "paymentActions": {
+      "errors": {
+        "providerNotSelected": "No payment provider selected",
+        "providerUnsupported": "Payment provider \"{provider}\" is not supported",
+        "missingEncryptionKey": "The encryption key is missing on the server — contact your system administrator",
+        "encryptFailed": "Could not encrypt the data",
+        "saveFailed": "Could not save the data",
+        "saveSettingFailed": "Could not save the setting",
+        "disconnectFailed": "Could not disconnect the payment provider"
+      }
+    },
+    "privacyActions": {
+      "errors": {
+        "invalidValue": "Invalid value",
+        "saveFailed": "Could not save"
+      }
+    },
+    "receiptsActions": {
+      "errors": {
+        "badCredentialsGreenInvoice": "The API credentials are wrong — could not connect to Green Invoice (Morning)",
+        "networkError": "Network error — could not verify with the provider",
+        "saveFailed": "Could not save the settings",
+        "disconnectFailed": "Could not disconnect the receipt provider"
+      }
+    },
+    "remindersActions": {
+      "errors": {
+        "saveFailed": "Could not save the settings"
+      }
+    },
+    "whatsappActions": {
+      "errors": {
+        "missingMetaConfig": "Meta settings are missing on the server — contact your system administrator",
+        "exchangeFailed": "Exchanging the code for a token failed — please try again",
+        "webhookRegisterFailed": "Registering the webhook with Meta failed — please try connecting again",
+        "encryptFailed": "Could not encrypt the token — check that the encryption key is set",
+        "saveFailed": "Could not save the data",
+        "disconnectFailed": "Could not disconnect the account"
+      }
+    },
+    "disconnectCalendar": {
+      "disconnecting": "Disconnecting…",
+      "label": "Disconnect calendar"
+    },
+    "aiAssistantForm": {
+      "enableHint": "When enabled, messages not recognised as a known command (cancellation / balance / schedule) are answered automatically by AI using the information in the account. Limited to 3 replies per 24 hours per phone number.",
+      "saved": "Settings saved successfully."
+    },
+    "cancellationPolicyPage": {
+      "subtitle": "Charging rules when a lesson is cancelled — applies across the whole business",
+      "noPolicy": "No cancellation policy is set. Default values are shown — save to confirm them.",
+      "readOnly": "Read only — only the business owner can update the policy"
+    },
+    "holidaysPage": {
+      "subtitle": "Set dates when no bookings take place — public holidays, training days, company closures. These dates automatically block every slot on the booking page.",
+      "singleDate": "Single date",
+      "dateRange": "Date range",
+      "dateFrom": "From",
+      "dateTo": "To"
+    },
+    "autoSendToggle": {
+      "hint": "Requires a connected payment provider and an active WhatsApp connection."
+    },
+    "dataRetention": {
+      "label": "Activity data retention period",
+      "hint": "WhatsApp conversation data and the AI log are anonymised after this period.",
+      "saved": "Settings saved successfully",
+      "days": "{n} days",
+      "daysDefault": "{n} days (default)",
+      "never": "Never (keep indefinitely)",
+      "save": "Save",
+      "saving": "Saving…"
+    },
+    "privacyPage": {
+      "title": "Privacy and data retention",
+      "subtitle": "Set how long the organization activity data is kept",
+      "gatedHint": "A custom data-retention policy is available on the Advanced and Custom plans only. Data is currently kept for 365 days."
+    },
+    "receiptsPage": {
+      "subtitle": "Connect your invoicing system to issue a receipt automatically for every payment and send it to the parent over WhatsApp. Credentials are encrypted and stored securely.",
+      "securityTitle": "Security",
+      "security1": "API credentials are encrypted with AES-256-GCM before storage",
+      "security2": "Credentials are never stored as plain text in the database",
+      "security3": "Each organization manages its own receipt provider connection",
+      "providerLabel": "Receipt provider",
+      "apiDetailsLabel": "API credentials",
+      "apiDetailsValue": "Encrypted and stored securely",
+      "autoIssueLabel": "Automatic issuing",
+      "autoIssueValue": "On every \"paid\" mark or online payment received",
+      "disconnectHint": "Disconnecting stops receipts being issued automatically until you reconnect.",
+      "disconnectedHint": "Choose a receipt provider, enter its API credentials, and click save and connect. They are verified and encrypted before being saved."
+    },
+    "receiptProviders": {
+      "green-invoice": "Green Invoice (Morning)",
+      "icount": "iCount",
+      "sumit": "Sumit"
+    },
+    "receiptsForm": {
+      "greenInvoiceIdPlaceholder": "The API ID from the Green Invoice dashboard",
+      "greenInvoiceSecretPlaceholder": "The secret from the Green Invoice dashboard",
+      "icountCidPlaceholder": "Your iCount company ID",
+      "icountUserPlaceholder": "Your iCount username",
+      "icountPassPlaceholder": "Your iCount password",
+      "sumitCompanyPlaceholder": "Your Sumit company ID",
+      "sumitApiKeyPlaceholder": "The API key from the developer settings in Sumit",
+      "cidLabel": "Company ID (CID)",
+      "userLabel": "Username",
+      "passLabel": "Password"
+    },
+    "whatsappPage": {
+      "subtitle": "Connect your organization WhatsApp number to send and receive messages. Each organization is connected to its own number.",
+      "portalUrlHint": "Share this link with parents so they can reach their personal portal.",
+      "requirementsTitle": "Connection requirements",
+      "req1": "A Meta Business account with access to the WhatsApp Business API",
+      "req2": "A phone number not already registered on WhatsApp",
+      "req3": "Meta Business Verification",
+      "disconnectHint": "Disconnecting stops WhatsApp messages being sent and received until you reconnect.",
+      "disconnectedHint": "Click the button to start the connection process through Meta. You will be taken to Meta to choose the number you want to connect.",
+      "missingVar": "{name} is not configured on the server — the connection process cannot start.",
+      "signupHint": "Sign in to your Meta account and choose the number you want to connect to this organization."
+    },
+    "remindersPage": {
+      "subtitle": "Set automatic WhatsApp reminders to parents before lessons and about open charges.",
+      "masterHint": "When off, no automatic reminders are sent for this organization at all",
+      "lessonHoursHint": "The parent gets a WhatsApp message X hours before the lesson starts. For example: \"Reminder: you have a lesson tomorrow with Jane Smith at 16:00.\"",
+      "hoursBefore": "{h} hours before",
+      "paymentDaysHint": "An open charge with an unpaid payment link gets one reminder after X days. For example: \"Reminder: you have an open charge of ₪200. Pay here: [link]\"",
+      "daysRange": "Between 1 and 30 days",
+      "statusSent": "Sent",
+      "statusFailed": "Failed",
+      "entityHeader": "Entity"
     }
   },
   "quota": {

@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 const RetentionSchema = z.object({
   retention_days: z.union([
@@ -21,6 +22,7 @@ export async function saveDataRetentionAction(
   _prev: DataRetentionState,
   formData: FormData
 ): Promise<DataRetentionState> {
+  const t = await getTranslations()
   const session = await getSession()
 
   if (session.role !== 'owner') {
@@ -30,12 +32,12 @@ export async function saveDataRetentionAction(
   try {
     requireMutation(session)
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'מצב תמיכה — קריאה בלבד' }
+    return { error: await commonError('supportModeReadOnly') }
   }
 
   const parsed = RetentionSchema.safeParse({ retention_days: formData.get('retention_days') })
   if (!parsed.success) {
-    return { error: 'ערך לא תקין' }
+    return { error: t('settings.privacyActions.errors.invalidValue') }
   }
 
   const days = parsed.data.retention_days === 'never' ? null : parseInt(parsed.data.retention_days, 10)
@@ -48,7 +50,7 @@ export async function saveDataRetentionAction(
 
   if (updateErr) {
     console.error('[settings/privacy] DB update failed', { orgId: session.orgId, error: updateErr.message })
-    return { error: 'שגיאה בשמירה' }
+    return { error: t('settings.privacyActions.errors.saveFailed') }
   }
 
   revalidatePath('/settings/privacy')

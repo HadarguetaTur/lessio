@@ -17,6 +17,7 @@ interface Props {
 const initialState: AiAssistantActionState = { error: null }
 
 export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
+  const tp = useTranslations('settings')
   const t = useTranslations('settings.aiAssistant')
   const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(saveAiAssistantSettings, initialState)
@@ -33,10 +34,7 @@ export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
       <div className="flex items-start justify-between gap-6">
         <div>
           <p className="text-sm font-semibold text-gray-900">{t('enable')}</p>
-          <p className="text-xs text-gray-500 mt-1 max-w-sm">
-            כשמופעל, הודעות שלא מזוהות כפקודה ידועה (ביטול / יתרה / לוח זמנים) יענו אוטומטית
-            על-ידי AI על בסיס המידע בחשבון. מוגבל ל-3 תגובות ל-24 שעות לכל מספר טלפון.
-          </p>
+          <p className="text-xs text-gray-500 mt-1 max-w-sm">{tp('aiAssistantForm.enableHint')}</p>
         </div>
         <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
           <input
@@ -59,7 +57,7 @@ export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
       )}
 
       {state.success && (
-        <p className="text-xs text-green-600 mt-3">ההגדרות נשמרו בהצלחה.</p>
+        <p className="text-xs text-green-600 mt-3">{tp('aiAssistantForm.saved')}</p>
       )}
 
       {state.error && (

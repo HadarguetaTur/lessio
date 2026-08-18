@@ -17,6 +17,7 @@ import { getTranslations } from 'next-intl/server'
  * Disconnected state: shows the Meta Embedded Signup button to connect a number.
  */
 export default async function WhatsAppSettingsPage() {
+  const tp = await getTranslations('settings')
   const { orgId, role } = await getSession()
 
   if (role !== 'owner') {
@@ -51,10 +52,7 @@ export default async function WhatsAppSettingsPage() {
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('whatsapp.title')}</h1>
-      <p className="text-sm text-gray-500 mb-8">
-        חבר את מספר ה-WhatsApp של הארגון שלך כדי לשלוח ולקבל הודעות.
-        כל ארגון מחובר למספר משלו.
-      </p>
+      <p className="text-sm text-gray-500 mb-8">{tp('whatsappPage.subtitle')}</p>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {isConnected ? (
@@ -75,9 +73,7 @@ export default async function WhatsAppSettingsPage() {
       {isConnected && org?.id && (
         <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-1">{t('whatsapp.portalUrl')}</h2>
-          <p className="text-xs text-gray-500 mb-3">
-            שתף/י קישור זה עם ההורים כדי שיוכלו לגשת לפורטל האישי שלהם.
-          </p>
+          <p className="text-xs text-gray-500 mb-3">{tp('whatsappPage.portalUrlHint')}</p>
           <PortalUrlCopy orgId={org.id} />
         </div>
       )}
@@ -100,18 +96,19 @@ export default async function WhatsAppSettingsPage() {
       )}
 
       <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-        <p className="font-medium mb-1">דרישות לחיבור</p>
+        <p className="font-medium mb-1">{tp('whatsappPage.requirementsTitle')}</p>
         <ul className="list-disc list-inside space-y-1 text-amber-700">
-          <li>חשבון Meta Business עם גישה ל-WhatsApp Business API</li>
-          <li>מספר טלפון שאינו רשום כבר ב-WhatsApp</li>
-          <li>אימות עסקי ב-Meta (Meta Business Verification)</li>
+          <li>{tp('whatsappPage.req1')}</li>
+          <li>{tp('whatsappPage.req2')}</li>
+          <li>{tp('whatsappPage.req3')}</li>
         </ul>
       </div>
     </div>
   )
 }
 
-function ConnectedState({ phoneNumberId, connectedLabel }: { phoneNumberId: string; connectedLabel: string }) {
+async function ConnectedState({ phoneNumberId, connectedLabel }: { phoneNumberId: string; connectedLabel: string }) {
+  const tp = await getTranslations('settings')
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-green-700">
@@ -129,35 +126,31 @@ function ConnectedState({ phoneNumberId, connectedLabel }: { phoneNumberId: stri
       <hr className="border-gray-100" />
 
       <div>
-        <p className="text-xs text-gray-500 mb-2">
-          ניתוק יפסיק את קבלת ושליחת הודעות WhatsApp עד לחיבור מחדש.
-        </p>
+        <p className="text-xs text-gray-500 mb-2">{tp('whatsappPage.disconnectHint')}</p>
         <DisconnectButton />
       </div>
     </div>
   )
 }
 
-function DisconnectedState({ metaAppId, metaConfigId }: { metaAppId: string; metaConfigId: string }) {
+async function DisconnectedState({ metaAppId, metaConfigId }: { metaAppId: string; metaConfigId: string }) {
+  const tp = await getTranslations('settings')
   const missingVar = !metaAppId ? 'META_APP_ID' : !metaConfigId ? 'NEXT_PUBLIC_META_CONFIG_ID' : null
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-gray-500">
         <AlertCircle size={20} />
-        <span className="font-medium text-sm">לא מחובר</span>
+        <span className="font-medium text-sm">{tp('googleCommon.notConnected')}</span>
       </div>
 
-      <p className="text-sm text-gray-600">
-        לחץ על הכפתור להתחלת תהליך החיבור דרך Meta.
-        תועבר לממשק של Meta לבחירת המספר שברצונך לחבר.
-      </p>
+      <p className="text-sm text-gray-600">{tp('whatsappPage.disconnectedHint')}</p>
 
       {missingVar === null ? (
         <EmbeddedSignupButton metaAppId={metaAppId} metaConfigId={metaConfigId} />
       ) : (
         <p className="text-sm text-red-600">
-          {missingVar} אינו מוגדר בשרת — לא ניתן להתחיל תהליך חיבור.
+          {tp('whatsappPage.missingVar', { name: missingVar })}
         </p>
       )}
     </div>

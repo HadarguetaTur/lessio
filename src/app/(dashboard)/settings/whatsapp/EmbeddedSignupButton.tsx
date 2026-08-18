@@ -24,6 +24,7 @@ interface Props {
 const initialState: WhatsAppActionResult = { error: null }
 
 export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
+  const tp = useTranslations('settings')
   const t = useTranslations('settings.whatsapp')
   const tCommon = useTranslations('common')
   const formRef = useRef<HTMLFormElement>(null)
@@ -124,9 +125,7 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
         {isPending ? `${tCommon('actions.connect')}…` : t('connect')}
       </button>
 
-      <p className="text-xs text-gray-500 mt-2">
-        תתחבר לחשבון Meta שלך ובחר את המספר שברצונך לחבר לארגון זה.
-      </p>
+      <p className="text-xs text-gray-500 mt-2">{tp('whatsappPage.signupHint')}</p>
     </div>
   )
 }

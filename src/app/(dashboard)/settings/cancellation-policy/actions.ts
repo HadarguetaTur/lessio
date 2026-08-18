@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
+import { getTranslations } from 'next-intl/server'
 
 type ActionState = { error: string } | { success: true } | null
 
@@ -10,12 +11,13 @@ export async function updateCancellationPolicy(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
 
   if (role !== 'owner') {
-    return { error: 'רק בעל העסק יכול לעדכן את מדיניות הביטולים' }
+    return { error: t('settings.cancellationPolicy.errors.ownerOnly') }
   }
 
   const notice_hours_full = parseInt(formData.get('notice_hours_full') as string, 10)
@@ -23,16 +25,16 @@ export async function updateCancellationPolicy(
   const partial_charge_percent = parseInt(formData.get('partial_charge_percent') as string, 10)
 
   if (isNaN(notice_hours_full) || notice_hours_full < 0) {
-    return { error: 'שעות הודעה מוקדמת (ביטול מלא) חייבות להיות מספר חיובי' }
+    return { error: t('settings.cancellationPolicy.errors.fullHoursPositive') }
   }
   if (isNaN(notice_hours_partial) || notice_hours_partial < 0) {
-    return { error: 'שעות הודעה מוקדמת (ביטול חלקי) חייבות להיות מספר חיובי' }
+    return { error: t('settings.cancellationPolicy.errors.partialHoursPositive') }
   }
   if (notice_hours_partial >= notice_hours_full) {
-    return { error: 'סף ביטול חלקי חייב להיות קטן מסף ביטול מלא' }
+    return { error: t('settings.cancellationPolicy.errors.partialLessThanFull') }
   }
   if (isNaN(partial_charge_percent) || partial_charge_percent < 0 || partial_charge_percent > 100) {
-    return { error: 'אחוז חיוב חלקי חייב להיות בין 0 ל-100' }
+    return { error: t('settings.cancellationPolicy.errors.percentRange') }
   }
 
   const supabase = await createClient()
@@ -48,7 +50,7 @@ export async function updateCancellationPolicy(
     { onConflict: 'organization_id' }
   )
 
-  if (error) return { error: 'שגיאה בשמירת המדיניות' }
+  if (error) return { error: t('settings.cancellationPolicy.errors.saveFailed') }
 
   revalidatePath('/settings/cancellation-policy')
   return { success: true }

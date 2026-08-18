@@ -13,6 +13,7 @@ import { saveAutoSendSetting, type PaymentActionResult } from './actions'
 const initialState: PaymentActionResult = { error: null }
 
 export function AutoSendToggle({ defaultChecked }: { defaultChecked: boolean }) {
+  const tp = useTranslations('settings')
   const t = useTranslations('settings.payment')
   const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(saveAutoSendSetting, initialState)
@@ -43,9 +44,7 @@ export function AutoSendToggle({ defaultChecked }: { defaultChecked: boolean }) 
       {state.error && (
         <p className="mt-2 text-xs text-red-600">{state.error}</p>
       )}
-      <p className="mt-1 text-xs text-gray-400">
-        דורש ספק תשלום מחובר וחיבור WhatsApp פעיל.
-      </p>
+      <p className="mt-1 text-xs text-gray-400">{tp('autoSendToggle.hint')}</p>
     </form>
   )
 }

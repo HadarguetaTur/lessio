@@ -16,6 +16,7 @@ import { requireFeature } from '@/lib/saas/featureGate'
 import { AI_PROVIDER_NAMES, isValidModel, PROVIDER_MODELS } from '@/lib/ai-assistant/providers/models'
 import type { AiProviderName } from '@/lib/ai-assistant/providers/types'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 export type AiAssistantActionState = {
   error: string | null
@@ -40,6 +41,7 @@ export async function saveAiAssistantSettings(
   _prevState: AiAssistantActionState,
   formData: FormData
 ): Promise<AiAssistantActionState> {
+  const t = await getTranslations()
   const session = await getSession()
 
   if (session.role !== 'owner') {
@@ -69,7 +71,7 @@ export async function saveAiAssistantSettings(
   if (ai_assistant_enabled) {
     const configured = await isAiConfiguredForOrg(session.orgId)
     if (!configured && !isAiAssistantConfigured()) {
-      return { error: 'לא ניתן להפעיל את עוזר ה-AI לפני שמוגדר מפתח API (בהגדרות הספק או בשרת).' }
+      return { error: t('settings.aiAssistant.errors.needsApiKey') }
     }
   }
 
@@ -81,7 +83,7 @@ export async function saveAiAssistantSettings(
 
   if (updateError) {
     console.error('[ai-assistant/settings] DB update failed', { orgId: session.orgId, error: updateError.message })
-    return { error: 'שגיאה בשמירת ההגדרות' }
+    return { error: t('settings.aiAssistant.errors.saveFailed') }
   }
 
   console.info('[ai-assistant/settings] Settings saved', { orgId: session.orgId, ai_assistant_enabled })
@@ -108,6 +110,7 @@ export async function saveAiProviderAction(
   _prevState: AiProviderActionState,
   formData: FormData
 ): Promise<AiProviderActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   if (session.role !== 'owner') return { error: await commonError('noPermission') }
 
@@ -132,7 +135,7 @@ export async function saveAiProviderAction(
   const { ai_provider, ai_model, api_key } = parsed.data
 
   if (!isValidModel(ai_provider, ai_model)) {
-    return { error: `המודל "${ai_model}" אינו נתמך עבור ספק ${PROVIDER_MODELS[ai_provider].label}` }
+    return { error: t('settings.aiAssistant.errors.modelUnsupported', { model: ai_model, provider: PROVIDER_MODELS[ai_provider].label }) }
   }
 
   const updateData: Record<string, unknown> = {
@@ -154,7 +157,7 @@ export async function saveAiProviderAction(
 
   if (updateError) {
     console.error('[ai-settings] Provider save failed', { orgId: session.orgId, error: updateError.message })
-    return { error: 'שגיאה בשמירת הגדרות הספק' }
+    return { error: t('settings.aiAssistant.errors.saveProviderFailed') }
   }
 
   console.info('[ai-settings] Provider saved', { orgId: session.orgId, ai_provider, ai_model })
@@ -166,6 +169,7 @@ export async function testAiConnectionAction(
   _prevState: TestConnectionActionState,
   formData: FormData
 ): Promise<TestConnectionActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   if (session.role !== 'owner') return { error: await commonError('noPermission') }
 
@@ -184,14 +188,14 @@ export async function testAiConnectionAction(
     })
 
     if (!result.content) {
-      return { error: 'התקבלה תגובה ריקה מהספק' }
+      return { error: t('settings.aiAssistant.errors.emptyResponse') }
     }
 
     console.info('[ai-settings] Connection test passed', { orgId: session.orgId })
     return { error: null, success: true }
   } catch (err) {
     console.error('[ai-settings] Connection test failed', { orgId: session.orgId, err })
-    const message = err instanceof Error ? err.message : 'שגיאה לא ידועה'
-    return { error: `בדיקת חיבור נכשלה: ${message}` }
+    const message = err instanceof Error ? err.message : t('settings.aiAssistant.errors.unknownError')
+    return { error: t('settings.aiAssistant.errors.testFailed', { message }) }
   }
 }

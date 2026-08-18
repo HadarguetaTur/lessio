@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 export type HolidayActionState = { error: string } | null
 
@@ -50,6 +51,7 @@ export async function addHoliday(
   _prevState: HolidayActionState,
   formData: FormData
 ): Promise<HolidayActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -74,9 +76,9 @@ export async function addHoliday(
 
   if (error) {
     if (error.code === '23505') {
-      return { error: 'כבר קיים חג בתאריך זה' }
+      return { error: t('settings.holidaysActions.errors.duplicateDate') }
     }
-    return { error: 'שגיאה בשמירת החג' }
+    return { error: t('settings.holidaysActions.errors.saveHolidayFailed') }
   }
 
   revalidatePath('/settings/holidays')
@@ -87,6 +89,7 @@ export async function addHolidayRange(
   _prevState: HolidayActionState,
   formData: FormData
 ): Promise<HolidayActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -114,7 +117,7 @@ export async function addHolidayRange(
     .upsert(rows, { onConflict: 'organization_id,date', ignoreDuplicates: true })
 
   if (error) {
-    return { error: 'שגיאה בשמירת הטווח' }
+    return { error: t('settings.holidaysActions.errors.saveRangeFailed') }
   }
 
   revalidatePath('/settings/holidays')

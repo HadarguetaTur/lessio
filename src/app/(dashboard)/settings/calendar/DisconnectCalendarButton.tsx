@@ -3,8 +3,10 @@
 import { useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { disconnectOrgCalendar } from './actions'
+import { useTranslations } from 'next-intl'
 
 export function DisconnectCalendarButton() {
+  const tp = useTranslations('settings')
   const [pending, startTransition] = useTransition()
 
   return (
@@ -14,7 +16,7 @@ export function DisconnectCalendarButton() {
       disabled={pending}
       onClick={() => startTransition(() => disconnectOrgCalendar())}
     >
-      {pending ? 'מנתק...' : 'נתק יומן'}
+      {pending ? tp('disconnectCalendar.disconnecting') : tp('disconnectCalendar.label')}
     </Button>
   )
 }

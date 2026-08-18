@@ -32,6 +32,7 @@ export function RemindersForm({
   defaultEmailNotifications,
   parentsWithEmail,
 }: RemindersFormProps) {
+  const tp = useTranslations('settings')
   const t = useTranslations('settings.reminders')
   const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(
@@ -45,9 +46,7 @@ export function RemindersForm({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-gray-900">{t('lessonReminder')}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            כאשר מכובה — לא ישלחו תזכורות אוטומטיות כלל לארגון זה
-          </p>
+          <p className="text-xs text-gray-500 mt-0.5">{tp('remindersPage.masterHint')}</p>
         </div>
         <input
           type="checkbox"
@@ -67,10 +66,7 @@ export function RemindersForm({
         >
           {t('hoursBeforeLesson')}
         </label>
-        <p className="text-xs text-gray-500 mb-2">
-          ההורה יקבל הודעת WhatsApp X שעות לפני תחילת השיעור.
-          לדוגמה: &quot;תזכורת: יש לך שיעור מחר עם ישראל ישראלי בשעה 16:00.&quot;
-        </p>
+        <p className="text-xs text-gray-500 mb-2">{tp('remindersPage.lessonHoursHint')}</p>
         <select
           id="lesson_reminder_hours"
           name="lesson_reminder_hours"
@@ -79,7 +75,7 @@ export function RemindersForm({
         >
           {LESSON_HOUR_OPTIONS.map((h) => (
             <option key={h} value={h}>
-              {h} שעות לפני
+              {tp('remindersPage.hoursBefore', { h })}
             </option>
           ))}
         </select>
@@ -93,10 +89,7 @@ export function RemindersForm({
         >
           {t('daysAfterInvoice')}
         </label>
-        <p className="text-xs text-gray-500 mb-2">
-          חיוב פתוח עם קישור תשלום שלא שולם אחרי X ימים יקבל תזכורת אחת.
-          לדוגמה: &quot;תזכורת: יש לך חיוב פתוח בסך ₪200. לתשלום: [קישור]&quot;
-        </p>
+        <p className="text-xs text-gray-500 mb-2">{tp('remindersPage.paymentDaysHint')}</p>
         <input
           id="payment_reminder_days"
           type="number"
@@ -106,7 +99,7 @@ export function RemindersForm({
           max={30}
           className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
         />
-        <p className="text-xs text-gray-400 mt-1">בין 1 ל-30 ימים</p>
+        <p className="text-xs text-gray-400 mt-1">{tp('remindersPage.daysRange')}</p>
       </div>
 
       {/* Email notification toggles — Sprint 25 */}
@@ -135,7 +128,7 @@ export function RemindersForm({
         <p className="text-sm text-red-600">{state.error}</p>
       )}
       {state.success && !state.error && (
-        <p className="text-sm text-green-600">ההגדרות נשמרו בהצלחה</p>
+        <p className="text-sm text-green-600">{tp('dataRetention.saved')}</p>
       )}
 
       <button

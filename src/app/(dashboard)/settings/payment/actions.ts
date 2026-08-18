@@ -20,6 +20,7 @@ import { encryptWithKey } from '@/lib/crypto'
 import { getRegistryEntry } from '@/lib/payments/registry'
 import { getProviderUI } from '@/lib/payments/registry-ui'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ export async function savePaymentProvider(
   _prevState: PaymentActionResult,
   formData: FormData
 ): Promise<PaymentActionResult> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -43,12 +45,12 @@ export async function savePaymentProvider(
 
   const provider = formData.get('provider')
   if (!provider || typeof provider !== 'string') {
-    return { error: 'ספק תשלום לא נבחר' }
+    return { error: t('settings.paymentActions.errors.providerNotSelected') }
   }
 
   const entry = getRegistryEntry(provider)
   if (!entry) {
-    return { error: `ספק תשלום "${provider}" אינו נתמך` }
+    return { error: t('settings.paymentActions.errors.providerUnsupported', { provider }) }
   }
 
   // Extract all fields defined for this provider from formData
@@ -68,7 +70,7 @@ export async function savePaymentProvider(
   const encryptionKey = process.env.PAYMENT_CONFIG_ENCRYPTION_KEY
   if (!encryptionKey) {
     console.error('[payment/settings] PAYMENT_CONFIG_ENCRYPTION_KEY not set', { orgId })
-    return { error: 'מפתח הצפנה חסר בשרת — פנה למנהל המערכת' }
+    return { error: t('settings.paymentActions.errors.missingEncryptionKey') }
   }
 
   let encryptedConfig: string
@@ -76,7 +78,7 @@ export async function savePaymentProvider(
     encryptedConfig = encryptWithKey(JSON.stringify(validation.config), encryptionKey)
   } catch (err) {
     console.error('[payment/settings] Config encryption failed', { orgId, err })
-    return { error: 'שגיאה בהצפנת הנתונים' }
+    return { error: t('settings.paymentActions.errors.encryptFailed') }
   }
 
   const db = createServiceRoleClient()
@@ -90,7 +92,7 @@ export async function savePaymentProvider(
 
   if (updateError) {
     console.error('[payment/settings] DB update failed', { orgId, error: updateError.message })
-    return { error: 'שגיאה בשמירת הנתונים' }
+    return { error: t('settings.paymentActions.errors.saveFailed') }
   }
 
   console.info('[payment/settings] Payment provider saved', { orgId, provider })
@@ -104,6 +106,7 @@ export async function saveAutoSendSetting(
   _prevState: PaymentActionResult,
   formData: FormData
 ): Promise<PaymentActionResult> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -122,7 +125,7 @@ export async function saveAutoSendSetting(
 
   if (updateError) {
     console.error('[payment/settings] saveAutoSendSetting DB update failed', { orgId, error: updateError.message })
-    return { error: 'שגיאה בשמירת ההגדרה' }
+    return { error: t('settings.paymentActions.errors.saveSettingFailed') }
   }
 
   console.info('[payment/settings] auto_send_payment_request updated', { orgId, autoSend })
@@ -136,6 +139,7 @@ export async function disconnectPayment(
   _prevState: PaymentActionResult,
   _formData: FormData
 ): Promise<PaymentActionResult> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -155,7 +159,7 @@ export async function disconnectPayment(
 
   if (updateError) {
     console.error('[payment/settings] Disconnect DB update failed', { orgId, error: updateError.message })
-    return { error: 'שגיאה בניתוק ספק התשלום' }
+    return { error: t('settings.paymentActions.errors.disconnectFailed') }
   }
 
   console.info('[payment/settings] Payment provider disconnected', { orgId })

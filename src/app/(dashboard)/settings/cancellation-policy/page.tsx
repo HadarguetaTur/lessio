@@ -5,6 +5,7 @@ import { CancellationPolicyForm } from '@/components/dashboard/settings/Cancella
 import { updateCancellationPolicy } from './actions'
 
 export default async function CancellationPolicyPage() {
+  const tp = await getTranslations('settings')
   const { orgId, role } = await getSession()
   const t = await getTranslations('settings.cancellationPolicy')
   const { policy, values } = await getCancellationPolicyOrDefaults(orgId)
@@ -13,19 +14,17 @@ export default async function CancellationPolicyPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        הגדרת כללי חיוב בעת ביטול שיעור — תקף לכל הארגון
-      </p>
+      <p className="text-sm text-gray-500 mb-6">{tp('cancellationPolicyPage.subtitle')}</p>
 
       {!policy && (
         <div className="mb-5 text-sm text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-md">
-          לא הוגדרה מדיניות ביטולים. מוצגים ערכי ברירת מחדל — שמור כדי לאשר אותם.
+          {tp('cancellationPolicyPage.noPolicy')}
         </div>
       )}
 
       {!isOwner && (
         <div className="mb-5 text-sm text-gray-600 bg-gray-50 border border-gray-200 p-3 rounded-md">
-          צפייה בלבד — רק בעל העסק יכול לעדכן את המדיניות
+          {tp('cancellationPolicyPage.readOnly')}
         </div>
       )}
 

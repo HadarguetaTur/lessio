@@ -1047,24 +1047,14 @@
       "disconnectConfirm": "לנתק את ספק הקבלות?"
     },
     "cancellationPolicy": {
-      "title": "מדיניות ביטולים",
-      "chargeType": "סוג חיוב",
-      "percentage": "אחוז מהשיעור",
-      "fixed": "סכום קבוע",
-      "hours": "שעות מינימום לביטול ללא קנס",
-      "noticeHoursFull": "שעות הודעה מוקדמת לביטול ללא חיוב",
-      "noticeHoursFullHint": "ביטול מעל X שעות לפני השיעור — אין חיוב",
-      "noticeHoursPartial": "שעות הודעה מוקדמת לחיוב חלקי",
-      "noticeHoursPartialHint": "ביטול בין X לבין הסף המלא — חיוב חלקי. ביטול פחות מ-X שעות — חיוב מלא",
-      "partialChargePercent": "אחוז חיוב חלקי (%)",
-      "partialChargePercentHint": "אחוז מסכום השיעור שייגבה בחיוב חלקי (0–100)",
-      "howItWorks": "כיצד פועלת המדיניות:",
-      "ruleNoCharge": "ביטול מעל {hours} שעות לפני השיעור — אין חיוב",
-      "rulePartial": "ביטול בין {partialHours} ל-{fullHours} שעות — חיוב {percent}%",
-      "ruleFull": "ביטול פחות מ-{hours} שעות לפני — חיוב מלא",
-      "saved": "המדיניות נשמרה בהצלחה",
-      "saving": "שומר...",
-      "saveButton": "שמירת מדיניות"
+      "errors": {
+        "ownerOnly": "רק בעל העסק יכול לעדכן את מדיניות הביטולים",
+        "fullHoursPositive": "שעות הודעה מוקדמת (ביטול מלא) חייבות להיות מספר חיובי",
+        "partialHoursPositive": "שעות הודעה מוקדמת (ביטול חלקי) חייבות להיות מספר חיובי",
+        "partialLessThanFull": "סף ביטול חלקי חייב להיות קטן מסף ביטול מלא",
+        "percentRange": "אחוז חיוב חלקי חייב להיות בין 0 ל-100",
+        "saveFailed": "שגיאה בשמירת המדיניות"
+      }
     },
     "holidays": {
       "title": "חגים וחופשות",
@@ -1149,34 +1139,16 @@
       }
     },
     "aiAssistant": {
-      "title": "עוזר AI",
-      "description": "עוזר חכם ב-WhatsApp למענה אוטומטי",
-      "enable": "הפעל עוזר AI",
-      "enabled": "פעיל",
-      "disabled": "כבוי",
-      "keyMissingWarning": "AI מופעל אך מפתח OPENAI_API_KEY לא מוגדר בשרת. פנה למנהל המערכת.",
-      "conversationLog": "יומן שיחות",
-      "logHeaders": {
-        "time": "שעה",
-        "phone": "טלפון",
-        "parentMessage": "הודעת הורה",
-        "aiReply": "תשובת AI"
+      "errors": {
+        "needsApiKey": "לא ניתן להפעיל את עוזר ה-AI לפני שמוגדר מפתח API (בהגדרות הספק או בשרת).",
+        "saveFailed": "שגיאה בשמירת ההגדרות",
+        "modelUnsupported": "המודל \"{model}\" אינו נתמך עבור ספק {provider}",
+        "saveProviderFailed": "שגיאה בשמירת הגדרות הספק",
+        "emptyResponse": "התקבלה תגובה ריקה מהספק",
+        "unknownError": "שגיאה לא ידועה",
+        "testFailed": "בדיקת חיבור נכשלה: {message}"
       },
-      "noLog": "אין שיחות מתועדות",
-      "roleParent": "הורה",
-      "tabSettings": "הגדרות",
-      "tabUsage": "שימוש",
-      "providerSettings": "הגדרות ספק AI",
-      "provider": "ספק",
-      "model": "מודל",
-      "apiKey": "מפתח API",
-      "apiKeyPlaceholder": "הדבק את מפתח ה-API שלך",
-      "apiKeyPlaceholderSaved": "מפתח שמור (הדבק להחלפה)",
-      "openaiKeyOptional": "אופציונלי — ישתמש במפתח הפלטפורמה אם ריק",
-      "apiKeyRequired": "חובה — ספק זה דורש מפתח API משלך",
-      "providerSaved": "הגדרות הספק נשמרו",
-      "testConnection": "בדוק חיבור",
-      "testSuccess": "החיבור הצליח — ה-AI מגיב"
+      "saved": "ההגדרות נשמרו בהצלחה."
     },
     "aiUsage": {
       "title": "שימוש ב-AI",
@@ -1370,6 +1342,169 @@
           }
         }
       }
+    },
+    "emailActions": {
+      "errors": {
+        "disconnectFailed": "שגיאה בניתוק החשבון",
+        "invalidEmail": "כתובת מייל לא תקינה",
+        "sendFailed": "שליחת המייל נכשלה — בדוק שה-Gmail מחובר"
+      },
+      "testSubject": "מייל בדיקה מ-Lessio",
+      "testHeading": "זה עובד! 🎉",
+      "testBody": "המייל הזה נשלח מחשבון ה-Gmail המחובר של הארגון שלך ב-Lessio.",
+      "testFormHint": "שלחי מייל בדיקה לכתובת כלשהי",
+      "testFormSend": "שלח בדיקה",
+      "testFormSending": "שולח...",
+      "testFormSuccess": "המייל נשלח בהצלחה!",
+      "disconnecting": "מנתק...",
+      "disconnectGoogle": "נתק חשבון Google"
+    },
+    "holidaysActions": {
+      "errors": {
+        "duplicateDate": "כבר קיים חג בתאריך זה",
+        "saveHolidayFailed": "שגיאה בשמירת החג",
+        "saveRangeFailed": "שגיאה בשמירת הטווח"
+      },
+      "holidayNamePlaceholder": "לדוגמה: ראש השנה",
+      "vacationNamePlaceholder": "לדוגמה: חופשת קיץ"
+    },
+    "messageTemplatesActions": {
+      "errors": {
+        "saveFailed": "שגיאה בשמירת התבנית",
+        "resetFailed": "שגיאה באיפוס התבנית"
+      }
+    },
+    "paymentActions": {
+      "errors": {
+        "providerNotSelected": "ספק תשלום לא נבחר",
+        "providerUnsupported": "ספק תשלום \"{provider}\" אינו נתמך",
+        "missingEncryptionKey": "מפתח הצפנה חסר בשרת — פנה למנהל המערכת",
+        "encryptFailed": "שגיאה בהצפנת הנתונים",
+        "saveFailed": "שגיאה בשמירת הנתונים",
+        "saveSettingFailed": "שגיאה בשמירת ההגדרה",
+        "disconnectFailed": "שגיאה בניתוק ספק התשלום"
+      }
+    },
+    "privacyActions": {
+      "errors": {
+        "invalidValue": "ערך לא תקין",
+        "saveFailed": "שגיאה בשמירה"
+      }
+    },
+    "receiptsActions": {
+      "errors": {
+        "badCredentialsGreenInvoice": "פרטי ה-API שגויים — לא ניתן להתחבר לחשבוניות ירוקות (Morning)",
+        "networkError": "שגיאת רשת — לא ניתן לאמת מול הספק",
+        "saveFailed": "שגיאה בשמירת ההגדרות",
+        "disconnectFailed": "שגיאה בניתוק ספק הקבלות"
+      }
+    },
+    "remindersActions": {
+      "errors": {
+        "saveFailed": "שגיאה בשמירת ההגדרות"
+      }
+    },
+    "whatsappActions": {
+      "errors": {
+        "missingMetaConfig": "הגדרות Meta חסרות בשרת — פנה למנהל המערכת",
+        "exchangeFailed": "החלפת קוד ב-Token נכשלה — אנא נסה שנית",
+        "webhookRegisterFailed": "רישום ה-webhook מול Meta נכשל — אנא נסה להתחבר שוב",
+        "encryptFailed": "שגיאה בהצפנת ה-Token — בדוק שמפתח ההצפנה מוגדר",
+        "saveFailed": "שגיאה בשמירת הנתונים",
+        "disconnectFailed": "שגיאה בניתוק החשבון"
+      }
+    },
+    "disconnectCalendar": {
+      "disconnecting": "מנתק...",
+      "label": "נתק יומן"
+    },
+    "aiAssistantForm": {
+      "enableHint": "כשמופעל, הודעות שלא מזוהות כפקודה ידועה (ביטול / יתרה / לוח זמנים) יענו אוטומטית על-ידי AI על בסיס המידע בחשבון. מוגבל ל-3 תגובות ל-24 שעות לכל מספר טלפון.",
+      "saved": "ההגדרות נשמרו בהצלחה."
+    },
+    "cancellationPolicyPage": {
+      "subtitle": "הגדרת כללי חיוב בעת ביטול שיעור — תקף לכל הארגון",
+      "noPolicy": "לא הוגדרה מדיניות ביטולים. מוצגים ערכי ברירת מחדל — שמור כדי לאשר אותם.",
+      "readOnly": "צפייה בלבד — רק בעל העסק יכול לעדכן את המדיניות"
+    },
+    "holidaysPage": {
+      "subtitle": "הגדר תאריכים בהם לא מתקיימות הזמנות — חגים, ימי עיון, חופשות ארגוניות. תאריכים אלה יחסמו אוטומטית את כל הסלוטים בדף ההזמנה.",
+      "singleDate": "תאריך בודד",
+      "dateRange": "טווח תאריכים",
+      "dateFrom": "מתאריך",
+      "dateTo": "עד תאריך"
+    },
+    "autoSendToggle": {
+      "hint": "דורש ספק תשלום מחובר וחיבור WhatsApp פעיל."
+    },
+    "dataRetention": {
+      "label": "תקופת שמירת נתוני פעילות",
+      "hint": "נתוני שיחות WhatsApp ויומן AI יאונימוזו לאחר תקופה זו.",
+      "saved": "ההגדרות נשמרו בהצלחה",
+      "days": "{n} יום",
+      "daysDefault": "{n} יום (ברירת מחדל)",
+      "never": "לעולם לא (שמירה ללא הגבלה)",
+      "save": "שמור",
+      "saving": "שומר..."
+    },
+    "privacyPage": {
+      "title": "פרטיות ושמירת נתונים",
+      "subtitle": "הגדר כמה זמן נשמרים נתוני הפעילות של הארגון",
+      "gatedHint": "הגדרת מדיניות שמירת נתונים מותאמת זמינה בתוכניות Advanced ו-Custom בלבד. כרגע הנתונים נשמרים למשך 365 יום."
+    },
+    "receiptsPage": {
+      "subtitle": "חבר את מערכת החשבוניות שלך כדי להפיק קבלה אוטומטית לכל תשלום ולשלוח אותה להורה ב-WhatsApp. הפרטים מוצפנים ומאוחסנים בצורה מאובטחת.",
+      "securityTitle": "אבטחה",
+      "security1": "פרטי ה-API מוצפנים עם AES-256-GCM לפני האחסון",
+      "security2": "הפרטים לעולם אינם נשמרים כטקסט גלוי במסד הנתונים",
+      "security3": "כל ארגון מנהל חיבור נפרד לספק הקבלות",
+      "providerLabel": "ספק קבלות",
+      "apiDetailsLabel": "פרטי API",
+      "apiDetailsValue": "מוצפנים ומאוחסנים בצורה מאובטחת",
+      "autoIssueLabel": "הפקה אוטומטית",
+      "autoIssueValue": "בכל סימון «שולם» או קבלת תשלום מקוון",
+      "disconnectHint": "ניתוק יפסיק את ההפקה האוטומטית של קבלות עד לחיבור מחדש.",
+      "disconnectedHint": "בחר ספק קבלות, הזן את פרטי ה-API שלו, ולחץ שמור וחבר. הפרטים יאומתו ויוצפנו לפני השמירה."
+    },
+    "receiptProviders": {
+      "green-invoice": "חשבוניות ירוקות (Morning)",
+      "icount": "iCount",
+      "sumit": "Sumit (סאמיט)"
+    },
+    "receiptsForm": {
+      "greenInvoiceIdPlaceholder": "מזהה ה-API מלוח הבקרה של חשבוניות ירוקות",
+      "greenInvoiceSecretPlaceholder": "הסיסמה הסודית מלוח הבקרה של חשבוניות ירוקות",
+      "icountCidPlaceholder": "מזהה החברה ב-iCount",
+      "icountUserPlaceholder": "שם המשתמש שלך ב-iCount",
+      "icountPassPlaceholder": "הסיסמה שלך ב-iCount",
+      "sumitCompanyPlaceholder": "מזהה החברה ב-Sumit",
+      "sumitApiKeyPlaceholder": "מפתח ה-API מהגדרות המפתח ב-Sumit",
+      "cidLabel": "מזהה חברה (CID)",
+      "userLabel": "שם משתמש",
+      "passLabel": "סיסמה"
+    },
+    "whatsappPage": {
+      "subtitle": "חבר את מספר ה-WhatsApp של הארגון שלך כדי לשלוח ולקבל הודעות. כל ארגון מחובר למספר משלו.",
+      "portalUrlHint": "שתף/י קישור זה עם ההורים כדי שיוכלו לגשת לפורטל האישי שלהם.",
+      "requirementsTitle": "דרישות לחיבור",
+      "req1": "חשבון Meta Business עם גישה ל-WhatsApp Business API",
+      "req2": "מספר טלפון שאינו רשום כבר ב-WhatsApp",
+      "req3": "אימות עסקי ב-Meta (Meta Business Verification)",
+      "disconnectHint": "ניתוק יפסיק את קבלת ושליחת הודעות WhatsApp עד לחיבור מחדש.",
+      "disconnectedHint": "לחץ על הכפתור להתחלת תהליך החיבור דרך Meta. תועבר לממשק של Meta לבחירת המספר שברצונך לחבר.",
+      "missingVar": "{name} אינו מוגדר בשרת — לא ניתן להתחיל תהליך חיבור.",
+      "signupHint": "תתחבר לחשבון Meta שלך ובחר את המספר שברצונך לחבר לארגון זה."
+    },
+    "remindersPage": {
+      "subtitle": "הגדר תזכורות WhatsApp אוטומטיות להורים לפני שיעורים ועל חיובים פתוחים.",
+      "masterHint": "כאשר מכובה — לא ישלחו תזכורות אוטומטיות כלל לארגון זה",
+      "lessonHoursHint": "ההורה יקבל הודעת WhatsApp X שעות לפני תחילת השיעור. לדוגמה: \"תזכורת: יש לך שיעור מחר עם ישראל ישראלי בשעה 16:00.\"",
+      "hoursBefore": "{h} שעות לפני",
+      "paymentDaysHint": "חיוב פתוח עם קישור תשלום שלא שולם אחרי X ימים יקבל תזכורת אחת. לדוגמה: \"תזכורת: יש לך חיוב פתוח בסך ₪200. לתשלום: [קישור]\"",
+      "daysRange": "בין 1 ל-30 ימים",
+      "statusSent": "נשלח",
+      "statusFailed": "נכשל",
+      "entityHeader": "ישות"
     }
   },
   "quota": {

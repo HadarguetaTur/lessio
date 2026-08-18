@@ -24,6 +24,7 @@ import { encryptToken, decryptToken } from '@/lib/crypto'
 import { registerTemplatesForWABA } from '@/lib/whatsapp/registerTemplates'
 import { subscribeAppToWABA, unsubscribeAppFromWABA } from '@/lib/whatsapp/subscribeApp'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
@@ -60,6 +61,7 @@ export async function saveWhatsAppConnection(
   _prevState: WhatsAppActionResult,
   formData: FormData
 ): Promise<WhatsAppActionResult> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -88,7 +90,7 @@ export async function saveWhatsAppConnection(
 
   if (!appId || !appSecret) {
     console.error('[whatsapp/settings] META_APP_ID or META_APP_SECRET not set')
-    return { error: 'הגדרות Meta חסרות בשרת — פנה למנהל המערכת' }
+    return { error: t('settings.whatsappActions.errors.missingMetaConfig') }
   }
 
   let accessToken: string
@@ -96,7 +98,7 @@ export async function saveWhatsAppConnection(
     accessToken = await exchangeCodeForToken(code, appId, appSecret)
   } catch (err) {
     console.error('[whatsapp/settings] Token exchange failed', { orgId, err })
-    return { error: 'החלפת קוד ב-Token נכשלה — אנא נסה שנית' }
+    return { error: t('settings.whatsappActions.errors.exchangeFailed') }
   }
 
   // Subscribe our app to the customer's WABA — without this, Meta never sends
@@ -108,7 +110,7 @@ export async function saveWhatsAppConnection(
     await subscribeAppToWABA(wabaId, accessToken)
   } catch (err) {
     console.error('[whatsapp/settings] WABA webhook subscription failed', { orgId, wabaId, err })
-    return { error: 'רישום ה-webhook מול Meta נכשל — אנא נסה להתחבר שוב' }
+    return { error: t('settings.whatsappActions.errors.webhookRegisterFailed') }
   }
 
   // Encrypt before storing
@@ -117,7 +119,7 @@ export async function saveWhatsAppConnection(
     encryptedToken = encryptToken(accessToken)
   } catch (err) {
     console.error('[whatsapp/settings] Token encryption failed', { orgId, err })
-    return { error: 'שגיאה בהצפנת ה-Token — בדוק שמפתח ההצפנה מוגדר' }
+    return { error: t('settings.whatsappActions.errors.encryptFailed') }
   }
 
   const db = createServiceRoleClient()
@@ -132,7 +134,7 @@ export async function saveWhatsAppConnection(
 
   if (updateError) {
     console.error('[whatsapp/settings] DB update failed', { orgId, error: updateError.message })
-    return { error: 'שגיאה בשמירת הנתונים' }
+    return { error: t('settings.whatsappActions.errors.saveFailed') }
   }
 
   console.info('[whatsapp/settings] WhatsApp connected', { orgId, phoneNumberId, wabaId })
@@ -159,6 +161,7 @@ export async function disconnectWhatsApp(
   _prevState: WhatsAppActionResult,
   _formData: FormData
 ): Promise<WhatsAppActionResult> {
+  const t = await getTranslations()
   const session = await getSession()
   requireMutation(session)
   const { orgId, role } = session
@@ -202,7 +205,7 @@ export async function disconnectWhatsApp(
 
   if (updateError) {
     console.error('[whatsapp/settings] Disconnect DB update failed', { orgId, error: updateError.message })
-    return { error: 'שגיאה בניתוק החשבון' }
+    return { error: t('settings.whatsappActions.errors.disconnectFailed') }
   }
 
   console.info('[whatsapp/settings] WhatsApp disconnected', { orgId })

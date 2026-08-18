@@ -7,6 +7,7 @@ import { addHoliday, addHolidayRange, type HolidayActionState } from './actions'
 const initialState: HolidayActionState = null
 
 export function AddHolidayForm() {
+  const tp = useTranslations('settings')
   const t = useTranslations('settings.holidays')
   const tCommon = useTranslations('common')
   const [isRange, setIsRange] = useState(false)
@@ -29,7 +30,7 @@ export function AddHolidayForm() {
               !isRange ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            תאריך בודד
+            {tp('holidaysPage.singleDate')}
           </button>
           <button
             type="button"
@@ -38,7 +39,7 @@ export function AddHolidayForm() {
               isRange ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            טווח תאריכים
+            {tp('holidaysPage.dateRange')}
           </button>
         </div>
       </div>
@@ -67,7 +68,7 @@ export function AddHolidayForm() {
               type="text"
               required
               maxLength={100}
-              placeholder="לדוגמה: ראש השנה"
+              placeholder={tp('holidaysActions.holidayNamePlaceholder')}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -83,7 +84,7 @@ export function AddHolidayForm() {
         <form action={rangeAction} className="flex flex-wrap gap-3 items-end">
           <div>
             <label htmlFor="date_from" className="block text-xs font-medium text-gray-700 mb-1">
-              מתאריך
+              {tp('holidaysPage.dateFrom')}
             </label>
             <input
               id="date_from"
@@ -95,7 +96,7 @@ export function AddHolidayForm() {
           </div>
           <div>
             <label htmlFor="date_to" className="block text-xs font-medium text-gray-700 mb-1">
-              עד תאריך
+              {tp('holidaysPage.dateTo')}
             </label>
             <input
               id="date_to"
@@ -115,7 +116,7 @@ export function AddHolidayForm() {
               type="text"
               required
               maxLength={100}
-              placeholder="לדוגמה: חופשת קיץ"
+              placeholder={tp('holidaysActions.vacationNamePlaceholder')}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

@@ -26,6 +26,7 @@ function fmtDateTime(ts: string) {
 }
 
 export default async function RemindersSettingsPage() {
+  const tp = await getTranslations('settings')
   const { orgId, role } = await getSession()
   const t = await getTranslations('settings.reminders')
 
@@ -35,8 +36,8 @@ export default async function RemindersSettingsPage() {
   }
 
   const STATUS_LABELS: Record<string, string> = {
-    sent: 'נשלח',
-    failed: 'נכשל',
+    sent: tp('remindersPage.statusSent'),
+    failed: tp('remindersPage.statusFailed'),
   }
 
   if (role !== 'owner') {
@@ -67,9 +68,7 @@ export default async function RemindersSettingsPage() {
   return (
     <div className="flex h-full min-h-0 w-full max-w-xl flex-col overflow-hidden">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-8">
-        הגדר תזכורות WhatsApp אוטומטיות להורים לפני שיעורים ועל חיובים פתוחים.
-      </p>
+      <p className="text-sm text-gray-500 mb-8">{tp('remindersPage.subtitle')}</p>
 
       {/* Settings form */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
@@ -103,7 +102,7 @@ export default async function RemindersSettingsPage() {
                     {t('logHeaders.type')}
                     </th>
                     <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
-                    ישות
+                    {tp('remindersPage.entityHeader')}
                     </th>
                     <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
                     {t('logHeaders.recipient')}

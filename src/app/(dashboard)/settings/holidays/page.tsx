@@ -12,6 +12,7 @@ function fmtDate(d: string) {
 }
 
 export default async function HolidaysPage() {
+  const tp = await getTranslations('settings')
   const { orgId, role } = await getSession()
   const t = await getTranslations('settings.holidays')
   const tCommon = await getTranslations('common')
@@ -25,10 +26,7 @@ export default async function HolidaysPage() {
   return (
     <div className="flex h-full min-h-0 w-full max-w-xl flex-col overflow-hidden">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-8">
-        הגדר תאריכים בהם לא מתקיימות הזמנות — חגים, ימי עיון, חופשות ארגוניות.
-        תאריכים אלה יחסמו אוטומטית את כל הסלוטים בדף ההזמנה.
-      </p>
+      <p className="text-sm text-gray-500 mb-8">{tp('holidaysPage.subtitle')}</p>
 
       {/* Holiday list */}
       {holidays.length === 0 ? (

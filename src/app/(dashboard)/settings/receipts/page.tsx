@@ -15,6 +15,7 @@ import { DisconnectReceiptButton } from './DisconnectReceiptButton'
  * The receipt_provider column is plaintext for display without decryption.
  */
 export default async function ReceiptSettingsPage() {
+  const tp = await getTranslations('settings')
   const { orgId, role } = await getSession()
   const t = await getTranslations('settings.receipts')
 
@@ -36,10 +37,7 @@ export default async function ReceiptSettingsPage() {
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-8">
-        חבר את מערכת החשבוניות שלך כדי להפיק קבלה אוטומטית לכל תשלום ולשלוח אותה להורה ב-WhatsApp.
-        הפרטים מוצפנים ומאוחסנים בצורה מאובטחת.
-      </p>
+      <p className="text-sm text-gray-500 mb-8">{tp('receiptsPage.subtitle')}</p>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {isConnected
@@ -48,18 +46,19 @@ export default async function ReceiptSettingsPage() {
       </div>
 
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-        <p className="font-medium mb-1">אבטחה</p>
+        <p className="font-medium mb-1">{tp('receiptsPage.securityTitle')}</p>
         <ul className="list-disc list-inside space-y-1 text-blue-700">
-          <li>פרטי ה-API מוצפנים עם AES-256-GCM לפני האחסון</li>
-          <li>הפרטים לעולם אינם נשמרים כטקסט גלוי במסד הנתונים</li>
-          <li>כל ארגון מנהל חיבור נפרד לספק הקבלות</li>
+          <li>{tp('receiptsPage.security1')}</li>
+          <li>{tp('receiptsPage.security2')}</li>
+          <li>{tp('receiptsPage.security3')}</li>
         </ul>
       </div>
     </div>
   )
 }
 
-function ConnectedState({ providerLabel, connected, disconnect }: { providerLabel: string; connected: string; disconnect: string }) {
+async function ConnectedState({ providerLabel, connected, disconnect }: { providerLabel: string; connected: string; disconnect: string }) {
+  const tp = await getTranslations('settings')
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-green-700">
@@ -69,16 +68,16 @@ function ConnectedState({ providerLabel, connected, disconnect }: { providerLabe
 
       <dl className="text-sm space-y-2">
         <div className="flex justify-between">
-          <dt className="text-gray-500">ספק קבלות</dt>
+          <dt className="text-gray-500">{tp('receiptsPage.providerLabel')}</dt>
           <dd className="font-medium text-gray-900">{providerLabel}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">פרטי API</dt>
-          <dd className="text-gray-400 text-xs">מוצפנים ומאוחסנים בצורה מאובטחת</dd>
+          <dt className="text-gray-500">{tp('receiptsPage.apiDetailsLabel')}</dt>
+          <dd className="text-gray-400 text-xs">{tp('receiptsPage.apiDetailsValue')}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">הפקה אוטומטית</dt>
-          <dd className="text-gray-600 text-xs">בכל סימון «שולם» או קבלת תשלום מקוון</dd>
+          <dt className="text-gray-500">{tp('receiptsPage.autoIssueLabel')}</dt>
+          <dd className="text-gray-600 text-xs">{tp('receiptsPage.autoIssueValue')}</dd>
         </div>
       </dl>
 
@@ -94,18 +93,16 @@ function ConnectedState({ providerLabel, connected, disconnect }: { providerLabe
   )
 }
 
-function DisconnectedState() {
+async function DisconnectedState() {
+  const tp = await getTranslations('settings')
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-gray-500">
         <AlertCircle size={20} />
-        <span className="font-medium text-sm">לא מחובר</span>
+        <span className="font-medium text-sm">{tp('googleCommon.notConnected')}</span>
       </div>
 
-      <p className="text-sm text-gray-600">
-        בחר ספק קבלות, הזן את פרטי ה-API שלו, ולחץ שמור וחבר.
-        הפרטים יאומתו ויוצפנו לפני השמירה.
-      </p>
+      <p className="text-sm text-gray-600">{tp('receiptsPage.disconnectedHint')}</p>
 
       <ReceiptSettingsForm />
     </div>

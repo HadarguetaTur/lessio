@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import type { DataRetentionState } from './actions'
+import { useTranslations } from 'next-intl'
 
 interface Props {
   currentDays: number | null
@@ -23,17 +24,14 @@ function currentValueFromDays(days: number | null): string {
 }
 
 export function DataRetentionForm({ currentDays, action }: Props) {
+  const tp = useTranslations('settings')
   const [state, formAction, isPending] = useActionState(action, { error: null })
 
   return (
     <form action={formAction} className="mt-4 space-y-4">
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1.5">
-          תקופת שמירת נתוני פעילות
-        </label>
-        <p className="text-xs text-muted-foreground mb-2">
-          נתוני שיחות WhatsApp ויומן AI יאונימוזו לאחר תקופה זו.
-        </p>
+        <label className="block text-sm font-medium text-foreground mb-1.5">{tp('dataRetention.label')}</label>
+        <p className="text-xs text-muted-foreground mb-2">{tp('dataRetention.hint')}</p>
         <select
           name="retention_days"
           defaultValue={currentValueFromDays(currentDays)}
@@ -49,7 +47,7 @@ export function DataRetentionForm({ currentDays, action }: Props) {
         <p className="text-sm text-red-600">{state.error}</p>
       )}
       {state.success && (
-        <p className="text-sm text-green-600">ההגדרות נשמרו בהצלחה</p>
+        <p className="text-sm text-green-600">{tp('dataRetention.saved')}</p>
       )}
 
       <button
@@ -57,7 +55,7 @@ export function DataRetentionForm({ currentDays, action }: Props) {
         disabled={isPending}
         className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'שומר...' : 'שמור'}
+        {isPending ? tp('dataRetention.saving') : tp('dataRetention.save')}
       </button>
     </form>
   )

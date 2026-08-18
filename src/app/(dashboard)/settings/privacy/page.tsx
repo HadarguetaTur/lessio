@@ -5,12 +5,14 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PageHeader } from '@/components/ui/page-header'
 import { saveDataRetentionAction } from './actions'
 import { DataRetentionForm } from './DataRetentionForm'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * Privacy / Data Retention settings — owner only, Advanced/Custom plan.
  * Per /docs/sprint-23-scope.md § Story 1c.
  */
 export default async function PrivacySettingsPage() {
+  const tp = await getTranslations('settings')
   const { role, orgId } = await getSession()
   if (role !== 'owner') redirect('/settings')
 
@@ -32,18 +34,15 @@ export default async function PrivacySettingsPage() {
   return (
     <div className="max-w-xl">
       <PageHeader
-        title="פרטיות ושמירת נתונים"
-        subtitle="הגדר כמה זמן נשמרים נתוני הפעילות של הארגון"
+        title={tp('privacyPage.title')}
+        subtitle={tp('privacyPage.subtitle')}
       />
 
       {canCustomiseRetention ? (
         <DataRetentionForm currentDays={currentDays} action={saveDataRetentionAction} />
       ) : (
         <div className="mt-4 rounded-lg border border-border bg-muted/40 p-4">
-          <p className="text-sm text-muted-foreground">
-            הגדרת מדיניות שמירת נתונים מותאמת זמינה בתוכניות Advanced ו-Custom בלבד.
-            כרגע הנתונים נשמרים למשך 365 יום.
-          </p>
+          <p className="text-sm text-muted-foreground">{tp('privacyPage.gatedHint')}</p>
         </div>
       )}
     </div>

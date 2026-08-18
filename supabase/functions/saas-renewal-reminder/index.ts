@@ -17,6 +17,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendTextMessage } from '../_shared/whatsapp.ts'
+import { botString } from '../_shared/botStrings.ts'
+import { parseAppLocale } from '../_shared/templates.ts'
 
 Deno.serve(async (_req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -87,7 +89,7 @@ Deno.serve(async (_req) => {
       // ── 4. Get org WhatsApp credentials ────────────────────────────────────
       const { data: org } = await db
         .from('organizations')
-        .select('name, whatsapp_phone_number_id, whatsapp_access_token')
+        .select('name, whatsapp_phone_number_id, whatsapp_access_token, default_locale')
         .eq('id', orgId)
         .maybeSingle()
 
@@ -100,23 +102,29 @@ Deno.serve(async (_req) => {
       // ── 5. Resolve plan display name ───────────────────────────────────────
       const { data: plan } = await db
         .from('saas_plans')
-        .select('display_name_he')
+        .select('display_name_he, display_name_en')
         .eq('id', sub.plan_id)
         .maybeSingle()
 
-      const planLabel = plan?.display_name_he ? `מנוי ${plan.display_name_he}` : 'המנוי שלך'
-      const renewalDate = sub.current_period_end
-        ? new Date(sub.current_period_end).toLocaleDateString('he-IL', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          })
-        : 'בקרוב'
+      // Read by the org owner, so it follows the organization's language —
+      // display_name_en exists on saas_plans and was previously ignored.
+      const locale = parseAppLocale(org.default_locale)
+      const planName = locale === 'en' ? plan?.display_name_en : plan?.display_name_he
+      const planLabel = planName
+        ? botString('renewal_plan_label', locale, { plan: planName })
+        : botString('renewal_your_plan', locale)
 
-      const message =
-        `🔔 תזכורת מ-Lessio\n\n` +
-        `${planLabel} יתחדש אוטומטית ב-${renewalDate}.\n\n` +
-        `לניהול המנוי: https://lessio.co.il/subscriptions`
+      const renewalDate = sub.current_period_end
+        ? new Date(sub.current_period_end).toLocaleDateString(
+            locale === 'en' ? 'en-US' : 'he-IL',
+            { day: 'numeric', month: 'long', year: 'numeric' }
+          )
+        : botString('soon', locale)
+
+      const message = botString('renewal_message', locale, {
+        plan: planLabel,
+        date: renewalDate,
+      })
 
       // ── 6. Decrypt token and send WhatsApp ─────────────────────────────────
       const accessToken = await decryptToken(org.whatsapp_access_token)

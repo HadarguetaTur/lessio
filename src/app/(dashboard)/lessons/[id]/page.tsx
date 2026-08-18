@@ -13,6 +13,7 @@ import { SendLessonReminderButton } from './SendLessonReminderButton'
 import { getNotes } from '@/lib/lessons/notes'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
+import { renderCancelReason } from '@/lib/lessons/renderCancelReason'
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-50 text-blue-700',
@@ -118,7 +119,7 @@ export default async function LessonDetailPage(props: {
           {lesson.cancel_reason && (
             <div className="flex justify-between">
               <dt className="text-gray-500">{t('cancel.reason')}</dt>
-              <dd className="text-gray-900">{lesson.cancel_reason}</dd>
+              <dd className="text-gray-900">{renderCancelReason(lesson.cancel_reason, t)}</dd>
             </div>
           )}
         </dl>

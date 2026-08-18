@@ -9,3 +9,10 @@
 UPDATE charges
 SET notes = 'MONTHLY_CHARGE:' || substring(notes from '^חיוב חודשי (\d{4}-\d{2})$')
 WHERE notes ~ '^חיוב חודשי \d{4}-\d{2}$';
+
+-- Same reasoning for lessons.cancel_reason: the system-generated reasons become
+-- stable codes, resolved at render time by src/lib/lessons/renderCancelReason.ts.
+-- Reasons typed by a user are left alone.
+UPDATE lessons SET cancel_reason = 'SERIES_CANCELLED'       WHERE cancel_reason = 'ביטול סדרה';
+UPDATE lessons SET cancel_reason = 'CANCELLED_VIA_WHATSAPP' WHERE cancel_reason = 'ביטול דרך וואטסאפ';
+UPDATE lessons SET cancel_reason = 'TEACHER_DAY_OFF'        WHERE cancel_reason = 'חופשת מורה';

@@ -19,7 +19,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendSmartMessage } from '../_shared/whatsapp.ts'
-import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
+import { resolveTemplate, resolveRecipientLocale, type AppLocale } from '../_shared/templates.ts'
 import { botString } from '../_shared/botStrings.ts'
 import { sendEmail } from '../_shared/email.ts'
 
@@ -202,8 +202,11 @@ async function processOrg(db: any, org: any): Promise<void> {
     if (emailSettings.homework_assignment && parentEmail) {
       await sendEmail({
         to: parentEmail,
-        subject: `תזכורת שיעורי בית — ${assignment.title}`,
-        html: `<p>תזכורת: שיעורי בית "${assignment.title}" צריכים להיות מוגשים עד ${assignment.due_date ?? 'מחר'}.</p>`,
+        subject: botString('homework_email_subject', locale, { title: assignment.title }),
+        html: botString('homework_email_body', locale, {
+          title: assignment.title,
+          due: assignment.due_date ?? dueTomorrowLabel(locale),
+        }),
       }).catch((err: unknown) => {
         console.error('[homework-reminders] Email send failed', { org_id: orgId, assignment_id: assignment.id, error: String(err) })
       })
@@ -250,7 +253,7 @@ function resolveParentLocale(assignment: any): string | null {
 
 /** Meta rejects empty template parameters, so an absent due date needs a word. */
 function dueTomorrowLabel(locale: string): string {
-  return locale === 'en' ? 'tomorrow' : 'מחר'
+  return botString('tomorrow', locale as AppLocale)
 }
 
 /**

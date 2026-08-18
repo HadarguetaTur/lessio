@@ -9,6 +9,7 @@ import { getLessonAccessScope, getLessonById, formatTime, formatDate, LessonStat
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { TeacherLessonOutcomeForm } from '@/components/dashboard/lessons/TeacherLessonOutcomeForm'
 import { updateTeacherLessonOutcome } from './actions'
+import { renderCancelReason } from '@/lib/lessons/renderCancelReason'
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-50 text-blue-700',
@@ -108,7 +109,7 @@ export default async function TeacherLessonDetailPage(props: {
           {lesson.cancel_reason && (
             <div className="flex justify-between">
               <dt className="text-gray-500">{tLessons('cancel.reason')}</dt>
-              <dd className="text-gray-900">{lesson.cancel_reason}</dd>
+              <dd className="text-gray-900">{renderCancelReason(lesson.cancel_reason, t)}</dd>
             </div>
           )}
         </dl>

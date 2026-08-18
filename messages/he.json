@@ -879,6 +879,12 @@
       "tooLong": "הודעה ארוכה מדי (עד 2000 תווים)",
       "studentNotFound": "תלמיד לא נמצא",
       "sendFailed": "שגיאה בשליחת ההודעה"
+    },
+    "seriesCancelReason": "ביטול סדרה",
+    "cancelReasons": {
+      "series": "ביטול סדרה",
+      "whatsapp": "ביטול דרך וואטסאפ",
+      "teacherDayOff": "חופשת מורה"
     }
   },
   "charges": {
@@ -2078,7 +2084,8 @@
     "dashboardDate": "יום {day}, {dayNum} ב{month}",
     "noTeacherRecordContact": "לא נמצאה רשומת מורה פעילה. פנה למנהל המערכת.",
     "availabilityHint": "הגדר את החלונות השבועיים בהם תלמידים יוכלו להזמין שיעורים.",
-    "overridesHint": "חריגים ליום מסוים — חופשה, שעות מיוחדות, או חסימה מלאה."
+    "overridesHint": "חריגים ליום מסוים — חופשה, שעות מיוחדות, או חסימה מלאה.",
+    "reminderSent": "תזכורת נשלחה"
   },
   "admin": {
     "nav": {
@@ -2952,7 +2959,9 @@
       "back": "חזרה",
       "skip": "דלג",
       "saving": "שומר..."
-    }
+    },
+    "setup": "הגדרת המערכת",
+    "secure": "מאובטח"
   },
   "import": {
     "title": "יבוא {entity}",
@@ -3530,7 +3539,9 @@
   "notFound": {
     "title": "הדף לא נמצא",
     "description": "הדף שחיפשת לא קיים או שהוסר.",
-    "backHome": "חזרה לדף הבית"
+    "backHome": "חזרה לדף הבית",
+    "comingSoonTitle": "בקרוב",
+    "comingSoonBody": "פורטל המורים יהיה זמין בקרוב."
   },
   "errors": {
     "generic": {
@@ -3545,7 +3556,11 @@
       "lessons": "הגעת למספר השיעורים החודשי המרבי בחבילה הנוכחית. שדרג כדי לתזמן עוד שיעורים.",
       "upgrade": "שדרג חבילה",
       "retry": "נסה שוב"
-    }
+    },
+    "forbiddenTitle": "אין הרשאה",
+    "forbiddenBody": "אין לך הרשאה לצפות במשאב הזה או לבצע את הפעולה שביקשת.",
+    "backToDashboard": "חזרה ללוח",
+    "home": "דף הבית"
   },
   "meta": {
     "title": "LESSIO — תשתית עסקית למורים פרטיים ומרכזי למידה",
@@ -3598,7 +3613,20 @@
     "invalidDate": "תאריך לא תקין",
     "invalidEndDate": "תאריך סיום לא תקין",
     "messageBodyRequired": "תוכן ההודעה לא יכול להיות ריק",
-    "bodyRequired": "תוכן נדרש"
+    "bodyRequired": "תוכן נדרש",
+    "fileTooLarge10": "גודל הקובץ עולה על 10MB המותרים",
+    "fileTooLarge20": "גודל הקובץ עולה על 20MB המותרים",
+    "unsupportedFileType": "סוג הקובץ אינו נתמך. סוגים מותרים: PDF, תמונות, Word, Excel, PowerPoint, טקסט",
+    "templateHasOpenHomework": "לא ניתן למחוק תבנית עם שיעורי בית פתוחים",
+    "lessonCancelled": "לא ניתן לשנות סטטוס של שיעור שבוטל",
+    "planNotFound": "תוכנית לא נמצאה",
+    "genericError": "שגיאה",
+    "invalidPlan": "תוכנית לא חוקית",
+    "invalidInterval": "מחזור חיוב לא חוקי",
+    "invalidAmount": "סכום לא חוקי",
+    "missingSumitConfig": "חסרות הגדרות Sumit (SUMIT_COMPANY_ID / SUMIT_API_KEY) או הפעל SUMIT_CHECKOUT_MOCK=1 לסביבת טסט",
+    "invalidData": "נתונים לא חוקיים",
+    "saveReferralFailed": "שמירת הפניה נכשלה"
   },
   "receipts": {
     "customer": "לקוח",

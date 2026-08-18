@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 /**
  * Root *segment* error boundary — it renders inside the root layout, so it must not
@@ -14,13 +15,14 @@ export default function RootError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const t = useTranslations()
   useEffect(() => {
     console.error('[error-boundary] Unhandled error', error)
   }, [error])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center">
-      <h1 className="text-2xl font-bold text-foreground mb-2">משהו השתבש</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-2">{t('errors.generic.title')}</h1>
       <p className="text-sm text-muted-foreground mb-6">
         Something went wrong. Please try again.
       </p>
@@ -29,13 +31,13 @@ export default function RootError({
           onClick={reset}
           className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
         >
-          נסה שוב
+          {t('errors.generic.retry')}
         </button>
         <Link
           href="/"
           className="px-4 py-2 text-sm font-medium border border-border rounded-md hover:bg-muted transition-colors"
         >
-          דף הבית
+          {t('errors.home')}
         </Link>
       </div>
       {error.digest && (

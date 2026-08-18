@@ -167,8 +167,12 @@ async function processOrg(db: any, org: any, now: Date) {
     if (emailSettings.payment_reminder && parentEmail) {
       await sendEmail({
         to: parentEmail,
-        subject: `תזכורת תשלום — ₪${amount}`,
-        html: `<p>תזכורת: יש לך חיוב פתוח בסך ₪${amount}.</p>${charge.payment_link ? `<p><a href="${charge.payment_link}">לחצו כאן לתשלום</a></p>` : ''}`,
+        subject: botString('payment_email_subject', locale, { amount: String(amount) }),
+        html:
+          botString('payment_email_body', locale, { amount: String(amount) }) +
+          (charge.payment_link
+            ? `<p><a href="${charge.payment_link}">${botString('payment_email_link', locale)}</a></p>`
+            : ''),
       }).catch((err: unknown) => {
         console.error('[payment-reminders] Email send failed', { org_id: org.id, charge_id: charge.id, error: String(err) })
       })

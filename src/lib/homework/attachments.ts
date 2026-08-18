@@ -78,11 +78,11 @@ export async function uploadAttachment(params: {
   file: File
 }): Promise<HomeworkAttachment> {
   if (params.file.size > MAX_FILE_SIZE) {
-    throw new Error('גודל הקובץ עולה על 10MB המותרים')
+    throw new Error('validation.fileTooLarge10')
   }
 
   if (params.file.type && !ALLOWED_MIME_TYPES.has(params.file.type)) {
-    throw new Error('סוג הקובץ אינו נתמך. סוגים מותרים: PDF, תמונות, Word, Excel, PowerPoint, טקסט')
+    throw new Error('validation.unsupportedFileType')
   }
 
   const db = createServiceRoleClient()

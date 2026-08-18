@@ -10,6 +10,12 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 export type CancelSeriesScope = 'all' | 'from_date'
 
 /**
+ * Stored on the lesson row and read back much later, so it is a stable code
+ * rather than display copy — the UI resolves it at render time.
+ */
+export const SERIES_CANCEL_REASON = 'SERIES_CANCELLED'
+
+/**
  * Cancels all scheduled lessons in a series.
  * scope='all' — all scheduled lessons
  * scope='from_date' — scheduled lessons with start_at >= fromDate
@@ -32,7 +38,7 @@ export async function cancelLessonSeries(
     .from('lessons')
     .update({
       status: 'cancelled',
-      cancel_reason: 'ביטול סדרה',
+      cancel_reason: SERIES_CANCEL_REASON,
       updated_at: new Date().toISOString(),
     })
     .eq('series_id', seriesId)

@@ -11,6 +11,7 @@ export default async function OnboardingLayout({
 }: {
   children: React.ReactNode
 }) {
+  const t = await getTranslations()
   const locale = await getLocale()
   const dir = locale === 'he' ? 'rtl' : 'ltr'
   const tNav = await getTranslations('auth.common')
@@ -35,14 +36,14 @@ export default async function OnboardingLayout({
                   LESSIO
                 </span>
                 <span className="hidden text-[11px] font-medium text-muted-foreground sm:block">
-                  {locale === 'he' ? 'הגדרת המערכת' : 'Setup'}
+                  {t('onboarding.setup')}
                 </span>
               </div>
             </Link>
             <div className="hidden items-center gap-1.5 sm:flex">
               <span className="inline-flex items-center gap-1 rounded-full border border-teal-500/20 bg-teal-500/10 px-2 py-0.5 text-[10px] font-medium text-teal-800 dark:text-teal-200">
                 <ShieldCheck className="size-3 text-teal-600 dark:text-teal-300" aria-hidden />
-                {locale === 'he' ? 'מאובטח' : 'Secure'}
+                {t('onboarding.secure')}
               </span>
             </div>
           </div>

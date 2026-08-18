@@ -200,8 +200,12 @@ async function processOrg(db: any, org: any, now: Date) {
     if (emailSettings.lesson_reminder && parentEmail) {
       await sendEmail({
         to: parentEmail,
-        subject: `תזכורת שיעור — ${dateStr} בשעה ${timeStr}`,
-        html: `<p>תזכורת: שיעור עם ${teacherName} ב${dateStr} בשעה ${timeStr}.</p>`,
+        subject: botString('lesson_email_subject', locale, { date: dateStr, time: timeStr }),
+        html: botString('lesson_email_body', locale, {
+          teacher: teacherName,
+          date: dateStr,
+          time: timeStr,
+        }),
       }).catch((err: unknown) => {
         console.error('[lesson-reminders] Email send failed', { org_id: org.id, lesson_id: lesson.id, error: String(err) })
       })

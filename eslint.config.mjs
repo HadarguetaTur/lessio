@@ -35,6 +35,9 @@ const HEBREW_ALLOWED = [
   "src/lib/whatsapp/**",
   "supabase/functions/_shared/templates.ts",
   "supabase/functions/_shared/botStrings.ts",
+  // Deno mirror of src/lib/whatsapp/submitTemplate.ts — VAR_FALLBACKS carries a
+  // full he/en pair, same as the Node original.
+  "supabase/functions/_shared/whatsapp.ts",
   // Bilingual via getLandingContent(locale).
   "src/lib/marketing/landingCopy.ts",
   // Bilingual he/en branches already. Listed file-by-file, not by directory —

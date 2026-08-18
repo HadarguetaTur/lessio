@@ -37,7 +37,7 @@ import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
 type Db = ReturnType<typeof createServiceRoleClient>
 
 /** Free-text marker on the cancelled lessons, matching the 'ביטול סדרה' convention. */
-const CANCEL_REASON = 'חופשת מורה'
+const CANCEL_REASON = 'TEACHER_DAY_OFF'
 const OVERRIDE_REASON = 'חופשה מאושרת'
 
 export type DayOffRequest = {

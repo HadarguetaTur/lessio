@@ -287,7 +287,7 @@ export async function updateLessonStatus(
 
   if (!current) throw new Error('validation.lessonNotFound')
   if (!isValidStatusTransition(current.status, status)) {
-    throw new Error('לא ניתן לשנות סטטוס של שיעור שבוטל')
+    throw new Error('validation.lessonCancelled')
   }
 
   const update: Record<string, string | null> = { status }

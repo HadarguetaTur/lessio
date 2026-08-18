@@ -20,6 +20,7 @@ import {
 } from '@/lib/saas/sumit-checkout'
 import { confirmSumitPayment } from '@/lib/saas/sumit'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 
 
@@ -27,6 +28,7 @@ const planNameSchema = z.enum(['free', 'basic', 'advanced', 'custom'])
 const billingIntervalSchema = z.enum(['monthly', 'yearly'])
 
 export async function startFreeTrialSaas(): Promise<{ error: string } | { ok: true }> {
+  const t = await getTranslations()
   let orgId: string
   try {
     ;({ orgId } = await getOwnerOnboardingSession())
@@ -35,12 +37,12 @@ export async function startFreeTrialSaas(): Promise<{ error: string } | { ok: tr
   }
 
   const plan = await getSaasPlanByName('free')
-  if (!plan) return { error: 'תוכנית לא נמצאה' }
+  if (!plan) return { error: t('validation.planNotFound') }
 
   try {
     await upsertTrialSubscription(orgId, plan.id)
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'שגיאה'
+    const msg = e instanceof Error ? e.message : t('validation.genericError')
     return { error: msg }
   }
 
@@ -51,12 +53,13 @@ export async function beginPaidSaasCheckout(
   planName: SaasPlanName,
   billingInterval: 'monthly' | 'yearly'
 ): Promise<{ error: string } | { url: string; summary: BeginPaidCheckoutSummary }> {
+  const t = await getTranslations()
   const parsedName = planNameSchema.safeParse(planName)
   const parsedInterval = billingIntervalSchema.safeParse(billingInterval)
   if (!parsedName.success || parsedName.data === 'free' || parsedName.data === 'custom') {
-    return { error: 'תוכנית לא חוקית' }
+    return { error: t('validation.invalidPlan') }
   }
-  if (!parsedInterval.success) return { error: 'מחזור חיוב לא חוקי' }
+  if (!parsedInterval.success) return { error: t('validation.invalidInterval') }
 
   let orgId: string
   try {
@@ -66,14 +69,14 @@ export async function beginPaidSaasCheckout(
   }
 
   const plan = await getSaasPlanByName(parsedName.data)
-  if (!plan) return { error: 'תוכנית לא נמצאה' }
+  if (!plan) return { error: t('validation.planNotFound') }
 
   const amount =
     parsedInterval.data === 'yearly' && plan.price_yearly != null
       ? plan.price_yearly
       : plan.price_monthly
 
-  if (amount <= 0) return { error: 'סכום לא חוקי' }
+  if (amount <= 0) return { error: t('validation.invalidAmount') }
 
   const checkoutReference = crypto.randomUUID()
 
@@ -90,7 +93,7 @@ export async function beginPaidSaasCheckout(
     if (!envCreds) {
       return {
         error:
-          'חסרות הגדרות Sumit (SUMIT_COMPANY_ID / SUMIT_API_KEY) או הפעל SUMIT_CHECKOUT_MOCK=1 לסביבת טסט',
+          t('validation.missingSumitConfig'),
       }
     }
     creds = envCreds
@@ -131,7 +134,7 @@ export async function beginPaidSaasCheckout(
       checkoutReference,
     })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'שגיאה'
+    const msg = e instanceof Error ? e.message : t('validation.genericError')
     return { error: msg }
   }
 
@@ -200,8 +203,9 @@ const inquirySchema = z.object({
 export async function submitCustomSaasPlanInquiry(
   input: z.infer<typeof inquirySchema>
 ): Promise<{ error: string } | void> {
+  const t = await getTranslations()
   const parsed = inquirySchema.safeParse(input)
-  if (!parsed.success) return { error: 'נתונים לא חוקיים' }
+  if (!parsed.success) return { error: t('validation.invalidData') }
 
   let orgId: string
   try {
@@ -219,7 +223,7 @@ export async function submitCustomSaasPlanInquiry(
     status: 'open',
   })
 
-  if (error) return { error: 'שמירת הפניה נכשלה' }
+  if (error) return { error: t('validation.saveReferralFailed') }
 
   redirect('/onboarding/pending-custom')
 }

@@ -263,7 +263,7 @@ export async function deleteTemplate(orgId: string, templateId: string): Promise
     .limit(1)
 
   if (pending && pending.length > 0) {
-    throw new Error('לא ניתן למחוק תבנית עם שיעורי בית פתוחים')
+    throw new Error('validation.templateHasOpenHomework')
   }
 
   const { error } = await db

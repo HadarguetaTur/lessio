@@ -879,6 +879,12 @@
       "tooLong": "Message is too long (2000 characters maximum)",
       "studentNotFound": "Student not found",
       "sendFailed": "Could not send the message"
+    },
+    "seriesCancelReason": "Series cancelled",
+    "cancelReasons": {
+      "series": "Series cancelled",
+      "whatsapp": "Cancelled over WhatsApp",
+      "teacherDayOff": "Teacher day off"
     }
   },
   "charges": {
@@ -2078,7 +2084,8 @@
     "dashboardDate": "{day}, {dayNum} {month}",
     "noTeacherRecordContact": "No active teacher record found. Contact your system administrator.",
     "availabilityHint": "Set the weekly windows in which students can book lessons.",
-    "overridesHint": "Exceptions for a specific day — a holiday, special hours, or a full block."
+    "overridesHint": "Exceptions for a specific day — a holiday, special hours, or a full block.",
+    "reminderSent": "Reminder sent"
   },
   "admin": {
     "nav": {
@@ -2952,7 +2959,9 @@
       "back": "Back",
       "skip": "Skip",
       "saving": "Saving..."
-    }
+    },
+    "setup": "Setup",
+    "secure": "Secure"
   },
   "import": {
     "title": "Import {entity}",
@@ -3530,7 +3539,9 @@
   "notFound": {
     "title": "Page not found",
     "description": "The page you're looking for doesn't exist or has been removed.",
-    "backHome": "Back to home"
+    "backHome": "Back to home",
+    "comingSoonTitle": "Coming soon",
+    "comingSoonBody": "The teacher portal will be available soon."
   },
   "errors": {
     "generic": {
@@ -3545,7 +3556,11 @@
       "lessons": "You've reached the monthly lesson limit on your current plan. Upgrade to schedule more.",
       "upgrade": "Upgrade plan",
       "retry": "Try again"
-    }
+    },
+    "forbiddenTitle": "Access denied",
+    "forbiddenBody": "You do not have permission to view this resource or perform the action you requested.",
+    "backToDashboard": "Back to dashboard",
+    "home": "Home"
   },
   "meta": {
     "title": "LESSIO — business infrastructure for private tutors and learning centres",
@@ -3598,7 +3613,20 @@
     "invalidDate": "Invalid date",
     "invalidEndDate": "Invalid end date",
     "messageBodyRequired": "The message body cannot be empty",
-    "bodyRequired": "Body is required"
+    "bodyRequired": "Body is required",
+    "fileTooLarge10": "The file is larger than the 10MB limit",
+    "fileTooLarge20": "The file is larger than the 20MB limit",
+    "unsupportedFileType": "Unsupported file type. Allowed: PDF, images, Word, Excel, PowerPoint, text",
+    "templateHasOpenHomework": "A template with open homework cannot be deleted",
+    "lessonCancelled": "The status of a cancelled lesson cannot be changed",
+    "planNotFound": "Plan not found",
+    "genericError": "Error",
+    "invalidPlan": "Invalid plan",
+    "invalidInterval": "Invalid billing interval",
+    "invalidAmount": "Invalid amount",
+    "missingSumitConfig": "Sumit settings are missing (SUMIT_COMPANY_ID / SUMIT_API_KEY), or set SUMIT_CHECKOUT_MOCK=1 for a test environment",
+    "invalidData": "Invalid data",
+    "saveReferralFailed": "Could not save the referral"
   },
   "receipts": {
     "customer": "Customer",

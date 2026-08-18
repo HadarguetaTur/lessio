@@ -87,7 +87,7 @@ export async function executeCancellation(
   // 6. Cancel the lesson
   const { error: cancelError } = await db
     .from('lessons')
-    .update({ status: 'cancelled', cancel_reason: 'ביטול דרך וואטסאפ', updated_at: now.toISOString() })
+    .update({ status: 'cancelled', cancel_reason: 'CANCELLED_VIA_WHATSAPP', updated_at: now.toISOString() })
     .eq('id', lessonId)
     .eq('organization_id', orgId)
 

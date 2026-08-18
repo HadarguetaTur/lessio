@@ -138,11 +138,11 @@ export async function submitHomework(params: {
 
   if (params.file && params.file.size > 0) {
     if (params.file.size > MAX_FILE_SIZE) {
-      throw new Error('גודל הקובץ עולה על 20MB המותרים')
+      throw new Error('validation.fileTooLarge20')
     }
 
     if (params.file.type && !ALLOWED_MIME_TYPES.has(params.file.type)) {
-      throw new Error('סוג הקובץ אינו נתמך. סוגים מותרים: PDF, תמונות, Word, Excel, PowerPoint, טקסט')
+      throw new Error('validation.unsupportedFileType')
     }
 
     storagePath = `${params.orgId}/${params.assignmentId}/${params.studentId}-${Date.now()}-${params.file.name}`

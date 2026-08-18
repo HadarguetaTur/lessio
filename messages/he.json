@@ -492,7 +492,58 @@
       "loadGoalsFailed": "שגיאה בטעינת היעדים",
       "loadExamsFailed": "שגיאה בטעינת המבחנים",
       "loadEmailsFailed": "שגיאה בטעינת אימיילים"
-    }
+    },
+    "goalErrors": {
+      "createFailed": "שגיאה ביצירת המטרה",
+      "updateFailed": "שגיאה בעדכון המטרה",
+      "deleteFailed": "שגיאה במחיקת המטרה"
+    },
+    "goalAchievedNotification": "מטרה הושגה — {subject}",
+    "examErrors": {
+      "invalidDates": "תאריכים לא תקינים",
+      "invalidRange": "טווח תאריכים לא חוקי",
+      "rangeTooLong": "טווח התאריכים לא יעלה על שנה",
+      "saveFailed": "שגיאה בשמירת המבחן",
+      "updateFailed": "שגיאה בעדכון המבחן",
+      "deleteFailed": "שגיאה במחיקת המבחן"
+    },
+    "reportErrors": {
+      "studentNotFound": "תלמיד לא נמצא",
+      "generateFailed": "שגיאה ביצירת הדוח",
+      "emailDisabled": "שליחת דוח התקדמות במייל כבויה בהגדרות הארגון או שאין תצורת Resend. פנה למנהל.",
+      "sendFailed": "שליחת המייל נכשלה. ודא ש-Resend מוגדר בשרת.",
+      "sendReportFailed": "שגיאה בשליחת הדוח"
+    },
+    "reportLines": {
+      "attendance": "נוכחות: {completed} / {total} שיעורים ({percent}% הושלמו).",
+      "homework": "שיעורי בית: {completed} / {total} משימות{avg}.",
+      "homeworkAvg": " (ממוצע ציון {score}/100)"
+    },
+    "linkParentErrors": {
+      "pickParent": "יש לבחור הורה",
+      "alreadyLinked": "הורה זה כבר מקושר לתלמיד",
+      "linkFailed": "שגיאה בקישור ההורה"
+    },
+    "secondary": "משני",
+    "groupErrors": {
+      "createFailed": "שגיאה ביצירת הקבוצה",
+      "assignFailed": "שגיאה בשיוך התלמידים",
+      "updateFailed": "שגיאה בעדכון הקבוצה",
+      "updateMembersFailed": "שגיאה בעדכון חברי הקבוצה",
+      "deleteFailed": "שגיאה במחיקת הקבוצה",
+      "toggleFailed": "שגיאה בשינוי סטטוס הקבוצה"
+    },
+    "importTabs": {
+      "familyList": "תלמידים + הורים",
+      "students": "תלמידים בלבד",
+      "parents": "הורים בלבד"
+    },
+    "importPage": {
+      "title": "יבוא תלמידים והורים",
+      "subtitle": "העלה קובץ אקסל או CSV — תלמידים + הורים בקובץ אחד, או בנפרד",
+      "back": "חזרה לתלמידים"
+    },
+    "noTeacherRecord": "לא נמצאה רשומת מורה פעילה עבור משתמש זה."
   },
   "parents": {
     "title": "הורים",
@@ -559,7 +610,20 @@
       "whatsappSendFailed": "שגיאה בשליחת ההודעה דרך WhatsApp",
       "loadParentFailed": "שגיאה בטעינת פרטי ההורה"
     },
-    "chargeDescription": "חיוב עבור {name}"
+    "chargeDescription": "חיוב עבור {name}",
+    "importPage": {
+      "familyListTitle": "יבוא רשימת משפחות",
+      "parentsTitle": "יבוא הורים",
+      "familyListSubtitle": "שורה אחת = תלמיד + הורה. המערכת תיצור תלמידים, הורים וקישורים ביניהם אוטומטית.",
+      "parentsSubtitle": "יבוא הורים עם קישור לתלמידים קיימים לפי שם.",
+      "chooserTitle": "יבוא הורים ותלמידים",
+      "chooserSubtitle": "בחר את מצב היבוא המתאים לנתונים שלך",
+      "back": "חזרה להורים",
+      "familyListCard": "רשימת משפחות",
+      "parentsOnlyCard": "הורים בלבד",
+      "studentsOnlyCard": "תלמידים בלבד",
+      "importLabel": "יבוא"
+    }
   },
   "teachers": {
     "title": "מורים",
@@ -591,7 +655,34 @@
     "inviteEmailHint": "האימייל ישמש לכניסה למערכת",
     "sendingInvite": "שולח הזמנה...",
     "sendInvite": "שלח הזמנה",
-    "phoneBotHint": "מספר הטלפון מאפשר למורה לקבל התראות ולתקשר עם הבוט בוואטסאפ"
+    "phoneBotHint": "מספר הטלפון מאפשר למורה לקבל התראות ולתקשר עם הבוט בוואטסאפ",
+    "errors": {
+      "invalidPhone": "מספר הטלפון אינו תקין",
+      "emailRequired": "אימייל הוא שדה חובה",
+      "fullNameRequired": "שם מלא הוא שדה חובה",
+      "emailExists": "כתובת אימייל זו כבר רשומה במערכת",
+      "inviteFailed": "שגיאה בשליחת ההזמנה: {message}",
+      "createProfileFailed": "שגיאה ביצירת פרופיל המורה",
+      "createTeacherFailed": "שגיאה ביצירת רשומת המורה",
+      "ratePositive": "תעריף שעתי חייב להיות מספר חיובי",
+      "updateFailed": "שגיאה בעדכון המורה",
+      "updateContactFailed": "שגיאה בעדכון פרטי הקשר של המורה",
+      "notFound": "המורה לא נמצא",
+      "pickDay": "יש לבחור יום",
+      "fillTimes": "יש למלא שעת התחלה ושעת סיום",
+      "endAfterStart": "שעת הסיום חייבת להיות לאחר שעת ההתחלה",
+      "overlapping": "חלון הזמן חופף עם זמינות קיימת באותו יום",
+      "saveAvailabilityFailed": "שגיאה בשמירת הזמינות",
+      "pickDate": "יש לבחור תאריך",
+      "overrideExistsForTeacher": "כבר קיים חריג לתאריך זה עבור מורה זה",
+      "saveOverrideFailed": "שגיאה בשמירת החריג"
+    },
+    "importPage": {
+      "title": "יבוא מורים",
+      "subtitle": "העלה קובץ אקסל או CSV עם נתוני מורים. כל מורה יקבל הזמנה למערכת.",
+      "back": "חזרה למורים",
+      "importLabel": "יבוא"
+    }
   },
   "lessons": {
     "title": "שיעורים",
@@ -731,7 +822,56 @@
       "noPrimaryParent": "לא ניתן ליצור חיוב ביטול — לתלמיד אין הורה ראשי מוגדר. יש לקשר הורה לתלמיד דרך עמוד התלמיד > הורים.",
       "noTeacherRate": "לא ניתן ליצור חיוב ביטול — למורה אין תעריף שעתי מוגדר"
     },
-    "cancelledNotification": "שיעור בוטל — {reason}"
+    "cancelledNotification": "שיעור בוטל — {reason}",
+    "detailTitle": "פרטי שיעור",
+    "sendReminder": "שליחת תזכורת בוואטסאפ",
+    "sendingReminder": "שולח...",
+    "reminderSent": "תזכורת נשלחה",
+    "importTitle": "יבוא שיעורים",
+    "importSubtitle": "העלה קובץ עם מערכת שעות חוזרת או היסטוריית שיעורים",
+    "backToLessons": "חזרה לשיעורים",
+    "recurringSchedule": "מערכת שעות חוזרת",
+    "lessonHistory": "היסטוריית שיעורים",
+    "seriesErrors": {
+      "endDateFuture": "תאריך הסיום חייב להיות בעתיד",
+      "createSeriesFailed": "שגיאה ביצירת הסדרה"
+    },
+    "newErrors": {
+      "checkStudentsFailed": "שגיאה בבדיקת תלמידים",
+      "studentNotFound": "תלמיד לא נמצא",
+      "onlyOwnStudents": "ניתן לקבוע שיעור רק לתלמידים המשויכים אליך",
+      "noTeacherProfile": "לא נמצא פרופיל מורה פעיל",
+      "groupAdminOnly": "שיעורים קבוצתיים זמינים רק למנהל המערכת",
+      "createFailed": "שגיאה ביצירת השיעור"
+    },
+    "conflicts": {
+      "ownConflict": "יש לך שיעור חופף בשעה זו",
+      "teacherConflict": "למורה יש שיעור חופף בשעה זו",
+      "holiday": "התאריך הנבחר הוא חג — לא ניתן לקבוע שיעור",
+      "studentConflict": "לתלמיד יש שיעור חופף בשעה זו",
+      "googleCalendar": "יש אירוע ביומן Google בשעה המבוקשת. האם לקבוע את השיעור בכל זאת?",
+      "outsideWindows": "המורה לא זמין בשעה זו. האם לקבוע את השיעור בכל זאת?",
+      "markedUnavailable": "המורה סימן את התאריך הזה כלא זמין. האם לקבוע את השיעור בכל זאת?",
+      "outsideDayWindow": "השעה המבוקשת חורגת מחלון הזמינות שהוגדר לתאריך זה. האם לקבוע את השיעור בכל זאת?"
+    },
+    "messagesPage": {
+      "title": "הודעות פורטל",
+      "subtitle": "שיחות עם הורים מפורטל ההורים",
+      "emptyTitle": "אין הודעות",
+      "emptySubtitle": "הודעות מהורים דרך פורטל ההורים יופיעו כאן.",
+      "colStudent": "תלמיד",
+      "colParent": "הורה",
+      "colLastMessage": "הודעה אחרונה",
+      "colDate": "תאריך",
+      "colUnread": "חדשות",
+      "threadTitle": "שיחה — {name}"
+    },
+    "messageErrors": {
+      "empty": "הודעה ריקה",
+      "tooLong": "הודעה ארוכה מדי (עד 2000 תווים)",
+      "studentNotFound": "תלמיד לא נמצא",
+      "sendFailed": "שגיאה בשליחת ההודעה"
+    }
   },
   "charges": {
     "title": "חיובים",
@@ -1827,7 +1967,38 @@
       "accountLabel": "חשבון Google",
       "disconnectHint": "ניתוק יגרום לביטול בדיקת החפיפות מול היומן האישי שלך.",
       "connectButton": "חבר יומן Google"
-    }
+    },
+    "errors": {
+      "noTeacherRecord": "לא נמצאה רשומת מורה פעילה",
+      "pickDay": "יש לבחור יום",
+      "fillTimes": "יש למלא שעת התחלה ושעת סיום",
+      "endAfterStart": "שעת הסיום חייבת להיות לאחר שעת ההתחלה",
+      "overlapping": "חלון הזמן חופף עם זמינות קיימת באותו יום",
+      "saveAvailabilityFailed": "שגיאה בשמירת הזמינות",
+      "pickDate": "יש לבחור תאריך",
+      "overrideExists": "כבר קיים חריג לתאריך זה",
+      "saveOverrideFailed": "שגיאה בשמירת החריג",
+      "refreshLinkFailed": "שגיאה בחידוש הקישור — נסה שנית",
+      "noTeacherProfile": "לא נמצא פרופיל מורה",
+      "createLessonFailed": "שגיאה ביצירת השיעור",
+      "noPermission": "אין הרשאה לפעולה זו",
+      "noActiveTeacherRecord": "לא נמצאה רשומת מורה פעילה עבור משתמש זה",
+      "invalidStatus": "סטטוס לא חוקי. ניתן לעדכן להושלם או לא הגיע בלבד",
+      "cannotUpdateLesson": "אין הרשאה לעדכן שיעור זה",
+      "lessonCancelled": "לא ניתן לשנות סטטוס של שיעור שבוטל",
+      "statusUpdateFailed": "שגיאה בעדכון הסטטוס"
+    },
+    "deleteWindow": "מחק חלון",
+    "disconnecting": "מנתק...",
+    "disconnectCalendar": "נתק יומן",
+    "overridesTable": {
+      "date": "תאריך",
+      "type": "סוג",
+      "hours": "שעות",
+      "reason": "סיבה"
+    },
+    "noTeacherRecord": "לא נמצאה רשומת מורה פעילה עבור משתמש זה.",
+    "dashboardDate": "יום {day}, {dayNum} ב{month}"
   },
   "admin": {
     "nav": {

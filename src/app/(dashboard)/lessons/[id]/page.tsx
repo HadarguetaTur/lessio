@@ -75,7 +75,7 @@ export default async function LessonDetailPage(props: {
           {t('title')}
         </Link>
         <ArrowRight size={14} className="rotate-180" />
-        <span className="text-gray-900 font-medium">פרטי שיעור</span>
+        <span className="text-gray-900 font-medium">{t('lessons.detailTitle')}</span>
       </div>
 
       {/* Series banner */}
@@ -86,7 +86,7 @@ export default async function LessonDetailPage(props: {
       {/* Lesson details */}
       <div className="bg-white rounded-lg border border-gray-100 p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">פרטי שיעור</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t('lessons.detailTitle')}</h1>
           <span
             className={`inline-flex items-center px-2.5 py-1 rounded text-sm font-medium ${STATUS_STYLES[lesson.status]}`}
           >

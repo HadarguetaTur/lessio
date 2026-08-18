@@ -30,6 +30,7 @@ import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { progressReportEmail } from '@/lib/email/templates/progressReport'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 export type GoalActionState = { error: string | null; success?: boolean }
 
@@ -44,6 +45,7 @@ export async function createGoalAction(
   _prev: GoalActionState,
   formData: FormData
 ): Promise<GoalActionState> {
+  const t = await getTranslations()
   const session = await getSession()
 
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
@@ -73,7 +75,7 @@ export async function createGoalAction(
     revalidatePath(`/students/${studentId}`)
     return { error: null, success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה ביצירת המטרה' }
+    return { error: t('students.goalErrors.createFailed') }
   }
 }
 
@@ -87,6 +89,7 @@ export async function updateGoalStatusAction(
   _prev: GoalActionState,
   formData: FormData
 ): Promise<GoalActionState> {
+  const t = await getTranslations()
   const session = await getSession()
 
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
@@ -138,7 +141,7 @@ export async function updateGoalStatusAction(
             session.orgId,
             recipients,
             'goal_achieved',
-            `מטרה הושגה — ${subject}`,
+            t('students.goalAchievedNotification', { subject }),
             undefined,
             `/students/${studentId}?tab=notes`
           )
@@ -151,7 +154,7 @@ export async function updateGoalStatusAction(
     revalidatePath(`/students/${studentId}`)
     return { error: null, success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה בעדכון המטרה' }
+    return { error: t('students.goalErrors.updateFailed') }
   }
 }
 
@@ -164,6 +167,7 @@ export async function deleteGoalAction(
   _prev: GoalActionState,
   formData: FormData
 ): Promise<GoalActionState> {
+  const t = await getTranslations()
   const session = await getSession()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
@@ -184,7 +188,7 @@ export async function deleteGoalAction(
     revalidatePath(`/students/${parsed.data.studentId}`)
     return { error: null, success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה במחיקת המטרה' }
+    return { error: t('students.goalErrors.deleteFailed') }
   }
 }
 
@@ -196,19 +200,19 @@ function parseReportDates(
   fromDate: string,
   toDate: string,
   timezone: string
-): { ok: true; from: string; to: string } | { ok: false; error: string } {
+): { ok: true; from: string; to: string } | { ok: false; errorKey: string } {
   const dateRe = /^\d{4}-\d{2}-\d{2}$/
   if (!dateRe.test(fromDate) || !dateRe.test(toDate)) {
-    return { ok: false, error: 'תאריכים לא תקינים' }
+    return { ok: false, errorKey: 'students.examErrors.invalidDates' }
   }
   const from = DateTime.fromISO(fromDate, { zone: timezone }).startOf('day')
   const to = DateTime.fromISO(toDate, { zone: timezone }).endOf('day')
   if (!from.isValid || !to.isValid || from > to) {
-    return { ok: false, error: 'טווח תאריכים לא חוקי' }
+    return { ok: false, errorKey: 'students.examErrors.invalidRange' }
   }
   const days = to.diff(from, 'days').days
   if (days > 366) {
-    return { ok: false, error: 'טווח התאריכים לא יעלה על שנה' }
+    return { ok: false, errorKey: 'students.examErrors.rangeTooLong' }
   }
   return { ok: true, from: fromDate, to: toDate }
 }
@@ -217,6 +221,7 @@ export async function createExamAction(
   _prev: ExamActionState,
   formData: FormData
 ): Promise<ExamActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
     return { error: await commonError('noPermission') }
@@ -251,7 +256,7 @@ export async function createExamAction(
     revalidatePath(`/students/${parsed.data.studentId}`)
     return { error: null, success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה בשמירת המבחן' }
+    return { error: t('students.examErrors.saveFailed') }
   }
 }
 
@@ -264,6 +269,7 @@ export async function updateExamAction(
   _prev: ExamActionState,
   formData: FormData
 ): Promise<ExamActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
     return { error: await commonError('noPermission') }
@@ -295,7 +301,7 @@ export async function updateExamAction(
     revalidatePath(`/students/${studentId}`)
     return { error: null, success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה בעדכון המבחן' }
+    return { error: t('students.examErrors.updateFailed') }
   }
 }
 
@@ -308,6 +314,7 @@ export async function deleteExamAction(
   _prev: ExamActionState,
   formData: FormData
 ): Promise<ExamActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
     return { error: await commonError('noPermission') }
@@ -326,7 +333,7 @@ export async function deleteExamAction(
     revalidatePath(`/students/${parsed.data.studentId}`)
     return { error: null, success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה במחיקת המבחן' }
+    return { error: t('students.examErrors.deleteFailed') }
   }
 }
 
@@ -342,6 +349,7 @@ export async function generateProgressReportAction(
   fromDate: string,
   toDate: string
 ): Promise<ProgressReportActionResult> {
+  const t = await getTranslations()
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
     return { error: await commonError('noPermission') }
@@ -363,7 +371,7 @@ export async function generateProgressReportAction(
 
   const timezone = await getOrgTimezone(session.orgId)
   const bounds = parseReportDates(fromDate, toDate, timezone)
-  if (!bounds.ok) return { error: bounds.error }
+  if (!bounds.ok) return { error: t(bounds.errorKey) }
 
   try {
     const { signedUrl } = await generateAndStoreProgressReport(
@@ -375,7 +383,7 @@ export async function generateProgressReportAction(
     )
     return { error: null, signedUrl }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה ביצירת הדוח' }
+    return { error: t('students.reportErrors.generateFailed') }
   }
 }
 
@@ -388,6 +396,7 @@ export async function sendProgressReportEmailAction(
   recipientEmail: string,
   locale: string = 'he'
 ): Promise<SendProgressReportResult> {
+  const t = await getTranslations()
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
     return { error: await commonError('noPermission') }
@@ -414,13 +423,13 @@ export async function sendProgressReportEmailAction(
   if (!canSend) {
     return {
       error:
-        'שליחת דוח התקדמות במייל כבויה בהגדרות הארגון או שאין תצורת Resend. פנה למנהל.',
+        t('students.reportErrors.emailDisabled'),
     }
   }
 
   const timezone = await getOrgTimezone(session.orgId)
   const bounds = parseReportDates(fromDate, toDate, timezone)
-  if (!bounds.ok) return { error: bounds.error }
+  if (!bounds.ok) return { error: t(bounds.errorKey) }
 
   const appLocale = parseAppLocale(locale)
 
@@ -466,10 +475,10 @@ export async function sendProgressReportEmailAction(
     })
 
     if (!ok) {
-      return { error: 'שליחת המייל נכשלה. ודא ש-Resend מוגדר בשרת.' }
+      return { error: t('students.reportErrors.sendFailed') }
     }
     return { error: null, success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה בשליחת הדוח' }
+    return { error: t('students.reportErrors.sendReportFailed') }
   }
 }

@@ -5,6 +5,7 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { sendPortalMessage } from '@/lib/portal/messages'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 export type ReplyResult = { error: string | null }
 
@@ -13,6 +14,7 @@ export async function replyToPortalMessageAction(
   _prev: ReplyResult,
   formData: FormData
 ): Promise<ReplyResult> {
+  const t = await getTranslations()
   const session = await getSession()
 
   try {
@@ -22,8 +24,8 @@ export async function replyToPortalMessageAction(
   }
 
   const body = (formData.get('body') as string | null)?.trim()
-  if (!body || body.length === 0) return { error: 'הודעה ריקה' }
-  if (body.length > 2000) return { error: 'הודעה ארוכה מדי (עד 2000 תווים)' }
+  if (!body || body.length === 0) return { error: t('lessons.messageErrors.empty') }
+  if (body.length > 2000) return { error: t('lessons.messageErrors.tooLong') }
 
   // Verify student belongs to this org
   const db = createServiceRoleClient()
@@ -44,7 +46,7 @@ export async function replyToPortalMessageAction(
       body,
     })
   } catch {
-    return { error: 'שגיאה בשליחת ההודעה' }
+    return { error: t('lessons.messageErrors.sendFailed') }
   }
 
   // Mark parent messages as read

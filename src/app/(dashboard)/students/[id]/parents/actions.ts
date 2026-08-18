@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { revalidatePath } from 'next/cache'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 type ActionState = { error: string } | null
 
@@ -12,10 +13,11 @@ export async function linkParent(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const parentId = formData.get('parent_id') as string
   const isPrimary = formData.get('is_primary') === 'on'
 
-  if (!parentId) return { error: 'יש לבחור הורה' }
+  if (!parentId) return { error: t('students.linkParentErrors.pickParent') }
 
   const session = await getSession()
   const { orgId, role } = session
@@ -40,8 +42,8 @@ export async function linkParent(
   })
 
   if (error) {
-    if (error.code === '23505') return { error: 'הורה זה כבר מקושר לתלמיד' }
-    return { error: 'שגיאה בקישור ההורה' }
+    if (error.code === '23505') return { error: t('students.linkParentErrors.alreadyLinked') }
+    return { error: t('students.linkParentErrors.linkFailed') }
   }
 
   revalidatePath(`/students/${studentId}/parents`)

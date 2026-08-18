@@ -2,12 +2,14 @@
 
 import { useState, useTransition } from 'react'
 import { sendLessonReminderAction } from './actions'
+import { useTranslations } from 'next-intl'
 
 interface Props {
   lessonId: string
 }
 
 export function SendLessonReminderButton({ lessonId }: Props) {
+  const t = useTranslations()
   const [isPending, startTransition] = useTransition()
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +41,7 @@ export function SendLessonReminderButton({ lessonId }: Props) {
         disabled={isPending}
         className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50"
       >
-        {isPending ? 'שולח...' : 'שליחת תזכורת בוואטסאפ'}
+        {isPending ? t('lessons.sendingReminder') : t('lessons.sendReminder')}
       </button>
       {error ? <span className="text-xs text-destructive">{error}</span> : null}
     </div>

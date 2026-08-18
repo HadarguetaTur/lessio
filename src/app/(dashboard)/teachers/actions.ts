@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 import { getTeacherById, type Teacher } from '@/lib/teachers'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 type ActionState = { error: string } | null
 
@@ -17,14 +18,16 @@ type ActionState = { error: string } | null
  * against (see resolveSender), so it must be stored in E.164 like every other
  * phone in the DB — an un-normalized "052-123-4567" would simply never match.
  */
-function parseOptionalPhone(raw: FormDataEntryValue | null): { phone: string | null } | { error: string } {
+// Sync, so it cannot await a translator — it returns a catalog key and the
+// calling action resolves it.
+function parseOptionalPhone(raw: FormDataEntryValue | null): { phone: string | null } | { errorKey: string } {
   const trimmed = ((raw as string) ?? '').trim()
   if (!trimmed) return { phone: null }
   try {
     return { phone: normalizePhone(trimmed) }
   } catch (err) {
     if (err instanceof PhoneNormalizationError) {
-      return { error: 'מספר הטלפון אינו תקין' }
+      return { errorKey: 'teachers.errors.invalidPhone' }
     }
     throw err
   }
@@ -41,14 +44,15 @@ export async function inviteTeacher(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const email = (formData.get('email') as string).trim().toLowerCase()
   const full_name = (formData.get('full_name') as string).trim()
 
-  if (!email) return { error: 'אימייל הוא שדה חובה' }
-  if (!full_name) return { error: 'שם מלא הוא שדה חובה' }
+  if (!email) return { error: t('teachers.errors.emailRequired') }
+  if (!full_name) return { error: t('teachers.errors.fullNameRequired') }
 
   const parsedPhone = parseOptionalPhone(formData.get('phone'))
-  if ('error' in parsedPhone) return parsedPhone
+  if ('errorKey' in parsedPhone) return { error: t(parsedPhone.errorKey) }
 
   const session = await getSession()
   const { orgId, role } = session
@@ -62,9 +66,9 @@ export async function inviteTeacher(
 
   if (inviteError) {
     if (inviteError.message.includes('already been registered')) {
-      return { error: 'כתובת אימייל זו כבר רשומה במערכת' }
+      return { error: t('teachers.errors.emailExists') }
     }
-    return { error: `שגיאה בשליחת ההזמנה: ${inviteError.message}` }
+    return { error: t('teachers.errors.inviteFailed', { message: inviteError.message }) }
   }
 
   const userId = inviteData.user.id
@@ -79,7 +83,7 @@ export async function inviteTeacher(
   })
 
   if (profileError) {
-    return { error: 'שגיאה ביצירת פרופיל המורה' }
+    return { error: t('teachers.errors.createProfileFailed') }
   }
 
   // Step 3: Create teacher record linked to profile
@@ -89,7 +93,7 @@ export async function inviteTeacher(
   })
 
   if (teacherError) {
-    return { error: 'שגיאה ביצירת רשומת המורה' }
+    return { error: t('teachers.errors.createTeacherFailed') }
   }
 
   redirect('/teachers')
@@ -100,16 +104,17 @@ export async function updateTeacher(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const bio = (formData.get('bio') as string).trim() || null
   const hourlyRateRaw = (formData.get('hourly_rate') as string).trim()
   const hourly_rate = hourlyRateRaw ? parseFloat(hourlyRateRaw) : null
 
   if (hourlyRateRaw && (isNaN(hourly_rate!) || hourly_rate! < 0)) {
-    return { error: 'תעריף שעתי חייב להיות מספר חיובי' }
+    return { error: t('teachers.errors.ratePositive') }
   }
 
   const parsedPhone = parseOptionalPhone(formData.get('phone'))
-  if ('error' in parsedPhone) return parsedPhone
+  if ('errorKey' in parsedPhone) return { error: t(parsedPhone.errorKey) }
 
   const session = await getSession()
   const { orgId, role } = session
@@ -124,7 +129,7 @@ export async function updateTeacher(
     .eq('id', id)
     .eq('organization_id', orgId)
 
-  if (error) return { error: 'שגיאה בעדכון המורה' }
+  if (error) return { error: t('teachers.errors.updateFailed') }
 
   // The phone lives on the linked profile, not on teachers. Service role: a
   // teacher's own profile row is not writable under the caller's RLS.
@@ -142,7 +147,7 @@ export async function updateTeacher(
         teacherId: id,
         error: profileError,
       })
-      return { error: 'שגיאה בעדכון פרטי הקשר של המורה' }
+      return { error: t('teachers.errors.updateContactFailed') }
     }
   }
 
@@ -155,9 +160,10 @@ export async function updateTeacher(
 export async function fetchTeacherForSheet(
   id: string
 ): Promise<{ data: Teacher } | { error: string }> {
+  const t = await getTranslations()
   const { orgId } = await getSession()
   const teacher = await getTeacherById(id, orgId)
-  if (!teacher) return { error: 'המורה לא נמצא' }
+  if (!teacher) return { error: t('teachers.errors.notFound') }
   return { data: teacher }
 }
 

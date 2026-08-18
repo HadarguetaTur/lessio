@@ -5,12 +5,14 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getConversation } from '@/lib/portal/messages'
 import { DashboardMessageThread } from '@/components/dashboard/messages/DashboardMessageThread'
 import { replyToPortalMessageAction } from './actions'
+import { getTranslations } from 'next-intl/server'
 
 export default async function DashboardMessageThreadPage({
   params,
 }: {
   params: Promise<{ studentId: string }>
 }) {
+  const t = await getTranslations()
   const { studentId } = await params
   const session = await getSession()
   const db = createServiceRoleClient()
@@ -43,7 +45,7 @@ export default async function DashboardMessageThreadPage({
         <Link href="/messages" className="text-muted-foreground hover:text-foreground">
           <ArrowRight size={18} />
         </Link>
-        <h1 className="text-lg font-semibold text-foreground">שיחה — {studentName}</h1>
+        <h1 className="text-lg font-semibold text-foreground">{t('lessons.messagesPage.threadTitle', { name: studentName })}</h1>
       </div>
 
       <div className="rounded-lg border bg-card min-h-[500px] flex flex-col">

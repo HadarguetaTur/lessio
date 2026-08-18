@@ -11,6 +11,7 @@ import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 import { checkTeacherAvailability } from '@/lib/availability/checkTeacherAvailability'
 import { checkLessonCalendarConflicts, CalendarConflict } from '@/lib/google-calendar/checkLessonCalendarConflicts'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 const lessonStatusZ = z.enum(['scheduled', 'completed', 'cancelled', 'no_show'])
 
@@ -58,6 +59,7 @@ async function assertStudentsAssignedToTeacher(
   teacherId: string,
   studentIds: string[]
 ): Promise<string | null> {
+  const t = await getTranslations()
   if (studentIds.length === 0) return await commonError('invalidData')
   const db = createServiceRoleClient()
   const { data, error } = await db
@@ -65,10 +67,10 @@ async function assertStudentsAssignedToTeacher(
     .select('id, teacher_id')
     .eq('organization_id', orgId)
     .in('id', studentIds)
-  if (error) return 'שגיאה בבדיקת תלמידים'
-  if (!data || data.length !== studentIds.length) return 'תלמיד לא נמצא'
+  if (error) return t('lessons.newErrors.checkStudentsFailed')
+  if (!data || data.length !== studentIds.length) return t('lessons.newErrors.studentNotFound')
   const bad = data.some((r) => r.teacher_id !== teacherId)
-  if (bad) return 'ניתן לקבוע שיעור רק לתלמידים המשויכים אליך'
+  if (bad) return t('lessons.newErrors.onlyOwnStudents')
   return null
 }
 
@@ -76,6 +78,7 @@ export async function createLessonAction(
   _prev: NewLessonState,
   formData: FormData
 ): Promise<NewLessonState> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, role, profileId } = session
   requireMutation(session)
@@ -96,9 +99,9 @@ export async function createLessonAction(
   try {
     if (role === 'teacher') {
       const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
-      if (!teacher) return { error: 'לא נמצא פרופיל מורה פעיל' }
+      if (!teacher) return { error: t('lessons.newErrors.noTeacherProfile') }
       if (lessonType === 'group') {
-        return { error: 'שיעורים קבוצתיים זמינים רק למנהל המערכת' }
+        return { error: t('lessons.newErrors.groupAdminOnly') }
       }
       const parsed = IndividualLessonSchema.safeParse({
         lesson_type: 'individual',
@@ -238,16 +241,16 @@ export async function createLessonAction(
     if (err instanceof LessonConflictError) {
       const teacherConflict =
         role === 'teacher'
-          ? 'יש לך שיעור חופף בשעה זו'
-          : 'למורה יש שיעור חופף בשעה זו'
+          ? t('lessons.conflicts.ownConflict')
+          : t('lessons.conflicts.teacherConflict')
       const messages: Record<typeof err.reason, string> = {
-        holiday:          'התאריך הנבחר הוא חג — לא ניתן לקבוע שיעור',
+        holiday:          t('lessons.conflicts.holiday'),
         teacher_conflict: teacherConflict,
-        student_conflict: 'לתלמיד יש שיעור חופף בשעה זו',
+        student_conflict: t('lessons.conflicts.studentConflict'),
       }
       return { error: messages[err.reason] }
     }
-    return { error: err instanceof Error ? err.message : 'שגיאה ביצירת השיעור' }
+    return { error: t('lessons.newErrors.createFailed') }
   }
 
   const calendarFlow = formData.get('calendar_flow') === '1'
@@ -277,10 +280,11 @@ async function assertNoCalendarConflicts(params: {
   startTime:       string
   durationMinutes: number
 }): Promise<NewLessonState | null> {
+  const t = await getTranslations()
   const conflicts = await checkLessonCalendarConflicts(params)
   if (conflicts.length === 0) return null
   return {
-    error: 'יש אירוע ביומן Google בשעה המבוקשת. האם לקבוע את השיעור בכל זאת?',
+    error: t('lessons.conflicts.googleCalendar'),
     needsCalendarConfirm: true,
     calendarConflicts: conflicts,
   }
@@ -298,6 +302,7 @@ async function assertWithinTeacherAvailability(params: {
   startTime: string
   durationMinutes: number
 }): Promise<NewLessonState | null> {
+  const t = await getTranslations()
   const result = await checkTeacherAvailability(params)
 
   if (result.status === 'inside') return null
@@ -308,11 +313,11 @@ async function assertWithinTeacherAvailability(params: {
   if (result.status === 'no_windows') return null
 
   const messages: Record<'outside_windows' | 'override_unavailable' | 'partial_override', string> = {
-    outside_windows: 'המורה לא זמין בשעה זו. האם לקבוע את השיעור בכל זאת?',
+    outside_windows: t('lessons.conflicts.outsideWindows'),
     override_unavailable:
-      'המורה סימן את התאריך הזה כלא זמין. האם לקבוע את השיעור בכל זאת?',
+      t('lessons.conflicts.markedUnavailable'),
     partial_override:
-      'השעה המבוקשת חורגת מחלון הזמינות שהוגדר לתאריך זה. האם לקבוע את השיעור בכל זאת?',
+      t('lessons.conflicts.outsideDayWindow'),
   }
 
   return {

@@ -5,26 +5,28 @@ import { StudentsImportClient } from './StudentsImportClient'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
+import { getTranslations } from 'next-intl/server'
 
 export default async function StudentsImportPage() {
+  const t = await getTranslations()
   const { role } = await getSession()
   if (role === 'teacher') {
     redirect('/students')
   }
   if (role !== 'owner' && role !== 'admin') {
-    return <p>אין הרשאה</p>
+    return <p>{t('common.errors.noPermission')}</p>
   }
 
   return (
     <div>
       <PageHeader
-        title="יבוא תלמידים והורים"
-        subtitle="העלה קובץ אקסל או CSV — תלמידים + הורים בקובץ אחד, או בנפרד"
+        title={t('students.importPage.title')}
+        subtitle={t('students.importPage.subtitle')}
         actions={
           <Link href="/students">
             <Button variant="outline" size="sm">
               <ArrowRight size={14} className="ml-1.5" />
-              חזרה לתלמידים
+              {t('students.importPage.back')}
             </Button>
           </Link>
         }

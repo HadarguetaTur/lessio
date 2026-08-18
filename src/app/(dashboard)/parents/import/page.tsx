@@ -5,18 +5,20 @@ import { ImportFlow } from '@/components/import/ImportFlow'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Users, User, GraduationCap } from 'lucide-react'
+import { getTranslations } from 'next-intl/server'
 
 interface PageProps {
   searchParams: Promise<{ mode?: string }>
 }
 
 export default async function ParentsImportPage({ searchParams }: PageProps) {
+  const t = await getTranslations()
   const { role } = await getSession()
   if (role === 'teacher') {
     redirect('/parents')
   }
   if (role !== 'owner' && role !== 'admin') {
-    return <p>אין הרשאה</p>
+    return <p>{t('common.errors.noPermission')}</p>
   }
 
   const { mode } = await searchParams

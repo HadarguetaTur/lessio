@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createLessonSeries } from '@/lib/lessons/createSeries'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 const SeriesFormSchema = z.object({
   teacher_id: z.string().uuid(),
@@ -30,6 +31,7 @@ export async function createSeriesAction(
   _prevState: CreateSeriesState,
   formData: FormData
 ): Promise<CreateSeriesState> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, role, userId } = session
   requireMutation(session)
@@ -59,7 +61,7 @@ export async function createSeriesAction(
   // Validate until is in the future
   const todayStr = new Date().toISOString().substring(0, 10)
   if (until <= todayStr) {
-    return { error: 'תאריך הסיום חייב להיות בעתיד' }
+    return { error: t('lessons.seriesErrors.endDateFuture') }
   }
 
   try {
@@ -75,6 +77,6 @@ export async function createSeriesAction(
 
     return { error: null, result }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה ביצירת הסדרה' }
+    return { error: t('lessons.seriesErrors.createSeriesFailed') }
   }
 }

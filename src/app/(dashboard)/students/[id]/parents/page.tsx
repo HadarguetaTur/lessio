@@ -88,7 +88,7 @@ export default async function StudentParentsPage(props: {
                             {t('parents.isPrimary')}
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-400">משני</span>
+                          <span className="text-xs text-gray-400">{t('students.secondary')}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">

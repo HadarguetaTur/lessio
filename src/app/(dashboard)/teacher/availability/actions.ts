@@ -12,6 +12,7 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { getTeacherAvailabilityByDay, hasOverlap } from '@/lib/availability'
 import { revalidatePath } from 'next/cache'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 type ActionState = { error: string } | null
 
@@ -19,6 +20,7 @@ export async function addTeacherAvailability(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   const { userId, orgId, role } = session
   requireMutation(session)
@@ -26,25 +28,25 @@ export async function addTeacherAvailability(
   if (role !== 'teacher') return { error: await commonError('noPermission') }
 
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
-  if (!teacher) return { error: 'לא נמצאה רשומת מורה פעילה' }
+  if (!teacher) return { error: t('teacherSelf.errors.noTeacherRecord') }
 
   const day_of_week = parseInt(formData.get('day_of_week') as string, 10)
   const start_time = (formData.get('start_time') as string).trim()
   const end_time = (formData.get('end_time') as string).trim()
 
   if (isNaN(day_of_week) || day_of_week < 0 || day_of_week > 6) {
-    return { error: 'יש לבחור יום' }
+    return { error: t('teacherSelf.errors.pickDay') }
   }
   if (!start_time || !end_time) {
-    return { error: 'יש למלא שעת התחלה ושעת סיום' }
+    return { error: t('teacherSelf.errors.fillTimes') }
   }
   if (start_time >= end_time) {
-    return { error: 'שעת הסיום חייבת להיות לאחר שעת ההתחלה' }
+    return { error: t('teacherSelf.errors.endAfterStart') }
   }
 
   const existing = await getTeacherAvailabilityByDay(teacher.id, orgId, day_of_week)
   if (hasOverlap(start_time, end_time, existing)) {
-    return { error: 'חלון הזמן חופף עם זמינות קיימת באותו יום' }
+    return { error: t('teacherSelf.errors.overlapping') }
   }
 
   const supabase = await createClient()
@@ -56,7 +58,7 @@ export async function addTeacherAvailability(
     end_time,
   })
 
-  if (error) return { error: 'שגיאה בשמירת הזמינות' }
+  if (error) return { error: t('teacherSelf.errors.saveAvailabilityFailed') }
 
   revalidatePath('/teacher/availability')
   return null

@@ -71,7 +71,7 @@ export default async function TeacherAvailabilityPage() {
                         <button
                           type="submit"
                           className="text-blue-400 hover:text-red-500 transition-colors"
-                          title="מחק חלון"
+                          title={t('teacherSelf.deleteWindow')}
                         >
                           <Trash2 size={12} />
                         </button>

@@ -492,7 +492,58 @@
       "loadGoalsFailed": "Could not load the goals",
       "loadExamsFailed": "Could not load the exams",
       "loadEmailsFailed": "Could not load the emails"
-    }
+    },
+    "goalErrors": {
+      "createFailed": "Could not create the goal",
+      "updateFailed": "Could not update the goal",
+      "deleteFailed": "Could not delete the goal"
+    },
+    "goalAchievedNotification": "Goal achieved — {subject}",
+    "examErrors": {
+      "invalidDates": "Invalid dates",
+      "invalidRange": "Invalid date range",
+      "rangeTooLong": "The date range cannot exceed a year",
+      "saveFailed": "Could not save the exam",
+      "updateFailed": "Could not update the exam",
+      "deleteFailed": "Could not delete the exam"
+    },
+    "reportErrors": {
+      "studentNotFound": "Student not found",
+      "generateFailed": "Could not generate the report",
+      "emailDisabled": "Emailing progress reports is switched off in the organization settings, or Resend is not configured. Contact your administrator.",
+      "sendFailed": "Could not send the email. Check that Resend is configured on the server.",
+      "sendReportFailed": "Could not send the report"
+    },
+    "reportLines": {
+      "attendance": "Attendance: {completed} / {total} lessons ({percent}% completed).",
+      "homework": "Homework: {completed} / {total} assignments{avg}.",
+      "homeworkAvg": " (average score {score}/100)"
+    },
+    "linkParentErrors": {
+      "pickParent": "Select a parent",
+      "alreadyLinked": "This parent is already linked to the student",
+      "linkFailed": "Could not link the parent"
+    },
+    "secondary": "Secondary",
+    "groupErrors": {
+      "createFailed": "Could not create the group",
+      "assignFailed": "Could not assign the students",
+      "updateFailed": "Could not update the group",
+      "updateMembersFailed": "Could not update the group members",
+      "deleteFailed": "Could not delete the group",
+      "toggleFailed": "Could not change the group status"
+    },
+    "importTabs": {
+      "familyList": "Students + parents",
+      "students": "Students only",
+      "parents": "Parents only"
+    },
+    "importPage": {
+      "title": "Import students and parents",
+      "subtitle": "Upload an Excel or CSV file — students and parents together, or separately",
+      "back": "Back to students"
+    },
+    "noTeacherRecord": "No active teacher record was found for this user."
   },
   "parents": {
     "title": "Parents",
@@ -559,7 +610,20 @@
       "whatsappSendFailed": "Could not send the message over WhatsApp",
       "loadParentFailed": "Could not load the parent details"
     },
-    "chargeDescription": "Charge for {name}"
+    "chargeDescription": "Charge for {name}",
+    "importPage": {
+      "familyListTitle": "Import family list",
+      "parentsTitle": "Import parents",
+      "familyListSubtitle": "One row = one student + one parent. Students, parents and the links between them are created automatically.",
+      "parentsSubtitle": "Import parents and link them to existing students by name.",
+      "chooserTitle": "Import parents and students",
+      "chooserSubtitle": "Choose the import mode that matches your data",
+      "back": "Back to parents",
+      "familyListCard": "Family list",
+      "parentsOnlyCard": "Parents only",
+      "studentsOnlyCard": "Students only",
+      "importLabel": "Import"
+    }
   },
   "teachers": {
     "title": "Teachers",
@@ -591,7 +655,34 @@
     "inviteEmailHint": "This email will be used to sign in",
     "sendingInvite": "Sending invitation...",
     "sendInvite": "Send Invitation",
-    "phoneBotHint": "The phone number lets this teacher receive alerts and use the WhatsApp bot"
+    "phoneBotHint": "The phone number lets this teacher receive alerts and use the WhatsApp bot",
+    "errors": {
+      "invalidPhone": "The phone number is not valid",
+      "emailRequired": "Email is required",
+      "fullNameRequired": "Full name is required",
+      "emailExists": "This email address is already registered",
+      "inviteFailed": "Could not send the invitation: {message}",
+      "createProfileFailed": "Could not create the teacher profile",
+      "createTeacherFailed": "Could not create the teacher record",
+      "ratePositive": "The hourly rate must be a positive number",
+      "updateFailed": "Could not update the teacher",
+      "updateContactFailed": "Could not update the teacher contact details",
+      "notFound": "Teacher not found",
+      "pickDay": "Select a day",
+      "fillTimes": "Enter a start time and an end time",
+      "endAfterStart": "The end time must be after the start time",
+      "overlapping": "This window overlaps existing availability on the same day",
+      "saveAvailabilityFailed": "Could not save the availability",
+      "pickDate": "Select a date",
+      "overrideExistsForTeacher": "An override already exists for this date for this teacher",
+      "saveOverrideFailed": "Could not save the override"
+    },
+    "importPage": {
+      "title": "Import teachers",
+      "subtitle": "Upload an Excel or CSV file with teacher data. Each teacher receives an invitation to the system.",
+      "back": "Back to teachers",
+      "importLabel": "Import"
+    }
   },
   "lessons": {
     "title": "Lessons",
@@ -731,7 +822,56 @@
       "noPrimaryParent": "Cannot create a cancellation charge — the student has no primary parent. Link a parent from the student page > Parents.",
       "noTeacherRate": "Cannot create a cancellation charge — the teacher has no hourly rate set"
     },
-    "cancelledNotification": "Lesson cancelled — {reason}"
+    "cancelledNotification": "Lesson cancelled — {reason}",
+    "detailTitle": "Lesson details",
+    "sendReminder": "Send WhatsApp reminder",
+    "sendingReminder": "Sending…",
+    "reminderSent": "Reminder sent",
+    "importTitle": "Import lessons",
+    "importSubtitle": "Upload a file with a recurring timetable or lesson history",
+    "backToLessons": "Back to lessons",
+    "recurringSchedule": "Recurring timetable",
+    "lessonHistory": "Lesson history",
+    "seriesErrors": {
+      "endDateFuture": "The end date must be in the future",
+      "createSeriesFailed": "Could not create the series"
+    },
+    "newErrors": {
+      "checkStudentsFailed": "Could not verify the students",
+      "studentNotFound": "Student not found",
+      "onlyOwnStudents": "You can only schedule lessons for students assigned to you",
+      "noTeacherProfile": "No active teacher profile found",
+      "groupAdminOnly": "Group lessons are available to admins only",
+      "createFailed": "Could not create the lesson"
+    },
+    "conflicts": {
+      "ownConflict": "You already have a lesson at this time",
+      "teacherConflict": "The teacher already has a lesson at this time",
+      "holiday": "The chosen date is a holiday — a lesson cannot be scheduled",
+      "studentConflict": "The student already has a lesson at this time",
+      "googleCalendar": "There is a Google Calendar event at the requested time. Schedule the lesson anyway?",
+      "outsideWindows": "The teacher is not available at this time. Schedule the lesson anyway?",
+      "markedUnavailable": "The teacher marked this date as unavailable. Schedule the lesson anyway?",
+      "outsideDayWindow": "The requested time is outside the availability window set for this date. Schedule the lesson anyway?"
+    },
+    "messagesPage": {
+      "title": "Portal messages",
+      "subtitle": "Conversations with parents from the parent portal",
+      "emptyTitle": "No messages",
+      "emptySubtitle": "Messages from parents through the parent portal will appear here.",
+      "colStudent": "Student",
+      "colParent": "Parent",
+      "colLastMessage": "Last message",
+      "colDate": "Date",
+      "colUnread": "Unread",
+      "threadTitle": "Conversation — {name}"
+    },
+    "messageErrors": {
+      "empty": "Empty message",
+      "tooLong": "Message is too long (2000 characters maximum)",
+      "studentNotFound": "Student not found",
+      "sendFailed": "Could not send the message"
+    }
   },
   "charges": {
     "title": "Charges",
@@ -1827,7 +1967,38 @@
       "accountLabel": "Google account",
       "disconnectHint": "Disconnecting turns off conflict checking against your personal calendar.",
       "connectButton": "Connect Google Calendar"
-    }
+    },
+    "errors": {
+      "noTeacherRecord": "No active teacher record found",
+      "pickDay": "Select a day",
+      "fillTimes": "Enter a start time and an end time",
+      "endAfterStart": "The end time must be after the start time",
+      "overlapping": "This window overlaps existing availability on the same day",
+      "saveAvailabilityFailed": "Could not save the availability",
+      "pickDate": "Select a date",
+      "overrideExists": "An override already exists for this date",
+      "saveOverrideFailed": "Could not save the override",
+      "refreshLinkFailed": "Could not refresh the link — please try again",
+      "noTeacherProfile": "No teacher profile found",
+      "createLessonFailed": "Could not create the lesson",
+      "noPermission": "You do not have permission to perform this action",
+      "noActiveTeacherRecord": "No active teacher record was found for this user",
+      "invalidStatus": "Invalid status. You can only set completed or no-show",
+      "cannotUpdateLesson": "You do not have permission to update this lesson",
+      "lessonCancelled": "The status of a cancelled lesson cannot be changed",
+      "statusUpdateFailed": "Could not update the status"
+    },
+    "deleteWindow": "Delete window",
+    "disconnecting": "Disconnecting…",
+    "disconnectCalendar": "Disconnect calendar",
+    "overridesTable": {
+      "date": "Date",
+      "type": "Type",
+      "hours": "Hours",
+      "reason": "Reason"
+    },
+    "noTeacherRecord": "No active teacher record was found for this user.",
+    "dashboardDate": "{day}, {dayNum} {month}"
   },
   "admin": {
     "nav": {

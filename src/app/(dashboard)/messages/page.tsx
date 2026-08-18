@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/session'
 import { getDashboardConversationSummaries } from '@/lib/portal/messages'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
+import { getTranslations } from 'next-intl/server'
 import {
   Table,
   TableBody,
@@ -14,32 +15,33 @@ import {
 } from '@/components/ui/table'
 
 export default async function DashboardMessagesPage() {
+  const t = await getTranslations()
   const session = await getSession()
   const summaries = await getDashboardConversationSummaries(session.orgId)
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="הודעות פורטל"
-        subtitle="שיחות עם הורים מפורטל ההורים"
+        title={t('lessons.messagesPage.title')}
+        subtitle={t('lessons.messagesPage.subtitle')}
       />
 
       {summaries.length === 0 ? (
         <EmptyState
           icon={MessageSquare}
-          title="אין הודעות"
-          subtitle="הודעות מהורים דרך פורטל ההורים יופיעו כאן."
+          title={t('lessons.messagesPage.emptyTitle')}
+          subtitle={t('lessons.messagesPage.emptySubtitle')}
         />
       ) : (
         <div className="rounded-lg border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>תלמיד</TableHead>
-                <TableHead>הורה</TableHead>
-                <TableHead>הודעה אחרונה</TableHead>
-                <TableHead>תאריך</TableHead>
-                <TableHead>חדשות</TableHead>
+                <TableHead>{t('lessons.messagesPage.colStudent')}</TableHead>
+                <TableHead>{t('lessons.messagesPage.colParent')}</TableHead>
+                <TableHead>{t('lessons.messagesPage.colLastMessage')}</TableHead>
+                <TableHead>{t('lessons.messagesPage.colDate')}</TableHead>
+                <TableHead>{t('lessons.messagesPage.colUnread')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

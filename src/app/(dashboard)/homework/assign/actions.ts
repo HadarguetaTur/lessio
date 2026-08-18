@@ -16,6 +16,7 @@ import { sendHomeworkAssignment } from '@/lib/homework/sendHomework'
 import { decryptToken } from '@/lib/crypto'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 export type AssignActionState = {
   error: string | null
@@ -41,6 +42,7 @@ export async function assignHomeworkAction(
   _prev: AssignActionState,
   formData: FormData
 ): Promise<AssignActionState> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, profileId, role } = session
   requireMutation(session)
@@ -73,7 +75,7 @@ export async function assignHomeworkAction(
   let teacherId: string
   if (role === 'teacher') {
     const teacher = await getTeacherByProfileId(profileId, orgId)
-    if (!teacher) return { error: 'לא נמצא פרופיל מורה' }
+    if (!teacher) return { error: t('teacherSelf.errors.noTeacherProfile') }
     teacherId = teacher.id
   } else {
     // Known simplification: owner/admin assignments use the first active teacher in the org.

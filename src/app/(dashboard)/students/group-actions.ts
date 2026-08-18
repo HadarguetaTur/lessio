@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getSession } from '@/lib/auth/session'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 type ActionState = { error: string } | null
 
@@ -31,6 +32,7 @@ export async function createGroup(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   let session: Awaited<ReturnType<typeof requireOwnerOrAdmin>>
   try {
     session = await requireOwnerOrAdmin()
@@ -58,14 +60,14 @@ export async function createGroup(
     .select('id')
     .single()
 
-  if (groupError || !group) return { error: 'שגיאה ביצירת הקבוצה' }
+  if (groupError || !group) return { error: t('students.groupErrors.createFailed') }
 
   const members = student_ids.map((sid) => ({ group_id: group.id, student_id: sid }))
   const { error: membersError } = await db.from('student_group_members').insert(members)
 
   if (membersError) {
     await db.from('student_groups').delete().eq('id', group.id)
-    return { error: 'שגיאה בשיוך התלמידים' }
+    return { error: t('students.groupErrors.assignFailed') }
   }
 
   revalidatePath('/students')
@@ -77,6 +79,7 @@ export async function updateGroup(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const t = await getTranslations()
   try {
     await requireOwnerOrAdmin()
   } catch {
@@ -102,7 +105,7 @@ export async function updateGroup(
     .update({ name, status, updated_at: new Date().toISOString() })
     .eq('id', id)
 
-  if (updateError) return { error: 'שגיאה בעדכון הקבוצה' }
+  if (updateError) return { error: t('students.groupErrors.updateFailed') }
 
   // Replace members: delete existing, insert new
   await db.from('student_group_members').delete().eq('group_id', id)
@@ -110,13 +113,14 @@ export async function updateGroup(
   const members = student_ids.map((sid) => ({ group_id: id, student_id: sid }))
   const { error: membersError } = await db.from('student_group_members').insert(members)
 
-  if (membersError) return { error: 'שגיאה בעדכון חברי הקבוצה' }
+  if (membersError) return { error: t('students.groupErrors.updateMembersFailed') }
 
   revalidatePath('/students')
   return null
 }
 
 export async function deleteGroup(id: string): Promise<ActionState> {
+  const t = await getTranslations()
   try {
     await requireOwnerOrAdmin()
   } catch {
@@ -126,7 +130,7 @@ export async function deleteGroup(id: string): Promise<ActionState> {
   const db = createServiceRoleClient()
   const { error } = await db.from('student_groups').delete().eq('id', id)
 
-  if (error) return { error: 'שגיאה במחיקת הקבוצה' }
+  if (error) return { error: t('students.groupErrors.deleteFailed') }
 
   revalidatePath('/students')
   return null
@@ -136,6 +140,7 @@ export async function toggleGroupStatus(
   id: string,
   currentStatus: 'active' | 'paused'
 ): Promise<ActionState> {
+  const t = await getTranslations()
   try {
     await requireOwnerOrAdmin()
   } catch {
@@ -150,7 +155,7 @@ export async function toggleGroupStatus(
     .update({ status: newStatus, updated_at: new Date().toISOString() })
     .eq('id', id)
 
-  if (error) return { error: 'שגיאה בשינוי סטטוס הקבוצה' }
+  if (error) return { error: t('students.groupErrors.toggleFailed') }
 
   revalidatePath('/students')
   return null

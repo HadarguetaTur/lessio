@@ -5,6 +5,7 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { getLessonById, updateLessonStatus, LessonStatus } from '@/lib/lessons'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { createLessonCharge } from '@/lib/billing/createCharge'
+import { getTranslations } from 'next-intl/server'
 
 const ALLOWED_STATUSES: LessonStatus[] = ['completed', 'no_show']
 
@@ -18,22 +19,23 @@ export async function updateTeacherLessonOutcome(
   _prevState: TeacherOutcomeResult,
   formData: FormData
 ): Promise<TeacherOutcomeResult> {
+  const t = await getTranslations()
   const session = await getSession()
   const { userId, orgId, role } = session
   requireMutation(session)
 
   if (role !== 'teacher') {
-    return { error: 'אין הרשאה לפעולה זו' }
+    return { error: t('teacherSelf.errors.noPermission') }
   }
 
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) {
-    return { error: 'לא נמצאה רשומת מורה פעילה עבור משתמש זה' }
+    return { error: t('teacherSelf.errors.noActiveTeacherRecord') }
   }
 
   const status = formData.get('status') as LessonStatus | null
   if (!status || !ALLOWED_STATUSES.includes(status)) {
-    return { error: 'סטטוס לא חוקי. ניתן לעדכן להושלם או לא הגיע בלבד' }
+    return { error: t('teacherSelf.errors.invalidStatus') }
   }
 
   const lesson = await getLessonById(lessonId, orgId)
@@ -43,11 +45,11 @@ export async function updateTeacherLessonOutcome(
 
   // Enforce ownership — teacher may only update their own lessons
   if (lesson.teacher.id !== teacher.id) {
-    return { error: 'אין הרשאה לעדכן שיעור זה' }
+    return { error: t('teacherSelf.errors.cannotUpdateLesson') }
   }
 
   if (lesson.status === 'cancelled') {
-    return { error: 'לא ניתן לשנות סטטוס של שיעור שבוטל' }
+    return { error: t('teacherSelf.errors.lessonCancelled') }
   }
 
   if (lesson.status === status) {
@@ -57,7 +59,7 @@ export async function updateTeacherLessonOutcome(
   try {
     await updateLessonStatus(lessonId, orgId, status)
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'שגיאה בעדכון הסטטוס' }
+    return { error: t('teacherSelf.errors.statusUpdateFailed') }
   }
 
   revalidatePath(`/teacher/schedule/${lessonId}`)

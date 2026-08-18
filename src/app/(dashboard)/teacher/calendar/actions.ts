@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * Regenerates the teacher's ical_token.
@@ -16,6 +17,7 @@ import { commonError, zodError } from '@/lib/i18n/actionErrors'
  * Returns an error string on failure (so the old token stays valid).
  */
 export async function regenerateCalendarTokenAction(): Promise<{ error?: string }> {
+  const t = await getTranslations()
   const session = await getSession()
   const { userId, orgId, role } = session
   requireMutation(session)
@@ -34,7 +36,7 @@ export async function regenerateCalendarTokenAction(): Promise<{ error?: string 
 
   if (error) {
     console.error('[teacher/calendar] Failed to regenerate ical_token', { userId, orgId, error: error.message })
-    return { error: 'שגיאה בחידוש הקישור — נסה שנית' }
+    return { error: t('teacherSelf.errors.refreshLinkFailed') }
   }
 
   console.info('[teacher/calendar] iCal token regenerated', { userId, orgId })

@@ -8,6 +8,7 @@ import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 import { checkLessonCalendarConflicts } from '@/lib/google-calendar/checkLessonCalendarConflicts'
 import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { getTranslations } from 'next-intl/server'
 
 const TeacherLessonSchema = z.object({
   student_id:       z.string().uuid(),
@@ -20,13 +21,14 @@ export async function createTeacherLessonAction(
   _prev: NewLessonState,
   formData: FormData
 ): Promise<NewLessonState> {
+  const t = await getTranslations()
   const session = await getSession()
   const { orgId, profileId, role } = session
   requireMutation(session)
   if (role !== 'teacher') return { error: await commonError('noPermission') }
 
   const teacher = await getTeacherByProfileId(profileId, orgId)
-  if (!teacher) return { error: 'לא נמצא פרופיל מורה' }
+  if (!teacher) return { error: t('teacherSelf.errors.noTeacherProfile') }
 
   const parsed = TeacherLessonSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return { error: await commonError('invalidData') }
@@ -44,7 +46,7 @@ export async function createTeacherLessonAction(
     })
     if (conflicts.length > 0) {
       return {
-        error: 'יש אירוע ביומן Google בשעה המבוקשת. האם לקבוע את השיעור בכל זאת?',
+        error: t('lessons.conflicts.googleCalendar'),
         needsCalendarConfirm: true,
         calendarConflicts: conflicts,
       }
@@ -66,13 +68,13 @@ export async function createTeacherLessonAction(
   } catch (err) {
     if (err instanceof LessonConflictError) {
       const messages: Record<typeof err.reason, string> = {
-        holiday:          'התאריך הנבחר הוא חג — לא ניתן לקבוע שיעור',
-        teacher_conflict: 'יש לך שיעור חופף בשעה זו',
-        student_conflict: 'לתלמיד יש שיעור חופף בשעה זו',
+        holiday:          t('lessons.conflicts.holiday'),
+        teacher_conflict: t('lessons.conflicts.ownConflict'),
+        student_conflict: t('lessons.conflicts.studentConflict'),
       }
       return { error: messages[err.reason] }
     }
-    return { error: err instanceof Error ? err.message : 'שגיאה ביצירת השיעור' }
+    return { error: t('lessons.newErrors.createFailed') }
   }
   redirect(`/teacher/schedule/${lessonId}`)
 }

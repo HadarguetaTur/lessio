@@ -84,7 +84,7 @@ export async function aiAssistant(
   }
 
   // 2. Build system prompt with live context
-  const systemPrompt = await buildSystemPrompt(orgId, phone, parentId)
+  const systemPrompt = await buildSystemPrompt(orgId, phone, parentId, locale)
 
   // 3. Fetch recent conversation history (last 10 turns, past 24h)
   const history = await getRecentHistory(orgId, phone)

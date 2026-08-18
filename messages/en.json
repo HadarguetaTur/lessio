@@ -1938,7 +1938,23 @@
       "lastLesson": "Last lesson",
       "atRisk": "At risk",
       "yes": "Yes",
-      "no": "No"
+      "no": "No",
+      "type": "Type",
+      "date": "Date",
+      "documentNumber": "Document #",
+      "customer": "Customer",
+      "taxId": "Tax ID",
+      "description": "Description",
+      "net": "Net",
+      "vat": "VAT",
+      "total": "Total",
+      "status": "Status",
+      "paidOn": "Paid On",
+      "receiptNumber": "Receipt #",
+      "invoice": "Invoice",
+      "creditNote": "Credit Note",
+      "paid": "Paid",
+      "open": "Open"
     },
     "invalidEntity": "Invalid entity type"
   },
@@ -2443,7 +2459,8 @@
           "body": "For questions about data deletion or privacy, contact us at {email}. For more information, see our full privacy policy."
         }
       }
-    }
+    },
+    "processAria": "Process"
   },
   "portal": {
     "error": {
@@ -3534,7 +3551,18 @@
     },
     "webhookUnroutableTitle": "A WhatsApp message arrived for an unrecognised number",
     "webhookUnroutableBody": "phone_number_id: {phoneNumberId} — an organization may have been disconnected, or its connection is broken.",
-    "newLead": "New lead — {phone}"
+    "newLead": "New lead — {phone}",
+    "homeworkSubmitted": "Homework submitted — {title}",
+    "newMessage": "New message from {name}",
+    "lessonCancelled": "Lesson cancelled — {name}",
+    "justNow": "just now",
+    "minutesAgo": "{n}m ago",
+    "hoursAgo": "{n}h ago",
+    "daysAgo": "{n}d ago",
+    "dayOffRequested": "🏖️ Day-off request — {teacher}",
+    "dayOffRequestedBody": "{range} · {count} lessons scheduled",
+    "dayOffApproved": "Your day-off request was approved ✅",
+    "dayOffRejected": "Your day-off request was declined"
   },
   "notFound": {
     "title": "Page not found",

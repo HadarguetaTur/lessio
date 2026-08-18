@@ -11,6 +11,7 @@ import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { submitHomework } from '@/lib/homework/submissions'
 import { createNotification, getTeacherProfileId } from '@/lib/notifications'
+import { getT } from '@/lib/i18n/serverTranslator'
 
 export type SubmitActionState = { error: string | null; success?: boolean }
 
@@ -77,11 +78,12 @@ export async function submitHomeworkAction(
         if (!assignmentRow.teacher_id) return
         const teacherProfileId = await getTeacherProfileId(assignmentRow.teacher_id)
         if (!teacherProfileId) return
+        const tn = await getT('notifications')
         await createNotification({
           orgId,
           recipientProfileId: teacherProfileId,
           type: 'homework_submitted',
-          title: `שיעורי בית הוגשו — ${assignmentRow.title}`,
+          title: tn('homeworkSubmitted', { title: assignmentRow.title as string }),
           actionUrl: `/homework/${assignmentId}`,
         })
       } catch (err) {

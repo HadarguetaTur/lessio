@@ -39,9 +39,7 @@ export default async function TeacherOverridesPage() {
   return (
     <div className="flex h-full min-h-0 w-full max-w-2xl flex-col overflow-hidden">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        הוסף תאריכים ספציפיים שבהם אתה לא זמין, או תאריכים עם שעות מיוחדות.
-      </p>
+      <p className="text-sm text-gray-500 mb-6">{t('overridesHint')}</p>
 
       {/* Overrides list */}
       {overrides.length === 0 ? (
@@ -53,16 +51,16 @@ export default async function TeacherOverridesPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
-                  תאריך
+                  {t('overridesTable.date')}
                   </th>
                   <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
-                  סוג
+                  {t('overridesTable.type')}
                   </th>
                   <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
-                  שעות
+                  {t('overridesTable.hours')}
                   </th>
                   <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
-                  סיבה
+                  {t('overridesTable.reason')}
                   </th>
                   <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3" />
                 </tr>

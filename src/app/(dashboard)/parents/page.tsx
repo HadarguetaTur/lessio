@@ -33,7 +33,7 @@ export default async function ParentsPage(props: {
               <Link href="/parents/import">
                 <Button variant="outline" size="sm">
                   <Upload size={14} className="ml-1.5" />
-                  יבוא
+                  {t('importLabel')}
                 </Button>
               </Link>
               <NewParentSheet action={createParent} />

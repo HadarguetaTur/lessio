@@ -26,7 +26,7 @@ export default async function TeachersPage() {
             <Link href="/teachers/import">
               <Button variant="outline" size="sm">
                 <Upload size={14} className="ml-1.5" />
-                יבוא
+                {t('importPage.importLabel')}
               </Button>
             </Link>
             <NewTeacherSheet action={inviteTeacher} />

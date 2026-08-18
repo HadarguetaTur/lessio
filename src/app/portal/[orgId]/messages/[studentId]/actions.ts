@@ -6,6 +6,7 @@ import { getPortalSession } from '@/lib/portal/session'
 import { sendPortalMessage } from '@/lib/portal/messages'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createNotification, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
+import { getT } from '@/lib/i18n/serverTranslator'
 
 export type SendMessageResult = { error: string | null }
 
@@ -72,12 +73,14 @@ export async function sendMessageAction(
   if (teacherProfileId) recipientIds.push(teacherProfileId)
   const uniqueIds = [...new Set(recipientIds)]
 
+  const tn = await getT('notifications')
+
   for (const profileId of uniqueIds) {
     createNotification({
       orgId,
       recipientProfileId: profileId,
       type: 'portal_message',
-      title: `הודעה חדשה מ-${parentName}`,
+      title: tn('newMessage', { name: parentName }),
       body: body.length > 100 ? body.slice(0, 100) + '…' : body,
       actionUrl: `/messages/${studentId}`,
     })

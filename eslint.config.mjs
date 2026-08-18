@@ -38,6 +38,16 @@ const HEBREW_ALLOWED = [
   // Deno mirror of src/lib/whatsapp/submitTemplate.ts — VAR_FALLBACKS carries a
   // full he/en pair, same as the Node original.
   "supabase/functions/_shared/whatsapp.ts",
+  // Language pickers: each option is written in the language it selects, which
+  // is correct in both locales.
+  "src/components/dashboard/LocaleSwitcher.tsx",
+  "src/components/i18n/LocaleToggle.tsx",
+  "src/components/marketing/LandingLocaleToggle.tsx",
+  "src/app/(dashboard)/settings/locale/page.tsx",
+  "src/app/(dashboard)/settings/message-templates/page.tsx",
+  // The system prompt is sent to the model, never shown to a user, and the
+  // model is instructed to reply in the customer's language.
+  "src/lib/ai-assistant/buildSystemPrompt.ts",
   // Bilingual via getLandingContent(locale).
   "src/lib/marketing/landingCopy.ts",
   // Bilingual he/en branches already. Listed file-by-file, not by directory —

@@ -152,6 +152,11 @@ export type BotStringKey =
   | 'student_line_with_homework'
   | 'ics_lesson_summary'
   | 'ics_teacher_line'
+  | 'lesson_date_format'
+  | 'ai_the_school'
+  | 'ai_the_customer'
+  | 'ai_no_upcoming_lessons'
+  | 'ai_lesson_datetime_format'
   | 'the_student'
 
 const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
@@ -311,6 +316,11 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     student_line_with_homework: '{name} — {open} שיעורי בית פתוחים',
     ics_lesson_summary: 'שיעור — {students}',
     ics_teacher_line: 'מורה: {teacher}',
+    lesson_date_format: "EEEE, d 'ב'MMMM",
+    ai_the_school: 'בית הספר',
+    ai_the_customer: 'הלקוח',
+    ai_no_upcoming_lessons: 'אין שיעורים מתוכננים',
+    ai_lesson_datetime_format: "EEEE d/M 'בשעה' HH:mm",
     the_student: 'התלמיד',
   },
   en: {
@@ -477,6 +487,11 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     student_line_with_homework: '{name} — {open} open homework',
     ics_lesson_summary: 'Lesson — {students}',
     ics_teacher_line: 'Teacher: {teacher}',
+    lesson_date_format: 'EEEE, MMMM d',
+    ai_the_school: 'the school',
+    ai_the_customer: 'the customer',
+    ai_no_upcoming_lessons: 'No upcoming lessons',
+    ai_lesson_datetime_format: "EEEE d/M 'at' HH:mm",
     the_student: 'the student',
   },
 }

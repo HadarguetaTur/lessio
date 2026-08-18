@@ -29,7 +29,7 @@ export function SendLessonReminderButton({ lessonId }: Props) {
   if (sent) {
     return (
       <span className="px-3 py-1.5 text-xs font-medium text-emerald-700">
-        התזכורת נשלחה ✓
+        {t('teacherSelf.reminderSent')} ✓
       </span>
     )
   }

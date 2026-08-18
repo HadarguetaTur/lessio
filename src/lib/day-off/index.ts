@@ -33,12 +33,13 @@ import { encodeMenuPayload } from '@/lib/whatsapp/menu'
 import { encodeStaffRequestPayload, datesInRange, formatDateRange } from '@/lib/whatsapp/dayOffPayloads'
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
 import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
+import { getT } from '@/lib/i18n/serverTranslator'
 
 type Db = ReturnType<typeof createServiceRoleClient>
 
 /** Free-text marker on the cancelled lessons, matching the 'ביטול סדרה' convention. */
 const CANCEL_REASON = 'TEACHER_DAY_OFF'
-const OVERRIDE_REASON = 'חופשה מאושרת'
+const OVERRIDE_REASON = 'APPROVED_DAY_OFF'
 
 export type DayOffRequest = {
   id: string
@@ -255,12 +256,21 @@ export async function notifyStaffOfRequest(
 
   try {
     const recipients = await getOwnerAndAdminProfileIds(ctx.orgId)
+    // One title for several recipients, so it follows the org's language rather
+    // than any single reader's.
+    const { data: orgRow } = await db
+      .from('organizations')
+      .select('default_locale')
+      .eq('id', ctx.orgId)
+      .maybeSingle()
+    const locale = parseAppLocale(orgRow?.default_locale ?? undefined)
+    const tn = await getT('notifications', locale)
     await notifyMultiple(
       ctx.orgId,
       recipients,
       'day_off_requested',
-      `🏖️ בקשת חופש — ${teacherLabel(request, 'he')}`,
-      `${dateRange} · ${lessonCount} שיעורים מתוכננים`,
+      tn('dayOffRequested', { teacher: teacherLabel(request, locale) }),
+      tn('dayOffRequestedBody', { range: dateRange, count: lessonCount }),
       '/teachers'
     )
   } catch (err) {
@@ -628,8 +638,10 @@ async function notifyTeacherOfDecision(
   const profile = (data as { profiles: { phone: string | null; preferred_locale: string | null } | null } | null)
     ?.profiles
 
+  // The teacher reads both the WhatsApp message and the in-app notification.
+  const locale = parseAppLocale(profile?.preferred_locale ?? undefined)
+
   if (profile?.phone) {
-    const locale = parseAppLocale(profile.preferred_locale ?? undefined)
     try {
       // A decision can land days after the teacher last wrote in, so this goes
       // through the window-aware sender rather than plain text.
@@ -658,11 +670,12 @@ async function notifyTeacherOfDecision(
   try {
     const profileId = await getTeacherProfileId(request.teacherId)
     if (profileId) {
+      const tn = await getT('notifications', locale)
       await notifyMultiple(
         ctx.orgId,
         [profileId],
         'day_off_decided',
-        decision === 'approved' ? `בקשת החופש שלך אושרה ✅` : `בקשת החופש שלך נדחתה`,
+        decision === 'approved' ? tn('dayOffApproved') : tn('dayOffRejected'),
         dateRange,
         '/teacher/schedule'
       )

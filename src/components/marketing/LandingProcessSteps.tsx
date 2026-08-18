@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ChevronDown } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -14,6 +15,7 @@ type LandingProcessStepsProps = {
  * Reveals process steps one after another when in view (respects reduced motion).
  */
 export function LandingProcessSteps({ steps, dir }: LandingProcessStepsProps) {
+  const t = useTranslations('legal')
   const containerRef = useRef<HTMLOListElement | null>(null)
   const [inView, setInView] = useState(false)
   const [visibleCount, setVisibleCount] = useState(0)
@@ -66,7 +68,7 @@ export function LandingProcessSteps({ steps, dir }: LandingProcessStepsProps) {
       ref={containerRef}
       className="mt-8 list-none space-y-0 ps-0"
       dir={dir}
-      aria-label={dir === 'rtl' ? 'תהליך' : 'Process'}
+      aria-label={t('processAria')}
     >
       {steps.map((text, i) => {
         const shown = reduceMotion ? true : i < visibleCount

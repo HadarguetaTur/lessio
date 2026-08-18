@@ -1938,7 +1938,23 @@
       "lastLesson": "שיעור אחרון",
       "atRisk": "סיכון",
       "yes": "כן",
-      "no": "לא"
+      "no": "לא",
+      "type": "סוג",
+      "date": "תאריך",
+      "documentNumber": "מס׳ מסמך",
+      "customer": "לקוח",
+      "taxId": "ח.פ.",
+      "description": "תיאור",
+      "net": "סכום ללא מע״מ",
+      "vat": "מע״מ",
+      "total": "סה״כ",
+      "status": "סטטוס",
+      "paidOn": "שולם בתאריך",
+      "receiptNumber": "מס׳ קבלה",
+      "invoice": "חשבונית",
+      "creditNote": "זיכוי",
+      "paid": "שולם",
+      "open": "פתוח"
     },
     "invalidEntity": "סוג ישות לא תקין"
   },
@@ -2443,7 +2459,8 @@
           "body": "לשאלות על מחיקת נתונים או פרטיות, צרו קשר בכתובת {email}. למידע נוסף ראו את מדיניות הפרטיות המלאה שלנו."
         }
       }
-    }
+    },
+    "processAria": "תהליך"
   },
   "portal": {
     "error": {
@@ -3534,7 +3551,18 @@
     },
     "webhookUnroutableTitle": "הודעת WhatsApp התקבלה למספר לא מזוהה",
     "webhookUnroutableBody": "phone_number_id: {phoneNumberId} — ייתכן שארגון נותק או שהחיבור שלו פגום.",
-    "newLead": "ליד חדש — {phone}"
+    "newLead": "ליד חדש — {phone}",
+    "homeworkSubmitted": "שיעורי בית הוגשו — {title}",
+    "newMessage": "הודעה חדשה מ-{name}",
+    "lessonCancelled": "שיעור בוטל — {name}",
+    "justNow": "עכשיו",
+    "minutesAgo": "לפני {n} דקות",
+    "hoursAgo": "לפני {n} שעות",
+    "daysAgo": "לפני {n} ימים",
+    "dayOffRequested": "🏖️ בקשת חופש — {teacher}",
+    "dayOffRequestedBody": "{range} · {count} שיעורים מתוכננים",
+    "dayOffApproved": "בקשת החופש שלך אושרה ✅",
+    "dayOffRejected": "בקשת החופש שלך נדחתה"
   },
   "notFound": {
     "title": "הדף לא נמצא",

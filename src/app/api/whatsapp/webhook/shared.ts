@@ -87,7 +87,7 @@ export async function buildUpcomingLessonLines(params: {
     teachers: { profiles: { full_name: string } | null } | null
   }
 
-  const dateFormat = locale === 'he' ? 'EEEE, d בMMMM' : 'EEEE, MMMM d'
+  const dateFormat = botString('lesson_date_format', locale)
   const formatted = (lessons ?? []).map((l) => {
     const row = l as unknown as LessonRow
     const dt = DateTime.fromISO(row.start_at, { zone: 'utc' }).setZone(timezone)

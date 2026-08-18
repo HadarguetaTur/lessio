@@ -142,9 +142,22 @@ export async function GET(request: NextRequest, { params }: Context) {
         const to = searchParams.get('to') ?? DateTime.now().setZone(timezone).toISODate()!
         const rows = await getAccountingExport(orgId, timezone, { from, to })
         csv = toCsv(
-          ['Type / סוג', 'Date / תאריך', 'Document # / מס׳ מסמך', 'Customer / לקוח', 'Tax ID / ח.פ.', 'Description / תיאור', 'Net / סכום ללא מע״מ', 'VAT / מע״מ', 'Total / סה״כ', 'Status / סטטוס', 'Paid On / שולם בתאריך', 'Receipt # / מס׳ קבלה'],
+          [
+            tc('type'),
+            tc('date'),
+            tc('documentNumber'),
+            tc('customer'),
+            tc('taxId'),
+            tc('description'),
+            tc('net'),
+            tc('vat'),
+            tc('total'),
+            tc('status'),
+            tc('paidOn'),
+            tc('receiptNumber'),
+          ],
           rows.map(r => [
-            r.type === 'invoice' ? 'חשבונית / Invoice' : 'זיכוי / Credit Note',
+            r.type === 'invoice' ? tc('invoice') : tc('creditNote'),
             r.date,
             r.documentNumber,
             r.customerName,
@@ -153,7 +166,7 @@ export async function GET(request: NextRequest, { params }: Context) {
             r.amountNet,
             r.vatAmount,
             r.amountGross,
-            r.paymentStatus === 'paid' ? 'שולם / Paid' : 'פתוח / Open',
+            r.paymentStatus === 'paid' ? tc('paid') : tc('open'),
             r.paymentDate,
             r.receiptNumber,
           ])

@@ -40,7 +40,7 @@ export default async function TeacherDashboardPage() {
   if (!teacher) {
     return (
       <div className="text-center mt-16 text-sm text-gray-500">
-        לא נמצאה רשומת מורה פעילה עבור משתמש זה. פנה למנהל המערכת.
+        {t('noTeacherRecordContact')}
       </div>
     )
   }

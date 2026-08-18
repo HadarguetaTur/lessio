@@ -44,6 +44,7 @@ export default async function TeacherSchedulePage(props: {
     student?: string
   }>
 }) {
+  const t = await getTranslations('teacherSelf')
   const { view: viewParam, week, date, month, student: studentParam } = await props.searchParams
   const studentParsed = z.string().uuid().safeParse(studentParam)
   const view: CalendarView =
@@ -64,7 +65,7 @@ export default async function TeacherSchedulePage(props: {
   if (!teacher) {
     return (
       <div className="text-center mt-16 text-sm text-gray-500">
-        לא נמצאה רשומת מורה פעילה עבור משתמש זה. פנה למנהל המערכת.
+        {t('noTeacherRecordContact')}
       </div>
     )
   }

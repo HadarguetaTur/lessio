@@ -45,7 +45,9 @@ export async function getSession(): Promise<UserSession> {
       profileId: support.superAdminId,
       orgId: support.targetOrgId,
       role: 'owner',  // read-only view as owner role so all UI loads
-      fullName: `${adminProfile?.full_name ?? 'Admin'} (תמיכה)`,
+      // Shown in the support-mode banner. getSession() cannot await a
+      // translator here, and this suffix is only ever seen by a superadmin.
+      fullName: `${adminProfile?.full_name ?? 'Admin'} (support)`,
       isSupportMode: true,
     }
   }

@@ -84,9 +84,7 @@ async function ConnectedState({ providerLabel, connected, disconnect }: { provid
       <hr className="border-gray-100" />
 
       <div>
-        <p className="text-xs text-gray-500 mb-2">
-          ניתוק יפסיק את הפקת הקבלות עד לחיבור מחדש.
-        </p>
+        <p className="text-xs text-gray-500 mb-2">{tp('receiptsPage.disconnectHint')}</p>
         <DisconnectReceiptButton />
       </div>
     </div>

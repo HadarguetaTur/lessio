@@ -6,11 +6,21 @@
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { botString } from '@/lib/whatsapp/strings'
+import { toLuxonLocale, type AppLocale } from '@/lib/i18n/locale'
 
+/**
+ * The prompt scaffolding stays Hebrew — it is sent to the model, never shown to
+ * a user, and line 141's rule tells the model to mirror the customer's language.
+ * The *injected data* is a different matter: Hebrew weekday names and fallback
+ * nouns in the context steer the model's output, so those follow the customer's
+ * locale.
+ */
 export async function buildSystemPrompt(
   orgId: string,
   phone: string,
-  parentIdOverride: string | null = null
+  parentIdOverride: string | null = null,
+  locale: AppLocale = 'he'
 ): Promise<string> {
   const db = createServiceRoleClient()
 
@@ -21,7 +31,7 @@ export async function buildSystemPrompt(
     .eq('id', orgId)
     .single()
 
-  const orgName = (org?.name as string | null) ?? 'בית הספר'
+  const orgName = (org?.name as string | null) ?? botString('ai_the_school', locale)
   const timezone = (org?.timezone as string | null) ?? 'Asia/Jerusalem'
 
   // Fetch parent
@@ -34,7 +44,9 @@ export async function buildSystemPrompt(
     ? await parentQuery.eq('id', parentIdOverride).maybeSingle()
     : await parentQuery.eq('phone', phone).maybeSingle()
 
-  const parentName = (parent as { id: string; full_name: string } | null)?.full_name ?? 'הלקוח'
+  const parentName =
+    (parent as { id: string; full_name: string } | null)?.full_name ??
+    botString('ai_the_customer', locale)
   const parentId = (parent as { id: string; full_name: string } | null)?.id ?? null
 
   // Fetch student names + IDs for this parent
@@ -58,7 +70,7 @@ export async function buildSystemPrompt(
   }
 
   // Fetch upcoming lessons (next 3)
-  let upcomingLessonsText = 'אין שיעורים מתוכננים'
+  let upcomingLessonsText = botString('ai_no_upcoming_lessons', locale)
   if (studentIds.length > 0) {
     const { data: lsRows } = await db
       .from('lesson_students')
@@ -89,9 +101,12 @@ export async function buildSystemPrompt(
         upcomingLessonsText = (lessons as unknown as LessonRow[])
           .map((l) => {
             const dt = DateTime.fromISO(l.start_at, { zone: 'utc' }).setZone(timezone)
-            const dateStr = dt.toFormat("EEEE d/M 'בשעה' HH:mm", { locale: 'he' })
+            const dateStr = dt.toFormat(botString('ai_lesson_datetime_format', locale), {
+              locale: toLuxonLocale(locale),
+            })
             const teacherName =
-              (l.teachers?.profiles as { full_name: string } | null)?.full_name ?? 'המורה'
+              (l.teachers?.profiles as { full_name: string } | null)?.full_name ??
+              botString('the_teacher', locale)
             const studentName = l.lesson_students?.[0]?.students?.full_name ?? ''
             return `${dateStr} עם ${teacherName}${studentName ? ` (${studentName})` : ''}`
           })

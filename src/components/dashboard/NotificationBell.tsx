@@ -172,7 +172,7 @@ export function NotificationBell({
                       </p>
                     )}
                     <p className="text-[11px] text-muted-foreground/70 mt-1">
-                      {formatRelativeTime(n.created_at, locale)}
+                      {formatRelativeTime(n.created_at, t)}
                     </p>
                   </div>
                   {!n.read_at && (
@@ -188,16 +188,18 @@ export function NotificationBell({
   )
 }
 
-function formatRelativeTime(isoDate: string, locale: string): string {
+type RelativeT = (key: string, values?: Record<string, string | number>) => string
+
+function formatRelativeTime(isoDate: string, t: RelativeT): string {
   const diffMs = Date.now() - new Date(isoDate).getTime()
   const diffMin = Math.floor(diffMs / 60_000)
 
-  if (diffMin < 1) return locale === 'he' ? 'עכשיו' : 'just now'
-  if (diffMin < 60) return locale === 'he' ? `לפני ${diffMin} דקות` : `${diffMin}m ago`
+  if (diffMin < 1) return t('justNow')
+  if (diffMin < 60) return t('minutesAgo', { n: diffMin })
 
   const diffHours = Math.floor(diffMin / 60)
-  if (diffHours < 24) return locale === 'he' ? `לפני ${diffHours} שעות` : `${diffHours}h ago`
+  if (diffHours < 24) return t('hoursAgo', { n: diffHours })
 
   const diffDays = Math.floor(diffHours / 24)
-  return locale === 'he' ? `לפני ${diffDays} ימים` : `${diffDays}d ago`
+  return t('daysAgo', { n: diffDays })
 }

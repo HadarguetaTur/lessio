@@ -4,6 +4,7 @@ import { getPortalSession } from '@/lib/portal/session'
 import { executeCancellation } from '@/lib/cancellation-flow/executeCancellation'
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getT } from '@/lib/i18n/serverTranslator'
 
 /**
  * `error` is a key under portal.schedule.errors; the dialog renders the
@@ -50,11 +51,13 @@ export async function cancelLessonAction(
     if (teacherProfileId) recipientIds.push(teacherProfileId)
     const uniqueIds = [...new Set(recipientIds)]
 
+    const tn = await getT('notifications')
+
     notifyMultiple(
       orgId,
       uniqueIds,
       'lesson_cancelled',
-      `שיעור בוטל — ${outcome.studentName}`,
+      tn('lessonCancelled', { name: outcome.studentName }),
       `${outcome.teacherName} · ${new Date(outcome.lessonStartAt).toLocaleDateString('he-IL')}`,
       `/lessons/${lessonId}`
     )

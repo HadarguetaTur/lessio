@@ -31,10 +31,28 @@ import { isMissingFieldsError } from '../src/lib/billing/monthly/types'
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 
-const DEFAULT_OWNER_EMAIL = 'reviewer@getlessio.com'
+// The variant decides the identity constants below, so env must load first.
+loadEnvLocal()
+
+/**
+ * REVIEW_DEMO_VARIANT (single digit 1-9) builds a parallel copy of the tenant —
+ * its own org id, slug and auth emails — so both can live side by side. A
+ * variant tenant is deliberately left without a WhatsApp connection: it exists
+ * to film the connect-a-number flow from scratch. Clean it up with the same
+ * REVIEW_DEMO_VARIANT passed to scripts/cleanup-review-demo.ts.
+ */
+const VARIANT = process.env.REVIEW_DEMO_VARIANT ?? ''
+if (VARIANT && !/^[1-9]$/.test(VARIANT)) {
+  fail(`REVIEW_DEMO_VARIANT must be a single digit 1-9, got "${VARIANT}"`)
+}
+/** sarah.klein@demo.getlessio.com → sarah.klein2@demo.getlessio.com for variant 2. */
+const variantEmail = (email: string): string =>
+  VARIANT ? email.replace('@', `${VARIANT}@`) : email
+
+const DEFAULT_OWNER_EMAIL = variantEmail('reviewer@getlessio.com')
 const OWNER_NAME = 'Emma Bennett'
 const ORG_NAME = 'Brightpath Tutoring'
-const ORG_SLUG = 'brightpath-tutoring'
+const ORG_SLUG = VARIANT ? `brightpath-tutoring-${VARIANT}` : 'brightpath-tutoring'
 const TIMEZONE = 'Asia/Jerusalem'
 
 /** The only number the Meta test phone is allowed to deliver to. */
@@ -46,8 +64,10 @@ const BILLING_MONTHS = 4
 const UNPAID_RECENT_MONTHS = 1
 
 // ── Fixed UUIDs (valid v4 shape, recognizable d2000000 prefix) ────────────────
+// A variant swaps the prefix's last digit (d2000002- for variant 2), keeping
+// every copy's rows distinct and independently cleanable.
 
-const uid = (suffix: string): string => `d2000000-0000-4000-8000-${suffix}`
+const uid = (suffix: string): string => `d200000${VARIANT || '0'}-0000-4000-8000-${suffix}`
 
 const ORG_ID = uid('000000000000')
 const SHOWCASE_LESSON_ID = uid('000000000003')
@@ -66,11 +86,13 @@ const lessonId = (student: number, week: number): string =>
 
 type TeacherSeed = { email: string; name: string; subject: string; rate: number }
 
+// Teacher emails must also change per variant: reusing the base addresses would
+// re-point those auth users' profiles at the copy and orphan the original org.
 const TEACHERS: TeacherSeed[] = [
   { email: 'sarah.klein@demo.getlessio.com', name: 'Sarah Klein', subject: 'Mathematics', rate: 200 },
   { email: 'david.mor@demo.getlessio.com', name: 'David Mor', subject: 'Physics', rate: 220 },
   { email: 'noa.barak@demo.getlessio.com', name: 'Noa Barak', subject: 'English', rate: 180 },
-]
+].map((t) => ({ ...t, email: variantEmail(t.email) }))
 
 type ParentSeed = { name: string; phone: string; email: string }
 type StudentSeed = { name: string; grade: string; parent: number; subject: string; level: string }
@@ -227,7 +249,11 @@ async function main(): Promise<void> {
         '  deliberately not hardcoded in the repo.'
     )
   }
-  const ownerEmail = process.env.REVIEW_DEMO_OWNER_EMAIL ?? DEFAULT_OWNER_EMAIL
+  // A variant ignores REVIEW_DEMO_OWNER_EMAIL: honoring it would upsert the
+  // base reviewer's profile into the copy and pull them out of the original org.
+  const ownerEmail = VARIANT
+    ? DEFAULT_OWNER_EMAIL
+    : (process.env.REVIEW_DEMO_OWNER_EMAIL ?? DEFAULT_OWNER_EMAIL)
 
   const db = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
   const now = DateTime.now().setZone(TIMEZONE)

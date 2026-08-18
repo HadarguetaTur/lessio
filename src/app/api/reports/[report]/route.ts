@@ -12,6 +12,7 @@ import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth/session'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { parseAppLocale } from '@/lib/i18n/locale'
+import { getT } from '@/lib/i18n/serverTranslator'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getRevenueReport } from '@/lib/reports/revenue'
 import { getLessonsReport } from '@/lib/reports/lessons'
@@ -57,6 +58,10 @@ export async function GET(request: NextRequest, { params }: Context) {
   let csv: string
   let filename: string
 
+  // The export is downloaded by whoever clicked it, so the headers follow the
+  // locale already resolved for this request.
+  const tc = await getT('reports.csv', appLocale)
+
   try {
     switch (report) {
       case 'revenue': {
@@ -66,7 +71,7 @@ export async function GET(request: NextRequest, { params }: Context) {
         })
         const { buckets } = await getRevenueReport(orgId, timezone, months, appLocale)
         csv = toCsv(
-          ['חודש', 'הכנסות ששולמו (₪)', 'חיוב חודשי (₪)', 'חיוב חודשי ששולם (₪)', 'חיוב חודשי פתוח (₪)'],
+          [tc('month'), tc('revenuePaid'), tc('monthlyBilling'), tc('monthlyBillingPaid'), tc('monthlyBillingOpen')],
           buckets.map(b => [
             b.label,
             b.revenue.toFixed(2),
@@ -85,7 +90,7 @@ export async function GET(request: NextRequest, { params }: Context) {
         })
         const { buckets } = await getLessonsReport(orgId, timezone, months, appLocale)
         csv = toCsv(
-          ['חודש', 'שיעורים', 'ביטולים'],
+          [tc('month'), tc('lessons'), tc('cancellations')],
           buckets.map(b => [b.label, String(b.count), String(b.cancelled)])
         )
         filename = 'lessons.csv'
@@ -94,7 +99,7 @@ export async function GET(request: NextRequest, { params }: Context) {
       case 'debt': {
         const { rows } = await getDebtReport(orgId)
         csv = toCsv(
-          ['הורה', 'טלפון', 'חוב (₪)', 'תאריך יעד'],
+          [tc('parent'), tc('phone'), tc('debt'), tc('dueDate')],
           rows.map(r => [
             r.parentName,
             r.phone,
@@ -112,7 +117,7 @@ export async function GET(request: NextRequest, { params }: Context) {
         })
         const { rows } = await getTeachersReport(orgId, timezone, months)
         csv = toCsv(
-          ['מורה', 'שיעורים', 'הכנסות (₪)'],
+          [tc('teacher'), tc('lessons'), tc('revenue')],
           rows.map(r => [r.teacherName, String(r.lessonsCount), r.revenue.toFixed(2)])
         )
         filename = 'teachers.csv'
@@ -121,12 +126,12 @@ export async function GET(request: NextRequest, { params }: Context) {
       case 'students': {
         const { rows } = await getStudentsReport(orgId, timezone)
         csv = toCsv(
-          ['תלמיד', 'שיעורים ב-30 יום', 'שיעור אחרון', 'סיכון'],
+          [tc('student'), tc('lessons30d'), tc('lastLesson'), tc('atRisk')],
           rows.map(r => [
             r.studentName,
             String(r.lessonsLast30Days),
             r.lastLessonAt ?? '',
-            r.isAtRisk ? 'כן' : 'לא',
+            r.isAtRisk ? tc('yes') : tc('no'),
           ])
         )
         filename = 'students.csv'

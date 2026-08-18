@@ -12,6 +12,9 @@
  *   - CRLF line endings
  */
 
+import { botString } from '@/lib/whatsapp/strings'
+import type { AppLocale } from '@/lib/i18n/locale'
+
 export interface ICalLesson {
   id: string
   startAt: string
@@ -81,7 +84,9 @@ function foldLine(line: string): string {
 export function generateICalString(
   teacherName: string,
   orgName: string,
-  lessons: ICalLesson[]
+  lessons: ICalLesson[],
+  /** Language of the event text, as seen in the subscriber's calendar app. */
+  locale: AppLocale = 'he'
 ): string {
   const CRLF = '\r\n'
   const calName = escapeICalText(`${teacherName} — ${orgName}`)
@@ -89,7 +94,7 @@ export function generateICalString(
   const lines: string[] = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//LESSIO//LESSIO Calendar//HE',
+    `PRODID:-//LESSIO//LESSIO Calendar//${locale.toUpperCase()}`,
     foldLine(`X-WR-CALNAME:${calName}`),
     'X-WR-TIMEZONE:UTC',
     'CALSCALE:GREGORIAN',
@@ -97,8 +102,12 @@ export function generateICalString(
   ]
 
   for (const lesson of lessons) {
-    const summary = escapeICalText(`שיעור — ${lesson.studentNames.join(', ')}`)
-    const description = escapeICalText(`מורה: ${lesson.teacherName}`)
+    const summary = escapeICalText(
+      botString('ics_lesson_summary', locale, { students: lesson.studentNames.join(', ') })
+    )
+    const description = escapeICalText(
+      botString('ics_teacher_line', locale, { teacher: lesson.teacherName })
+    )
     const organizer = escapeICalText(orgName)
 
     lines.push(

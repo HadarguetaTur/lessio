@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { commonError } from '@/lib/i18n/actionErrors'
 import { getSession } from '@/lib/auth/session'
 import { generateTemplate, getTemplateFilename } from '@/lib/import/templates'
 import type { EntityType } from '@/lib/import/validators'
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
   const entityType = request.nextUrl.searchParams.get('type') as string
 
   if (!VALID_TYPES.includes(entityType as EntityType)) {
-    return NextResponse.json({ error: 'סוג ישות לא תקין' }, { status: 400 })
+    return NextResponse.json({ error: await commonError('invalidData') }, { status: 400 })
   }
 
   const buffer = generateTemplate(entityType as EntityType)

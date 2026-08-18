@@ -18,6 +18,8 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { generateICalString } from '@/lib/ical'
+import { botString } from '@/lib/whatsapp/strings'
+import { resolveRecipientLocale } from '@/lib/i18n/locale'
 
 export async function GET(
   _request: Request,
@@ -35,7 +37,7 @@ export async function GET(
   // Look up teacher by ical_token
   const { data: teacher, error: teacherError } = await db
     .from('teachers')
-    .select('id, organization_id, profiles(full_name)')
+    .select('id, organization_id, profiles(full_name, preferred_locale)')
     .eq('ical_token', token)
     .maybeSingle()
 
@@ -43,17 +45,28 @@ export async function GET(
     return new Response('Not Found', { status: 404 })
   }
 
-  const teacherProfile = teacher.profiles as unknown as { full_name: string } | null
-  const teacherName = teacherProfile?.full_name ?? 'המורה'
+  const teacherProfile = teacher.profiles as unknown as {
+    full_name: string
+    preferred_locale: string | null
+  } | null
 
   // Load org name
   const { data: org } = await db
     .from('organizations')
-    .select('name')
+    .select('name, default_locale')
     .eq('id', teacher.organization_id)
     .single()
 
   const orgName = org?.name ?? 'LESSIO'
+
+  // The feed is read in the teacher's own calendar app, so its event text
+  // follows the teacher's language, falling back to the org default.
+  const locale = resolveRecipientLocale({
+    stored: teacherProfile?.preferred_locale ?? null,
+    orgDefault: (org?.default_locale as string | null) ?? null,
+  })
+
+  const teacherName = teacherProfile?.full_name ?? botString('the_teacher', locale)
 
   // Fetch lessons: past 4 weeks + next 6 months
   const now = new Date()
@@ -106,7 +119,7 @@ export async function GET(
     }
   })
 
-  const icsContent = generateICalString(teacherName, orgName, icalLessons)
+  const icsContent = generateICalString(teacherName, orgName, icalLessons, locale)
 
   return new Response(icsContent, {
     status: 200,

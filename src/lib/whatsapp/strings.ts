@@ -148,6 +148,10 @@ export type BotStringKey =
   | 'role_label_staff'
   // Generic fallback nouns
   | 'the_teacher'
+  | 'lesson_list_line'
+  | 'student_line_with_homework'
+  | 'ics_lesson_summary'
+  | 'ics_teacher_line'
   | 'the_student'
 
 const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
@@ -303,6 +307,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     role_label_staff: 'צוות',
 
     the_teacher: 'המורה',
+    lesson_list_line: '{n}. {date} בשעה {time} עם {teacher}',
+    student_line_with_homework: '{name} — {open} שיעורי בית פתוחים',
+    ics_lesson_summary: 'שיעור — {students}',
+    ics_teacher_line: 'מורה: {teacher}',
     the_student: 'התלמיד',
   },
   en: {
@@ -465,6 +473,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     role_label_staff: 'staff',
 
     the_teacher: 'the teacher',
+    lesson_list_line: '{n}. {date} at {time} with {teacher}',
+    student_line_with_homework: '{name} — {open} open homework',
+    ics_lesson_summary: 'Lesson — {students}',
+    ics_teacher_line: 'Teacher: {teacher}',
     the_student: 'the student',
   },
 }

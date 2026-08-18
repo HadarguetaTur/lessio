@@ -104,9 +104,12 @@ export async function buildUpcomingLessonLines(params: {
 
   return formatted
     .map((l, i) =>
-      locale === 'he'
-        ? `${i + 1}. ${l.date} בשעה ${l.time} עם ${l.teacherName}`
-        : `${i + 1}. ${l.date} at ${l.time} with ${l.teacherName}`
+      botString('lesson_list_line', locale, {
+        n: String(i + 1),
+        date: l.date,
+        time: l.time,
+        teacher: l.teacherName,
+      })
     )
     .join('\n')
 }

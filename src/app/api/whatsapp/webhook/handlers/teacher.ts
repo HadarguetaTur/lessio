@@ -405,9 +405,7 @@ async function sendTeacherStudents(ctx: HandlerContext, teacherId: string): Prom
       const name = s.full_name?.trim() || botString('the_student', ctx.locale)
       const open = openByStudent.get(s.id) ?? 0
       if (open === 0) return `\n• ${name}`
-      return ctx.locale === 'he'
-        ? `\n• ${name} — ${open} שיעורי בית פתוחים`
-        : `\n• ${name} — ${open} open homework`
+      return `\n• ${botString('student_line_with_homework', ctx.locale, { name, open: String(open) })}`
     })
     .join('')
 

@@ -69,6 +69,7 @@ import {
   resolveRecipientLocale,
   type AppLocale,
 } from '@/lib/i18n/locale'
+import { getT } from '@/lib/i18n/serverTranslator'
 import {
   isDemoRescheduleEnabled,
   hasRescheduleIntent,
@@ -212,10 +213,14 @@ async function notifyUnroutablePhoneNumber(phoneNumberId: string): Promise<void>
     )
     if (alreadyNotified) return
 
+    // Platform-level notification with no org behind it, and a webhook has no
+    // request locale, so it uses the platform default.
+    const tn = await getT('notifications', 'he')
+
     await notifySuperadmins(
       'webhook_unroutable',
-      'הודעת WhatsApp התקבלה למספר לא מזוהה',
-      `phone_number_id: ${phoneNumberId} — ייתכן שארגון נותק או שהחיבור שלו פגום.`,
+      tn('webhookUnroutableTitle'),
+      tn('webhookUnroutableBody', { phoneNumberId }),
       '/admin/orgs'
     )
   } catch (err) {
@@ -820,11 +825,12 @@ async function handleUnknownSender(
   void (async () => {
     try {
       const recipients = await getOwnerAndAdminProfileIds(organizationId)
+      const tn = await getT('notifications', locale)
       await notifyMultiple(
         organizationId,
         recipients,
         'new_lead',
-        `ליד חדש — ${phone}`,
+        tn('newLead', { phone }),
         rawMessage?.slice(0, 100) || undefined,
         '/leads'
       )

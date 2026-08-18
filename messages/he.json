@@ -1869,7 +1869,29 @@
       "avgMonthly": "ממוצע חודשי",
       "orgAvgLessons": "ממוצע ארגוני שיעורים",
       "orgAvgCancellation": "ממוצע ארגוני ביטולים"
-    }
+    },
+    "csv": {
+      "month": "חודש",
+      "revenuePaid": "הכנסות ששולמו (₪)",
+      "monthlyBilling": "חיוב חודשי (₪)",
+      "monthlyBillingPaid": "חיוב חודשי ששולם (₪)",
+      "monthlyBillingOpen": "חיוב חודשי פתוח (₪)",
+      "lessons": "שיעורים",
+      "cancellations": "ביטולים",
+      "parent": "הורה",
+      "phone": "טלפון",
+      "debt": "חוב (₪)",
+      "dueDate": "תאריך יעד",
+      "teacher": "מורה",
+      "revenue": "הכנסות (₪)",
+      "student": "תלמיד",
+      "lessons30d": "שיעורים ב-30 יום",
+      "lastLesson": "שיעור אחרון",
+      "atRisk": "סיכון",
+      "yes": "כן",
+      "no": "לא"
+    },
+    "invalidEntity": "סוג ישות לא תקין"
   },
   "teacherSelf": {
     "dashboard": {
@@ -3165,7 +3187,10 @@
       "student_at_risk": "תלמיד בסיכון",
       "new_lead": "ליד חדש",
       "goal_achieved": "מטרה הושגה"
-    }
+    },
+    "webhookUnroutableTitle": "הודעת WhatsApp התקבלה למספר לא מזוהה",
+    "webhookUnroutableBody": "phone_number_id: {phoneNumberId} — ייתכן שארגון נותק או שהחיבור שלו פגום.",
+    "newLead": "ליד חדש — {phone}"
   },
   "notFound": {
     "title": "הדף לא נמצא",

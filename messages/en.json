@@ -1869,7 +1869,29 @@
       "avgMonthly": "Avg Monthly",
       "orgAvgLessons": "Org avg lessons",
       "orgAvgCancellation": "Org avg cancellation"
-    }
+    },
+    "csv": {
+      "month": "Month",
+      "revenuePaid": "Revenue paid (₪)",
+      "monthlyBilling": "Monthly billing (₪)",
+      "monthlyBillingPaid": "Monthly billing paid (₪)",
+      "monthlyBillingOpen": "Monthly billing open (₪)",
+      "lessons": "Lessons",
+      "cancellations": "Cancellations",
+      "parent": "Parent",
+      "phone": "Phone",
+      "debt": "Debt (₪)",
+      "dueDate": "Due date",
+      "teacher": "Teacher",
+      "revenue": "Revenue (₪)",
+      "student": "Student",
+      "lessons30d": "Lessons in 30 days",
+      "lastLesson": "Last lesson",
+      "atRisk": "At risk",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "invalidEntity": "Invalid entity type"
   },
   "teacherSelf": {
     "dashboard": {
@@ -3165,7 +3187,10 @@
       "student_at_risk": "Student At Risk",
       "new_lead": "New Lead",
       "goal_achieved": "Goal Achieved"
-    }
+    },
+    "webhookUnroutableTitle": "A WhatsApp message arrived for an unrecognised number",
+    "webhookUnroutableBody": "phone_number_id: {phoneNumberId} — an organization may have been disconnected, or its connection is broken.",
+    "newLead": "New lead — {phone}"
   },
   "notFound": {
     "title": "Page not found",

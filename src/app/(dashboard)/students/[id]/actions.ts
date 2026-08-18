@@ -29,6 +29,7 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { progressReportEmail } from '@/lib/email/templates/progressReport'
 import { parseAppLocale } from '@/lib/i18n/locale'
+import { getT } from '@/lib/i18n/serverTranslator'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 
@@ -435,19 +436,23 @@ export async function sendProgressReportEmailAction(
 
   try {
     const data = await buildProgressReportData(studentId, session.orgId, bounds.from, bounds.to)
-    const buffer = await renderProgressReportPdfBufferFromData(data, timezone)
+    const buffer = await renderProgressReportPdfBufferFromData(data, timezone, appLocale)
     const safeName = data.student.name.replace(/[^\wא-ת\- ]+/g, '_').slice(0, 80)
     const filename = `progress-report-${safeName}-${bounds.from}-${bounds.to}.pdf`
 
-    const attendanceSummary =
-      appLocale === 'en'
-        ? `Attendance: ${data.attendance.completed} / ${data.attendance.total} lessons (${data.attendance.ratePercent}% completed).`
-        : `נוכחות: ${data.attendance.completed} / ${data.attendance.total} שיעורים (${data.attendance.ratePercent}% הושלמו).`
-
-    const homeworkSummary =
-      appLocale === 'en'
-        ? `Homework: ${data.homework.completed} / ${data.homework.total} assignments${data.homework.avgScore != null ? ` (avg score ${data.homework.avgScore}/100)` : ''}.`
-        : `שיעורי בית: ${data.homework.completed} / ${data.homework.total} משימות${data.homework.avgScore != null ? ` (ממוצע ציון ${data.homework.avgScore}/100)` : ''}.`
+    // The email goes to the parent, so its summary lines follow the locale the
+    // caller picked for the recipient rather than the dashboard's.
+    const tr = await getT('students.reportLines', appLocale)
+    const attendanceSummary = tr('attendance', {
+      completed: data.attendance.completed,
+      total: data.attendance.total,
+      percent: data.attendance.ratePercent,
+    })
+    const homeworkSummary = tr('homework', {
+      completed: data.homework.completed,
+      total: data.homework.total,
+      avg: data.homework.avgScore != null ? tr('homeworkAvg', { score: data.homework.avgScore }) : '',
+    })
 
     const { subject, html } = progressReportEmail(
       {

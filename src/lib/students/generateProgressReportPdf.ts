@@ -5,6 +5,8 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { ProgressReportData } from '@/lib/students/progressReport'
 import { buildProgressReportData } from '@/lib/students/progressReport'
 import ProgressReportDocument from '@/lib/students/progressReportDocument'
+import { getT } from '@/lib/i18n/serverTranslator'
+import type { AppLocale } from '@/lib/i18n/locale'
 
 const BUCKET = 'progress-reports'
 const SIGNED_URL_TTL_SECONDS = 24 * 60 * 60
@@ -49,11 +51,13 @@ export async function getProgressReportSignedUrl(path: string): Promise<string> 
  */
 export async function renderProgressReportPdfBufferFromData(
   data: ProgressReportData,
-  orgTimezone: string
+  orgTimezone: string,
+  locale: AppLocale = 'he'
 ): Promise<Buffer> {
   const element = React.createElement(ProgressReportDocument, {
     data,
     orgTimezone,
+    t: await getT('studentProfile.progressReportPdf', locale),
   })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pdfBuffer = await renderToBuffer(element as any)

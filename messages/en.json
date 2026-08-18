@@ -921,7 +921,8 @@
     "fieldPaidAt": "Paid",
     "viewReceipt": "View Receipt ↗",
     "noReceiptIssued": "No receipt issued (or pending generation)",
-    "pendingReceipt": "Receipt will be issued after marking as paid"
+    "pendingReceipt": "Receipt will be issued after marking as paid",
+    "monthlyChargeNote": "Monthly charge {month}"
   },
   "billing": {
     "title": "Monthly Billing",
@@ -997,14 +998,25 @@
     "generateSuccess": "Processed {success} students, {errors} errors, {skipped} skipped",
     "noBillingRecords": "No billing records for this month",
     "invoice": {
-      "download": "Download Invoice",
-      "generating": "Generating invoice...",
-      "notAvailable": "Invoice not available",
-      "number": "Invoice #",
-      "date": "Invoice Date",
-      "vatAmount": "VAT",
+      "title": "Tax invoice",
+      "creditNoteTitle": "Credit note",
+      "taxIdPrefix": "Tax ID ",
+      "invoiceNumber": "Invoice number",
+      "date": "Date",
+      "billingPeriod": "Billing period",
+      "recipient": "Bill to",
+      "studentPrefix": "Student: ",
+      "voids": "Voids invoice no. ",
+      "colDescription": "Description",
+      "colAmount": "Amount",
       "subtotal": "Subtotal",
-      "total": "Total (incl. VAT)"
+      "vat": "VAT",
+      "grandTotal": "Total due",
+      "lineLessons": "Lessons ({count} lessons)",
+      "lineSubscription": "Monthly subscription",
+      "lineCancellations": "Cancellation charges",
+      "lineAdjustmentWithReason": "Manual adjustment: {reason}",
+      "lineAdjustment": "Manual adjustment"
     },
     "creditNote": {
       "issue": "Issue Credit Note",
@@ -3109,6 +3121,37 @@
       "empty": "No notes yet.",
       "deleteNote": "Delete note",
       "visibleToParent": "Visible to parent"
+    },
+    "progressReportPdf": {
+      "title": "Progress report",
+      "student": "Student",
+      "period": "Period",
+      "generatedAt": "Generated on",
+      "attendance": "Attendance",
+      "attendanceLine": "{completed} / {total} lessons completed (attendance rate: {percent}%). ",
+      "attendanceExtra": "Cancellations: {cancelled}, no-shows: {noShow}.",
+      "homework": "Homework",
+      "homeworkLine": "{completed} / {total} completed (completion rate: {percent}%). ",
+      "homeworkAvg": "Average homework score for the period: {score} / 100.",
+      "colTask": "Assignment",
+      "colStatus": "Status",
+      "colScore": "Score",
+      "exams": "Exams",
+      "colDate": "Date",
+      "colTitle": "Title",
+      "colSubject": "Subject",
+      "goals": "Learning goals",
+      "noGoals": "No goals recorded.",
+      "goalsActive": "Active",
+      "goalsAchieved": "Achieved",
+      "goalsAbandoned": "Abandoned",
+      "teacherNotes": "Teacher notes (visible to the parent)",
+      "generatedBy": "Generated with Lessio",
+      "hwStatus": {
+        "pending": "Pending",
+        "done": "Done",
+        "overdue": "Overdue"
+      }
     }
   },
   "notifications": {

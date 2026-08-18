@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { getChargeById, ChargeStatus } from '@/lib/charges'
 import { getProviderUI } from '@/lib/payments/registry-ui'
+import { renderChargeNote } from '@/lib/charges/renderNote'
 import { MarkAsPaidButton } from '@/components/dashboard/charges/MarkAsPaidButton'
 import { markAsPaid } from '../actions'
 import { getTranslations } from 'next-intl/server'
@@ -99,7 +100,7 @@ export default async function ChargeDetailPage({
           {charge.notes && (
             <div>
               <dt className="text-gray-500 mb-1">{t('fieldNotes')}</dt>
-              <dd className="text-gray-800">{charge.notes}</dd>
+              <dd className="text-gray-800">{renderChargeNote(charge.notes, t)}</dd>
             </div>
           )}
           <div className="flex justify-between gap-4">

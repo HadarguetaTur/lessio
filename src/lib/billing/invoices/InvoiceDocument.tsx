@@ -32,7 +32,33 @@ export interface InvoiceLineItem {
   amount: number
 }
 
+/**
+ * Every label the invoice prints, pre-resolved by the generator.
+ *
+ * The document is rendered by @react-pdf/renderer outside a request scope, so
+ * it cannot call `getTranslations()` itself — the caller resolves the recipient's
+ * locale and passes the finished strings in.
+ */
+export interface InvoiceLabels {
+  title: string
+  taxIdPrefix: string
+  invoiceNumber: string
+  date: string
+  billingPeriod: string
+  recipient: string
+  studentPrefix: string
+  voids: string
+  colDescription: string
+  colAmount: string
+  subtotal: string
+  vat: string
+  grandTotal: string
+}
+
 export interface InvoiceDocumentProps {
+  labels: InvoiceLabels
+  /** BCP 47 tag for number formatting, e.g. "he-IL" or "en-US". */
+  intlLocale: string
   // Org branding
   orgLegalName: string
   orgTaxId: string | null
@@ -230,8 +256,8 @@ const styles = StyleSheet.create({
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat('he-IL', {
+function formatCurrency(amount: number, currency: string, intlLocale: string): string {
+  return new Intl.NumberFormat(intlLocale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,
@@ -242,6 +268,8 @@ function formatCurrency(amount: number, currency: string): string {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function InvoiceDocument({
+  labels,
+  intlLocale,
   orgLegalName,
   orgTaxId,
   orgAddress,
@@ -255,7 +283,7 @@ export default function InvoiceDocument({
   total,
   invoiceNumber,
   invoiceDate,
-  headerTitle = '\u05D7\u05E9\u05D1\u05D5\u05E0\u05D9\u05EA \u05DE\u05E1', // חשבונית מס
+  headerTitle,
   headerColor = '#2563eb',
   referenceInvoice,
 }: InvoiceDocumentProps) {
@@ -274,11 +302,11 @@ export default function InvoiceDocument({
         {/* Header */}
         <View style={headerStyles}>
           <View style={styles.orgInfo}>
-            <Text style={titleStyles}>{headerTitle}</Text>
+            <Text style={titleStyles}>{headerTitle ?? labels.title}</Text>
             <Text style={styles.orgName}>{orgLegalName}</Text>
             {orgTaxId && (
               <Text style={styles.orgDetail}>
-                {'\u05E2.\u05DE. '}{orgTaxId}
+                {labels.taxIdPrefix}{orgTaxId}
               </Text>
             )}
             {orgAddress && (
@@ -290,25 +318,25 @@ export default function InvoiceDocument({
         {/* Meta: invoice number, date, billing month */}
         <View style={styles.metaSection}>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>{'\u05DE\u05E1\u05E4\u05E8 \u05D7\u05E9\u05D1\u05D5\u05E0\u05D9\u05EA'}</Text>
+            <Text style={styles.metaLabel}>{labels.invoiceNumber}</Text>
             <Text style={styles.metaValue}>{invoiceNumber}</Text>
           </View>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>{'\u05EA\u05D0\u05E8\u05D9\u05DA'}</Text>
+            <Text style={styles.metaLabel}>{labels.date}</Text>
             <Text style={styles.metaValue}>{invoiceDate}</Text>
           </View>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>{'\u05EA\u05E7\u05D5\u05E4\u05EA \u05D7\u05D9\u05D5\u05D1'}</Text>
+            <Text style={styles.metaLabel}>{labels.billingPeriod}</Text>
             <Text style={styles.metaValue}>{billingMonth}</Text>
           </View>
         </View>
 
         {/* Recipient */}
         <View style={styles.recipientSection}>
-          <Text style={styles.recipientLabel}>{'\u05DC\u05DB\u05D1\u05D5\u05D3'}</Text>
+          <Text style={styles.recipientLabel}>{labels.recipient}</Text>
           <Text style={styles.recipientName}>{parentName}</Text>
           <Text style={styles.recipientStudent}>
-            {'\u05EA\u05DC\u05DE\u05D9\u05D3/\u05D4: '}{studentName}
+            {labels.studentPrefix}{studentName}
           </Text>
         </View>
 
@@ -316,7 +344,7 @@ export default function InvoiceDocument({
         {referenceInvoice && (
           <View style={{ marginBottom: 15 }}>
             <Text style={styles.referenceNote}>
-              {'\u05DE\u05D1\u05D8\u05DC\u05EA \u05D7\u05E9\u05D1\u05D5\u05E0\u05D9\u05EA \u05DE\u05E1\u05F3 '}{referenceInvoice}
+              {labels.voids}{referenceInvoice}
             </Text>
           </View>
         )}
@@ -325,10 +353,10 @@ export default function InvoiceDocument({
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <View style={styles.colDescription}>
-              <Text style={styles.tableHeaderText}>{'\u05EA\u05D9\u05D0\u05D5\u05E8'}</Text>
+              <Text style={styles.tableHeaderText}>{labels.colDescription}</Text>
             </View>
             <View style={styles.colAmount}>
-              <Text style={styles.tableHeaderText}>{'\u05E1\u05DB\u05D5\u05DD'}</Text>
+              <Text style={styles.tableHeaderText}>{labels.colAmount}</Text>
             </View>
           </View>
 
@@ -339,7 +367,7 @@ export default function InvoiceDocument({
               </View>
               <View style={styles.colAmount}>
                 <Text style={styles.tableRowText}>
-                  {formatCurrency(item.amount, currency)}
+                  {formatCurrency(item.amount, currency, intlLocale)}
                 </Text>
               </View>
             </View>
@@ -349,23 +377,23 @@ export default function InvoiceDocument({
         {/* Totals */}
         <View style={styles.totalsSection}>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>{'\u05E1\u05DB\u05D5\u05DD \u05D1\u05D9\u05E0\u05D9\u05D9\u05DD'}</Text>
+            <Text style={styles.totalLabel}>{labels.subtotal}</Text>
             <Text style={styles.totalValue}>
-              {formatCurrency(subtotal, currency)}
+              {formatCurrency(subtotal, currency, intlLocale)}
             </Text>
           </View>
           {vatAmount > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>{'\u05DE\u05E2"\u05DE'}</Text>
+              <Text style={styles.totalLabel}>{labels.vat}</Text>
               <Text style={styles.totalValue}>
-                {formatCurrency(vatAmount, currency)}
+                {formatCurrency(vatAmount, currency, intlLocale)}
               </Text>
             </View>
           )}
           <View style={styles.grandTotalRow}>
-            <Text style={styles.grandTotalLabel}>{'\u05E1\u05D4"\u05DB \u05DC\u05EA\u05E9\u05DC\u05D5\u05DD'}</Text>
+            <Text style={styles.grandTotalLabel}>{labels.grandTotal}</Text>
             <Text style={styles.grandTotalValue}>
-              {formatCurrency(total, currency)}
+              {formatCurrency(total, currency, intlLocale)}
             </Text>
           </View>
         </View>

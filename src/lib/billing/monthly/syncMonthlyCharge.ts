@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { monthlyChargeNote } from '@/lib/charges/renderNote'
 
 type ChargeStatus = 'pending' | 'invoiced' | 'paid'
 
@@ -97,7 +98,7 @@ export async function syncMonthlyCharge({
     amount,
     charge_type: 'monthly',
     status: chargeStatus,
-    notes: `חיוב חודשי ${billingMonth}`,
+    notes: monthlyChargeNote(billingMonth),
     paid_at: paidAt,
     updated_at: new Date().toISOString(),
   }

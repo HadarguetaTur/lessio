@@ -1,8 +1,12 @@
 import React from 'react'
 import InvoiceDocument from './InvoiceDocument'
-import type { InvoiceLineItem } from './InvoiceDocument'
+import type { InvoiceLineItem, InvoiceLabels } from './InvoiceDocument'
 
 export interface CreditNoteDocumentProps {
+  labels: InvoiceLabels
+  /** Printed in place of `labels.title` — "Credit note" rather than "Tax invoice". */
+  creditNoteTitle: string
+  intlLocale: string
   // Org branding
   orgLegalName: string
   orgTaxId: string | null
@@ -34,6 +38,9 @@ export interface CreditNoteDocumentProps {
  * and a reference to the original invoice being credited.
  */
 export default function CreditNoteDocument({
+  labels,
+  creditNoteTitle,
+  intlLocale,
   orgLegalName,
   orgTaxId,
   orgAddress,
@@ -58,6 +65,8 @@ export default function CreditNoteDocument({
 
   return (
     <InvoiceDocument
+      labels={labels}
+      intlLocale={intlLocale}
       orgLegalName={orgLegalName}
       orgTaxId={orgTaxId}
       orgAddress={orgAddress}
@@ -72,7 +81,7 @@ export default function CreditNoteDocument({
       total={-Math.abs(total)}
       invoiceNumber={creditNoteNumber}
       invoiceDate={creditNoteDate}
-      headerTitle={'\u05D7\u05E9\u05D1\u05D5\u05E0\u05D9\u05EA \u05D6\u05D9\u05DB\u05D5\u05D9'} // חשבונית זיכוי
+      headerTitle={creditNoteTitle}
       headerColor="#dc2626"
       referenceInvoice={originalInvoiceNumber}
     />

@@ -7,6 +7,7 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { getParents } from '@/lib/parents'
 import { MarkAsPaidButton } from '@/components/dashboard/charges/MarkAsPaidButton'
 import { getProviderUI } from '@/lib/payments/registry-ui'
+import { renderChargeNote } from '@/lib/charges/renderNote'
 import { markAsPaid } from './actions'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -212,7 +213,7 @@ export default async function ChargesPage(props: {
                       <div>{CHARGE_TYPE_LABELS[charge.charge_type] ?? charge.charge_type}</div>
                       {charge.notes && (
                         <div className="mt-0.5 max-w-[120px] truncate text-xs text-muted-foreground/70">
-                          {charge.notes}
+                          {renderChargeNote(charge.notes, t)}
                         </div>
                       )}
                     </TableCell>

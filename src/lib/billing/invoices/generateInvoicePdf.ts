@@ -6,7 +6,9 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getNextInvoiceNumber } from './issueInvoiceNumber'
 import { uploadInvoicePdf } from './uploadInvoicePdf'
 import InvoiceDocument from './InvoiceDocument'
-import type { InvoiceLineItem } from './InvoiceDocument'
+import type { InvoiceLineItem, InvoiceLabels } from './InvoiceDocument'
+import { getT } from '@/lib/i18n/serverTranslator'
+import { resolveRecipientLocale, toIntlLocale } from '@/lib/i18n/locale'
 
 /**
  * Generates a tax invoice PDF for a monthly billing record, stores it
@@ -54,14 +56,16 @@ export async function generateAndStoreInvoice(
   }
 
   let parentName = ''
+  let parentLocale: string | null = null
   if (billing.parent_id) {
     const { data: parent } = await supabase
       .from('parents')
-      .select('id, first_name, last_name')
+      .select('id, first_name, last_name, preferred_locale')
       .eq('id', billing.parent_id)
       .single()
     if (parent) {
       parentName = `${parent.first_name ?? ''} ${parent.last_name ?? ''}`.trim()
+      parentLocale = (parent.preferred_locale as string | null) ?? null
     }
   }
   if (!parentName) {
@@ -71,7 +75,7 @@ export async function generateAndStoreInvoice(
   const { data: org, error: orgError } = await supabase
     .from('organizations')
     .select(
-      'id, name, business_legal_name, tax_id, business_address, logo_url, currency, default_vat_rate'
+      'id, name, business_legal_name, tax_id, business_address, logo_url, currency, default_vat_rate, default_locale'
     )
     .eq('id', orgId)
     .single()
@@ -96,12 +100,35 @@ export async function generateAndStoreInvoice(
 
   // ── 4. Build line items ───────────────────────────────────────────────────
 
+  // The invoice is read by the parent, so every label follows their language —
+  // not whoever happened to trigger generation.
+  const locale = resolveRecipientLocale({
+    stored: parentLocale,
+    orgDefault: org.default_locale as string | null,
+  })
+  const t = await getT('billing', locale)
+  const labels: InvoiceLabels = {
+    title: t('invoice.title'),
+    taxIdPrefix: t('invoice.taxIdPrefix'),
+    invoiceNumber: t('invoice.invoiceNumber'),
+    date: t('invoice.date'),
+    billingPeriod: t('invoice.billingPeriod'),
+    recipient: t('invoice.recipient'),
+    studentPrefix: t('invoice.studentPrefix'),
+    voids: t('invoice.voids'),
+    colDescription: t('invoice.colDescription'),
+    colAmount: t('invoice.colAmount'),
+    subtotal: t('invoice.subtotal'),
+    vat: t('invoice.vat'),
+    grandTotal: t('invoice.grandTotal'),
+  }
+
   const lineItems: InvoiceLineItem[] = []
 
   const lessonsAmount = Number(billing.lessons_amount ?? 0)
   if (lessonsAmount !== 0) {
     lineItems.push({
-      description: `\u05E9\u05D9\u05E2\u05D5\u05E8\u05D9\u05DD (${billing.lessons_count ?? 0} \u05E9\u05D9\u05E2\u05D5\u05E8\u05D9\u05DD)`,
+      description: t('invoice.lineLessons', { count: billing.lessons_count ?? 0 }),
       amount: lessonsAmount,
     })
   }
@@ -109,7 +136,7 @@ export async function generateAndStoreInvoice(
   const subscriptionsAmount = Number(billing.subscriptions_amount ?? 0)
   if (subscriptionsAmount !== 0) {
     lineItems.push({
-      description: '\u05DE\u05E0\u05D5\u05D9 \u05D7\u05D5\u05D3\u05E9\u05D9', // מנוי חודשי
+      description: t('invoice.lineSubscription'),
       amount: subscriptionsAmount,
     })
   }
@@ -117,7 +144,7 @@ export async function generateAndStoreInvoice(
   const cancellationsAmount = Number(billing.cancellations_amount ?? 0)
   if (cancellationsAmount !== 0) {
     lineItems.push({
-      description: '\u05D7\u05D9\u05D5\u05D1\u05D9 \u05D1\u05D9\u05D8\u05D5\u05DC', // חיובי ביטול
+      description: t('invoice.lineCancellations'),
       amount: cancellationsAmount,
     })
   }
@@ -126,8 +153,8 @@ export async function generateAndStoreInvoice(
   if (manualAdjustment !== 0) {
     lineItems.push({
       description: billing.manual_adjustment_reason
-        ? `\u05D4\u05EA\u05D0\u05DE\u05D4 \u05D9\u05D3\u05E0\u05D9\u05EA: ${billing.manual_adjustment_reason}`
-        : '\u05D4\u05EA\u05D0\u05DE\u05D4 \u05D9\u05D3\u05E0\u05D9\u05EA', // התאמה ידנית
+        ? t('invoice.lineAdjustmentWithReason', { reason: billing.manual_adjustment_reason })
+        : t('invoice.lineAdjustment'),
       amount: manualAdjustment,
     })
   }
@@ -141,6 +168,8 @@ export async function generateAndStoreInvoice(
   const currency = org.currency ?? 'ILS'
 
   const element = React.createElement(InvoiceDocument, {
+    labels,
+    intlLocale: toIntlLocale(locale),
     orgLegalName: org.business_legal_name ?? org.name ?? '',
     orgTaxId: org.tax_id ?? null,
     orgAddress: org.business_address ?? null,

@@ -128,18 +128,18 @@ const styles = StyleSheet.create({
   },
 })
 
-const HW_STATUS_HE: Record<string, string> = {
-  pending: '\u05DE\u05DE\u05EA\u05D9\u05DF',
-  done: '\u05D4\u05D5\u05E9\u05DC\u05DD',
-  overdue: '\u05D0\u05D9\u05D7\u05D5\u05E8 \u05DC\u05EA\u05E9\u05DC\u05D5\u05DD',
-}
-
 export interface ProgressReportDocumentProps {
   data: ProgressReportData
   orgTimezone: string
+  /**
+   * Translator bound to `studentProfile.progressReportPdf`, resolved by the
+   * caller in the recipient's locale. The document is rendered by
+   * @react-pdf/renderer outside a request scope, so it cannot resolve one itself.
+   */
+  t: (key: string, values?: Record<string, string | number | Date>) => string
 }
 
-export default function ProgressReportDocument({ data, orgTimezone }: ProgressReportDocumentProps) {
+export default function ProgressReportDocument({ data, orgTimezone, t }: ProgressReportDocumentProps) {
   const { student, org, period, attendance, homework, exams, goals, visibleNotes, generatedAtIso } = data
 
   const genLabel = formatProgressReportLessonDate(generatedAtIso, orgTimezone)
@@ -149,7 +149,7 @@ export default function ProgressReportDocument({ data, orgTimezone }: ProgressRe
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Text style={styles.title}>
-            {'\u05D3\u05D5\u05D7 \u05D4\u05EA\u05E7\u05D3\u05DE\u05D5\u05EA'}
+            {t('title')}
           </Text>
           <Text style={styles.orgName}>{org.name}</Text>
           {org.businessAddress ? (
@@ -162,47 +162,53 @@ export default function ProgressReportDocument({ data, orgTimezone }: ProgressRe
 
         <View style={styles.meta}>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>{'\u05EA\u05DC\u05DE\u05D9\u05D3/\u05D4'}</Text>
+            <Text style={styles.metaLabel}>{t('student')}</Text>
             <Text style={styles.metaValue}>{student.name}</Text>
           </View>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>{'\u05EA\u05E7\u05D5\u05E4\u05EA'}</Text>
+            <Text style={styles.metaLabel}>{t('period')}</Text>
             <Text style={styles.metaValue}>
               {period.labelFrom} – {period.labelTo}
             </Text>
           </View>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>{'\u05E0\u05D5\u05E6\u05E8 \u05D1\u05EA\u05D0\u05E8\u05D9\u05DA'}</Text>
+            <Text style={styles.metaLabel}>{t('generatedAt')}</Text>
             <Text style={styles.metaValue}>{genLabel}</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>{'\u05E0\u05D5\u05DB\u05D7\u05D5\u05EA'}</Text>
+        <Text style={styles.sectionTitle}>{t('attendance')}</Text>
         <Text style={styles.paragraph}>
-          {`${attendance.completed} / ${attendance.total} \u05E9\u05D9\u05E2\u05D5\u05E8\u05D9\u05DD \u05D4\u05D5\u05E9\u05DC\u05DE\u05D5 (\u05D0\u05D7\u05D5\u05D6 \u05D4\u05D2\u05E2\u05D4: ${attendance.ratePercent}%). `}
-          {(attendance.cancelled > 0 || attendance.noShow > 0)
-            ? `\u05D1\u05D9\u05D8\u05D5\u05DC\u05D9\u05DD: ${attendance.cancelled}, \u05D4\u05E2\u05D3\u05E8\u05D5\u05EA: ${attendance.noShow}.`
+          {t('attendanceLine', {
+            completed: attendance.completed,
+            total: attendance.total,
+            percent: attendance.ratePercent,
+          })}
+          {attendance.cancelled > 0 || attendance.noShow > 0
+            ? t('attendanceExtra', { cancelled: attendance.cancelled, noShow: attendance.noShow })
             : ''}
         </Text>
 
-        <Text style={styles.sectionTitle}>{'\u05E9\u05D9\u05E2\u05D5\u05E8\u05D9 \u05D1\u05D9\u05EA'}</Text>
+        <Text style={styles.sectionTitle}>{t('homework')}</Text>
         <Text style={styles.paragraph}>
-          {`${homework.completed} / ${homework.total} \u05D4\u05D5\u05E9\u05DC\u05DE\u05D5 (\u05D0\u05D7\u05D5\u05D6 \u05D4\u05E9\u05DC\u05DE\u05D4: ${homework.completionRatePercent}%). `}
-          {homework.avgScore != null
-            ? `\u05DE\u05DE\u05D5\u05E6\u05E2 \u05E6\u05D9\u05D5\u05E0\u05D9 \u05E9\u05D9\u05E2\u05D5\u05E8\u05D9 \u05D1\u05D9\u05EA \u05D1\u05DE\u05E1\u05D2\u05E8\u05EA \u05D4\u05EA\u05E7\u05D5\u05E4\u05D4: ${homework.avgScore} / 100.`
-            : ''}
+          {t('homeworkLine', {
+            completed: homework.completed,
+            total: homework.total,
+            percent: homework.completionRatePercent,
+          })}
+          {homework.avgScore != null ? t('homeworkAvg', { score: homework.avgScore }) : ''}
         </Text>
         {homework.rows.length > 0 && (
           <View style={{ marginTop: 8 }}>
             <View style={styles.tableHeader}>
               <View style={styles.col1}>
-                <Text style={styles.th}>{'\u05DE\u05D8\u05DC\u05D4'}</Text>
+                <Text style={styles.th}>{t('colTask')}</Text>
               </View>
               <View style={styles.col2}>
-                <Text style={styles.th}>{'\u05E1\u05D8\u05D8\u05D5\u05E1'}</Text>
+                <Text style={styles.th}>{t('colStatus')}</Text>
               </View>
               <View style={styles.colScore}>
-                <Text style={styles.th}>{'\u05E6\u05D9\u05D5\u05DF'}</Text>
+                <Text style={styles.th}>{t('colScore')}</Text>
               </View>
             </View>
             {homework.rows.map((r, i) => (
@@ -211,7 +217,7 @@ export default function ProgressReportDocument({ data, orgTimezone }: ProgressRe
                   <Text style={styles.td}>{r.assignmentTitle}</Text>
                 </View>
                 <View style={styles.col2}>
-                  <Text style={styles.td}>{HW_STATUS_HE[r.status] ?? r.status}</Text>
+                  <Text style={styles.td}>{t(`hwStatus.${r.status}`)}</Text>
                 </View>
                 <View style={styles.colScore}>
                   <Text style={styles.td}>
@@ -225,19 +231,19 @@ export default function ProgressReportDocument({ data, orgTimezone }: ProgressRe
 
         {exams.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>{'\u05DE\u05D1\u05D7\u05E0\u05D9\u05DD'}</Text>
+            <Text style={styles.sectionTitle}>{t('exams')}</Text>
             <View style={styles.tableHeader}>
               <View style={styles.col1}>
-                <Text style={styles.th}>{'\u05EA\u05D0\u05E8\u05D9\u05DA'}</Text>
+                <Text style={styles.th}>{t('colDate')}</Text>
               </View>
               <View style={styles.col1}>
-                <Text style={styles.th}>{'\u05DB\u05D5\u05EA\u05E8\u05EA'}</Text>
+                <Text style={styles.th}>{t('colTitle')}</Text>
               </View>
               <View style={styles.col2}>
-                <Text style={styles.th}>{'\u05DE\u05E7\u05E6\u05D5\u05E2'}</Text>
+                <Text style={styles.th}>{t('colSubject')}</Text>
               </View>
               <View style={styles.colScore}>
-                <Text style={styles.th}>{'\u05E6\u05D9\u05D5\u05DF'}</Text>
+                <Text style={styles.th}>{t('colScore')}</Text>
               </View>
             </View>
             {exams.map((ex) => (
@@ -259,13 +265,13 @@ export default function ProgressReportDocument({ data, orgTimezone }: ProgressRe
           </>
         )}
 
-        <Text style={styles.sectionTitle}>{'\u05D9\u05E2\u05D3\u05D9 \u05DC\u05D9\u05DE\u05D5\u05D3'}</Text>
+        <Text style={styles.sectionTitle}>{t('goals')}</Text>
         {goals.active.length === 0 && goals.achieved.length === 0 && goals.abandoned.length === 0 ? (
-          <Text style={styles.paragraph}>{'\u05D0\u05D9\u05DF \u05D9\u05E2\u05D3\u05D9\u05DD \u05DE\u05E9\u05D5\u05D1\u05E9\u05D9\u05DD.'}</Text>
+          <Text style={styles.paragraph}>{t('noGoals')}</Text>
         ) : (
           <>
             {goals.active.length > 0 && (
-              <Text style={{ ...styles.paragraph, fontWeight: 700 }}>{'\u05E4\u05E2\u05D9\u05DC\u05D9\u05DD'}</Text>
+              <Text style={{ ...styles.paragraph, fontWeight: 700 }}>{t('goalsActive')}</Text>
             )}
             {goals.active.map((g) => (
               <View key={g.id} style={styles.goalItem}>
@@ -274,7 +280,7 @@ export default function ProgressReportDocument({ data, orgTimezone }: ProgressRe
               </View>
             ))}
             {goals.achieved.length > 0 && (
-              <Text style={{ ...styles.paragraph, fontWeight: 700, marginTop: 8 }}>{'\u05D4\u05D5\u05E9\u05D2\u05D5'}</Text>
+              <Text style={{ ...styles.paragraph, fontWeight: 700, marginTop: 8 }}>{t('goalsAchieved')}</Text>
             )}
             {goals.achieved.map((g) => (
               <View key={g.id} style={styles.goalItem}>
@@ -283,7 +289,7 @@ export default function ProgressReportDocument({ data, orgTimezone }: ProgressRe
               </View>
             ))}
             {goals.abandoned.length > 0 && (
-              <Text style={{ ...styles.paragraph, fontWeight: 700, marginTop: 8 }}>{'\u05E0\u05E2\u05D6\u05D1\u05D9\u05DD'}</Text>
+              <Text style={{ ...styles.paragraph, fontWeight: 700, marginTop: 8 }}>{t('goalsAbandoned')}</Text>
             )}
             {goals.abandoned.map((g) => (
               <View key={g.id} style={styles.goalItem}>
@@ -297,7 +303,7 @@ export default function ProgressReportDocument({ data, orgTimezone }: ProgressRe
         {visibleNotes.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>
-              {'\u05D4\u05E2\u05E8\u05D5\u05EA \u05DE\u05D5\u05E8\u05D4 (\u05D2\u05DC\u05D5\u05D9\u05D5\u05EA \u05DC\u05D4\u05D5\u05E8\u05D4)'}
+              {t('teacherNotes')}
             </Text>
             {visibleNotes.map((n, i) => (
               <View key={i} style={styles.noteBox} wrap={false}>
@@ -316,7 +322,7 @@ export default function ProgressReportDocument({ data, orgTimezone }: ProgressRe
         <View style={styles.footer}>
           <Text>{org.name}</Text>
           <Text style={{ marginTop: 4 }}>
-            {'\u05E0\u05D5\u05E6\u05E8 \u05D1\u05D0\u05DE\u05E6\u05E2\u05D5\u05EA Lessio'}
+            {t('generatedBy')}
           </Text>
         </View>
       </Page>

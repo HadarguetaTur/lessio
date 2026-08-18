@@ -921,7 +921,8 @@
     "fieldPaidAt": "שולם",
     "viewReceipt": "צפה בקבלה ↗",
     "noReceiptIssued": "לא הופקה קבלה (או ממתין להפקה)",
-    "pendingReceipt": "קבלה תופק לאחר סימון תשלום"
+    "pendingReceipt": "קבלה תופק לאחר סימון תשלום",
+    "monthlyChargeNote": "חיוב חודשי {month}"
   },
   "billing": {
     "title": "חיוב חודשי",
@@ -997,14 +998,25 @@
     "generateSuccess": "חושבו {success} תלמידים, {errors} שגיאות, {skipped} דולגו",
     "noBillingRecords": "אין רשומות חיוב לחודש זה",
     "invoice": {
-      "download": "הורד חשבונית",
-      "generating": "מפיק חשבונית...",
-      "notAvailable": "חשבונית לא זמינה",
-      "number": "מס׳ חשבונית",
-      "date": "תאריך חשבונית",
-      "vatAmount": "מע\"מ",
-      "subtotal": "סכום לפני מע\"מ",
-      "total": "סה\"כ כולל מע\"מ"
+      "title": "חשבונית מס",
+      "creditNoteTitle": "חשבונית זיכוי",
+      "taxIdPrefix": "ע.מ. ",
+      "invoiceNumber": "מספר חשבונית",
+      "date": "תאריך",
+      "billingPeriod": "תקופת חיוב",
+      "recipient": "לכבוד",
+      "studentPrefix": "תלמיד/ה: ",
+      "voids": "מבטלת חשבונית מס׳ ",
+      "colDescription": "תיאור",
+      "colAmount": "סכום",
+      "subtotal": "סכום ביניים",
+      "vat": "מע\"מ",
+      "grandTotal": "סה\"כ לתשלום",
+      "lineLessons": "שיעורים ({count} שיעורים)",
+      "lineSubscription": "מנוי חודשי",
+      "lineCancellations": "חיובי ביטול",
+      "lineAdjustmentWithReason": "התאמה ידנית: {reason}",
+      "lineAdjustment": "התאמה ידנית"
     },
     "creditNote": {
       "issue": "הנפק חשבונית זיכוי",
@@ -3109,6 +3121,37 @@
       "empty": "אין הערות עדיין.",
       "deleteNote": "מחק הערה",
       "visibleToParent": "גלוי להורה"
+    },
+    "progressReportPdf": {
+      "title": "דוח התקדמות",
+      "student": "תלמיד/ה",
+      "period": "תקופת",
+      "generatedAt": "נוצר בתאריך",
+      "attendance": "נוכחות",
+      "attendanceLine": "{completed} / {total} שיעורים הושלמו (אחוז הגעה: {percent}%). ",
+      "attendanceExtra": "ביטולים: {cancelled}, העדרות: {noShow}.",
+      "homework": "שיעורי בית",
+      "homeworkLine": "{completed} / {total} הושלמו (אחוז השלמה: {percent}%). ",
+      "homeworkAvg": "ממוצע ציוני שיעורי בית במסגרת התקופה: {score} / 100.",
+      "colTask": "מטלה",
+      "colStatus": "סטטוס",
+      "colScore": "ציון",
+      "exams": "מבחנים",
+      "colDate": "תאריך",
+      "colTitle": "כותרת",
+      "colSubject": "מקצוע",
+      "goals": "יעדי לימוד",
+      "noGoals": "אין יעדים משובשים.",
+      "goalsActive": "פעילים",
+      "goalsAchieved": "הושגו",
+      "goalsAbandoned": "נעזבים",
+      "teacherNotes": "הערות מורה (גלויות להורה)",
+      "generatedBy": "נוצר באמצעות Lessio",
+      "hwStatus": {
+        "pending": "ממתין",
+        "done": "הושלם",
+        "overdue": "איחור לתשלום"
+      }
     }
   },
   "notifications": {

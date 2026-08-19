@@ -7,6 +7,7 @@ import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { getSubscribedApps } from '../src/lib/whatsapp/subscribeApp'
+import { META_API_VERSION } from '../src/lib/whatsapp/graphVersion'
 
 const OWNER_EMAIL = process.env.DEMO_ORG_OWNER_EMAIL ?? 'reviewer@getlessio.com'
 const EXPECTED_PNID = '1338080832713619'
@@ -82,7 +83,7 @@ async function main(): Promise<void> {
     console.log('  6. WHATSAPP_DEMO_ACCESS_TOKEN not in .env.local — skipping Graph checks')
   } else {
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${EXPECTED_PNID}?fields=display_phone_number`,
+      `https://graph.facebook.com/${META_API_VERSION}/${EXPECTED_PNID}?fields=display_phone_number`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
     console.log(`  6. Graph token: ${res.ok ? 'valid ✓' : `INVALID ✗ (${res.status}) — refresh it in API Setup`}`)

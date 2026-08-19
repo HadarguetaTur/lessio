@@ -29,8 +29,9 @@ import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { encryptToken } from '../src/lib/crypto'
 import { subscribeAppToWABA, getSubscribedApps } from '../src/lib/whatsapp/subscribeApp'
+import { META_API_VERSION } from '../src/lib/whatsapp/graphVersion'
 
-const GRAPH_BASE = 'https://graph.facebook.com/v19.0'
+const GRAPH_BASE = `https://graph.facebook.com/${META_API_VERSION}`
 
 const DEFAULT_PHONE_NUMBER_ID = '1338080832713619'
 const DEFAULT_WABA_ID = '1066332709132512'

@@ -30,8 +30,9 @@
 
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
+import { META_API_VERSION } from '../src/lib/whatsapp/graphVersion'
 
-const API_VERSION = process.env.META_API_VERSION ?? 'v19.0'
+const API_VERSION = process.env.META_API_VERSION ?? META_API_VERSION
 const WABA_ID = '1066332709132512'
 const PHONE_NUMBER_ID = '1338080832713619'
 const DEMO_RECIPIENT = '+972504343547'

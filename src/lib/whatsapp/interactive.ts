@@ -10,7 +10,7 @@
  * at the boundary rather than trusted to be short.
  */
 
-const META_API_VERSION = 'v19.0'
+import { META_API_VERSION } from './graphVersion'
 
 // Meta interactive-message limits.
 export const LIST_BUTTON_MAX = 20

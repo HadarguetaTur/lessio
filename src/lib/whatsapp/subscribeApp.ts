@@ -11,7 +11,7 @@
  * WABA succeeds.
  */
 
-const META_API_VERSION = 'v19.0'
+import { META_API_VERSION } from './graphVersion'
 
 /**
  * Subscribes our app to the given WABA so Meta starts delivering its webhook

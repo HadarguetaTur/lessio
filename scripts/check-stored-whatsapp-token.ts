@@ -18,6 +18,7 @@ import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { decryptToken } from '../src/lib/crypto'
+import { META_API_VERSION } from '../src/lib/whatsapp/graphVersion'
 
 const DEFAULT_OWNER_EMAIL = 'reviewer@getlessio.com'
 
@@ -104,7 +105,7 @@ async function main(): Promise<void> {
 
   // 1. Can the stored token still read the phone number?
   const read = await fetch(
-    `https://graph.facebook.com/v19.0/${org.whatsapp_phone_number_id}?fields=display_phone_number,verified_name`,
+    `https://graph.facebook.com/${META_API_VERSION}/${org.whatsapp_phone_number_id}?fields=display_phone_number,verified_name`,
     { headers: { Authorization: `Bearer ${stored}` } }
   )
   const readBody = await read.text()
@@ -120,7 +121,7 @@ async function main(): Promise<void> {
   }
 
   const dbg = await fetch(
-    `https://graph.facebook.com/v19.0/debug_token?input_token=${encodeURIComponent(stored)}` +
+    `https://graph.facebook.com/${META_API_VERSION}/debug_token?input_token=${encodeURIComponent(stored)}` +
       `&access_token=${encodeURIComponent(`${appId}|${appSecret}`)}`
   )
   const payload = (await dbg.json()) as { data?: Record<string, unknown>; error?: unknown }

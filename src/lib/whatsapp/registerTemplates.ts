@@ -6,7 +6,7 @@
  * Duplicate registration is safe: the API returns an error we silently ignore.
  */
 
-const META_API_VERSION = 'v19.0'
+import { META_API_VERSION } from './graphVersion'
 
 type TemplateDefinition = {
   name: string

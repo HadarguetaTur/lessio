@@ -23,6 +23,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptToken, decryptToken } from '@/lib/crypto'
 import { registerTemplatesForWABA } from '@/lib/whatsapp/registerTemplates'
 import { subscribeAppToWABA, unsubscribeAppFromWABA } from '@/lib/whatsapp/subscribeApp'
+import { META_API_VERSION } from '@/lib/whatsapp/graphVersion'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 
@@ -284,7 +285,7 @@ export async function registerTemplates(
 
 /**
  * Exchanges a Meta Embedded Signup OAuth code for a user access token.
- * POST https://graph.facebook.com/oauth/access_token
+ * GET https://graph.facebook.com/{version}/oauth/access_token
  */
 async function exchangeCodeForToken(
   code: string,
@@ -302,7 +303,7 @@ async function exchangeCodeForToken(
   })
 
   const res = await fetch(
-    `https://graph.facebook.com/oauth/access_token?${params.toString()}`,
+    `https://graph.facebook.com/${META_API_VERSION}/oauth/access_token?${params.toString()}`,
     { method: 'GET' }
   )
 

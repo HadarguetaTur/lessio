@@ -6,7 +6,8 @@
  * Sprint 23: Added sendTemplateMessage + sendSmartMessage.
  */
 
-const META_API_VERSION = 'v19.0'
+// Keep in sync with src/lib/whatsapp/graphVersion.ts — Deno cannot import from src/.
+const META_API_VERSION = 'v25.0'
 
 /**
  * Sends a plain-text WhatsApp message.

@@ -14,8 +14,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { AppLocale } from '@/lib/i18n/locale'
 import type { MessageTemplateType } from './templates'
-
-const META_API_VERSION = 'v19.0'
+import { META_API_VERSION } from './graphVersion'
 
 /** Meta's own status vocabulary, stored verbatim in upper case. */
 export type TemplateStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAUSED' | 'DISABLED' | string

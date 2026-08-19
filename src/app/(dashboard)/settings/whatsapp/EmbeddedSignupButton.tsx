@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useActionState } from 'react'
 import { useTranslations } from 'next-intl'
+import { META_API_VERSION } from '@/lib/whatsapp/graphVersion'
 import { saveWhatsAppConnection, type WhatsAppActionResult } from './actions'
 
 interface Props {
@@ -46,7 +47,7 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
     window.fbAsyncInit = () => {
       window.FB?.init({
         appId:   metaAppId,
-        version: 'v19.0',
+        version: META_API_VERSION,
         xfbml:   false,
         cookie:  false,
       })

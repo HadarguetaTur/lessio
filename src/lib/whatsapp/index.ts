@@ -8,8 +8,7 @@
 
 import type { AppLocale } from '@/lib/i18n/locale'
 import { botString } from './strings'
-
-const META_API_VERSION = 'v19.0'
+import { META_API_VERSION } from './graphVersion'
 
 // ── Meta approved template message component types ────────────────────────────
 

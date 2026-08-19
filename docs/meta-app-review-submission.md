@@ -260,7 +260,7 @@ For Video B step 2 specifically:
   lesson is still `scheduled`.
 - Confirm the **English** approved templates are live on the WABA, since the send falls back to
   them outside the window — and a Hebrew fallback mid-English-video is worse than no shot:
-  `GET https://graph.facebook.com/v19.0/1066332709132512/message_templates?fields=name,status,language`
+  `GET https://graph.facebook.com/v25.0/1066332709132512/message_templates?fields=name,status,language`
   → `lessio_lesson_reminder_en_v2`, `lessio_menu_en_v3` and `lessio_payment_request_en_v2` must
   all be `APPROVED`. If any is missing, run `npx tsx scripts/register-templates-v2.ts` and wait —
   approval can take hours.
@@ -376,8 +376,7 @@ REVIEW_DEMO_VARIANT=2 npx tsx scripts/cleanup-review-demo.ts --yes   # and the u
 
 Then, manually: disconnect the test number, remove `DEMO_RESCHEDULE_ENABLED` and
 `DEMO_PAYMENT_LINK_ENABLED` from Vercel, delete `src/lib/whatsapp/demoReschedule.ts` and its
-dispatch block in the webhook, move the webhook callback from the apex domain to `www`, and
-upgrade Graph API `v19.0` → `v23.0` (hardcoded in 7 places).
+dispatch block in the webhook, and move the webhook callback from the apex domain to `www`.
 
 There is no `d1000000-` cleanup left to do: the earlier Hebrew demo lived in the
 `hadart20@gmail.com` organization, and that organization and account were deleted on 2026-08-17

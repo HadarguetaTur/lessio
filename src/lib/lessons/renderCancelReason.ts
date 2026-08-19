@@ -21,3 +21,11 @@ export function renderCancelReason(
   const key = CODES[reason]
   return key ? t(key) : reason
 }
+
+/**
+ * Written to `lessons.cancel_reason` by cancelLessonSeries. It lives here rather
+ * than in cancelSeries.ts because that module is `'use server'`, and such a
+ * module may only export async functions — exporting a const from it silently
+ * strips every export, which only the build catches, not tsc.
+ */
+export const SERIES_CANCEL_REASON = 'SERIES_CANCELLED'

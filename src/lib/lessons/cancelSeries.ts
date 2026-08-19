@@ -7,13 +7,9 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
-export type CancelSeriesScope = 'all' | 'from_date'
+import { SERIES_CANCEL_REASON } from './renderCancelReason'
 
-/**
- * Stored on the lesson row and read back much later, so it is a stable code
- * rather than display copy — the UI resolves it at render time.
- */
-export const SERIES_CANCEL_REASON = 'SERIES_CANCELLED'
+export type CancelSeriesScope = 'all' | 'from_date'
 
 /**
  * Cancels all scheduled lessons in a series.

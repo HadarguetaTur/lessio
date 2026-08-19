@@ -2460,7 +2460,8 @@
         }
       }
     },
-    "processAria": "Process"
+    "processAria": "Process",
+    "version": "Version {version}"
   },
   "portal": {
     "error": {

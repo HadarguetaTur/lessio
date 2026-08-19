@@ -2460,7 +2460,8 @@
         }
       }
     },
-    "processAria": "תהליך"
+    "processAria": "תהליך",
+    "version": "גרסה {version}"
   },
   "portal": {
     "error": {

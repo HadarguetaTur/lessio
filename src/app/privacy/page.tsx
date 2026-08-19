@@ -1,483 +1,67 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { getLocale, getTranslations } from 'next-intl/server'
 
 import { LegalSimpleLayout } from '@/components/marketing/LegalSimpleLayout'
 import { getSiteContact } from '@/lib/marketing/siteContact'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { PrivacyHe } from './PrivacyHe'
+import { PrivacyEn } from './PrivacyEn'
 
-export const metadata: Metadata = {
-  title: 'מדיניות פרטיות | Lessio',
-  description:
-    'מדיניות הפרטיות של Lessio — כיצד אנו אוספים, משתמשים ושומרים על המידע שלך בהתאם לחוק הגנת הפרטיות הישראלי.',
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('legal.privacy')
+  return {
+    title: t('title'),
+    description: t('metaDescription'),
+  }
 }
 
-const { supportEmail } = getSiteContact()
-const CONTACT_EMAIL = supportEmail || 'support@getlessio.com'
-const CONTACT_PHONE = '050-434-3547'
-const CONTACT_ADDRESS = 'נוקדים כפר אלדד 142, ישראל'
+/** Fixed company details — a registered name, number and postal address. */
 const ENTITY_NAME = 'תורג\'מן גואטה הדר מזל'
 const ENTITY_NUMBER = '204174361'
-const CONTACT_PERSON = 'תורג\'מן גואטה הדר מזל'
+const CONTACT_ADDRESS = 'נוקדים כפר אלדד 142, ישראל'
+const CONTACT_PHONE = '050-434-3547'
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="text-base font-semibold text-foreground mb-2">{title}</h2>
-      <div className="text-sm leading-relaxed text-muted-foreground space-y-3">{children}</div>
-    </section>
-  )
-}
+/** The policy is versioned by hand; this is the date the text last changed. */
+const LAST_UPDATED_ISO = '2026-05-01'
 
-function SubSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>
-      <div className="space-y-2">{children}</div>
-    </div>
-  )
-}
+export default async function PrivacyPage() {
+  const tLegal = await getTranslations('legal')
+  const locale = parseAppLocale(await getLocale())
+  const { supportEmail } = getSiteContact()
 
-function Ul({ items }: { items: string[] }) {
-  return (
-    <ul className="list-disc list-inside space-y-1 pr-2">
-      {items.map((item) => (
-        <li key={item}>{item}</li>
-      ))}
-    </ul>
-  )
-}
+  const email = supportEmail || 'support@getlessio.com'
 
-export default function PrivacyPage() {
+  const lastUpdated = new Date(LAST_UPDATED_ISO).toLocaleDateString(toIntlLocale(locale), {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+
+  const docProps = {
+    email,
+    addr: CONTACT_ADDRESS,
+    tel: CONTACT_PHONE,
+    reg: ENTITY_NUMBER,
+    entityName: ENTITY_NAME,
+  }
+
   return (
     <LegalSimpleLayout>
       <h1 className="text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        מדיניות פרטיות
+        {tLegal('privacy.title')}
       </h1>
-      <p className="mt-1 text-xs text-muted-foreground">גרסה 1.0 · עודכן לאחרונה: 1 במאי 2026</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {tLegal('version', { version: '1.0' })} · {tLegal('lastUpdated')}: {lastUpdated}
+      </p>
 
-      <div className="mt-8 space-y-8">
-
-        {/* 1 */}
-        <Section title="1. מי אנחנו">
-          <p>
-            <strong className="text-foreground">{ENTITY_NAME}</strong>, עוסק פטור מספר{' '}
-            <strong className="text-foreground">{ENTITY_NUMBER}</strong>, שכתובתו{' '}
-            <strong className="text-foreground">{CONTACT_ADDRESS}</strong>, מפעיל את פלטפורמת{' '}
-            <strong className="text-foreground">Lessio</strong> — מערכת SaaS לניהול עסקי שיעורים
-            פרטיים ומרכזי למידה.
-          </p>
-          <p>
-            לצורך מדיניות זו, "החברה", "אנו" ו-"Lessio" מתייחסים ל-{ENTITY_NAME}.
-          </p>
-          <p>
-            לפניות בעניין פרטיות:{' '}
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="text-violet-600 hover:underline dark:text-violet-400"
-            >
-              {CONTACT_EMAIL}
-            </a>
-          </p>
-        </Section>
-
-        {/* 2 */}
-        <Section title="2. הגדרות">
-          <Ul
-            items={[
-              '"המערכת" / "Lessio" — פלטפורמת התוכנה כשירות (SaaS) המופעלת על ידי החברה, לרבות ממשק הניהול, פורטל ההורים, ה-API וכל שירות נלווה.',
-              '"לקוח עסקי" — מורה פרטי, מרכז למידה, בית ספר לאמנות, סטודיו, או כל עסק או ישות אחרת הנרשמים ומשתמשים במערכת לצורך ניהול פעילותם העסקית.',
-              '"משתמש קצה" — כל אדם שמידע אישי אודותיו מוזן למערכת, לרבות תלמידים, הורים, אפוטרופוסים, מורים ועובדים — בין אם הם עצמם פועלים מול המערכת ובין אם המידע הוזן על ידי הלקוח העסקי.',
-              '"מידע אישי" — כל מידע המתייחס לאדם מזוהה או ניתן לזיהוי, כהגדרתו בחוק הגנת הפרטיות, התשמ"א–1981.',
-              '"מידע רגיש" — מידע על אדם הנוגע להשקפותיו הדתיות, מצבו הבריאותי, נסיבותיו המשפחתיות, וכל מידע שהחוק מסווג כבעל רגישות מיוחדת.',
-              '"ספקי צד שלישי" — חברות ונותני שירות חיצוניים שהחברה מתקשרת עימם לצורך הפעלת המערכת ומתן השירות.',
-            ]}
-          />
-        </Section>
-
-        {/* 3 */}
-        <Section title="3. תפקיד Lessio ביחס למידע אישי">
-          <SubSection title="3.1 מידע על לקוחות עסקיים">
-            <p>
-              ביחס למידע שנמסר לנו על ידי הלקוח העסקי עצמו לצורך ניהול חשבונו, קבלת השירות,
-              חיוב על המנוי, תמיכה טכנית ופעילות שיווקית — הלקוח העסקי הוא נושא המידע, והחברה
-              פועלת כגורם שאחראי לעיבוד המידע לצרכים אלה.
-            </p>
-          </SubSection>
-          <SubSection title="3.2 מידע שהלקוח העסקי מזין על תלמידים, הורים ואחרים">
-            <p>
-              כאשר לקוח עסקי מזין למערכת מידע על תלמידיו, הוריהם, מוריו, עובדיו ולקוחותיו —{' '}
-              <strong className="text-foreground">הלקוח העסקי הוא הגורם העיקרי האחראי</strong>{' '}
-              לאותו מידע. האחריות לעמידה בחוק ביחס לאותו מידע — לרבות הבטחת בסיס חוקי לאיסוף,
-              מסירת הודעה לנושאי המידע וקבלת הסכמות נדרשות — מוטלת בראש ובראשונה על הלקוח
-              העסקי.
-            </p>
-            <p>
-              Lessio מעבדת מידע זה בהתאם להוראות הלקוח העסקי ולצורך הפעלת המערכת, מתן השירות,
-              אבטחת מידע, תמיכה טכנית ועמידה בדרישות הדין. Lessio אינה עושה שימוש במידע זה
-              לצרכים עצמאיים שאינם קשורים לשירות.
-            </p>
-            <p>
-              הגם שהלקוח העסקי נושא באחריות עיקרית כאמור, Lessio מתחייבת לעמוד בחובות החלות
-              עליה לפי הדין ביחס לכל מידע המוחזק במערכת.
-            </p>
-          </SubSection>
-        </Section>
-
-        {/* 4 */}
-        <Section title="4. איזה מידע אנו אוספים">
-          <SubSection title="4.1 מידע חשבון הלקוח העסקי">
-            <p>
-              שם מלא ושם העסק, כתובת דוא"ל, מספר טלפון, תפקיד בעסק, פרטי חיוב עבור מנוי
-              Lessio, מזהים מספק הסליקה (פרטי אמצעי תשלום מוחזקים אצל ספק הסליקה בלבד — ראו
-              סעיף 7), ומידע שנמסר בתהליך ה-onboarding ובפגישות מכירה.
-            </p>
-          </SubSection>
-          <SubSection title="4.2 מידע על תלמידים, הורים ואנשי קשר">
-            <p>
-              שמות תלמידים והוריהם/אפוטרופוסיהם, מספרי טלפון ואמצעי קשר, שיוך משפחתי, גיל
-              או תאריך לידה ככל שהוזן, והערות תפעוליות שהוסיף הלקוח העסקי.
-            </p>
-          </SubSection>
-          <SubSection title="4.3 פרטי שיעורים ולוח זמנים">
-            <p>
-              מועדי שיעורים, מורים משויכים, זמינות ועדכוניה, ביטולים, נוכחות והיעדרויות, סטטוס
-              שיעור והערות שיעור.
-            </p>
-          </SubSection>
-          <SubSection title="4.4 פרטי חיובים ותשלומים">
-            <p>
-              סכומי חיוב, מועדי חיוב, סטטוס תשלום, קישורי תשלום שנוצרו, היסטוריית חיובים
-              וקבלות, מזהים שהתקבלו מספקי סליקה וחשבוניות חיצוניים.{' '}
-              <strong className="text-foreground">
-                Lessio אינה ספקית סליקה ואינה שומרת פרטי אשראי מלאים
-              </strong>{' '}
-              — אלה מוחזקים אצל ספקי הסליקה בלבד, בהתאם לתקנות PCI-DSS.
-            </p>
-          </SubSection>
-          <SubSection title="4.5 תקשורת והודעות">
-            <p>
-              הודעות WhatsApp שנשלחו ו/או התקבלו דרך המערכת, תזכורות אוטומטיות, הודעות מערכת
-              ותיעוד פניות תמיכה.
-            </p>
-          </SubSection>
-          <SubSection title="4.6 מידע טכני ולוגים">
-            <p>
-              כתובת IP, סוג דפדפן ומכשיר, מערכת הפעלה, פעולות שבוצעו במערכת, תאריכי ושעות
-              כניסה, לוגי שגיאות ומידע מגרסאות API.
-            </p>
-          </SubSection>
-          <SubSection title="4.7 Cookies וטכנולוגיות מעקב">
-            <p>
-              האתר והמערכת עושים שימוש ב-cookies וטכנולוגיות מעקב דומות לצרכים הבאים, באמצעות
-              הכלים המפורטים:
-            </p>
-            <Ul
-              items={[
-                'Google Analytics 4 (GA4) — ניתוח תנועה ודפוסי שימוש באתר ובמערכת.',
-                'Meta Pixel — מעקב אחר המרות מפרסום ושיפור קמפיינים.',
-                'PostHog — ניתוח התנהגות משתמשים ושיפור חוויית המוצר.',
-                'Hotjar — מיפוי חוויית משתמש (heatmaps, הקלטות סשן).',
-                'Sentry — ניטור שגיאות ואיתור תקלות טכניות בזמן אמת.',
-              ]}
-            />
-          </SubSection>
-        </Section>
-
-        {/* 5 */}
-        <Section title="5. למה אנו משתמשים במידע">
-          <Ul
-            items={[
-              'הפעלת המערכת ומתן השירות — ניהול חשבונות, שיעורים, יומנים, ביטולים, תזכורות ופורטל הורים.',
-              'ניהול חיובים — יצירת דרישות תשלום, מעקב אחר סטטוסים, קישור לספקי סליקה וחשבוניות.',
-              'תקשורת עם הלקוח — הודעות WhatsApp, תזכורות לשיעורים, עדכונים תפעוליים.',
-              'תמיכה טכנית ושירות לקוחות — טיפול בפניות, אבחון בעיות וגישת תמיכה מבוקרת.',
-              'אבטחת מידע ובקרה — זיהוי ניסיונות פריצה, ניטור חריגות, שמירת לוגים לצורכי חקירה.',
-              'שיפור המוצר וניתוח שימוש — הבנת דפוסי שימוש לשיפור חוויית המשתמש, בדרך כלל על בסיס מידע מצרפי.',
-              'עדכונים שיווקיים — ללקוחות עסקיים בלבד, בהסכמה ועם אפשרות הסרה.',
-              'עמידה בחוק ורגולציה — ניהול חשבונאי, ציות לצווי בית משפט ומענה לרשויות מוסמכות.',
-            ]}
-          />
-        </Section>
-
-        {/* 6 */}
-        <Section title="6. האם חובה למסור מידע?">
-          <p>
-            מסירת מידע אישי ל-Lessio אינה חובה חוקית. עם זאת, מידע מסוים הכרחי לפתיחת חשבון
-            ולהפעלת השירות:
-          </p>
-          <Ul
-            items={[
-              'ללא פרטי חשבון בסיסיים (שם, אימייל, טלפון) — לא ניתן לפתוח חשבון.',
-              'ללא פרטי תלמידים ושיעורים — לא ניתן לנהל יומן, לשלוח תזכורות או לנהל חיובים.',
-              'ללא פרטי אמצעי תשלום לחשבון המנוי — לא ניתן להמשיך להשתמש בגרסה בתשלום.',
-            ]}
-          />
-          <p>
-            ייתכן שחלק מהמידע החשבונאי נדרש מכוח חובות משפטיות (לדוגמה, שמירת מסמכי חשבונאות
-            לפי הדין). במקרים כאלה נציין זאת במפורש בעת האיסוף ככל האפשר.
-          </p>
-        </Section>
-
-        {/* 7 */}
-        <Section title="7. מסירת מידע לצדדים שלישיים">
-          <p className="font-medium text-foreground">אנו לא מוכרים מידע אישי לצדדים שלישיים.</p>
-          <p>המידע עשוי להיות מועבר לגורמים הבאים אך ורק לצורך הפעלת השירות:</p>
-          <Ul
-            items={[
-              'תשתית ואחסון — ספקי ענן כגון Supabase ו-Amazon Web Services (AWS).',
-              'תקשורת — ספקי WhatsApp Business / Meta לשליחת הודעות ותזכורות; ספקי אימייל ו-SMS ככל שנעשה שימוש.',
-              'תשלומים וסליקה — ספקי סליקה ותשלום שהלקוח העסקי בחר לחבר (כגון Cardcom, PayPlus, Bit, PayBox).',
-              'חשבוניות — ספקי חשבוניות שהלקוח העסקי חיבר (כגון Green Invoice, iCount); וכן Sumit לחיוב מנויי SaaS של Lessio עצמה.',
-              'ניטור ותמיכה — ספקי כלי ניטור, לוגים ואבחון שגיאות (כגון Sentry) וכלי אנליטיקה מוצר.',
-              'יועצים מקצועיים — עורכי דין ורואי חשבון, בהיקף מוגדר ותחת חיסיון מקצועי.',
-              'גורמים מוסמכים לפי חוק — רשויות אכיפה, בתי משפט ורגולטורים, כאשר קיימת חובה חוקית או צו שיפוטי.',
-            ]}
-          />
-          <p>
-            כל ספקי הצד השלישי מחויבים לשמירה על המידע ולציות לדין החל עליהם.
-          </p>
-        </Section>
-
-        {/* 8 */}
-        <Section title="8. העברת מידע מחוץ לישראל">
-          <p>
-            המידע עשוי להיות מאוחסן ומעובד מחוץ לישראל, לרבות בתחומי האיחוד האירופי (בעיקר
-            אזורי AWS ו-Supabase באירופה), ובמדינות שבהן מצויים ספקי השירות השונים.
-          </p>
-          <p>בעת העברת מידע אישי מחוץ לישראל, אנו פועלים להבטיח שהיא מתבצעת:</p>
-          <Ul
-            items={[
-              'למדינות שנקבע כי מספקות רמת הגנה נאותה על פרטיות;',
-              'מכוח הסכמים חוזיים הכוללים התחייבויות להגנה על המידע;',
-              'בהתאם לכל הוראה שיקבע הממונה על הגנת הפרטיות לפי תיקון 13 לחוק.',
-            ]}
-          />
-        </Section>
-
-        {/* 9 */}
-        <Section title="9. שמירת מידע ומחיקה">
-          <p>
-            אנו שומרים מידע אישי כל עוד הוא נדרש להפעלת החשבון, מתן השירות, עמידה בחובות חוק
-            ורגולציה, פתרון מחלוקות, אבטחת מידע וניהול גיבויים.
-          </p>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-right px-3 py-2 font-medium text-foreground">סוג מידע</th>
-                  <th className="text-right px-3 py-2 font-medium text-foreground">תקופת שמירה</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                <tr>
-                  <td className="px-3 py-2">מידע תפעולי (שיעורים, תלמידים, חיובים)</td>
-                  <td className="px-3 py-2">3 שנים מתום ההתקשרות</td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2">לוגי מערכת ואבטחה</td>
-                  <td className="px-3 py-2">12 חודשים</td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2">גיבויים</td>
-                  <td className="px-3 py-2">90 יום</td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2">מסמכים חשבונאיים</td>
-                  <td className="px-3 py-2">לא פחות מ-7 שנים (לפי דיני מס)</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p>
-            עם סיום ההתקשרות, יוכל הלקוח לבקש ייצוא נתוניו בפורמט סביר. מחיקה מיידית מכל
-            מערכות הגיבוי אינה אפשרית תמיד — מידע עשוי להיוותר בגיבויים עד למחזור הגיבוי
-            הרגיל ולא יהיה נגיש לשימוש פעיל.
-          </p>
-        </Section>
-
-        {/* 10 */}
-        <Section title="10. זכויות נושאי מידע">
-          <p>
-            בהתאם לחוק הגנת הפרטיות, התשמ"א–1981 ותיקוניו (לרבות תיקון 13), אדם זכאי לפנות
-            ולבקש:
-          </p>
-          <Ul
-            items={[
-              'עיון במידע — לקבל מידע על המידע האישי המוחזק אודותיו במאגרי Lessio.',
-              'תיקון מידע — לבקש תיקון מידע שאינו נכון, שלם, ברור או מעודכן.',
-              'מחיקה והגבלה — לפנות בבקשת מחיקת מידע או הגבלת עיבודו, בכפוף לחובות שמירה חוקיות ולצרכי פתרון מחלוקות.',
-            ]}
-          />
-          <p>
-            <strong className="text-foreground">הגשת בקשה:</strong> יש לפנות בכתב לאימייל{' '}
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="text-violet-600 hover:underline dark:text-violet-400"
-            >
-              {CONTACT_EMAIL}
-            </a>{' '}
-            תוך פירוט: שם מלא, פרטי קשר, תיאור המידע נשוא הבקשה וסוג הבקשה. ייתכן שנידרש
-            לאמת את זהות הפונה לפני מתן מענה. הוראות מפורטות לבקשת מחיקת נתונים זמינות בעמוד{' '}
-            <Link
-              href="/data-deletion"
-              className="text-violet-600 hover:underline dark:text-violet-400"
-            >
-              הוראות מחיקת נתונים
-            </Link>
-            .
-          </p>
-          <p>
-            <strong className="text-foreground">כאשר המידע הוזן על ידי לקוח עסקי:</strong> Lessio
-            עשויה להפנות את הפונה לאותו לקוח עסקי, שכן הוא הגורם שאסף את המידע ואחראי לו, או
-            לטפל בבקשה בתיאום עמו.
-          </p>
-          <p>
-            ניתן גם לפנות לממונה על הגנת הפרטיות במשרד המשפטים בישראל בכל עניין הנוגע לזכויות
-            לפי החוק.
-          </p>
-        </Section>
-
-        {/* 11 */}
-        <Section title="11. מידע על קטינים">
-          <p>
-            המערכת מיועדת לשימוש על ידי לקוחות עסקיים בוגרים ועשויה לכלול מידע על תלמידים
-            קטינים, המוזן על ידי הלקוח העסקי או ההורה/אפוטרופוס.
-          </p>
-          <Ul
-            items={[
-              'Lessio אינה מאפשרת לקטינים להירשם ולהשתמש במערכת באופן עצמאי ללא הסכמת הורה, אפוטרופוס או הרשאה מתאימה מהלקוח העסקי.',
-              'הלקוח העסקי אחראי לוודא כי הוא רשאי להזין מידע על קטינים למערכת, לרבות קבלת הסכמת הורה/אפוטרופוס ככל שנדרשת לפי דין.',
-              'Lessio מטפלת במידע על קטינים בזהירות ובהתאם לדין, ואינה עושה בו שימוש מעבר לנדרש להפעלת השירות.',
-              'אם נודע לנו כי נאסף מידע על קטין ללא הרשאה מתאימה, נפעל למחיקתו.',
-            ]}
-          />
-        </Section>
-
-        {/* 12 */}
-        <Section title="12. אבטחת מידע">
-          <p>
-            החברה פועלת בהתאם לתקנות הגנת הפרטיות (אבטחת מידע), התשע"ז–2017, ומיישמת אמצעי
-            אבטחה מקובלים ומתאימים לאופי המידע המוחזק, לרבות:
-          </p>
-          <Ul
-            items={[
-              'בקרות גישה — גישה למידע מוגבלת לגורמים המורשים לכך לפי תפקידם.',
-              'הרשאות לפי תפקיד — עובדי Lessio ניגשים למידע רק במידה הנדרשת לתפקידם.',
-              'הצפנה — מידע מועבר בערוצים מוצפנים (TLS/HTTPS); מידע רגיש מוצפן גם באחסון.',
-              'הפרדת לקוחות — כל לקוח עסקי מוחזק בסביבה מבודדת לוגית מלקוחות אחרים.',
-              'גיבויים — המידע מגובה באופן קבוע.',
-              'ניטור ולוגים — מתנהל ניטור שוטף לזיהוי חריגות ואירועי אבטחה.',
-              'נהלי אירועי אבטחה — קיימים נהלים לטיפול באירועי אבטחה לרבות בחינה, צמצום נזק ודיווח.',
-            ]}
-          />
-          <p>
-            אין באפשרותנו להתחייב לאבטחה מוחלטת. אנו פועלים להפחתת סיכוני אבטחה למינימום
-            הסביר.
-          </p>
-        </Section>
-
-        {/* 13 */}
-        <Section title="13. אירועי אבטחה">
-          <p>
-            במקרה של חשש לאירוע אבטחה שיש בו כדי לפגוע בפרטיות נושאי מידע, Lessio תפעל לאלתר
-            לבדיקת האירוע, צמצום נזקיו ושחזור הפעילות.
-          </p>
-          <p>
-            הודעה לגורמים הרלוונטיים תימסר בהתאם לדין החל ולנסיבות — לרבות הודעה ללקוחות
-            עסקיים שנפגעו, וככל שנדרש, לממונה על הגנת הפרטיות.
-          </p>
-          <p>
-            כאשר לקוח עסקי נדרש להודיע לנושאי מידע על אירוע שפגע במידע שהוזן על ידו, Lessio
-            תשתף פעולה עמו באופן סביר ותספק את המידע הזמין לה לצורך כך.
-          </p>
-        </Section>
-
-        {/* 14 */}
-        <Section title="14. Cookies וטכנולוגיות מעקב">
-          <p>
-            אתר Lessio ו/או המערכת עשויים לעשות שימוש ב-cookies ובטכנולוגיות מעקב דומות:
-          </p>
-          <Ul
-            items={[
-              'Cookies חיוניים — נדרשים להפעלת המערכת וניהול סשן התחברות. לא ניתן להשבית אותם.',
-              'Cookies אנליטיים — Google Analytics 4 ו-PostHog לניתוח שימוש ושיפור המוצר; Hotjar למיפוי חוויית משתמש.',
-              'Cookies שיווקיים — Meta Pixel למעקב המרות מפרסום.',
-              'Cookies לניטור שגיאות — Sentry לאיתור ותיעוד תקלות טכניות.',
-            ]}
-          />
-          <p>
-            ניתן לנהל את העדפות ה-cookies דרך הגדרות הדפדפן שלך. שימוש באתר ובמערכת לאחר הרשמה
-            מהווה הסכמה לשימוש ב-cookies חיוניים. cookies אנליטיים ושיווקיים ניתן להגביל דרך
-            הגדרות הדפדפן.
-          </p>
-        </Section>
-
-        {/* 15 */}
-        <Section title="15. דיוור שיווקי ותקשורת">
-          <p>
-            <strong className="text-foreground">הודעות תפעוליות:</strong> הודעות הנחוצות להפעלת
-            השירות (עדכוני מערכת, אישורי רישום, שינויים בתנאי השירות, התראות אבטחה) יישלחו ללא
-            אפשרות ביטול, מאחר שהן חלק בלתי נפרד מהשירות.
-          </p>
-          <p>
-            <strong className="text-foreground">הודעות שיווקיות של Lessio:</strong> משלוח עדכונים,
-            טיפים ומבצעים ללקוחות עסקיים ייעשה בהתאם לדין הישראלי, בהסכמה ועם אפשרות הסרה
-            בכל הודעה.
-          </p>
-          <p>
-            <strong className="text-foreground">הודעות שהלקוח העסקי שולח ללקוחותיו:</strong>{' '}
-            Lessio מהווה תשתית טכנית לשליחת הודעות WhatsApp ותזכורות מטעם הלקוח העסקי. הלקוח
-            העסקי הוא האחראי לקבלת הסכמה ולציות לחוק ביחס לאותן הודעות.
-          </p>
-        </Section>
-
-        {/* 16 */}
-        <Section title="16. שינויים במדיניות הפרטיות">
-          <p>
-            אנו עשויים לעדכן מדיניות זו מעת לעת. תאריך העדכון האחרון מצוין בראש המסמך.
-          </p>
-          <p>
-            במקרה של שינוי מהותי, נודיע ללקוחות העסקיים בדרך שנמצא מתאימה (הודעה בדוא"ל,
-            הודעה בתוך המערכת וכדומה). המשך השימוש במערכת לאחר פרסום השינוי מהווה הסכמה
-            לתנאים המעודכנים.
-          </p>
-        </Section>
-
-        {/* 17 */}
-        <Section title="17. יצירת קשר">
-          <p>לכל שאלה, בקשה או פנייה בעניין פרטיות:</p>
-          <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 space-y-1">
-            <p>
-              <strong className="text-foreground">{ENTITY_NAME}</strong>
-            </p>
-            <p>
-              איש קשר לענייני פרטיות:{' '}
-              <strong className="text-foreground">{CONTACT_PERSON}</strong>
-            </p>
-            <p>
-              דוא"ל:{' '}
-              <a
-                href={`mailto:${CONTACT_EMAIL}`}
-                className="text-violet-600 hover:underline dark:text-violet-400"
-              >
-                {CONTACT_EMAIL}
-              </a>
-            </p>
-            <p>
-              טלפון: <strong className="text-foreground">{CONTACT_PHONE}</strong>
-            </p>
-            <p>
-              כתובת: <strong className="text-foreground">{CONTACT_ADDRESS}</strong>
-            </p>
-          </div>
-          <p>אנו נשתדל להשיב לפניות בנושאי פרטיות תוך 30 יום.</p>
-        </Section>
-      </div>
+      {locale === 'en' ? <PrivacyEn {...docProps} /> : <PrivacyHe {...docProps} />}
 
       <Link
         href="/"
         className="mt-10 inline-flex text-sm font-semibold text-violet-600 underline-offset-4 transition-colors hover:text-violet-500 hover:underline dark:text-violet-400 dark:hover:text-violet-300"
       >
-        ← חזרה לדף הבית
+        {tLegal('backHome')}
       </Link>
     </LegalSimpleLayout>
   )

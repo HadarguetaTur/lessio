@@ -48,6 +48,18 @@ const HEBREW_ALLOWED = [
   // The system prompt is sent to the model, never shown to a user, and the
   // model is instructed to reply in the customer's language.
   "src/lib/ai-assistant/buildSystemPrompt.ts",
+  // The Hebrew half of each legal document. Each has an English sibling
+  // (TermsEn / PrivacyEn) and page.tsx picks by locale, mirroring how the
+  // marketing copy is split.
+  "src/app/terms/TermsHe.tsx",
+  "src/app/privacy/PrivacyHe.tsx",
+  // Registered company name and postal address — not translated.
+  "src/app/privacy/page.tsx",
+  "src/app/terms/page.tsx",
+  // Statically generated at build time, so it cannot vary per request — one
+  // image is served to every locale. Making it language-neutral is a marketing
+  // decision, not a technical one.
+  "src/app/opengraph-image.tsx",
   // Bilingual via getLandingContent(locale).
   "src/lib/marketing/landingCopy.ts",
   // Bilingual he/en branches already. Listed file-by-file, not by directory —
@@ -82,8 +94,7 @@ const eslintConfig = defineConfig([
   {
     files: ["src/**/*.{ts,tsx}", "supabase/functions/**/*.ts"],
     rules: {
-      // TODO: flip to "error" once the count reaches zero (Phase 5).
-      "no-restricted-syntax": ["warn", ...noHardcodedHebrew],
+      "no-restricted-syntax": ["error", ...noHardcodedHebrew],
     },
   },
   {

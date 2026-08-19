@@ -24,6 +24,8 @@ import { encryptToken, decryptToken } from '@/lib/crypto'
 import { registerTemplatesForWABA } from '@/lib/whatsapp/registerTemplates'
 import { subscribeAppToWABA, unsubscribeAppFromWABA } from '@/lib/whatsapp/subscribeApp'
 import { META_API_VERSION } from '@/lib/whatsapp/graphVersion'
+import { inspectAccessToken, type TokenGrant } from '@/lib/whatsapp/debugToken'
+import { registerPhoneNumber, isValidRegisterPin } from '@/lib/whatsapp/registerPhone'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 
@@ -86,11 +88,19 @@ export async function saveWhatsAppConnection(
   const { phoneNumberId, wabaId, code } = parsed.data
 
   // Exchange code → access token via Meta Graph API
-  const appId     = process.env.META_APP_ID
-  const appSecret = process.env.META_APP_SECRET
+  const appId       = process.env.META_APP_ID
+  const appSecret   = process.env.META_APP_SECRET
+  const registerPin = process.env.WHATSAPP_REGISTER_PIN
 
+  // All three are checked up front: the code Meta just handed us lives for 30
+  // seconds, so a missing env var must not be discovered halfway through.
   if (!appId || !appSecret) {
     console.error('[whatsapp/settings] META_APP_ID or META_APP_SECRET not set')
+    return { error: t('settings.whatsappActions.errors.missingMetaConfig') }
+  }
+
+  if (!registerPin || !isValidRegisterPin(registerPin)) {
+    console.error('[whatsapp/settings] WHATSAPP_REGISTER_PIN missing or not 6 digits')
     return { error: t('settings.whatsappActions.errors.missingMetaConfig') }
   }
 
@@ -100,6 +110,42 @@ export async function saveWhatsAppConnection(
   } catch (err) {
     console.error('[whatsapp/settings] Token exchange failed', { orgId, err })
     return { error: t('settings.whatsappActions.errors.exchangeFailed') }
+  }
+
+  // Ask Meta what it actually granted. Two things come out of this one call:
+  // the app's WhatsApp permissions are confirmed live — by far the most common
+  // reason a signup produces a token that cannot do anything — and the WABA id,
+  // which reached us from the browser, gets checked against the ids the token is
+  // really scoped to.
+  let grant: TokenGrant
+  try {
+    grant = await inspectAccessToken(accessToken, appId, appSecret)
+  } catch (err) {
+    console.error('[whatsapp/settings] debug_token failed', { orgId, err })
+    return { error: t('settings.whatsappActions.errors.debugTokenFailed') }
+  }
+
+  if (grant.missingScopes.length > 0) {
+    console.error('[whatsapp/settings] Token is missing required scopes', {
+      orgId,
+      missing: grant.missingScopes,
+    })
+    return {
+      error: t('settings.whatsappActions.errors.scopeMissing', {
+        scopes: grant.missingScopes.join(', '),
+      }),
+    }
+  }
+
+  // Empty managedWabaIds means Meta returned the scope ungranularly — there is
+  // simply nothing to compare against, which is not a failure.
+  if (grant.managedWabaIds.length > 0 && !grant.managedWabaIds.includes(wabaId)) {
+    console.error('[whatsapp/settings] wabaId is outside the granted scope', {
+      orgId,
+      wabaId,
+      granted: grant.managedWabaIds,
+    })
+    return { error: t('settings.whatsappActions.errors.wabaMismatch') }
   }
 
   // Subscribe our app to the customer's WABA — without this, Meta never sends
@@ -112,6 +158,22 @@ export async function saveWhatsAppConnection(
   } catch (err) {
     console.error('[whatsapp/settings] WABA webhook subscription failed', { orgId, wabaId, err })
     return { error: t('settings.whatsappActions.errors.webhookRegisterFailed') }
+  }
+
+  // Embedded Signup puts the number on the WABA; it does not put it on Cloud
+  // API. Skipping this leaves an org that reads as connected and cannot send a
+  // single message — the same reason the subscription above blocks the save.
+  // Re-registering an already registered number succeeds, so retrying a signup
+  // is safe.
+  try {
+    await registerPhoneNumber(phoneNumberId, accessToken, registerPin)
+  } catch (err) {
+    console.error('[whatsapp/settings] Phone number registration failed', {
+      orgId,
+      phoneNumberId,
+      err,
+    })
+    return { error: t('settings.whatsappActions.errors.phoneRegisterFailed') }
   }
 
   // Encrypt before storing
@@ -284,21 +346,22 @@ export async function registerTemplates(
 // ── Token exchange helper ─────────────────────────────────────────────────────
 
 /**
- * Exchanges a Meta Embedded Signup OAuth code for a user access token.
+ * Exchanges a Meta Embedded Signup OAuth code for a business access token.
  * GET https://graph.facebook.com/{version}/oauth/access_token
+ *
+ * No redirect_uri: an Embedded Signup code comes from FB.login rather than a
+ * browser redirect, so it is not bound to one. Sending a redirect_uri here made
+ * Meta match it against the app's Valid OAuth Redirect URIs, which for an
+ * Embedded Signup app is legitimately empty — so the exchange could only fail.
  */
 async function exchangeCodeForToken(
   code: string,
   appId: string,
   appSecret: string
 ): Promise<string> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const redirectUri = `${appUrl}/settings/whatsapp`
-
   const params = new URLSearchParams({
     client_id:     appId,
     client_secret: appSecret,
-    redirect_uri:  redirectUri,
     code,
   })
 

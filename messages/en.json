@@ -1581,6 +1581,10 @@
         "webhookRegisterFailed": "Registering the webhook with Meta failed — please try connecting again",
         "encryptFailed": "Could not encrypt the token — check that the encryption key is set",
         "saveFailed": "Could not save the data",
+        "debugTokenFailed": "Could not verify which permissions Meta granted — please try connecting again",
+        "scopeMissing": "Meta did not grant the permissions this connection needs ({scopes}). The Lessio app is still awaiting Meta App Review approval for them.",
+        "wabaMismatch": "The WhatsApp Business account returned by Meta is not one this connection was authorised for — please start the connection again.",
+        "phoneRegisterFailed": "The phone number could not be registered with WhatsApp Cloud API — please try connecting again",
         "disconnectFailed": "Could not disconnect the account"
       }
     },
@@ -1676,7 +1680,13 @@
       "disconnectHint": "Disconnecting stops WhatsApp messages being sent and received until you reconnect.",
       "disconnectedHint": "Click the button to start the connection process through Meta. You will be taken to Meta to choose the number you want to connect.",
       "missingVar": "{name} is not configured on the server — the connection process cannot start.",
-      "signupHint": "Sign in to your Meta account and choose the number you want to connect to this organization."
+      "signupHint": "Sign in to your Meta account and choose the number you want to connect to this organization.",
+      "sdkNotLoaded": "Facebook’s login script did not load. Disable any ad or content blocker for this page and reload.",
+      "popupClosed": "The Meta window closed before the connection finished. Nothing was saved — you can try again.",
+      "cancelledAtStep": "The connection was not completed. Meta stopped at: {step}.",
+      "metaError": "Meta reported an error: {message}",
+      "noPhoneNumber": "A WhatsApp Business account was selected but no phone number was connected. Reopen the flow and add a phone number to finish.",
+      "missingIds": "Meta finished without returning the account details needed to connect. Nothing was saved — please try again."
     },
     "remindersPage": {
       "subtitle": "Set automatic WhatsApp reminders to parents before lessons and about open charges.",

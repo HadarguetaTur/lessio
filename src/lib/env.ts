@@ -45,6 +45,9 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   'META_APP_SECRET',
   // Sprint 31: Meta Embedded Signup Configuration ID (FB.login config_id)
   'NEXT_PUBLIC_META_CONFIG_ID',
+  // Two-step verification PIN used to register a connected number on Cloud API.
+  // Platform-level: orgs never see it, and re-registering a number needs it back.
+  'WHATSAPP_REGISTER_PIN',
   // Sprint 8: per-org payment provider credential encryption
   'PAYMENT_CONFIG_ENCRYPTION_KEY',
   // Sprint 22: HMAC secret for Sumit SaaS billing webhook signature verification

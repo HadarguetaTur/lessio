@@ -11,6 +11,8 @@ const {
   mockRegisterTemplatesForWABA,
   mockSubscribeAppToWABA,
   mockUnsubscribeAppFromWABA,
+  mockInspectAccessToken,
+  mockRegisterPhoneNumber,
 } = vi.hoisted(() => ({
   mockRevalidatePath: vi.fn(),
   mockGetSession: vi.fn(),
@@ -22,6 +24,8 @@ const {
   mockRegisterTemplatesForWABA: vi.fn(),
   mockSubscribeAppToWABA: vi.fn(),
   mockUnsubscribeAppFromWABA: vi.fn(),
+  mockInspectAccessToken: vi.fn(),
+  mockRegisterPhoneNumber: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
@@ -53,6 +57,17 @@ vi.mock('@/lib/whatsapp/registerTemplates', () => ({
 vi.mock('@/lib/whatsapp/subscribeApp', () => ({
   subscribeAppToWABA: mockSubscribeAppToWABA,
   unsubscribeAppFromWABA: mockUnsubscribeAppFromWABA,
+}))
+
+vi.mock('@/lib/whatsapp/debugToken', () => ({
+  inspectAccessToken: mockInspectAccessToken,
+}))
+
+vi.mock('@/lib/whatsapp/registerPhone', () => ({
+  registerPhoneNumber: mockRegisterPhoneNumber,
+  // Kept real: the action uses it to reject a malformed env var before any
+  // network call, which is behaviour worth exercising rather than stubbing.
+  isValidRegisterPin: (pin: string) => /^\d{6}$/.test(pin),
 }))
 
 import { saveWhatsAppConnection, disconnectWhatsApp, registerTemplates } from './actions'
@@ -97,12 +112,15 @@ describe('saveWhatsAppConnection', () => {
     vi.stubGlobal('fetch', mockFetch)
     vi.stubEnv('META_APP_ID', 'app-1')
     vi.stubEnv('META_APP_SECRET', 'secret-1')
+    vi.stubEnv('WHATSAPP_REGISTER_PIN', '123456')
     mockGetSession.mockResolvedValue({ orgId: 'org-1', role: 'owner', isSupportMode: false })
     mockRequireMutation.mockImplementation(() => {})
     mockRequireFeature.mockResolvedValue(undefined)
     mockSubscribeAppToWABA.mockResolvedValue(undefined)
     mockRegisterTemplatesForWABA.mockResolvedValue(undefined)
     mockEncryptToken.mockReturnValue('encrypted-token')
+    mockInspectAccessToken.mockResolvedValue({ missingScopes: [], managedWabaIds: ['waba-1'] })
+    mockRegisterPhoneNumber.mockResolvedValue(undefined)
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ access_token: 'token-1' }),
@@ -145,6 +163,122 @@ describe('saveWhatsAppConnection', () => {
     expect(db.spies.eq).toHaveBeenCalledWith('id', 'org-1')
     expect(mockRegisterTemplatesForWABA).toHaveBeenCalledWith('waba-1', 'token-1')
     expect(mockRevalidatePath).toHaveBeenCalledWith('/settings/whatsapp')
+  })
+
+  it('verifies the granted scopes and registers the number on Cloud API', async () => {
+    const db = makeSaveDbClient()
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+
+    await saveWhatsAppConnection({ error: null }, makeSaveFormData({ wabaId: 'waba-1' }))
+
+    expect(mockInspectAccessToken).toHaveBeenCalledWith('token-1', 'app-1', 'secret-1')
+    expect(mockRegisterPhoneNumber).toHaveBeenCalledWith('pn-1', 'token-1', '123456')
+  })
+
+  it('exchanges the code without a redirect_uri', async () => {
+    const db = makeSaveDbClient()
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+
+    await saveWhatsAppConnection({ error: null }, makeSaveFormData({ wabaId: 'waba-1' }))
+
+    // An Embedded Signup code comes from FB.login, not a redirect, so sending a
+    // redirect_uri only gives Meta something to reject it against.
+    const [url] = mockFetch.mock.calls[0]
+    expect(url).toContain('/oauth/access_token?')
+    expect(url).not.toContain('redirect_uri')
+  })
+
+  it('persists nothing when Meta withheld a required scope', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const db = makeSaveDbClient()
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+    mockInspectAccessToken.mockResolvedValue({
+      missingScopes: ['whatsapp_business_management'],
+      managedWabaIds: [],
+    })
+
+    const result = await saveWhatsAppConnection(
+      { error: null },
+      makeSaveFormData({ wabaId: 'waba-1' })
+    )
+
+    expect(result.error).toContain('whatsapp_business_management')
+    expect(mockSubscribeAppToWABA).not.toHaveBeenCalled()
+    expect(mockRegisterPhoneNumber).not.toHaveBeenCalled()
+    expect(db.spies.update).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('rejects a wabaId the token was never scoped to', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const db = makeSaveDbClient()
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+    mockInspectAccessToken.mockResolvedValue({
+      missingScopes: [],
+      managedWabaIds: ['waba-someone-else'],
+    })
+
+    const result = await saveWhatsAppConnection(
+      { error: null },
+      makeSaveFormData({ wabaId: 'waba-1' })
+    )
+
+    expect(result.error).toBeTruthy()
+    expect(mockSubscribeAppToWABA).not.toHaveBeenCalled()
+    expect(db.spies.update).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('accepts the wabaId when Meta reports the scope ungranularly', async () => {
+    const db = makeSaveDbClient()
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+    mockInspectAccessToken.mockResolvedValue({ missingScopes: [], managedWabaIds: [] })
+
+    const result = await saveWhatsAppConnection(
+      { error: null },
+      makeSaveFormData({ wabaId: 'waba-1' })
+    )
+
+    expect(result).toEqual({ error: null })
+    expect(db.spies.update).toHaveBeenCalled()
+  })
+
+  it('persists nothing when the phone number cannot be registered', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const db = makeSaveDbClient()
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+    mockRegisterPhoneNumber.mockRejectedValue(new Error('register failed'))
+
+    const result = await saveWhatsAppConnection(
+      { error: null },
+      makeSaveFormData({ wabaId: 'waba-1' })
+    )
+
+    expect(result.error).toBeTruthy()
+    expect(db.spies.update).not.toHaveBeenCalled()
+    expect(mockRegisterTemplatesForWABA).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('fails before any Meta call when the register PIN is not six digits', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubEnv('WHATSAPP_REGISTER_PIN', '12ab')
+    const db = makeSaveDbClient()
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+
+    const result = await saveWhatsAppConnection(
+      { error: null },
+      makeSaveFormData({ wabaId: 'waba-1' })
+    )
+
+    expect(result.error).toBeTruthy()
+    expect(mockFetch).not.toHaveBeenCalled()
+    expect(db.spies.update).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
   })
 
   it('returns an error and persists nothing when the WABA subscription fails', async () => {

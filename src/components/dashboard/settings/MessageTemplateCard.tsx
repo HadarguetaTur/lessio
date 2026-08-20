@@ -21,7 +21,7 @@ import {
   submitTemplateForApprovalAction,
   type ActionState,
 } from '@/app/(dashboard)/settings/message-templates/actions'
-import { substituteVars } from '@/lib/whatsapp/templates'
+import { normalizeTemplateBody, substituteVars } from '@/lib/whatsapp/templates'
 import type { MessageTemplateType } from '@/lib/whatsapp/templates'
 import type { AppLocale } from '@/lib/i18n/locale'
 
@@ -101,8 +101,11 @@ export function MessageTemplateCard({
 
   // The saved body is what gets submitted, so unsaved edits must not be
   // silently left behind — the submit button waits for a save.
+  // Compared in normalized form: the DB copy of a body saved before
+  // normalization-on-save carries CRLF, the textarea's value never does, and an
+  // invisible mismatch here kept the submit button disabled after every save.
   const savedBody = customBody ?? defaultBody
-  const hasUnsavedEdits = body !== savedBody
+  const hasUnsavedEdits = normalizeTemplateBody(body) !== normalizeTemplateBody(savedBody)
 
   async function handleReset() {
     setResetPending(true)

@@ -17,7 +17,7 @@
 import type { AppLocale } from '@/lib/i18n/locale'
 import type { MetaTemplateComponent } from './index'
 import { param } from './approvedTemplates'
-import { TEMPLATE_VARIABLES, TEMPLATE_PREVIEW_VARS, type MessageTemplateType } from './templates'
+import { normalizeTemplateBody, TEMPLATE_VARIABLES, TEMPLATE_PREVIEW_VARS, type MessageTemplateType } from './templates'
 import { postTemplateToMeta } from './registerTemplates'
 
 /** Meta's documented ceiling for a template BODY component. */
@@ -100,7 +100,9 @@ export function buildMetaSubmission(
 ): BuildSubmissionResult {
   if (!isSubmittableType(type)) return { ok: false, code: 'notSubmittable' }
 
-  const trimmed = body.trim()
+  // Normalized, not just trimmed: a body that reaches here from a stored row
+  // may carry CRLF, and Meta must never receive a stray CR.
+  const trimmed = normalizeTemplateBody(body)
   if (!trimmed) return { ok: false, code: 'emptyBody' }
 
   const allowed = TEMPLATE_VARIABLES[type] ?? []

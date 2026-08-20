@@ -7,7 +7,7 @@ import {
   isSubmittableType,
   SUBMITTABLE_TYPES,
 } from './submitTemplate'
-import { DEFAULT_TEMPLATES, TEMPLATE_VARIABLES } from './templates'
+import { DEFAULT_TEMPLATES, normalizeTemplateBody, TEMPLATE_VARIABLES } from './templates'
 import type { AppLocale } from '@/lib/i18n/locale'
 
 describe('extractVarOrder', () => {
@@ -119,6 +119,19 @@ describe('buildMetaSubmission', () => {
     }
   })
 
+  it('normalises CRLF line endings — a form-posted textarea body arrives with them', () => {
+    const result = buildMetaSubmission(
+      'lesson_reminder',
+      'en',
+      'Reminder: your lesson with {{teacher_name}} is on {{date}} at {{time}}.\r\nSee you there!'
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.bodyText).not.toContain('\r')
+    expect(result.bodyText).toContain('\nSee you there!')
+  })
+
   describe('rejections', () => {
     it('rejects a type that is not submittable', () => {
       expect(buildMetaSubmission('balance_reply', 'he', 'text {{total}} more')).toEqual({
@@ -167,16 +180,14 @@ describe('buildMetaSubmission', () => {
 
     for (const type of SUBMITTABLE_TYPES) {
       for (const locale of locales) {
-        it(`${type} / ${locale} converts without an unknown variable`, () => {
+        it(`${type} / ${locale} converts cleanly`, () => {
           const result = buildMetaSubmission(type, locale, DEFAULT_TEMPLATES[locale][type])
 
-          // A default body may still trip Meta's start/end rule — that is a real
-          // constraint the owner has to edit around — but it must never use a
-          // variable the settings UI does not advertise for its own type.
-          if (!result.ok) {
-            expect(result.code).not.toBe('unknownVariable')
-            return
-          }
+          // Every default must be submittable as-is: an org that never edited
+          // the copy can still press "submit to Meta". homework_graded used to
+          // end with {{feedback_line}} and fail Meta's end-with-variable rule.
+          expect(result.ok).toBe(true)
+          if (!result.ok) return
 
           expect(result.varOrder.every((v) => TEMPLATE_VARIABLES[type].includes(v))).toBe(true)
           expect(result.bodyText).not.toMatch(/\{\{[a-z_]+\}\}/)
@@ -231,5 +242,20 @@ describe('customTemplateName', () => {
   it('uses the _c<n> suffix so it can never collide with Lessio\'s own _v2 names', () => {
     expect(customTemplateName('lesson_reminder', 'he', 1)).toBe('lessio_lesson_reminder_he_c1')
     expect(customTemplateName('payment_request', 'en', 12)).toBe('lessio_payment_request_en_c12')
+  })
+})
+
+describe('normalizeTemplateBody', () => {
+  it('converts CRLF and lone CR to LF and trims', () => {
+    expect(normalizeTemplateBody('  a\r\nb\rc\n ')).toBe('a\nb\nc')
+  })
+
+  it('makes a form-posted body equal to its textarea twin', () => {
+    // The HTML form-submission algorithm normalises textarea newlines to CRLF;
+    // reading the same textarea from JS gives LF. The two must compare equal,
+    // or the card thinks it has unsaved edits forever after a save.
+    const typed = 'line one\nline two'
+    const posted = 'line one\r\nline two'
+    expect(normalizeTemplateBody(posted)).toBe(normalizeTemplateBody(typed))
   })
 })

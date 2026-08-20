@@ -12,7 +12,7 @@ import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
-import { DEFAULT_TEMPLATES, type MessageTemplateType } from '@/lib/whatsapp/templates'
+import { DEFAULT_TEMPLATES, normalizeTemplateBody, type MessageTemplateType } from '@/lib/whatsapp/templates'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 import {
@@ -66,7 +66,9 @@ export async function saveTemplateAction(
   const parsed = TemplateSchema.safeParse({
     type: formData.get('type'),
     locale: formData.get('locale'),
-    body_template: String(formData.get('body_template') ?? '').trim(),
+    // normalizeTemplateBody: a <form> POST carries textarea content with CRLF
+    // line endings; stored verbatim they differ invisibly from the editor's LF copy.
+    body_template: normalizeTemplateBody(String(formData.get('body_template') ?? '')),
   })
 
   if (!parsed.success) {
@@ -205,7 +207,8 @@ export async function submitTemplateForApprovalAction(
     .eq('locale', locale)
     .maybeSingle()
 
-  const body = customRow?.body_template ?? DEFAULT_TEMPLATES[locale][templateType]
+  // Rows saved before normalization-on-save still hold CRLF; normalize on read.
+  const body = normalizeTemplateBody(customRow?.body_template ?? DEFAULT_TEMPLATES[locale][templateType])
 
   const submission = buildMetaSubmission(templateType, locale, body)
   if (!submission.ok) {

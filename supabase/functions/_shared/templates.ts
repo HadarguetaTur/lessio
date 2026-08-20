@@ -91,7 +91,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
     portal_link_reply:
       'הקישור לאזור האישי שלך:\n{{portal_url}}\n\nהכניסה עם מספר הטלפון, בלי סיסמה 😊',
     homework_graded:
-      'שיעורי הבית "{{title}}" נבדקו! ✅\nציון: {{score}}/100\n{{feedback_line}}',
+      'שיעורי הבית "{{title}}" נבדקו! ✅\nציון: {{score}}/100\n{{feedback_line}}\nכל הכבוד על ההשקעה!',
     ai_satisfaction_prompt:
       'האם התשובה עזרה? אפשר להגיב 👍 או 👎',
     unknown_intent_fallback:
@@ -131,7 +131,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
     portal_link_reply:
       'Here is your personal area:\n{{portal_url}}\n\nSign in with your phone number, no password needed 😊',
     homework_graded:
-      'The homework "{{title}}" has been graded! ✅\nScore: {{score}}/100\n{{feedback_line}}',
+      'The homework "{{title}}" has been graded! ✅\nScore: {{score}}/100\n{{feedback_line}}\nGreat work, keep it up!',
     ai_satisfaction_prompt:
       'Did that help? Feel free to reply 👍 or 👎',
     unknown_intent_fallback:

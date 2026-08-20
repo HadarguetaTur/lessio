@@ -227,8 +227,10 @@ export function PrivacyEn({
           <p>Information may be passed to the following parties solely in order to operate the service:</p>
           <Ul
             items={[
-              'Infrastructure and storage — cloud providers such as Supabase and Amazon Web Services (AWS).',
-              'Communications — WhatsApp Business / Meta for sending messages and reminders; email and SMS providers where used.',
+              'Infrastructure and hosting — Supabase (database, authentication and file storage, on Amazon Web Services infrastructure) and Vercel (application hosting and processing of incoming WhatsApp messages).',
+              'Communications — WhatsApp Business / Meta for sending and receiving messages and reminders; Resend for system emails; SMS providers where used.',
+              'AI assistant (optional) — where a business customer enables the AI assistant, message content is sent for processing to the AI provider the customer selected (OpenAI or Anthropic), using the customer’s own API key.',
+              'Google services (optional) — where a business customer connects their Google account, lesson details and messages may be synced to Google Calendar or sent through Gmail, under the customer’s own Google account.',
               'Payments and processing — payment providers the business customer chose to connect (such as Cardcom, PayPlus, Bit, PayBox).',
               'Invoicing — invoicing providers the business customer connected (such as Green Invoice, iCount); and Sumit for billing Lessio’s own SaaS subscriptions.',
               'Monitoring and support — providers of monitoring, logging and error-diagnosis tools (such as Sentry) and product analytics tools.',
@@ -240,6 +242,19 @@ export function PrivacyEn({
             All third-party providers are obliged to safeguard the information and to comply with the law
             that applies to them.
           </p>
+          <SubSection title="7.1 Integrations the business customer connects">
+            <p>
+              Some of the providers listed above (payment, invoicing, Google and AI providers) are not
+              engaged by Lessio but are connected by the business customer, using the customer’s own
+              account and credentials. Once connected, Lessio transfers to such a provider only the
+              information required for the specific action the customer initiated (for example, the
+              name and amount on an invoice, or a calendar event). The provider processes that
+              information under its own terms of service and privacy policy, and the business customer
+              is responsible for the choice of provider and for its use. The customer can disconnect an
+              integration at any time from the system settings, after which no further information is
+              transferred to that provider.
+            </p>
+          </SubSection>
         </Section>
 
         {/* 8 */}

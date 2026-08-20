@@ -9,8 +9,10 @@
  * - Variable hint showing available {{vars}} for this type
  * - Live preview using client-side substituteVars (no server round-trip)
  * - Save and Reset actions
- * - For templates sent outside the 24h window: Meta approval status and a
- *   submit-for-approval action
+ * - For templates sent outside the 24h window: Meta approval status of the
+ *   *saved wording* and a submit-for-approval action. Saving an edit flips the
+ *   status to "not submitted" straight away; the card then says which approved
+ *   copy is sent out of window in the meantime.
  */
 
 import React, { useActionState, useState, useEffect, useTransition } from 'react'
@@ -24,16 +26,9 @@ import {
 import { normalizeTemplateBody, substituteVars } from '@/lib/whatsapp/templates'
 import type { MessageTemplateType } from '@/lib/whatsapp/templates'
 import type { AppLocale } from '@/lib/i18n/locale'
+import { NOT_SUBMITTED, type TemplateApprovalView } from '@/lib/whatsapp/templateApprovalView'
 
-export interface TemplateApproval {
-  status: string
-  metaName: string
-  reason: string | null
-  /** 'custom' = a body this org submitted; 'builtin' = Lessio's own template. */
-  source: 'custom' | 'builtin'
-  /** Approved copy no longer matches the saved body. */
-  isStale: boolean
-}
+export type TemplateApproval = TemplateApprovalView
 
 interface MessageTemplateCardProps {
   type: MessageTemplateType
@@ -53,17 +48,19 @@ interface MessageTemplateCardProps {
 const initialState: ActionState = { error: null }
 
 /**
- * Tailwind classes per Meta status. Statuses are stored verbatim from Meta, so
- * one we have no translation for still renders — as its raw name, in neutral
- * colours — rather than blowing up the page.
+ * Tailwind classes per status. Meta statuses are stored verbatim, so one we
+ * have no translation for still renders — as its raw name, in neutral
+ * colours — rather than blowing up the page. NOT_SUBMITTED is Lessio's own.
  */
 const STATUS_STYLES: Record<string, string> = {
+  NOT_SUBMITTED: 'bg-blue-50 text-blue-700 border-blue-200',
   APPROVED: 'bg-green-50 text-green-700 border-green-200',
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
   REJECTED: 'bg-red-50 text-red-700 border-red-200',
   PAUSED: 'bg-orange-50 text-orange-700 border-orange-200',
   DISABLED: 'bg-gray-100 text-gray-600 border-gray-300',
 }
+const NEUTRAL_STYLE = 'bg-gray-100 text-gray-600 border-gray-300'
 
 const TRANSLATED_STATUSES = Object.keys(STATUS_STYLES)
 
@@ -98,6 +95,12 @@ export function MessageTemplateCard({
     if (!isCustom && body !== defaultBody) setBody(defaultBody)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCustom])
+
+  // A save changes what the approval chip refers to, so a "sent to Meta"
+  // confirmation from before the edit would now sit next to "not submitted".
+  useEffect(() => {
+    setSubmitted(false)
+  }, [customBody])
 
   // The saved body is what gets submitted, so unsaved edits must not be
   // silently left behind — the submit button waits for a save.
@@ -135,21 +138,22 @@ export function MessageTemplateCard({
   }
 
   const preview = substituteVars(body, previewVars)
-  // Nothing to submit while Meta is already reviewing this copy, or has
-  // approved exactly what is saved — a second submission would just open a
-  // duplicate review.
+
+  // Nothing to submit while Meta is already reviewing exactly this wording, or
+  // has approved it — a second submission would just open a duplicate review.
+  // A built-in APPROVED does not count: that is Lessio's copy, not the org's.
   const alreadyAtMeta =
     approval?.source === 'custom' &&
-    (approval.status === 'PENDING' || (approval.status === 'APPROVED' && !approval.isStale))
+    (approval.status === 'PENDING' || approval.status === 'APPROVED')
+  const cannotSubmit = Boolean(approval?.validationError)
+  const savedNotApproved = needsApproval && approval?.status === NOT_SUBMITTED
 
-  const statusClass = approval
-    ? STATUS_STYLES[approval.status] ?? 'bg-gray-100 text-gray-600 border-gray-300'
-    : ''
+  const statusClass = approval ? STATUS_STYLES[approval.status] ?? NEUTRAL_STYLE : NEUTRAL_STYLE
   const statusLabel = approval
     ? TRANSLATED_STATUSES.includes(approval.status)
       ? t(`status.${approval.status}`)
       : approval.status
-    : null
+    : t('status.UNKNOWN')
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
@@ -195,8 +199,10 @@ export function MessageTemplateCard({
         {state.error && (
           <p className="text-xs text-red-600">{state.error}</p>
         )}
-        {state.success && (
-          <p className="text-xs text-green-600">{t('saved')}</p>
+        {state.success && !hasUnsavedEdits && (
+          <p className="text-xs text-green-600">
+            {savedNotApproved ? t('savedNeedsApproval') : t('saved')}
+          </p>
         )}
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -249,21 +255,11 @@ export function MessageTemplateCard({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-medium text-gray-500">{t('metaStatus')}:</span>
 
-            {approval ? (
-              <span className={`text-xs border rounded px-2 py-0.5 font-medium ${statusClass}`}>
-                {statusLabel}
-              </span>
-            ) : (
-              // No row yet: the page already tried to pull statuses from the
-              // WABA on load, so this is a template Meta has not reported on.
-              // Built-in templates are always registered, so "pending" is the
-              // honest default until the next webhook or refresh.
-              <span className={`text-xs border rounded px-2 py-0.5 font-medium ${STATUS_STYLES.PENDING ?? 'bg-gray-100 text-gray-600 border-gray-300'}`}>
-                {t('status.PENDING')}
-              </span>
-            )}
+            <span className={`text-xs border rounded px-2 py-0.5 font-medium ${statusClass}`}>
+              {statusLabel}
+            </span>
 
-            {approval && (
+            {approval?.metaName && (
               <code className="text-[11px] text-gray-400 font-mono" dir="ltr">
                 {approval.metaName}
               </code>
@@ -280,8 +276,22 @@ export function MessageTemplateCard({
             </p>
           )}
 
-          {approval?.isStale && (
-            <p className="text-xs text-amber-700">{t('staleWarning')}</p>
+          {approval?.validationError && (
+            <p className="text-xs text-red-600">
+              {t('cannotSubmit')}{' '}
+              {approval.validationError.code === 'unknownVariable'
+                ? t('errors.unknownVariable', { variable: approval.validationError.variable ?? '' })
+                : t(`errors.${approval.validationError.code}`)}
+            </p>
+          )}
+
+          {approval?.sendsMeanwhile && (
+            <p className="text-xs text-amber-700">
+              {approval.sendsMeanwhile.source === 'builtin'
+                ? t('sendsMeanwhileBuiltIn')
+                : t('sendsMeanwhile')}{' '}
+              <code className="font-mono text-[11px]" dir="ltr">{approval.sendsMeanwhile.metaName}</code>
+            </p>
           )}
 
           {submittable ? (
@@ -290,7 +300,7 @@ export function MessageTemplateCard({
                 <button
                   type="button"
                   onClick={handleSubmitForApproval}
-                  disabled={submitPending || hasUnsavedEdits || alreadyAtMeta}
+                  disabled={submitPending || hasUnsavedEdits || alreadyAtMeta || cannotSubmit}
                   className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
                 >
                   {submitPending ? `${t('submitForApproval')}…` : t('submitForApproval')}

@@ -13,16 +13,13 @@ import {
   TEMPLATE_PREVIEW_VARS,
   type MessageTemplateType,
 } from '@/lib/whatsapp/templates'
-import {
-  getApprovedTemplate,
-  LESSON_CANCELLED_BY_TEACHER_TEMPLATE,
-} from '@/lib/whatsapp/approvedTemplates'
-import { buildMetaSubmission, SUBMITTABLE_TYPES } from '@/lib/whatsapp/submitTemplate'
+import { SUBMITTABLE_TYPES } from '@/lib/whatsapp/submitTemplate'
 import {
   getTemplateStatuses,
   refreshTemplateStatusesFromMeta,
   type TemplateStatusRow,
 } from '@/lib/whatsapp/templateStatus'
+import { resolveTemplateApproval } from '@/lib/whatsapp/templateApprovalView'
 import { decryptToken } from '@/lib/crypto'
 
 /**
@@ -37,6 +34,11 @@ import { decryptToken } from '@/lib/crypto'
  * sends as a reply (inside the 24h window) are pure free text and need nothing
  * from Meta. Types sent proactively must exist as a Meta-approved template, so
  * those cards also carry an approval status and a submit action.
+ *
+ * The status shown is the status of the *saved wording*, not of the last
+ * submission — see resolveTemplateApproval. Saving an edit therefore flips the
+ * chip to "not submitted" immediately, and the card says what is being sent
+ * out of window in the meantime.
  */
 
 const ALL_TYPES = Object.keys(DEFAULT_TEMPLATES.he) as MessageTemplateType[]
@@ -56,14 +58,6 @@ const LANG_TABS: Array<{ locale: AppLocale; label: string }> = [
   { locale: 'he', label: 'עברית' },
   { locale: 'en', label: 'English' },
 ]
-
-/** The Meta template Lessio itself registers for a type, if there is one. */
-function builtInTemplateName(type: MessageTemplateType, locale: AppLocale): string | null {
-  if (type === 'lesson_cancelled_by_teacher') {
-    return LESSON_CANCELLED_BY_TEACHER_TEMPLATE[locale].name
-  }
-  return getApprovedTemplate(type, locale)?.name ?? null
-}
 
 /**
  * Reads stored statuses, pulling them from the WABA first when none exist yet.
@@ -94,59 +88,6 @@ async function loadStatusesWithCatchUp(
     return existing
   }
   return getTemplateStatuses(orgId)
-}
-
-/**
- * Picks the status to show for one card.
- *
- * An org-authored submission wins over the built-in template — it is what the
- * send path will use once approved. Highest version first, which is the order
- * getTemplateStatuses returns.
- */
-function statusForType(
-  rows: TemplateStatusRow[],
-  type: MessageTemplateType,
-  locale: AppLocale,
-  currentBody: string
-): {
-  status: string
-  metaName: string
-  reason: string | null
-  source: 'custom' | 'builtin'
-  isStale: boolean
-} | null {
-  const custom = rows.find((r) => r.type === type && r.language === locale)
-
-  if (custom) {
-    // Approved copy that no longer matches what the org has saved: the bot is
-    // sending last-approved wording out of window. Worth flagging, not blocking.
-    let isStale = false
-    if (custom.status === 'APPROVED' && custom.bodyText) {
-      const rebuilt = buildMetaSubmission(type, locale, currentBody)
-      isStale = rebuilt.ok && rebuilt.bodyText !== custom.bodyText
-    }
-    return {
-      status: custom.status,
-      metaName: custom.templateName,
-      reason: custom.reason,
-      source: 'custom',
-      isStale,
-    }
-  }
-
-  const builtIn = builtInTemplateName(type, locale)
-  if (!builtIn) return null
-
-  const row = rows.find((r) => r.templateName === builtIn && r.language === locale)
-  if (!row) return null
-
-  return {
-    status: row.status,
-    metaName: row.templateName,
-    reason: row.reason,
-    source: 'builtin',
-    isStale: false,
-  }
 }
 
 export default async function MessageTemplatesPage({
@@ -183,7 +124,7 @@ export default async function MessageTemplatesPage({
     const customBody = customMap.get(type) ?? null
     const savedBody = customBody ?? DEFAULT_TEMPLATES[locale][type]
     const approval = OUT_OF_WINDOW_TYPES.includes(type)
-      ? statusForType(statusRows, type, locale, savedBody)
+      ? resolveTemplateApproval(statusRows, type, locale, savedBody, customBody !== null)
       : null
 
     return (

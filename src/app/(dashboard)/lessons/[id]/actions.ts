@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { runAfterResponse } from '@/lib/server/afterResponse'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { updateLessonStatus, LessonStatus } from '@/lib/lessons'
@@ -66,8 +67,9 @@ export async function setLessonStatus(
     if (alert) {
       return { error: null, chargeAlert: t(alert.message) }
     }
-    // Fire-and-forget: auto payment request if org has it enabled
-    void autoSendPaymentRequest(lessonId, orgId)
+    // After the response: auto payment request if the org has it enabled.
+    // autoSendPaymentRequest never throws.
+    await runAfterResponse(autoSendPaymentRequest(lessonId, orgId))
   }
 
   return { error: null }

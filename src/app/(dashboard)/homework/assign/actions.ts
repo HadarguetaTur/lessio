@@ -6,6 +6,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
+import { runAfterResponse } from '@/lib/server/afterResponse'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
@@ -142,8 +143,8 @@ export async function assignHomeworkAction(
     return { error: null, success: true, count: assignments.length }
   }
 
-  // Fire-and-forget: send WhatsApp message for each assignment.
-  // Failures here must not block the successful assignment creation.
+  // Sent after the response, not fire-and-forget: the send must not block
+  // or fail the assignment creation, but it must also outlive the lambda.
   const db = createServiceRoleClient()
   const { data: orgRow } = await db
     .from('organizations')
@@ -164,20 +165,25 @@ export async function assignHomeworkAction(
       return { error: null, success: true, count: assignments.length }
     }
 
-    for (const assignment of assignments) {
-      sendHomeworkAssignment({
-        orgId,
-        assignmentId: assignment.id,
-        accessToken,
-        phoneNumberId: org.whatsapp_phone_number_id,
-      }).catch((err) => {
-        console.error('[homework/assign] sendHomeworkAssignment failed', {
-          assignmentId: assignment.id,
-          orgId,
-          err,
-        })
-      })
-    }
+    const phoneNumberId = org.whatsapp_phone_number_id
+    await runAfterResponse(
+      Promise.all(
+        assignments.map((assignment) =>
+          sendHomeworkAssignment({
+            orgId,
+            assignmentId: assignment.id,
+            accessToken,
+            phoneNumberId,
+          }).catch((err) => {
+            console.error('[homework/assign] sendHomeworkAssignment failed', {
+              assignmentId: assignment.id,
+              orgId,
+              err,
+            })
+          })
+        )
+      )
+    )
   } else {
     console.warn('[homework/assign] No WhatsApp config — skipping send', { orgId })
   }

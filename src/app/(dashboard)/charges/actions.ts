@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { runAfterResponse } from '@/lib/server/afterResponse'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { markChargeAsPaid } from '@/lib/charges'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
@@ -32,19 +33,21 @@ export async function markAsPaid(
     return { error: t('charges.errors.updateStatusFailed') }
   }
 
-  // Fire-and-forget receipt issuance — must not block or fail the mark-paid response
-  issueReceiptForCharge(chargeId, orgId).catch((err) => {
-    console.error('[charges] receipt issuance failed — charge already marked paid', {
-      chargeId,
-      orgId,
-      err,
-    })
-  })
-
-  // Fire-and-forget email receipt notification
-  sendReceiptEmail(chargeId, orgId).catch((err) => {
-    console.error('[charges] receipt email failed', { chargeId, orgId, err })
-  })
+  // After the response — must not block or fail mark-paid, but must outlive the lambda.
+  await runAfterResponse(
+    Promise.all([
+      issueReceiptForCharge(chargeId, orgId).catch((err) => {
+        console.error('[charges] receipt issuance failed — charge already marked paid', {
+          chargeId,
+          orgId,
+          err,
+        })
+      }),
+      sendReceiptEmail(chargeId, orgId).catch((err) => {
+        console.error('[charges] receipt email failed', { chargeId, orgId, err })
+      }),
+    ])
+  )
 
   // Fire-and-forget: in-app notification for payment received (Sprint 25 Story 4)
   void (async () => {

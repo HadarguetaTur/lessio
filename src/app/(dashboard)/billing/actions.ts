@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { runAfterResponse } from '@/lib/server/afterResponse'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { assertOrgNotSaasReadOnly } from '@/lib/saas/featureGate'
@@ -174,14 +175,16 @@ export async function markBillingAsPaid(billingId: string) {
 
   revalidateBillingSurfaces(billing.student_id as string)
 
-  issueReceiptForCharge(chargeId, session.orgId).catch((err) => {
-    console.error('[billing] receipt issuance failed after mark paid', {
-      billingId,
-      chargeId,
-      orgId: session.orgId,
-      err,
+  await runAfterResponse(
+    issueReceiptForCharge(chargeId, session.orgId).catch((err) => {
+      console.error('[billing] receipt issuance failed after mark paid', {
+        billingId,
+        chargeId,
+        orgId: session.orgId,
+        err,
+      })
     })
-  })
+  )
 
   return { error: null }
 }

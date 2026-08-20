@@ -18,6 +18,7 @@
  */
 
 import { type NextRequest, NextResponse } from 'next/server'
+import { runAfterResponse } from '@/lib/server/afterResponse'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getRegistryEntry } from '@/lib/payments/registry'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
@@ -156,17 +157,22 @@ export async function POST(
     paymentReference,
   })
 
-  // Fire-and-forget receipt issuance for each charge — must not block 200 response
-  for (const chargeId of chargeIds) {
-    issueReceiptForCharge(chargeId, orgId).catch((err) => {
-      console.error('[payments/webhook] receipt issuance failed', {
-        provider,
-        orgId,
-        chargeId,
-        err,
-      })
-    })
-  }
+  // After the 200 — receipts must not block the provider's callback, but
+  // must outlive the lambda.
+  await runAfterResponse(
+    Promise.all(
+      chargeIds.map((chargeId) =>
+        issueReceiptForCharge(chargeId, orgId).catch((err) => {
+          console.error('[payments/webhook] receipt issuance failed', {
+            provider,
+            orgId,
+            chargeId,
+            err,
+          })
+        })
+      )
+    )
+  )
 
   return NextResponse.json({ ok: true }, { status: 200 })
 }

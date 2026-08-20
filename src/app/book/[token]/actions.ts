@@ -7,6 +7,7 @@
  */
 
 import { after } from 'next/server'
+import { DateTime } from 'luxon'
 import { verifyBookingToken, BookingTokenError } from '@/lib/jwt'
 import { decryptToken } from '@/lib/crypto'
 import {
@@ -195,7 +196,7 @@ async function sendWhatsAppConfirmation(
   const [parentResult, teacherResult, orgResult] = await Promise.all([
     db.from('parents').select('phone, preferred_locale').eq('id', parentId).eq('organization_id', organizationId).single(),
     db.from('teachers').select('profiles(full_name)').eq('id', teacherId).single(),
-    db.from('organizations').select('whatsapp_phone_number_id, whatsapp_access_token, default_locale').eq('id', organizationId).single(),
+    db.from('organizations').select('whatsapp_phone_number_id, whatsapp_access_token, default_locale, timezone').eq('id', organizationId).single(),
   ])
 
   if (parentResult.error || !parentResult.data) {
@@ -238,12 +239,12 @@ async function sendWhatsAppConfirmation(
   })
   const intlLocale = toIntlLocale(locale)
 
-  const date = new Date(startAt).toLocaleDateString(intlLocale, {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
-  })
-  const time = new Date(startAt).toLocaleTimeString(intlLocale, {
-    hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
-  })
+  // start_at is stored in UTC; the parent picked the slot in the org's
+  // timezone, so the confirmation must show that same wall-clock time.
+  const timezone = (orgData.timezone as string | null) ?? 'Asia/Jerusalem'
+  const startLocal = DateTime.fromISO(startAt, { zone: 'utc' }).setZone(timezone).setLocale(intlLocale)
+  const date = startLocal.toLocaleString({ weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const time = startLocal.toFormat('HH:mm')
   const body = await resolveTemplate(organizationId, 'booking_confirmation', {
     teacher_name: teacherName,
     date,

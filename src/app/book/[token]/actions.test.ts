@@ -163,6 +163,35 @@ describe('confirmBookingAction', () => {
     expect(mockSendTextMessage).toHaveBeenCalled()
   })
 
+  it('formats the confirmation time in the org timezone, not UTC', async () => {
+    mockConfirmBooking.mockResolvedValue(BOOKING_RESULT)
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'parents') return buildChain({ data: { phone: PARENT_PHONE }, error: null })
+      if (table === 'teachers') return buildChain({ data: { profiles: { full_name: TEACHER_NAME } }, error: null })
+      if (table === 'organizations') return buildChain({
+        data: {
+          whatsapp_phone_number_id: 'test-phone-id',
+          whatsapp_access_token: 'encrypted-test-token',
+          timezone: 'Asia/Jerusalem',
+        },
+        error: null,
+      })
+      return buildChain({ data: null, error: null })
+    })
+
+    await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
+
+    // 16:00Z on 2026-03-23 is 18:00 in Israel (UTC+2, before DST starts)
+    await new Promise(r => setTimeout(r, 10))
+    expect(mockResolveTemplate).toHaveBeenCalledWith(
+      ORG_ID,
+      'booking_confirmation',
+      expect.objectContaining({ time: '18:00' }),
+      expect.any(String)
+    )
+  })
+
   it('returns success even if WhatsApp confirmation send fails', async () => {
     mockConfirmBooking.mockResolvedValue(BOOKING_RESULT)
     mockSendTextMessage.mockRejectedValueOnce(new Error('Meta API down'))

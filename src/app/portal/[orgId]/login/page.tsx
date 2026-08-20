@@ -1,3 +1,4 @@
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { LoginForm } from './LoginForm'
 
 /**
@@ -17,5 +18,14 @@ export default async function LoginPage({
   const { orgId } = await params
   const { step, phone } = await searchParams
 
-  return <LoginForm orgId={orgId} step={step} phone={phone} />
+  // The business name appears in the consent line under the phone step — a
+  // parent agreeing to receive messages has to be told who will be sending them.
+  const db = createServiceRoleClient()
+  const { data: org } = await db
+    .from('organizations')
+    .select('name')
+    .eq('id', orgId)
+    .maybeSingle()
+
+  return <LoginForm orgId={orgId} step={step} phone={phone} orgName={(org?.name as string | null) ?? ''} />
 }

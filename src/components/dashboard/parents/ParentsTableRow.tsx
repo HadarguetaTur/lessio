@@ -2,7 +2,7 @@
 
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { useTranslations } from 'next-intl'
-import { BellOff } from 'lucide-react'
+import { BellOff, ShieldQuestion } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { TableRow, TableCell } from '@/components/ui/table'
 import { ParentRowActions, TeacherParentNotesRowActions } from '@/components/dashboard/parents/ParentSheet'
@@ -101,6 +101,15 @@ export function ParentsTableRow({
               >
                 <BellOff size={11} className="shrink-0" />
                 {t('optedOut')}
+              </span>
+            )}
+            {!parent.opted_out_at && !parent.consented_at && (
+              <span
+                title={t('consent.missingTooltip')}
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+              >
+                <ShieldQuestion size={11} className="shrink-0" />
+                {t('consent.missing')}
               </span>
             )}
           </div>

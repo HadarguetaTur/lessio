@@ -27,9 +27,11 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { entityType, rows } = body as {
+  const { entityType, rows, attestConsent } = body as {
     entityType: string
     rows: ValidatedRow[]
+    /** "Every parent in this file agreed to receive WhatsApp messages" — the import screen checkbox. */
+    attestConsent?: boolean
   }
 
   if (!VALID_TYPES.includes(entityType as EntityType)) {
@@ -42,7 +44,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const timezone = await getOrgTimezone(session.orgId)
-    const result = await executeImport(session.orgId, entityType as EntityType, rows, timezone, t)
+    const result = await executeImport(session.orgId, entityType as EntityType, rows, timezone, t, {
+      attestAll: attestConsent === true,
+      userId: session.userId,
+    })
 
     return NextResponse.json(result)
   } catch {

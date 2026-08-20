@@ -9,7 +9,7 @@ const initialState: LoginState = { error: null }
 
 // ── Phone step ────────────────────────────────────────────────────────────────
 
-function PhoneStep({ orgId }: { orgId: string }) {
+function PhoneStep({ orgId, orgName }: { orgId: string; orgName: string }) {
   const t = useTranslations('portal.login')
   const boundAction = requestOtpAction.bind(null, orgId)
   const [state, action, pending] = useActionState(boundAction, initialState)
@@ -51,6 +51,21 @@ function PhoneStep({ orgId }: { orgId: string }) {
         >
           {pending ? t('sendingCode') : t('sendCode')}
         </button>
+
+        {/* The terms already say entering the portal is acceptance; this is
+            where the parent actually gets to see that, plus the messaging
+            consent the WhatsApp bot relies on. */}
+        <p className="text-xs text-gray-500 leading-relaxed text-center">
+          {t('legal.prefix')}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            {t('legal.terms')}
+          </a>
+          {t('legal.and')}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            {t('legal.privacy')}
+          </a>
+          {t('legal.suffix', { orgName })}
+        </p>
       </form>
     </div>
   )
@@ -120,13 +135,15 @@ export function LoginForm({
   orgId,
   step,
   phone,
+  orgName,
 }: {
   orgId: string
   step?: string
   phone?: string
+  orgName: string
 }) {
   if (step === 'verify' && phone) {
     return <OtpStep orgId={orgId} phone={phone} />
   }
-  return <PhoneStep orgId={orgId} />
+  return <PhoneStep orgId={orgId} orgName={orgName} />
 }

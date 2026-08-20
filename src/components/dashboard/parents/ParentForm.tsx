@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,6 +26,9 @@ interface ParentFormProps {
     address?: string | null
     relation_type?: string | null
     notes?: string | null
+    /** Existing consent record (edit mode). When set, the checkbox is replaced by a summary. */
+    consent_source?: string | null
+    consented_at?: string | null
   }
   onSuccess?: () => void
   onCancel?: () => void
@@ -34,10 +37,13 @@ interface ParentFormProps {
 export function ParentForm({ action, defaultValues, onSuccess, onCancel }: ParentFormProps) {
   const t = useTranslations('parents')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
   const didSubmitRef = useRef(false)
   const [state, formAction, pending] = useActionState(action, null)
 
   const rel = (defaultValues?.relation_type ?? '') as RelationType
+  const consentedAt = defaultValues?.consented_at ?? null
+  const consentSource = defaultValues?.consent_source ?? null
 
   useEffect(() => {
     if (didSubmitRef.current && !pending && !state?.error) {
@@ -96,6 +102,30 @@ export function ParentForm({ action, defaultValues, onSuccess, onCancel }: Paren
           <option value="guardian">{t('fields.relationTypeGuardian')}</option>
           <option value="other">{t('fields.relationTypeOther')}</option>
         </select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>{t('consent.label')}</Label>
+        {consentedAt ? (
+          <p className="text-sm text-muted-foreground">
+            {t('consent.recorded', {
+              date: new Date(consentedAt).toLocaleDateString(locale === 'he' ? 'he-IL' : 'en-US'),
+              source: t(`consent.source.${consentSource ?? 'attested'}`),
+            })}
+          </p>
+        ) : (
+          <>
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                name="whatsapp_consent"
+                className="mt-0.5 size-4 shrink-0 rounded border-input accent-primary"
+              />
+              <span>{t('consent.checkbox')}</span>
+            </label>
+            <p className="text-xs text-muted-foreground">{t('consent.checkboxHint')}</p>
+          </>
+        )}
       </div>
 
       <div className="space-y-1.5">

@@ -33,6 +33,7 @@ import {
 import { parseTemplateStatusUpdates, type TemplateStatusUpdate } from '@/lib/whatsapp/parsePayload'
 import { upsertTemplateStatus } from '@/lib/whatsapp/templateStatus'
 import { isOptedOut, setParentOptOut } from '@/lib/whatsapp/optOut'
+import { recordParentConsent } from '@/lib/whatsapp/consent'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
 import { resolvePaymentLine, sumOpenCharges } from '@/lib/whatsapp/balance'
@@ -400,6 +401,16 @@ async function processMessage(
   // text to infer from. Only on a real signal — a bare "2" must not flip it.
   // Fire-and-forget: never block a reply on this.
   persistSenderLocale(db, org.id, sender, detected)
+
+  // A parent writing to the business number is opt-in under Meta's policy.
+  // Recorded once (never overwrites an earlier source), and marks the welcome
+  // notice as unnecessary — someone who wrote to us first does not need to be
+  // told who we are. Fire-and-forget.
+  if (sender.role === 'parent') {
+    void recordParentConsent({ parentId: sender.parentId, source: 'whatsapp_reply', markWelcomeSent: true }).catch(
+      (err) => console.warn('[whatsapp/webhook] Failed to record inbound consent', { orgId: org.id, err: String(err) })
+    )
+  }
 
   const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
 

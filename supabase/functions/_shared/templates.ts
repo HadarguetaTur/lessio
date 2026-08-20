@@ -55,6 +55,7 @@ export type MessageTemplateType =
   | 'unknown_intent_fallback'
   | 'lesson_cancelled_by_teacher'
   | 'day_off_decision'
+  | 'welcome_notice'
 
 /**
  * System-default strings per language (used when no custom template is
@@ -100,6 +101,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'עדכון חשוב 🗓️\nהמורה {{teacher_name}} לא זמין/ה בתאריכים {{date_range}}, ולכן השיעורים שנקבעו בתקופה הזו בוטלו.\nלא יבוצע חיוב על השיעורים האלה.\n\nלקביעת מועד חלופי אפשר לכתוב "הזמנה" 😊',
     day_off_decision:
       'עדכון לגבי בקשת החופש שלך לתאריכים {{date_range}}:\nהבקשה {{decision}}.',
+    welcome_notice:
+      'שלום! ההודעות בערוץ זה נשלחות מטעם {{org_name}} באמצעות Lessio — תזכורות לשיעורים, שיעורי בית ובקשות תשלום.\nאפשר להפסיק אותן בכל עת בתשובה "הסר".',
   },
   en: {
     booking_link:
@@ -140,6 +143,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'An important update 🗓️\n{{teacher_name}} is unavailable on {{date_range}}, so the lessons scheduled in that period have been cancelled.\nYou will not be charged for them.\n\nTo book a new time, just write "book" 😊',
     day_off_decision:
       'An update on your time-off request for {{date_range}}:\nthe request was {{decision}}.',
+    welcome_notice:
+      'Hi! Messages in this chat are sent on behalf of {{org_name}} via Lessio — lesson reminders, homework and payment requests.\nReply "stop" at any time to opt out.',
   },
 }
 

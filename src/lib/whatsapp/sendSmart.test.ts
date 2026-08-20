@@ -5,19 +5,19 @@ const {
   mockResolveTemplate,
   mockSendTextMessage,
   mockSendTemplateMessage,
-  mockIsOptedOut,
+  mockPrepareBusinessSend,
   mockGetApprovedCustomTemplate,
 } = vi.hoisted(() => ({
   mockCreateServiceRoleClient: vi.fn(),
   mockResolveTemplate: vi.fn(),
   mockSendTextMessage: vi.fn(),
   mockSendTemplateMessage: vi.fn(),
-  mockIsOptedOut: vi.fn(),
+  mockPrepareBusinessSend: vi.fn(),
   mockGetApprovedCustomTemplate: vi.fn(),
 }))
 
-vi.mock('./optOut', () => ({
-  isOptedOut: mockIsOptedOut,
+vi.mock('./consent', () => ({
+  prepareBusinessSend: mockPrepareBusinessSend,
 }))
 
 vi.mock('./templateStatus', () => ({
@@ -67,14 +67,14 @@ describe('sendSmartMessage', () => {
     mockResolveTemplate.mockResolvedValue('resolved body')
     mockSendTextMessage.mockResolvedValue(undefined)
     mockSendTemplateMessage.mockResolvedValue(undefined)
-    mockIsOptedOut.mockResolvedValue(false)
+    mockPrepareBusinessSend.mockResolvedValue({ ok: true })
     mockGetApprovedCustomTemplate.mockResolvedValue(null)
   })
 
-  describe('opt-out', () => {
+  describe('business-send gate (opt-out + welcome notice)', () => {
     it('sends nothing when the recipient opted out, inside the window', async () => {
       buildQueryMock({ data: { message_id: 'msg-1' }, error: null })
-      mockIsOptedOut.mockResolvedValue(true)
+      mockPrepareBusinessSend.mockResolvedValue({ ok: false, reason: 'opted_out' })
 
       const result = await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
 
@@ -85,7 +85,7 @@ describe('sendSmartMessage', () => {
 
     it('sends nothing when the recipient opted out, outside the window', async () => {
       buildQueryMock({ data: null, error: null })
-      mockIsOptedOut.mockResolvedValue(true)
+      mockPrepareBusinessSend.mockResolvedValue({ ok: false, reason: 'opted_out' })
 
       const result = await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
 
@@ -93,14 +93,38 @@ describe('sendSmartMessage', () => {
       expect(mockSendTemplateMessage).not.toHaveBeenCalled()
     })
 
-    it('checks the opt-out before spending a session-window query', async () => {
+    it('runs the gate before spending a session-window query, with the send credentials', async () => {
       const query = buildQueryMock({ data: null, error: null })
-      mockIsOptedOut.mockResolvedValue(true)
+      mockPrepareBusinessSend.mockResolvedValue({ ok: false, reason: 'opted_out' })
+
+      await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder', locale: 'en' })
+
+      expect(mockPrepareBusinessSend).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        phone: '+972501234567',
+        accessToken: 'token-1',
+        phoneNumberId: 'pn-1',
+        locale: 'en',
+      })
+      expect(query.maybeSingle).not.toHaveBeenCalled()
+    })
+
+    // The gate sends the welcome notice itself; the business message must
+    // follow it, never precede it.
+    it('sends the business message only after the gate resolved', async () => {
+      buildQueryMock({ data: { message_id: 'msg-1' }, error: null })
+      const order: string[] = []
+      mockPrepareBusinessSend.mockImplementation(async () => {
+        order.push('gate')
+        return { ok: true }
+      })
+      mockSendTextMessage.mockImplementation(async () => {
+        order.push('send')
+      })
 
       await sendSmartMessage({ ...BASE_PARAMS, templateType: 'lesson_reminder' })
 
-      expect(mockIsOptedOut).toHaveBeenCalledWith('org-1', '+972501234567')
-      expect(query.maybeSingle).not.toHaveBeenCalled()
+      expect(order).toEqual(['gate', 'send'])
     })
 
     it('reports a successful send so callers can tell the two apart', async () => {

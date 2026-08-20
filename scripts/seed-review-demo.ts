@@ -459,6 +459,14 @@ async function main(): Promise<void> {
           // beats every reminder cron burning a doomed API call and landing a
           // red #131030 row in /settings/reminders.
           opted_out_at: p.phone === VERIFIED_PARENT_PHONE ? null : now.toISO(),
+          // Consent evidence exists (the tutor declared it at signup), but the
+          // welcome notice is deliberately reset to null on the reviewer's own
+          // number so Video B shows the real thing: the one-time "who is
+          // messaging you and how to stop" notice landing before the first
+          // reminder. The fictional parents are opted out anyway.
+          consent_source: 'attested',
+          consented_at: now.toISO(),
+          welcome_sent_at: p.phone === VERIFIED_PARENT_PHONE ? null : now.toISO(),
         },
         { onConflict: 'id' }
       )

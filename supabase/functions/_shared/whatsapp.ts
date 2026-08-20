@@ -99,6 +99,7 @@ const APPROVED_TEMPLATES: Record<
     homework_reminder: { name: 'lessio_homework_reminder_he_v2', languageCode: 'he', bodyParamCount: 3 },
     homework_assignment: { name: 'lessio_homework_assignment_he_v2', languageCode: 'he', bodyParamCount: 3 },
     homework_graded: { name: 'lessio_homework_graded_he_v2', languageCode: 'he', bodyParamCount: 3 },
+    welcome_notice: { name: 'lessio_welcome_notice_he_v2', languageCode: 'he', bodyParamCount: 1 },
   },
   en: {
     lesson_reminder:  { name: 'lessio_lesson_reminder_en_v2',  languageCode: 'en', bodyParamCount: 3 },
@@ -107,6 +108,7 @@ const APPROVED_TEMPLATES: Record<
     homework_reminder: { name: 'lessio_homework_reminder_en_v2', languageCode: 'en', bodyParamCount: 3 },
     homework_assignment: { name: 'lessio_homework_assignment_en_v2', languageCode: 'en', bodyParamCount: 3 },
     homework_graded: { name: 'lessio_homework_graded_en_v2', languageCode: 'en', bodyParamCount: 3 },
+    welcome_notice: { name: 'lessio_welcome_notice_en_v2', languageCode: 'en', bodyParamCount: 1 },
   },
 }
 
@@ -201,6 +203,81 @@ async function getApprovedCustomTemplate(
 }
 
 /**
+ * Business-send gate: opt-out plus the one-time welcome notice.
+ * SYNC: mirrors prepareBusinessSend in src/lib/whatsapp/consent.ts.
+ *
+ * The crons are the highest-volume business-initiated sender in the product,
+ * so enforcing only in the Node path would leave an opted-out parent still
+ * receiving daily reminders, and a brand-new parent getting a reminder with no
+ * explanation of who is writing. Fails open on DB errors, matching the Node side.
+ */
+export async function prepareBusinessSend(
+  // deno-lint-ignore no-explicit-any
+  db: any,
+  orgId: string,
+  phone: string,
+  accessToken: string,
+  phoneNumberId: string,
+  locale: string = 'he'
+): Promise<{ ok: true } | { ok: false; reason: 'opted_out' }> {
+  const { data: parent, error: optOutError } = await db
+    .from('parents')
+    .select('opted_out_at')
+    .eq('organization_id', orgId)
+    .eq('phone', phone)
+    .maybeSingle()
+
+  if (optOutError) {
+    console.warn(`[sendSmart] opt-out lookup failed — allowing the send: ${optOutError.message}`)
+  } else if (parent?.opted_out_at) {
+    return { ok: false, reason: 'opted_out' }
+  }
+
+  // Atomic claim of the welcome notice: only the caller that flips NULL → now()
+  // sends it, so two crons racing on one parent cannot both send.
+  const { data: claimed, error: claimError } = await db
+    .from('parents')
+    .update({ welcome_sent_at: new Date().toISOString() })
+    .eq('organization_id', orgId)
+    .eq('phone', phone)
+    .is('welcome_sent_at', null)
+    .select('id')
+
+  if (claimError) {
+    console.warn(`[consent] welcome claim failed — skipping the notice: ${claimError.message}`)
+    return { ok: true }
+  }
+  const claimedParent = claimed?.[0]
+  if (!claimedParent) return { ok: true }
+
+  try {
+    const { data: org } = await db
+      .from('organizations')
+      .select('name')
+      .eq('id', orgId)
+      .maybeSingle()
+
+    const tmpl = APPROVED_TEMPLATES[locale]?.welcome_notice ?? APPROVED_TEMPLATES.he.welcome_notice
+    const fallbackName = locale === 'en' ? 'your tutor' : 'בית הספר'
+    await sendTemplateMessage(phone, accessToken, phoneNumberId, tmpl.name, tmpl.languageCode, [
+      { type: 'body', parameters: [metaParam(org?.name, fallbackName)] },
+    ])
+    console.info(`[consent] welcome notice sent to parent ${claimedParent.id}`)
+  } catch (err) {
+    // Release the claim so the next send retries — usually the template is
+    // still PENDING at Meta. The business message still goes out.
+    console.warn(`[consent] welcome notice failed — will retry on next send: ${String(err)}`)
+    const { error: releaseError } = await db
+      .from('parents')
+      .update({ welcome_sent_at: null })
+      .eq('id', claimedParent.id)
+    if (releaseError) console.error(`[consent] failed to release welcome claim: ${releaseError.message}`)
+  }
+
+  return { ok: true }
+}
+
+/**
  * Session-window aware send. Mirrors src/lib/whatsapp/sendSmart.ts.
  *
  * @param db  Supabase service-role client
@@ -231,20 +308,8 @@ export async function sendSmartMessage(
   locale: string = 'he',
   namedVars?: Record<string, string>
 ): Promise<void> {
-  // Opt-out gate. The crons are the highest-volume business-initiated sender in
-  // the product, so enforcing only in the Node path (src/lib/whatsapp/sendSmart.ts)
-  // would leave an opted-out parent still receiving daily reminders.
-  // Fails open on a DB error, matching src/lib/whatsapp/optOut.ts.
-  const { data: parent, error: optOutError } = await db
-    .from('parents')
-    .select('opted_out_at')
-    .eq('organization_id', orgId)
-    .eq('phone', phone)
-    .maybeSingle()
-
-  if (optOutError) {
-    console.warn(`[sendSmart] opt-out lookup failed — allowing the send: ${optOutError.message}`)
-  } else if (parent?.opted_out_at) {
+  const gate = await prepareBusinessSend(db, orgId, phone, accessToken, phoneNumberId, locale)
+  if (!gate.ok) {
     console.info(`[sendSmart] Recipient opted out — skipping ${templateType}`)
     return
   }

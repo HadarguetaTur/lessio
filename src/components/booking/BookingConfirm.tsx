@@ -124,6 +124,21 @@ export function BookingConfirm({
         >
           {confirming ? t('submitting') : t('submit')}
         </button>
+
+        {/* Booking is one of the places a parent consents directly: the
+            confirmation and later reminders for this lesson go out over
+            WhatsApp, so the terms and that fact are shown before they commit. */}
+        <p className="text-xs text-muted-foreground leading-relaxed text-center">
+          {t('legal.prefix')}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            {t('legal.terms')}
+          </a>
+          {t('legal.and')}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            {t('legal.privacy')}
+          </a>
+          {t('legal.suffix')}
+        </p>
     </div>
   )
 }

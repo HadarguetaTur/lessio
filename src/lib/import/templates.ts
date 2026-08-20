@@ -39,6 +39,7 @@ const COLUMNS: Record<EntityType, ColumnDef[]> = {
     { field: 'phone', required: true },
     { field: 'notes', required: false },
     { field: 'student_names', required: false },
+    { field: 'whatsapp_consent', required: false },
   ],
   teachers: [
     { field: 'full_name', required: true },
@@ -67,6 +68,7 @@ const COLUMNS: Record<EntityType, ColumnDef[]> = {
     { field: 'parent_address', required: false },
     { field: 'student_notes', required: false },
     { field: 'parent_notes', required: false },
+    { field: 'parent_whatsapp_consent', required: false },
   ],
   'lessons-history': [
     { field: 'teacher_name', required: true },

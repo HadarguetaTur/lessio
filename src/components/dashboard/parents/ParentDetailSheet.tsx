@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { Star, Phone, BellOff } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -18,6 +18,7 @@ import {
   archiveParent,
   restoreParent,
   sendPaymentRequestAction,
+  attestParentConsentAction,
   type ParentSheetData,
 } from '@/app/(dashboard)/parents/actions'
 import type { Parent } from '@/lib/parents'
@@ -67,11 +68,24 @@ export function ParentDetailSheet({
   const t = useTranslations('parents')
   const tStudents = useTranslations('students')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
   const router = useRouter()
   const [state, setState] = useState<SheetState>({ status: 'idle' })
   const [editing, setEditing] = useState(false)
+  const [attesting, setAttesting] = useState(false)
 
   const canMutate = role === 'owner' || role === 'admin'
+
+  async function handleAttest() {
+    if (!parentId) return
+    setAttesting(true)
+    try {
+      const result = await attestParentConsentAction(parentId)
+      if (!result.error) handleSaved()
+    } finally {
+      setAttesting(false)
+    }
+  }
   const canSendPaymentRequest = canMutate
 
   useEffect(() => {
@@ -207,6 +221,31 @@ export function ParentDetailSheet({
                         {parent.address}
                       </DataRow>
                     )}
+                    <DataRow label={t('consent.label')}>
+                      {parent.consented_at ? (
+                        <span className="text-muted-foreground">
+                          {t('consent.recorded', {
+                            date: new Date(parent.consented_at).toLocaleDateString(locale === 'he' ? 'he-IL' : 'en-US'),
+                            source: t(`consent.source.${parent.consent_source ?? 'attested'}`),
+                          })}
+                        </span>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-muted-foreground">{t('consent.missing')}</span>
+                          {canMutate && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              disabled={attesting}
+                              onClick={handleAttest}
+                            >
+                              {attesting ? t('consent.marking') : t('consent.mark')}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </DataRow>
                   </dl>
                 </SectionCard>
 
@@ -320,6 +359,8 @@ export function ParentDetailSheet({
                           address: parent.address,
                           relation_type: parent.relation_type,
                           notes: parent.notes,
+                          consent_source: parent.consent_source,
+                          consented_at: parent.consented_at,
                         }}
                         onSuccess={handleSaved}
                         onCancel={() => setEditing(false)}

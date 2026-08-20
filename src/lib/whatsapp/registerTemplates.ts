@@ -163,6 +163,26 @@ export const TEMPLATES: TemplateDefinition[] = [
     bodyText: 'An update on your time-off request for {{1}}: the request was {{2}}. Thank you!',
     example: [['20/08–22/08', 'approved']],
   },
+  // ── Welcome notice (opt-in) ─────────────────────────────────────────────
+  // Sent once, before the first business-initiated message a parent ever gets
+  // from this number (src/lib/whatsapp/consent.ts). By definition that is a
+  // cold start outside the 24h window, so it has to be a template. {{1}} is
+  // the business name, kept mid-sentence because Meta rejects a variable at
+  // the very start or end of the body.
+  {
+    name: 'lessio_welcome_notice_he_v2',
+    language: 'he',
+    bodyText:
+      'שלום! ההודעות בערוץ זה נשלחות מטעם {{1}} באמצעות Lessio — תזכורות לשיעורים, שיעורי בית ובקשות תשלום. אפשר להפסיק אותן בכל עת בתשובה "הסר".',
+    example: [['מרכז הלמידה של אהרון']],
+  },
+  {
+    name: 'lessio_welcome_notice_en_v2',
+    language: 'en',
+    bodyText:
+      'Hi! Messages in this chat are sent on behalf of {{1}} via Lessio — lesson reminders, homework and payment requests. Reply "stop" at any time to opt out.',
+    example: [['Brightpath Tutoring']],
+  },
   // ── Menu with quick-reply buttons ───────────────────────────────────────
   // Free-form interactive messages are rejected outside the 24h window, so the
   // tappable menu needs a template twin. Meta stores only the labels; the

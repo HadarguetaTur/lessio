@@ -27,6 +27,7 @@ import {
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { recordParentConsent } from '@/lib/whatsapp/consent'
 import { parseAppLocale, resolveRecipientLocale, toIntlLocale } from '@/lib/i18n/locale'
 
 /**
@@ -159,6 +160,13 @@ export async function confirmBookingAction(
     const db = createServiceRoleClient()
 
     const result = await confirmBooking({ lockId, studentId, teacherId, organizationId })
+
+    // The confirm screen carries the terms + messaging line, so completing a
+    // booking is direct consent from the parent. Never overwrites an earlier
+    // record, and must not cost a confirmed booking if it fails.
+    await recordParentConsent({ parentId, source: 'booking' }).catch((err) =>
+      console.warn('[confirmBookingAction] Failed to record booking consent', { orgId: organizationId, parentId, err: String(err) })
+    )
 
     // Sprint 1 flow step 12: send WhatsApp confirmation to parent.
     // A send failure must not roll back a confirmed booking, and the send must

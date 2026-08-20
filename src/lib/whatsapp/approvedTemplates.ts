@@ -34,10 +34,30 @@ export type ApprovedTemplate = {
  * same vars map feeds the free-text templates where a leading "\n" is normal
  * (due_line, feedback_line). Normalise at this single choke point.
  */
-export function param(value: string | undefined, fallback: string): { type: 'text'; text: string } {
-  const text = (value ?? '').replace(/\s+/g, ' ').trim()
+export function param(
+  value: string | undefined,
+  fallback: string,
+  maxLen?: number
+): { type: 'text'; text: string } {
+  let text = (value ?? '').replace(/\s+/g, ' ').trim()
+  if (maxLen !== undefined && text.length > maxLen) {
+    text = `${text.slice(0, Math.max(0, maxLen - 1)).trimEnd()}…`
+  }
   return { type: 'text', text: text || fallback }
 }
+
+/**
+ * Meta caps a rendered template body (fixed copy + substituted parameters) at
+ * 1024 characters and rejects the whole send otherwise. Free-text fields that a
+ * teacher types (homework title/body, grading feedback) are the only inputs
+ * that can realistically blow that budget, so they are truncated here. The
+ * budgets leave comfortable headroom for the fixed copy in both languages.
+ */
+export const PARAM_LIMITS = {
+  homework_title: 150,
+  homework_body: 600,
+  homework_feedback: 500,
+} as const
 
 /**
  * Approved template registry, keyed by language.
@@ -99,7 +119,7 @@ const HE_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = {
         type: 'body',
         parameters: [
           param(vars.student_name, 'התלמיד'),
-          param(vars.homework_title ?? vars.title, 'שיעורי בית'),
+          param(vars.homework_title ?? vars.title, 'שיעורי בית', PARAM_LIMITS.homework_title),
           param(vars.due_date, 'מחר'),
         ],
       },
@@ -113,8 +133,8 @@ const HE_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = {
       {
         type: 'body',
         parameters: [
-          param(vars.title, 'שיעורי בית'),
-          param(vars.body, 'ראו פרטים באזור האישי'),
+          param(vars.title, 'שיעורי בית', PARAM_LIMITS.homework_title),
+          param(vars.body, 'ראו פרטים באזור האישי', PARAM_LIMITS.homework_body),
           param(vars.due_line, 'ללא תאריך הגשה'),
         ],
       },
@@ -128,9 +148,9 @@ const HE_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = {
       {
         type: 'body',
         parameters: [
-          param(vars.title, 'שיעורי בית'),
+          param(vars.title, 'שיעורי בית', PARAM_LIMITS.homework_title),
           param(vars.score, '0'),
-          param(vars.feedback_line, 'אין משוב נוסף.'),
+          param(vars.feedback_line, 'אין משוב נוסף.', PARAM_LIMITS.homework_feedback),
         ],
       },
     ],
@@ -148,6 +168,19 @@ const HE_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = {
           param(vars.date_range, ''),
           param(vars.decision, 'עודכנה'),
         ],
+      },
+    ],
+  },
+
+  welcome_notice: {
+    // The one-time opt-in notice (src/lib/whatsapp/consent.ts). Always a cold
+    // start, so always a template.
+    name: 'lessio_welcome_notice_he_v2',
+    languageCode: 'he',
+    buildComponents: (vars) => [
+      {
+        type: 'body',
+        parameters: [param(vars.org_name, 'בית הספר')],
       },
     ],
   },
@@ -195,6 +228,7 @@ const EN_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = Obj
           due_date: vars.due_date || 'tomorrow',
           feedback_line: vars.feedback_line || 'No additional feedback.',
           decision: vars.decision || 'updated',
+          org_name: vars.org_name || 'your tutor',
         }),
     } satisfies ApprovedTemplate,
   ])

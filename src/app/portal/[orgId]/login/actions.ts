@@ -9,6 +9,7 @@ import { sendOtp } from '@/lib/whatsapp/sendOtp'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { generateOtp, storeOtp, verifyOtp, countRecentOtpRequests } from '@/lib/portal/otp'
 import { setPortalSessionCookie } from '@/lib/portal/session'
+import { recordParentConsent } from '@/lib/whatsapp/consent'
 import { requireFeature } from '@/lib/saas/featureGate'
 
 const PhoneSchema = z.object({
@@ -144,6 +145,11 @@ export async function verifyOtpAction(
 
   const valid = await verifyOtp({ phone, orgId, otp: parsed.data.otp })
   if (!valid) return { error: 'wrongCode' }
+
+  // The login form carries the terms + messaging consent line, and a verified
+  // OTP is the parent proving the number is theirs — the strongest consent
+  // evidence the product can collect. Never overwrites an earlier record.
+  await recordParentConsent({ parentId: parent.id, source: 'portal' })
 
   await setPortalSessionCookie({ parentId: parent.id, orgId })
   redirect(`/portal/${orgId}/home`)

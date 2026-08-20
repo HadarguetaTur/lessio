@@ -22,6 +22,10 @@ vi.mock('@/lib/whatsapp/sendSmart', () => ({
   sendSmartMessage: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/whatsapp/consent', () => ({
+  prepareBusinessSend: vi.fn().mockResolvedValue({ ok: true }),
+}))
+
 vi.mock('@/lib/whatsapp/templates', () => ({
   resolveTemplate: vi.fn().mockResolvedValue('resolved-body'),
 }))
@@ -40,6 +44,7 @@ import {
 } from './index'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { sendTemplateWithQuickReplies } from '@/lib/whatsapp/interactive'
+import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
 import { notifyMultiple } from '@/lib/notifications'
 
@@ -47,6 +52,7 @@ const mockSendTemplateWithQuickReplies = vi.mocked(sendTemplateWithQuickReplies)
 const mockSendTextMessage = vi.mocked(sendTextMessage)
 const mockSendSmartMessage = vi.mocked(sendSmartMessage)
 const mockNotifyMultiple = vi.mocked(notifyMultiple)
+const mockPrepareBusinessSend = vi.mocked(prepareBusinessSend)
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -335,6 +341,36 @@ describe('approveDayOffRequest', () => {
 
     expect(mockSendTemplateWithQuickReplies).toHaveBeenCalledTimes(2)
     expect(outcome).toMatchObject({ parentsNotified: 2, parentsFailed: 0 })
+  })
+
+  // The parent notice sends via sendTemplateWithQuickReplies, not
+  // sendSmartMessage, so it used to reach opted-out parents. An opted-out
+  // parent is skipped rather than counted as a failure — nothing went wrong.
+  it('skips an opted-out parent without counting them as failed', async () => {
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    approvalScript({
+      lessons: {
+        select: {
+          data: [lessonWithParent('parent-1'), lessonWithParent('parent-2')],
+          error: null,
+        },
+        update: { data: [{ id: 'a' }, { id: 'b' }], error: null },
+      },
+    })
+    mockPrepareBusinessSend
+      .mockResolvedValueOnce({ ok: false, reason: 'opted_out' })
+      .mockResolvedValueOnce({ ok: true })
+
+    const outcome = await approveDayOffRequest({
+      requestId: REQUEST_ID,
+      decidedByProfileId: DECIDER,
+      ctx: CTX,
+    })
+
+    expect(mockSendTemplateWithQuickReplies).toHaveBeenCalledTimes(1)
+    expect(outcome).toMatchObject({ parentsNotified: 1, parentsFailed: 0 })
+
+    consoleInfoSpy.mockRestore()
   })
 
   it('carries the rebooking payload so the parent gets a fresh link on tap', async () => {

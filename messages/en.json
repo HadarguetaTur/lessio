@@ -59,7 +59,14 @@
       "held": "This time is held for you for another {countdown}",
       "heldExpired": "The hold on this time has expired",
       "submit": "Confirm booking",
-      "submitting": "Booking your lesson..."
+      "submitting": "Booking your lesson...",
+      "legal": {
+        "prefix": "By confirming you accept the ",
+        "terms": "Terms of Use",
+        "and": " and ",
+        "privacy": "Privacy Policy",
+        "suffix": ", and agree to receive WhatsApp messages about this lesson. Reply \"stop\" at any time to opt out."
+      }
     },
     "success": {
       "title": "Your lesson is booked",
@@ -588,6 +595,23 @@
     "optedOut": "Opted out",
     "optedOutTooltip": "Replied STOP on WhatsApp. Automated messages are blocked; replies to their own messages still go through.",
     "optedOutError": "This parent asked to stop receiving WhatsApp messages, so nothing was sent.",
+    "consent": {
+      "label": "WhatsApp messaging consent",
+      "checkbox": "This parent agreed to receive operational WhatsApp messages (reminders, homework, payments)",
+      "checkboxHint": "Either way the parent receives a one-time welcome notice explaining who is writing and how to opt out.",
+      "recorded": "Recorded on {date} ({source})",
+      "missing": "No consent on file",
+      "missingTooltip": "No explicit consent was recorded. Messages are still sent, and the first one is a welcome notice with an opt-out.",
+      "mark": "Mark consent received",
+      "marking": "Saving...",
+      "source": {
+        "attested": "declared by the business",
+        "import": "import",
+        "portal": "parent portal",
+        "booking": "booking form",
+        "whatsapp_reply": "WhatsApp message"
+      }
+    },
     "emptyNotes": "No notes",
     "statusActive": "Active",
     "statusInactive": "Inactive",
@@ -1752,6 +1776,8 @@
     "saving": "Saving...",
     "convertButton": "Convert Lead",
     "converting": "Converting...",
+    "whatsappConsent": "This parent agreed to receive operational WhatsApp messages",
+    "whatsappConsentHint": "A lead who messaged on WhatsApp is already recorded as consent. Ticking this records your explicit declaration.",
     "parentNameLabel": "Parent Name",
     "parentNamePlaceholder": "Parent's full name",
     "studentNameLabel": "Student Name",
@@ -2504,6 +2530,13 @@
       "phoneSubtitle": "Enter your phone number and we'll send you a verification code",
       "otpTitle": "Enter verification code",
       "otpSubtitle": "We sent a 6-digit code to your WhatsApp",
+      "legal": {
+        "prefix": "By continuing you accept the ",
+        "terms": "Terms of Use",
+        "and": " and ",
+        "privacy": "Privacy Policy",
+        "suffix": ", and agree to receive WhatsApp messages from {orgName}. Reply \"stop\" at any time to opt out."
+      },
       "phoneLabel": "Phone number",
       "otpLabel": "Verification code",
       "sendCode": "Send verification code",
@@ -2996,6 +3029,10 @@
     "title": "Import {entity}",
     "downloadTemplate": "Download Template",
     "requiredFields": "Required fields: {fields}",
+    "consent": {
+      "attestAll": "Every parent in this file agreed to receive WhatsApp messages",
+      "attestAllHint": "Optional. You can also mark consent per row in a \"whatsapp_consent\" column. Parents without consent get a welcome notice before the first message."
+    },
     "uploadFile": "Upload another file",
     "dropzone": {
       "title": "Drag a file here or click to browse",
@@ -3102,7 +3139,9 @@
       "parent_relation_type": "Parent relation type",
       "second_phone": "Second phone (parent import)",
       "address": "Address (parent import)",
-      "relation_type": "Relation type (parent import)"
+      "relation_type": "Relation type (parent import)",
+      "whatsapp_consent": "WhatsApp consent",
+      "parent_whatsapp_consent": "Parent WhatsApp consent"
     },
     "validation": {
       "fullNameRequired": "Full name is required",
@@ -3230,6 +3269,12 @@
             "description": "Student names, comma separated",
             "ex1": "Jane Smith",
             "ex2": "Tom Brown"
+          },
+          "whatsapp_consent": {
+            "header": "whatsapp_consent",
+            "description": "Whether the parent agreed to receive WhatsApp messages. Write \"yes\" or leave empty",
+            "ex1": "yes",
+            "ex2": ""
           }
         },
         "teachers": {
@@ -3367,6 +3412,12 @@
             "header": "parent_notes",
             "description": "Notes about the parent",
             "ex1": "",
+            "ex2": ""
+          },
+          "parent_whatsapp_consent": {
+            "header": "parent_whatsapp_consent",
+            "description": "Whether the parent agreed to receive WhatsApp messages. Write \"yes\" or leave empty",
+            "ex1": "yes",
             "ex2": ""
           }
         },

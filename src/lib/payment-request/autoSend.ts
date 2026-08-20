@@ -14,6 +14,7 @@ import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { sendTextMessage } from '@/lib/whatsapp'
+import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { buildPaymentRequestMessage } from './index'
@@ -131,6 +132,14 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
       paymentResult.url,
       recipientLocale
     )
+
+    // Business-initiated and sent via sendTextMessage, so the opt-out /
+    // welcome-notice gate is applied explicitly here.
+    const gate = await prepareBusinessSend({ orgId, phone: parent.phone, accessToken, phoneNumberId, locale: recipientLocale })
+    if (!gate.ok) {
+      console.info('[autoSendPaymentRequest] parent opted out — not sending', { orgId, lessonId })
+      return
+    }
 
     try {
       await sendTextMessage(parent.phone, message, accessToken, phoneNumberId)

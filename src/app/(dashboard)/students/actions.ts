@@ -78,7 +78,7 @@ export async function createStudent(
   const addParentOn = formData.get('add_parent') === 'on'
   let parentPlan:
     | { mode: 'existing'; parentId: string }
-    | { mode: 'new'; full_name: string; phone: string; email: string | null; relation_type: string | null }
+    | { mode: 'new'; full_name: string; phone: string; email: string | null; relation_type: string | null; consent_attested: boolean }
     | null = null
 
   if (addParentOn) {
@@ -118,7 +118,9 @@ export async function createStudent(
       }
 
       const relation_type = relRaw && PARENT_RELATIONS.has(relRaw) ? relRaw : null
-      parentPlan = { mode: 'new', full_name: pfn, phone: pPhone, email: parentEmail, relation_type }
+      const consentRaw = formData.get('new_parent_whatsapp_consent')
+      const consent_attested = consentRaw === 'on' || consentRaw === 'true' || consentRaw === '1'
+      parentPlan = { mode: 'new', full_name: pfn, phone: pPhone, email: parentEmail, relation_type, consent_attested }
     }
   }
 
@@ -211,6 +213,9 @@ export async function createStudent(
           email: parentPlan.email,
           relation_type: parentPlan.relation_type,
           notes: null,
+          ...(parentPlan.consent_attested
+            ? { consent_source: 'attested', consented_at: new Date().toISOString(), consented_by: session.userId }
+            : {}),
         })
         .select('id')
         .single()

@@ -20,7 +20,7 @@ import { sendTextMessage, sendTemplateMessage } from './index'
 import { getApprovedTemplate } from './approvedTemplates'
 import { getApprovedCustomTemplate } from './templateStatus'
 import { buildCustomComponents } from './submitTemplate'
-import { isOptedOut } from './optOut'
+import { prepareBusinessSend } from './consent'
 
 /** Why a send did not happen. `sent: true` means it was handed to Meta. */
 export type SmartSendResult = { sent: true } | { sent: false; reason: 'opted_out' }
@@ -30,8 +30,9 @@ export type SmartSendResult = { sent: true } | { sent: false; reason: 'opted_out
  * 24h customer-service window is open.
  *
  * Every caller is business-initiated (reminders, notifications, dashboard
- * buttons), so this is the enforcement point for opt-out. Direct replies to an
- * inbound message do not come through here and are never blocked.
+ * buttons), so this is the enforcement point for opt-out and for the one-time
+ * welcome notice (src/lib/whatsapp/consent.ts). Direct replies to an inbound
+ * message do not come through here and are never blocked.
  */
 export async function sendSmartMessage(params: {
   orgId: string
@@ -44,9 +45,10 @@ export async function sendSmartMessage(params: {
 }): Promise<SmartSendResult> {
   const { orgId, phone, accessToken, phoneNumberId, templateType, vars, locale = 'he' } = params
 
-  if (await isOptedOut(orgId, phone)) {
+  const gate = await prepareBusinessSend({ orgId, phone, accessToken, phoneNumberId, locale })
+  if (!gate.ok) {
     console.info('[sendSmart] Recipient opted out — not sending', { orgId, templateType })
-    return { sent: false, reason: 'opted_out' }
+    return { sent: false, reason: gate.reason }
   }
 
   const inWindow = await isInSessionWindow(orgId, phone)

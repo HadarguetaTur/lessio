@@ -22,8 +22,8 @@ import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { sendTextMessage } from '@/lib/whatsapp'
-import { isOptedOut } from '@/lib/whatsapp/optOut'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
+import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { getTranslations } from 'next-intl/server'
 import { generateAndStoreInvoice } from '@/lib/billing/invoices/generateInvoicePdf'
 import { generateAndStoreCreditNote } from '@/lib/billing/invoices/generateCreditNotePdf'
@@ -566,18 +566,21 @@ async function sendBillingPaymentRequestCore(
 
   if (!parent?.phone) throw new Error(t('billing.errors.parentMissingPhone'))
 
-  // Business-initiated, and it sends via sendTextMessage rather than
-  // sendSmartMessage, so the opt-out gate has to be applied explicitly. Checked
-  // before the payment link is created — creating one nobody will be sent is waste.
-  if (await isOptedOut(orgId, parent.phone as string)) {
-    console.info('[billing] payment request skipped — parent opted out', { billingId, orgId })
-    return 'opted_out'
-  }
-
   const locale = resolveRecipientLocale({
     stored: parent.preferred_locale as string | null,
     orgDefault: org.default_locale as string | null,
   })
+
+  // Business-initiated, and it sends via sendTextMessage rather than
+  // sendSmartMessage, so the opt-out / welcome-notice gate has to be applied
+  // explicitly. Checked before the payment link is created — creating one
+  // nobody will be sent is waste.
+  const accessToken = decryptToken(encryptedToken)
+  const gate = await prepareBusinessSend({ orgId, phone: parent.phone as string, accessToken, phoneNumberId, locale })
+  if (!gate.ok) {
+    console.info('[billing] payment request skipped — parent opted out', { billingId, orgId })
+    return 'opted_out'
+  }
   // Everything below is read by the parent, not by whoever clicked Send.
   const tr = await getT('billing', locale)
 
@@ -623,7 +626,6 @@ async function sendBillingPaymentRequestCore(
     .eq('organization_id', orgId)
 
   // Build and send WhatsApp message via template
-  const accessToken = decryptToken(encryptedToken)
   const body = await resolveTemplate(orgId, 'payment_request', {
     amount: Number(charge.amount).toFixed(2),
     description: tr('paymentDescriptionShort', { month: billing.billing_month as string }),

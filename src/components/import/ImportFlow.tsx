@@ -27,6 +27,10 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [parsing, setParsing] = useState(false)
+  const [attestConsent, setAttestConsent] = useState(false)
+
+  /** Only these imports create parent rows, so only they ask about consent. */
+  const createsParents = entityType === 'parents' || entityType === 'family-list'
 
   const entityTitle = useMemo(() => {
     switch (entityType) {
@@ -118,7 +122,7 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
       const res = await fetch('/api/import/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entityType, rows: rowsToImport }),
+        body: JSON.stringify({ entityType, rows: rowsToImport, attestConsent }),
       })
 
       const data = await res.json()
@@ -144,6 +148,7 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
     setExcludedRows(new Set())
     setImportResult(null)
     setError(null)
+    setAttestConsent(false)
   }
 
   const validCount = rows.filter(
@@ -225,6 +230,21 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
           )}
 
           <ImportPreviewTable rows={rows} excludedRows={excludedRows} onToggleRow={handleToggleRow} />
+
+          {createsParents && (
+            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={attestConsent}
+                  onChange={(e) => setAttestConsent(e.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 rounded border-input accent-primary"
+                />
+                <span>{t('consent.attestAll')}</span>
+              </label>
+              <p className="text-xs text-muted-foreground mt-1 ms-6">{t('consent.attestAllHint')}</p>
+            </div>
+          )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 

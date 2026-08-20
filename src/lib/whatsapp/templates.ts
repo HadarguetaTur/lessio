@@ -37,6 +37,7 @@ export type MessageTemplateType =
   | 'unknown_intent_fallback'
   | 'lesson_cancelled_by_teacher'
   | 'day_off_decision'
+  | 'welcome_notice'
 
 /**
  * System-default strings per language (used when no custom template is
@@ -83,6 +84,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'עדכון חשוב 🗓️\nהמורה {{teacher_name}} לא זמין/ה בתאריכים {{date_range}}, ולכן השיעורים שנקבעו בתקופה הזו בוטלו.\nלא יבוצע חיוב על השיעורים האלה.\n\nלקביעת מועד חלופי אפשר לכתוב "הזמנה" 😊',
     day_off_decision:
       'עדכון לגבי בקשת החופש שלך לתאריכים {{date_range}}:\nהבקשה {{decision}}.',
+    welcome_notice:
+      'שלום! ההודעות בערוץ זה נשלחות מטעם {{org_name}} באמצעות Lessio — תזכורות לשיעורים, שיעורי בית ובקשות תשלום.\nאפשר להפסיק אותן בכל עת בתשובה "הסר".',
   },
   en: {
     booking_link:
@@ -123,6 +126,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'An important update 🗓️\n{{teacher_name}} is unavailable on {{date_range}}, so the lessons scheduled in that period have been cancelled.\nYou will not be charged for them.\n\nTo book a new time, just write "book" 😊',
     day_off_decision:
       'An update on your time-off request for {{date_range}}:\nthe request was {{decision}}.',
+    welcome_notice:
+      'Hi! Messages in this chat are sent on behalf of {{org_name}} via Lessio — lesson reminders, homework and payment requests.\nReply "stop" at any time to opt out.',
   },
 }
 
@@ -255,6 +260,7 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   unknown_intent_fallback: [],
   lesson_cancelled_by_teacher: ['teacher_name', 'date_range'],
   day_off_decision: ['date_range', 'decision'],
+  welcome_notice: ['org_name'],
 }
 
 /**
@@ -284,6 +290,7 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
     unknown_intent_fallback: 'הודעת ברירת מחדל (כוונה לא מזוהה)',
     lesson_cancelled_by_teacher: 'ביטול שיעורים בעקבות חופשת מורה (להורה)',
     day_off_decision: 'החלטה על בקשת חופש (למורה)',
+    welcome_notice: 'הודעת פתיחה (נשלחת פעם אחת לפני ההודעה הראשונה להורה)',
   },
   en: {
     booking_link: 'Booking link',
@@ -305,6 +312,7 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
     unknown_intent_fallback: 'Default reply (intent not recognised)',
     lesson_cancelled_by_teacher: 'Lessons cancelled for teacher time off (to parent)',
     day_off_decision: 'Time-off request decision (to teacher)',
+    welcome_notice: 'Welcome notice (sent once, before the first message to a parent)',
   },
 }
 
@@ -331,4 +339,5 @@ export const TEMPLATE_PREVIEW_VARS: Record<MessageTemplateType, Record<string, s
   unknown_intent_fallback: {},
   lesson_cancelled_by_teacher: { teacher_name: 'אהרון כהן', date_range: '20/08–22/08' },
   day_off_decision: { date_range: '20/08–22/08', decision: 'אושרה ✅' },
+  welcome_notice: { org_name: 'מרכז הלמידה של אהרון' },
 }

@@ -31,6 +31,55 @@ async function clearStudentPrimaryParents(
     .eq('is_primary', true)
 }
 
+/**
+ * WhatsApp consent recorded at import time.
+ *
+ * `attestAll` is the checkbox on the import screen ("every parent in this file
+ * agreed"); the per-row column overrides nothing — either signal is enough.
+ * Rows without a signal are imported with no consent record, which is legal:
+ * they still get the one-time welcome notice before the first business send.
+ */
+export type ImportConsent = { attestAll: boolean; userId: string | null }
+
+/**
+ * Truthy values for the optional consent column, Hebrew and English. Keyed
+ * rather than listed for the same reason as normalizedImportedRelationType
+ * below: these are spreadsheet tokens being parsed, not copy shown to anyone,
+ * so they belong in the parser rather than in the message catalogs.
+ */
+const CONSENT_TRUTHY: Record<string, true> = {
+  yes: true,
+  y: true,
+  true: true,
+  '1': true,
+  v: true,
+  x: true,
+  כן: true,
+  אושר: true,
+  מאושר: true,
+  הסכים: true,
+  הסכימה: true,
+}
+
+function normalizedImportedConsent(v: string | null | undefined): boolean {
+  if (!v?.trim()) return false
+  return CONSENT_TRUTHY[v.trim().toLowerCase()] === true
+}
+
+/** The consent columns to merge into a parent insert, or {} when there is no signal. */
+function consentColumns(
+  consent: ImportConsent | undefined,
+  rowValue: string | null | undefined
+): Record<string, string | null> {
+  if (!consent) return {}
+  if (!consent.attestAll && !normalizedImportedConsent(rowValue)) return {}
+  return {
+    consent_source: 'import',
+    consented_at: new Date().toISOString(),
+    consented_by: consent.userId,
+  }
+}
+
 function normalizedImportedRelationType(v: string | null | undefined): string | null {
   if (!v?.trim()) return null
   const s = v.trim().toLowerCase()
@@ -86,7 +135,8 @@ export async function executeImport(
   entityType: EntityType,
   validRows: ValidatedRow[],
   timezone: string,
-  tImport: ImportTranslateFn
+  tImport: ImportTranslateFn,
+  consent?: ImportConsent
 ): Promise<ImportResult> {
   const db = createServiceRoleClient()
   const result: ImportResult = { inserted: 0, updated: 0, skipped: 0, errors: [] }
@@ -105,7 +155,7 @@ export async function executeImport(
     case 'students':
       return importStudents(db, orgId, rows, result, tImport)
     case 'parents':
-      return importParents(db, orgId, rows, result, tImport)
+      return importParents(db, orgId, rows, result, tImport, consent)
     case 'teachers':
       return importTeachers(db, orgId, rows, result, tImport)
     case 'lessons-schedule':
@@ -113,7 +163,7 @@ export async function executeImport(
     case 'lessons-history':
       return importLessonHistory(db, orgId, rows, result, timezone, tImport)
     case 'family-list':
-      return importFamilyList(db, orgId, rows, result, tImport)
+      return importFamilyList(db, orgId, rows, result, tImport, consent)
   }
 }
 
@@ -211,7 +261,8 @@ async function importParents(
   orgId: string,
   rows: ValidatedRow[],
   result: ImportResult,
-  t: ImportTranslateFn
+  t: ImportTranslateFn,
+  consent?: ImportConsent
 ): Promise<ImportResult> {
   // Pre-fetch students for student_names linking
   const { data: students } = await db
@@ -295,6 +346,7 @@ async function importParents(
           second_phone: secondPhoneCol,
           address: row.data.address?.trim() || null,
           relation_type: relationTypeCol,
+          ...consentColumns(consent, row.data.whatsapp_consent),
         })
         .select('id')
         .single()
@@ -726,7 +778,8 @@ async function upsertParent(
   result: ImportResult,
   rowIndex: number,
   t: ImportTranslateFn,
-  extras?: ParentUpsertExtras | null
+  extras?: ParentUpsertExtras | null,
+  consentCols?: Record<string, string | null>
 ): Promise<string | null> {
   const extrasSafe: ParentUpsertExtras = extras ?? {
     email: null,
@@ -767,6 +820,7 @@ async function upsertParent(
       second_phone: extrasSafe.second_phone,
       address: extrasSafe.address,
       relation_type: extrasSafe.relation_type,
+      ...(consentCols ?? {}),
     })
     .select('id')
     .single()
@@ -800,7 +854,8 @@ async function importFamilyList(
   orgId: string,
   rows: ValidatedRow[],
   result: ImportResult,
-  t: ImportTranslateFn
+  t: ImportTranslateFn,
+  consent?: ImportConsent
 ): Promise<ImportResult> {
   result.linkedRelationships = 0
 
@@ -846,7 +901,8 @@ async function importFamilyList(
       result,
       row.rowIndex + 2,
       t,
-      parentExtrasPrimary
+      parentExtrasPrimary,
+      consentColumns(consent, row.data.parent_whatsapp_consent ?? row.data.whatsapp_consent)
     )
     if (!parentId) continue
 
@@ -864,7 +920,8 @@ async function importFamilyList(
           result,
           row.rowIndex + 2,
           t,
-          null
+          null,
+          consentColumns(consent, row.data.parent_whatsapp_consent ?? row.data.whatsapp_consent)
         )
       } catch { /* invalid phone2 — skip silently, primary parent still processes */ }
     }

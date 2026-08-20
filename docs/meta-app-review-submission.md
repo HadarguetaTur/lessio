@@ -231,6 +231,12 @@ wants in each video. One filming session, two edits. Then:
    already open the reviewer sees the org's own template copy rather than the fixed Meta-approved
    wording — the better demonstration of the product.
 
+   The seed leaves `welcome_sent_at` NULL on the reviewer's own number, so this take shows the
+   **welcome notice arriving first** — *"messages in this chat are sent on behalf of Brightpath
+   Tutoring… reply stop to opt out"* — immediately followed by the reminder. Caption: *"The first
+   message a parent ever receives explains who is writing and how to stop."* Press the button a
+   second time to show only the reminder arrives: the notice is one-time.
+
 3. **Opt-out (30s).** Reviewers weight this heavily. From the phone, send `stop`. Show the
    confirmation, cut to the parent's row in `/parents` now carrying the **Opted out** badge, then
    press "Send payment request" on that parent and show it refuse. Send `start` to restore, so the
@@ -242,7 +248,7 @@ wants in each video. One filming session, two edits. Then:
 ### Before recording
 
 ```bash
-npx tsx scripts/seed-review-demo.ts         # rolls tomorrow's lesson forward, clears opt-outs
+npx tsx scripts/seed-review-demo.ts         # rolls tomorrow's lesson forward, clears opt-outs + welcome notice
 npx tsx scripts/connect-demo-whatsapp.ts    # refresh the 24h token first
 npx tsx scripts/diagnose-demo-whatsapp.ts   # must be all ✓
 npx tsx scripts/check-stored-whatsapp-token.ts  # proves the stored token can SEND, not just read
@@ -326,6 +332,14 @@ common rejection. Do not paste the same text into both fields.
 > a lesson, check their balance and pay, or ask for a human. Every request is executed against that
 > specific tutor's own schedule and billing data.
 >
+> **Opt-in**: the first business-initiated message Lessio ever sends a parent is preceded by a
+> one-time notice that names the tutoring business the messages come from, lists what will be sent
+> — lesson reminders, homework and payment requests — and gives the stop word. It is sent once per
+> parent and recorded, so no one receives a reminder from a number they cannot place. The tutor
+> also records, per parent, how consent was obtained: declared by the business when the parent was
+> added or imported, given by the parent when they sign in to the parent portal or confirm a
+> booking, or implied by the parent messaging the business first.
+>
 > **Opt-out**: a parent replying "stop" is recorded immediately, and from that moment Lessio sends
 > them no business-initiated message of any kind — reminders, payment requests and homework
 > notices are all blocked. Replies to messages the parent themselves sends are still answered.
@@ -334,6 +348,13 @@ common rejection. Do not paste the same text into both fields.
 > Each tutoring business performs all of this from its own Lessio dashboard, and every message is
 > sent from that business's own phone number using the credentials obtained through Embedded
 > Signup.
+
+The opt-in paragraph is a real product feature too: `prepareBusinessSend`
+(`src/lib/whatsapp/consent.ts`, mirrored for the crons in `supabase/functions/_shared/whatsapp.ts`)
+claims `parents.welcome_sent_at` atomically and sends `lessio_welcome_notice_{he,en}_v2` before the
+message that triggered it. Consent evidence lives on `parents.consent_source` / `consented_at`, and
+`/parents` shows a badge for anyone without it. Video B step 2 shows the notice arriving ahead of
+the first reminder.
 
 The opt-out paragraph is a real product feature rather than a claim: `stop` (or `הסר`) sets
 `parents.opted_out_at`, which blocks every business-initiated send in both the Node path

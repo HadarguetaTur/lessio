@@ -18,13 +18,14 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
   const [parentFullName, setParentFullName] = useState('')
   const [studentFullName, setStudentFullName] = useState('')
   const [grade, setGrade] = useState('')
+  const [whatsappConsent, setWhatsappConsent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     startTransition(async () => {
-      const result = await convertLeadAction(leadId, parentFullName, studentFullName, grade)
+      const result = await convertLeadAction(leadId, parentFullName, studentFullName, grade, whatsappConsent)
       if (result.error) {
         setError(result.error)
         return
@@ -89,6 +90,20 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
           placeholder={t('gradePlaceholder')}
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         />
+      </div>
+
+      {/* WhatsApp consent attestation */}
+      <div>
+        <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={whatsappConsent}
+            onChange={(e) => setWhatsappConsent(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 rounded border-gray-300"
+          />
+          <span>{t('whatsappConsent')}</span>
+        </label>
+        <p className="text-xs text-gray-500 mt-1">{t('whatsappConsentHint')}</p>
       </div>
 
       {error && (

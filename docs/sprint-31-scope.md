@@ -191,6 +191,87 @@ was treated as a stranger. Decision #26's "resolve actor identity" was half-impl
 
 ---
 
+## Story 9 — Parent Messaging Consent (Opt-in) 🟠 (M, one migration) — ✅ DONE
+
+Story 8 recorded consent being *withdrawn*. Nothing recorded it being *given*. Every parent row is
+entered by the tutoring business — dashboard form, CSV import, lead conversion — and the first
+thing a parent ever heard from the number was a lesson reminder or a payment request. The Terms
+pushed the whole duty onto the customer (`TermsHe.tsx:135`) and separately claimed that *"entering
+the parent portal"* constitutes acceptance — while the portal login showed no terms and linked to
+nothing. Meta's messaging policy expects an opt-in story, and the App Review submission had only
+the opt-out half of it.
+
+### Closed decision: notice, not a block
+
+A parent with no consent record still receives messages. Blocking would silently mute every legacy
+and imported parent — worse for the tutor and worse for the parent than one explanatory message.
+Instead the **first** business-initiated message to any parent is preceded by a one-time welcome
+notice naming the business, listing what will be sent, and giving the stop word. Consent from the
+other sources is *recorded as evidence*, and never changes send behaviour.
+
+### 9a: Schema
+- **Migration** `20260820000001_parent_consent.sql` — on `parents`: `consent_source`
+  (`attested|import|portal|booking|whatsapp_reply`, CHECK-constrained), `consented_at`,
+  `consented_by` (→ `profiles`, set only for staff-declared consent), `welcome_sent_at`
+- `welcome_sent_at` is deliberately independent of `consented_at`: consent is the evidence, the
+  notice is what the parent actually sees. `opted_out_at` is unchanged and always wins over both
+
+### 9b: One gate for every business-initiated send
+- `src/lib/whatsapp/consent.ts` — `prepareBusinessSend({orgId, phone, accessToken, phoneNumberId, locale})`
+  → `{ok:true} | {ok:false, reason:'opted_out'}`. Opt-out check, then an **atomic** claim
+  (`UPDATE … WHERE welcome_sent_at IS NULL RETURNING id`) so two crons racing on one parent cannot
+  both send the notice. A send failure releases the claim, so the next message retries instead of
+  skipping the notice forever
+- Fail-open throughout, including against thrown exceptions — this gate fronts every reminder in
+  the product, so a DB blip must not become a messaging blackout
+- Deno mirror: `prepareBusinessSend` extracted in `supabase/functions/_shared/whatsapp.ts`, covering
+  all four reminder crons
+- **Three leaks closed** that Story 8 left open — business-initiated parent sends that used
+  `sendTextMessage`/`sendTemplateWithQuickReplies` directly and never consulted `opted_out_at`:
+  `payment-request/autoSend.ts` (automatic payment request after a completed lesson),
+  `receipts/issueReceiptForCharge.ts` (receipt notice), `day-off/index.ts` (teacher time-off
+  cancellation notice; an opted-out parent is now `skipped`, not counted as `failed`)
+- Deliberately **not** gated: `sendOtp` (authentication, parent-initiated), booking confirmations,
+  and every webhook reply — an opted-out parent who asks a question still gets an answer
+
+### 9c: Welcome notice template
+- New `welcome_notice` type in `MessageTemplateType` / `DEFAULT_TEMPLATES` (he+en), mirrored
+  byte-identically into `supabase/functions/_shared/templates.ts`
+- Meta templates `lessio_welcome_notice_{he,en}_v2` (UTILITY, `{{1}}` = business name, kept
+  mid-sentence — Meta rejects a variable at the very start or end of a body)
+- Always sent as a template: first contact is a cold start by definition
+
+### 9d: Where consent is captured
+| Source | Where | Recorded as |
+|---|---|---|
+| Business declaration | checkbox on the parent form, the student form's inline new-parent block, and lead conversion | `attested` (+ `consented_by`) |
+| Import | optional `whatsapp_consent` / `parent_whatsapp_consent` column, **or** a single "all parents in this file agreed" checkbox on the import screen | `import` |
+| Parent portal | terms + messaging line under the phone step; recorded on successful OTP verify — the parent proving the number is theirs | `portal` |
+| Booking form | same line on the confirm step | `booking` |
+| Inbound WhatsApp | the parent writes to the business number, which Meta treats as opt-in | `whatsapp_reply` (also marks the notice unnecessary) |
+
+`recordParentConsent` never overwrites an existing record — the first evidence is the one that counts.
+
+### 9e: Dashboard + legal
+- "No consent on file" badge on `/parents` rows and in the detail sheet, plus a **Mark consent
+  received** action (`attestParentConsentAction`, owner/admin, `requireMutation`)
+- Portal login now actually shows the Terms and Privacy links it always claimed acceptance of
+- Terms §7 and Privacy §4.5 (he+en) describe the welcome notice, the consent record and the opt-out
+
+### Tests
+- `consent.test.ts` (12): opt-out refusal, he/en notice, one-time claim, race loser, claim release
+  on send failure, fail-open on DB error and on an outright throw, and each consent source
+- `autoSend.test.ts` (+2) and `day-off/index.test.ts` (+1): regression pins for the closed leaks
+- `sendSmart.test.ts`: gate is consulted before the session-window query, and the business message
+  follows the notice rather than preceding it
+
+### Deliberately out of scope
+- **Double opt-in** (blocking until the parent taps "confirm") — considered and rejected above
+- **Backfilling consent for existing parents**: `consented_at` stays NULL, which is honest. They
+  get the welcome notice on the next business send, which is the point
+
+---
+
 ## Ops / Meta Runbook (starts day one, runs in parallel)
 
 1. **Meta Business App:** create a Business-type app in the Meta Developer Console; add the WhatsApp product → `META_APP_ID`, `META_APP_SECRET`, `WHATSAPP_APP_SECRET` (the App Secret serves both OAuth exchange and webhook HMAC)

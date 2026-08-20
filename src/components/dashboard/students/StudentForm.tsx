@@ -300,6 +300,17 @@ export function StudentForm({
                       <option value="other">{tParents('fields.relationTypeOther')}</option>
                     </select>
                   </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="flex items-start gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="new_parent_whatsapp_consent"
+                        className="mt-0.5 size-4 shrink-0 rounded border-input accent-primary"
+                      />
+                      <span>{tParents('consent.checkbox')}</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground">{tParents('consent.checkboxHint')}</p>
+                  </div>
                 </div>
               )}
             </div>

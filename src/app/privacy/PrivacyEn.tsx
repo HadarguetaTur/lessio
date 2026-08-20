@@ -154,6 +154,13 @@ export function PrivacyEn({
               WhatsApp messages sent and/or received through the system, automatic reminders, system
               notifications, and records of support enquiries.
             </p>
+            <p>
+              We also keep a record of messaging consent: its source (declared by the business,
+              import, parent portal sign-in, booking form, or the parent messaging the business
+              first), when it was given, which member of the business staff declared it, and when
+              the one-time welcome notice was sent. An opt-out request (&quot;stop&quot; / &quot;הסר&quot;) is
+              likewise recorded with its timestamp and blocks all future business-initiated messages.
+            </p>
           </SubSection>
           <SubSection title="4.6 Technical information and logs">
             <p>

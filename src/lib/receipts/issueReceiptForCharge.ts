@@ -18,6 +18,7 @@ import { decryptToken } from '@/lib/crypto'
 import { getReceiptProvider } from './factory'
 import { ReceiptProviderNotConfiguredError } from './index'
 import { sendTextMessage } from '@/lib/whatsapp'
+import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
@@ -180,13 +181,20 @@ export async function issueReceiptForCharge(
   if (parentPhone && phoneNumberId && encryptedToken) {
     try {
       const accessToken = decryptToken(encryptedToken)
+      const locale = resolveRecipientLocale({
+        stored: parent?.preferred_locale,
+        orgDefault: org?.default_locale,
+      })
+      // Business-initiated: honour opt-out and the one-time welcome notice.
+      const gate = await prepareBusinessSend({ orgId, phone: parentPhone, accessToken, phoneNumberId, locale })
+      if (!gate.ok) {
+        console.info('[receipts] receipt notification skipped — parent opted out', { chargeId, orgId })
+        return receiptUrl
+      }
       const receiptBody = await resolveTemplate(orgId, 'receipt_notification', {
         amount: charge.amount.toFixed(2),
         receipt_url: receiptUrl,
-      }, resolveRecipientLocale({
-        stored: parent?.preferred_locale,
-        orgDefault: org?.default_locale,
-      }))
+      }, locale)
       await sendTextMessage(parentPhone, receiptBody, accessToken, phoneNumberId)
     } catch (err) {
       console.error('[receipts] Failed to send WhatsApp receipt message', {

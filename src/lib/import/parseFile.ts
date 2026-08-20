@@ -66,6 +66,10 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   parent_relation_type: ['סוג קשר', 'parent_relation_type', 'יחס הורה', 'relation_type', 'קשר'],
   parent_second_phone: ['טלפון נוסף הורה', 'parent_second_phone', 'second_phone_parent'],
   parent_address: ['כתובת הורה', 'parent_address', 'address_parent', 'כתובת'],
+  // Optional consent column. Any truthy value in the row records
+  // consent_source = 'import'; see normalizedImportedConsent in executeImport.ts.
+  whatsapp_consent: ['הסכמה לוואטסאפ', 'אישור הודעות', 'whatsapp_consent', 'consent', 'הסכמה'],
+  parent_whatsapp_consent: ['הסכמה לוואטסאפ הורה', 'parent_whatsapp_consent', 'אישור הודעות הורה'],
 }
 
 /**

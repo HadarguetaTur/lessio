@@ -16,7 +16,7 @@ import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { decryptToken } from '@/lib/crypto'
 import { sendTextMessage } from '@/lib/whatsapp'
-import { isOptedOut } from '@/lib/whatsapp/optOut'
+import { prepareBusinessSend, recordParentConsent } from '@/lib/whatsapp/consent'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { getTranslations } from 'next-intl/server'
@@ -30,6 +30,12 @@ function relationTypeFromForm(formData: FormData): string | null {
   const raw = (formData.get('relation_type') as string | null)?.trim() ?? ''
   if (!raw) return null
   return RELATION_VALUES.has(raw) ? raw : null
+}
+
+/** The "parent agreed to receive WhatsApp messages" checkbox on the parent forms. */
+function consentAttestedFromForm(formData: FormData): boolean {
+  const raw = formData.get('whatsapp_consent')
+  return raw === 'on' || raw === 'true' || raw === '1'
 }
 
 // Sync, so it cannot await a translator — it returns a catalog key and the
@@ -90,6 +96,7 @@ export async function createParent(
   requireMutation(session)
 
   const supabase = await createClient()
+  const attested = consentAttestedFromForm(formData)
 
   const { error } = await supabase
     .from('parents')
@@ -102,6 +109,9 @@ export async function createParent(
       second_phone: secondRes.phone,
       address,
       relation_type,
+      ...(attested
+        ? { consent_source: 'attested', consented_at: new Date().toISOString(), consented_by: session.userId }
+        : {}),
     })
 
   if (error) {
@@ -173,7 +183,37 @@ export async function updateParent(
     return { error: t('parents.errors.updateFailed') }
   }
 
+  // Only fills in consent when none is on file — an existing record (portal,
+  // WhatsApp reply) is better evidence than a checkbox ticked later.
+  if (consentAttestedFromForm(formData)) {
+    await recordParentConsent({ parentId: id, source: 'attested', consentedBy: session.userId })
+  }
+
   redirect('/parents')
+}
+
+/**
+ * "Mark consent received" from the parent detail sheet — for a parent who
+ * agreed verbally or on paper after the row was created.
+ */
+export async function attestParentConsentAction(
+  parentId: string
+): Promise<{ error: string | null }> {
+  const session = await getSession()
+  if (session.role !== 'owner' && session.role !== 'admin') {
+    return { error: await commonError('noPermission') }
+  }
+  requireMutation(session)
+
+  const parent = await getParentById(parentId, session.orgId)
+  if (!parent) {
+    const t = await getTranslations()
+    return { error: t('parents.errors.parentNotFound') }
+  }
+
+  await recordParentConsent({ parentId, source: 'attested', consentedBy: session.userId })
+  revalidatePath('/parents')
+  return { error: null }
 }
 
 async function assertTeacherCanAccessParent(
@@ -365,13 +405,6 @@ export async function sendPaymentRequestAction(
   if (!parent) return { error: t('parents.errors.parentNotFound') }
   if (!parent.phone) return { error: t('parents.errors.parentNoPhone') }
 
-  // A payment request is business-initiated, so the opt-out applies. This send
-  // uses sendTextMessage directly rather than sendSmartMessage, which is where
-  // the gate normally lives — hence the explicit check here.
-  if (await isOptedOut(orgId, parent.phone)) {
-    return { error: t('parents.optedOutError') }
-  }
-
   // Load open charges. A failure here used to escape the action and hit the
   // dashboard error boundary, replacing the page with a generic retry screen
   // instead of telling the user what went wrong.
@@ -417,6 +450,16 @@ export async function sendPaymentRequestAction(
   } catch (err) {
     console.error('[sendPaymentRequestAction] WhatsApp token decryption failed', { orgId, err })
     return { error: t('parents.errors.whatsappDecryptFailed') }
+  }
+
+  // A payment request is business-initiated: the opt-out applies and a parent
+  // hearing from us for the first time gets the welcome notice first. This send
+  // uses sendTextMessage directly rather than sendSmartMessage, which is where
+  // the gate normally lives — hence the explicit call. Before the payment link,
+  // so no link is minted for a message nobody will be sent.
+  const gate = await prepareBusinessSend({ orgId, phone: parent.phone, accessToken, phoneNumberId, locale: recipientLocale })
+  if (!gate.ok) {
+    return { error: t('parents.optedOutError') }
   }
 
   // Generate Cardcom payment link (fire-and-forget if provider not configured)

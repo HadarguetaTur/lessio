@@ -26,6 +26,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { sendReplyButtons, sendTemplateWithQuickReplies } from '@/lib/whatsapp/interactive'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
+import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { LESSON_CANCELLED_BY_TEACHER_TEMPLATE } from '@/lib/whatsapp/approvedTemplates'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { botString } from '@/lib/whatsapp/strings'
@@ -565,6 +566,20 @@ async function notifyParents(
     const vars = {
       teacher_name: teacherLabel(request, parent.locale),
       date_range: dateRange,
+    }
+
+    // Business-initiated: an opted-out parent is skipped (not a failure), and
+    // a first-contact parent gets the welcome notice before the cancellation.
+    const gate = await prepareBusinessSend({
+      orgId: ctx.orgId,
+      phone: parent.phone,
+      accessToken: ctx.accessToken,
+      phoneNumberId: ctx.phoneNumberId,
+      locale: parent.locale,
+    })
+    if (!gate.ok) {
+      console.info('[day-off] Parent opted out — notice skipped', { orgId: ctx.orgId, parentId })
+      continue
     }
 
     try {

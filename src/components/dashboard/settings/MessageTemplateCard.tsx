@@ -135,6 +135,13 @@ export function MessageTemplateCard({
   }
 
   const preview = substituteVars(body, previewVars)
+  // Nothing to submit while Meta is already reviewing this copy, or has
+  // approved exactly what is saved — a second submission would just open a
+  // duplicate review.
+  const alreadyAtMeta =
+    approval?.source === 'custom' &&
+    (approval.status === 'PENDING' || (approval.status === 'APPROVED' && !approval.isStale))
+
   const statusClass = approval
     ? STATUS_STYLES[approval.status] ?? 'bg-gray-100 text-gray-600 border-gray-300'
     : ''
@@ -179,7 +186,7 @@ export function MessageTemplateCard({
           onChange={e => setBody(e.target.value)}
           rows={4}
           dir={locale === 'he' ? 'rtl' : 'ltr'}
-          className={`w-full text-sm border rounded-md px-3 py-2 resize-y font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          className={`w-full text-sm border rounded-md px-3 py-2 resize-y font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             customBody === null ? 'text-gray-400 border-gray-200 bg-gray-50' : 'text-gray-900 border-gray-300 bg-white'
           }`}
           placeholder={defaultBody}
@@ -247,12 +254,12 @@ export function MessageTemplateCard({
                 {statusLabel}
               </span>
             ) : (
-              // No row yet. That may mean nothing was ever submitted, or just
-              // that we have not read this WABA's templates — the two are
-              // indistinguishable from here, so the chip says so rather than
-              // claiming a built-in template was never registered.
-              <span className="text-xs bg-gray-100 text-gray-600 border border-gray-300 rounded px-2 py-0.5 font-medium">
-                {t('status.UNKNOWN')}
+              // No row yet: the page already tried to pull statuses from the
+              // WABA on load, so this is a template Meta has not reported on.
+              // Built-in templates are always registered, so "pending" is the
+              // honest default until the next webhook or refresh.
+              <span className={`text-xs border rounded px-2 py-0.5 font-medium ${STATUS_STYLES.PENDING ?? 'bg-gray-100 text-gray-600 border-gray-300'}`}>
+                {t('status.PENDING')}
               </span>
             )}
 
@@ -283,7 +290,7 @@ export function MessageTemplateCard({
                 <button
                   type="button"
                   onClick={handleSubmitForApproval}
-                  disabled={submitPending || hasUnsavedEdits}
+                  disabled={submitPending || hasUnsavedEdits || alreadyAtMeta}
                   className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
                 >
                   {submitPending ? `${t('submitForApproval')}…` : t('submitForApproval')}

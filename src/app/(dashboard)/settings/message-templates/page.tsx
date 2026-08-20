@@ -18,7 +18,12 @@ import {
   LESSON_CANCELLED_BY_TEACHER_TEMPLATE,
 } from '@/lib/whatsapp/approvedTemplates'
 import { buildMetaSubmission, SUBMITTABLE_TYPES } from '@/lib/whatsapp/submitTemplate'
-import { getTemplateStatuses, type TemplateStatusRow } from '@/lib/whatsapp/templateStatus'
+import {
+  getTemplateStatuses,
+  refreshTemplateStatusesFromMeta,
+  type TemplateStatusRow,
+} from '@/lib/whatsapp/templateStatus'
+import { decryptToken } from '@/lib/crypto'
 
 /**
  * Message templates settings page — owner only.
@@ -58,6 +63,37 @@ function builtInTemplateName(type: MessageTemplateType, locale: AppLocale): stri
     return LESSON_CANCELLED_BY_TEACHER_TEMPLATE[locale].name
   }
   return getApprovedTemplate(type, locale)?.name ?? null
+}
+
+/**
+ * Reads stored statuses, pulling them from the WABA first when none exist yet.
+ *
+ * The status webhook only fires on a transition, so an org that connected
+ * before subscribing (or that never had a transition) would otherwise open
+ * this page to a column of "unknown" chips until someone presses refresh. A
+ * failed catch-up is not fatal — the page just shows what it has.
+ */
+async function loadStatusesWithCatchUp(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string
+): Promise<TemplateStatusRow[]> {
+  const existing = await getTemplateStatuses(orgId)
+  if (existing.length > 0) return existing
+
+  const { data: org } = await db
+    .from('organizations')
+    .select('whatsapp_waba_id, whatsapp_access_token')
+    .eq('id', orgId)
+    .maybeSingle()
+  if (!org?.whatsapp_waba_id || !org?.whatsapp_access_token) return existing
+
+  try {
+    await refreshTemplateStatusesFromMeta(orgId, org.whatsapp_waba_id, decryptToken(org.whatsapp_access_token))
+  } catch (err) {
+    console.warn('[message-templates] Initial status catch-up failed', { orgId, err })
+    return existing
+  }
+  return getTemplateStatuses(orgId)
 }
 
 /**
@@ -136,7 +172,7 @@ export default async function MessageTemplatesPage({
       .select('type, body_template')
       .eq('organization_id', orgId)
       .eq('locale', locale),
-    getTemplateStatuses(orgId),
+    loadStatusesWithCatchUp(db, orgId),
   ])
 
   const customMap = new Map<string, string>(

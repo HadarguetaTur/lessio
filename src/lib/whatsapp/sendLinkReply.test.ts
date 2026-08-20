@@ -55,7 +55,7 @@ const BASE = {
 describe('stripStandaloneVarLine', () => {
   it('lifts the URL line out of the default Hebrew booking template', () => {
     expect(stripStandaloneVarLine(DEFAULT_TEMPLATES.he.booking_link, 'booking_url')).toBe(
-      'הנה הקישור לקביעת שיעור 👇\n\nשימו לב: הקישור בתוקף ל-15 דקות.'
+      'הנה הקישור לקביעת שיעור 👇\n\nשימו לב: הקישור בתוקף ל-15 דקות, ואחרי בחירת מועד הוא שמור עבורכם ל-5 דקות עד לאישור.'
     )
   })
 

@@ -46,7 +46,7 @@ export type MessageTemplateType =
 export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, string>> = {
   he: {
     booking_link:
-      'הנה הקישור לקביעת שיעור 👇\n{{booking_url}}\n\nשימו לב: הקישור בתוקף ל-15 דקות.',
+      'הנה הקישור לקביעת שיעור 👇\n{{booking_url}}\n\nשימו לב: הקישור בתוקף ל-15 דקות, ואחרי בחירת מועד הוא שמור עבורכם ל-5 דקות עד לאישור.',
     booking_confirmation:
       '✅ השיעור נקבע!\n\nמורה: {{teacher_name}}\nתאריך: {{date}}\nשעה: {{time}}\n\nנתראה בשיעור 😊',
     lesson_reminder:
@@ -86,7 +86,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
   },
   en: {
     booking_link:
-      'Here is your link to book a lesson 👇\n{{booking_url}}\n\nHeads up: the link is valid for 15 minutes.',
+      'Here is your link to book a lesson 👇\n{{booking_url}}\n\nHeads up: the link is valid for 15 minutes, and once you pick a time it is held for you for 5 minutes while you confirm.',
     booking_confirmation:
       '✅ Your lesson is booked!\n\nTeacher: {{teacher_name}}\nDate: {{date}}\nTime: {{time}}\n\nSee you there 😊',
     lesson_reminder:
@@ -179,19 +179,20 @@ export async function resolveTemplate(
 
   try {
     const db = createServiceRoleClient()
+    // Exact language only. An org that customised its Hebrew copy but not its
+    // English copy must still get the English default — borrowing the Hebrew
+    // custom row here is how an English parent ends up with a Hebrew wrapper
+    // around English homework.
     const { data } = await db
       .from('message_templates')
-      .select('body_template, locale')
+      .select('body_template')
       .eq('organization_id', orgId)
       .eq('type', type)
-      .in('locale', locale === 'he' ? ['he'] : [locale, 'he'])
+      .eq('locale', locale)
+      .maybeSingle()
 
-    const rows = (data ?? []) as Array<{ body_template: string; locale: string }>
-    const custom =
-      rows.find((r) => r.locale === locale) ?? rows.find((r) => r.locale === 'he')
-
-    if (custom?.body_template) {
-      templateStr = custom.body_template
+    if (data?.body_template) {
+      templateStr = data.body_template
     }
   } catch (err) {
     console.error('[templates] DB error — falling back to default', { orgId, type, locale, err })

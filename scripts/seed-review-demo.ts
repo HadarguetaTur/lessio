@@ -763,11 +763,18 @@ async function main(): Promise<void> {
   }
 
   for (const [monthIndex, month] of months.entries()) {
-    const shouldBePaid = monthIndex < months.length - UNPAID_RECENT_MONTHS
+    const fullyPaidMonth = monthIndex < months.length - UNPAID_RECENT_MONTHS
+    // The current month is partially collected: two students in three have
+    // paid, one is still open. A dashboard where nothing this month is paid
+    // reads as a business nobody pays, and an all-paid month hides the
+    // reminder / mark-as-paid flow the screencast wants to show.
+    const isCurrentMonth = monthIndex === months.length - 1
     let monthTotal = 0
     let billed = 0
+    let paidCount = 0
 
     for (const [i] of STUDENTS.entries()) {
+      const shouldBePaid = fullyPaidMonth || (isCurrentMonth && i % 3 !== 2)
       const result = await buildStudentMonth(ORG_ID, studentId(i), month, TIMEZONE)
       if (result === 'skipped') continue
       if (isMissingFieldsError(result)) {
@@ -788,11 +795,21 @@ async function main(): Promise<void> {
         .maybeSingle()
       if (!billing || billing.is_paid) continue
 
-      const paidAt = DateTime.fromFormat(month, 'yyyy-MM', { zone: TIMEZONE })
-        .plus({ months: 1 })
-        .set({ day: 5, hour: 10 })
-        .toUTC()
-        .toISO()
+      // Past months settle on the 5th of the following month. The current
+      // month's payments are spread over the days already elapsed, so the
+      // "collected this month" KPI and any payment timeline look lived-in.
+      const paidAt = isCurrentMonth
+        ? now
+            .startOf('month')
+            .plus({ days: Math.min(1 + (i * 4) % Math.max(1, now.day - 1), now.day - 1), hours: 9 + (i % 6) })
+            .toUTC()
+            .toISO()
+        : DateTime.fromFormat(month, 'yyyy-MM', { zone: TIMEZONE })
+            .plus({ months: 1 })
+            .set({ day: 5, hour: 10 })
+            .toUTC()
+            .toISO()
+      paidCount++
       await expectOk(
         'mark billing paid',
         db
@@ -811,7 +828,7 @@ async function main(): Promise<void> {
     }
     console.log(
       `  ${month}: ₪${monthTotal.toFixed(2)} across ${billed} students` +
-        (shouldBePaid ? ' — paid' : ' — OPEN')
+        (fullyPaidMonth ? ' — paid' : isCurrentMonth ? ` — ${paidCount} paid, ${billed - paidCount} OPEN` : ' — OPEN')
     )
   }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { buildPaymentRequestMessage, logPaymentRequestSent } from './index'
+import { buildPaymentRequestMessage, logPaymentRequestSent, getPendingChargesForParent } from './index'
 import type { PaymentRequestCharge } from './index'
 
 // ── Mock clients for logPaymentRequestSent ────────────────────────────────────
@@ -8,10 +8,31 @@ const mockUpdate = vi.fn()
 const mockIn = vi.fn()
 const mockEq = vi.fn()
 
+/**
+ * Rows the mocked `charges` and `relationships` selects resolve to. Set per test
+ * by the getPendingChargesForParent suite; the other suites never read them.
+ */
+let chargesRows: unknown[] = []
+let relationshipRows: Array<{ student_id: string }> = []
+
+/**
+ * Minimal PostgREST builder stand-in: every filter returns `this`, and the
+ * builder itself is awaited at the end of the chain.
+ */
+function selectStub(rows: unknown[]) {
+  const builder: Record<string, unknown> = {}
+  for (const method of ['eq', 'in', 'order']) {
+    builder[method] = () => builder
+  }
+  builder.then = (resolve: (v: unknown) => unknown) => resolve({ data: rows, error: null })
+  return builder
+}
+
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => Promise.resolve({
-    from: () => ({
+    from: (table: string) => ({
       update: mockUpdate,
+      select: () => selectStub(table === 'relationships' ? relationshipRows : chargesRows),
     }),
   }),
 }))
@@ -94,6 +115,96 @@ describe('buildPaymentRequestMessage', () => {
     const msg = buildPaymentRequestMessage('אבי לוי', monthlyCharge, 'Asia/Jerusalem')
     expect(msg).toContain('חיוב חודשי')
     expect(msg).toContain('₪320.00')
+  })
+})
+
+// ── getPendingChargesForParent ────────────────────────────────────────────────
+
+describe('getPendingChargesForParent', () => {
+  beforeEach(() => {
+    chargesRows = []
+    relationshipRows = []
+  })
+
+  it('resolves the student name through lesson_students', async () => {
+    relationshipRows = [{ student_id: 'student-1' }]
+    chargesRows = [{
+      id: 'charge-1',
+      amount: '180',
+      charge_type: 'lesson',
+      lesson_id: 'lesson-1',
+      lessons: {
+        start_at: '2026-01-05T14:00:00.000Z',
+        lesson_students: [
+          { student_id: 'student-1', students: { full_name: 'דניאל אדמס' } },
+        ],
+      },
+    }]
+
+    const [charge] = await getPendingChargesForParent('parent-1', 'org-1')
+
+    expect(charge.student_name).toBe('דניאל אדמס')
+    expect(charge.lesson_start_at).toBe('2026-01-05T14:00:00.000Z')
+    expect(charge.amount).toBe(180)
+  })
+
+  it('never names a student from another family on a group lesson', async () => {
+    relationshipRows = [{ student_id: 'student-mine' }]
+    chargesRows = [{
+      id: 'charge-1',
+      amount: '180',
+      charge_type: 'lesson',
+      lesson_id: 'lesson-1',
+      lessons: {
+        start_at: '2026-01-05T14:00:00.000Z',
+        lesson_students: [
+          // Enrolled first, and belongs to a different parent.
+          { student_id: 'student-theirs', students: { full_name: 'ילד של משפחה אחרת' } },
+          { student_id: 'student-mine', students: { full_name: 'מאיה אדמס' } },
+        ],
+      },
+    }]
+
+    const [charge] = await getPendingChargesForParent('parent-1', 'org-1')
+
+    expect(charge.student_name).toBe('מאיה אדמס')
+  })
+
+  it('falls back to a null name when no enrolled student belongs to the parent', async () => {
+    relationshipRows = [{ student_id: 'student-mine' }]
+    chargesRows = [{
+      id: 'charge-1',
+      amount: '180',
+      charge_type: 'lesson',
+      lesson_id: 'lesson-1',
+      lessons: {
+        start_at: '2026-01-05T14:00:00.000Z',
+        lesson_students: [
+          { student_id: 'student-theirs', students: { full_name: 'ילד של משפחה אחרת' } },
+        ],
+      },
+    }]
+
+    const [charge] = await getPendingChargesForParent('parent-1', 'org-1')
+
+    expect(charge.student_name).toBeNull()
+  })
+
+  it('handles charges with no lesson at all (manual / monthly)', async () => {
+    relationshipRows = [{ student_id: 'student-1' }]
+    chargesRows = [{
+      id: 'charge-1',
+      amount: '320',
+      charge_type: 'monthly',
+      lesson_id: null,
+      lessons: null,
+    }]
+
+    const [charge] = await getPendingChargesForParent('parent-1', 'org-1')
+
+    expect(charge.student_name).toBeNull()
+    expect(charge.lesson_start_at).toBeNull()
+    expect(charge.charge_type).toBe('monthly')
   })
 })
 

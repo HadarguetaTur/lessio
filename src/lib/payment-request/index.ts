@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { toIntlLocale, type AppLocale } from '@/lib/i18n/locale'
+import { OPEN_CHARGE_STATUSES } from '@/lib/charges'
 
 export interface PaymentRequestCharge {
   id: string
@@ -53,7 +54,17 @@ const MESSAGE_STRINGS: Record<AppLocale, Record<string, string>> = {
 }
 
 /**
- * Fetches pending charges for a parent, including student name via lesson join.
+ * Fetches open charges for a parent, including the student name via the lesson.
+ *
+ * The student name is resolved through `lesson_students`, not a direct
+ * `lessons.student_id` — that column was dropped in 20260325000001 when lessons
+ * became many-to-many. Embedding `students` under `lessons` no longer resolves.
+ *
+ * A group lesson has several enrolled students, so the name is narrowed to the
+ * ones THIS parent is related to. Picking the first enrolment instead would put
+ * another family's child's name in a WhatsApp message. When the parent has no
+ * enrolled student on the lesson the name stays null and the line degrades to
+ * "Lesson, 12 August" — see buildPaymentRequestMessage.
  */
 export async function getPendingChargesForParent(
   parentId: string,
@@ -61,24 +72,40 @@ export async function getPendingChargesForParent(
 ): Promise<PaymentRequestCharge[]> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('charges')
-    .select('id, amount, charge_type, lesson_id, lessons(start_at, students(full_name))')
-    .eq('organization_id', orgId)
-    .eq('parent_id', parentId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
+  const [chargesRes, relationsRes] = await Promise.all([
+    supabase
+      .from('charges')
+      .select('id, amount, charge_type, lesson_id, lessons(start_at, lesson_students(student_id, students(full_name)))')
+      .eq('organization_id', orgId)
+      .eq('parent_id', parentId)
+      .in('status', [...OPEN_CHARGE_STATUSES])
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('relationships')
+      .select('student_id')
+      .eq('organization_id', orgId)
+      .eq('parent_id', parentId),
+  ])
 
-  if (error) throw new Error(`[getPendingChargesForParent] ${error.message}`)
+  if (chargesRes.error) throw new Error(`[getPendingChargesForParent] ${chargesRes.error.message}`)
+  if (relationsRes.error) throw new Error(`[getPendingChargesForParent] ${relationsRes.error.message}`)
+
+  const ownStudentIds = new Set((relationsRes.data ?? []).map((r) => r.student_id as string))
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data ?? []).map((c: any) => ({
-    id: c.id,
-    amount: Number(c.amount),
-    charge_type: c.charge_type,
-    lesson_start_at: c.lessons?.start_at ?? null,
-    student_name: c.lessons?.students?.full_name ?? null,
-  }))
+  return (chargesRes.data ?? []).map((c: any) => {
+    const enrolments: Array<{ student_id: string; students?: { full_name?: string } | null }> =
+      c.lessons?.lesson_students ?? []
+    const own = enrolments.find((e) => ownStudentIds.has(e.student_id))
+
+    return {
+      id: c.id,
+      amount: Number(c.amount),
+      charge_type: c.charge_type,
+      lesson_start_at: c.lessons?.start_at ?? null,
+      student_name: own?.students?.full_name ?? null,
+    }
+  })
 }
 
 /**

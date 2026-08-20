@@ -345,11 +345,20 @@ export async function sendPaymentRequestAction(
   parentId: string
 ): Promise<{ error: string | null }> {
   const t = await getTranslations()
-  const { orgId, role, userId } = await getSession()
+  const session = await getSession()
+  const { orgId, role, userId } = session
 
   if (role !== 'owner' && role !== 'admin') {
     return { error: await commonError('noPermission') }
   }
+
+  // This action creates a payment link, writes to `charges` and sends a real
+  // WhatsApp message to a parent — all of it forbidden in support mode. Returned
+  // rather than thrown so the button shows the reason inline.
+  if (session.isSupportMode) {
+    return { error: await commonError('supportModeReadOnly') }
+  }
+  requireMutation(session)
 
   // Load parent
   const parent = await getParentById(parentId, orgId)
@@ -363,8 +372,17 @@ export async function sendPaymentRequestAction(
     return { error: t('parents.optedOutError') }
   }
 
-  // Load pending charges
-  const charges = await getPendingChargesForParent(parentId, orgId)
+  // Load open charges. A failure here used to escape the action and hit the
+  // dashboard error boundary, replacing the page with a generic retry screen
+  // instead of telling the user what went wrong.
+  let charges: Awaited<ReturnType<typeof getPendingChargesForParent>>
+  try {
+    charges = await getPendingChargesForParent(parentId, orgId)
+  } catch (err) {
+    console.error('[sendPaymentRequestAction] Failed to load charges', { orgId, parentId, err })
+    return { error: t('parents.errors.loadParentFailed') }
+  }
+
   if (charges.length === 0) {
     return { error: t('parents.errors.noOpenCharges') }
   }

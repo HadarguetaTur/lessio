@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { getShareableBaseUrl } from "@/lib/url/appUrl";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://lessio.app";
+const siteUrl = getShareableBaseUrl();
 
 export async function generateMetadata(): Promise<Metadata> {
   // Must be a function, not a static object: the title, description and OG card

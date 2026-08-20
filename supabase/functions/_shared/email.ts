@@ -18,7 +18,7 @@ export interface SendEmailParams {
  */
 export async function sendEmail(params: SendEmailParams): Promise<void> {
   const apiKey = Deno.env.get('RESEND_API_KEY')
-  const fromEmail = params.from ?? Deno.env.get('RESEND_FROM_EMAIL') ?? 'noreply@lessio.app'
+  const fromEmail = params.from ?? Deno.env.get('RESEND_FROM_EMAIL') ?? 'support@getlessio.com'
 
   if (!apiKey) {
     console.warn('[email/deno] RESEND_API_KEY not set — skipping email send')

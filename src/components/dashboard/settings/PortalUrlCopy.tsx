@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Copy, Check } from 'lucide-react'
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
 interface PortalUrlCopyProps {
   orgId: string
@@ -12,8 +13,9 @@ export function PortalUrlCopy({ orgId }: PortalUrlCopyProps) {
   const t = useTranslations('common.actions')
   const [copied, setCopied] = useState(false)
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const portalUrl = `${appUrl}/portal/${orgId}`
+  // Owners copy this link and send it to parents, so it must be the public
+  // origin even when the dashboard itself is being served from localhost.
+  const portalUrl = `${getShareableBaseUrl()}/portal/${orgId}`
 
   async function handleCopy() {
     try {

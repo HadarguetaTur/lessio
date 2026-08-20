@@ -17,6 +17,7 @@
  */
 
 import type { PaymentProvider } from './index'
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
 export interface PayPlusConfig {
   apiKey: string
@@ -54,8 +55,7 @@ export class PayPlusProvider implements PaymentProvider {
     const { chargeId, amount, description, orgId } = params
     const { apiKey, secretKey, pageUid } = this.config
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-    const callbackUrl = `${appUrl}/api/payments/payplus`
+    const callbackUrl = `${getShareableBaseUrl()}/api/payments/payplus`
 
     const body = {
       payment_page_uid: pageUid,

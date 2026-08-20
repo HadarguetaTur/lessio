@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { CalendarSubscribeSection } from '@/components/dashboard/CalendarSubscribeSection'
 import { CalendarDays } from 'lucide-react'
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
 /**
  * Teacher calendar subscription page.
@@ -35,8 +36,8 @@ export default async function TeacherCalendarPage() {
     )
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const icalUrl = `${appUrl}/api/calendar/${teacher.ical_token}`
+  // Pasted into Google/Apple Calendar, which fetch it from their own servers.
+  const icalUrl = `${getShareableBaseUrl()}/api/calendar/${teacher.ical_token}`
 
   return (
     <div className="max-w-xl space-y-6">

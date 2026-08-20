@@ -1,7 +1,7 @@
 'use server'
 
 import { getLocale, getTranslations } from 'next-intl/server'
-import { headers } from 'next/headers'
+import { getRequestBaseUrl } from '@/lib/url/requestUrl'
 
 import {
   buildSignupSchema,
@@ -50,10 +50,7 @@ export async function signUp(
   }
 
   // Build the callback URL so the confirmation email lands the user on onboarding.
-  const headersList = await headers()
-  const host = headersList.get('host') ?? 'www.getlessio.com'
-  const proto = headersList.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https')
-  const appUrl = `${proto}://${host}`
+  const appUrl = await getRequestBaseUrl()
 
   // Trigger Supabase's confirmation email. Errors here are non-fatal — the user
   // can request a resend from the verify page.

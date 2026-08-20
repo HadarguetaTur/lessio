@@ -16,6 +16,8 @@
  * @see https://app.sumit.co.il/developers/api/
  */
 
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
+
 const SUMIT_API_BASE = 'https://api.sumit.co.il'
 
 export type SumitCheckoutParams = {
@@ -31,7 +33,7 @@ export type SumitCheckoutParams = {
   successUrl: string
   failureUrl: string
   /**
-   * When `SUMIT_CHECKOUT_MOCK=1`, redirects to `${NEXT_PUBLIC_APP_URL}${mockPaymentPath}` instead of `/onboarding/mock-payment`.
+   * When `SUMIT_CHECKOUT_MOCK=1`, redirects to the public origin + `mockPaymentPath` instead of `/onboarding/mock-payment`.
    */
   mockPaymentPath?: string
 }
@@ -80,7 +82,7 @@ export async function createSumitHostedCheckoutUrl(
   params: SumitCheckoutParams
 ): Promise<{ url: string } | { error: string }> {
   if (process.env.SUMIT_CHECKOUT_MOCK === '1') {
-    const base = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '')
+    const base = getShareableBaseUrl()
     const path = params.mockPaymentPath?.trim() || '/onboarding/mock-payment'
     const normalized = path.startsWith('/') ? path : `/${path}`
     // In-app simulated checkout page (not an instant redirect to dashboard).

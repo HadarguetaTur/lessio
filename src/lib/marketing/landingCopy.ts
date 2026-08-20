@@ -137,7 +137,7 @@ const landingEnCore = {
   },
   footer: {
     statusLabel: 'System live',
-    domain: 'lessio.app',
+    domain: 'getlessio.com',
     legalNavLabel: 'Legal',
     privacy: 'Privacy policy',
     terms: 'Terms of use',
@@ -288,7 +288,7 @@ const landingHeCore = {
   },
   footer: {
     statusLabel: 'מערכת פעילה',
-    domain: 'lessio.app',
+    domain: 'getlessio.com',
     legalNavLabel: 'מסמכים משפטיים',
     privacy: 'מדיניות פרטיות',
     terms: 'תנאי שימוש',

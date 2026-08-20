@@ -19,6 +19,7 @@ import {
   getSumitCredentialsFromEnv,
 } from '@/lib/saas/sumit-checkout'
 import { confirmSumitPayment } from '@/lib/saas/sumit'
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 
@@ -80,7 +81,7 @@ export async function beginPaidSaasCheckout(
 
   const checkoutReference = crypto.randomUUID()
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '')
+  const baseUrl = getShareableBaseUrl()
   const successUrl = `${baseUrl}/onboarding/payment-callback`
   const failureUrl = `${baseUrl}/onboarding/payment-callback?failed=1`
 

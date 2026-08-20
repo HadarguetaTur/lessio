@@ -11,6 +11,7 @@
 
 import { google } from 'googleapis'
 import { decryptGmailToken } from '@/lib/crypto'
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo'
@@ -18,8 +19,7 @@ const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo'
 export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.send email'
 
 function getCallbackUrl(): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  return `${base}/settings/email/callback`
+  return `${getShareableBaseUrl()}/settings/email/callback`
 }
 
 // ── OAuth URL ────────────────────────────────────────────────────────────────

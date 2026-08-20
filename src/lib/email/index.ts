@@ -22,7 +22,7 @@ function getResend(): Resend | null {
 }
 
 function getFromEmail(): string {
-  return process.env.RESEND_FROM_EMAIL ?? 'noreply@lessio.app'
+  return process.env.RESEND_FROM_EMAIL ?? 'support@getlessio.com'
 }
 
 export interface SendEmailParams {

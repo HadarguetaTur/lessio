@@ -21,6 +21,7 @@
 
 import Stripe from 'stripe'
 import type { PaymentProvider } from './index'
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
 export type StripeConfig = {
   secretKey: string
@@ -43,7 +44,7 @@ export class StripeProvider implements PaymentProvider {
     description: string
     orgId: string
   }): Promise<{ url: string; reference: string }> {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+    const baseUrl = getShareableBaseUrl()
 
     const session = await this.stripe.checkout.sessions.create({
       mode: 'payment',

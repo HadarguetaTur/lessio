@@ -121,7 +121,7 @@ export function generateICalString(
       `DTEND:${formatICalDate(lesson.endAt)}`,
       foldLine(`SUMMARY:${summary}`),
       foldLine(`DESCRIPTION:${description}`),
-      foldLine(`ORGANIZER;CN=${organizer}:MAILTO:noreply@lessio.app`),
+      foldLine(`ORGANIZER;CN=${organizer}:MAILTO:support@getlessio.com`),
       'END:VEVENT'
     )
   }

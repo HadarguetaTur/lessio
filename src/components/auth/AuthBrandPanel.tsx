@@ -88,7 +88,7 @@ export async function AuthBrandPanel() {
           <span className="flex size-2 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.55)]" />
           <span className="text-xs font-medium text-white/72">{t('statusLive')}</span>
         </div>
-        <span className="text-xs font-semibold tracking-wide text-white/48">lessio.app</span>
+        <span className="text-xs font-semibold tracking-wide text-white/48">getlessio.com</span>
       </div>
     </div>
   )

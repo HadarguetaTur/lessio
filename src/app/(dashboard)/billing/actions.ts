@@ -23,6 +23,7 @@ import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { isOptedOut } from '@/lib/whatsapp/optOut'
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { getTranslations } from 'next-intl/server'
 import { generateAndStoreInvoice } from '@/lib/billing/invoices/generateInvoicePdf'
 import { generateAndStoreCreditNote } from '@/lib/billing/invoices/generateCreditNotePdf'
@@ -601,7 +602,7 @@ async function sendBillingPaymentRequestCore(
     ) {
       providerName = 'demo'
       paymentResult = {
-        url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/portal/${orgId}`,
+        url: `${getShareableBaseUrl()}/portal/${orgId}`,
         reference: `demo-${charge.id}`,
       }
     } else {

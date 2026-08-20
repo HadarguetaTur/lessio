@@ -10,6 +10,7 @@
  */
 
 import { decryptCalendarToken } from '@/lib/crypto'
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
 const GOOGLE_TOKEN_URL    = 'https://oauth2.googleapis.com/token'
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo'
@@ -18,8 +19,7 @@ const GOOGLE_FREEBUSY_URL = 'https://www.googleapis.com/calendar/v3/freeBusy'
 export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly'
 
 function getCallbackUrl(): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  return `${base}/api/google-calendar/callback`
+  return `${getShareableBaseUrl()}/api/google-calendar/callback`
 }
 
 // ── OAuth URL ────────────────────────────────────────────────────────────────

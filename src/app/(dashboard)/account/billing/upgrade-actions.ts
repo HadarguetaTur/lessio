@@ -21,6 +21,7 @@ import {
   getSumitCredentialsFromEnv,
 } from '@/lib/saas/sumit-checkout'
 import { confirmSumitPayment } from '@/lib/saas/sumit'
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
 const planNameSchema = z.enum(['basic', 'advanced'])
 const billingIntervalSchema = z.enum(['monthly', 'yearly'])
@@ -120,7 +121,7 @@ export async function beginUpgradeCheckoutAction(
 
   const checkoutReference = crypto.randomUUID()
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '')
+  const baseUrl = getShareableBaseUrl()
   const successUrl = `${baseUrl}/account/billing/payment-callback`
   const failureUrl = `${baseUrl}/account/billing/payment-callback?failed=1`
   const mockPath = '/account/billing/mock-payment'

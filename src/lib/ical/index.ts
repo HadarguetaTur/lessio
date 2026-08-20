@@ -89,6 +89,9 @@ export function generateICalString(
   locale: AppLocale = 'he'
 ): string {
   const CRLF = '\r\n'
+  // RFC 5545 requires DTSTAMP on every VEVENT; some clients treat a missing
+  // DTSTAMP as "event changed" on every refresh and re-fire past alarms.
+  const dtstamp = formatICalDate(new Date().toISOString())
   const calName = escapeICalText(`${teacherName} — ${orgName}`)
 
   const lines: string[] = [
@@ -113,6 +116,7 @@ export function generateICalString(
     lines.push(
       'BEGIN:VEVENT',
       foldLine(`UID:${lesson.id}@lessio`),
+      `DTSTAMP:${dtstamp}`,
       `DTSTART:${formatICalDate(lesson.startAt)}`,
       `DTEND:${formatICalDate(lesson.endAt)}`,
       foldLine(`SUMMARY:${summary}`),

@@ -30,6 +30,7 @@
 
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
+import { DateTime } from 'luxon'
 import { META_API_VERSION } from '../src/lib/whatsapp/graphVersion'
 
 const API_VERSION = process.env.META_API_VERSION ?? META_API_VERSION
@@ -185,7 +186,10 @@ async function main(): Promise<void> {
       const name = String(preferred.name)
       const language = String(preferred.language)
       const paramCount = /reminder/.test(name) ? 3 : 2
-      const params = ['שרה כהן', 'יום שני 18/8', '16:00'].slice(0, paramCount)
+      // Tomorrow's date, not a literal — a reminder naming a day that already
+      // passed reads like a bug on the recipient's phone.
+      const tomorrow = DateTime.now().setZone('Asia/Jerusalem').plus({ days: 1 }).setLocale('he')
+      const params = ['שרה כהן', tomorrow.toFormat('cccc, d.M'), '16:00'].slice(0, paramCount)
       await call(
         'whatsapp_business_messaging',
         `POST /{phone_number_id}/messages (template ${name})`,

@@ -431,10 +431,13 @@ async function main(): Promise<void> {
     'student_goals',
     'subscriptions',
     'lessons',
+    // Dedup rows from a previous run block reminders for re-seeded lesson ids,
+    // and old #131030 failures would linger in /settings/reminders.
+    'notification_log',
   ]) {
     await expectOk(`clear ${table}`, db.from(table).delete().eq('organization_id', ORG_ID))
   }
-  console.log('  ✓ lessons, billing, homework, notes and goals cleared')
+  console.log('  ✓ lessons, billing, homework, notes, goals and notification log cleared')
 
   // ── 7. Parents, students, relationships ────────────────────────────────────
   console.log('\n▸ Parents & students')
@@ -449,9 +452,13 @@ async function main(): Promise<void> {
           phone: p.phone,
           email: p.email,
           is_active: true,
-          // A demo run that exercises the opt-out shot leaves this set, which
-          // would silently mute the parent for every later run.
-          opted_out_at: null,
+          // Rachel resets to null — a demo run that exercises the opt-out shot
+          // would otherwise silently mute her for every later run. The fictional
+          // 555-01xx parents seed opted-out: the Meta test phone can never
+          // deliver to them, so letting the sendSmart opt-out gate skip them
+          // beats every reminder cron burning a doomed API call and landing a
+          // red #131030 row in /settings/reminders.
+          opted_out_at: p.phone === VERIFIED_PARENT_PHONE ? null : now.toISO(),
         },
         { onConflict: 'id' }
       )

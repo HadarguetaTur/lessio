@@ -822,6 +822,7 @@
       "deleteNoteFailed": "Could not delete the note",
       "whatsappNotConnected": "WhatsApp is not connected — connect it in settings",
       "reminderOnlyScheduled": "Reminders can only be sent for a scheduled lesson",
+      "reminderLessonPast": "A reminder cannot be sent for a lesson that has already passed",
       "noPrimaryParentPhone": "No active primary parent with a phone number was found",
       "reminderSendFailed": "Could not send the reminder"
     },

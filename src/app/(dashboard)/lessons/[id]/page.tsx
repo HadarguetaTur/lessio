@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { DateTime } from 'luxon'
 import { forbidden, notFound } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
@@ -50,6 +51,10 @@ export default async function LessonDetailPage(props: {
     getLocale(),
   ])
   const appLocale = parseAppLocale(locale)
+
+  // Nothing auto-completes past lessons, so 'scheduled' alone does not mean
+  // upcoming — hide the reminder button once the start time has passed.
+  const lessonUpcoming = DateTime.fromISO(lesson.start_at) > DateTime.now()
 
   const STATUS_LABELS: Record<LessonStatus, string> = {
     scheduled: tCommon('status.scheduled'),
@@ -132,7 +137,7 @@ export default async function LessonDetailPage(props: {
           <LessonStatusForm currentStatus={lesson.status} action={boundAction} />
         </div>
 
-        {canCancel && lesson.status === 'scheduled' && (
+        {canCancel && lesson.status === 'scheduled' && lessonUpcoming && (
           <div className="border-t border-gray-100 pt-5">
             <SendLessonReminderButton lessonId={lesson.id} />
           </div>

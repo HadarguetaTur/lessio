@@ -822,6 +822,7 @@
       "deleteNoteFailed": "שגיאה במחיקת ההערה",
       "whatsappNotConnected": "WhatsApp לא מחובר — יש להתחבר בהגדרות",
       "reminderOnlyScheduled": "ניתן לשלוח תזכורת רק לשיעור מתוכנן",
+      "reminderLessonPast": "אי אפשר לשלוח תזכורת לשיעור שכבר עבר",
       "noPrimaryParentPhone": "לא נמצא הורה ראשי פעיל עם מספר טלפון",
       "reminderSendFailed": "שליחת התזכורת נכשלה"
     },

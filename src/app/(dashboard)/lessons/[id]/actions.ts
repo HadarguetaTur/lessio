@@ -437,6 +437,12 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
   if (lesson.status !== 'scheduled') {
     return { error: t('lessons.errors.reminderOnlyScheduled') }
   }
+  // A past lesson still shows status 'scheduled' (nothing auto-completes
+  // lessons), so guard on the clock too — otherwise this reminds a parent
+  // about a lesson that already happened.
+  if (DateTime.fromISO(lesson.start_at as string) <= DateTime.now()) {
+    return { error: t('lessons.errors.reminderLessonPast') }
+  }
 
   type LessonRow = {
     start_at: string

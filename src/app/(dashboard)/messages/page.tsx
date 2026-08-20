@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { MessageSquare } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
+import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { getDashboardConversationSummaries } from '@/lib/portal/messages'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -21,6 +22,7 @@ export default async function DashboardMessagesPage() {
 
   return (
     <div className="space-y-6">
+      <LiveRefresh tables={['portal_messages']} />
       <PageHeader
         title={t('lessons.messagesPage.title')}
         subtitle={t('lessons.messagesPage.subtitle')}

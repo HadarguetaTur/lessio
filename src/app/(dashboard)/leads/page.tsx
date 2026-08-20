@@ -1,5 +1,6 @@
 import { UserPlus } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
+import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { getLeads, LeadStatus } from '@/lib/leads'
 import { LeadStatusSelect } from '@/components/dashboard/leads/LeadStatusSelect'
 import { LeadNotesButton } from '@/components/dashboard/leads/LeadNotesButton'
@@ -41,6 +42,7 @@ export default async function LeadsPage(props: {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <LiveRefresh tables={['leads']} />
       <PageHeader title={t('title')} />
 
       {/* Filters */}

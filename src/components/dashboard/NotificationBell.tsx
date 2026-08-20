@@ -4,12 +4,14 @@
  * Notification bell icon with unread badge and slide-out drawer.
  * Sprint 25 Story 4c.
  *
- * Polls unread count every 60 seconds. Full list loaded on drawer open.
+ * Live-updates the unread badge via realtime pokes (in_app_notifications),
+ * with a 5-minute fallback poll. Full list loaded on drawer open.
  * Server actions passed as props (server action prop rule).
  */
 
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { useLiveRefreshEvent } from '@/lib/realtime/useLiveRefresh'
 import { useTranslations } from 'next-intl'
 import { Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -60,13 +62,21 @@ export function NotificationBell({
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Poll unread count every 60 seconds
+  // Fallback poll — live pokes below cover the common case
   useEffect(() => {
     const interval = setInterval(() => {
       fetchUnreadCount().then(setUnreadCount).catch(() => {})
-    }, 60_000)
+    }, 300_000)
     return () => clearInterval(interval)
   }, [fetchUnreadCount])
+
+  // Live poke: update the badge immediately when a notification row changes.
+  useLiveRefreshEvent(
+    ['in_app_notifications'],
+    useCallback(() => {
+      fetchUnreadCount().then(setUnreadCount).catch(() => {})
+    }, [fetchUnreadCount])
+  )
 
   // Load full list when drawer opens
   const handleOpen = useCallback(

@@ -4,6 +4,7 @@ import { CalendarDays, GraduationCap, CheckCircle2, Clock, Plus } from 'lucide-r
 import { getTranslations, getLocale } from 'next-intl/server'
 import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
+import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import {
@@ -66,6 +67,7 @@ export default async function TeacherDashboardPage() {
 
   return (
     <div className="flex flex-col">
+      <LiveRefresh tables={['lessons']} />
       <PageHeader title={t('title')} subtitle={todayLabel} />
 
       {/* KPI cards */}

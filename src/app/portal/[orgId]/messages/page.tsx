@@ -6,6 +6,7 @@ import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { getPortalSession } from '@/lib/portal/session'
 import { getParentConversationSummaries } from '@/lib/portal/messages'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
+import { PollingRefresh } from '@/lib/realtime/PollingRefresh'
 
 export default async function PortalMessagesPage({
   params,
@@ -28,6 +29,7 @@ export default async function PortalMessagesPage({
 
   return (
     <div className="flex flex-col flex-1 pb-20">
+      <PollingRefresh intervalMs={30_000} />
       <header className="px-4 py-3.5 border-b border-border bg-card flex items-center gap-2">
         <MessageCircle size={16} className="text-muted-foreground" />
         <h1 className="font-semibold text-foreground text-sm">{t('title')}</h1>

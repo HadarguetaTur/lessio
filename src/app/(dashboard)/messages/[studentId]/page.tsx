@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
+import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getConversation } from '@/lib/portal/messages'
 import { DashboardMessageThread } from '@/components/dashboard/messages/DashboardMessageThread'
@@ -41,6 +42,7 @@ export default async function DashboardMessageThreadPage({
 
   return (
     <div className="space-y-4">
+      <LiveRefresh tables={['portal_messages']} />
       <div className="flex items-center gap-3">
         <Link href="/messages" className="text-muted-foreground hover:text-foreground">
           <ArrowRight size={18} />

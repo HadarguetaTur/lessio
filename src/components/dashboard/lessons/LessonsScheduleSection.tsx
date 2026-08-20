@@ -5,6 +5,7 @@ import { MonthViewClient } from './MonthViewClient'
 import type { WeekCalendarPayload } from './WeekView'
 import type { MonthCalendarPayload } from './MonthView'
 import { useLessonScheduleSheet } from './LessonScheduleSheetProvider'
+import { useLiveRefresh } from '@/lib/realtime/useLiveRefresh'
 import type { ScheduleFormResources } from './scheduleFormTypes'
 
 export type { ScheduleFormResources } from './scheduleFormTypes'
@@ -27,6 +28,9 @@ type Props =
 
 export function LessonsScheduleSection(props: Props) {
   const { openWithDate } = useLessonScheduleSheet()
+
+  // Live: re-render the schedule when lessons/availability change anywhere in the org.
+  useLiveRefresh(['lessons', 'availability', 'availability_overrides'])
 
   const onPickDay = props.scheduleForm ? openWithDate : undefined
 

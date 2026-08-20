@@ -6,6 +6,7 @@ import { getTranslations, getLocale } from 'next-intl/server'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { getSession } from '@/lib/auth/session'
+import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getTodayLessons, formatTime, LessonStatus, Lesson } from '@/lib/lessons'
 import { getDashboardStats } from '@/lib/dashboard/stats'
@@ -67,6 +68,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col">
+      <LiveRefresh tables={['lessons', 'charges', 'leads']} />
       <PageHeader title={t('title')} subtitle={todayLabel} />
 
       {/* Primary KPI cards */}

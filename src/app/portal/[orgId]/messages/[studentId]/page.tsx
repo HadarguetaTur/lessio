@@ -6,6 +6,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getConversation, markConversationRead } from '@/lib/portal/messages'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
 import { PortalMessageThread } from '@/components/portal/PortalMessageThread'
+import { PollingRefresh } from '@/lib/realtime/PollingRefresh'
 import { sendMessageAction } from './actions'
 
 export default async function PortalMessageThreadPage({
@@ -43,6 +44,7 @@ export default async function PortalMessageThreadPage({
 
   return (
     <div className="flex flex-col flex-1 pb-20">
+      <PollingRefresh intervalMs={15_000} />
       <header className="px-4 py-3.5 border-b border-border bg-card flex items-center gap-3">
         <Link href={`/portal/${orgId}/messages`} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={18} className="rtl:rotate-180" />

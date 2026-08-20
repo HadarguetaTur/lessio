@@ -19,6 +19,7 @@ import {
   markAllReadAction,
 } from './notifications/actions'
 import { getEffectiveSaasFeatures } from '@/lib/saas/subscriptions'
+import { LiveRefreshProvider } from '@/lib/realtime/LiveRefreshProvider'
 
 export default async function DashboardLayout({
   children,
@@ -178,6 +179,7 @@ export default async function DashboardLayout({
   ) : null
 
   return (
+    <LiveRefreshProvider orgId={profile?.organization_id ?? null}>
       <div className="flex h-screen bg-background" dir={dir}>
       <Sidebar
         userName={profile?.full_name ?? user.email ?? ''}
@@ -208,5 +210,6 @@ export default async function DashboardLayout({
         {showMobileQuick ? <MobileAdminQuickSheet /> : null}
       </main>
     </div>
+    </LiveRefreshProvider>
   )
 }

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Receipt } from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
+import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { getCharges, ChargeStatus } from '@/lib/charges'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getParents } from '@/lib/parents'
@@ -73,6 +74,7 @@ export default async function ChargesPage(props: {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <LiveRefresh tables={['charges']} />
       <PageHeader title={t('title')} />
 
       {/* Aging summary */}

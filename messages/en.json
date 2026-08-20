@@ -1308,7 +1308,7 @@
         "REJECTED": "Rejected",
         "PAUSED": "Paused",
         "DISABLED": "Disabled",
-    "NOT_SUBMITTED": "Not submitted to Meta"
+        "NOT_SUBMITTED": "Not submitted to Meta"
       },
       "submitForApproval": "Submit to Meta for approval",
       "submittedToMeta": "Sent to Meta. Approval usually arrives within minutes.",
@@ -1316,9 +1316,9 @@
       "refreshStatus": "Refresh statuses",
       "rejectionReason": "Rejection reason",
       "savedNeedsApproval": "Saved. The new wording is used immediately inside the 24-hour window; outside it, only after Meta approves — press \"Submit to Meta for approval\".",
-    "sendsMeanwhile": "Meanwhile, outside the 24-hour window the previously approved version is sent:",
-    "sendsMeanwhileBuiltIn": "Meanwhile, outside the 24-hour window Lessio's built-in template is sent:",
-    "cannotSubmit": "This wording cannot be submitted for approval:",
+      "sendsMeanwhile": "Meanwhile, outside the 24-hour window the previously approved version is sent:",
+      "sendsMeanwhileBuiltIn": "Meanwhile, outside the 24-hour window Lessio's built-in template is sent:",
+      "cannotSubmit": "This wording cannot be submitted for approval:",
       "builtInTemplate": "Lessio's built-in template",
       "builtInOnly": "This message includes a button, so it always goes out using Lessio's built-in template.",
       "inWindowOnly": "Only sent inside the 24-hour window — no Meta approval needed.",
@@ -2535,7 +2535,7 @@
       "otpTitle": "Enter verification code",
       "otpSubtitle": "We sent a 6-digit code to your WhatsApp",
       "legal": {
-        "prefix": "By continuing you accept the ",
+        "prefix": "I accept the ",
         "terms": "Terms of Use",
         "and": " and ",
         "privacy": "Privacy Policy",
@@ -2556,7 +2556,8 @@
         "sendFailed": "Failed to send the code. Please try again.",
         "invalidCode": "Invalid code — must be 6 digits",
         "wrongCode": "Wrong or expired code. Go back and request a new one.",
-        "generic": "Something went wrong — please try again"
+        "generic": "Something went wrong — please try again",
+        "consentRequired": "Please accept the terms and messaging consent to receive a code."
       }
     },
     "home": {

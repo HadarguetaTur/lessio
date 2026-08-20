@@ -40,7 +40,9 @@ vi.mock('@/lib/portal/session', () => ({
 vi.mock('@/lib/whatsapp/sendOtp', () => ({ sendOtp: vi.fn() }))
 vi.mock('@/lib/crypto', () => ({ decryptToken: vi.fn(() => 'token') }))
 
-import { verifyOtpAction } from './actions'
+import { requestOtpAction, verifyOtpAction } from './actions'
+import { storeOtp } from '@/lib/portal/otp'
+import { sendOtp } from '@/lib/whatsapp/sendOtp'
 
 /** `parents` lookup returning the given row / error. */
 function makeParentsClient(result: {
@@ -63,6 +65,53 @@ function formData(otp: string) {
 
 const ORG = 'org-1'
 const PHONE = '+972500000000'
+
+describe('requestOtpAction — consent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRequireFeature.mockResolvedValue(undefined)
+  })
+
+  function phoneForm(consent: boolean) {
+    const fd = new FormData()
+    fd.set('phone', '0500000000')
+    if (consent) fd.set('consent', 'on')
+    return fd
+  }
+
+  // The OTP is a WhatsApp message in its own right, so nothing may be stored
+  // or sent until the parent has ticked the box — and the check must hold
+  // when the form is posted without a browser enforcing `required`.
+  it('refuses to send a code when the consent box is not ticked', async () => {
+    mockCreateServiceRoleClient.mockReturnValue(makeParentsClient({ data: { id: 'parent-1' }, error: null }))
+
+    const result = await requestOtpAction(ORG, { error: null }, phoneForm(false))
+
+    expect(result).toEqual({ error: 'consentRequired' })
+    expect(storeOtp).not.toHaveBeenCalled()
+    expect(sendOtp).not.toHaveBeenCalled()
+    expect(mockRedirect).not.toHaveBeenCalled()
+  })
+
+  it('checks consent before touching the database', async () => {
+    mockCreateServiceRoleClient.mockReturnValue(makeParentsClient({ data: { id: 'parent-1' }, error: null }))
+
+    await requestOtpAction(ORG, { error: null }, phoneForm(false))
+
+    expect(mockCreateServiceRoleClient).not.toHaveBeenCalled()
+  })
+
+  it('proceeds to the parent lookup once consent is given', async () => {
+    // No parent on this phone → the action stops at 'noAccount', which is past
+    // the consent gate. That is all this test needs to prove.
+    mockCreateServiceRoleClient.mockReturnValue(makeParentsClient({ data: null, error: null }))
+
+    const result = await requestOtpAction(ORG, { error: null }, phoneForm(true))
+
+    expect(result).toEqual({ error: 'noAccount' })
+    expect(mockCreateServiceRoleClient).toHaveBeenCalled()
+  })
+})
 
 describe('verifyOtpAction', () => {
   beforeEach(() => {

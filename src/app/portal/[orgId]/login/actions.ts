@@ -14,6 +14,8 @@ import { requireFeature } from '@/lib/saas/featureGate'
 
 const PhoneSchema = z.object({
   phone: z.string().min(9),
+  /** The consent checkbox. Absent when unticked, 'on' when ticked. */
+  consent: z.string().optional(),
 })
 
 const OtpSchema = z.object({
@@ -24,6 +26,7 @@ const OtpSchema = z.object({
 export type LoginState = {
   error:
     | 'invalidPhone'
+    | 'consentRequired'
     | 'tooManyAttempts'
     | 'noAccount'
     | 'serviceUnavailable'
@@ -48,6 +51,11 @@ export async function requestOtpAction(
 
   const parsed = PhoneSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return { error: 'invalidPhone' }
+
+  // The OTP is itself a WhatsApp message, so consent is checked before
+  // anything is sent — and checked here, not only via the checkbox's
+  // `required`, because a form can be posted without the browser.
+  if (parsed.data.consent !== 'on') return { error: 'consentRequired' }
 
   let phone: string
   try {

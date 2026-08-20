@@ -52,20 +52,30 @@ function PhoneStep({ orgId, orgName }: { orgId: string; orgName: string }) {
           {pending ? t('sendingCode') : t('sendCode')}
         </button>
 
-        {/* The terms already say entering the portal is acceptance; this is
-            where the parent actually gets to see that, plus the messaging
-            consent the WhatsApp bot relies on. */}
-        <p className="text-xs text-gray-500 leading-relaxed text-center">
-          {t('legal.prefix')}
-          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-            {t('legal.terms')}
-          </a>
-          {t('legal.and')}
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-            {t('legal.privacy')}
-          </a>
-          {t('legal.suffix', { orgName })}
-        </p>
+        {/* Explicit consent, as an action the parent takes rather than a
+            footnote they scroll past: the terms, and the WhatsApp messages the
+            bot will send them. Required on the client for the affordance and
+            re-checked on the server in requestOtpAction, since a form can be
+            posted without the browser. */}
+        <label className="flex items-start gap-2.5 text-xs text-gray-600 leading-relaxed cursor-pointer">
+          <input
+            type="checkbox"
+            name="consent"
+            required
+            className="mt-0.5 size-4 shrink-0 rounded border-gray-300 accent-blue-600"
+          />
+          <span>
+            {t('legal.prefix')}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              {t('legal.terms')}
+            </a>
+            {t('legal.and')}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              {t('legal.privacy')}
+            </a>
+            {t('legal.suffix', { orgName })}
+          </span>
+        </label>
       </form>
     </div>
   )

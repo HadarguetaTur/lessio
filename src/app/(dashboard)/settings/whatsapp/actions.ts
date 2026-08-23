@@ -37,6 +37,9 @@ import { getTranslations } from 'next-intl/server'
 const SaveSchema = z.object({
   phoneNumberId: z.string().min(1, 'phone_number_id is required'),
   wabaId:        z.string().min(1, 'validation.wabaIdMissing'),
+  // Business portfolio id from the v4 FINISH event. Recorded when present,
+  // but nothing downstream needs it, so its absence never fails a connection.
+  businessId:    z.string().optional(),
   code:          z.string().min(1, 'OAuth code is required'),
 })
 
@@ -78,6 +81,7 @@ export async function saveWhatsAppConnection(
   const parsed = SaveSchema.safeParse({
     phoneNumberId: formData.get('phoneNumberId'),
     wabaId:        formData.get('wabaId') ?? '',
+    businessId:    formData.get('businessId') ?? undefined,
     code:          formData.get('code'),
   })
 
@@ -86,6 +90,7 @@ export async function saveWhatsAppConnection(
   }
 
   const { phoneNumberId, wabaId, code } = parsed.data
+  const businessId = parsed.data.businessId || null
 
   // Exchange code → access token via Meta Graph API
   const appId       = process.env.META_APP_ID
@@ -192,6 +197,7 @@ export async function saveWhatsAppConnection(
       whatsapp_phone_number_id: phoneNumberId,
       whatsapp_access_token:    encryptedToken,
       whatsapp_waba_id:         wabaId,
+      whatsapp_business_id:     businessId,
     })
     .eq('id', orgId)
 
@@ -200,7 +206,7 @@ export async function saveWhatsAppConnection(
     return { error: t('settings.whatsappActions.errors.saveFailed') }
   }
 
-  console.info('[whatsapp/settings] WhatsApp connected', { orgId, phoneNumberId, wabaId })
+  console.info('[whatsapp/settings] WhatsApp connected', { orgId, phoneNumberId, wabaId, businessId })
 
   // Register all message templates on the org's WABA (fire-and-forget)
   registerTemplatesForWABA(wabaId, accessToken).catch((err) =>
@@ -263,6 +269,7 @@ export async function disconnectWhatsApp(
       whatsapp_phone_number_id: null,
       whatsapp_access_token: null,
       whatsapp_waba_id: null,
+      whatsapp_business_id: null,
     })
     .eq('id', orgId)
 

@@ -16,6 +16,11 @@
  * Meta does not promise an order, so each half is stashed in a ref and whichever
  * lands second submits. One submit, one server round-trip, well inside the 30s.
  *
+ * Embedded Signup v4: the version is fixed by the Facebook Login for Business
+ * configuration behind `config_id`, not by anything passed here. `extras` must
+ * therefore carry no `version`, `sessionInfoVersion`, `featureType` or
+ * `features` — those are v2/v3 selectors and would pin the old flow.
+ *
  * Every way the flow can end short — popup dismissed, permissions declined, a
  * WABA with no phone number, an error reported mid-flow — resolves to a visible
  * message. Nothing here fails to a console warning.
@@ -65,7 +70,7 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
   // The two halves of the signup result, plus a latch so a late-arriving second
   // half cannot submit the form twice.
   const codeRef = useRef<string | null>(null)
-  const assetsRef = useRef<{ wabaId: string; phoneNumberId: string } | null>(null)
+  const assetsRef = useRef<{ wabaId: string; phoneNumberId: string; businessId: string } | null>(null)
   const submittedRef = useRef(false)
 
   const [sdkReady, setSdkReady] = useState(false)
@@ -83,6 +88,7 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
     submittedRef.current = true
     ;(form.querySelector('[name="phoneNumberId"]') as HTMLInputElement).value = assets.phoneNumberId
     ;(form.querySelector('[name="wabaId"]') as HTMLInputElement).value = assets.wabaId
+    ;(form.querySelector('[name="businessId"]') as HTMLInputElement).value = assets.businessId
     ;(form.querySelector('[name="code"]') as HTMLInputElement).value = code
     form.requestSubmit()
   }, [])
@@ -142,6 +148,7 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
         data?: {
           phone_number_id?: string
           waba_id?: string
+          business_id?: string
           current_step?: string
           error_message?: string
           error_code?: string | number
@@ -151,6 +158,18 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
       if (msg?.type !== 'WA_EMBEDDED_SIGNUP') return
 
       const data = msg.data ?? {}
+
+      // v4 reports a failure the user hit inside the flow as ERROR. Nothing was
+      // created, so it ends the attempt the same way a reported CANCEL does.
+      if (msg.event === 'ERROR') {
+        console.error('[EmbeddedSignup] Meta reported an error', data)
+        setClientError(
+          data.error_message
+            ? tp('whatsappPage.metaError', { message: data.error_message })
+            : tp('whatsappPage.popupClosed')
+        )
+        return
+      }
 
       // Meta reports plain abandonment and in-flow failures both as CANCEL —
       // the difference is whether error_message is set.
@@ -182,7 +201,13 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
         return
       }
 
-      assetsRef.current = { wabaId: data.waba_id, phoneNumberId: data.phone_number_id }
+      // business_id is documented as always present in v4, but nothing downstream
+      // depends on it, so a missing value is recorded as empty rather than fatal.
+      assetsRef.current = {
+        wabaId:        data.waba_id,
+        phoneNumberId: data.phone_number_id,
+        businessId:    data.business_id ?? '',
+      }
       submitIfComplete()
     }
 
@@ -243,6 +268,7 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
       <form ref={formRef} action={formAction} className="hidden">
         <input type="hidden" name="phoneNumberId" defaultValue="" />
         <input type="hidden" name="wabaId" defaultValue="" />
+        <input type="hidden" name="businessId" defaultValue="" />
         <input type="hidden" name="code" defaultValue="" />
       </form>
 

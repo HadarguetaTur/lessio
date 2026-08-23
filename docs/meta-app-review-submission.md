@@ -266,7 +266,7 @@ For Video B step 2 specifically:
   lesson is still `scheduled`.
 - Confirm the **English** approved templates are live on the WABA, since the send falls back to
   them outside the window — and a Hebrew fallback mid-English-video is worse than no shot:
-  `GET https://graph.facebook.com/v25.0/1066332709132512/message_templates?fields=name,status,language`
+  `GET https://graph.facebook.com/v26.0/1066332709132512/message_templates?fields=name,status,language`
   → `lessio_lesson_reminder_en_v2`, `lessio_menu_en_v3` and `lessio_payment_request_en_v2` must
   all be `APPROVED`. If any is missing, run `npx tsx scripts/register-templates-v2.ts` and wait —
   approval can take hours.

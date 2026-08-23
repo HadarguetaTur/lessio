@@ -4,7 +4,7 @@ How to run the Connect WhatsApp flow end to end and confirm the one thing Meta's
 `api_precheck` step actually looks for: a successful call made with
 `whatsapp_business_management`.
 
-Written against Graph **v25.0** (`src/lib/whatsapp/graphVersion.ts`).
+Written against Graph **v26.0** (`src/lib/whatsapp/graphVersion.ts`).
 
 ---
 

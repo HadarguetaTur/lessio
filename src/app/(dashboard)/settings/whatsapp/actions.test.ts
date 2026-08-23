@@ -74,10 +74,13 @@ import { saveWhatsAppConnection, disconnectWhatsApp, registerTemplates } from '.
 
 const mockFetch = vi.fn()
 
-function makeSaveFormData(overrides: Partial<Record<'phoneNumberId' | 'wabaId' | 'code', string>> = {}) {
+function makeSaveFormData(
+  overrides: Partial<Record<'phoneNumberId' | 'wabaId' | 'businessId' | 'code', string>> = {}
+) {
   const formData = new FormData()
   formData.set('phoneNumberId', overrides.phoneNumberId ?? 'pn-1')
   if (overrides.wabaId !== undefined) formData.set('wabaId', overrides.wabaId)
+  if (overrides.businessId !== undefined) formData.set('businessId', overrides.businessId)
   formData.set('code', overrides.code ?? 'oauth-code')
   return formData
 }
@@ -144,13 +147,13 @@ describe('saveWhatsAppConnection', () => {
     expect(db.spies.update).not.toHaveBeenCalled()
   })
 
-  it('subscribes, persists all three columns and registers templates on success', async () => {
+  it('subscribes, persists all four columns and registers templates on success', async () => {
     const db = makeSaveDbClient()
     mockCreateServiceRoleClient.mockReturnValue(db.client)
 
     const result = await saveWhatsAppConnection(
       { error: null },
-      makeSaveFormData({ wabaId: 'waba-1' })
+      makeSaveFormData({ wabaId: 'waba-1', businessId: 'biz-1' })
     )
 
     expect(result).toEqual({ error: null })
@@ -159,10 +162,26 @@ describe('saveWhatsAppConnection', () => {
       whatsapp_phone_number_id: 'pn-1',
       whatsapp_access_token: 'encrypted-token',
       whatsapp_waba_id: 'waba-1',
+      whatsapp_business_id: 'biz-1',
     })
     expect(db.spies.eq).toHaveBeenCalledWith('id', 'org-1')
     expect(mockRegisterTemplatesForWABA).toHaveBeenCalledWith('waba-1', 'token-1')
     expect(mockRevalidatePath).toHaveBeenCalledWith('/settings/whatsapp')
+  })
+
+  it('stores a null business id when the FINISH event carried none', async () => {
+    const db = makeSaveDbClient()
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+
+    const result = await saveWhatsAppConnection(
+      { error: null },
+      makeSaveFormData({ wabaId: 'waba-1', businessId: '' })
+    )
+
+    expect(result).toEqual({ error: null })
+    expect(db.spies.update).toHaveBeenCalledWith(
+      expect.objectContaining({ whatsapp_business_id: null })
+    )
   })
 
   it('verifies the granted scopes and registers the number on Cloud API', async () => {
@@ -322,7 +341,7 @@ describe('disconnectWhatsApp', () => {
     mockUnsubscribeAppFromWABA.mockResolvedValue(undefined)
   })
 
-  it('unsubscribes the WABA and clears all three columns', async () => {
+  it('unsubscribes the WABA and clears all four columns', async () => {
     const db = makeDisconnectDbClient({
       whatsapp_waba_id: 'waba-1',
       whatsapp_access_token: 'encrypted-token',
@@ -338,6 +357,7 @@ describe('disconnectWhatsApp', () => {
       whatsapp_phone_number_id: null,
       whatsapp_access_token: null,
       whatsapp_waba_id: null,
+      whatsapp_business_id: null,
     })
   })
 
@@ -357,6 +377,7 @@ describe('disconnectWhatsApp', () => {
       whatsapp_phone_number_id: null,
       whatsapp_access_token: null,
       whatsapp_waba_id: null,
+      whatsapp_business_id: null,
     })
 
     consoleErrorSpy.mockRestore()

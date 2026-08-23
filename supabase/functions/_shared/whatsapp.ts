@@ -7,7 +7,7 @@
  */
 
 // Keep in sync with src/lib/whatsapp/graphVersion.ts — Deno cannot import from src/.
-const META_API_VERSION = 'v25.0'
+const META_API_VERSION = 'v26.0'
 
 /**
  * Sends a plain-text WhatsApp message.

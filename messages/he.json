@@ -739,6 +739,15 @@
       "badge": "סדרה",
       "existingTitle": "סדרות קיימות",
       "existingEmpty": "אין עדיין שיעורים קבועים",
+      "rowActions": "פעולות על הסדרה",
+      "changeUntil": "שינוי תאריך סיום",
+      "changeUntilHint": "תאריך מאוחר יותר יאריך את הסדרה וייצור שיעורים חדשים; תאריך מוקדם יותר יבטל את השיעורים שאחריו.",
+      "newUntilLabel": "תאריך סיום חדש",
+      "extendedCount": "הסדרה הוארכה — נוצרו {count} שיעורים חדשים",
+      "shortenedCount": "הסדרה קוצרה — בוטלו {count} שיעורים",
+      "deleteSeries": "מחיקת סדרה",
+      "deleteSeriesConfirm": "כל השיעורים המתוכננים בסדרה יבוטלו והסדרה תוסר. שיעורים שכבר התקיימו יישמרו בהיסטוריה.",
+      "deletedCount": "הסדרה נמחקה — בוטלו {count} שיעורים מתוכננים",
       "colSchedule": "יום ושעה",
       "colStudents": "תלמידים",
       "colTeacher": "מורה",
@@ -874,7 +883,8 @@
     "lessonHistory": "היסטוריית שיעורים",
     "seriesErrors": {
       "endDateFuture": "תאריך הסיום חייב להיות בעתיד",
-      "createSeriesFailed": "שגיאה ביצירת הסדרה"
+      "createSeriesFailed": "שגיאה ביצירת הסדרה",
+      "updateSeriesFailed": "שגיאה בעדכון הסדרה"
     },
     "newErrors": {
       "checkStudentsFailed": "שגיאה בבדיקת תלמידים",

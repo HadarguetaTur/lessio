@@ -739,6 +739,15 @@
       "badge": "Series",
       "existingTitle": "Existing series",
       "existingEmpty": "No recurring lessons yet",
+      "rowActions": "Series actions",
+      "changeUntil": "Change end date",
+      "changeUntilHint": "A later date extends the series and creates new lessons; an earlier date cancels the lessons after it.",
+      "newUntilLabel": "New end date",
+      "extendedCount": "Series extended — {count} new lessons created",
+      "shortenedCount": "Series shortened — {count} lessons cancelled",
+      "deleteSeries": "Delete series",
+      "deleteSeriesConfirm": "All scheduled lessons in this series will be cancelled and the series removed. Past lessons stay in the history.",
+      "deletedCount": "Series deleted — {count} scheduled lessons cancelled",
       "colSchedule": "Day & time",
       "colStudents": "Students",
       "colTeacher": "Teacher",
@@ -874,7 +883,8 @@
     "lessonHistory": "Lesson history",
     "seriesErrors": {
       "endDateFuture": "The end date must be in the future",
-      "createSeriesFailed": "Could not create the series"
+      "createSeriesFailed": "Could not create the series",
+      "updateSeriesFailed": "Could not update the series"
     },
     "newErrors": {
       "checkStudentsFailed": "Could not verify the students",

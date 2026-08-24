@@ -8,7 +8,8 @@
  *   1. Fetch all orgs with data_retention_days IS NOT NULL
  *   2. For each org, anonymise:
  *      a. conversation_log rows older than retention window:
- *         user_phone → '***', message → '[anonymised]', response → '[anonymised]'
+ *         phone → '***', content → '[anonymised]'
+ *      a'. leads.raw_message → '[anonymised]' for rows older than retention window
  *      b. whatsapp_processed_messages.phone → '***' for rows older than retention window
  *   3. Failures are isolated per org
  */
@@ -64,22 +65,41 @@ async function processOrg(db: any, orgId: string, retentionDays: number) {
   cutoff.setDate(cutoff.getDate() - retentionDays)
   const cutoffIso = cutoff.toISOString()
 
-  // ── 2a. Anonymise conversation_log ──────────────���───────────────────────
+  // ── 2a. Anonymise conversation_log ───────────────────────────────────────
+  // Columns are phone / role / content (supabase/migrations/20260418000001_ai_assistant.sql).
+  // An earlier version targeted user_phone / message / response, which never
+  // existed — the update errored on every run and no conversation was ever
+  // anonymised.
   const { error: convErr } = await db
     .from('conversation_log')
     .update({
-      user_phone: '***',
-      message: '[anonymised]',
-      response: '[anonymised]',
+      phone: '***',
+      content: '[anonymised]',
     })
     .eq('organization_id', orgId)
     .lt('created_at', cutoffIso)
-    .neq('user_phone', '***') // skip already-anonymised rows
+    .neq('phone', '***') // skip already-anonymised rows
 
   if (convErr) {
     console.error('[data-retention] conversation_log update failed', {
       org_id: orgId,
       error: convErr.message,
+    })
+  }
+
+  // ── 2a'. Anonymise the first message strangers sent (leads.raw_message) ──
+  const { error: leadErr } = await db
+    .from('leads')
+    .update({ raw_message: '[anonymised]' })
+    .eq('organization_id', orgId)
+    .lt('created_at', cutoffIso)
+    .not('raw_message', 'is', null)
+    .neq('raw_message', '[anonymised]')
+
+  if (leadErr) {
+    console.error('[data-retention] leads update failed', {
+      org_id: orgId,
+      error: leadErr.message,
     })
   }
 

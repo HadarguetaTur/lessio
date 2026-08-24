@@ -467,6 +467,10 @@ async function main(): Promise<void> {
           consent_source: 'attested',
           consented_at: now.toISO(),
           welcome_sent_at: p.phone === VERIFIED_PARENT_PHONE ? null : now.toISO(),
+          // Reset every run: the webhook persists the script of whatever the
+          // parent last wrote, so one Hebrew "היי" during a take would otherwise
+          // switch every later reminder in the English screencast to Hebrew.
+          preferred_locale: 'en',
         },
         { onConflict: 'id' }
       )

@@ -30,7 +30,11 @@ import {
   hasOptOutIntent,
   hasResumeIntent,
 } from '@/lib/whatsapp'
-import { parseTemplateStatusUpdates, type TemplateStatusUpdate } from '@/lib/whatsapp/parsePayload'
+import {
+  parseTemplateStatusUpdates,
+  type TemplateStatusUpdate,
+  type WhatsAppMessage,
+} from '@/lib/whatsapp/parsePayload'
 import { upsertTemplateStatus } from '@/lib/whatsapp/templateStatus'
 import { isOptedOut, setParentOptOut } from '@/lib/whatsapp/optOut'
 import { recordParentConsent } from '@/lib/whatsapp/consent'
@@ -272,17 +276,7 @@ async function recordTemplateStatusUpdate(update: TemplateStatusUpdate): Promise
   })
 }
 
-async function processMessage(
-  msg: {
-    from: string
-    messageId: string
-    text: string
-    replyId?: string
-    businessPhoneNumber: string
-    phoneNumberId: string
-  },
-  origin: string
-): Promise<void> {
+async function processMessage(msg: WhatsAppMessage, origin: string): Promise<void> {
   const db = createServiceRoleClient()
 
   // 4. Normalize sender phone
@@ -389,6 +383,19 @@ async function processMessage(
     detected,
     orgDefault: org.default_locale as string | null,
   })
+
+  // A photo, voice note or file: nothing to parse, but silence reads as a
+  // broken number. One short notice, in the sender's language, and done — it
+  // is a direct reply so neither opt-out nor the 24h window applies.
+  if (msg.unsupportedType) {
+    await sendTextMessage(senderPhone, botString('unsupported_media', locale), accessToken, phoneNumberId)
+    console.info('[whatsapp/webhook] Unsupported message type answered', {
+      orgId: org.id,
+      messageId: msg.messageId,
+      type: msg.unsupportedType,
+    })
+    return
+  }
 
   if (sender.role === 'unknown') {
     if (org.automation_new_leads_enabled !== false) {

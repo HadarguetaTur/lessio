@@ -7,8 +7,11 @@ import { cookies, headers } from 'next/headers'
  * Priority:
  *   1. `locale` cookie (set on login or by LocaleSwitcher)
  *   2. `Accept-Language` header — `he*` → `he`, anything else → `en`
- *   3. Default: `he`
+ *   3. Default: `he` — except `/privacy`, `/terms`, `/data-deletion` with no
+ *      Accept-Language at all (automated policy checkers), which default to `en`
  */
+const LEGAL_PATH_PREFIXES = ['/privacy', '/terms', '/data-deletion']
+
 function detectLocaleFromAcceptLanguage(acceptLanguage: string | null): 'he' | 'en' {
   if (!acceptLanguage) return 'he'
   // Parse first preference tag (e.g. "he-IL,he;q=0.9,en;q=0.8" → "he")
@@ -25,8 +28,18 @@ export default getRequestConfig(async () => {
 
   const cookieLocale = cookieStore.get('locale')?.value as 'he' | 'en' | undefined
 
+  const acceptLanguage = headerStore.get('accept-language')
+  const pathname = headerStore.get('x-pathname') ?? ''
+
+  // The legal pages are fetched by automated checkers (Meta App Review, app
+  // store crawlers) that send no Accept-Language at all. For those pages and
+  // only those, a header-less request reads as English; a browser with a
+  // Hebrew preference or a `locale` cookie is unaffected.
+  const headerlessLegalPage =
+    !cookieLocale && !acceptLanguage && LEGAL_PATH_PREFIXES.some((p) => pathname.startsWith(p))
+
   const locale: 'he' | 'en' = cookieLocale ??
-    detectLocaleFromAcceptLanguage(headerStore.get('accept-language'))
+    (headerlessLegalPage ? 'en' : detectLocaleFromAcceptLanguage(acceptLanguage))
 
   return {
     locale,

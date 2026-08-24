@@ -109,7 +109,7 @@ export async function sendSmartMessage(params: {
  * Returns true if there is a recorded inbound message from `phone` in `orgId`
  * within the last 24 hours (Meta customer-service window is open).
  */
-async function isInSessionWindow(orgId: string, phone: string): Promise<boolean> {
+export async function isInSessionWindow(orgId: string, phone: string): Promise<boolean> {
   const db = createServiceRoleClient()
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 

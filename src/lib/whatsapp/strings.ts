@@ -158,6 +158,7 @@ export type BotStringKey =
   | 'ai_no_upcoming_lessons'
   | 'ai_lesson_datetime_format'
   | 'the_student'
+  | 'unsupported_media'
 
 const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
   he: {
@@ -322,6 +323,8 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     ai_no_upcoming_lessons: 'אין שיעורים מתוכננים',
     ai_lesson_datetime_format: "EEEE d/M 'בשעה' HH:mm",
     the_student: 'התלמיד',
+    unsupported_media:
+      'קיבלתי 🙂 כאן אפשר לעזור רק בהודעות טקסט — תמונות, הקלטות וקבצים לא נקראים.\nאפשר לכתוב "תפריט" כדי לראות מה אפשר לעשות, או לפנות ישירות לצוות.',
   },
   en: {
     unknown_parent:
@@ -493,6 +496,8 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     ai_no_upcoming_lessons: 'No upcoming lessons',
     ai_lesson_datetime_format: "EEEE d/M 'at' HH:mm",
     the_student: 'the student',
+    unsupported_media:
+      'Got it 🙂 I can only help with text messages here — photos, voice notes and files are not read.\nType "menu" to see what I can do, or reach out to the team directly.',
   },
 }
 

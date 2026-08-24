@@ -16,6 +16,7 @@ import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { decryptToken } from '@/lib/crypto'
 import { sendTextMessage } from '@/lib/whatsapp'
+import { sendSmartMessage, isInSessionWindow } from '@/lib/whatsapp/sendSmart'
 import { prepareBusinessSend, recordParentConsent } from '@/lib/whatsapp/consent'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
@@ -521,7 +522,28 @@ export async function sendPaymentRequestAction(
   )
 
   try {
-    await sendTextMessage(parent.phone, message, accessToken, phoneNumberId)
+    // The itemised message is free text, which Meta only accepts inside the
+    // 24h customer-service window. Outside it, fall back to the approved
+    // lessio_payment_request_* template (amount + link) via sendSmartMessage —
+    // a plain text send there fails with error 131047 every time.
+    if (await isInSessionWindow(orgId, parent.phone)) {
+      await sendTextMessage(parent.phone, message, accessToken, phoneNumberId)
+    } else {
+      const totalAmount = charges.reduce((sum, c) => sum + c.amount, 0)
+      await sendSmartMessage({
+        orgId,
+        phone: parent.phone,
+        accessToken,
+        phoneNumberId,
+        templateType: 'payment_request',
+        vars: {
+          amount: totalAmount.toFixed(2),
+          description: tr('chargeDescription', { name: parent.full_name as string }),
+          payment_link: paymentUrl ?? '',
+        },
+        locale: recipientLocale,
+      })
+    }
   } catch (sendErr) {
     console.error('[sendPaymentRequestAction] WhatsApp API error', { orgId, parentId, error: String(sendErr) })
     return { error: t('parents.errors.whatsappSendFailed') }

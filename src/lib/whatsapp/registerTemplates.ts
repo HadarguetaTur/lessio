@@ -277,7 +277,7 @@ export async function registerTemplatesForWABA(
   results.forEach((r, i) => {
     const name = TEMPLATES[i].name
     if (r.status === 'fulfilled') ok.push(name)
-    else failed.push({ name, reason: String(r.reason) })
+    else failed.push({ name, reason: r.reason instanceof Error ? r.reason.message : String(r.reason) })
   })
 
   if (failed.length > 0) {
@@ -423,5 +423,9 @@ async function registerOne(
     return
   }
 
-  throw new Error(`[registerTemplates] Failed ${template.name}: ${result.status} ${result.body}`)
+  // The raw body (with fbtrace_id etc.) goes to the log; the thrown reason is
+  // Meta's human-readable explanation, because RegisterTemplatesButton renders
+  // it verbatim to the user.
+  console.warn(`[registerTemplates] Failed ${template.name}: ${result.status} ${result.body}`)
+  throw new Error(result.userMessage ?? `HTTP ${result.status}`)
 }

@@ -80,7 +80,11 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/he/portal/') ||
     request.nextUrl.pathname.startsWith('/api/calendar/') ||
     // Sumit SaaS billing webhook — authenticated via HMAC, no Supabase session
-    request.nextUrl.pathname.startsWith('/api/sumit/')
+    request.nextUrl.pathname.startsWith('/api/sumit/') ||
+    // Meta WhatsApp webhook — verify token (GET) / X-Hub-Signature-256 (POST).
+    // Must not depend on Supabase Auth: a failing auth.getUser() here would turn
+    // into a 500 towards Meta, and repeated failures disable the subscription.
+    request.nextUrl.pathname.startsWith('/api/whatsapp/')
   ) {
     return NextResponse.next()
   }

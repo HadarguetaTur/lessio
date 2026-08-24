@@ -21,6 +21,12 @@ export interface WhatsAppMessage {
    * or undefined for a typed message. This is what the menu router dispatches on.
    */
   replyId?: string
+  /**
+   * Set when the sender sent something we cannot act on (image, audio,
+   * document, sticker, location, contacts…). `text` is empty in that case. The
+   * webhook answers with a short "text only" notice instead of silence.
+   */
+  unsupportedType?: string
   /** Display phone number of the receiving business WhatsApp line */
   businessPhoneNumber: string
   /** Meta phone_number_id of the receiving business line */
@@ -103,7 +109,22 @@ export function parseWebhookPayload(body: unknown): WhatsAppMessage[] {
 
       for (const msg of messages) {
         const extracted = extractContent(msg)
-        if (!extracted) continue
+        if (!extracted) {
+          // Reactions and `unsupported` (Meta's own marker for types it could
+          // not deliver) are not a person asking for something — stay silent.
+          // Everything else is a real message we cannot read: a photo of a
+          // homework page, a voice note — and deserves an answer.
+          if (msg.type === 'reaction' || msg.type === 'unsupported') continue
+          results.push({
+            from: msg.from,
+            messageId: msg.id,
+            text: '',
+            unsupportedType: msg.type,
+            businessPhoneNumber: metadata.display_phone_number,
+            phoneNumberId: metadata.phone_number_id,
+          })
+          continue
+        }
         results.push({
           from: msg.from,
           messageId: msg.id,
@@ -175,8 +196,8 @@ export function parseTemplateStatusUpdates(body: unknown): TemplateStatusUpdate[
 
 /**
  * Normalises the three inbound shapes we act on into { text, replyId }.
- * Everything else (images, audio, reactions, status updates) returns null and
- * is dropped, as before.
+ * Everything else (images, audio, reactions, …) returns null; the caller
+ * decides whether that is dropped or surfaced as an unsupported message.
  */
 function extractContent(
   msg: z.infer<typeof MetaMessageSchema>

@@ -73,12 +73,21 @@ Deno.serve(async (_req) => {
     // Fetch org WhatsApp config
     const { data: org } = await db
       .from('organizations')
-      .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale')
+      .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale, reminders_enabled')
       .eq('id', orgId)
       .single()
 
     if (!org?.whatsapp_access_token || !org?.whatsapp_phone_number_id) {
       console.warn('[homework-sender] No WhatsApp config for org', { org_id: orgId })
+      continue
+    }
+
+    // The org's master WhatsApp-automation switch (/settings/whatsapp). Every
+    // other cron honours it; scheduled homework must not be the one message
+    // that still goes out after the business turned everything off. The
+    // assignments stay unsent and are picked up if the switch is turned back on.
+    if (org.reminders_enabled === false) {
+      console.info('[homework-sender] reminders disabled for org — skipping', { org_id: orgId })
       continue
     }
 

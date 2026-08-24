@@ -19,10 +19,9 @@ import {
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
-import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
-import { sendTextMessage } from '@/lib/whatsapp'
+import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { getTranslations } from 'next-intl/server'
@@ -574,10 +573,9 @@ async function sendBillingPaymentRequestCore(
     orgDefault: org.default_locale as string | null,
   })
 
-  // Business-initiated, and it sends via sendTextMessage rather than
-  // sendSmartMessage, so the opt-out / welcome-notice gate has to be applied
-  // explicitly. Checked before the payment link is created — creating one
-  // nobody will be sent is waste.
+  // Business-initiated. sendSmartMessage runs this gate too, but it is checked
+  // here first, before the payment link is created — creating one nobody will
+  // be sent is waste. The second pass is a no-op (welcome already claimed).
   const accessToken = decryptToken(encryptedToken)
   const gate = await prepareBusinessSend({ orgId, phone: parent.phone as string, accessToken, phoneNumberId, locale })
   if (!gate.ok) {
@@ -628,14 +626,23 @@ async function sendBillingPaymentRequestCore(
     .eq('id', charge.id)
     .eq('organization_id', orgId)
 
-  // Build and send WhatsApp message via template
-  const body = await resolveTemplate(orgId, 'payment_request', {
-    amount: Number(charge.amount).toFixed(2),
-    description: tr('paymentDescriptionShort', { month: billing.billing_month as string }),
-    payment_link: paymentResult.url,
-  }, locale)
-
-  await sendTextMessage(parent.phone, body, accessToken, phoneNumberId)
+  // Session-window aware: the org's own template copy inside the 24h window,
+  // the Meta-approved lessio_payment_request_* template outside it. A plain
+  // text send here failed with error 131047 for every parent who had not
+  // written to the business in the last day.
+  await sendSmartMessage({
+    orgId,
+    phone: parent.phone as string,
+    accessToken,
+    phoneNumberId,
+    templateType: 'payment_request',
+    vars: {
+      amount: Number(charge.amount).toFixed(2),
+      description: tr('paymentDescriptionShort', { month: billing.billing_month as string }),
+      payment_link: paymentResult.url,
+    },
+    locale,
+  })
 
   // Log sent_at
   await db

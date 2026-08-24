@@ -49,9 +49,16 @@ describe('parseWebhookPayload', () => {
     expect(result).toHaveLength(0)
   })
 
-  it('ignores non-text messages', () => {
+  it('surfaces unreadable media as an unsupported message', () => {
     const result = parseWebhookPayload(makePayload({ type: 'image' }))
-    expect(result).toHaveLength(0)
+    expect(result).toHaveLength(1)
+    expect(result[0].text).toBe('')
+    expect(result[0].unsupportedType).toBe('image')
+  })
+
+  it('stays silent on reactions and Meta unsupported markers', () => {
+    expect(parseWebhookPayload(makePayload({ type: 'reaction' }))).toHaveLength(0)
+    expect(parseWebhookPayload(makePayload({ type: 'unsupported' }))).toHaveLength(0)
   })
 
   it('returns empty array for a status update (no messages array)', () => {

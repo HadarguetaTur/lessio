@@ -737,6 +737,13 @@
     },
     "series": {
       "badge": "Series",
+      "existingTitle": "Existing series",
+      "existingEmpty": "No recurring lessons yet",
+      "colSchedule": "Day & time",
+      "colStudents": "Students",
+      "colTeacher": "Teacher",
+      "colUpcoming": "Upcoming lessons",
+      "upcomingCount": "{count} upcoming",
       "cancelFromHere": "Cancel From Here",
       "cancelFromHereButton": "Cancel From Here On",
       "cancelAll": "Cancel Entire Series",

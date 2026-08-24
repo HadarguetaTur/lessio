@@ -737,6 +737,13 @@
     },
     "series": {
       "badge": "סדרה",
+      "existingTitle": "סדרות קיימות",
+      "existingEmpty": "אין עדיין שיעורים קבועים",
+      "colSchedule": "יום ושעה",
+      "colStudents": "תלמידים",
+      "colTeacher": "מורה",
+      "colUpcoming": "שיעורים קרובים",
+      "upcomingCount": "{count} קרובים",
       "cancelFromHere": "בטל מכאן ואילך",
       "cancelFromHereButton": "בטל מכאן והלאה",
       "cancelAll": "בטל את כל הסדרה",

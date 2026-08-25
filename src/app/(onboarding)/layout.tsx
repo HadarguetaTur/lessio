@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 
-import { AuthPageDecorations } from '@/components/auth/AuthPageDecorations'
 import { LocaleSwitcher } from '@/components/dashboard/LocaleSwitcher'
 
 export default async function OnboardingLayout({
@@ -18,8 +17,6 @@ export default async function OnboardingLayout({
 
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden bg-background" dir={dir}>
-      <AuthPageDecorations />
-
       <header className="relative z-20 shrink-0 border-b border-border/60 bg-card/80 px-4 py-3 shadow-sm backdrop-blur-md sm:px-6">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">

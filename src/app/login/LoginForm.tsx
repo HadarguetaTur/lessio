@@ -74,7 +74,7 @@ export function LoginForm() {
       <Button
         type="submit"
         disabled={pending}
-        className="h-11 w-full border-0 bg-gradient-to-l from-teal-600 via-emerald-600 to-violet-600 px-4 text-base font-semibold text-white shadow-lg shadow-teal-600/20 transition-[filter,box-shadow] hover:brightness-105 hover:shadow-lg hover:shadow-violet-500/25"
+        className="h-11 w-full px-4 text-base font-semibold"
       >
         {pending ? t('submitting') : t('submit')}
       </Button>

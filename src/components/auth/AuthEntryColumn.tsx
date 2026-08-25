@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 
 import Link from 'next/link'
 
-import { ShieldCheck } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 
 type CardAlign = 'start' | 'center'
@@ -23,7 +22,6 @@ export async function AuthEntryColumn({
   afterCard?: ReactNode
   footer?: ReactNode
 }) {
-  const tTrust = await getTranslations('auth.trust')
   const tNav = await getTranslations('auth.common')
   const cardText =
     cardAlign === 'center' ? 'text-center' : 'text-center lg:text-start'
@@ -41,16 +39,8 @@ export async function AuthEntryColumn({
         <p className="text-xs font-bold tracking-[0.2em] text-muted-foreground">LESSIO</p>
       </Link>
 
-      <div className="mb-7 flex w-full flex-wrap items-center justify-center gap-2">
-        <span className="inline-flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/10 px-3 py-1 text-xs font-medium text-teal-800 dark:text-teal-200">
-          <ShieldCheck className="size-3.5 text-teal-600 dark:text-teal-300" aria-hidden />
-          {tTrust('secure')}
-        </span>
-        <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-900/80 dark:text-violet-200/90">
-          {tTrust('ssl')}
-        </span>
-      </div>
-
+      {/* "Secure" and "SSL" badges removed: announcing that a login form uses
+          HTTPS is the kind of reassurance that reads as protesting too much. */}
       <header className="mb-8 w-full max-w-[20rem] text-center sm:max-w-none lg:text-start">
         <h1 className="text-balance text-pretty text-3xl font-bold tracking-tight text-foreground sm:text-[2.125rem] sm:leading-tight">
           {title}

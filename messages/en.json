@@ -2605,21 +2605,12 @@
       "submit": "Create account",
       "submitting": "Creating account..."
     },
-    "trust": {
-      "secure": "Secure",
-      "ssl": "SSL"
-    },
     "brand": {
       "subtitle": "Lesson management",
-      "simple": "Simple",
-      "fast": "Fast",
-      "focused": "Focused",
-      "tagline": "Smart lessons · Automatic billing · AI assistant · Smart WhatsApp flows",
-      "feature1": "Smart lesson calendar",
-      "feature2": "Automatic billing",
-      "feature3": "Smart AI assistant",
-      "feature4": "Smart WhatsApp workflows",
-      "statusLive": "System live"
+      "tagline": "Every lesson, payment and parent message in one place.",
+      "feature1": "A schedule that keeps itself up to date",
+      "feature2": "Monthly billing built from the lessons you taught",
+      "feature3": "Parent reminders over WhatsApp"
     },
     "errors": {
       "invalidCredentials": "Invalid email or password",

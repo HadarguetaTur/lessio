@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth/session'
 import { getTeachers } from '@/lib/teachers'
 import { getStudents } from '@/lib/students'
 import { getLessonSeriesList } from '@/lib/lessons/getSeries'
+import { getOrgTimezone } from '@/lib/organizations'
+import { getOrgHolidays } from '@/lib/organizations/holidays'
 import { NewSeriesForm } from '@/components/dashboard/lessons/NewSeriesForm'
 import { SeriesRowActions } from '@/components/dashboard/lessons/SeriesRowActions'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -20,10 +22,12 @@ export default async function NewSeriesPage() {
     redirect('/lessons')
   }
 
-  const [teachers, students, series] = await Promise.all([
+  const [teachers, students, series, timezone, holidays] = await Promise.all([
     getTeachers(orgId),
     getStudents(orgId),
     getLessonSeriesList(orgId),
+    getOrgTimezone(orgId),
+    getOrgHolidays(orgId),
   ])
 
   const activeTeachers = teachers
@@ -47,7 +51,13 @@ export default async function NewSeriesPage() {
     <div className="grid gap-8 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('newSeriesTitle')}</h1>
-        <NewSeriesForm teachers={activeTeachers} students={activeStudents} />
+        <NewSeriesForm
+          teachers={activeTeachers}
+          students={activeStudents}
+          timezone={timezone}
+          appLocale={locale}
+          holidays={holidays.map((h) => ({ date: h.date, name: h.name }))}
+        />
       </div>
 
       <div className="min-w-0">

@@ -793,7 +793,12 @@
       "createButton": "יצירת סדרה",
       "backToLessons": "← חזרה ללוח שיעורים",
       "nextWeek": "שבוע הבא",
-      "prevWeek": "שבוע קודם"
+      "prevWeek": "שבוע קודם",
+      "createAnother": "יצירת סדרה נוספת",
+      "previewSummary": "{count} שיעורים · {first} – {last}",
+      "previewHolidays": "{count} תאריכים ידולגו בגלל חגים: {dates}",
+      "previewShowDates": "הצגת כל התאריכים",
+      "createButtonCount": "צור {count} שיעורים"
     },
     "cancel": {
       "title": "ביטול שיעור",
@@ -954,7 +959,8 @@
       "whatsapp": "ביטול דרך וואטסאפ",
       "teacherDayOff": "חופשת מורה"
     },
-    "noStudentsFound": "לא נמצאו תלמידים"
+    "noStudentsFound": "לא נמצאו תלמידים",
+    "noTeachersFound": "לא נמצאו מורים"
   },
   "debts": {
     "title": "חייבים",

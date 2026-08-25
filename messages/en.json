@@ -793,7 +793,12 @@
       "createButton": "Create Series",
       "backToLessons": "← Back to lessons",
       "nextWeek": "Next week",
-      "prevWeek": "Previous week"
+      "prevWeek": "Previous week",
+      "createAnother": "Create another series",
+      "previewSummary": "{count} lessons · {first} – {last}",
+      "previewHolidays": "{count} dates will be skipped for holidays: {dates}",
+      "previewShowDates": "Show all dates",
+      "createButtonCount": "Create {count} lessons"
     },
     "cancel": {
       "title": "Cancel Lesson",
@@ -954,7 +959,8 @@
       "whatsapp": "Cancelled over WhatsApp",
       "teacherDayOff": "Teacher day off"
     },
-    "noStudentsFound": "No students found"
+    "noStudentsFound": "No students found",
+    "noTeachersFound": "No teachers found"
   },
   "debts": {
     "title": "Debtors",

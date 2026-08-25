@@ -1,8 +1,10 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { DateTime } from 'luxon'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { getOrgTimezone } from '@/lib/organizations'
 import { createLessonSeries } from '@/lib/lessons/createSeries'
 import {
   extendLessonSeries,
@@ -63,8 +65,11 @@ export async function createSeriesAction(
   const { teacher_id, student_id, day_of_week, start_time, duration_minutes, frequency, until } =
     parsed.data
 
-  // Validate until is in the future
-  const todayStr = new Date().toISOString().substring(0, 10)
+  // "In the future" means the org's calendar day, not UTC's: createLessonSeries
+  // walks dates in the org timezone, so comparing against a UTC date rejects a
+  // valid `until` (or accepts a stale one) either side of midnight.
+  const timezone = await getOrgTimezone(orgId)
+  const todayStr = DateTime.now().setZone(timezone).toFormat('yyyy-MM-dd')
   if (until <= todayStr) {
     return { error: t('lessons.seriesErrors.endDateFuture') }
   }

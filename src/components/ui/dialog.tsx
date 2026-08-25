@@ -71,7 +71,9 @@ function DialogContent({
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button
               variant="ghost"
-              className="absolute top-2 right-2"
+              // Logical, not `right-2`: in RTL the close button was landing on
+              // the side the title starts from, sitting on top of the words.
+              className="absolute top-2 end-2"
               size="icon-sm"
             >
               <XIcon
@@ -89,7 +91,8 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2", className)}
+      // pe-8 keeps the title clear of the close button in the corner.
+      className={cn("flex flex-col gap-2 pe-8", className)}
       {...props}
     />
   )

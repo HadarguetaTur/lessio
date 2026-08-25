@@ -25,6 +25,13 @@ interface ResolveChargeDialogProps {
   /** Warn that an issued invoice needs a credit note to be reversed properly. */
   hasInvoice?: boolean
   size?: 'sm' | 'default'
+  /**
+   * Drive the dialog from outside and drop the built-in button — for callers
+   * that open it from a menu item, where the trigger must not live inside the
+   * menu (closing the menu would unmount the dialog with it).
+   */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export function ResolveChargeDialog({
@@ -34,10 +41,18 @@ export function ResolveChargeDialog({
   hasPaymentLink = false,
   hasInvoice = false,
   size = 'sm',
+  open: controlledOpen,
+  onOpenChange,
 }: ResolveChargeDialogProps) {
   const t = useTranslations('charges.resolve')
   const tCommon = useTranslations('common')
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : uncontrolledOpen
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setUncontrolledOpen(next)
+    onOpenChange?.(next)
+  }
   const [reason, setReason] = useState('')
   const [isPending, startTransition] = useTransition()
 
@@ -64,15 +79,17 @@ export function ResolveChargeDialog({
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size={size}
-        className="gap-1.5 text-muted-foreground hover:text-foreground"
-        onClick={() => setOpen(true)}
-      >
-        <Icon size={14} />
-        {tm('action')}
-      </Button>
+      {!isControlled && (
+        <Button
+          variant="ghost"
+          size={size}
+          className="gap-1.5 text-muted-foreground hover:text-foreground"
+          onClick={() => setOpen(true)}
+        >
+          <Icon size={14} />
+          {tm('action')}
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">

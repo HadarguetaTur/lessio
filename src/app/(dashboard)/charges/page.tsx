@@ -5,9 +5,9 @@ import { getSession } from '@/lib/auth/session'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { getCharges, ChargeStatus } from '@/lib/charges'
 import { getOrgTimezone } from '@/lib/organizations'
+import { getOrgProviderStatus } from '@/lib/organizations/providerStatus'
 import { getParents } from '@/lib/parents'
-import { ResolveChargeDialog } from '@/components/dashboard/charges/ResolveChargeDialog'
-import { RecordPaymentDialog } from '@/components/dashboard/charges/RecordPaymentDialog'
+import { ChargeRowActions } from '@/components/dashboard/charges/ChargeRowActions'
 import { getProviderUI } from '@/lib/payments/registry-ui'
 import { renderChargeNote } from '@/lib/charges/renderNote'
 import { waiveChargeAction, voidChargeAction, recordChargePaymentAction } from './actions'
@@ -45,6 +45,12 @@ export default async function ChargesPage(props: {
   const statusFilter = validStatuses.includes(searchParams.status as ChargeStatus)
     ? (searchParams.status as ChargeStatus)
     : undefined
+
+  // Two columns that can only ever hold a value once an org connects a
+  // provider. Until then they are a wall of em-dashes, so they stay hidden.
+  const providers = await getOrgProviderStatus(orgId)
+  const hasPaymentProvider = providers.hasPayment
+  const hasReceiptProvider = providers.hasReceipt
 
   const [charges, parents, timezone] = await Promise.all([
     getCharges(orgId, {
@@ -205,12 +211,16 @@ export default async function ChargesPage(props: {
                   <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
                     {tCommon('table.status')}
                   </TableHead>
-                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                    {t('paymentLink')}
-                  </TableHead>
-                  <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                    {t('fields.receiptUrl')}
-                  </TableHead>
+                  {hasPaymentProvider && (
+                    <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                      {t('paymentLink')}
+                    </TableHead>
+                  )}
+                  {hasReceiptProvider && (
+                    <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
+                      {t('fields.receiptUrl')}
+                    </TableHead>
+                  )}
                   <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
                     {tCommon('table.date')}
                   </TableHead>
@@ -273,68 +283,57 @@ export default async function ChargesPage(props: {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="px-5 py-3.5">
-                      {charge.payment_link ? (
-                        <a
-                          href={charge.payment_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline"
-                          title={charge.payment_link}
-                        >
-                          {t('paymentLinkLabel')}
-                        </a>
-                      ) : (
-                        <span className="text-xs text-muted-foreground/30">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-5 py-3.5">
-                      {charge.receipt_url ? (
-                        <a
-                          href={charge.receipt_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-emerald-700 hover:underline"
-                        >
-                          {t('receiptLabel')}
-                        </a>
-                      ) : charge.status === 'paid' ? (
-                        <span className="text-xs text-muted-foreground">{t('noReceipt')}</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground/30">—</span>
-                      )}
-                    </TableCell>
+                    {hasPaymentProvider && (
+                      <TableCell className="px-5 py-3.5">
+                        {charge.payment_link ? (
+                          <a
+                            href={charge.payment_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline"
+                            title={charge.payment_link}
+                          >
+                            {t('paymentLinkLabel')}
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/30">—</span>
+                        )}
+                      </TableCell>
+                    )}
+                    {hasReceiptProvider && (
+                      <TableCell className="px-5 py-3.5">
+                        {charge.receipt_url ? (
+                          <a
+                            href={charge.receipt_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-emerald-700 hover:underline"
+                          >
+                            {t('receiptLabel')}
+                          </a>
+                        ) : charge.status === 'paid' ? (
+                          <span className="text-xs text-muted-foreground">{t('noReceipt')}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/30">—</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell className="px-5 py-3.5 text-sm text-muted-foreground">
                       {new Date(charge.created_at).toLocaleDateString(intlLocale)}
                     </TableCell>
                     {canMarkPaid && (
                       <TableCell className="px-5 py-3.5">
                         {OPEN_STATUSES.includes(charge.status) ? (
-                          <div className="flex flex-col items-start gap-1">
-                            <RecordPaymentDialog
-                              chargeId={charge.id}
-                              remaining={remainingOf(charge)}
-                              action={recordChargePaymentAction}
-                            />
-                            <div className="flex items-center gap-1">
-                              <ResolveChargeDialog
-                                chargeId={charge.id}
-                                mode="waive"
-                                action={waiveChargeAction}
-                                hasPaymentLink={Boolean(charge.payment_link)}
-                                hasInvoice={charge.has_invoice}
-                              />
-                              {isOwner && (
-                                <ResolveChargeDialog
-                                  chargeId={charge.id}
-                                  mode="void"
-                                  action={voidChargeAction}
-                                  hasPaymentLink={Boolean(charge.payment_link)}
-                                  hasInvoice={charge.has_invoice}
-                                />
-                              )}
-                            </div>
-                          </div>
+                          <ChargeRowActions
+                            chargeId={charge.id}
+                            remaining={remainingOf(charge)}
+                            isOwner={isOwner}
+                            hasPaymentLink={Boolean(charge.payment_link)}
+                            hasInvoice={charge.has_invoice}
+                            recordPaymentAction={recordChargePaymentAction}
+                            waiveAction={waiveChargeAction}
+                            voidAction={voidChargeAction}
+                          />
                         ) : (
                           <span className="text-xs text-muted-foreground">
                             {tCommon(`chargeStatus.${charge.status}` as Parameters<typeof tCommon>[0])}

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { AlertCircle, CalendarDays, Plus, Receipt, TrendingUp } from 'lucide-react'
+import { AlertCircle, Plus, TrendingUp } from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getTranslations, getLocale } from 'next-intl/server'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
@@ -89,9 +89,22 @@ export default async function DashboardPage() {
         <AttentionPanel data={attention} timezone={timezone} appLocale={appLocale} />
       </div>
 
-      {/* Business strip */}
-      <h2 className="mb-3 text-sm font-semibold text-foreground">{t('business.title')}</h2>
-      <section className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Business strip — two numbers a tutor acts on: what came in, what is
+          still owed. Lesson volume rides along in the heading rather than
+          competing with money for a card. */}
+      <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <h2 className="text-sm font-semibold text-foreground">{t('business.title')}</h2>
+        <Link
+          href="/reports/lessons"
+          className="text-xs text-muted-foreground transition-colors hover:text-primary"
+        >
+          {t('business.subtitle', {
+            lessons: summary.lessonsThisMonth,
+            rate: summary.cancellation.rate,
+          })}
+        </Link>
+      </div>
+      <section className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <KpiCard
           label={t('kpi.monthlyRevenue')}
           value={formatCurrency(summary.monthlyRevenue, locale)}
@@ -102,35 +115,16 @@ export default async function DashboardPage() {
           href="/reports/revenue"
         />
         <KpiCard
-          label={t('kpi.monthlyBilling')}
-          value={formatCurrency(summary.monthlyBillingTotal, locale)}
-          subLabel={t('kpi.monthlyBillingPaid', {
-            amount: formatCurrency(summary.monthlyBillingPaid, locale),
-          })}
-          icon={Receipt}
-          variant="default"
-          href="/billing"
-        />
-        <KpiCard
           label={t('kpi.pendingDebt')}
           value={formatCurrency(summary.pendingDebt, locale)}
-          subLabel={t('kpi.allTime')}
+          subLabel={
+            attention.debtors.count > 0
+              ? t('kpi.debtorsSub', { count: attention.debtors.count })
+              : t('kpi.noDebt')
+          }
           icon={AlertCircle}
           variant={summary.pendingDebt > 0 ? 'debt' : 'default'}
           href="/billing/debts"
-        />
-        <KpiCard
-          label={t('kpi.lessonsThisMonth')}
-          value={summary.lessonsThisMonth}
-          subLabel={
-            summary.cancellation.elapsed > 0
-              ? t('kpi.cancellationSub', { rate: summary.cancellation.rate })
-              : undefined
-          }
-          icon={CalendarDays}
-          variant={summary.cancellation.rate >= 20 ? 'warning' : 'lessons'}
-          trend={summary.deltas.lessons}
-          href="/reports/lessons"
         />
       </section>
 

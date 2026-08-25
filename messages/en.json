@@ -311,20 +311,26 @@
       "atRisk": "At-risk students ({count})",
       "lastLesson": "Last lesson: {date}",
       "noLesson": "No lessons yet",
-      "allClear": "All clear — nothing needs attention"
+      "allClear": "All clear — nothing needs attention",
+      "unloggedLessons": "Lessons not logged yet ({count})",
+      "pendingBilling": "Billing awaiting approval ({count})",
+      "overdueHomework": "Overdue homework ({count})"
     },
     "business": {
-      "title": "This Month"
+      "title": "This month",
+      "subtitle": "{lessons} lessons · {rate}% cancelled"
     },
     "kpi": {
-      "monthlyRevenue": "Collected This Month",
+      "monthlyRevenue": "Collected this month",
       "monthlyBilling": "Billed This Month",
       "monthlyBillingPaid": "Paid so far {amount}",
-      "pendingDebt": "Outstanding Debt",
+      "pendingDebt": "Still owed to you",
       "lessonsThisMonth": "Lessons This Month",
       "monthToDate": "Month to date",
       "allTime": "All-time open debt",
-      "cancellationSub": "{rate}% cancellations of past lessons"
+      "cancellationSub": "{rate}% cancellations of past lessons",
+      "debtorsSub": "{count} parents",
+      "noDebt": "Nothing outstanding"
     },
     "revenueTrend": {
       "title": "Revenue — 12 Months"

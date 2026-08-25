@@ -1,5 +1,14 @@
 import Link from 'next/link'
-import { CheckCircle2, TriangleAlert, UserPlus, Wallet, type LucideIcon } from 'lucide-react'
+import {
+  BookOpen,
+  CheckCircle2,
+  ClipboardList,
+  Receipt,
+  TriangleAlert,
+  UserPlus,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getTranslations } from 'next-intl/server'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
@@ -39,22 +48,37 @@ function GroupHeader({
 
 /**
  * "Needs attention" — names and amounts, not bare counts.
- * Priority: money (debtors) → pipeline (new leads) → retention (at-risk students).
+ * Ordered by what it costs to ignore: an unlogged lesson never becomes a
+ * charge, unapproved billing blocks the payment request, debtors owe money
+ * already billed — then teaching follow-ups, pipeline and retention.
  * Navigation only: every row links to the page where the item is handled.
  */
 export async function AttentionPanel({ data, timezone, appLocale }: AttentionPanelProps) {
   const t = await getTranslations('dashboard')
   const intlLocale = toIntlLocale(appLocale)
 
+  const hasUnlogged = data.unloggedLessons.count > 0
+  const hasPendingBilling = data.pendingBilling.count > 0
   const hasDebtors = data.debtors.count > 0
+  const hasOverdueHomework = data.overdueHomework.count > 0
   const hasLeads = (data.newLeads?.count ?? 0) > 0
   const hasAtRisk = data.atRisk.count > 0
-  const allClear = !hasDebtors && !hasLeads && !hasAtRisk
+  const allClear =
+    !hasUnlogged && !hasPendingBilling && !hasDebtors && !hasOverdueHomework && !hasLeads && !hasAtRisk
 
   const formatShortDate = (iso: string) =>
     new Intl.DateTimeFormat(intlLocale, { timeZone: timezone, day: 'numeric', month: 'short' }).format(
       new Date(iso)
     )
+
+  const formatDayTime = (iso: string) =>
+    new Intl.DateTimeFormat(intlLocale, {
+      timeZone: timezone,
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(iso))
 
   const daysAgo = (iso: string) =>
     Math.max(0, Math.floor(DateTime.utc().diff(DateTime.fromISO(iso), 'days').days))
@@ -71,12 +95,68 @@ export async function AttentionPanel({ data, timezone, appLocale }: AttentionPan
           </div>
         ) : (
           <div className="divide-y divide-border pb-2">
+            {hasUnlogged && (
+              <div className="pb-1.5">
+                <GroupHeader
+                  icon={BookOpen}
+                  label={t('attention.unloggedLessons', { count: data.unloggedLessons.count })}
+                  href="/lessons"
+                />
+                <ul>
+                  {data.unloggedLessons.top.map((lesson) => (
+                    <li key={lesson.lessonId}>
+                      <Link
+                        href={`/lessons/${lesson.lessonId}`}
+                        className="flex items-center gap-2 px-4 py-1.5 transition-colors hover:bg-muted/30"
+                      >
+                        <bdi className="min-w-0 flex-1 truncate text-sm text-foreground">
+                          {lesson.studentName}
+                        </bdi>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {formatDayTime(lesson.startAt)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {hasPendingBilling && (
+              <div className="pb-1.5">
+                <GroupHeader
+                  icon={Receipt}
+                  label={t('attention.pendingBilling', { count: data.pendingBilling.count })}
+                  trailing={formatCurrency(data.pendingBilling.total, appLocale)}
+                  href="/billing"
+                />
+                <ul>
+                  {data.pendingBilling.top.map((row) => (
+                    <li key={row.billingId}>
+                      <Link
+                        href="/billing"
+                        className="flex items-center gap-2 px-4 py-1.5 transition-colors hover:bg-muted/30"
+                      >
+                        <bdi className="min-w-0 flex-1 truncate text-sm text-foreground">
+                          {row.studentName}
+                        </bdi>
+                        <span className="shrink-0 text-sm font-semibold text-foreground">
+                          {formatCurrency(row.amount, appLocale)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {hasDebtors && (
               <div className="pb-1.5">
                 <GroupHeader
                   icon={Wallet}
+                  // No trailing total: the "still owed" card above owns that
+                  // number, this group owns the list of who.
                   label={t('attention.debtors', { count: data.debtors.count })}
-                  trailing={formatCurrency(data.debtors.totalDebt, appLocale)}
                   href="/billing/debts"
                 />
                 <ul>
@@ -109,6 +189,40 @@ export async function AttentionPanel({ data, timezone, appLocale }: AttentionPan
                         <span className="shrink-0 text-sm font-semibold text-foreground">
                           {formatCurrency(debtor.totalDebt, appLocale)}
                         </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {hasOverdueHomework && (
+              <div className="pb-1.5">
+                <GroupHeader
+                  icon={ClipboardList}
+                  label={t('attention.overdueHomework', { count: data.overdueHomework.count })}
+                  href="/homework?status=overdue"
+                />
+                <ul>
+                  {data.overdueHomework.top.map((row) => (
+                    <li key={row.assignmentId}>
+                      <Link
+                        href={`/homework/${row.assignmentId}`}
+                        className="flex items-center gap-2 px-4 py-1.5 transition-colors hover:bg-muted/30"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <bdi className="block truncate text-sm text-foreground">
+                            {row.studentName}
+                          </bdi>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {row.title}
+                          </span>
+                        </span>
+                        {row.dueDate && (
+                          <span className="shrink-0 text-xs text-muted-foreground">
+                            {formatShortDate(`${row.dueDate}T12:00:00Z`)}
+                          </span>
+                        )}
                       </Link>
                     </li>
                   ))}

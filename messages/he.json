@@ -311,20 +311,26 @@
       "atRisk": "תלמידים בסיכון ({count})",
       "lastLesson": "שיעור אחרון: {date}",
       "noLesson": "ללא שיעורים",
-      "allClear": "הכול מטופל — אין פריטים פתוחים"
+      "allClear": "הכל מטופל — אין מה שדורש תשומת לב",
+      "unloggedLessons": "שיעורים שעדיין לא עודכנו ({count})",
+      "pendingBilling": "חיוב חודשי ממתין לאישור ({count})",
+      "overdueHomework": "שיעורי בית באיחור ({count})"
     },
     "business": {
-      "title": "העסק החודש"
+      "title": "החודש",
+      "subtitle": "{lessons} שיעורים · {rate}% ביטולים"
     },
     "kpi": {
       "monthlyRevenue": "נגבה החודש",
       "monthlyBilling": "חויב החודש",
       "monthlyBillingPaid": "שולם עד כה {amount}",
-      "pendingDebt": "חוב פתוח",
+      "pendingDebt": "עדיין חייבים לך",
       "lessonsThisMonth": "שיעורים החודש",
       "monthToDate": "החודש עד כה",
       "allTime": "חוב מצטבר, כל התקופות",
-      "cancellationSub": "{rate}% ביטולים משיעורים שהתקיימו"
+      "cancellationSub": "{rate}% ביטולים משיעורים שהתקיימו",
+      "debtorsSub": "{count} הורים",
+      "noDebt": "אין חובות פתוחים"
     },
     "revenueTrend": {
       "title": "הכנסות — 12 חודשים"

@@ -130,7 +130,9 @@
     "chargeStatus": {
       "pending": "Pending",
       "invoiced": "Invoiced",
-      "paid": "Paid"
+      "paid": "Paid",
+      "waived": "Waived",
+      "voided": "Voided"
     },
     "homeworkStatus": {
       "pending": "Pending",
@@ -267,6 +269,7 @@
     "teacherOverrides": "Schedule Exceptions",
     "teacherCalendarConnect": "Google Calendar",
     "billing": "Monthly Billing",
+    "debts": "Debtors",
     "subscriptions": "Subscriptions",
     "globalSearch": {
       "placeholder": "Search students, parents, lessons…",
@@ -291,19 +294,39 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "newLesson": "New Lesson",
+    "today": {
+      "title": "Today",
+      "summary": "{total} lessons · {completed} completed · {cancelled} cancelled",
+      "nextBadge": "Next",
+      "viewAll": "All today's lessons ({count})",
+      "emptyAction": "Schedule a lesson"
+    },
+    "attention": {
+      "title": "Needs Attention",
+      "debtors": "Debtors ({count})",
+      "daysOld": "{days} days",
+      "newLeads": "New leads ({count})",
+      "atRisk": "At-risk students ({count})",
+      "lastLesson": "Last lesson: {date}",
+      "noLesson": "No lessons yet",
+      "allClear": "All clear — nothing needs attention"
+    },
+    "business": {
+      "title": "This Month"
+    },
     "kpi": {
       "monthlyRevenue": "Collected This Month",
       "monthlyBilling": "Billed This Month",
       "monthlyBillingPaid": "Paid so far {amount}",
       "pendingDebt": "Outstanding Debt",
       "lessonsThisMonth": "Lessons This Month",
-      "activeStudents": "Active Students",
-      "cancellationRate": "Cancellation Rate",
-      "atRiskStudents": "At-Risk Students",
-      "newLeads": "New Leads This Month",
-      "avgRevenuePerStudent": "Avg Revenue / Student",
-      "lessonsPerTeacher": "Lessons / Teacher",
-      "leadConversionRate": "Lead Conversion Rate"
+      "monthToDate": "Month to date",
+      "allTime": "All-time open debt",
+      "cancellationSub": "{rate}% cancellations of past lessons"
+    },
+    "revenueTrend": {
+      "title": "Revenue — 12 Months"
     },
     "forecast": {
       "title": "Monthly Forecast",
@@ -311,15 +334,6 @@
       "projected": "Projected remaining",
       "total": "Total projected",
       "atRisk": "At risk"
-    },
-    "todayStatus": "Today's Status",
-    "todayLessons": "Today's Lessons",
-    "statusCounters": {
-      "total": "Total",
-      "scheduled": "Scheduled",
-      "completed": "Completed",
-      "noShow": "No Show",
-      "cancelled": "Cancelled"
     }
   },
   "students": {
@@ -929,6 +943,30 @@
       "teacherDayOff": "Teacher day off"
     }
   },
+  "debts": {
+    "title": "Debtors",
+    "subtitle": "Every parent with an open balance, in one place",
+    "empty": "No open debt 🎉",
+    "totalDebt": "Total open debt",
+    "debtorCount": "Parents owing",
+    "selectAll": "Select all",
+    "selectedCount": "{count} selected",
+    "sendReminder": "Send reminder",
+    "sendRemindersBulk": "Remind {count} parents",
+    "remindersSent": "{sent} reminders sent",
+    "remindersSentWithSkipped": "{sent} reminders sent, {skipped} skipped",
+    "optedOut": "Opted out",
+    "noPhone": "No phone",
+    "chargeCount": "{count} charges",
+    "oldestAge": "Oldest: {days} days ago",
+    "toggleCharges": "Show/hide charges",
+    "partiallyPaid": "Paid ₪{paid} of ₪{total}",
+    "noPaymentProvider": "No payment provider configured — a payment link cannot be created",
+    "sendPaymentRequest": "Consolidated request",
+    "sendPaymentRequestBulk": "Request payment from {count} parents",
+    "requestsSent": "{sent} payment requests sent",
+    "requestsSentWithSkipped": "{sent} payment requests sent, {skipped} skipped"
+  },
   "charges": {
     "title": "Charges",
     "types": {
@@ -980,9 +1018,79 @@
     "pendingReceipt": "Receipt will be issued after marking as paid",
     "monthlyChargeNote": "Monthly charge {month}",
     "errors": {
-      "updateStatusFailed": "Could not update the charge status"
+      "updateStatusFailed": "Could not update the charge status",
+      "chargeResolved": "This charge was waived or voided and cannot be marked paid",
+      "chargeAlreadyPaid": "This charge is already paid. Reverse a paid charge with a credit note instead",
+      "chargeAlreadyResolved": "This charge was already waived or voided",
+      "chargeNotOpen": "This charge is not open for payment",
+      "paymentTooLarge": "The amount is larger than the open balance (₪{max})"
     },
-    "paymentReceivedNotification": "Payment received"
+    "resolve": {
+      "resolvedAt": "Resolved on",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Why? The reason is kept in the charge history",
+      "invoiceWarning": "An invoice was already issued for this charge. Consider issuing a credit note from the monthly billing screen.",
+      "paymentLinkWarning": "A payment link is already live for this parent. It will keep working — let them know.",
+      "waive": {
+        "action": "Waive",
+        "title": "Waive this charge",
+        "description": "The charge leaves the parent's balance but stays in the history with the reason and who waived it.",
+        "confirm": "Waive charge",
+        "success": "Charge waived"
+      },
+      "void": {
+        "action": "Void",
+        "title": "Void a charge entered by mistake",
+        "description": "The charge is marked voided and drops out of every calculation. It stays in the history for audit.",
+        "confirm": "Void charge",
+        "success": "Charge voided"
+      }
+    },
+    "audit": {
+      "title": "Charge history",
+      "empty": "No history yet",
+      "systemActor": "System",
+      "events": {
+        "created": "Charge created",
+        "amount_adjusted": "Amount adjusted",
+        "waived": "Charge waived",
+        "voided": "Charge voided",
+        "unwaived": "Waiver reversed",
+        "payment_recorded": "Payment recorded",
+        "marked_paid": "Marked paid",
+        "webhook_paid": "Paid via payment provider",
+        "reminder_sent": "Reminder sent",
+        "payment_request_sent": "Payment request sent",
+        "sync_conflict": "Recalculation conflict detected"
+      }
+    },
+    "paymentReceivedNotification": "Payment received",
+    "recordPayment": {
+      "action": "Record payment",
+      "title": "Record a payment",
+      "remaining": "Remaining: ₪{amount}",
+      "amountLabel": "Amount received",
+      "methodLabel": "Payment method",
+      "notesPlaceholder": "Note (optional)",
+      "invalidAmount": "Enter an amount between 0.01 and ₪{max}",
+      "partialHint": "Partial payment — ₪{balance} stays open. A receipt is issued only when the charge closes.",
+      "confirm": "Save payment",
+      "successFull": "Payment recorded and the charge closed",
+      "successPartial": "Partial payment recorded",
+      "methods": {
+        "manual": "Manual",
+        "cash": "Cash",
+        "bank_transfer": "Bank transfer",
+        "provider": "Payment provider",
+        "other": "Other"
+      }
+    },
+    "payments": {
+      "title": "Payments received",
+      "summary": "Paid ₪{paid} of ₪{total}",
+      "remaining": "₪{amount} remaining"
+    },
+    "partiallyPaid": "Paid ₪{paid} of ₪{total}"
   },
   "billing": {
     "title": "Monthly Billing",
@@ -2629,6 +2737,7 @@
       "pay": "Pay",
       "pending": "Pending",
       "paid": "Paid",
+      "partiallyPaid": "Paid {paid} of {total}",
       "receipt": "Receipt",
       "chargeType": {
         "lesson": "Lesson",
@@ -3749,6 +3858,7 @@
     "manualCharge": "Manual charge — {name}",
     "lessonPayment": "Lesson payment — {name}",
     "creditNoteLine": "Credit — {reason}",
-    "chargeFallback": "Charge {month}"
+    "chargeFallback": "Charge {month}",
+    "consolidatedPayment": "Payment for {count} open charges"
   }
 }

@@ -2,17 +2,26 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { getChargeById, ChargeStatus } from '@/lib/charges'
+import { getChargeAuditLog } from '@/lib/charges/audit'
+import { getChargePayments } from '@/lib/charges/payments'
+import { ChargePaymentsList } from '@/components/dashboard/charges/ChargePaymentsList'
 import { getProviderUI } from '@/lib/payments/registry-ui'
 import { renderChargeNote } from '@/lib/charges/renderNote'
-import { MarkAsPaidButton } from '@/components/dashboard/charges/MarkAsPaidButton'
-import { markAsPaid } from '../actions'
+import { RecordPaymentDialog } from '@/components/dashboard/charges/RecordPaymentDialog'
+import { ResolveChargeDialog } from '@/components/dashboard/charges/ResolveChargeDialog'
+import { ChargeAuditTimeline } from '@/components/dashboard/charges/ChargeAuditTimeline'
+import { waiveChargeAction, voidChargeAction, recordChargePaymentAction } from '../actions'
 import { getTranslations } from 'next-intl/server'
 
 const STATUS_STYLES: Record<ChargeStatus, string> = {
   pending: 'bg-yellow-50 text-yellow-700',
   invoiced: 'bg-blue-50 text-blue-700',
   paid: 'bg-green-50 text-green-700',
+  waived: 'bg-slate-100 text-slate-600',
+  voided: 'bg-slate-100 text-slate-500 line-through',
 }
+
+const OPEN_STATUSES: ChargeStatus[] = ['pending', 'invoiced']
 
 export default async function ChargeDetailPage({
   params,
@@ -27,7 +36,14 @@ export default async function ChargeDetailPage({
     notFound()
   }
 
+  const [auditEntries, payments] = await Promise.all([
+    getChargeAuditLog(orgId, charge.id),
+    getChargePayments(orgId, charge.id),
+  ])
+  const remaining = Math.max(0, charge.amount - charge.amount_paid)
   const canMarkPaid = role === 'owner' || role === 'admin'
+  const isOwner = role === 'owner'
+  const isOpen = OPEN_STATUSES.includes(charge.status)
   const t = await getTranslations('charges')
   const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
@@ -36,6 +52,8 @@ export default async function ChargeDetailPage({
     pending: tCommon('chargeStatus.pending'),
     invoiced: tCommon('chargeStatus.invoiced'),
     paid: tCommon('chargeStatus.paid'),
+    waived: tCommon('chargeStatus.waived'),
+    voided: tCommon('chargeStatus.voided'),
   }
 
   const CHARGE_TYPE_LABELS: Record<string, string> = {
@@ -117,6 +135,20 @@ export default async function ChargeDetailPage({
               </dd>
             </div>
           )}
+          {charge.resolved_at && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-gray-500">{t('resolve.resolvedAt')}</dt>
+              <dd className="text-gray-700">
+                {new Date(charge.resolved_at).toLocaleString('he-IL')}
+              </dd>
+            </div>
+          )}
+          {charge.resolution_reason && (
+            <div>
+              <dt className="text-gray-500 mb-1">{t('resolve.reasonLabel')}</dt>
+              <dd className="text-gray-800">{charge.resolution_reason}</dd>
+            </div>
+          )}
         </dl>
 
         <div className="p-4">
@@ -155,11 +187,47 @@ export default async function ChargeDetailPage({
           </div>
         )}
 
-        {canMarkPaid && charge.status !== 'paid' && (
-          <div className="p-4 flex items-center gap-3">
-            <MarkAsPaidButton chargeId={charge.id} action={markAsPaid} />
+        {canMarkPaid && isOpen && (
+          <div className="p-4 flex flex-wrap items-center gap-3">
+            <RecordPaymentDialog
+              chargeId={charge.id}
+              remaining={remaining}
+              action={recordChargePaymentAction}
+            />
+            <ResolveChargeDialog
+              chargeId={charge.id}
+              mode="waive"
+              action={waiveChargeAction}
+              hasPaymentLink={Boolean(charge.payment_link)}
+              hasInvoice={charge.has_invoice}
+            />
+            {isOwner && (
+              <ResolveChargeDialog
+                chargeId={charge.id}
+                mode="void"
+                action={voidChargeAction}
+                hasPaymentLink={Boolean(charge.payment_link)}
+                hasInvoice={charge.has_invoice}
+              />
+            )}
           </div>
         )}
+
+        {payments.length > 0 && (
+          <div className="p-4">
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+              {t('payments.title')}
+            </h2>
+            <ChargePaymentsList payments={payments} total={charge.amount} paid={charge.amount_paid} />
+          </div>
+        )}
+
+        <div className="p-4">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+            {t('audit.title')}
+          </h2>
+          <ChargeAuditTimeline entries={auditEntries} />
+        </div>
       </div>
     </div>
   )

@@ -76,7 +76,7 @@ async function processOrg(db: any, org: any, now: Date) {
   // ── 2. Fetch eligible charges ──────────────────────────────────────────────
   const { data: charges, error: chargesError } = await db
     .from('charges')
-    .select('id, amount, payment_link, parent:parents ( id, full_name, phone, email, preferred_locale )')
+    .select('id, amount, amount_paid, payment_link, parent:parents ( id, full_name, phone, email, preferred_locale )')
     .eq('organization_id', org.id)
     .eq('status', 'pending')
     .not('payment_link', 'is', null)
@@ -127,7 +127,11 @@ async function processOrg(db: any, org: any, now: Date) {
       continue
     }
 
-    const amount = Number(charge.amount).toFixed(2)
+    // Chase what is still owed: a charge can carry a partial payment.
+    const amount = Math.max(
+      0,
+      Number(charge.amount) - Number(charge.amount_paid ?? 0)
+    ).toFixed(2)
     const locale = resolveRecipientLocale({
       stored: charge.parent?.preferred_locale,
       orgDefault: org.default_locale,

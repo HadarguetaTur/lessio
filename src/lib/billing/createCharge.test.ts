@@ -49,11 +49,17 @@ describe('createLessonCharge', () => {
         })
       }
 
+      if (table === 'charge_audit_log') {
+        return { insert: async () => ({ error: null }) }
+      }
+
       if (table === 'charges') {
         return {
-          insert: async (payload: Record<string, unknown>) => {
+          insert: (payload: Record<string, unknown>) => {
             inserted.push(payload)
-            return { error: null }
+            return {
+              select: () => ({ single: async () => ({ data: { id: 'charge-1' }, error: null }) }),
+            }
           },
         }
       }
@@ -90,8 +96,13 @@ describe('createLessonCharge', () => {
 
       if (table === 'charges') {
         return {
-          insert: async () => ({
-            error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+          insert: () => ({
+            select: () => ({
+              single: async () => ({
+                data: null,
+                error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+              }),
+            }),
           }),
         }
       }
@@ -156,8 +167,13 @@ describe('createCancellationCharge', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'charges') {
         return {
-          insert: async () => ({
-            error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+          insert: () => ({
+            select: () => ({
+              single: async () => ({
+                data: null,
+                error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+              }),
+            }),
           }),
         }
       }

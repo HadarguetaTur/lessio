@@ -4,7 +4,7 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { OPEN_CHARGE_STATUSES } from '@/lib/charges'
+import { OPEN_CHARGE_STATUSES, sumRemaining } from '@/lib/charges'
 
 export type DebtRow = {
   parentId: string
@@ -24,7 +24,7 @@ export async function getDebtReport(orgId: string): Promise<DebtReportData> {
 
   const { data, error } = await db
     .from('charges')
-    .select('parent_id, amount, due_date, parents(id, full_name, phone)')
+    .select('parent_id, amount, amount_paid, due_date, parents(id, full_name, phone)')
     .eq('organization_id', orgId)
     .in('status', [...OPEN_CHARGE_STATUSES])
 
@@ -36,9 +36,12 @@ export async function getDebtReport(orgId: string): Promise<DebtReportData> {
     const parent = charge.parents as unknown as { id: string; full_name: string; phone: string } | null
     if (!parent) continue
 
+    // Owed, not billed: a partially-paid charge counts for its remainder only.
+    const owed = sumRemaining([charge])
+
     const existing = parentMap.get(parent.id)
     if (existing) {
-      existing.totalDebt += Number(charge.amount)
+      existing.totalDebt += owed
       if (
         charge.due_date &&
         (!existing.oldestDueDate || charge.due_date < existing.oldestDueDate)
@@ -50,7 +53,7 @@ export async function getDebtReport(orgId: string): Promise<DebtReportData> {
         parentId: parent.id,
         parentName: parent.full_name,
         phone: parent.phone,
-        totalDebt: Number(charge.amount),
+        totalDebt: owed,
         oldestDueDate: charge.due_date ?? null,
       })
     }

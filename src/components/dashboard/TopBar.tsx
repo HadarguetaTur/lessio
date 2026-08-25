@@ -24,6 +24,7 @@ const ROUTE_KEY_MAP: Record<string, string> = {
   '/lessons':                     'lessons',
   '/charges':                     'charges',
   '/billing':                     'billing',
+  '/billing/debts':               'debts',
   '/subscriptions':               'subscriptions',
   '/leads':                       'leads',
   '/homework':                    'homework',

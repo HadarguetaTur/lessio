@@ -31,7 +31,7 @@ export default async function PortalPaymentsPage({
 
   const { data: charges } = await db
     .from('charges')
-    .select('id, amount, status, charge_type, payment_link, receipt_url, created_at, paid_at')
+    .select('id, amount, amount_paid, status, charge_type, payment_link, receipt_url, created_at, paid_at')
     .eq('parent_id', session.parentId)
     .eq('organization_id', orgId)
     .order('created_at', { ascending: false })
@@ -44,6 +44,11 @@ export default async function PortalPaymentsPage({
     return new Intl.NumberFormat(intlLocale, { style: 'currency', currency: 'ILS' }).format(
       Number(amount)
     )
+  }
+
+  /** What is still owed on an open charge, after any partial payment. */
+  function remaining(charge: { amount: number; amount_paid?: number | null }) {
+    return Math.max(0, Number(charge.amount) - Number(charge.amount_paid ?? 0))
   }
 
   function formatDate(iso: string) {
@@ -76,10 +81,20 @@ export default async function PortalPaymentsPage({
               {pending.map((c) => (
                 <div key={c.id} className="bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-center">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{formatAmount(c.amount)}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {formatAmount(remaining(c))}
+                    </p>
                     <p className="text-xs text-gray-500">
                       {chargeTypeLabel(c.charge_type)} · {formatDate(c.created_at)}
                     </p>
+                    {Number(c.amount_paid ?? 0) > 0 && (
+                      <p className="text-xs text-gray-500">
+                        {t('partiallyPaid', {
+                          paid: formatAmount(Number(c.amount_paid)),
+                          total: formatAmount(Number(c.amount)),
+                        })}
+                      </p>
+                    )}
                   </div>
                   {c.payment_link ? (
                     <a

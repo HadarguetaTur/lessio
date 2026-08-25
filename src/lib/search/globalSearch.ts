@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { OPEN_CHARGE_STATUSES } from '@/lib/charges'
+import { OPEN_CHARGE_STATUSES, sumRemaining } from '@/lib/charges'
 import type { GlobalSearchResponse, SearchChargeHit, SearchLessonHit, SearchParentHit, SearchStudentHit } from './types'
 
 const LIMIT_STUDENTS = 15
@@ -179,7 +179,7 @@ export async function globalSearch(params: {
   if (canSeeCharges && parentIdsForCharges.size > 0) {
     const { data: chRows, error: chErr } = await supabase
       .from('charges')
-      .select('id, amount, status, charge_type, parent_id, parents(id, full_name)')
+      .select('id, amount, amount_paid, status, charge_type, parent_id, parents(id, full_name)')
       .eq('organization_id', orgId)
       .in('parent_id', [...parentIdsForCharges])
       .in('status', [...OPEN_CHARGE_STATUSES])
@@ -193,7 +193,9 @@ export async function globalSearch(params: {
       charges.push({
         kind: 'charge',
         id: row.id as string,
-        amount: Number(row.amount),
+        // Search results show open charges, so the useful figure is what is
+        // still owed rather than what was originally billed.
+        amount: sumRemaining([row as { amount: number; amount_paid: number | null }]),
         status: row.status as string,
         charge_type: row.charge_type as string,
         parent_id: row.parent_id as string,

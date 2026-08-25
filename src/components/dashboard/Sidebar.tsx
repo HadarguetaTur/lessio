@@ -184,6 +184,7 @@ export function Sidebar({
     { href: '/lessons',    label: t('lessons'),    icon: BookOpen,        roles: ['owner', 'admin'] },
     { href: '/charges',    label: t('charges'),    icon: Receipt,         roles: ['owner', 'admin'] },
     { href: '/billing',        label: t('billing'),        icon: Banknote,     roles: ['owner', 'admin'] },
+    { href: '/billing/debts',  label: t('debts'),          icon: Wallet,       roles: ['owner', 'admin'] },
     { href: '/subscriptions',  label: t('subscriptions'),  icon: CreditCard,   roles: ['owner', 'admin'] },
     { href: '/leads',          label: t('leads'),          icon: UserPlus,     roles: ['owner', 'admin'] },
     { href: '/homework',   label: t('homework'),   icon: ClipboardList,   roles: ['owner', 'admin', 'teacher'] },

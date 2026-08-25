@@ -130,7 +130,9 @@
     "chargeStatus": {
       "pending": "ממתין",
       "invoiced": "חויב",
-      "paid": "שולם"
+      "paid": "שולם",
+      "waived": "אופס",
+      "voided": "בוטל"
     },
     "homeworkStatus": {
       "pending": "ממתין",
@@ -267,6 +269,7 @@
     "teacherOverrides": "חריגים ביומן",
     "teacherCalendarConnect": "יומן Google",
     "billing": "חיוב חודשי",
+    "debts": "חייבים",
     "subscriptions": "מנויים",
     "globalSearch": {
       "placeholder": "חיפוש תלמידים, הורים, שיעורים…",
@@ -291,19 +294,39 @@
   },
   "dashboard": {
     "title": "לוח הבקרה",
+    "newLesson": "שיעור חדש",
+    "today": {
+      "title": "היום",
+      "summary": "{total} שיעורים · {completed} הושלמו · {cancelled} בוטלו",
+      "nextBadge": "הבא",
+      "viewAll": "לכל השיעורים של היום ({count})",
+      "emptyAction": "קביעת שיעור"
+    },
+    "attention": {
+      "title": "דורש טיפול",
+      "debtors": "חייבים ({count})",
+      "daysOld": "{days} ימים",
+      "newLeads": "לידים חדשים ({count})",
+      "atRisk": "תלמידים בסיכון ({count})",
+      "lastLesson": "שיעור אחרון: {date}",
+      "noLesson": "ללא שיעורים",
+      "allClear": "הכול מטופל — אין פריטים פתוחים"
+    },
+    "business": {
+      "title": "העסק החודש"
+    },
     "kpi": {
       "monthlyRevenue": "נגבה החודש",
       "monthlyBilling": "חויב החודש",
       "monthlyBillingPaid": "שולם עד כה {amount}",
       "pendingDebt": "חוב פתוח",
       "lessonsThisMonth": "שיעורים החודש",
-      "activeStudents": "תלמידים פעילים",
-      "cancellationRate": "שיעורים שבוטלו",
-      "atRiskStudents": "תלמידים בסיכון",
-      "newLeads": "לידים חדשים החודש",
-      "avgRevenuePerStudent": "ממוצע הכנסה לתלמיד",
-      "lessonsPerTeacher": "שיעורים למורה",
-      "leadConversionRate": "שיעור המרת לידים"
+      "monthToDate": "החודש עד כה",
+      "allTime": "חוב מצטבר, כל התקופות",
+      "cancellationSub": "{rate}% ביטולים משיעורים שהתקיימו"
+    },
+    "revenueTrend": {
+      "title": "הכנסות — 12 חודשים"
     },
     "forecast": {
       "title": "תחזית החודש",
@@ -311,15 +334,6 @@
       "projected": "צפוי מהשיעורים הבאים",
       "total": "סה\"כ צפי",
       "atRisk": "בסיכון"
-    },
-    "todayStatus": "סטטוס היום",
-    "todayLessons": "שיעורים — היום",
-    "statusCounters": {
-      "total": "סה״כ",
-      "scheduled": "מתוכננים",
-      "completed": "הושלמו",
-      "noShow": "לא הגיע",
-      "cancelled": "בוטלו"
     }
   },
   "students": {
@@ -929,6 +943,30 @@
       "teacherDayOff": "חופשת מורה"
     }
   },
+  "debts": {
+    "title": "חייבים",
+    "subtitle": "כל ההורים עם חוב פתוח, במקום אחד",
+    "empty": "אין חובות פתוחים 🎉",
+    "totalDebt": "סה״כ חוב פתוח",
+    "debtorCount": "מספר הורים חייבים",
+    "selectAll": "בחירת הכל",
+    "selectedCount": "{count} נבחרו",
+    "sendReminder": "שלח תזכורת",
+    "sendRemindersBulk": "שלח תזכורת ל-{count} הורים",
+    "remindersSent": "נשלחו {sent} תזכורות",
+    "remindersSentWithSkipped": "נשלחו {sent} תזכורות, {skipped} דולגו",
+    "optedOut": "ביקש להסיר",
+    "noPhone": "אין טלפון",
+    "chargeCount": "{count} חיובים",
+    "oldestAge": "הוותיק ביותר: לפני {days} ימים",
+    "toggleCharges": "הצג/הסתר חיובים",
+    "partiallyPaid": "שולם ₪{paid} מתוך ₪{total}",
+    "noPaymentProvider": "לא הוגדר ספק סליקה — אי אפשר ליצור קישור תשלום",
+    "sendPaymentRequest": "בקשת תשלום מרוכזת",
+    "sendPaymentRequestBulk": "שלח בקשת תשלום ל-{count} הורים",
+    "requestsSent": "נשלחו {sent} בקשות תשלום",
+    "requestsSentWithSkipped": "נשלחו {sent} בקשות תשלום, {skipped} דולגו"
+  },
   "charges": {
     "title": "חיובים",
     "types": {
@@ -980,9 +1018,79 @@
     "pendingReceipt": "קבלה תופק לאחר סימון תשלום",
     "monthlyChargeNote": "חיוב חודשי {month}",
     "errors": {
-      "updateStatusFailed": "שגיאה בעדכון סטטוס החיוב"
+      "updateStatusFailed": "שגיאה בעדכון סטטוס החיוב",
+      "chargeResolved": "החיוב אופס או בוטל ולא ניתן לסמן אותו כשולם",
+      "chargeAlreadyPaid": "החיוב כבר שולם. לביטול חיוב ששולם יש להנפיק חשבונית זיכוי",
+      "chargeAlreadyResolved": "החיוב כבר אופס או בוטל",
+      "chargeNotOpen": "החיוב אינו פתוח לתשלום",
+      "paymentTooLarge": "הסכום גדול מהיתרה הפתוחה (₪{max})"
     },
-    "paymentReceivedNotification": "תשלום התקבל"
+    "resolve": {
+      "resolvedAt": "טופל בתאריך",
+      "reasonLabel": "סיבה",
+      "reasonPlaceholder": "מה הסיבה? הסיבה נשמרת בהיסטוריית החיוב",
+      "invoiceWarning": "כבר הונפקה חשבונית לחיוב הזה. מומלץ להנפיק גם חשבונית זיכוי ממסך החיוב החודשי.",
+      "paymentLinkWarning": "קיים קישור תשלום פעיל להורה. הקישור ימשיך לעבוד — כדאי לעדכן את ההורה.",
+      "waive": {
+        "action": "איפוס חיוב",
+        "title": "איפוס החיוב",
+        "description": "החיוב יירד מיתרת החוב של ההורה, אבל יישאר בהיסטוריה עם הסיבה ושם מי שאיפס.",
+        "confirm": "אפס חיוב",
+        "success": "החיוב אופס"
+      },
+      "void": {
+        "action": "ביטול חיוב",
+        "title": "ביטול חיוב שנרשם בטעות",
+        "description": "החיוב יסומן כבוטל ויירד מכל החישובים. הוא יישאר בהיסטוריה לצורכי ביקורת.",
+        "confirm": "בטל חיוב",
+        "success": "החיוב בוטל"
+      }
+    },
+    "audit": {
+      "title": "היסטוריית החיוב",
+      "empty": "אין עדיין רישומים",
+      "systemActor": "המערכת",
+      "events": {
+        "created": "החיוב נוצר",
+        "amount_adjusted": "הסכום עודכן",
+        "waived": "החיוב אופס",
+        "voided": "החיוב בוטל",
+        "unwaived": "האיפוס בוטל",
+        "payment_recorded": "נרשם תשלום",
+        "marked_paid": "סומן כשולם",
+        "webhook_paid": "התקבל תשלום דרך ספק הסליקה",
+        "reminder_sent": "נשלחה תזכורת",
+        "payment_request_sent": "נשלחה בקשת תשלום",
+        "sync_conflict": "התגלתה סתירה בחישוב מחדש"
+      }
+    },
+    "paymentReceivedNotification": "תשלום התקבל",
+    "recordPayment": {
+      "action": "רישום תשלום",
+      "title": "רישום תשלום",
+      "remaining": "נותר לתשלום: ₪{amount}",
+      "amountLabel": "סכום שהתקבל",
+      "methodLabel": "אמצעי תשלום",
+      "notesPlaceholder": "הערה (אופציונלי)",
+      "invalidAmount": "יש להזין סכום בין 0.01 ל-₪{max}",
+      "partialHint": "תשלום חלקי — יישארו ₪{balance} כחוב פתוח. קבלה תופק רק בסגירת החיוב.",
+      "confirm": "שמור תשלום",
+      "successFull": "התשלום נרשם והחיוב נסגר",
+      "successPartial": "התשלום החלקי נרשם",
+      "methods": {
+        "manual": "ידני",
+        "cash": "מזומן",
+        "bank_transfer": "העברה בנקאית",
+        "provider": "סליקה",
+        "other": "אחר"
+      }
+    },
+    "payments": {
+      "title": "תשלומים שהתקבלו",
+      "summary": "שולם ₪{paid} מתוך ₪{total}",
+      "remaining": "נותר ₪{amount}"
+    },
+    "partiallyPaid": "שולם ₪{paid} מתוך ₪{total}"
   },
   "billing": {
     "title": "חיוב חודשי",
@@ -2629,6 +2737,7 @@
       "pay": "לתשלום",
       "pending": "ממתין",
       "paid": "שולם",
+      "partiallyPaid": "שולם {paid} מתוך {total}",
       "receipt": "קבלה",
       "chargeType": {
         "lesson": "שיעור",
@@ -3749,6 +3858,7 @@
     "manualCharge": "חיוב ידני — {name}",
     "lessonPayment": "תשלום שיעור — {name}",
     "creditNoteLine": "זיכוי — {reason}",
-    "chargeFallback": "חיוב {month}"
+    "chargeFallback": "חיוב {month}",
+    "consolidatedPayment": "תשלום עבור {count} חיובים פתוחים"
   }
 }

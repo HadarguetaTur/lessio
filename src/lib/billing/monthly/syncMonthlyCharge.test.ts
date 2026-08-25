@@ -8,6 +8,9 @@ vi.mock('@/lib/supabase/service-role', () => ({
 
 import { syncMonthlyCharge } from './syncMonthlyCharge'
 
+/** The audit log is written on every charge insert; tests only care that it is tolerated. */
+const auditStub = { insert: async () => ({ error: null }) }
+
 describe('syncMonthlyCharge', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -17,6 +20,7 @@ describe('syncMonthlyCharge', () => {
     const insertedPayloads: Record<string, unknown>[] = []
 
     mockFrom.mockImplementation((table: string) => {
+      if (table === 'charge_audit_log') return auditStub
       if (table !== 'charges') {
         throw new Error(`Unexpected table: ${table}`)
       }
@@ -69,6 +73,7 @@ describe('syncMonthlyCharge', () => {
     const deleteFirstEq = vi.fn(() => ({ eq: deleteSecondEq }))
 
     mockFrom.mockImplementation((table: string) => {
+      if (table === 'charge_audit_log') return auditStub
       if (table !== 'charges') {
         throw new Error(`Unexpected table: ${table}`)
       }
@@ -103,5 +108,84 @@ describe('syncMonthlyCharge', () => {
     })
     expect(deleteFirstEq).toHaveBeenCalledWith('id', 'charge-1')
     expect(deleteSecondEq).toHaveBeenCalledWith('organization_id', 'org-1')
+  })
+
+  it.each(['waived', 'voided'] as const)(
+    'leaves a %s charge untouched when billing becomes unapproved',
+    async (terminalStatus) => {
+      const deleteFn = vi.fn()
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'charge_audit_log') return auditStub
+        if (table !== 'charges') {
+          throw new Error(`Unexpected table: ${table}`)
+        }
+
+        const selectChain: Record<string, unknown> = {}
+        selectChain['eq'] = () => selectChain
+        selectChain['maybeSingle'] = async () => ({
+          data: { id: 'charge-1', status: terminalStatus, paid_at: null },
+          error: null,
+        })
+
+        return { select: () => selectChain, delete: deleteFn }
+      })
+
+      const result = await syncMonthlyCharge({
+        organizationId: 'org-1',
+        billingRecordId: 'billing-1',
+        parentId: 'parent-1',
+        billingMonth: '2026-05',
+        amount: 320,
+        isApproved: false,
+        isPaid: false,
+      })
+
+      expect(deleteFn).not.toHaveBeenCalled()
+      expect(result).toEqual({
+        chargeId: 'charge-1',
+        chargeStatus: terminalStatus,
+        isPaid: false,
+      })
+    }
+  )
+
+  it('does not resurrect a voided charge on recalculation', async () => {
+    const updateFn = vi.fn()
+    const insertFn = vi.fn()
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'charge_audit_log') return auditStub
+      if (table !== 'charges') {
+        throw new Error(`Unexpected table: ${table}`)
+      }
+
+      const selectChain: Record<string, unknown> = {}
+      selectChain['eq'] = () => selectChain
+      selectChain['maybeSingle'] = async () => ({
+        data: { id: 'charge-1', status: 'voided', paid_at: null },
+        error: null,
+      })
+
+      return { select: () => selectChain, update: updateFn, insert: insertFn }
+    })
+
+    const result = await syncMonthlyCharge({
+      organizationId: 'org-1',
+      billingRecordId: 'billing-1',
+      parentId: 'parent-1',
+      billingMonth: '2026-05',
+      amount: 480,
+      isApproved: true,
+      isPaid: false,
+    })
+
+    expect(updateFn).not.toHaveBeenCalled()
+    expect(insertFn).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      chargeId: 'charge-1',
+      chargeStatus: 'voided',
+      isPaid: false,
+    })
   })
 })

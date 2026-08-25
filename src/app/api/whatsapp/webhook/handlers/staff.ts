@@ -30,7 +30,7 @@ import {
   type DayOffRequest,
   type SendContext,
 } from '@/lib/day-off'
-import { OPEN_CHARGE_STATUSES } from '@/lib/charges'
+import { OPEN_CHARGE_STATUSES, sumRemaining } from '@/lib/charges'
 import { getTodayRange } from '@/lib/lessons'
 import { replyWith, type HandlerContext } from '../shared'
 
@@ -233,7 +233,7 @@ async function sendTodaySummary(ctx: HandlerContext): Promise<void> {
       .lt('start_at', lt),
     ctx.db
       .from('charges')
-      .select('amount')
+      .select('amount, amount_paid')
       .eq('organization_id', ctx.org.id)
       .in('status', [...OPEN_CHARGE_STATUSES]),
   ])
@@ -246,9 +246,8 @@ async function sendTodaySummary(ctx: HandlerContext): Promise<void> {
     throw new Error('Failed to load staff daily summary')
   }
 
-  const openBalance = ((chargesRes.data ?? []) as Array<{ amount: number }>).reduce(
-    (sum, c) => sum + Number(c.amount),
-    0
+  const openBalance = sumRemaining(
+    (chargesRes.data ?? []) as Array<{ amount: number; amount_paid: number | null }>
   )
 
   await replyWith(ctx, 'staff_summary_body', {

@@ -22,6 +22,7 @@ import { runAfterResponse } from '@/lib/server/afterResponse'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getRegistryEntry } from '@/lib/payments/registry'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
+import { logChargeAudit } from '@/lib/charges/audit'
 
 /**
  * Flattens JSON webhook payloads: top-level primitives plus one nested object
@@ -104,7 +105,7 @@ export async function POST(
 
   const { data: charges, error: fetchError } = await db
     .from('charges')
-    .select('id, organization_id, status')
+    .select('id, organization_id, status, amount, amount_paid, parent_id')
     .eq('payment_reference', paymentReference)
 
   if (fetchError) {
@@ -129,24 +130,73 @@ export async function POST(
   const chargeIds = charges.map(c => c.id)
   const orgId = charges[0]!.organization_id
 
-  const { error: updateError } = await db
-    .from('charges')
-    .update({
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .in('id', chargeIds)
-    .eq('status', 'pending') // idempotent: skip already-paid charges
+  // A charge waived or voided after the link was minted stays settled: the
+  // status filter below skips it, and the audit row records the mismatch so the
+  // payment can be reconciled by hand.
+  const resolvedCharges = charges.filter(
+    (c) => c.status === 'waived' || c.status === 'voided'
+  )
 
-  if (updateError) {
-    console.error('[payments/webhook] Failed to update charge status', {
-      provider,
-      orgId,
-      chargeIds,
-      paymentReference,
-      error: updateError.message,
+  // Per charge rather than one bulk update: each carries its own outstanding
+  // balance, which becomes a charge_payments row. The `.eq('status', …)` filter
+  // keeps it idempotent — a redelivered webhook updates zero rows.
+  const now = new Date().toISOString()
+  let updateFailed = false
+
+  for (const charge of charges) {
+    const status = charge.status as string
+    if (status !== 'pending' && status !== 'invoiced') continue
+
+    const outstanding = Math.max(0, Number(charge.amount) - Number(charge.amount_paid ?? 0))
+
+    const { data: updated, error: updateError } = await db
+      .from('charges')
+      .update({
+        status: 'paid',
+        paid_at: now,
+        amount_paid: Number(charge.amount),
+        updated_at: now,
+      })
+      .eq('id', charge.id)
+      .eq('status', status)
+      .select('id')
+      .maybeSingle()
+
+    if (updateError) {
+      updateFailed = true
+      console.error('[payments/webhook] Failed to update charge status', {
+        provider,
+        orgId,
+        chargeId: charge.id,
+        paymentReference,
+        error: updateError.message,
+      })
+      continue
+    }
+
+    if (!updated || outstanding <= 0) continue
+
+    const { error: paymentError } = await db.from('charge_payments').insert({
+      organization_id: charge.organization_id,
+      charge_id: charge.id,
+      parent_id: (charge.parent_id as string | null) ?? null,
+      amount: outstanding,
+      method: 'provider',
+      paid_at: now,
+      notes: `${provider}:${paymentReference}`,
     })
+
+    if (paymentError) {
+      console.error('[payments/webhook] Failed to record payment row', {
+        provider,
+        orgId,
+        chargeId: charge.id,
+        error: paymentError.message,
+      })
+    }
+  }
+
+  if (updateFailed) {
     return NextResponse.json({ ok: false }, { status: 200 })
   }
 
@@ -157,11 +207,64 @@ export async function POST(
     paymentReference,
   })
 
+  if (resolvedCharges.length > 0) {
+    console.warn('[payments/webhook] Payment arrived for a settled charge', {
+      provider,
+      orgId,
+      paymentReference,
+      chargeIds: resolvedCharges.map((c) => c.id),
+    })
+  }
+
+  await Promise.all(
+    charges
+      .filter((c) => c.status !== 'paid')
+      .map((c) =>
+        logChargeAudit({
+          organizationId: c.organization_id as string,
+          chargeId: c.id as string,
+          parentId: (c.parent_id as string | null) ?? null,
+          eventType: 'webhook_paid',
+          beforeStatus: c.status as string,
+          afterStatus:
+            c.status === 'pending' || c.status === 'invoiced' ? 'paid' : (c.status as string),
+          beforeAmount: c.amount == null ? null : Number(c.amount),
+          afterAmount: c.amount == null ? null : Number(c.amount),
+          metadata: {
+            provider,
+            payment_reference: paymentReference,
+            skipped_terminal: c.status === 'waived' || c.status === 'voided',
+          },
+        })
+      )
+  )
+
+  // A consolidated request (one link, several charges) is settled by the same
+  // reference — close it so the debtors screen stops offering to resend it.
+  const { error: requestError } = await db
+    .from('payment_requests')
+    .update({ status: 'paid', paid_at: now })
+    .eq('payment_reference', paymentReference)
+    .eq('status', 'sent')
+
+  if (requestError) {
+    console.error('[payments/webhook] Failed to close payment request', {
+      provider,
+      orgId,
+      paymentReference,
+      error: requestError.message,
+    })
+  }
+
   // After the 200 — receipts must not block the provider's callback, but
   // must outlive the lambda.
+  const receiptChargeIds = charges
+    .filter((c) => c.status !== 'waived' && c.status !== 'voided')
+    .map((c) => c.id as string)
+
   await runAfterResponse(
     Promise.all(
-      chargeIds.map((chargeId) =>
+      receiptChargeIds.map((chargeId) =>
         issueReceiptForCharge(chargeId, orgId).catch((err) => {
           console.error('[payments/webhook] receipt issuance failed', {
             provider,

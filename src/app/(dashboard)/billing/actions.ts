@@ -9,7 +9,8 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { buildMonthForAllStudents } from '@/lib/billing/monthly/buildMonthForAllStudents'
 import { buildStudentMonth } from '@/lib/billing/monthly/buildStudentMonth'
 import { syncMonthlyCharge } from '@/lib/billing/monthly/syncMonthlyCharge'
-import { markChargeAsPaid } from '@/lib/charges'
+import { markChargeAsPaid, ChargeAlreadyResolvedError } from '@/lib/charges'
+import { logChargeAudit } from '@/lib/charges/audit'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import {
   createSubscription,
@@ -167,8 +168,11 @@ export async function markBillingAsPaid(billingId: string) {
   }
 
   try {
-    await markChargeAsPaid(chargeId, session.orgId)
-  } catch {
+    await markChargeAsPaid(chargeId, session.orgId, undefined, session.profileId)
+  } catch (err) {
+    if (err instanceof ChargeAlreadyResolvedError) {
+      return { error: t('charges.errors.chargeResolved') }
+    }
     return { error: t('billing.errors.updatePaymentStatusFailed') }
   }
 
@@ -215,7 +219,7 @@ export async function setManualAdjustment(
   // Fetch current billing to recalculate total
   const { data: billing } = await supabase
     .from('student_monthly_billing')
-    .select('id, student_id, parent_id, billing_month, is_paid, is_approved, lessons_amount, subscriptions_amount, cancellations_amount')
+    .select('id, student_id, parent_id, billing_month, is_paid, is_approved, lessons_amount, subscriptions_amount, cancellations_amount, total_amount, manual_adjustment_amount')
     .eq('id', billingId)
     .eq('organization_id', session.orgId)
     .single()
@@ -244,8 +248,9 @@ export async function setManualAdjustment(
 
   if (error) return { error: t('billing.errors.updateAdjustmentFailed') }
 
+  let syncResult
   try {
-    await syncMonthlyCharge({
+    syncResult = await syncMonthlyCharge({
       organizationId: session.orgId,
       billingRecordId: updatedBilling.id as string,
       parentId: (updatedBilling.parent_id as string | null) ?? null,
@@ -257,6 +262,25 @@ export async function setManualAdjustment(
     })
   } catch {
     return { error: t('billing.errors.adjustmentSavedLedgerFailed') }
+  }
+
+  // student_monthly_billing keeps only the latest adjustment, so the audit log
+  // is the only place the previous one survives.
+  if (syncResult.chargeId) {
+    await logChargeAudit({
+      organizationId: session.orgId,
+      chargeId: syncResult.chargeId,
+      parentId: (updatedBilling.parent_id as string | null) ?? null,
+      eventType: 'amount_adjusted',
+      actorProfileId: session.profileId,
+      beforeAmount: Number(billing.total_amount),
+      afterAmount: Number(updatedBilling.total_amount),
+      reason,
+      metadata: {
+        previous_adjustment: Number(billing.manual_adjustment_amount ?? 0),
+        adjustment: amount,
+      },
+    })
   }
 
   revalidateBillingSurfaces(updatedBilling.student_id as string)

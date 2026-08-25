@@ -10,7 +10,17 @@ vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({ from: (table: string) => mockFrom(table) }),
 }))
 
-import { markChargeAsPaid } from './index'
+import { markChargeAsPaid, ChargeAlreadyResolvedError } from './index'
+
+/** The status guard reads the charge before updating it. */
+function loadChain(charge: Record<string, unknown> | null) {
+  const chain: Record<string, unknown> = {}
+  chain['eq'] = () => chain
+  chain['maybeSingle'] = async () => ({ data: charge, error: null })
+  return () => chain
+}
+
+const auditStub = { insert: async () => ({ error: null }) }
 
 describe('markChargeAsPaid', () => {
   beforeEach(() => {
@@ -33,10 +43,16 @@ describe('markChargeAsPaid', () => {
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'charges') {
-        return { update: chargesUpdate }
+        return {
+          select: loadChain({ status: 'pending', amount: 320, parent_id: 'parent-1' }),
+          update: chargesUpdate,
+        }
       }
       if (table === 'student_monthly_billing') {
         return { update: billingUpdate }
+      }
+      if (table === 'charge_audit_log' || table === 'charge_payments') {
+        return auditStub
       }
       throw new Error(`Unexpected table: ${table}`)
     })
@@ -73,10 +89,16 @@ describe('markChargeAsPaid', () => {
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'charges') {
-        return { update: chargesUpdate }
+        return {
+          select: loadChain({ status: 'pending', amount: 120, parent_id: 'parent-1' }),
+          update: chargesUpdate,
+        }
       }
       if (table === 'student_monthly_billing') {
         return { update: billingUpdate }
+      }
+      if (table === 'charge_audit_log' || table === 'charge_payments') {
+        return auditStub
       }
       throw new Error(`Unexpected table: ${table}`)
     })
@@ -86,4 +108,27 @@ describe('markChargeAsPaid', () => {
     expect(chargesUpdate).toHaveBeenCalled()
     expect(billingUpdate).not.toHaveBeenCalled()
   })
+
+  it.each(['waived', 'voided'] as const)(
+    'refuses to mark a %s charge as paid',
+    async (status) => {
+      const chargesUpdate = vi.fn()
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'charges') {
+          return {
+            select: loadChain({ status, amount: 320, parent_id: 'parent-1' }),
+            update: chargesUpdate,
+          }
+        }
+        if (table === 'charge_audit_log' || table === 'charge_payments') return auditStub
+        throw new Error(`Unexpected table: ${table}`)
+      })
+
+      await expect(markChargeAsPaid('charge-3', 'org-1')).rejects.toBeInstanceOf(
+        ChargeAlreadyResolvedError
+      )
+      expect(chargesUpdate).not.toHaveBeenCalled()
+    }
+  )
 })

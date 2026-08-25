@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { logChargeAudit } from '@/lib/charges/audit'
 import { resolveBillingParent, MissingPrimaryParentError } from './resolveBillingParent'
 import type { CancellationChargeResult } from './calculateCancellationCharge'
 
@@ -78,14 +79,18 @@ export async function createLessonCharge(
     (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / (1000 * 60)
   const amount = round2(teacher.hourly_rate * (durationMinutes / 60))
 
-  const { error: insertError } = await supabase.from('charges').insert({
-    organization_id: organizationId,
-    parent_id: parentId,
-    lesson_id: lessonId,
-    amount,
-    charge_type: 'lesson',
-    status: 'pending',
-  })
+  const { data: inserted, error: insertError } = await supabase
+    .from('charges')
+    .insert({
+      organization_id: organizationId,
+      parent_id: parentId,
+      lesson_id: lessonId,
+      amount,
+      charge_type: 'lesson',
+      status: 'pending',
+    })
+    .select('id')
+    .single()
 
   if (insertError) {
     // Unique constraint violation = duplicate call, safe to ignore
@@ -95,6 +100,16 @@ export async function createLessonCharge(
     console.error('[createLessonCharge] insert error', { lessonId, orgId: organizationId, parentId, amount, error: insertError.message })
     return { type: 'error', message: 'validation.createChargeFailed' }
   }
+
+  await logChargeAudit({
+    organizationId,
+    chargeId: inserted.id as string,
+    parentId,
+    eventType: 'created',
+    afterStatus: 'pending',
+    afterAmount: amount,
+    metadata: { source: 'lesson_completed', lesson_id: lessonId },
+  })
 
   return null
 }
@@ -115,14 +130,18 @@ export async function createCancellationCharge(
 
   const supabase = createServiceRoleClient()
 
-  const { error } = await supabase.from('charges').insert({
-    organization_id: organizationId,
-    parent_id: parentId,
-    lesson_id: lessonId,
-    amount: chargeResult.amount,
-    charge_type: 'cancellation',
-    status: 'pending',
-  })
+  const { data: inserted, error } = await supabase
+    .from('charges')
+    .insert({
+      organization_id: organizationId,
+      parent_id: parentId,
+      lesson_id: lessonId,
+      amount: chargeResult.amount,
+      charge_type: 'cancellation',
+      status: 'pending',
+    })
+    .select('id')
+    .single()
 
   if (error) {
     if (isDuplicateInsertError(error)) {
@@ -131,6 +150,16 @@ export async function createCancellationCharge(
     console.error('[createCancellationCharge] insert error', { lessonId, orgId: organizationId, parentId, amount: chargeResult.amount, error: error.message })
     return { type: 'error', message: 'validation.createCancellationChargeFailed' }
   }
+
+  await logChargeAudit({
+    organizationId,
+    chargeId: inserted.id as string,
+    parentId,
+    eventType: 'created',
+    afterStatus: 'pending',
+    afterAmount: chargeResult.amount,
+    metadata: { source: 'lesson_cancelled', lesson_id: lessonId },
+  })
 
   return null
 }

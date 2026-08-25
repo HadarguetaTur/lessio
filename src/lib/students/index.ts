@@ -1,5 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { OPEN_CHARGE_STATUSES, type ChargeStatus } from '@/lib/charges'
+import { OPEN_CHARGE_STATUSES, sumRemaining, type ChargeStatus } from '@/lib/charges'
 
 export type StudentStatus = 'active' | 'on_hold' | 'inactive'
 
@@ -252,15 +252,15 @@ export async function getStudentFinancial(
   const parentId = relData.parent_id as string
   const parentName = parentRow?.full_name as string ?? null
 
-  // Balance = sum of pending/invoiced charges
+  // Balance = what is still owed on pending/invoiced charges
   const { data: unpaidData } = await supabase
     .from('charges')
-    .select('amount')
+    .select('amount, amount_paid')
     .eq('parent_id', parentId)
     .eq('organization_id', organizationId)
     .in('status', [...OPEN_CHARGE_STATUSES])
 
-  const balance = (unpaidData ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
+  const balance = sumRemaining(unpaidData ?? [])
 
   // 6 months recent charges
   const sixMonthsAgo = new Date()

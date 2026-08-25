@@ -37,11 +37,14 @@ export async function getMonthlyRevenueTrend(
   const now = DateTime.now().setZone(timezone)
   const from = getRollingMonthsStart(timezone, months, now)
 
+  // Revenue is money received, so it is bucketed by payment date from
+  // charge_payments rather than by the charge's closing date. With partial
+  // payments those differ: 200 in July and 250 in August on one charge belong
+  // to two different months.
   const { data, error } = await db
-    .from('charges')
+    .from('charge_payments')
     .select('amount, paid_at')
     .eq('organization_id', orgId)
-    .eq('status', 'paid')
     .gte('paid_at', from)
 
   if (error) throw new Error(`Revenue trend query failed: ${error.message}`)
@@ -53,13 +56,13 @@ export async function getMonthlyRevenueTrend(
     bucketMap.set(key, 0)
   }
 
-  for (const charge of data ?? []) {
-    if (!charge.paid_at) continue
-    const key = DateTime.fromISO(charge.paid_at, { zone: 'utc' })
+  for (const payment of data ?? []) {
+    if (!payment.paid_at) continue
+    const key = DateTime.fromISO(payment.paid_at, { zone: 'utc' })
       .setZone(timezone)
       .toFormat('yyyy-MM')
     if (bucketMap.has(key)) {
-      bucketMap.set(key, (bucketMap.get(key) ?? 0) + Number(charge.amount))
+      bucketMap.set(key, (bucketMap.get(key) ?? 0) + Number(payment.amount))
     }
   }
 
@@ -81,11 +84,11 @@ export async function getRevenueReport(
     .toFormat('yyyy-MM')
 
   const [chargesRes, billingRes] = await Promise.all([
+    // Bucketed by when the money arrived — see getMonthlyRevenueTrend.
     db
-      .from('charges')
+      .from('charge_payments')
       .select('amount, paid_at')
       .eq('organization_id', orgId)
-      .eq('status', 'paid')
       .gte('paid_at', from),
     db
       .from('student_monthly_billing')
@@ -111,13 +114,13 @@ export async function getRevenueReport(
     billingPaidMap.set(key, 0)
   }
 
-  for (const charge of data ?? []) {
-    if (!charge.paid_at) continue
-    const key = DateTime.fromISO(charge.paid_at, { zone: 'utc' })
+  for (const payment of data ?? []) {
+    if (!payment.paid_at) continue
+    const key = DateTime.fromISO(payment.paid_at, { zone: 'utc' })
       .setZone(timezone)
       .toFormat('yyyy-MM')
     if (bucketMap.has(key)) {
-      bucketMap.set(key, (bucketMap.get(key) ?? 0) + Number(charge.amount))
+      bucketMap.set(key, (bucketMap.get(key) ?? 0) + Number(payment.amount))
     }
   }
 

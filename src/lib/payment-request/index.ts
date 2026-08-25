@@ -7,7 +7,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { toIntlLocale, type AppLocale } from '@/lib/i18n/locale'
-import { OPEN_CHARGE_STATUSES } from '@/lib/charges'
+import { OPEN_CHARGE_STATUSES, sumRemaining } from '@/lib/charges'
 
 export interface PaymentRequestCharge {
   id: string
@@ -75,7 +75,7 @@ export async function getPendingChargesForParent(
   const [chargesRes, relationsRes] = await Promise.all([
     supabase
       .from('charges')
-      .select('id, amount, charge_type, lesson_id, lessons(start_at, lesson_students(student_id, students(full_name)))')
+      .select('id, amount, amount_paid, charge_type, lesson_id, lessons(start_at, lesson_students(student_id, students(full_name)))')
       .eq('organization_id', orgId)
       .eq('parent_id', parentId)
       .in('status', [...OPEN_CHARGE_STATUSES])
@@ -100,7 +100,9 @@ export async function getPendingChargesForParent(
 
     return {
       id: c.id,
-      amount: Number(c.amount),
+      // What the parent still owes — a partially-paid charge is asked for its
+      // remainder, not the original amount.
+      amount: sumRemaining([c]),
       charge_type: c.charge_type,
       lesson_start_at: c.lessons?.start_at ?? null,
       student_name: own?.students?.full_name ?? null,

@@ -6,10 +6,11 @@ import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { getCharges, ChargeStatus } from '@/lib/charges'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getParents } from '@/lib/parents'
-import { MarkAsPaidButton } from '@/components/dashboard/charges/MarkAsPaidButton'
+import { ResolveChargeDialog } from '@/components/dashboard/charges/ResolveChargeDialog'
+import { RecordPaymentDialog } from '@/components/dashboard/charges/RecordPaymentDialog'
 import { getProviderUI } from '@/lib/payments/registry-ui'
 import { renderChargeNote } from '@/lib/charges/renderNote'
-import { markAsPaid } from './actions'
+import { waiveChargeAction, voidChargeAction, recordChargePaymentAction } from './actions'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -25,7 +26,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-const validStatuses: ChargeStatus[] = ['pending', 'invoiced', 'paid']
+const validStatuses: ChargeStatus[] = ['pending', 'invoiced', 'paid', 'waived', 'voided']
+
+const OPEN_STATUSES: ChargeStatus[] = ['pending', 'invoiced']
+
+/** What is still owed on a charge, after any partial payment. */
+function remainingOf(charge: { amount: number; amount_paid: number }): number {
+  return Math.max(0, charge.amount - charge.amount_paid)
+}
 
 export default async function ChargesPage(props: {
   searchParams: Promise<{ status?: string; parent?: string; from?: string; to?: string }>
@@ -49,6 +57,7 @@ export default async function ChargesPage(props: {
   ])
 
   const canMarkPaid = role === 'owner' || role === 'admin'
+  const isOwner = role === 'owner'
   const selectedParent = parents.find((parent) => parent.id === searchParams.parent)
   const t = await getTranslations('charges')
   const tp = await getTranslations('settings.paymentProviders')
@@ -62,8 +71,13 @@ export default async function ChargesPage(props: {
   }
 
   const monthStart = DateTime.now().setZone(timezone).startOf('month')
-  const pendingTotal = charges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
-  const invoicedTotal = charges.filter((c) => c.status === 'invoiced').reduce((sum, c) => sum + c.amount, 0)
+  // Open buckets show what is still owed; a partially-paid charge counts for its remainder.
+  const pendingTotal = charges
+    .filter((c) => c.status === 'pending')
+    .reduce((sum, c) => sum + remainingOf(c), 0)
+  const invoicedTotal = charges
+    .filter((c) => c.status === 'invoiced')
+    .reduce((sum, c) => sum + remainingOf(c), 0)
   const paidThisMonth = charges
     .filter((c) =>
       c.status === 'paid' &&
@@ -112,6 +126,8 @@ export default async function ChargesPage(props: {
           <option value="pending">{tCommon('chargeStatus.pending')}</option>
           <option value="invoiced">{tCommon('chargeStatus.invoiced')}</option>
           <option value="paid">{tCommon('chargeStatus.paid')}</option>
+          <option value="waived">{tCommon('chargeStatus.waived')}</option>
+          <option value="voided">{tCommon('chargeStatus.voided')}</option>
         </select>
 
         <select
@@ -220,7 +236,15 @@ export default async function ChargesPage(props: {
                       )}
                     </TableCell>
                     <TableCell className="px-5 py-3.5 text-sm font-semibold text-foreground font-mono" dir="ltr">
-                      ₪{charge.amount.toFixed(2)}
+                      ₪{remainingOf(charge).toFixed(2)}
+                      {charge.amount_paid > 0 && charge.status !== 'paid' && (
+                        <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                          {t('partiallyPaid', {
+                            paid: charge.amount_paid.toFixed(2),
+                            total: charge.amount.toFixed(2),
+                          })}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="px-5 py-3.5">
                       <StatusBadge status={charge.status} />
@@ -231,6 +255,11 @@ export default async function ChargesPage(props: {
                       )}
                       {charge.status === 'paid' && !charge.payment_provider && charge.paid_at && (
                         <div className="mt-1 text-[10px] text-muted-foreground">{t('markedManually')}</div>
+                      )}
+                      {charge.resolution_reason && (
+                        <div className="mt-1 max-w-[160px] truncate text-[10px] text-muted-foreground" title={charge.resolution_reason}>
+                          {charge.resolution_reason}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell className="px-5 py-3.5">
@@ -269,10 +298,36 @@ export default async function ChargesPage(props: {
                     </TableCell>
                     {canMarkPaid && (
                       <TableCell className="px-5 py-3.5">
-                        {charge.status !== 'paid' ? (
-                          <MarkAsPaidButton chargeId={charge.id} action={markAsPaid} />
+                        {OPEN_STATUSES.includes(charge.status) ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <RecordPaymentDialog
+                              chargeId={charge.id}
+                              remaining={remainingOf(charge)}
+                              action={recordChargePaymentAction}
+                            />
+                            <div className="flex items-center gap-1">
+                              <ResolveChargeDialog
+                                chargeId={charge.id}
+                                mode="waive"
+                                action={waiveChargeAction}
+                                hasPaymentLink={Boolean(charge.payment_link)}
+                                hasInvoice={charge.has_invoice}
+                              />
+                              {isOwner && (
+                                <ResolveChargeDialog
+                                  chargeId={charge.id}
+                                  mode="void"
+                                  action={voidChargeAction}
+                                  hasPaymentLink={Boolean(charge.payment_link)}
+                                  hasInvoice={charge.has_invoice}
+                                />
+                              )}
+                            </div>
+                          </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">{tCommon('chargeStatus.paid')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {tCommon(`chargeStatus.${charge.status}` as Parameters<typeof tCommon>[0])}
+                          </span>
                         )}
                       </TableCell>
                     )}

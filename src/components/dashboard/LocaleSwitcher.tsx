@@ -2,7 +2,8 @@
 
 import type { ComponentProps } from 'react'
 import { useTransition } from 'react'
-import { Globe } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Globe, Loader2 } from 'lucide-react'
 import { saveLocaleAction } from '@/app/(dashboard)/settings/locale/actions'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -23,11 +24,19 @@ export function LocaleSwitcher({
   fullWidth = false,
 }: Props) {
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
   const next = currentLocale === 'he' ? 'en' : 'he'
   const label = currentLocale === 'he' ? 'English' : 'עברית'
 
   function handleSubmit(formData: FormData) {
-    startTransition(() => saveLocaleAction(formData))
+    startTransition(async () => {
+      await saveLocaleAction(formData)
+      // The action revalidates on the server, but every sidebar link has been
+      // prefetched into the client Router Cache in the previous language — so
+      // without this the next navigation lands on a stale-language page and the
+      // app appears to flip back and forth.
+      router.refresh()
+    })
   }
 
   return (
@@ -43,7 +52,7 @@ export function LocaleSwitcher({
           className
         )}
       >
-        <Globe size={14} />
+        {isPending ? <Loader2 size={14} className="animate-spin" /> : <Globe size={14} />}
         {label}
       </Button>
     </form>

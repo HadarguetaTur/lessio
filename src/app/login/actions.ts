@@ -5,6 +5,8 @@ import { headers } from 'next/headers'
 
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { setLocaleCookie } from '@/lib/i18n/localeCookie'
+import type { AppLocale } from '@/lib/i18n/serverTranslator'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -44,22 +46,12 @@ export async function signIn(
     const cookieStore = await cookies()
 
     if (profile?.preferred_locale) {
-      cookieStore.set('locale', profile.preferred_locale, {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 365,
-        httpOnly: false,
-        sameSite: 'lax',
-      })
+      setLocaleCookie(cookieStore, profile.preferred_locale as AppLocale)
     } else {
       // First login — detect from Accept-Language and persist to DB
       const headerStore = await headers()
       const detectedLocale = detectLocale(headerStore.get('accept-language'))
-      cookieStore.set('locale', detectedLocale, {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 365,
-        httpOnly: false,
-        sameSite: 'lax',
-      })
+      setLocaleCookie(cookieStore, detectedLocale)
       await db
         .from('profiles')
         .update({ preferred_locale: detectedLocale })

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { setLocaleCookie } from '@/lib/i18n/localeCookie'
+import type { AppLocale } from '@/lib/i18n/serverTranslator'
 
 const PW_RESET_COOKIE = 'pw_reset'
 const PW_RESET_MAX_AGE = 600 // 10 minutes
@@ -19,6 +21,17 @@ function setRecoveryCookie(response: NextResponse): void {
     path: '/',
     secure: process.env.NODE_ENV === 'production',
   })
+}
+
+async function getPreferredLocale(userId: string): Promise<AppLocale | null> {
+  const db = createServiceRoleClient()
+  const { data } = await db
+    .from('profiles')
+    .select('preferred_locale')
+    .eq('id', userId)
+    .maybeSingle()
+  const value = data?.preferred_locale
+  return value === 'he' || value === 'en' ? value : null
 }
 
 async function hasProfile(userId: string): Promise<boolean> {
@@ -55,7 +68,15 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}/signup/complete`)
       }
 
-      return NextResponse.redirect(`${origin}${next}`)
+      // Unlike the password sign-in action, this route wrote no locale cookie,
+      // so signing in with Google left the whole app falling back to
+      // Accept-Language and ignoring the saved preference.
+      const response = NextResponse.redirect(`${origin}${next}`)
+      if (data.user) {
+        const preferred = await getPreferredLocale(data.user.id)
+        if (preferred) setLocaleCookie(response.cookies, preferred)
+      }
+      return response
     }
   }
 

@@ -159,13 +159,11 @@ export function WeekViewClient({
 
   return (
     <>
-      {/* Mobile: stacked days */}
-      <div className="flex flex-col gap-3 md:hidden">
-        {weekDays.map((dateStr, i) => renderDayColumn(dateStr, i))}
-      </div>
-
-      {/* md+: 7-column week */}
-      <div className="hidden md:grid md:grid-cols-7 md:gap-1.5 md:min-w-0">
+      {/* One pass, laid out by CSS: stacked on mobile, seven columns from md.
+          Rendering the week twice and hiding one copy put every lesson link in
+          the DOM twice — duplicated for screen readers and tab order, and
+          double the work on every render. */}
+      <div className="flex flex-col gap-3 md:grid md:grid-cols-7 md:gap-1.5 md:min-w-0">
         {weekDays.map((dateStr, i) => renderDayColumn(dateStr, i))}
       </div>
 

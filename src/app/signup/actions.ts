@@ -8,6 +8,8 @@ import {
   createOrgWithOwner,
 } from '@/lib/auth/createOrgWithOwner'
 import { createClient } from '@/lib/supabase/server'
+import { setLocaleCookie } from '@/lib/i18n/localeCookie'
+import type { AppLocale } from '@/lib/i18n/serverTranslator'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -63,13 +65,7 @@ export async function signUp(
 
   // Persist locale so the verify page and onboarding render in the correct language.
   const locale = await getLocale()
-  const cookieStore = await cookies()
-  cookieStore.set('locale', locale, {
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-    httpOnly: false,
-    sameSite: 'lax',
-  })
+  setLocaleCookie(await cookies(), locale as AppLocale)
 
   redirect(`/signup/verify?email=${encodeURIComponent(parsed.data.email)}`)
 }

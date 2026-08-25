@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { setLocaleCookie } from '@/lib/i18n/localeCookie'
 import { z } from 'zod'
 
 const schema = z.object({ locale: z.enum(['he', 'en']) })
@@ -20,13 +21,7 @@ export async function saveLocaleAction(formData: FormData) {
   const db = createServiceRoleClient()
   await db.from('profiles').update({ preferred_locale: locale }).eq('id', session.profileId)
 
-  const cookieStore = await cookies()
-  cookieStore.set('locale', locale, {
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-    httpOnly: false,
-    sameSite: 'lax',
-  })
+  setLocaleCookie(await cookies(), locale)
 
   revalidatePath('/', 'layout')
 }

@@ -118,7 +118,8 @@
       "saving": "Saving...",
       "hide": "Hide",
       "showAll": "Show all",
-      "more": "More actions"
+      "more": "More actions",
+      "clear": "Clear"
     },
     "comingSoon": "Coming soon",
     "optional": "(optional)",
@@ -574,7 +575,8 @@
       "subtitle": "Upload an Excel or CSV file — students and parents together, or separately",
       "back": "Back to students"
     },
-    "noTeacherRecord": "No active teacher record was found for this user."
+    "noTeacherRecord": "No active teacher record was found for this user.",
+    "moreDetails": "More details"
   },
   "parents": {
     "title": "Parents",
@@ -949,7 +951,8 @@
       "series": "Series cancelled",
       "whatsapp": "Cancelled over WhatsApp",
       "teacherDayOff": "Teacher day off"
-    }
+    },
+    "noStudentsFound": "No students found"
   },
   "debts": {
     "title": "Debtors",

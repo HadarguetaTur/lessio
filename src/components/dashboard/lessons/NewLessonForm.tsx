@@ -8,6 +8,7 @@ import type { StudentGroup } from '@/lib/groups'
 import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SearchSelect } from '@/components/ui/search-select'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -18,11 +19,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import type { LessonStatus } from '@/lib/lessons/types'
 
 const DURATION_VALUES = [30, 45, 60, 90]
 
-const LESSON_FORM_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
 
 const selectClassName = cn(
   'h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground',
@@ -71,8 +70,11 @@ export function NewLessonForm({
   const t = useTranslations('lessons')
   const tCommon = useTranslations('common')
   const locale = useLocale()
+  const activeTeachers = teachers ?? []
+  const soleTeacherId = activeTeachers.length === 1 ? activeTeachers[0].id : null
   const [state, formAction, pending] = useActionState(action, initialState)
   const [lessonType, setLessonType] = useState<'individual' | 'group'>('individual')
+  const [studentId, setStudentId] = useState('')
   const effectiveLessonType = allowGroupLessons ? lessonType : 'individual'
   const [selectedGroupId, setSelectedGroupId] = useState('')
   const [groupStudentIds, setGroupStudentIds] = useState<string[]>([])
@@ -82,9 +84,15 @@ export function NewLessonForm({
   // so the lesson survives the confirm round-trip even though React resets the
   // uncontrolled fields once the action settles.
   const lastFormDataRef = useRef<FormData | null>(null)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [confirmMessage, setConfirmMessage] = useState<string | null>(null)
-  const [calendarConfirmOpen, setCalendarConfirmOpen] = useState(false)
+  // Which confirmations the user has already answered for the payload in
+  // flight. The dialogs are derived from the action result rather than mirrored
+  // into state by an effect, so there is no window where the result says
+  // "confirm needed" and the dialog has not caught up.
+  const [dismissed, setDismissed] = useState({ availability: false, calendar: false })
+
+  const confirmMessage = state.error
+  const confirmOpen = Boolean(state.needsAvailabilityConfirm && state.error) && !dismissed.availability && !pending
+  const calendarConfirmOpen = Boolean(state.needsCalendarConfirm) && !dismissed.calendar && !pending
 
   useEffect(() => {
     onSuccessRef.current = onSuccess
@@ -95,21 +103,6 @@ export function NewLessonForm({
       onSuccessRef.current?.()
     }
   }, [state.success])
-
-  // Re-open the relevant dialog every time the action settles with a needs-confirm result.
-  const wasPendingRef = useRef(false)
-  useEffect(() => {
-    const justSettled = wasPendingRef.current && !pending
-    wasPendingRef.current = pending
-    if (!justSettled) return
-    if (state.needsAvailabilityConfirm && state.error) {
-      setConfirmMessage(state.error)
-      setConfirmOpen(true)
-    }
-    if (state.needsCalendarConfirm) {
-      setCalendarConfirmOpen(true)
-    }
-  }, [pending, state.needsAvailabilityConfirm, state.needsCalendarConfirm, state.error])
 
   const handleGroupChange = (groupId: string, studentIds: string[]) => {
     setSelectedGroupId(groupId)
@@ -124,31 +117,34 @@ export function NewLessonForm({
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     lastFormDataRef.current = fd
+    // A fresh attempt: any confirmation answered for the previous payload no
+    // longer applies.
+    setDismissed({ availability: false, calendar: false })
     startTransition(() => formAction(fd))
   }
 
   const handleConfirmSchedule = () => {
     const fd = lastFormDataRef.current
-    setConfirmOpen(false)
+    setDismissed((d) => ({ ...d, availability: true }))
     if (!fd) return
     fd.set('confirm_outside_availability', '1')
     startTransition(() => formAction(fd))
   }
 
   const handleCancelConfirm = () => {
-    setConfirmOpen(false)
+    setDismissed((d) => ({ ...d, availability: true }))
   }
 
   const handleConfirmCalendar = () => {
     const fd = lastFormDataRef.current
-    setCalendarConfirmOpen(false)
+    setDismissed((d) => ({ ...d, calendar: true }))
     if (!fd) return
     fd.set('confirm_calendar_conflict', '1')
     startTransition(() => formAction(fd))
   }
 
   const handleCancelCalendar = () => {
-    setCalendarConfirmOpen(false)
+    setDismissed((d) => ({ ...d, calendar: true }))
   }
 
   const dateDefault = initialDate && initialDate >= minDateStr ? initialDate : minDateStr
@@ -165,6 +161,10 @@ export function NewLessonForm({
 
       {fixedTeacherId ? (
         <input type="hidden" name="teacher_id" value={fixedTeacherId} />
+      ) : soleTeacherId ? (
+        // One teacher in the org: asking "which teacher?" has a single possible
+        // answer, so assign it silently rather than making her pick.
+        <input type="hidden" name="teacher_id" value={soleTeacherId} />
       ) : (
         <div className="space-y-1.5">
           <Label htmlFor="teacher_id">
@@ -214,14 +214,17 @@ export function NewLessonForm({
           <Label htmlFor="student_id">
             {t('fields.student')} <span className="text-destructive">*</span>
           </Label>
-          <select id="student_id" name="student_id" required className={selectClassName}>
-            <option value="">{t('selectStudent')}</option>
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.full_name}
-              </option>
-            ))}
-          </select>
+          <SearchSelect
+            id="student_id"
+            name="student_id"
+            required
+            value={studentId}
+            onChange={setStudentId}
+            options={students.map((s) => ({ value: s.id, label: s.full_name }))}
+            placeholder={t('selectStudent')}
+            emptyText={t('noStudentsFound')}
+            clearLabel={tCommon('actions.clear')}
+          />
         </div>
       ) : (
         <>
@@ -268,24 +271,11 @@ export function NewLessonForm({
         </select>
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="status">
-          {t('fields.status')} <span className="text-destructive">*</span>
-        </Label>
-        <select
-          id="status"
-          name="status"
-          required
-          className={selectClassName}
-          defaultValue="scheduled"
-        >
-          {LESSON_FORM_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {tCommon(`status.${s}`)}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* A lesson being booked is always 'scheduled'. Asking for an outcome up
+          front invites picking one, and marking it 'completed' here quietly
+          creates a charge. Recording what happened belongs on the lesson page,
+          after it happened. */}
+      <input type="hidden" name="status" value="scheduled" />
 
       {effectiveLessonType === 'group' && (
         <div className="space-y-1.5">
@@ -325,7 +315,6 @@ export function NewLessonForm({
       open={confirmOpen}
       onOpenChange={(next) => {
         if (!next) handleCancelConfirm()
-        else setConfirmOpen(true)
       }}
     >
       <DialogContent>
@@ -352,7 +341,6 @@ export function NewLessonForm({
       open={calendarConfirmOpen}
       onOpenChange={(next) => {
         if (!next) handleCancelCalendar()
-        else setCalendarConfirmOpen(true)
       }}
     >
       <DialogContent>

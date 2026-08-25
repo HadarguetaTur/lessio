@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, ChevronRight } from 'lucide-react'
 import { ParentSearchSelect } from './ParentSearchSelect'
 import { fetchOrgParents } from '@/app/(dashboard)/students/actions'
 import { cn } from '@/lib/utils'
@@ -125,84 +125,106 @@ export function StudentForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="level">{t('fields.level')}</Label>
-          <Input
-            id="level"
-            name="level"
-            type="text"
-            defaultValue={defaultValues?.level ?? ''}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="focused_subject">{t('fields.focusedSubject')}</Label>
-          <Input
-            id="focused_subject"
-            name="focused_subject"
-            type="text"
-            defaultValue={defaultValues?.focused_subject ?? ''}
-          />
-        </div>
-      </div>
+      {/* Everything past name/phone/grade is either optional or has a sensible
+          default. Adding a student mid-week should not mean answering eight
+          questions, so the rest folds away — open by default when editing,
+          where the values already exist and hiding them would hide data. */}
+      <details className="group rounded-lg border border-border" open={variant !== 'create'}>
+        <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-foreground marker:content-none">
+          <span className="flex items-center gap-1.5">
+            <ChevronRight
+              size={14}
+              className="shrink-0 text-muted-foreground transition-transform group-open:rotate-90 rtl:-scale-x-100"
+            />
+            {t('moreDetails')}
+          </span>
+        </summary>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="weekly_quota">{t('fields.weeklyQuota')}</Label>
-          <Input
-            id="weekly_quota"
-            name="weekly_quota"
-            type="number"
-            min={1}
-            max={10}
-            placeholder="1–10"
-            defaultValue={defaultValues?.weekly_quota ?? ''}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="status">{t('fields.status')}</Label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={statusDefault}
-            className={selectClass}
-          >
-            <option value="active">{t('status.active')}</option>
-            <option value="on_hold">{t('status.on_hold')}</option>
-            <option value="inactive">{t('status.inactive')}</option>
-          </select>
-        </div>
-      </div>
+        <div className="space-y-4 border-t border-border p-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="level">{t('fields.level')}</Label>
+              <Input
+                id="level"
+                name="level"
+                type="text"
+                defaultValue={defaultValues?.level ?? ''}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="focused_subject">{t('fields.focusedSubject')}</Label>
+              <Input
+                id="focused_subject"
+                name="focused_subject"
+                type="text"
+                defaultValue={defaultValues?.focused_subject ?? ''}
+              />
+            </div>
+          </div>
 
-      {teachers.length > 0 && (
-        <div className="space-y-1.5">
-          <Label htmlFor="teacher_id">{t('fields.teacher')}</Label>
-          <select
-            id="teacher_id"
-            name="teacher_id"
-            defaultValue={teacherDefault}
-            className={selectClass}
-          >
-            <option value="">{t('fields.noTeacher')}</option>
-            {teachers.map((teach) => (
-              <option key={teach.id} value={teach.id}>
-                {teach.full_name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="weekly_quota">{t('fields.weeklyQuota')}</Label>
+              <Input
+                id="weekly_quota"
+                name="weekly_quota"
+                type="number"
+                min={1}
+                max={10}
+                placeholder="1–10"
+                defaultValue={defaultValues?.weekly_quota ?? ''}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="status">{t('fields.status')}</Label>
+              <select
+                id="status"
+                name="status"
+                defaultValue={statusDefault}
+                className={selectClass}
+              >
+                <option value="active">{t('status.active')}</option>
+                <option value="on_hold">{t('status.on_hold')}</option>
+                <option value="inactive">{t('status.inactive')}</option>
+              </select>
+            </div>
+          </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="notes">{t('fields.notes')}</Label>
-        <textarea
-          id="notes"
-          name="notes"
-          rows={3}
-          defaultValue={defaultValues?.notes ?? ''}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-        />
-      </div>
+          {teachers.length > 1 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="teacher_id">{t('fields.teacher')}</Label>
+              <select
+                id="teacher_id"
+                name="teacher_id"
+                defaultValue={teacherDefault}
+                className={selectClass}
+              >
+                <option value="">{t('fields.noTeacher')}</option>
+                {teachers.map((teach) => (
+                  <option key={teach.id} value={teach.id}>
+                    {teach.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {/* One teacher: assign silently instead of offering a choice of one. */}
+          {teachers.length === 1 && (
+            <input type="hidden" name="teacher_id" value={teacherDefault || teachers[0].id} />
+          )}
+
+          <div className="space-y-1.5">
+            <Label htmlFor="notes">{t('fields.notes')}</Label>
+            <textarea
+              id="notes"
+              name="notes"
+              rows={3}
+              defaultValue={defaultValues?.notes ?? ''}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+            />
+          </div>
+        </div>
+      </details>
 
       {variant === 'create' ? (
         <section

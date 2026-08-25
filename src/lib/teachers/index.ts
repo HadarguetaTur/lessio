@@ -48,6 +48,26 @@ export async function getTeachers(organizationId: string): Promise<Teacher[]> {
   return (data ?? []).map((t) => mapTeacher(t as TeacherRow))
 }
 
+/**
+ * How many active teachers the org has.
+ *
+ * Onboarding always creates a teacher record for the owner, so a solo tutor
+ * has exactly 1 — which is what lets the UI drop "which teacher?" from forms
+ * and navigation instead of asking a question with one possible answer.
+ */
+export async function getActiveTeacherCount(organizationId: string): Promise<number> {
+  const supabase = createServiceRoleClient()
+
+  const { count, error } = await supabase
+    .from('teachers')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+
+  if (error) throw new Error(error.message)
+  return count ?? 0
+}
+
 export async function getTeacherByProfileId(
   profileId: string,
   organizationId: string,

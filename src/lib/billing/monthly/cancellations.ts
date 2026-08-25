@@ -6,14 +6,12 @@ import type {
   CancellationsContribution,
   MissingFieldsError,
 } from './types'
-import { round2 } from './types'
-import { checkActiveSubscriptionForLesson } from './subscriptions'
 import {
-  resolveLessonBaseAmount,
-  isMissingPrice,
-  isPerStudentPriced,
-} from '@/lib/billing/lessonPricing'
-import type { OrgPricing } from '@/lib/organizations/pricing'
+  PAIR_DEFAULT_PRICE,
+  GROUP_DEFAULT_PRICE,
+  round2,
+} from './types'
+import { checkActiveSubscriptionForLesson } from './subscriptions'
 
 /**
  * Determine the charge amount for a single cancellation event (spec §5.1).
@@ -22,8 +20,7 @@ function calculateCancellationEventAmount(
   event: CancellationEventRow,
   lesson: LessonRow | undefined,
   subscriptions: SubscriptionRow[],
-  timezone: string,
-  pricing: OrgPricing
+  timezone: string
 ): number | MissingFieldsError {
   if (event.charge_override != null) return event.charge_override
 
@@ -46,27 +43,56 @@ function calculateCancellationEventAmount(
 
   const lessonDate = DateTime.fromISO(lesson.start_at, { zone: timezone }).toISODate()!
 
-  if (isPerStudentPriced(lesson.lesson_type)) {
-    const hasSubscription = checkActiveSubscriptionForLesson(
-      event.student_id,
-      lessonDate,
-      subscriptions
-    )
-    if (hasSubscription) return 0
+  switch (lesson.lesson_type) {
+    case 'individual': {
+      if (lesson.teacher.hourly_rate == null) {
+        return {
+          MISSING_FIELDS: [
+            {
+              table: 'teachers',
+              field: 'hourly_rate',
+              why_needed:
+                'Individual cancellation charge requires teacher hourly_rate',
+              example_values: ['150', '200'],
+            },
+          ],
+        }
+      }
+      return round2(lesson.teacher.hourly_rate * (durationMinutes / 60))
+    }
+
+    case 'pair': {
+      const hasSubscription = checkActiveSubscriptionForLesson(
+        event.student_id,
+        lessonDate,
+        subscriptions
+      )
+      if (hasSubscription) return 0
+      return lesson.price_per_student ?? PAIR_DEFAULT_PRICE
+    }
+
+    case 'group': {
+      const hasSubscription = checkActiveSubscriptionForLesson(
+        event.student_id,
+        lessonDate,
+        subscriptions
+      )
+      if (hasSubscription) return 0
+      return lesson.price_per_student ?? GROUP_DEFAULT_PRICE
+    }
+
+    default:
+      return {
+        MISSING_FIELDS: [
+          {
+            table: 'lessons',
+            field: 'lesson_type',
+            why_needed: `Unknown lesson type: ${lesson.lesson_type}`,
+            example_values: ['individual', 'pair', 'group'],
+          },
+        ],
+      }
   }
-
-  const amount = resolveLessonBaseAmount(
-    {
-      lessonType: lesson.lesson_type,
-      pricePerStudent: lesson.price_per_student,
-      durationMinutes,
-      teacherHourlyRate: lesson.teacher.hourly_rate,
-    },
-    pricing
-  )
-
-  if (isMissingPrice(amount)) return { MISSING_FIELDS: [amount.missing] }
-  return amount
 }
 
 /**
@@ -76,8 +102,7 @@ export function calculateCancellationsContribution(
   cancellations: CancellationEventRow[],
   lessonLookup: Map<string, LessonRow>,
   subscriptions: SubscriptionRow[],
-  timezone: string,
-  pricing: OrgPricing
+  timezone: string
 ): CancellationsContribution | MissingFieldsError {
   let cancellationsTotal = 0
   let cancellationsCount = 0
@@ -98,8 +123,7 @@ export function calculateCancellationsContribution(
       event,
       lesson,
       subscriptions,
-      timezone,
-      pricing
+      timezone
     )
 
     if (typeof amount === 'object') return amount // MissingFieldsError

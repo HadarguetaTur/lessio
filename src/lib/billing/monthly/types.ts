@@ -1,7 +1,9 @@
 import type { LessonType } from '@/lib/lessons/types'
 
-// Per-student price defaults now live on the organization (see
-// src/lib/organizations/pricing.ts) and are edited at /settings/pricing.
+// ─── Default per-student prices (spec §6) ──────────────────────────────────
+
+export const PAIR_DEFAULT_PRICE = 112.5
+export const GROUP_DEFAULT_PRICE = 120
 
 export const BILLABLE_STATUSES = ['scheduled', 'completed'] as const
 export type BillableStatus = (typeof BILLABLE_STATUSES)[number]

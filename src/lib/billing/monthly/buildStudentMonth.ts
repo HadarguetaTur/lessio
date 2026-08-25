@@ -14,7 +14,6 @@ import { calculateCancellationsContribution } from './cancellations'
 import { calculateSubscriptionsContribution } from './subscriptions'
 import { getBillingMonthRange } from './month'
 import { syncMonthlyCharge } from './syncMonthlyCharge'
-import { getOrgPricing, type OrgPricing } from '@/lib/organizations/pricing'
 
 interface PrefetchedData {
   lessons: LessonRow[]
@@ -23,8 +22,6 @@ interface PrefetchedData {
   existingBilling: MonthlyBillingRow | null
   /** Number of students per lesson (for multi-student individual detection) */
   studentCountByLesson: Map<string, number>
-  /** Org lesson price defaults — fetched once by the bulk runner. */
-  pricing: OrgPricing
 }
 
 function assertNoQueryError(
@@ -59,7 +56,6 @@ export async function buildStudentMonth(
   let subscriptions: SubscriptionRow[]
   let existingBilling: MonthlyBillingRow | null
   let studentCountByLesson: Map<string, number>
-  let pricing: OrgPricing
 
   if (prefetched) {
     lessons = prefetched.lessons
@@ -67,10 +63,7 @@ export async function buildStudentMonth(
     subscriptions = prefetched.subscriptions
     existingBilling = prefetched.existingBilling
     studentCountByLesson = prefetched.studentCountByLesson
-    pricing = prefetched.pricing
   } else {
-    pricing = await getOrgPricing(organizationId)
-
     const { monthStartUTC, monthEndUTC } = getBillingMonthRange(
       billingMonth,
       timezone
@@ -164,8 +157,7 @@ export async function buildStudentMonth(
     subscriptions,
     timezone,
     cancelledLessonIds,
-    studentCountByLesson,
-    pricing
+    studentCountByLesson
   )
   if (isMissingFieldsError(lessonsResult)) return lessonsResult
 
@@ -177,8 +169,7 @@ export async function buildStudentMonth(
     cancellations,
     lessonLookup,
     subscriptions,
-    timezone,
-    pricing
+    timezone
   )
   if (isMissingFieldsError(cancellationsResult)) return cancellationsResult
 

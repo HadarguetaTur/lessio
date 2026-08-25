@@ -7,7 +7,7 @@ export type AttentionTone = 'neutral' | 'amber' | 'rose' | 'blue' | 'violet'
 
 const TONE_STYLES: Record<AttentionTone, string> = {
   neutral: 'bg-muted text-muted-foreground',
-  amber: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400',
+  amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',
   rose: 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400',
   blue: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400',
   violet: 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400',

@@ -38,6 +38,8 @@ export type DashboardSummary = {
   monthlyRevenue: number
   /** SUM(charges.amount - amount_paid) over open charges — all-time, labeled as such in the UI. */
   pendingDebt: number
+  /** Distinct parents with a non-zero remaining balance. */
+  debtorCount: number
   /** Non-cancelled lessons in the full calendar month (workload view, includes upcoming). */
   lessonsThisMonth: number
   cancellation: CancellationStats
@@ -111,10 +113,12 @@ export async function getDashboardSummary(orgId: string, timezone: string): Prom
         .gte('paid_at', prevMonthStart)
         .lt('paid_at', prevNowISO),
 
-      // All open charges (all-time debt) — net of partial payments.
+      // All open charges (all-time debt) — net of partial payments. parent_id
+      // rides along so the "who owes it" count comes from this query rather
+      // than a second pass over the debtors overview.
       db
         .from('charges')
-        .select('amount, amount_paid')
+        .select('amount, amount_paid, parent_id')
         .eq('organization_id', orgId)
         .in('status', [...OPEN_CHARGE_STATUSES]),
 
@@ -146,7 +150,14 @@ export async function getDashboardSummary(orgId: string, timezone: string): Prom
 
   const monthlyRevenue = sumAmounts(revenueRes.data)
   const prevRevenue = sumAmounts(prevRevenueRes.data)
-  const pendingDebt = sumRemaining(debtRes.data ?? [])
+  const openCharges = debtRes.data ?? []
+  const pendingDebt = sumRemaining(openCharges)
+  const debtorCount = new Set(
+    openCharges
+      .filter((c) => Number(c.amount) - Number(c.amount_paid ?? 0) > 0)
+      .map((c) => c.parent_id)
+      .filter(Boolean)
+  ).size
 
   const monthLessons = lessonsRes.data ?? []
   const lessonsThisMonth = monthLessons.filter((l) => l.status !== 'cancelled').length
@@ -169,6 +180,7 @@ export async function getDashboardSummary(orgId: string, timezone: string): Prom
   return {
     monthlyRevenue,
     pendingDebt,
+    debtorCount,
     lessonsThisMonth,
     cancellation,
     monthlyBillingTotal,

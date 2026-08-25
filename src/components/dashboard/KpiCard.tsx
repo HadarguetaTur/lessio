@@ -7,10 +7,10 @@ type KpiVariant = 'default' | 'revenue' | 'debt' | 'students' | 'lessons' | 'war
 const VARIANT_STYLES: Record<KpiVariant, { icon: string; card: string }> = {
   default:  { icon: 'bg-muted text-muted-foreground', card: '' },
   revenue:  { icon: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400', card: '' },
-  debt:     { icon: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400',         card: 'border-amber-200 dark:border-amber-900' },
+  debt:     { icon: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',         card: 'border-amber-200 dark:border-amber-900' },
   students: { icon: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400',             card: '' },
   lessons:  { icon: 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400',     card: '' },
-  warning:  { icon: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400',         card: 'border-amber-200 dark:border-amber-900' },
+  warning:  { icon: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',         card: 'border-amber-200 dark:border-amber-900' },
 }
 
 interface Trend {

@@ -1,21 +1,24 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { assertOrgNotSaasReadOnly } from '@/lib/saas/subscriptions'
-import type { LessonStatus } from '@/lib/lessons/types'
+import type { LessonStatus, LessonType } from '@/lib/lessons/types'
 
 export type CreateLessonParams = {
   orgId: string
   teacherId: string
-  /** One or more student IDs (1 for individual, multiple for group/pair) */
+  /** One or more student IDs (1 for individual, multiple for pair/group/custom) */
   studentIds: string[]
-  lessonType?: 'individual' | 'pair' | 'group'
+  lessonType?: LessonType
   date: string            // YYYY-MM-DD in org timezone
   startTime: string       // HH:MM in org timezone
   durationMinutes: number
   createdByProfileId: string
   /** Defaults to scheduled when omitted (e.g. teacher quick-create). */
   status?: LessonStatus
-  /** Optional per-student override price for pair/group lessons */
+  /**
+   * Per-student price. Optional override for pair/group (falls back to the org
+   * default); required for custom lessons, which have no org default.
+   */
   pricePerStudent?: number | null
 }
 
@@ -37,7 +40,7 @@ export class LessonConflictError extends Error {
 
 /**
  * Creates a single (non-recurring) lesson with full conflict checks.
- * Supports individual and group lesson types via studentIds array.
+ * Supports individual, pair, group and custom lesson types via studentIds array.
  * Validation rules:
  *   - holiday block
  *   - teacher overlap (non-cancelled lessons)

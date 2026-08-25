@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId } from 'react'
 import { AreaChart, Area, Tooltip, XAxis } from 'recharts'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
+import { useMeasuredWidth } from '@/lib/hooks/useMeasuredWidth'
 
 const CHART_HEIGHT = 180
 
@@ -33,20 +34,7 @@ function CustomTooltip({
 export function MiniRevenueChart({ data, locale = 'he' }: MiniRevenueChartProps) {
   // useId output contains characters that are invalid inside url(#…) refs.
   const gradientId = `revenue-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
-  const wrapRef = useRef<HTMLDivElement>(null)
-  // Measure ourselves instead of using ResponsiveContainer: on first paint the
-  // container reports -1 and recharts logs a console warning.
-  const [width, setWidth] = useState(0)
-
-  useEffect(() => {
-    const el = wrapRef.current
-    if (!el) return
-    const apply = () => setWidth(el.clientWidth)
-    apply()
-    const ro = new ResizeObserver(apply)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
+  const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>()
 
   return (
     <div ref={wrapRef} className="min-w-0 w-full" style={{ height: CHART_HEIGHT }}>

@@ -9,12 +9,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   Legend,
 } from 'recharts'
 import type { MonthlyRevenueBucket } from '@/lib/reports/revenue'
 import { truncateTick } from '@/lib/reports/chartMonthTick'
 import { useMatchMedia } from '@/lib/hooks/useMatchMedia'
+import { useMeasuredWidth } from '@/lib/hooks/useMeasuredWidth'
 
 interface RevenueChartProps {
   buckets: MonthlyRevenueBucket[]
@@ -33,15 +33,19 @@ function MobileStackedChart({
   const verticalPadding = 28
   const chartHeight = Math.max(240, legendBlock + verticalPadding + buckets.length * perRow)
 
+  const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>()
+
   const formatXTicks = (v: number) =>
     v >= 1000 ? `₪${Math.round(v / 1000)}k` : `₪${v.toLocaleString(intlLoc)}`
 
   return (
     <div className="max-h-[75vh] min-w-0 w-full overflow-y-auto overscroll-y-contain rounded-md">
-      <div className="w-full" style={{ height: chartHeight, minHeight: chartHeight }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div ref={wrapRef} className="w-full" style={{ height: chartHeight, minHeight: chartHeight }}>
+        {width > 0 && (
           <BarChart
             layout="vertical"
+            width={width}
+            height={chartHeight}
             data={buckets}
             margin={{ top: 4, right: 8, left: 4, bottom: 4 }}
           >
@@ -95,25 +99,33 @@ function MobileStackedChart({
               maxBarSize={32}
             />
           </BarChart>
-        </ResponsiveContainer>
+        )}
       </div>
     </div>
   )
 }
 
+const DESKTOP_CHART_HEIGHT = 232
+
 export function RevenueChart({ buckets }: RevenueChartProps) {
   const intlLoc = toIntlLocale(parseAppLocale(useLocale()))
   const t = useTranslations('reports.revenue')
   const compact = useMatchMedia('(max-width: 639px)')
+  const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>()
 
   if (compact) {
     return <MobileStackedChart buckets={buckets} intlLoc={intlLoc} />
   }
 
   return (
-    <div className="min-w-0 w-full" style={{ height: 232 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={buckets} margin={{ top: 8, right: 24, bottom: 8, left: 0 }}>
+    <div ref={wrapRef} className="min-w-0 w-full" style={{ height: DESKTOP_CHART_HEIGHT }}>
+      {width > 0 && (
+        <BarChart
+          width={width}
+          height={DESKTOP_CHART_HEIGHT}
+          data={buckets}
+          margin={{ top: 8, right: 24, bottom: 8, left: 0 }}
+        >
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
           <XAxis
             dataKey="label"
@@ -139,7 +151,7 @@ export function RevenueChart({ buckets }: RevenueChartProps) {
           <Bar dataKey="revenue" name={t('legendPaidRevenue')} fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
           <Bar dataKey="billingTotal" name={t('legendMonthlyBilling')} fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={40} />
         </BarChart>
-      </ResponsiveContainer>
+      )}
     </div>
   )
 }

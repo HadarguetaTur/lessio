@@ -1,5 +1,5 @@
 export type LessonStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show'
-export type LessonType = 'individual' | 'pair' | 'group'
+export type LessonType = 'individual' | 'pair' | 'group' | 'custom'
 
 export interface Lesson {
   id: string

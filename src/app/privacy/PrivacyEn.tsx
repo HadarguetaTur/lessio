@@ -255,6 +255,56 @@ export function PrivacyEn({
               transferred to that provider.
             </p>
           </SubSection>
+          <SubSection title="7.2 Google user data (Gmail and Google Calendar connections)">
+            <p>
+              A business customer may, at their option, connect their Google account to the system.
+              When connecting, Lessio receives only limited access, through Google&apos;s authorisation
+              mechanism (OAuth):
+            </p>
+            <Ul
+              items={[
+                'Gmail connection — permission to send emails only (the gmail.send scope) and the email address of the connected account. Lessio does not read, store or access the contents of the mailbox, the contacts, or any other information in the account.',
+                'Google Calendar connection — read-only access to availability (free/busy) data from the calendar, in order to display availability and prevent scheduling conflicts. Lessio does not create, modify or delete calendar events.',
+              ]}
+            />
+            <p>
+              <strong className="text-foreground">Use:</strong> these permissions are used solely for
+              actions the business customer initiates from within the system — sending emails in the
+              customer&apos;s name and from the customer&apos;s account (for example payment requests and
+              updates to their clients) and reading calendar availability. Google user data is not
+              used for advertising, is not sold, is not transferred to third parties, and is not read
+              by humans — except with the user&apos;s consent, for security purposes, or as required by
+              law.
+            </p>
+            <p>
+              <strong className="text-foreground">Storage:</strong> the access tokens received from
+              Google are stored encrypted and are used solely to perform the actions described above.
+            </p>
+            <p>
+              <strong className="text-foreground">Disconnection and deletion:</strong> the Google
+              account can be disconnected at any time from the system settings — upon disconnection
+              the access tokens are deleted. Lessio&apos;s access can also be revoked directly in
+              Google&apos;s security settings at{' '}
+              <a
+                href="https://myaccount.google.com/permissions"
+                className="text-violet-600 hover:underline dark:text-violet-400"
+              >
+                myaccount.google.com/permissions
+              </a>
+              .
+            </p>
+            <p>
+              Lessio&apos;s use and transfer to any other app of information received from Google APIs
+              will adhere to the{' '}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                className="text-violet-600 hover:underline dark:text-violet-400"
+              >
+                Google API Services User Data Policy
+              </a>
+              , including the Limited Use requirements.
+            </p>
+          </SubSection>
         </Section>
 
         {/* 8 */}

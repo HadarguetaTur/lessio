@@ -23,7 +23,7 @@ const CONTACT_ADDRESS = 'נוקדים כפר אלדד 142, ישראל'
 const CONTACT_PHONE = '050-434-3547'
 
 /** The policy is versioned by hand; this is the date the text last changed. */
-const LAST_UPDATED_ISO = '2026-05-01'
+const LAST_UPDATED_ISO = '2026-08-25'
 
 export default async function PrivacyPage() {
   const tLegal = await getTranslations('legal')

@@ -240,6 +240,52 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
               ולאחר מכן לא יועבר מידע נוסף לאותו ספק.
             </p>
           </SubSection>
+          <SubSection title="7.2 נתוני משתמש Google (חיבור Gmail ו-Google Calendar)">
+            <p>
+              לקוח עסקי רשאי, לפי בחירתו, לחבר את חשבון Google שלו למערכת. בעת החיבור Lessio
+              מקבלת גישה מוגבלת בלבד, באמצעות מנגנון ההרשאות (OAuth) של Google:
+            </p>
+            <Ul
+              items={[
+                'חיבור Gmail — הרשאת שליחת מיילים בלבד (סקופ gmail.send) וכתובת הדוא"ל של החשבון המחובר. Lessio אינה קוראת, אינה מאחסנת ואינה ניגשת לתוכן תיבת הדואר, לאנשי הקשר או לכל מידע אחר בחשבון.',
+                'חיבור Google Calendar — הרשאת קריאה בלבד של נתוני זמינות (פנוי/עסוק) מהיומן, לצורך הצגת זמינות ומניעת חפיפות בשיבוץ שיעורים. Lessio אינה יוצרת, משנה או מוחקת אירועים ביומן.',
+              ]}
+            />
+            <p>
+              <strong className="text-foreground">שימוש:</strong> ההרשאות משמשות אך ורק לפעולות
+              שהלקוח העסקי יוזם מתוך המערכת — שליחת מיילים בשמו ומחשבונו (למשל דרישות תשלום
+              ועדכונים ללקוחותיו) וקריאת זמינות ביומן. נתוני Google אינם משמשים לפרסום, אינם
+              נמכרים ואינם מועברים לצדדים שלישיים, ואינם נקראים על ידי בני אדם — למעט בהסכמת
+              המשתמש, לצורכי אבטחה, או כנדרש לפי דין.
+            </p>
+            <p>
+              <strong className="text-foreground">אחסון:</strong> אסימוני הגישה (tokens) המתקבלים
+              מ-Google נשמרים מוצפנים ומשמשים אך ורק לביצוע הפעולות המתוארות לעיל.
+            </p>
+            <p>
+              <strong className="text-foreground">ניתוק ומחיקה:</strong> ניתן לנתק את חשבון
+              Google בכל עת מהגדרות המערכת — ועם הניתוק אסימוני הגישה נמחקים. ניתן גם לשלול את
+              הרשאת Lessio ישירות בהגדרות האבטחה של Google בכתובת{' '}
+              <a
+                href="https://myaccount.google.com/permissions"
+                className="text-violet-600 hover:underline dark:text-violet-400"
+              >
+                myaccount.google.com/permissions
+              </a>
+              .
+            </p>
+            <p>
+              השימוש של Lessio במידע המתקבל מ-Google APIs, והעברתו לכל אפליקציה אחרת, יעמדו
+              במדיניות{' '}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                className="text-violet-600 hover:underline dark:text-violet-400"
+              >
+                Google API Services User Data Policy
+              </a>
+              , לרבות דרישות ה-Limited Use.
+            </p>
+          </SubSection>
         </Section>
 
         {/* 8 */}

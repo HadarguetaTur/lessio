@@ -40,7 +40,7 @@ export function ChargePaymentsList({ payments, total, paid }: ChargePaymentsList
                 <p className="mt-0.5 text-xs text-foreground/80">{payment.notes}</p>
               )}
             </div>
-            <span className="font-mono text-sm font-medium text-emerald-600" dir="ltr">
+            <span className="font-mono text-sm font-medium text-emerald-700" dir="ltr">
               ₪{payment.amount.toFixed(2)}
             </span>
           </li>

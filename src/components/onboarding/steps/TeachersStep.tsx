@@ -98,7 +98,7 @@ export function TeachersStep({
             className={onboardingChoiceCard}
           >
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/25">
-              <Users size={20} className="text-emerald-600 dark:text-emerald-400" />
+              <Users size={20} className="text-emerald-700 dark:text-emerald-400" />
             </div>
             <div>
               <div className="font-medium text-foreground">{t('addTeachers')}</div>
@@ -185,7 +185,7 @@ export function TeachersStep({
               className="flex items-center gap-3 rounded-xl border border-border/70 bg-card/50 p-3 ring-1 ring-foreground/[0.03]"
             >
               <div className="flex size-7 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-emerald-400/30">
-                <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
+                <Check size={14} className="text-emerald-700 dark:text-emerald-400" />
               </div>
               <span className="text-sm font-medium">{name}</span>
             </div>

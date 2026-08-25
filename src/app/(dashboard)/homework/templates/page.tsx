@@ -26,7 +26,7 @@ export default async function HomeworkTemplatesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('templates')}</h1>
-          <p className="text-sm text-gray-500 mt-1">{t('homework.templatesSubtitle')}</p>
+          <p className="text-sm text-muted-foreground mt-1">{t('templatesSubtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -46,7 +46,7 @@ export default async function HomeworkTemplatesPage() {
 
       {templates.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <p className="text-gray-500 text-sm mb-3">{tCommon('emptyStates.noResults')}</p>
+          <p className="text-muted-foreground text-sm mb-3">{tCommon('emptyStates.noResults')}</p>
           <Link
             href="/homework/templates/new"
             className="text-sm text-blue-600 hover:underline"
@@ -65,12 +65,12 @@ export default async function HomeworkTemplatesPage() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium text-gray-900 text-sm">{tmpl.title}</span>
                   {tmpl.subject && (
-                    <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">
+                    <span className="px-2 py-0.5 text-xs bg-gray-100 text-muted-foreground rounded-full">
                       {tmpl.subject}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 truncate max-w-prose">
+                <p className="text-xs text-muted-foreground truncate max-w-prose">
                   {tmpl.body.slice(0, 80)}{tmpl.body.length > 80 ? '...' : ''}
                 </p>
               </div>

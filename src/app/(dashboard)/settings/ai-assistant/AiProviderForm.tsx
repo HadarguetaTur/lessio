@@ -109,10 +109,10 @@ export function AiProviderForm({
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
           />
           {selectedProvider === 'openai' && (
-            <p className="text-xs text-gray-400 mt-1">{t('openaiKeyOptional')}</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('openaiKeyOptional')}</p>
           )}
           {selectedProvider !== 'openai' && (
-            <p className="text-xs text-gray-400 mt-1">{t('apiKeyRequired')}</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('apiKeyRequired')}</p>
           )}
         </div>
 
@@ -125,10 +125,10 @@ export function AiProviderForm({
         </button>
 
         {saveState.success && (
-          <p className="text-xs text-green-600">{t('providerSaved')}</p>
+          <p className="text-xs text-green-700">{t('providerSaved')}</p>
         )}
         {saveState.error && (
-          <p className="text-xs text-red-500">{saveState.error}</p>
+          <p className="text-xs text-red-600">{saveState.error}</p>
         )}
       </form>
 
@@ -144,10 +144,10 @@ export function AiProviderForm({
         </button>
 
         {testState.success && (
-          <p className="text-xs text-green-600 mt-2">{t('testSuccess')}</p>
+          <p className="text-xs text-green-700 mt-2">{t('testSuccess')}</p>
         )}
         {testState.error && (
-          <p className="text-xs text-red-500 mt-2">{testState.error}</p>
+          <p className="text-xs text-red-600 mt-2">{testState.error}</p>
         )}
       </form>
     </div>

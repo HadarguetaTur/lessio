@@ -25,24 +25,24 @@ export default async function ConvertLeadPage(props: { params: Promise<{ id: str
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('convertTitle')}</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           {t('convertDescription')}
         </p>
       </div>
 
       {/* Lead summary */}
       <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg max-w-md">
-        <div className="text-sm text-gray-500 space-y-1">
+        <div className="text-sm text-muted-foreground space-y-1">
           <div>
             <span className="font-medium text-gray-700">{t('fields.phone')}: </span>
             <span dir="ltr">{lead.phone}</span>
           </div>
           <div>
-            <span className="font-medium text-gray-700">{t('leads.firstMessage')}</span>
+            <span className="font-medium text-gray-700">{t('firstMessage')}</span>
             {lead.raw_message.length > 80 ? lead.raw_message.slice(0, 80) + '…' : lead.raw_message}
           </div>
           <div>
-            <span className="font-medium text-gray-700">{t('leads.createdAt')}</span>
+            <span className="font-medium text-gray-700">{t('createdAt')}</span>
             {new Date(lead.created_at).toLocaleDateString('he-IL')}
           </div>
         </div>

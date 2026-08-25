@@ -928,7 +928,7 @@ export function StudentDetailSheet({
                               {t('card.archiveStudent')}
                             </DropdownMenuItem>
                           ) : (
-                            <DropdownMenuItem onSelect={handleRestore} className="text-emerald-600 gap-2">
+                            <DropdownMenuItem onSelect={handleRestore} className="text-emerald-700 gap-2">
                               <RotateCcw size={13} />
                               {t('restore')}
                             </DropdownMenuItem>

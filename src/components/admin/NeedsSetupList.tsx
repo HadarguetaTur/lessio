@@ -13,10 +13,10 @@ export async function NeedsSetupList({ orgs }: Props) {
     <div className="bg-white rounded-xl border border-gray-200">
       <div className="px-5 py-4 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-gray-800">{t('dashboard.needsSetup')}</h2>
-        <p className="text-xs text-gray-500 mt-0.5">{t('dashboard.needsSetupDesc')}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t('dashboard.needsSetupDesc')}</p>
       </div>
       {orgs.length === 0 ? (
-        <p className="px-5 py-4 text-sm text-gray-400">{t('dashboard.allConfigured')}</p>
+        <p className="px-5 py-4 text-sm text-muted-foreground">{t('dashboard.allConfigured')}</p>
       ) : (
         <ul className="divide-y divide-gray-50">
           {orgs.map((o) => (
@@ -28,7 +28,7 @@ export async function NeedsSetupList({ orgs }: Props) {
                     <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">{t('orgs.missingWhatsApp')}</span>
                   )}
                   {o.missingPayment && (
-                    <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">{t('orgs.missingPayment')}</span>
+                    <span className="text-xs text-red-700 bg-red-50 px-2 py-0.5 rounded-full">{t('orgs.missingPayment')}</span>
                   )}
                 </div>
               </div>

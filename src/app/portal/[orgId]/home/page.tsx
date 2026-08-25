@@ -79,14 +79,22 @@ export default async function PortalHomePage({
   return (
     <div className="flex flex-col flex-1 pb-20">
       {/* Top bar */}
-      <header className="px-4 py-3.5 border-b border-border flex justify-between items-center bg-card">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
+      {/* pe-14 clears the language toggle, which the portal shell floats over
+          this corner (absolute top-2 end-2 in layout.tsx). Without it the
+          greeting renders underneath it. */}
+      <header className="ps-4 pe-14 py-3.5 border-b border-border flex justify-between items-center gap-3 bg-card">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-6 h-6 shrink-0 rounded-md bg-primary flex items-center justify-center">
             <span className="text-primary-foreground text-[10px] font-bold leading-none">L</span>
           </div>
-          <span className="font-semibold text-foreground text-sm">{orgName}</span>
+          <span className="font-semibold text-foreground text-sm truncate">{orgName}</span>
         </div>
-        <span className="text-sm text-muted-foreground">{t('greeting', { name: parentName })}</span>
+        {/* The org name is the one that gives way: it truncates (min-w-0 above)
+            while the short greeting keeps its full width. Letting both shrink
+            squeezes the greeting into an unreadable ellipsis on a phone. */}
+        <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">
+          {t('greeting', { name: parentName })}
+        </span>
       </header>
 
       <main className="flex-1 p-4 space-y-5">

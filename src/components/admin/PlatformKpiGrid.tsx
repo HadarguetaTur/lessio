@@ -18,9 +18,9 @@ export async function PlatformKpiGrid({ stats }: Props) {
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       {cards.map((c) => (
         <div key={c.label} className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{c.label}</p>
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{c.label}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">{c.value}</p>
-          {c.sub && <p className="text-xs text-gray-400 mt-0.5">{c.sub}</p>}
+          {c.sub && <p className="text-xs text-muted-foreground mt-0.5">{c.sub}</p>}
         </div>
       ))}
     </div>

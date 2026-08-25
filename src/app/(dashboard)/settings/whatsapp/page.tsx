@@ -52,7 +52,7 @@ export default async function WhatsAppSettingsPage() {
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('whatsapp.title')}</h1>
-      <p className="text-sm text-gray-500 mb-8">{tp('whatsappPage.subtitle')}</p>
+      <p className="text-sm text-muted-foreground mb-8">{tp('whatsappPage.subtitle')}</p>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {isConnected ? (
@@ -73,7 +73,7 @@ export default async function WhatsAppSettingsPage() {
       {isConnected && org?.id && (
         <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-1">{t('whatsapp.portalUrl')}</h2>
-          <p className="text-xs text-gray-500 mb-3">{tp('whatsappPage.portalUrlHint')}</p>
+          <p className="text-xs text-muted-foreground mb-3">{tp('whatsappPage.portalUrlHint')}</p>
           <PortalUrlCopy orgId={org.id} />
         </div>
       )}
@@ -118,7 +118,7 @@ async function ConnectedState({ phoneNumberId, connectedLabel }: { phoneNumberId
 
       <dl className="text-sm space-y-2">
         <div className="flex justify-between">
-          <dt className="text-gray-500">Phone Number ID</dt>
+          <dt className="text-muted-foreground">Phone Number ID</dt>
           <dd className="font-mono text-gray-900 text-xs">{phoneNumberId}</dd>
         </div>
       </dl>
@@ -126,7 +126,7 @@ async function ConnectedState({ phoneNumberId, connectedLabel }: { phoneNumberId
       <hr className="border-gray-100" />
 
       <div>
-        <p className="text-xs text-gray-500 mb-2">{tp('whatsappPage.disconnectHint')}</p>
+        <p className="text-xs text-muted-foreground mb-2">{tp('whatsappPage.disconnectHint')}</p>
         <DisconnectButton />
       </div>
     </div>
@@ -139,7 +139,7 @@ async function DisconnectedState({ metaAppId, metaConfigId }: { metaAppId: strin
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-gray-500">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <AlertCircle size={20} />
         <span className="font-medium text-sm">{tp('googleCommon.notConnected')}</span>
       </div>

@@ -22,7 +22,7 @@ export async function PlatformNotificationsList({ profileId }: Props) {
     <div className="bg-white rounded-xl border border-red-200 mb-6">
       <div className="px-5 py-4 border-b border-red-100">
         <h2 className="text-sm font-semibold text-red-700">{t('platformNotificationsTitle')}</h2>
-        <p className="text-xs text-gray-500 mt-0.5">{t('platformNotificationsSubtitle')}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t('platformNotificationsSubtitle')}</p>
       </div>
       <ul className="divide-y divide-gray-50">
         {notifications.map((n) => (
@@ -42,9 +42,9 @@ async function NotificationRow({ notification }: { notification: InAppNotificati
       <div className="min-w-0">
         <p className="text-sm font-medium text-gray-800">{notification.title}</p>
         {notification.body && (
-          <p className="text-xs text-gray-500 mt-0.5 break-all">{notification.body}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 break-all">{notification.body}</p>
         )}
-        <p className="text-xs text-gray-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {DateTime.fromISO(notification.created_at).setZone('Asia/Jerusalem').toFormat('dd/MM/yyyy HH:mm')}
         </p>
       </div>

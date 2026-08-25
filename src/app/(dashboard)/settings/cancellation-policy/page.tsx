@@ -14,7 +14,7 @@ export default async function CancellationPolicyPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-6">{tp('cancellationPolicyPage.subtitle')}</p>
+      <p className="text-sm text-muted-foreground mb-6">{tp('cancellationPolicyPage.subtitle')}</p>
 
       {!policy && (
         <div className="mb-5 text-sm text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-md">

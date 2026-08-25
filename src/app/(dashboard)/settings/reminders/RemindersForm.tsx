@@ -46,7 +46,7 @@ export function RemindersForm({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-gray-900">{t('lessonReminder')}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{tp('remindersPage.masterHint')}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{tp('remindersPage.masterHint')}</p>
         </div>
         <input
           type="checkbox"
@@ -66,7 +66,7 @@ export function RemindersForm({
         >
           {t('hoursBeforeLesson')}
         </label>
-        <p className="text-xs text-gray-500 mb-2">{tp('remindersPage.lessonHoursHint')}</p>
+        <p className="text-xs text-muted-foreground mb-2">{tp('remindersPage.lessonHoursHint')}</p>
         <select
           id="lesson_reminder_hours"
           name="lesson_reminder_hours"
@@ -89,7 +89,7 @@ export function RemindersForm({
         >
           {t('daysAfterInvoice')}
         </label>
-        <p className="text-xs text-gray-500 mb-2">{tp('remindersPage.paymentDaysHint')}</p>
+        <p className="text-xs text-muted-foreground mb-2">{tp('remindersPage.paymentDaysHint')}</p>
         <input
           id="payment_reminder_days"
           type="number"
@@ -99,14 +99,14 @@ export function RemindersForm({
           max={30}
           className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
         />
-        <p className="text-xs text-gray-400 mt-1">{tp('remindersPage.daysRange')}</p>
+        <p className="text-xs text-muted-foreground mt-1">{tp('remindersPage.daysRange')}</p>
       </div>
 
       {/* Email notification toggles — Sprint 25 */}
       <hr className="border-gray-100" />
       <div>
         <p className="text-sm font-medium text-gray-900 mb-1">{t('emailNotifications')}</p>
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="text-xs text-muted-foreground mb-3">
           {t('emailDescription')} ({parentsWithEmail} {t('parentsWithEmail')})
         </p>
         <div className="space-y-2">
@@ -128,7 +128,7 @@ export function RemindersForm({
         <p className="text-sm text-red-600">{state.error}</p>
       )}
       {state.success && !state.error && (
-        <p className="text-sm text-green-600">{tp('dataRetention.saved')}</p>
+        <p className="text-sm text-green-700">{tp('dataRetention.saved')}</p>
       )}
 
       <button

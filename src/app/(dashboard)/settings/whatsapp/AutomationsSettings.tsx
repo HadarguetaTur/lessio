@@ -35,7 +35,7 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
       <h2 className="text-base font-semibold text-gray-900 mb-1">{t('title')}</h2>
-      <p className="text-sm text-gray-500 mb-6">{t('subtitle')}</p>
+      <p className="text-sm text-muted-foreground mb-6">{t('subtitle')}</p>
 
       <form action={formAction} className="space-y-0">
         {FLOWS.map((flow, i) => (
@@ -47,11 +47,11 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900">{t(`flows.${flow.key}.label`)}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t(`flows.${flow.key}.description`)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t(`flows.${flow.key}.description`)}</p>
 
               {flow.hasHours && org[flow.key] && (
                 <div className="mt-2 flex items-center gap-2">
-                  <label className="text-xs text-gray-500">{t('sendLabel')}</label>
+                  <label className="text-xs text-muted-foreground">{t('sendLabel')}</label>
                   <select
                     name="automation_lesson_reminder_hours"
                     defaultValue={org.automation_lesson_reminder_hours}

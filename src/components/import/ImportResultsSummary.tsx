@@ -22,10 +22,10 @@ export function ImportResultsSummary({ result }: ImportResultsSummaryProps) {
 
       <div className={`grid gap-3 grid-cols-${colCount}`} style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}>
         <div className="flex items-center gap-3 rounded-lg bg-emerald-50 p-3">
-          <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+          <CheckCircle2 size={20} className="text-emerald-700 shrink-0" />
           <div>
             <div className="text-xl font-bold text-emerald-700">{result.inserted}</div>
-            <div className="text-xs text-emerald-600">{t('results.inserted')}</div>
+            <div className="text-xs text-emerald-700">{t('results.inserted')}</div>
           </div>
         </div>
 

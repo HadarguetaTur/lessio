@@ -9,7 +9,7 @@ interface Props {
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-      <span className="text-sm text-gray-500">{label}</span>
+      <span className="text-sm text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-gray-800">{value}</span>
     </div>
   )
@@ -17,7 +17,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 function Yn({ value, connectedLabel, notConnectedLabel }: { value: boolean; connectedLabel: string; notConnectedLabel: string }) {
   return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${value ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${value ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-muted-foreground'}`}>
       {value ? connectedLabel : notConnectedLabel}
     </span>
   )
@@ -32,7 +32,7 @@ export async function OrganizationDetailCard({ org }: Props) {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
       {/* Identity */}
       <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{t('orgs.detail.orgDetails')}</h2>
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t('orgs.detail.orgDetails')}</h2>
         <Row label={t('orgs.table.name')} value={org.name} />
         <Row label="Slug" value={<span className="font-mono text-xs">{org.slug}</span>} />
         <Row label={t('orgs.detail.timezone')} value={org.timezone} />
@@ -53,13 +53,13 @@ export async function OrganizationDetailCard({ org }: Props) {
       {/* Connections + counts */}
       <div className="space-y-4">
         <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{t('orgs.detail.connections')}</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t('orgs.detail.connections')}</h2>
           <Row label="WhatsApp" value={<Yn value={org.whatsAppConnected} connectedLabel={connectedLabel} notConnectedLabel={notConnectedLabel} />} />
           <Row label={t('orgs.detail.paymentProvider')} value={<Yn value={org.paymentConnected} connectedLabel={connectedLabel} notConnectedLabel={notConnectedLabel} />} />
           <Row label={t('orgs.detail.receiptProvider')} value={<Yn value={org.receiptConnected} connectedLabel={connectedLabel} notConnectedLabel={notConnectedLabel} />} />
         </div>
         <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{t('orgs.detail.data')}</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t('orgs.detail.data')}</h2>
           <Row label={t('orgs.detail.activeTeachers')} value={org.activeTeachers} />
           <Row label={t('orgs.detail.activeStudents')} value={org.activeStudents} />
           <Row label={t('orgs.detail.pendingCharges')} value={org.pendingCharges} />

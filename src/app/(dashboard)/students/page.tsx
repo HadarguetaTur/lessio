@@ -44,7 +44,7 @@ export default async function StudentsPage(props: {
   if (isTeacher && !teacherRecord) {
     return (
       <div className="text-center mt-16 text-sm text-muted-foreground">
-        {t('students.noTeacherRecord')}
+        {t('noTeacherRecord')}
       </div>
     )
   }

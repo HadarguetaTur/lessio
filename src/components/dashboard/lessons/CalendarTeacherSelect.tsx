@@ -36,6 +36,7 @@ export function CalendarTeacherSelect({
     <select
       value={teacherId ?? ''}
       onChange={(e) => onChange(e.target.value)}
+      aria-label={t('allTeachers')}
       className="mx-auto w-full min-w-0 max-w-xs text-center text-sm border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-700 sm:mx-0 sm:w-auto sm:text-start"
     >
       <option value="">{t('allTeachers')}</option>

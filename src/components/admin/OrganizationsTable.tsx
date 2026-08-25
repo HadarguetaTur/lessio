@@ -18,7 +18,7 @@ interface Props {
 
 function Yn({ value, yesLabel, noLabel }: { value: boolean; yesLabel: string; noLabel: string }) {
   return (
-    <span className={value ? 'text-green-600 font-medium' : 'text-gray-400'}>
+    <span className={value ? 'text-green-700 font-medium' : 'text-muted-foreground'}>
       {value ? yesLabel : noLabel}
     </span>
   )
@@ -28,7 +28,7 @@ export async function OrganizationsTable({ orgs }: Props) {
   const t = await getTranslations('admin')
 
   if (orgs.length === 0) {
-    return <p className="text-gray-400 text-sm py-8 text-center">{t('orgs.table.empty')}</p>
+    return <p className="text-muted-foreground text-sm py-8 text-center">{t('orgs.table.empty')}</p>
   }
 
   const yesLabel = t('orgs.table.yes')
@@ -40,24 +40,24 @@ export async function OrganizationsTable({ orgs }: Props) {
         <Table className="min-w-[900px] text-sm">
           <TableHeader>
             <TableRow className="bg-gray-50 hover:bg-gray-50">
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-gray-500">{t('orgs.table.name')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-gray-500">Slug</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-gray-500">{t('orgs.table.status')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-gray-500">{t('orgs.table.lastActivity')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-center font-medium text-gray-500">WhatsApp</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-center font-medium text-gray-500">{t('orgs.table.payments')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-center font-medium text-gray-500">{t('orgs.table.receipts')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-gray-500">{t('orgs.table.created')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-gray-500">{t('orgs.table.actions')}</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">{t('orgs.table.name')}</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">Slug</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">{t('orgs.table.status')}</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">{t('orgs.table.lastActivity')}</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-center font-medium text-muted-foreground">WhatsApp</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-center font-medium text-muted-foreground">{t('orgs.table.payments')}</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-center font-medium text-muted-foreground">{t('orgs.table.receipts')}</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">{t('orgs.table.created')}</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">{t('orgs.table.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {orgs.map((o) => (
               <TableRow key={o.id} className="hover:bg-gray-50">
                 <TableCell className="px-4 py-3 font-medium text-gray-900">{o.name}</TableCell>
-                <TableCell className="px-4 py-3 font-mono text-xs text-gray-500">{o.slug}</TableCell>
+                <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.slug}</TableCell>
                 <TableCell className="px-4 py-3"><OrganizationStatusBadge status={o.status} /></TableCell>
-                <TableCell className="px-4 py-3 text-gray-500">
+                <TableCell className="px-4 py-3 text-muted-foreground">
                   {o.lastActivity
                     ? DateTime.fromISO(o.lastActivity).toRelative({ locale: 'he' })
                     : '—'}
@@ -65,7 +65,7 @@ export async function OrganizationsTable({ orgs }: Props) {
                 <TableCell className="px-4 py-3 text-center"><Yn value={o.whatsAppConnected} yesLabel={yesLabel} noLabel={noLabel} /></TableCell>
                 <TableCell className="px-4 py-3 text-center"><Yn value={o.paymentConnected} yesLabel={yesLabel} noLabel={noLabel} /></TableCell>
                 <TableCell className="px-4 py-3 text-center"><Yn value={o.receiptConnected} yesLabel={yesLabel} noLabel={noLabel} /></TableCell>
-                <TableCell className="px-4 py-3 text-gray-500">
+                <TableCell className="px-4 py-3 text-muted-foreground">
                   {DateTime.fromISO(o.createdAt).toFormat('dd/MM/yy')}
                 </TableCell>
                 <TableCell className="px-4 py-3">

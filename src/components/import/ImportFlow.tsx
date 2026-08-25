@@ -202,7 +202,7 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
           </div>
 
           <div className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-2.5 text-sm flex-wrap">
-            <span className="text-emerald-600 font-medium">
+            <span className="text-emerald-700 font-medium">
               {t('preview.valid', { count: validCount })}
             </span>
             {duplicateCount > 0 && (

@@ -20,6 +20,7 @@ interface GroupsTableProps {
 
 export function GroupsTable({ groups, students }: GroupsTableProps) {
   const t = useTranslations('students')
+  const tCommon = useTranslations('common')
   const [, startTransition] = useTransition()
 
   const STATUS_BADGE = {
@@ -43,8 +44,8 @@ export function GroupsTable({ groups, students }: GroupsTableProps) {
   if (groups.length === 0) {
     return (
       <div className="mt-6 flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-gray-500 text-sm">{t('groups.noGroups')}</p>
-        <p className="text-gray-400 text-xs mt-1">{t('groups.noGroupsHint')}</p>
+        <p className="text-muted-foreground text-sm">{t('groups.noGroups')}</p>
+        <p className="text-muted-foreground text-xs mt-1">{t('groups.noGroupsHint')}</p>
       </div>
     )
   }
@@ -64,7 +65,9 @@ export function GroupsTable({ groups, students }: GroupsTableProps) {
               <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
                 {t('groups.status')}
               </th>
-              <th className="sticky top-0 z-10 w-28 bg-muted/95 px-5 py-3 backdrop-blur" />
+              <th className="sticky top-0 z-10 w-28 bg-muted/95 px-5 py-3 backdrop-blur">
+                <span className="sr-only">{tCommon('table.actions')}</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -109,7 +112,7 @@ export function GroupsTable({ groups, students }: GroupsTableProps) {
 
                       <button
                         onClick={() => handleToggleStatus(group.id, group.status)}
-                        className="rounded p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-gray-600"
                         title={group.status === 'active' ? t('groups.pause') : t('groups.resume')}
                       >
                         {group.status === 'active' ? (
@@ -121,7 +124,7 @@ export function GroupsTable({ groups, students }: GroupsTableProps) {
 
                       <button
                         onClick={() => handleDelete(group.id, group.name)}
-                        className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                        className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-700"
                         title={t('groups.confirmDelete')}
                       >
                         <Trash2 size={15} />

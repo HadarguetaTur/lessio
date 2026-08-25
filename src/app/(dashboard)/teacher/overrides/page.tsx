@@ -19,6 +19,7 @@ function fmtDate(d: string) {
 export default async function TeacherOverridesPage() {
   const { userId, orgId, role } = await getSession()
   const t = await getTranslations('teacherSelf.overrides')
+  const tSelf = await getTranslations('teacherSelf')
   const tCommon = await getTranslations('common')
 
   if (role !== 'teacher') {
@@ -28,8 +29,8 @@ export default async function TeacherOverridesPage() {
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) {
     return (
-      <div className="text-center mt-16 text-sm text-gray-500">
-        {t('noTeacherRecordContact')}
+      <div className="text-center mt-16 text-sm text-muted-foreground">
+        {tSelf('noTeacherRecordContact')}
       </div>
     )
   }
@@ -39,28 +40,28 @@ export default async function TeacherOverridesPage() {
   return (
     <div className="flex h-full min-h-0 w-full max-w-2xl flex-col overflow-hidden">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-6">{t('overridesHint')}</p>
+      <p className="text-sm text-muted-foreground mb-6">{tSelf('overridesHint')}</p>
 
       {/* Overrides list */}
       {overrides.length === 0 ? (
-        <p className="text-sm text-gray-400 mb-6">{tCommon('emptyStates.noResults')}</p>
+        <p className="text-sm text-muted-foreground mb-6">{tCommon('emptyStates.noResults')}</p>
       ) : (
         <div className="mb-6 min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white">
           <div className="h-full overflow-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
-                  {t('overridesTable.date')}
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {tSelf('overridesTable.date')}
                   </th>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
-                  {t('overridesTable.type')}
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {tSelf('overridesTable.type')}
                   </th>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
-                  {t('overridesTable.hours')}
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {tSelf('overridesTable.hours')}
                   </th>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
-                  {t('overridesTable.reason')}
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {tSelf('overridesTable.reason')}
                   </th>
                   <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3" />
                 </tr>
@@ -80,25 +81,25 @@ export default async function TeacherOverridesPage() {
                             {t('typeAvailable')}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
+                          <span className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
                             <Ban size={11} />
                             {t('typeBlocked')}
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-mono text-sm text-gray-500" dir="ltr">
+                      <td className="px-4 py-3 font-mono text-sm text-muted-foreground" dir="ltr">
                         {o.is_available && o.start_time && o.end_time
                           ? `${fmt(o.start_time)}–${fmt(o.end_time)}`
                           : '—'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
                         {o.reason ?? '—'}
                       </td>
                       <td className="px-4 py-3">
                         <form action={delAction}>
                           <button
                             type="submit"
-                            className="flex items-center gap-1 text-sm text-red-500 transition-colors hover:text-red-700"
+                            className="flex items-center gap-1 text-sm text-red-600 transition-colors hover:text-red-700"
                           >
                             <Trash2 size={13} />
                             {tCommon('actions.delete')}

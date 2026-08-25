@@ -6,7 +6,7 @@ type KpiVariant = 'default' | 'revenue' | 'debt' | 'students' | 'lessons' | 'war
 
 const VARIANT_STYLES: Record<KpiVariant, { icon: string; card: string }> = {
   default:  { icon: 'bg-muted text-muted-foreground', card: '' },
-  revenue:  { icon: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400', card: '' },
+  revenue:  { icon: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400', card: '' },
   debt:     { icon: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400',         card: 'border-amber-200 dark:border-amber-900' },
   students: { icon: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400',             card: '' },
   lessons:  { icon: 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400',     card: '' },
@@ -71,13 +71,13 @@ export function KpiCard({
       {trend && (
         <div className="flex items-center gap-1">
           {trend.direction === 'up' && <TrendingUp size={12} className="text-emerald-500" />}
-          {trend.direction === 'down' && <TrendingDown size={12} className="text-red-500" />}
+          {trend.direction === 'down' && <TrendingDown size={12} className="text-red-600" />}
           {trend.direction === 'neutral' && <Minus size={12} className="text-muted-foreground" />}
           <span
             className={cn(
               'text-xs',
-              trend.direction === 'up' && 'text-emerald-600',
-              trend.direction === 'down' && 'text-red-500',
+              trend.direction === 'up' && 'text-emerald-700 dark:text-emerald-400',
+              trend.direction === 'down' && 'text-red-600',
               trend.direction === 'neutral' && 'text-muted-foreground'
             )}
           >

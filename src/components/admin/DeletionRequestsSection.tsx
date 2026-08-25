@@ -46,7 +46,7 @@ export function DeletionRequestsSection({ requests, orgId, processAction }: Prop
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {new Date(req.createdAt).toLocaleDateString('en-GB')}
                   {' · '}
-                  <span className={req.status === 'open' ? 'text-red-600 font-medium' : 'text-green-600'}>
+                  <span className={req.status === 'open' ? 'text-red-600 font-medium' : 'text-green-700'}>
                     {req.status}
                   </span>
                 </p>

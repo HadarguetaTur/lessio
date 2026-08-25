@@ -60,7 +60,7 @@ export function ImportLessonsStep({
         >
           <CalendarDays size={15} />
           {t('schedule')}
-          {scheduleDone && <span className="text-emerald-600 text-xs me-1">✓</span>}
+          {scheduleDone && <span className="text-emerald-700 text-xs me-1">✓</span>}
         </button>
         <button
           type="button"
@@ -73,7 +73,7 @@ export function ImportLessonsStep({
         >
           <History size={15} />
           {t('history')}
-          {historyDone && <span className="text-emerald-600 text-xs me-1">✓</span>}
+          {historyDone && <span className="text-emerald-700 text-xs me-1">✓</span>}
         </button>
       </div>
 

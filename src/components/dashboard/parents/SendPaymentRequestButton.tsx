@@ -23,7 +23,7 @@ export function SendPaymentRequestButton({ parentId, action }: Props) {
   }
 
   if (result?.error === null) {
-    return <span className="text-xs text-green-600">{t('paymentSentMark')}</span>
+    return <span className="text-xs text-green-700">{t('paymentSentMark')}</span>
   }
 
   return (

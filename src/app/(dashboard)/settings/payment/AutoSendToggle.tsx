@@ -38,13 +38,13 @@ export function AutoSendToggle({ defaultChecked }: { defaultChecked: boolean }) 
           {t('autoSend')}
         </span>
         {isPending && (
-          <span className="text-xs text-gray-400">{tCommon('actions.save')}…</span>
+          <span className="text-xs text-muted-foreground">{tCommon('actions.save')}…</span>
         )}
       </label>
       {state.error && (
         <p className="mt-2 text-xs text-red-600">{state.error}</p>
       )}
-      <p className="mt-1 text-xs text-gray-400">{tp('autoSendToggle.hint')}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{tp('autoSendToggle.hint')}</p>
     </form>
   )
 }

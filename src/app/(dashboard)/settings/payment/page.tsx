@@ -39,7 +39,7 @@ export default async function PaymentSettingsPage() {
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('pageTitle')}</h1>
-      <p className="text-sm text-gray-500 mb-8">{t('pageSubtitle')}</p>
+      <p className="text-sm text-muted-foreground mb-8">{t('pageSubtitle')}</p>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {isConnected ? (
@@ -87,25 +87,25 @@ async function ConnectedState({
 
       <dl className="text-sm space-y-2">
         <div className="flex justify-between">
-          <dt className="text-gray-500">{t('providerLabel')}</dt>
+          <dt className="text-muted-foreground">{t('providerLabel')}</dt>
           <dd className="font-medium text-gray-900">{providerLabel}</dd>
         </div>
         {providerDescription && (
           <div className="flex justify-between">
-            <dt className="text-gray-500">{t('servicesLabel')}</dt>
+            <dt className="text-muted-foreground">{t('servicesLabel')}</dt>
             <dd className="text-gray-600 text-xs text-left max-w-[220px]">{providerDescription}</dd>
           </div>
         )}
         <div className="flex justify-between">
-          <dt className="text-gray-500">{t('apiDetailsLabel')}</dt>
-          <dd className="text-gray-400 text-xs">{t('apiDetailsValue')}</dd>
+          <dt className="text-muted-foreground">{t('apiDetailsLabel')}</dt>
+          <dd className="text-muted-foreground text-xs">{t('apiDetailsValue')}</dd>
         </div>
       </dl>
 
       <hr className="border-gray-100" />
 
       <div>
-        <p className="text-xs text-gray-500 mb-2">{t('disconnectHint')}</p>
+        <p className="text-xs text-muted-foreground mb-2">{t('disconnectHint')}</p>
         <DisconnectPaymentButton />
       </div>
     </div>
@@ -117,7 +117,7 @@ async function DisconnectedState() {
   const tG = await getTranslations('settings.googleCommon')
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-gray-500">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <AlertCircle size={20} />
         <span className="font-medium text-sm">{tG('notConnected')}</span>
       </div>

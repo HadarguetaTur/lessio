@@ -73,9 +73,9 @@ export default async function PortalPaymentsPage({
       <main className="flex-1 p-4 space-y-6">
         {/* Pending charges */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-500 mb-3">{t('pendingTitle')}</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground mb-3">{t('pendingTitle')}</h2>
           {pending.length === 0 ? (
-            <p className="text-sm text-gray-400">{t('noOpenCharges')}</p>
+            <p className="text-sm text-muted-foreground">{t('noOpenCharges')}</p>
           ) : (
             <div className="space-y-2">
               {pending.map((c) => (
@@ -84,11 +84,11 @@ export default async function PortalPaymentsPage({
                     <p className="text-sm font-medium text-gray-900">
                       {formatAmount(remaining(c))}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {chargeTypeLabel(c.charge_type)} · {formatDate(c.created_at)}
                     </p>
                     {Number(c.amount_paid ?? 0) > 0 && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {t('partiallyPaid', {
                           paid: formatAmount(Number(c.amount_paid)),
                           total: formatAmount(Number(c.amount)),
@@ -106,7 +106,7 @@ export default async function PortalPaymentsPage({
                       {t('pay')}
                     </a>
                   ) : (
-                    <span className="text-xs text-gray-400">{t('pending')}</span>
+                    <span className="text-xs text-muted-foreground">{t('pending')}</span>
                   )}
                 </div>
               ))}
@@ -117,18 +117,18 @@ export default async function PortalPaymentsPage({
         {/* Payment history */}
         {paid.length > 0 && (
           <section>
-            <h2 className="text-sm font-semibold text-gray-500 mb-3">{t('historyTitle')}</h2>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3">{t('historyTitle')}</h2>
             <div className="space-y-2">
               {paid.map((c) => (
                 <div key={c.id} className="bg-white border border-gray-100 rounded-lg p-3 flex justify-between items-center">
                   <div>
                     <p className="text-sm text-gray-700">{formatAmount(c.amount)}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       {chargeTypeLabel(c.charge_type)} · {c.paid_at ? formatDate(c.paid_at) : formatDate(c.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-green-600 font-medium">{t('paid')}</span>
+                    <span className="text-xs text-green-700 font-medium">{t('paid')}</span>
                     {(c as { receipt_url?: string | null }).receipt_url && (
                       <a
                         href={(c as { receipt_url: string }).receipt_url}

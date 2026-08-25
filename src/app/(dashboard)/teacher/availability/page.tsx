@@ -14,6 +14,7 @@ function fmt(t: string) {
 export default async function TeacherAvailabilityPage() {
   const { userId, orgId, role } = await getSession()
   const t = await getTranslations('teacherSelf.availability')
+  const tSelf = await getTranslations('teacherSelf')
   const tCommon = await getTranslations('common')
 
   if (role !== 'teacher') {
@@ -23,8 +24,8 @@ export default async function TeacherAvailabilityPage() {
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) {
     return (
-      <div className="text-center mt-16 text-sm text-gray-500">
-        {t('noTeacherRecordContact')}
+      <div className="text-center mt-16 text-sm text-muted-foreground">
+        {tSelf('noTeacherRecordContact')}
       </div>
     )
   }
@@ -38,7 +39,7 @@ export default async function TeacherAvailabilityPage() {
   return (
     <div className="max-w-2xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-6">{t('availabilityHint')}</p>
+      <p className="text-sm text-muted-foreground mb-6">{tSelf('availabilityHint')}</p>
 
       {/* Weekly grid */}
       <div className="space-y-2 mb-6">
@@ -68,8 +69,8 @@ export default async function TeacherAvailabilityPage() {
                       <form action={deleteAction} className="flex">
                         <button
                           type="submit"
-                          className="text-blue-400 hover:text-red-500 transition-colors"
-                          title={t('teacherSelf.deleteWindow')}
+                          className="text-blue-400 hover:text-red-600 transition-colors"
+                          title={tSelf('deleteWindow')}
                         >
                           <Trash2 size={12} />
                         </button>

@@ -111,7 +111,7 @@ export function TeacherDetailPanel({
                 </form>
               ) : (
                 <form action={restoreAction}>
-                  <Button variant="outline" size="sm" type="submit" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50">
+                  <Button variant="outline" size="sm" type="submit" className="text-emerald-700 border-emerald-300 hover:bg-emerald-50">
                     {t('restore')}
                   </Button>
                 </form>

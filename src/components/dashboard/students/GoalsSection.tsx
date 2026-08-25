@@ -24,7 +24,7 @@ type Props = {
 const STATUS_CLASS: Record<string, string> = {
   active: 'bg-blue-50 text-blue-700',
   achieved: 'bg-green-50 text-green-700',
-  abandoned: 'bg-gray-100 text-gray-500',
+  abandoned: 'bg-gray-100 text-muted-foreground',
 }
 
 export function GoalsSection({
@@ -139,7 +139,7 @@ export function GoalsSection({
               {isPending && <Loader2 size={12} className="animate-spin" />}
               {isPending ? t('saving') : t('create')}
             </button>
-            <button type="button" onClick={() => setShowForm(false)} className="text-xs text-gray-500 hover:text-gray-700">
+            <button type="button" onClick={() => setShowForm(false)} className="text-xs text-muted-foreground hover:text-gray-700">
               {tCommon('actions.cancel')}
             </button>
           </div>
@@ -148,17 +148,17 @@ export function GoalsSection({
 
       {/* Active goals */}
       {activeGoals.length === 0 && !showForm && (
-        <p className="text-sm text-gray-400">{t('empty')}</p>
+        <p className="text-sm text-muted-foreground">{t('empty')}</p>
       )}
 
       {activeGoals.map((goal) => (
         <div key={goal.id} className="border border-gray-100 rounded-lg p-3 space-y-2 group">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <span className="text-xs font-medium text-gray-500">{goal.subject}</span>
+              <span className="text-xs font-medium text-muted-foreground">{goal.subject}</span>
               <p className="text-sm text-gray-800">{goal.description}</p>
               {goal.targetDate && (
-                <p className="text-xs text-gray-400 mt-1">{t('targetDate', { date: goal.targetDate })}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('targetDate', { date: goal.targetDate })}</p>
               )}
             </div>
             {canEdit && (
@@ -177,7 +177,7 @@ export function GoalsSection({
                   onClick={() => handleStatusUpdate(goal.id, 'abandoned')}
                   disabled={isPending}
                   title={t('markAbandoned')}
-                  className="text-gray-400 hover:text-gray-600 p-1 disabled:opacity-50"
+                  className="text-muted-foreground hover:text-gray-600 p-1 disabled:opacity-50"
                 >
                   <XCircle size={14} />
                 </button>
@@ -186,7 +186,7 @@ export function GoalsSection({
                   onClick={() => handleDelete(goal.id)}
                   disabled={isPending}
                   title={tCommon('actions.delete')}
-                  className="text-gray-400 hover:text-red-500 p-1 disabled:opacity-50"
+                  className="text-muted-foreground hover:text-red-600 p-1 disabled:opacity-50"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -199,7 +199,7 @@ export function GoalsSection({
       {/* Past goals */}
       {pastGoals.length > 0 && (
         <details className="text-sm">
-          <summary className="text-gray-500 cursor-pointer hover:text-gray-700">
+          <summary className="text-muted-foreground cursor-pointer hover:text-gray-700">
             {t('pastGoals', { count: pastGoals.length })}
           </summary>
           <div className="mt-2 space-y-2">
@@ -209,7 +209,7 @@ export function GoalsSection({
                   <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_CLASS[goal.status]}`}>
                     {t(`status.${goal.status}`)}
                   </span>
-                  <span className="text-xs text-gray-500">{goal.subject}</span>
+                  <span className="text-xs text-muted-foreground">{goal.subject}</span>
                 </div>
                 <p className="text-sm text-gray-600 mt-1">{goal.description}</p>
               </div>

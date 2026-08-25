@@ -13,12 +13,13 @@ interface PageProps {
 
 export default async function ParentsImportPage({ searchParams }: PageProps) {
   const t = await getTranslations('parents.importPage')
+  const tCommon = await getTranslations('common')
   const { role } = await getSession()
   if (role === 'teacher') {
     redirect('/parents')
   }
   if (role !== 'owner' && role !== 'admin') {
-    return <p>{t('common.errors.noPermission')}</p>
+    return <p>{tCommon('errors.noPermission')}</p>
   }
 
   const { mode } = await searchParams

@@ -62,14 +62,14 @@ export function AiUsageTab({ summary, month }: Props) {
                     style={{ height: `${height}%` }}
                     title={`${day.date}: ${day.requests} ${t('requests')}`}
                   />
-                  <span className="text-[10px] text-gray-400 mt-1">{dayNum}</span>
+                  <span className="text-[10px] text-muted-foreground mt-1">{dayNum}</span>
                 </div>
               )
             })}
           </div>
         </div>
       ) : (
-        <p className="text-sm text-gray-400">{t('noData')}</p>
+        <p className="text-sm text-muted-foreground">{t('noData')}</p>
       )}
     </div>
   )
@@ -78,9 +78,9 @@ export function AiUsageTab({ summary, month }: Props) {
 function SummaryCard({ label, value, subtitle }: { label: string; value: string; subtitle?: string }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-xl font-bold text-gray-900 mt-1">{value}</p>
-      {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+      {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
     </div>
   )
 }

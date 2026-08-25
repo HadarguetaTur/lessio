@@ -116,10 +116,10 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
         <div className="space-y-3">
           <div>
             <label htmlFor="templateId" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('fields.template')} <span className="text-red-500">*</span>
+              {t('fields.template')} <span className="text-red-600">*</span>
             </label>
             {templates.length === 0 ? (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 {t('noTemplatesList')}{' '}
                 <Link href="/homework/templates/new" className="text-blue-600 hover:underline">
                   {t('createFirstTemplate')}
@@ -146,7 +146,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
 
           {selectedTemplate && (
             <div className="bg-gray-50 rounded-md border border-gray-200 p-3">
-              <p className="text-xs font-medium text-gray-500 mb-1">{t('templateContent')}</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">{t('templateContent')}</p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedTemplate.body}</p>
             </div>
           )}
@@ -161,7 +161,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
 
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('fields.title')} <span className="text-red-500">*</span>
+              {t('fields.title')} <span className="text-red-600">*</span>
             </label>
             <input
               id="title"
@@ -176,7 +176,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
 
           <div>
             <label htmlFor="body" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('fields.body')} <span className="text-red-500">*</span>
+              {t('fields.body')} <span className="text-red-600">*</span>
             </label>
             <textarea
               id="body"
@@ -194,10 +194,10 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
       {/* Students multi-select */}
       <div>
         <p className="text-sm font-medium text-gray-700 mb-2">
-          {t('fields.students')} <span className="text-red-500">*</span>
+          {t('fields.students')} <span className="text-red-600">*</span>
         </p>
         {students.length === 0 ? (
-          <p className="text-sm text-gray-500">{t('noStudents')}</p>
+          <p className="text-sm text-muted-foreground">{t('noStudents')}</p>
         ) : (
           <div className="border border-gray-200 rounded-md divide-y divide-gray-100 max-h-64 overflow-y-auto">
             {students.map((s) => (
@@ -222,7 +222,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
       <div>
         <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-1">
           {t('fields.dueDate')}{' '}
-          <span className="text-gray-400 text-xs">{t('dueDateOptional')}</span>
+          <span className="text-muted-foreground text-xs">{t('dueDateOptional')}</span>
         </label>
         <input
           id="dueDate"
@@ -236,7 +236,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
       <div>
         <p className="text-sm font-medium text-gray-700 mb-2">
           {t('attachFiles')}{' '}
-          <span className="text-gray-400 text-xs">{t('dueDateOptional')}</span>
+          <span className="text-muted-foreground text-xs">{t('dueDateOptional')}</span>
         </p>
         <div className="space-y-2">
           <button
@@ -259,13 +259,13 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
             <ul className="space-y-1">
               {files.map((f, i) => (
                 <li key={`${f.name}-${i}`} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded px-2 py-1">
-                  <Paperclip size={12} className="text-gray-400 shrink-0" />
+                  <Paperclip size={12} className="text-muted-foreground shrink-0" />
                   <span className="truncate">{f.name}</span>
-                  <span className="text-xs text-gray-400 shrink-0">({Math.round(f.size / 1024)} KB)</span>
+                  <span className="text-xs text-muted-foreground shrink-0">({Math.round(f.size / 1024)} KB)</span>
                   <button
                     type="button"
                     onClick={() => removeFile(i)}
-                    className="ms-auto text-gray-400 hover:text-red-500 transition-colors"
+                    className="ms-auto text-muted-foreground hover:text-red-600 transition-colors"
                   >
                     <X size={14} />
                   </button>
@@ -288,7 +288,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
             }}
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-          <Clock size={14} className="text-gray-500" />
+          <Clock size={14} className="text-muted-foreground" />
           <span className="text-sm font-medium text-gray-700">{t('scheduleSend')}</span>
         </label>
         {isScheduled && (
@@ -301,14 +301,14 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
               required={isScheduled}
               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <p className="text-xs text-gray-400 mt-1">{t('scheduleSendHint')}</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('scheduleSendHint')}</p>
           </div>
         )}
       </div>
 
       {/* Error */}
       {state.error && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
           {state.error}
         </div>
       )}

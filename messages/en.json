@@ -117,7 +117,8 @@
       "refresh": "Refresh",
       "saving": "Saving...",
       "hide": "Hide",
-      "showAll": "Show all"
+      "showAll": "Show all",
+      "more": "More actions"
     },
     "comingSoon": "Coming soon",
     "optional": "(optional)",
@@ -669,7 +670,8 @@
       "parentsOnlyDesc": "Import parents and link them to existing students by name. Use this when the students are already in the system.",
       "studentsOnlyDesc": "Import students without parents. You can add parents separately afterwards.",
       "changeMode": "Change import mode"
-    }
+    },
+    "importLabel": "Import parents"
   },
   "teachers": {
     "title": "Teachers",
@@ -1090,7 +1092,9 @@
       "summary": "Paid ₪{paid} of ₪{total}",
       "remaining": "₪{amount} remaining"
     },
-    "partiallyPaid": "Paid ₪{paid} of ₪{total}"
+    "partiallyPaid": "Paid ₪{paid} of ₪{total}",
+    "filterFrom": "From date",
+    "filterTo": "To date"
   },
   "billing": {
     "title": "Monthly Billing",
@@ -1169,6 +1173,7 @@
       "title": "Tax invoice",
       "creditNoteTitle": "Credit note",
       "taxIdPrefix": "Tax ID ",
+      "number": "Invoice",
       "invoiceNumber": "Invoice number",
       "date": "Date",
       "billingPeriod": "Billing period",
@@ -1184,7 +1189,8 @@
       "lineSubscription": "Monthly subscription",
       "lineCancellations": "Cancellation charges",
       "lineAdjustmentWithReason": "Manual adjustment: {reason}",
-      "lineAdjustment": "Manual adjustment"
+      "lineAdjustment": "Manual adjustment",
+      "download": "Download PDF"
     },
     "creditNote": {
       "issue": "Issue Credit Note",
@@ -1367,6 +1373,20 @@
       "disconnectConfirm": "Disconnect the receipt provider?"
     },
     "cancellationPolicy": {
+      "title": "Cancellation policy",
+      "saved": "Policy saved",
+      "noticeHoursFull": "Notice for a free cancellation (hours)",
+      "noticeHoursFullHint": "Cancelling at least this many hours ahead — no charge",
+      "noticeHoursPartial": "Notice for a partial charge (hours)",
+      "noticeHoursPartialHint": "Cancelling later than the free threshold but before this one — partial charge",
+      "partialChargePercent": "Partial charge percentage",
+      "partialChargePercentHint": "Share of the lesson price charged on a partial cancellation",
+      "howItWorks": "How it works",
+      "ruleNoCharge": "Cancelled {hours}+ hours ahead — no charge",
+      "rulePartial": "Cancelled between {partialHours} and {fullHours} hours ahead — {percent}% of the lesson price",
+      "ruleFull": "Cancelled less than {hours} hours ahead — full charge",
+      "saving": "Saving…",
+      "saveButton": "Save policy",
       "errors": {
         "ownerOnly": "Only the business owner can update the cancellation policy",
         "fullHoursPositive": "Notice hours for a full cancellation must be a positive number",
@@ -1463,6 +1483,32 @@
       }
     },
     "aiAssistant": {
+      "title": "AI assistant",
+      "description": "A smart assistant that answers parents on WhatsApp on your behalf — configure the provider, model, and toggle it on.",
+      "tabSettings": "Settings",
+      "tabUsage": "Usage",
+      "conversationLog": "Conversation log",
+      "roleParent": "Parent",
+      "noLog": "No conversations yet",
+      "logHeaders": {
+        "time": "Time",
+        "phone": "Phone",
+        "aiReply": "Assistant reply",
+        "parentMessage": "Parent message"
+      },
+      "keyMissingWarning": "To enable the assistant, first configure an API key in the provider settings above.",
+      "enable": "Enable the AI assistant",
+      "providerSettings": "Provider settings",
+      "provider": "Provider",
+      "model": "Model",
+      "apiKey": "API key",
+      "apiKeyPlaceholder": "Paste your API key here",
+      "apiKeyPlaceholderSaved": "Key saved — paste a new key to replace it",
+      "openaiKeyOptional": "Leave empty to use the system key",
+      "apiKeyRequired": "An API key for the selected provider is required",
+      "providerSaved": "Provider settings saved",
+      "testConnection": "Test connection",
+      "testSuccess": "Connection works!",
       "errors": {
         "needsApiKey": "The AI assistant cannot be enabled until an API key is configured (in the provider settings or on the server).",
         "saveFailed": "Could not save the settings",
@@ -1665,7 +1711,8 @@
             "hint": "ISO 4217 currency code — 3 uppercase letters"
           }
         }
-      }
+      },
+      "setupHint": "You will find these credentials in your payment provider's dashboard."
     },
     "emailActions": {
       "errors": {

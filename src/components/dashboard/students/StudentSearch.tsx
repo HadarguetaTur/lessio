@@ -34,7 +34,7 @@ export function StudentSearch({ q, isActive }: StudentSearchProps) {
   return (
     <div className="flex gap-3 items-center">
       <div className="relative flex-1 max-w-sm">
-        <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

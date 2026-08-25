@@ -61,7 +61,7 @@ export function CancellationEventCard({ event, isOwnerOrAdmin }: Props) {
           <dt className="col-start-2 row-start-1 text-end text-muted-foreground">{t('colChargeApproved')}</dt>
           <dd className="col-start-1 row-start-1">
             {event.is_charged ? (
-              <span className="font-medium text-emerald-600">{t('cancellationApproved')}</span>
+              <span className="font-medium text-emerald-700">{t('cancellationApproved')}</span>
             ) : (
               <span className="font-medium text-amber-600">{t('cancellationPending')}</span>
             )}
@@ -88,7 +88,7 @@ export function CancellationEventCard({ event, isOwnerOrAdmin }: Props) {
             type="button"
             onClick={handleReject}
             disabled={isPending}
-            className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded hover:bg-red-100 transition-colors disabled:opacity-50"
+            className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 transition-colors disabled:opacity-50"
           >
             {t('rejectCharge')}
           </button>

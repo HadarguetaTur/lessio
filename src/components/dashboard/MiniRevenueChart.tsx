@@ -1,7 +1,10 @@
 'use client'
 
-import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts'
+import { useEffect, useId, useRef, useState } from 'react'
+import { AreaChart, Area, Tooltip, XAxis } from 'recharts'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
+
+const CHART_HEIGHT = 180
 
 interface MiniRevenueChartProps {
   data: { month: string; amount: number }[]
@@ -22,30 +25,62 @@ function CustomTooltip({
   return (
     <div className="bg-popover border border-border rounded-md px-2 py-1 shadow-sm text-xs">
       <p className="font-medium">{month}</p>
-      <p className="text-emerald-600">{formatCurrency(amount, locale)}</p>
+      <p className="text-emerald-700 dark:text-emerald-400">{formatCurrency(amount, locale)}</p>
     </div>
   )
 }
 
 export function MiniRevenueChart({ data, locale = 'he' }: MiniRevenueChartProps) {
+  // useId output contains characters that are invalid inside url(#…) refs.
+  const gradientId = `revenue-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
+  const wrapRef = useRef<HTMLDivElement>(null)
+  // Measure ourselves instead of using ResponsiveContainer: on first paint the
+  // container reports -1 and recharts logs a console warning.
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const apply = () => setWidth(el.clientWidth)
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   return (
-    <ResponsiveContainer width="100%" height={60}>
-      <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-        <defs>
-          <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
-            <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <Tooltip content={<CustomTooltip locale={locale} />} />
-        <Area
-          type="monotone"
-          dataKey="amount"
-          stroke="#10b981"
-          strokeWidth={2}
-          fill="url(#revenueGradient)"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <div ref={wrapRef} className="min-w-0 w-full" style={{ height: CHART_HEIGHT }}>
+      {width > 0 && (
+        <AreaChart
+          width={width}
+          height={CHART_HEIGHT}
+          data={data}
+          margin={{ top: 8, right: 4, bottom: 0, left: 4 }}
+        >
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <XAxis
+            dataKey="month"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 11 }}
+            tickMargin={6}
+            interval="preserveStartEnd"
+          />
+          <Tooltip content={<CustomTooltip locale={locale} />} />
+          <Area
+            type="monotone"
+            dataKey="amount"
+            stroke="#10b981"
+            strokeWidth={2}
+            fill={`url(#${gradientId})`}
+          />
+        </AreaChart>
+      )}
+    </div>
   )
 }

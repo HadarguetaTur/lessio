@@ -14,7 +14,7 @@ import { renderCancelReason } from '@/lib/lessons/renderCancelReason'
 const STATUS_STYLES: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-50 text-blue-700',
   completed: 'bg-green-50 text-green-700',
-  cancelled: 'bg-gray-100 text-gray-500',
+  cancelled: 'bg-gray-100 text-muted-foreground',
   no_show: 'bg-yellow-50 text-yellow-700',
 }
 
@@ -70,7 +70,7 @@ export default async function TeacherLessonDetailPage(props: {
   return (
     <div className="max-w-lg">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-6 text-sm text-gray-500">
+      <div className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
         <Link href={backHref} className="hover:text-gray-700">
           {t('title')}
         </Link>
@@ -93,22 +93,22 @@ export default async function TeacherLessonDetailPage(props: {
 
         <dl className="space-y-3 text-sm">
           <div className="flex justify-between">
-            <dt className="text-gray-500">{tCommon('table.date')}</dt>
+            <dt className="text-muted-foreground">{tCommon('table.date')}</dt>
             <dd className="text-gray-900 font-medium">{formatDate(lesson.start_at, timezone, appLocale)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-500">{tCommon('table.time')}</dt>
+            <dt className="text-muted-foreground">{tCommon('table.time')}</dt>
             <dd className="text-gray-900 font-medium font-mono" dir="ltr">
               {formatTime(lesson.start_at, timezone, appLocale)}–{formatTime(lesson.end_at, timezone, appLocale)}
             </dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-500">{tCommon('table.student')}</dt>
+            <dt className="text-muted-foreground">{tCommon('table.student')}</dt>
             <dd className="text-gray-900 font-medium">{lesson.student.full_name}</dd>
           </div>
           {lesson.cancel_reason && (
             <div className="flex justify-between">
-              <dt className="text-gray-500">{tLessons('cancel.reason')}</dt>
+              <dt className="text-muted-foreground">{tLessons('cancel.reason')}</dt>
               <dd className="text-gray-900">{renderCancelReason(lesson.cancel_reason, t)}</dd>
             </div>
           )}
@@ -125,7 +125,7 @@ export default async function TeacherLessonDetailPage(props: {
       </div>
 
       <div className="mt-4">
-        <Link href={backHref} className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href={backHref} className="text-sm text-muted-foreground hover:text-gray-700">
           ← {tCommon('actions.back')}
         </Link>
       </div>

@@ -26,21 +26,21 @@ export default async function HolidaysPage() {
   return (
     <div className="flex h-full min-h-0 w-full max-w-xl flex-col overflow-hidden">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-8">{tp('holidaysPage.subtitle')}</p>
+      <p className="text-sm text-muted-foreground mb-8">{tp('holidaysPage.subtitle')}</p>
 
       {/* Holiday list */}
       {holidays.length === 0 ? (
-        <p className="text-sm text-gray-400 mb-6">{t('noHolidays')}</p>
+        <p className="text-sm text-muted-foreground mb-6">{t('noHolidays')}</p>
       ) : (
         <div className="mb-6 min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white">
           <div className="h-full overflow-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {t('fields.date')}
                   </th>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {t('fields.name')}
                   </th>
                   <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3" />
@@ -59,7 +59,7 @@ export default async function HolidaysPage() {
                         <form action={delAction}>
                           <button
                             type="submit"
-                            className="flex items-center gap-1 text-sm text-red-500 transition-colors hover:text-red-700"
+                            className="flex items-center gap-1 text-sm text-red-600 transition-colors hover:text-red-700"
                           >
                             <Trash2 size={13} />
                             {tCommon('actions.delete')}

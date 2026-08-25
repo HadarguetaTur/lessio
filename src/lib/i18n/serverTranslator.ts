@@ -25,7 +25,7 @@ export type ImportT = (key: string, values?: Record<string, string | number | Da
  * to be viewing the dashboard in. Omit it only for text rendered straight back
  * to the current request's user, where the `locale` cookie is the right source.
  */
-export async function getT(namespace: string, locale?: AppLocale): Promise<ImportT> {
+export async function getT(namespace: string | undefined, locale?: AppLocale): Promise<ImportT> {
   const resolved = locale ?? (await getAppLocale())
   const messages = await loadMessages(resolved)
   const t = createTranslator({

@@ -80,10 +80,14 @@ export async function TodayLessonsList({
                       {formatTime(lesson.end_at, timezone, appLocale)}
                     </span>
                     <UserAvatar name={lesson.student.full_name} />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-                      {lesson.student.full_name}
+                    <span className="flex min-w-0 flex-1 items-center gap-2">
+                      {/* bdi keeps the ellipsis at the logical end of a Latin
+                          name inside an RTL row (was "…phie Bennett"). */}
+                      <bdi className="min-w-0 truncate text-sm font-medium text-foreground">
+                        {lesson.student.full_name}
+                      </bdi>
                       {isNext && (
-                        <span className="ms-2 inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
                           {t('today.nextBadge')}
                         </span>
                       )}

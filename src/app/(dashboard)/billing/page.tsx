@@ -129,7 +129,7 @@ export default async function BillingPage(props: {
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t('summary.totalPaid')}
             </p>
-            <p className="text-lg font-bold text-emerald-600">₪{totalPaid.toFixed(2)}</p>
+            <p className="text-lg font-bold text-emerald-700">₪{totalPaid.toFixed(2)}</p>
           </div>
           <div>
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">

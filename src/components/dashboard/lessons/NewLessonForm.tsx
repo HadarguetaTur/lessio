@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState, useActionState } from 'react'
+import { startTransition, useEffect, useRef, useState, useActionState } from 'react'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { GroupPicker } from './GroupPicker'
 import type { StudentGroup } from '@/lib/groups'
 import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
@@ -41,6 +41,8 @@ interface Props {
   /** Minimum selectable date YYYY-MM-DD (e.g. backdating / history) */
   minDateStr: string
   initialDate?: string
+  /** Default HH:mm for the time field (e.g. next round half hour in org tz) */
+  initialTime?: string
   defaultTeacherId?: string
   calendarFlow?: boolean
   variant?: 'page' | 'sheet'
@@ -59,6 +61,7 @@ export function NewLessonForm({
   allowGroupLessons = true,
   minDateStr,
   initialDate,
+  initialTime,
   defaultTeacherId,
   calendarFlow,
   variant = 'page',
@@ -67,6 +70,7 @@ export function NewLessonForm({
 }: Props) {
   const t = useTranslations('lessons')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
   const [state, formAction, pending] = useActionState(action, initialState)
   const [lessonType, setLessonType] = useState<'individual' | 'group'>('individual')
   const effectiveLessonType = allowGroupLessons ? lessonType : 'individual'
@@ -74,8 +78,10 @@ export function NewLessonForm({
   const [groupStudentIds, setGroupStudentIds] = useState<string[]>([])
   const onSuccessRef = useRef(onSuccess)
   const formRef = useRef<HTMLFormElement>(null)
-  const confirmHiddenRef = useRef<HTMLInputElement>(null)
-  const calendarConfirmRef = useRef<HTMLInputElement>(null)
+  // Payload of the last submit attempt — the confirm dialogs resubmit it as-is,
+  // so the lesson survives the confirm round-trip even though React resets the
+  // uncontrolled fields once the action settles.
+  const lastFormDataRef = useRef<FormData | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null)
   const [calendarConfirmOpen, setCalendarConfirmOpen] = useState(false)
@@ -110,27 +116,38 @@ export function NewLessonForm({
     setGroupStudentIds(studentIds)
   }
 
+  // Submit through the action manually: the browser still runs native
+  // constraint validation before firing `submit`, but preventDefault stops
+  // React 19 from auto-resetting the uncontrolled fields, so the values are
+  // still on screen when a confirm dialog comes back.
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    lastFormDataRef.current = fd
+    startTransition(() => formAction(fd))
+  }
+
   const handleConfirmSchedule = () => {
-    if (confirmHiddenRef.current) confirmHiddenRef.current.value = '1'
+    const fd = lastFormDataRef.current
     setConfirmOpen(false)
-    if (formRef.current) {
-      formRef.current.requestSubmit()
-    }
+    if (!fd) return
+    fd.set('confirm_outside_availability', '1')
+    startTransition(() => formAction(fd))
   }
 
   const handleCancelConfirm = () => {
-    if (confirmHiddenRef.current) confirmHiddenRef.current.value = ''
     setConfirmOpen(false)
   }
 
   const handleConfirmCalendar = () => {
-    if (calendarConfirmRef.current) calendarConfirmRef.current.value = '1'
+    const fd = lastFormDataRef.current
     setCalendarConfirmOpen(false)
-    if (formRef.current) formRef.current.requestSubmit()
+    if (!fd) return
+    fd.set('confirm_calendar_conflict', '1')
+    startTransition(() => formAction(fd))
   }
 
   const handleCancelCalendar = () => {
-    if (calendarConfirmRef.current) calendarConfirmRef.current.value = ''
     setCalendarConfirmOpen(false)
   }
 
@@ -145,18 +162,6 @@ export function NewLessonForm({
       )}
 
       {calendarFlow ? <input type="hidden" name="calendar_flow" value="1" /> : null}
-      <input
-        ref={confirmHiddenRef}
-        type="hidden"
-        name="confirm_outside_availability"
-        defaultValue=""
-      />
-      <input
-        ref={calendarConfirmRef}
-        type="hidden"
-        name="confirm_calendar_conflict"
-        defaultValue=""
-      />
 
       {fixedTeacherId ? (
         <input type="hidden" name="teacher_id" value={fixedTeacherId} />
@@ -246,7 +251,7 @@ export function NewLessonForm({
           <Label htmlFor="start_time">
             {t('fields.time')} <span className="text-destructive">*</span>
           </Label>
-          <Input id="start_time" name="start_time" type="time" required />
+          <Input id="start_time" name="start_time" type="time" required defaultValue={initialTime} />
         </div>
       </div>
 
@@ -323,7 +328,7 @@ export function NewLessonForm({
         else setConfirmOpen(true)
       }}
     >
-      <DialogContent dir="rtl">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('availabilityConfirm.title')}</DialogTitle>
           <DialogDescription>
@@ -350,7 +355,7 @@ export function NewLessonForm({
         else setCalendarConfirmOpen(true)
       }}
     >
-      <DialogContent dir="rtl">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('calendarConfirm.title')}</DialogTitle>
           <DialogDescription>{t('calendarConfirm.description')}</DialogDescription>
@@ -363,9 +368,9 @@ export function NewLessonForm({
                   {c.calendar === 'org' ? t('calendarConfirm.orgCalendar') : t('calendarConfirm.teacherCalendar')}
                 </span>
                 <span dir="ltr" className="text-xs">
-                  {new Date(c.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(c.start).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
                   {' – '}
-                  {new Date(c.end).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(c.end).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </li>
             ))}
@@ -386,7 +391,7 @@ export function NewLessonForm({
   if (variant === 'sheet') {
     return (
       <>
-        <form ref={formRef} action={formAction} className="space-y-5">
+        <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="space-y-5">
           {formInner}
         </form>
         {confirmDialog}
@@ -400,6 +405,7 @@ export function NewLessonForm({
       <form
         ref={formRef}
         action={formAction}
+        onSubmit={handleSubmit}
         className="bg-card rounded-xl border border-border p-6 space-y-5 shadow-sm"
       >
         {formInner}

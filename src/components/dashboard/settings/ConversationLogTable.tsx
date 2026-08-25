@@ -88,7 +88,7 @@ export function ConversationLogTable({ rows }: Props) {
   const t = useTranslations('settings.aiAssistant')
 
   if (rows.length === 0) {
-    return <p className="text-sm text-gray-400">{t('noLog')}</p>
+    return <p className="text-sm text-muted-foreground">{t('noLog')}</p>
   }
 
   return (
@@ -96,16 +96,16 @@ export function ConversationLogTable({ rows }: Props) {
       <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <th className="px-4 py-3 text-end text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {t('logHeaders.time')}
             </th>
-            <th className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <th className="px-4 py-3 text-end text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {t('logHeaders.phone')}
             </th>
-            <th className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <th className="px-4 py-3 text-end text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {t('logHeaders.aiReply')}
             </th>
-            <th className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <th className="px-4 py-3 text-end text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {t('logHeaders.parentMessage')}
             </th>
           </tr>

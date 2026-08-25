@@ -26,7 +26,7 @@ export function RegisterTemplatesButton() {
   return (
     <form action={formAction}>
       <h2 className="text-sm font-semibold text-gray-700 mb-1">{t('templates.title')}</h2>
-      <p className="text-xs text-gray-500 mb-3">{t('templates.description')}</p>
+      <p className="text-xs text-muted-foreground mb-3">{t('templates.description')}</p>
 
       <button
         type="submit"
@@ -48,7 +48,7 @@ export function RegisterTemplatesButton() {
                 <CheckCircle size={16} />
                 {t('templates.registered', { count: state.registered.length })}
               </p>
-              <ul className="mt-1 ps-6 text-xs text-gray-500 font-mono space-y-0.5">
+              <ul className="mt-1 ps-6 text-xs text-muted-foreground font-mono space-y-0.5">
                 {state.registered.map((name) => (
                   <li key={name}>{name}</li>
                 ))}
@@ -62,7 +62,7 @@ export function RegisterTemplatesButton() {
                 <AlertCircle size={16} />
                 {t('templates.failed', { count: state.failed.length })}
               </p>
-              <ul className="mt-1 ps-6 text-xs text-red-500 space-y-0.5">
+              <ul className="mt-1 ps-6 text-xs text-red-600 space-y-0.5">
                 {state.failed.map((f) => (
                   <li key={f.name}>
                     <span className="font-mono">{f.name}</span> — {f.reason}

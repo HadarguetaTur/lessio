@@ -52,7 +52,7 @@ export default async function ReportsPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-gray-500 text-sm mb-8">{t('description')}</p>
+      <p className="text-muted-foreground text-sm mb-8">{t('description')}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {REPORT_CARDS.map(({ href, icon: Icon, label, desc }) => (
@@ -66,7 +66,7 @@ export default async function ReportsPage() {
             </div>
             <div>
               <p className="font-semibold text-gray-900 text-sm">{label}</p>
-              <p className="text-gray-500 text-xs mt-0.5">{desc}</p>
+              <p className="text-muted-foreground text-xs mt-0.5">{desc}</p>
             </div>
           </Link>
         ))}

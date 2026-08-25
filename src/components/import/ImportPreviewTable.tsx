@@ -50,7 +50,7 @@ interface ImportPreviewTableProps {
 }
 
 const STATUS_ICON = {
-  valid: <Check size={14} className="text-emerald-600" />,
+  valid: <Check size={14} className="text-emerald-700" />,
   warning: <AlertTriangle size={14} className="text-amber-600" />,
   error: <X size={14} className="text-red-600" />,
 }

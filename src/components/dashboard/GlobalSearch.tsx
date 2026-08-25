@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Loader2, Search } from 'lucide-react'
@@ -61,6 +61,7 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
   const [error, setError] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const listboxId = useId()
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(query.trim()), 280)
@@ -166,7 +167,10 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
           onFocus={() => setOpen(true)}
           placeholder={t('placeholder')}
           aria-label={t('ariaLabel')}
+          role="combobox"
           aria-expanded={open}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
           autoComplete="off"
           className={cn(
             'h-9 bg-muted/50 text-sm',
@@ -187,6 +191,7 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
         <div
           className="absolute top-full z-50 mt-1 max-h-[min(24rem,70vh)] w-full overflow-y-auto rounded-md border border-border bg-popover py-2 text-popover-foreground shadow-md"
           role="listbox"
+          id={listboxId}
         >
           {query.trim().length < 2 && (
             <p className="px-3 py-2 text-xs text-muted-foreground">{t('minLength')}</p>

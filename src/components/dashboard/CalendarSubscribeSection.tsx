@@ -65,8 +65,8 @@ export function CalendarSubscribeSection({ icalUrl }: CalendarSubscribeSectionPr
           >
             {copied ? (
               <>
-                <Check size={14} className="text-green-600" />
-                <span className="text-green-600">{tCommon('actions.copied')}</span>
+                <Check size={14} className="text-green-700" />
+                <span className="text-green-700">{tCommon('actions.copied')}</span>
               </>
             ) : (
               <>
@@ -80,14 +80,14 @@ export function CalendarSubscribeSection({ icalUrl }: CalendarSubscribeSectionPr
 
       {/* Regenerate token */}
       <div className="border-t border-gray-100 pt-4 space-y-2">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           {t('regenerateWarning')}
         </p>
         <button
           type="button"
           onClick={handleRegenerate}
           disabled={isPending}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-md hover:bg-red-50 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-200 rounded-md hover:bg-red-50 disabled:opacity-50 transition-colors"
         >
           <RefreshCw size={14} className={isPending ? 'animate-spin' : ''} />
           {isPending ? `${t('regenerate')}…` : t('regenerate')}
@@ -109,7 +109,7 @@ export function CalendarSubscribeSection({ icalUrl }: CalendarSubscribeSectionPr
             <p>1. {t('googleStep1')}</p>
             <p>2. {t('googleStep2')}</p>
             <p>3. {t('googleStep3')}</p>
-            <p className="text-xs text-gray-400 mt-2">{t('googleNote')}</p>
+            <p className="text-xs text-muted-foreground mt-2">{t('googleNote')}</p>
           </div>
         </details>
 

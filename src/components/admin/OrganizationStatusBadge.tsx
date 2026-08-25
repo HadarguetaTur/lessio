@@ -6,7 +6,7 @@ import type { OrgStatus } from '@/lib/superadmin/organizations'
 const STATUS_CLASS: Record<OrgStatus, string> = {
   needs_setup: 'bg-amber-50 text-amber-700',
   active:      'bg-green-50 text-green-700',
-  inactive:    'bg-gray-100 text-gray-500',
+  inactive:    'bg-gray-100 text-muted-foreground',
 }
 
 export function OrganizationStatusBadge({ status }: { status: OrgStatus }) {

@@ -29,7 +29,7 @@ export function TeacherLessonOutcomeForm({ currentStatus, action }: Props) {
 
   if (currentStatus === 'cancelled') {
     return (
-      <p className="text-sm text-gray-400 italic">{t('cancelledStatus')}</p>
+      <p className="text-sm text-muted-foreground italic">{t('cancelledStatus')}</p>
     )
   }
 
@@ -64,11 +64,11 @@ export function TeacherLessonOutcomeForm({ currentStatus, action }: Props) {
       </div>
 
       {state.error && (
-        <p className="text-sm text-red-500" role="alert">{state.error}</p>
+        <p className="text-sm text-red-600" role="alert">{state.error}</p>
       )}
 
       {showSuccess && (
-        <p className="text-sm text-green-600" role="status">{t('statusUpdated')}</p>
+        <p className="text-sm text-green-700" role="status">{t('statusUpdated')}</p>
       )}
 
       {state.chargeAlert && (

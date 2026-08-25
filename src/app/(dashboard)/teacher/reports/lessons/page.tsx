@@ -77,7 +77,7 @@ export default async function TeacherLessonsReportPage({ searchParams }: Props) 
               {[...buckets].reverse().map((b) => (
                 <TableRow key={b.month} className="hover:bg-muted/20">
                   <TableCell className="px-4 py-3 text-foreground">{b.label}</TableCell>
-                  <TableCell className="px-4 py-3 font-medium tabular-nums text-emerald-600 text-end">
+                  <TableCell className="px-4 py-3 font-medium tabular-nums text-emerald-700 text-end">
                     {b.completed}
                   </TableCell>
                   <TableCell className="px-4 py-3 tabular-nums text-destructive text-end">

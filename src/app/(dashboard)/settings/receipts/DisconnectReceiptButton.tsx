@@ -25,7 +25,7 @@ export function DisconnectReceiptButton() {
       <button
         type="submit"
         disabled={isPending}
-        className="inline-flex items-center px-3 py-1.5 rounded-md border border-red-300 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+        className="inline-flex items-center px-3 py-1.5 rounded-md border border-red-300 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50 transition-colors"
       >
         {isPending ? `${tCommon('actions.disconnect')}…` : t('disconnect')}
       </button>

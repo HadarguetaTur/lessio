@@ -6,7 +6,7 @@ import type { Lesson, LessonStatus } from '@/lib/lessons'
 import { formatTime } from '@/lib/lessons'
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
-  scheduled: 'bg-primary/10 text-primary border border-primary/20',
+  scheduled: 'bg-blue-50 text-blue-700 border border-blue-200',
   completed: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   cancelled: 'bg-muted text-muted-foreground border border-border line-through',
   no_show: 'bg-amber-50 text-amber-700 border border-amber-200',
@@ -99,19 +99,19 @@ export async function DayView({
           >
             <div className="text-center min-w-[56px]">
               <p dir="ltr" className="font-mono text-sm font-bold">{startTime}</p>
-              <p dir="ltr" className="font-mono text-xs opacity-60">{endTime}</p>
+              <p dir="ltr" className="font-mono text-xs">{endTime}</p>
             </div>
 
             <div className="w-px self-stretch bg-current opacity-20" />
 
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{lesson.student.full_name}</p>
-              <p className="text-xs opacity-70 truncate">{lesson.teacher.full_name}</p>
+              <p className="text-xs truncate">{lesson.teacher.full_name}</p>
             </div>
 
             <div className="flex flex-col items-end gap-1 shrink-0">
               <span className="text-xs font-medium">{STATUS_LABELS[lesson.status]}</span>
-              <span className="text-xs opacity-60">{durationMin} {t('minutesSuffix')}</span>
+              <span className="text-xs">{durationMin} {t('minutesSuffix')}</span>
             </div>
 
             {lesson.series_id && (

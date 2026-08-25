@@ -29,7 +29,7 @@ export function LinkParentForm({
 
   if (availableParents.length === 0) {
     return (
-      <p className="text-sm text-gray-400 mt-2">
+      <p className="text-sm text-muted-foreground mt-2">
         {t('parents.allLinked')}
       </p>
     )
@@ -38,7 +38,7 @@ export function LinkParentForm({
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-3 mt-3">
       {state?.error && (
-        <div className="w-full text-sm text-red-600 bg-red-50 border border-red-200 p-2 rounded-md">
+        <div className="w-full text-sm text-red-700 bg-red-50 border border-red-200 p-2 rounded-md">
           {state.error}
         </div>
       )}

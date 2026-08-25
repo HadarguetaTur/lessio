@@ -38,7 +38,7 @@ export function LessonNotesSection({
       <h2 className="text-sm font-semibold text-gray-700">{t('lessonNotesTitle')}</h2>
 
       {notes.length === 0 && (
-        <p className="text-sm text-gray-400">{t('lessonNotesEmpty')}</p>
+        <p className="text-sm text-muted-foreground">{t('lessonNotesEmpty')}</p>
       )}
 
       {notes.length > 0 && (
@@ -48,7 +48,7 @@ export function LessonNotesSection({
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1 min-w-0">
                   <p className="text-gray-700 whitespace-pre-wrap">{note.body}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-muted-foreground">
                     {note.teacherName} · {new Date(note.createdAt).toLocaleDateString(locale === 'he' ? 'he-IL' : 'en-US')}
                     {note.visibleToParent && (
                       <span className="ms-1.5 text-[10px] text-primary bg-primary/10 px-1 py-0.5 rounded">{t('lessonNoteVisibleToParent')}</span>
@@ -60,7 +60,7 @@ export function LessonNotesSection({
                   <button
                     type="submit"
                     title={t('lessonNoteDelete')}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 p-1 rounded"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-600 p-1 rounded"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -92,7 +92,7 @@ export function LessonNotesSection({
             <p className="text-xs text-red-600">{addState.error}</p>
           )}
           {addState.success && (
-            <p className="text-xs text-green-600">{t('lessonNoteSaved')}</p>
+            <p className="text-xs text-green-700">{t('lessonNoteSaved')}</p>
           )}
           <button
             type="submit"

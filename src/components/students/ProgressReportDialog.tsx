@@ -171,7 +171,7 @@ export function ProgressReportDialog({
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-          {successMsg && <p className="text-sm text-green-600">{successMsg}</p>}
+          {successMsg && <p className="text-sm text-green-700">{successMsg}</p>}
 
           <div className="flex flex-col gap-2">
             <Button type="button" onClick={onDownload} disabled={pending} className="w-full gap-2">

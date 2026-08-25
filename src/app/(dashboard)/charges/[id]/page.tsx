@@ -47,6 +47,7 @@ export default async function ChargeDetailPage({
   const t = await getTranslations('charges')
   const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
+  const tRoot = await getTranslations()
 
   const STATUS_LABELS: Record<ChargeStatus, string> = {
     pending: tCommon('chargeStatus.pending'),
@@ -75,30 +76,30 @@ export default async function ChargeDetailPage({
       </div>
 
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-6 font-mono" dir="ltr">
+      <p className="text-sm text-muted-foreground mb-6 font-mono" dir="ltr">
         {charge.id}
       </p>
 
       <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
         <dl className="p-4 grid grid-cols-1 gap-3 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-gray-500">{t('fields.parent')}</dt>
+            <dt className="text-muted-foreground">{t('fields.parent')}</dt>
             <dd className="font-medium text-gray-900">{charge.parent.full_name}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-gray-500">{t('fieldType')}</dt>
+            <dt className="text-muted-foreground">{t('fieldType')}</dt>
             <dd className="text-gray-900">
               {CHARGE_TYPE_LABELS[charge.charge_type] ?? charge.charge_type}
             </dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-gray-500">{t('fields.amount')}</dt>
+            <dt className="text-muted-foreground">{t('fields.amount')}</dt>
             <dd className="font-mono text-gray-900" dir="ltr">
               ₪{charge.amount.toFixed(2)}
             </dd>
           </div>
           <div className="flex justify-between gap-4 items-center">
-            <dt className="text-gray-500">{t('fields.status')}</dt>
+            <dt className="text-muted-foreground">{t('fields.status')}</dt>
             <dd>
               <span
                 className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[charge.status]}`}
@@ -106,30 +107,30 @@ export default async function ChargeDetailPage({
                 {STATUS_LABELS[charge.status]}
               </span>
               {charge.status === 'paid' && charge.payment_provider && (
-                <span className="block text-xs text-gray-400 mt-1">
+                <span className="block text-xs text-muted-foreground mt-1">
                   {t('via', { provider: getProviderUI(charge.payment_provider) ? tp(`${charge.payment_provider}.label`) : charge.payment_provider })}
                 </span>
               )}
               {charge.status === 'paid' && !charge.payment_provider && charge.paid_at && (
-                <span className="block text-xs text-gray-400 mt-1">{t('markedManually')}</span>
+                <span className="block text-xs text-muted-foreground mt-1">{t('markedManually')}</span>
               )}
             </dd>
           </div>
           {charge.notes && (
             <div>
-              <dt className="text-gray-500 mb-1">{t('fieldNotes')}</dt>
-              <dd className="text-gray-800">{renderChargeNote(charge.notes, t)}</dd>
+              <dt className="text-muted-foreground mb-1">{t('fieldNotes')}</dt>
+              <dd className="text-gray-800">{renderChargeNote(charge.notes, tRoot)}</dd>
             </div>
           )}
           <div className="flex justify-between gap-4">
-            <dt className="text-gray-500">{t('fieldCreated')}</dt>
+            <dt className="text-muted-foreground">{t('fieldCreated')}</dt>
             <dd className="text-gray-700">
               {new Date(charge.created_at).toLocaleDateString('he-IL')}
             </dd>
           </div>
           {charge.paid_at && (
             <div className="flex justify-between gap-4">
-              <dt className="text-gray-500">{t('fieldPaidAt')}</dt>
+              <dt className="text-muted-foreground">{t('fieldPaidAt')}</dt>
               <dd className="text-gray-700">
                 {new Date(charge.paid_at).toLocaleString('he-IL')}
               </dd>
@@ -137,7 +138,7 @@ export default async function ChargeDetailPage({
           )}
           {charge.resolved_at && (
             <div className="flex justify-between gap-4">
-              <dt className="text-gray-500">{t('resolve.resolvedAt')}</dt>
+              <dt className="text-muted-foreground">{t('resolve.resolvedAt')}</dt>
               <dd className="text-gray-700">
                 {new Date(charge.resolved_at).toLocaleString('he-IL')}
               </dd>
@@ -145,14 +146,14 @@ export default async function ChargeDetailPage({
           )}
           {charge.resolution_reason && (
             <div>
-              <dt className="text-gray-500 mb-1">{t('resolve.reasonLabel')}</dt>
+              <dt className="text-muted-foreground mb-1">{t('resolve.reasonLabel')}</dt>
               <dd className="text-gray-800">{charge.resolution_reason}</dd>
             </div>
           )}
         </dl>
 
         <div className="p-4">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
             {t('fields.receiptUrl')}
           </h2>
           {charge.receipt_url ? (
@@ -160,20 +161,20 @@ export default async function ChargeDetailPage({
               href={charge.receipt_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-green-600 hover:underline font-medium"
+              className="inline-flex items-center gap-1 text-sm text-green-700 hover:underline font-medium"
             >
               {t('viewReceipt')}
             </a>
           ) : charge.status === 'paid' ? (
-            <p className="text-sm text-gray-500">{t('noReceiptIssued')}</p>
+            <p className="text-sm text-muted-foreground">{t('noReceiptIssued')}</p>
           ) : (
-            <p className="text-sm text-gray-400">{t('pendingReceipt')}</p>
+            <p className="text-sm text-muted-foreground">{t('pendingReceipt')}</p>
           )}
         </div>
 
         {charge.payment_link && (
           <div className="p-4">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
               {t('paymentLink')}
             </h2>
             <a
@@ -215,7 +216,7 @@ export default async function ChargeDetailPage({
 
         {payments.length > 0 && (
           <div className="p-4">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               {t('payments.title')}
             </h2>
             <ChargePaymentsList payments={payments} total={charge.amount} paid={charge.amount_paid} />
@@ -223,7 +224,7 @@ export default async function ChargeDetailPage({
         )}
 
         <div className="p-4">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             {t('audit.title')}
           </h2>
           <ChargeAuditTimeline entries={auditEntries} />

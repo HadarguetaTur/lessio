@@ -169,12 +169,12 @@ export function MessageTemplateCard({
 
       {/* Variable hint */}
       {variables.length > 0 && (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-muted-foreground">
           <span className="font-medium">{t('variables')}: </span>
           {variables.map((v, i) => (
             <span key={v}>
               <code className="bg-gray-100 text-gray-700 px-1 rounded font-mono">{`{{${v}}}`}</code>
-              {i < variables.length - 1 && <span className="text-gray-400">, </span>}
+              {i < variables.length - 1 && <span className="text-muted-foreground">, </span>}
             </span>
           ))}
         </div>
@@ -191,7 +191,7 @@ export function MessageTemplateCard({
           rows={4}
           dir={locale === 'he' ? 'rtl' : 'ltr'}
           className={`w-full text-sm border rounded-md px-3 py-2 resize-y font-sans leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            customBody === null ? 'text-gray-400 border-gray-200 bg-gray-50' : 'text-gray-900 border-gray-300 bg-white'
+            customBody === null ? 'text-muted-foreground border-gray-200 bg-gray-50' : 'text-gray-900 border-gray-300 bg-white'
           }`}
           placeholder={defaultBody}
         />
@@ -200,7 +200,7 @@ export function MessageTemplateCard({
           <p className="text-xs text-red-600">{state.error}</p>
         )}
         {state.success && !hasUnsavedEdits && (
-          <p className="text-xs text-green-600">
+          <p className="text-xs text-green-700">
             {savedNotApproved ? t('savedNeedsApproval') : t('saved')}
           </p>
         )}
@@ -228,7 +228,7 @@ export function MessageTemplateCard({
           <button
             type="button"
             onClick={() => setShowPreview(p => !p)}
-            className="px-4 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors underline"
+            className="px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-gray-700 transition-colors underline"
           >
             {showPreview ? tCommon('actions.close') : t('preview')}
           </button>
@@ -242,7 +242,7 @@ export function MessageTemplateCard({
       {/* Live preview */}
       {showPreview && (
         <div className="border border-gray-200 rounded-md bg-gray-50 p-3">
-          <p className="text-xs font-medium text-gray-500 mb-2">{t('preview')}:</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2">{t('preview')}:</p>
           <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed" dir={locale === 'he' ? 'rtl' : 'ltr'}>
             {preview}
           </pre>
@@ -253,20 +253,20 @@ export function MessageTemplateCard({
       {needsApproval ? (
         <div className="border-t border-gray-100 pt-3 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-medium text-gray-500">{t('metaStatus')}:</span>
+            <span className="text-xs font-medium text-muted-foreground">{t('metaStatus')}:</span>
 
             <span className={`text-xs border rounded px-2 py-0.5 font-medium ${statusClass}`}>
               {statusLabel}
             </span>
 
             {approval?.metaName && (
-              <code className="text-[11px] text-gray-400 font-mono" dir="ltr">
+              <code className="text-[11px] text-muted-foreground font-mono" dir="ltr">
                 {approval.metaName}
               </code>
             )}
 
             {approval?.source === 'builtin' && (
-              <span className="text-[11px] text-gray-400">{t('builtInTemplate')}</span>
+              <span className="text-[11px] text-muted-foreground">{t('builtInTemplate')}</span>
             )}
           </div>
 
@@ -306,7 +306,7 @@ export function MessageTemplateCard({
                   {submitPending ? `${t('submitForApproval')}…` : t('submitForApproval')}
                 </button>
                 {hasUnsavedEdits && (
-                  <span className="text-xs text-gray-500">{t('saveBeforeSubmit')}</span>
+                  <span className="text-xs text-muted-foreground">{t('saveBeforeSubmit')}</span>
                 )}
               </div>
 
@@ -315,17 +315,17 @@ export function MessageTemplateCard({
                   {submitError === 'unknownVariable'
                     ? t('errors.unknownVariable', { variable: submitVariable ?? '' })
                     : t(`errors.${submitError}`)}
-                  {submitMetaMessage && <span className="block text-gray-500">{submitMetaMessage}</span>}
+                  {submitMetaMessage && <span className="block text-muted-foreground">{submitMetaMessage}</span>}
                 </p>
               )}
-              {submitted && <p className="text-xs text-green-600">{t('submittedToMeta')}</p>}
+              {submitted && <p className="text-xs text-green-700">{t('submittedToMeta')}</p>}
             </>
           ) : (
-            <p className="text-xs text-gray-500">{t('builtInOnly')}</p>
+            <p className="text-xs text-muted-foreground">{t('builtInOnly')}</p>
           )}
         </div>
       ) : (
-        <p className="border-t border-gray-100 pt-3 text-xs text-gray-500">{t('inWindowOnly')}</p>
+        <p className="border-t border-gray-100 pt-3 text-xs text-muted-foreground">{t('inWindowOnly')}</p>
       )}
     </div>
   )

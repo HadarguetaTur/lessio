@@ -17,7 +17,7 @@ export default function AdminError({
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
       <h1 className="text-xl font-bold text-gray-900 mb-2">Admin Error</h1>
-      <p className="text-sm text-gray-500 mb-6">An unexpected error occurred in the admin panel.</p>
+      <p className="text-sm text-muted-foreground mb-6">An unexpected error occurred in the admin panel.</p>
       <div className="flex gap-3">
         <button
           onClick={reset}
@@ -33,7 +33,7 @@ export default function AdminError({
         </Link>
       </div>
       {error.digest && (
-        <p className="mt-4 text-xs text-gray-400">Error ID: {error.digest}</p>
+        <p className="mt-4 text-xs text-muted-foreground">Error ID: {error.digest}</p>
       )}
     </div>
   )

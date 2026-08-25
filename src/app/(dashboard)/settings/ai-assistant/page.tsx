@@ -59,7 +59,7 @@ export default async function AiAssistantSettingsPage({
   return (
     <div className="max-w-2xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-muted-foreground mb-6">
         {t('description')}
       </p>
 
@@ -70,7 +70,7 @@ export default async function AiAssistantSettingsPage({
           className={`pb-2 text-sm font-medium border-b-2 ${
             activeTab === 'settings'
               ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-muted-foreground hover:text-gray-700'
           }`}
         >
           {t('tabSettings')}
@@ -80,7 +80,7 @@ export default async function AiAssistantSettingsPage({
           className={`pb-2 text-sm font-medium border-b-2 ${
             activeTab === 'usage'
               ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-muted-foreground hover:text-gray-700'
           }`}
         >
           {t('tabUsage')}

@@ -29,7 +29,7 @@ export function GradingForm({ submissionId, assignmentId, action }: Props) {
       <input type="hidden" name="assignmentId" value={assignmentId} />
 
       <div className="flex items-center gap-2">
-        <label htmlFor={`score-${submissionId}`} className="text-xs text-gray-500 shrink-0 w-12">
+        <label htmlFor={`score-${submissionId}`} className="text-xs text-muted-foreground shrink-0 w-12">
           {t('grade')}
         </label>
         <input
@@ -42,7 +42,7 @@ export function GradingForm({ submissionId, assignmentId, action }: Props) {
           placeholder="0–100"
           className="w-20 border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
         />
-        <span className="text-xs text-gray-400">/ 100</span>
+        <span className="text-xs text-muted-foreground">/ 100</span>
       </div>
 
       <div>

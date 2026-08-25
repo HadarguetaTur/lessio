@@ -70,7 +70,9 @@
   --secondary: oklch(0.94 0.01 255);
   --secondary-foreground: oklch(0.35 0.1 255);
   --muted: oklch(0.945 0.006 255);
-  --muted-foreground: oklch(0.5 0 0);
+  /* 0.45, not 0.5: secondary text also sits on the tinted app background
+     (--background), where 0.5 lands at 4.2:1 and fails WCAG AA. */
+  --muted-foreground: oklch(0.45 0 0);
   --accent: oklch(0.93 0.015 255);
   --accent-foreground: oklch(0.35 0.12 255);
   --destructive: oklch(0.577 0.245 27.325);

@@ -56,7 +56,7 @@ export function CancelLessonForm({ action }: Props) {
       <form action={formAction} onSubmit={() => setHasSubmitted(true)} className="space-y-4">
         <div className="space-y-1">
           <label htmlFor="cancel_reason" className="block text-sm font-medium text-red-800">
-            {t('cancel.reason')} <span className="text-red-500">*</span>
+            {t('cancel.reason')} <span className="text-red-600">*</span>
           </label>
           <textarea
             id="cancel_reason"

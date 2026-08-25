@@ -49,7 +49,7 @@ export function DataRetentionForm({ currentDays, action }: Props) {
         <p className="text-sm text-red-600">{state.error}</p>
       )}
       {state.success && (
-        <p className="text-sm text-green-600">{tp('dataRetention.saved')}</p>
+        <p className="text-sm text-green-700">{tp('dataRetention.saved')}</p>
       )}
 
       <button

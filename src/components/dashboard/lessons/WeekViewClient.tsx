@@ -8,7 +8,7 @@ import type { AppLocale } from '@/lib/i18n/locale'
 import { cn } from '@/lib/utils'
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
-  scheduled: 'bg-primary/10 text-primary border border-primary/20',
+  scheduled: 'bg-blue-50 text-blue-700 border border-blue-200',
   completed: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   cancelled: 'bg-muted text-muted-foreground border border-border line-through',
   no_show: 'bg-amber-50 text-amber-700 border border-amber-200',
@@ -94,38 +94,39 @@ export function WeekViewClient({
 
     const pickable = Boolean(pickDayEnabled && onPickDay)
 
+    const headerClass = cn(
+      'px-2 py-1.5 text-center border-b',
+      isToday ? 'border-primary/20' : 'border-border'
+    )
+
     return (
       <div
         key={dateStr}
-        role={pickable ? 'button' : undefined}
-        tabIndex={pickable ? 0 : undefined}
         onClick={pickable ? () => onPickDay!(dateStr) : undefined}
-        onKeyDown={
-          pickable
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onPickDay!(dateStr)
-                }
-              }
-            : undefined
-        }
-        aria-label={pickable ? dateStr : undefined}
         className={cn(
           'rounded-lg border min-h-36 min-w-0 text-start',
           isToday ? 'border-primary/30 bg-primary/5' : 'border-border bg-card',
-          pickable &&
-            'cursor-pointer transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+          pickable && 'cursor-pointer transition-colors hover:bg-muted/30'
         )}
       >
-        <div
-          className={cn(
-            'px-2 py-1.5 text-center border-b',
-            isToday ? 'border-primary/20' : 'border-border'
-          )}
-        >
-          {headerInner}
-        </div>
+        {/* The column header carries the keyboard affordance. The column itself
+            stays a plain div: role="button" around the lesson links would nest
+            interactive elements and break tab order. */}
+        {pickable ? (
+          <button
+            type="button"
+            onClick={() => onPickDay!(dateStr)}
+            aria-label={dateStr}
+            className={cn(
+              headerClass,
+              'w-full cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            )}
+          >
+            {headerInner}
+          </button>
+        ) : (
+          <div className={headerClass}>{headerInner}</div>
+        )}
 
         {holidayDates.has(dateStr) && (
           <div className="px-1.5 py-0.5 mx-1 mt-1 text-xs text-center text-purple-600 bg-purple-50 rounded border border-purple-100 truncate">
@@ -170,7 +171,7 @@ export function WeekViewClient({
 
       <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground flex-wrap">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-primary/10 border border-primary/20 inline-block" />
+          <span className="w-3 h-3 rounded bg-blue-50 border border-blue-200 inline-block" />
           {legend.scheduled}
         </span>
         <span className="flex items-center gap-1.5">

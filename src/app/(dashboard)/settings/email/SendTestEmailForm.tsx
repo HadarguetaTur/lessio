@@ -14,7 +14,7 @@ export function SendTestEmailForm() {
 
   return (
     <form action={formAction} className="space-y-2">
-      <p className="text-xs text-gray-500 mb-1">{tp('emailActions.testFormHint')}</p>
+      <p className="text-xs text-muted-foreground mb-1">{tp('emailActions.testFormHint')}</p>
       <div className="flex gap-2">
         <Input
           name="to"
@@ -29,7 +29,7 @@ export function SendTestEmailForm() {
         </Button>
       </div>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state.success && <p className="text-sm text-green-600">{tp('emailActions.testFormSuccess')}</p>}
+      {state.success && <p className="text-sm text-green-700">{tp('emailActions.testFormSuccess')}</p>}
     </form>
   )
 }

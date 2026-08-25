@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { KeyboardEvent, MouseEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import {
   Table,
@@ -47,6 +48,7 @@ export function TeachersTable({
   archiveAction,
   restoreAction,
 }: TeachersTableProps) {
+  const tActions = useTranslations('common')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedName, setSelectedName] = useState<string | undefined>(undefined)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -83,7 +85,9 @@ export function TeachersTable({
                 <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
                   {headingStatus}
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 w-12 bg-muted/95 px-5 backdrop-blur" />
+                <TableHead className="sticky top-0 z-10 w-12 bg-muted/95 px-5 backdrop-blur">
+                  <span className="sr-only">{tActions('table.actions')}</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

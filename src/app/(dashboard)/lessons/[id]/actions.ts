@@ -509,8 +509,8 @@ export async function sendLessonReminderAction(lessonId: string): Promise<SendRe
     // Nothing was sent, so say so and write no notification_log row — otherwise
     // the button reports success and the hourly cron skips the lesson forever.
     if (!result.sent) {
-      const t = await getTranslations('parents')
-      return { error: t('optedOutError') }
+      const tParents = await getTranslations('parents')
+      return { error: tParents('optedOutError') }
     }
   } catch (e) {
     console.error('[lessons] Manual reminder send failed', { lessonId, error: e })

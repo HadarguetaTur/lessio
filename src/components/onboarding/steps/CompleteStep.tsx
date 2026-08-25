@@ -65,7 +65,7 @@ export function CompleteStep({ counts, onBack }: CompleteStepProps) {
   return (
     <div className="mx-auto w-full max-w-3xl text-center">
       <div className="mx-auto mb-6 flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-600/25 shadow-md ring-4 ring-emerald-400/20">
-        <CheckCircle2 size={40} className="text-emerald-600 dark:text-emerald-400" aria-hidden />
+        <CheckCircle2 size={40} className="text-emerald-700 dark:text-emerald-400" aria-hidden />
       </div>
 
       <h2 className={`${onboardingStepTitle} mb-2`}>{t('title')}</h2>

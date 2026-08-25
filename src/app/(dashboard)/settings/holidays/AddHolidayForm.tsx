@@ -27,7 +27,7 @@ export function AddHolidayForm() {
             type="button"
             onClick={() => setIsRange(false)}
             className={`px-3 py-1.5 rounded transition-colors ${
-              !isRange ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+              !isRange ? 'bg-white shadow-sm text-gray-900' : 'text-muted-foreground hover:text-gray-700'
             }`}
           >
             {tp('holidaysPage.singleDate')}
@@ -36,7 +36,7 @@ export function AddHolidayForm() {
             type="button"
             onClick={() => setIsRange(true)}
             className={`px-3 py-1.5 rounded transition-colors ${
-              isRange ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+              isRange ? 'bg-white shadow-sm text-gray-900' : 'text-muted-foreground hover:text-gray-700'
             }`}
           >
             {tp('holidaysPage.dateRange')}

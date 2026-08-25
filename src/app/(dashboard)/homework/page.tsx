@@ -116,7 +116,7 @@ export default async function HomeworkPage({
               href={value ? `/homework?status=${value}` : '/homework'}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                 active
-                  ? 'border border-primary/20 bg-primary/10 font-medium text-primary'
+                  ? 'border border-blue-200 bg-blue-50 font-medium text-blue-700'
                   : 'border border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >

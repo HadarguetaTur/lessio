@@ -15,7 +15,7 @@ const STATUS_DOT: Record<LessonStatus, string> = {
 }
 
 const STATUS_CHIP: Record<LessonStatus, string> = {
-  scheduled: 'bg-primary/10 text-primary',
+  scheduled: 'bg-blue-50 text-blue-700',
   completed: 'bg-emerald-50 text-emerald-700',
   cancelled: 'bg-muted text-muted-foreground line-through',
   no_show: 'bg-amber-50 text-amber-700',
@@ -121,40 +121,41 @@ export function MonthViewClient({
             const holiday = holidayDates.get(dateStr)
             const isThisMonth = dateStr.startsWith(currentMonthPrefix)
 
-            const dayLink = (
-              <span
+            const pickable = Boolean(pickDayEnabled && onPickDay)
+
+            const dayNumClass = cn(
+              'text-xs font-semibold min-w-7 min-h-7 inline-flex items-center justify-center rounded-full',
+              isToday
+                ? 'bg-primary text-primary-foreground'
+                : isCurrentMonth && isThisMonth
+                  ? 'text-foreground'
+                  : 'text-muted-foreground'
+            )
+
+            // The day number carries the keyboard affordance. The cell itself
+            // stays a plain div: giving it role="button" while it contains
+            // lesson links nests interactive elements, which breaks both
+            // screen readers and tab order.
+            const dayLink = pickable ? (
+              <button
+                type="button"
+                onClick={() => onPickDay!(dateStr)}
+                aria-label={dateStr}
                 className={cn(
-                  'text-xs font-semibold min-w-7 min-h-7 inline-flex items-center justify-center rounded-full',
-                  isToday
-                    ? 'bg-primary text-primary-foreground'
-                    : isCurrentMonth && isThisMonth
-                      ? 'text-foreground'
-                      : 'text-muted-foreground/50'
+                  dayNumClass,
+                  'cursor-pointer transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                 )}
               >
                 {dayNum}
-              </span>
+              </button>
+            ) : (
+              <span className={dayNumClass}>{dayNum}</span>
             )
-
-            const pickable = Boolean(pickDayEnabled && onPickDay)
 
             return (
               <div
                 key={dateStr}
-                role={pickable ? 'button' : undefined}
-                tabIndex={pickable ? 0 : undefined}
                 onClick={pickable ? () => onPickDay!(dateStr) : undefined}
-                onKeyDown={
-                  pickable
-                    ? (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          onPickDay!(dateStr)
-                        }
-                      }
-                    : undefined
-                }
-                aria-label={pickable ? dateStr : undefined}
                 className={cn(
                   'min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 flex flex-col gap-0.5 sm:gap-1 min-w-0 text-start',
                   isToday
@@ -162,12 +163,11 @@ export function MonthViewClient({
                     : isCurrentMonth && isThisMonth
                       ? 'bg-card'
                       : 'bg-muted/30',
-                  pickable &&
-                    'cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10'
+                  pickable && 'cursor-pointer transition-colors hover:bg-muted/40'
                 )}
               >
                 <div className="flex items-start justify-between gap-0.5 min-w-0">
-                  <span className="shrink-0 pointer-events-none">{dayLink}</span>
+                  <span className="shrink-0">{dayLink}</span>
                   {holiday && (
                     <span className="text-[8px] sm:text-[9px] text-purple-600 truncate max-w-[min(100%,4.5rem)] sm:max-w-[60px] leading-tight text-start pointer-events-none">
                       {holiday}
@@ -216,7 +216,7 @@ export function MonthViewClient({
                     href={dayViewMoreHref(dateStr)}
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
-                    className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground transition-colors truncate"
+                    className="text-[9px] sm:text-[10px] text-foreground hover:text-primary transition-colors truncate"
                   >
                     {t('moreCount', { count: dayLessons.length - 3 })}
                   </Link>

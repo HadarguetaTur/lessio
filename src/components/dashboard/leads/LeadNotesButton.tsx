@@ -66,7 +66,7 @@ export function LeadNotesButton({ leadId, initialNotes, action }: Props) {
             setNotes(initialNotes ?? '')
           }}
           disabled={isPending}
-          className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-40"
+          className="text-sm text-muted-foreground hover:text-gray-700 disabled:opacity-40"
         >
           {tCommon('actions.cancel')}
         </button>

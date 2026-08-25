@@ -283,7 +283,7 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
         {isPending ? `${tCommon('actions.connect')}…` : t('connect')}
       </button>
 
-      <p className="text-xs text-gray-500 mt-2">{tp('whatsappPage.signupHint')}</p>
+      <p className="text-xs text-muted-foreground mt-2">{tp('whatsappPage.signupHint')}</p>
     </div>
   )
 }

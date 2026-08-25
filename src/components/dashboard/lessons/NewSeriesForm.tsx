@@ -38,7 +38,7 @@ export function NewSeriesForm({ teachers, students }: Props) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
         <div className="flex items-center gap-2">
-          <span className="text-green-600 text-lg">✓</span>
+          <span className="text-green-700 text-lg">✓</span>
           <h2 className="text-base font-semibold text-gray-900">{t('series.createdSummary')}</h2>
         </div>
         <p className="text-sm text-gray-700">
@@ -68,14 +68,14 @@ export function NewSeriesForm({ teachers, students }: Props) {
   return (
     <form action={formAction} className="bg-white rounded-lg border border-gray-200 p-6 space-y-5">
       {state.error && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+        <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">
           {state.error}
         </div>
       )}
 
       <div className="space-y-1">
         <label htmlFor="teacher_id" className="block text-sm font-medium text-gray-700">
-          {t('fields.teacher')} <span className="text-red-500">*</span>
+          {t('fields.teacher')} <span className="text-red-600">*</span>
         </label>
         <select
           id="teacher_id"
@@ -92,7 +92,7 @@ export function NewSeriesForm({ teachers, students }: Props) {
 
       <div className="space-y-1">
         <label htmlFor="student_id" className="block text-sm font-medium text-gray-700">
-          {t('fields.student')} <span className="text-red-500">*</span>
+          {t('fields.student')} <span className="text-red-600">*</span>
         </label>
         <select
           id="student_id"
@@ -110,7 +110,7 @@ export function NewSeriesForm({ teachers, students }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <label htmlFor="day_of_week" className="block text-sm font-medium text-gray-700">
-            {t('fields.dayOfWeek')} <span className="text-red-500">*</span>
+            {t('fields.dayOfWeek')} <span className="text-red-600">*</span>
           </label>
           <select
             id="day_of_week"
@@ -127,7 +127,7 @@ export function NewSeriesForm({ teachers, students }: Props) {
 
         <div className="space-y-1">
           <label htmlFor="start_time" className="block text-sm font-medium text-gray-700">
-            {t('fields.time')} <span className="text-red-500">*</span>
+            {t('fields.time')} <span className="text-red-600">*</span>
           </label>
           <input
             id="start_time"
@@ -142,7 +142,7 @@ export function NewSeriesForm({ teachers, students }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <label htmlFor="duration_minutes" className="block text-sm font-medium text-gray-700">
-            {t('fields.duration')} <span className="text-red-500">*</span>
+            {t('fields.duration')} <span className="text-red-600">*</span>
           </label>
           <select
             id="duration_minutes"
@@ -158,7 +158,7 @@ export function NewSeriesForm({ teachers, students }: Props) {
 
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">
-            {t('frequency')} <span className="text-red-500">*</span>
+            {t('frequency')} <span className="text-red-600">*</span>
           </label>
           <div className="flex items-center gap-4 pt-2">
             <label className="flex items-center gap-1.5 text-sm cursor-pointer">
@@ -186,7 +186,7 @@ export function NewSeriesForm({ teachers, students }: Props) {
 
       <div className="space-y-1">
         <label htmlFor="until" className="block text-sm font-medium text-gray-700">
-          {t('until')} <span className="text-red-500">*</span>
+          {t('until')} <span className="text-red-600">*</span>
         </label>
         <input
           id="until"

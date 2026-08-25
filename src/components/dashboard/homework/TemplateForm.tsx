@@ -38,7 +38,7 @@ export function TemplateForm({ action, initialValues, submitLabel }: TemplateFor
       {/* Title */}
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-          {t('fields.title')} <span className="text-red-500">*</span>
+          {t('fields.title')} <span className="text-red-600">*</span>
         </label>
         <input
           id="title"
@@ -55,7 +55,7 @@ export function TemplateForm({ action, initialValues, submitLabel }: TemplateFor
       {/* Subject (optional) */}
       <div>
         <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
-          {t('fields.subject')} <span className="text-gray-400 text-xs">{t('subjectOptional')}</span>
+          {t('fields.subject')} <span className="text-muted-foreground text-xs">{t('subjectOptional')}</span>
         </label>
         <input
           id="subject"
@@ -71,7 +71,7 @@ export function TemplateForm({ action, initialValues, submitLabel }: TemplateFor
       {/* Body */}
       <div>
         <label htmlFor="body" className="block text-sm font-medium text-gray-700 mb-1">
-          {t('fields.body')} <span className="text-red-500">*</span>
+          {t('fields.body')} <span className="text-red-600">*</span>
         </label>
         <textarea
           id="body"
@@ -87,7 +87,7 @@ export function TemplateForm({ action, initialValues, submitLabel }: TemplateFor
 
       {/* Server error */}
       {state.error && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
           {state.error}
         </div>
       )}

@@ -28,7 +28,7 @@ export function DeleteTemplateButton({ templateId }: { templateId: string }) {
     <button
       onClick={handleDelete}
       disabled={isPending}
-      className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+      className="flex items-center gap-1 px-2 py-1 text-xs text-red-700 border border-red-200 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
     >
       <Trash2 size={12} />
       {isPending ? `${tCommon('actions.delete')}…` : tCommon('actions.delete')}

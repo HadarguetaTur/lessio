@@ -93,12 +93,13 @@ export function ParentRowActions({
 }: ParentRowActionsProps) {
   const t = useTranslations('parents')
   const [editOpen, setEditOpen] = useState(false)
+  const tActions = useTranslations('common')
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+          <button aria-label={tActions('actions.more')} className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
             <MoreHorizontal size={15} />
           </button>
         </DropdownMenuTrigger>
@@ -125,7 +126,7 @@ export function ParentRowActions({
           ) : (
             <DropdownMenuItem asChild>
               <form action={restoreAction} className="w-full">
-                <button type="submit" className="flex items-center gap-2 w-full text-emerald-600">
+                <button type="submit" className="flex items-center gap-2 w-full text-emerald-700">
                   <RotateCcw size={13} />
                   {t('restore')}
                 </button>

@@ -21,7 +21,7 @@ export function ParentSearch({ q }: ParentSearchProps) {
     <div className="relative max-w-sm">
       <Search
         size={15}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
       />
       <input
         value={draft}

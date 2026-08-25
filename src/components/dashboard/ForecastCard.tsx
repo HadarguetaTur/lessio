@@ -27,7 +27,7 @@ export function ForecastCard({ forecast, locale }: ForecastCardProps) {
         {/* Actual */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">{t('forecast.actual')}</span>
-          <span className="font-medium text-emerald-600">
+          <span className="font-medium text-emerald-700 dark:text-emerald-400">
             {formatCurrency(forecast.actual, locale)}
           </span>
         </div>

@@ -37,7 +37,7 @@ export default async function ReceiptSettingsPage() {
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-8">{tp('receiptsPage.subtitle')}</p>
+      <p className="text-sm text-muted-foreground mb-8">{tp('receiptsPage.subtitle')}</p>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {isConnected
@@ -68,15 +68,15 @@ async function ConnectedState({ providerLabel, connected, disconnect }: { provid
 
       <dl className="text-sm space-y-2">
         <div className="flex justify-between">
-          <dt className="text-gray-500">{tp('receiptsPage.providerLabel')}</dt>
+          <dt className="text-muted-foreground">{tp('receiptsPage.providerLabel')}</dt>
           <dd className="font-medium text-gray-900">{providerLabel}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">{tp('receiptsPage.apiDetailsLabel')}</dt>
-          <dd className="text-gray-400 text-xs">{tp('receiptsPage.apiDetailsValue')}</dd>
+          <dt className="text-muted-foreground">{tp('receiptsPage.apiDetailsLabel')}</dt>
+          <dd className="text-muted-foreground text-xs">{tp('receiptsPage.apiDetailsValue')}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">{tp('receiptsPage.autoIssueLabel')}</dt>
+          <dt className="text-muted-foreground">{tp('receiptsPage.autoIssueLabel')}</dt>
           <dd className="text-gray-600 text-xs">{tp('receiptsPage.autoIssueValue')}</dd>
         </div>
       </dl>
@@ -84,7 +84,7 @@ async function ConnectedState({ providerLabel, connected, disconnect }: { provid
       <hr className="border-gray-100" />
 
       <div>
-        <p className="text-xs text-gray-500 mb-2">{tp('receiptsPage.disconnectHint')}</p>
+        <p className="text-xs text-muted-foreground mb-2">{tp('receiptsPage.disconnectHint')}</p>
         <DisconnectReceiptButton />
       </div>
     </div>
@@ -95,7 +95,7 @@ async function DisconnectedState() {
   const tp = await getTranslations('settings')
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-gray-500">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <AlertCircle size={20} />
         <span className="font-medium text-sm">{tp('googleCommon.notConnected')}</span>
       </div>

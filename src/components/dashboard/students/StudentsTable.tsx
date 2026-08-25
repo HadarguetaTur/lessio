@@ -48,6 +48,7 @@ export function StudentsTable({
   showArchiveActions = true,
 }: StudentsTableProps) {
   const t = useTranslations('students')
+  const tHeaderCommon = useTranslations('common')
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
 
@@ -93,7 +94,9 @@ export function StudentsTable({
                 <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
                   {tStatus}
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 w-12 bg-muted/95 px-5 backdrop-blur" />
+                <TableHead className="sticky top-0 z-10 w-12 bg-muted/95 px-5 backdrop-blur">
+                  <span className="sr-only">{tHeaderCommon('table.actions')}</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -179,7 +182,7 @@ function RowActions({ student }: { student: Student }) {
             {t('archive')}
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem onSelect={handleRestore} className="text-emerald-600">
+          <DropdownMenuItem onSelect={handleRestore} className="text-emerald-700">
             <RotateCcw size={13} className="ml-2" />
             {t('restore')}
           </DropdownMenuItem>

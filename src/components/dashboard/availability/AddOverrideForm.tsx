@@ -17,7 +17,7 @@ export function AddOverrideForm({ action }: { action: FormAction }) {
       <h2 className="text-sm font-semibold text-gray-700 mb-3">{t('addOverrideTitle')}</h2>
 
       {state?.error && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-2 rounded-md mb-3">
+        <div className="text-sm text-red-700 bg-red-50 border border-red-200 p-2 rounded-md mb-3">
           {state.error}
         </div>
       )}

@@ -28,7 +28,7 @@ export function CancellationPolicyForm({
   return (
     <form action={formAction} className="space-y-6 max-w-lg">
       {'error' in (state ?? {}) && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-md">
+        <div className="text-sm text-red-700 bg-red-50 border border-red-200 p-3 rounded-md">
           {(state as { error: string }).error}
         </div>
       )}
@@ -43,7 +43,7 @@ export function CancellationPolicyForm({
           <label htmlFor="notice_hours_full" className="block text-sm font-medium text-gray-700">
             {t('noticeHoursFull')}
           </label>
-          <p className="text-xs text-gray-500">{t('noticeHoursFullHint')}</p>
+          <p className="text-xs text-muted-foreground">{t('noticeHoursFullHint')}</p>
           <input
             id="notice_hours_full"
             name="notice_hours_full"
@@ -52,7 +52,7 @@ export function CancellationPolicyForm({
             step="1"
             defaultValue={defaultValues.notice_hours_full}
             disabled={readOnly}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-muted-foreground"
           />
         </div>
 
@@ -60,7 +60,7 @@ export function CancellationPolicyForm({
           <label htmlFor="notice_hours_partial" className="block text-sm font-medium text-gray-700">
             {t('noticeHoursPartial')}
           </label>
-          <p className="text-xs text-gray-500">{t('noticeHoursPartialHint')}</p>
+          <p className="text-xs text-muted-foreground">{t('noticeHoursPartialHint')}</p>
           <input
             id="notice_hours_partial"
             name="notice_hours_partial"
@@ -69,7 +69,7 @@ export function CancellationPolicyForm({
             step="1"
             defaultValue={defaultValues.notice_hours_partial}
             disabled={readOnly}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-muted-foreground"
           />
         </div>
 
@@ -77,7 +77,7 @@ export function CancellationPolicyForm({
           <label htmlFor="partial_charge_percent" className="block text-sm font-medium text-gray-700">
             {t('partialChargePercent')}
           </label>
-          <p className="text-xs text-gray-500">{t('partialChargePercentHint')}</p>
+          <p className="text-xs text-muted-foreground">{t('partialChargePercentHint')}</p>
           <input
             id="partial_charge_percent"
             name="partial_charge_percent"
@@ -87,7 +87,7 @@ export function CancellationPolicyForm({
             step="1"
             defaultValue={defaultValues.partial_charge_percent}
             disabled={readOnly}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-muted-foreground"
           />
         </div>
       </div>

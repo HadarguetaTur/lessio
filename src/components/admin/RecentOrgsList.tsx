@@ -16,14 +16,14 @@ export async function RecentOrgsList({ orgs }: Props) {
         <h2 className="text-sm font-semibold text-gray-800">{t('dashboard.recentOrgs')}</h2>
       </div>
       {orgs.length === 0 ? (
-        <p className="px-5 py-4 text-sm text-gray-400">{t('dashboard.noActivity')}</p>
+        <p className="px-5 py-4 text-sm text-muted-foreground">{t('dashboard.noActivity')}</p>
       ) : (
         <ul className="divide-y divide-gray-50">
           {orgs.map((o) => (
             <li key={o.id} className="flex items-center justify-between px-5 py-3">
               <div>
                 <p className="text-sm font-medium text-gray-800">{o.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {o.lastActivity
                     ? DateTime.fromISO(o.lastActivity).toRelative({ locale: 'he' })
                     : '—'}

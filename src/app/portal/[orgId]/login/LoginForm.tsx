@@ -18,12 +18,12 @@ function PhoneStep({ orgId, orgName }: { orgId: string; orgName: string }) {
     <div className="flex flex-col flex-1 justify-center px-6 py-10">
       <div className="mb-8 text-center">
         <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
-        <p className="text-sm text-gray-500 mt-1">{t('phoneSubtitle')}</p>
+        <p className="text-sm text-muted-foreground mt-1">{t('phoneSubtitle')}</p>
       </div>
 
       <form action={action} className="space-y-4">
         {state.error && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+          <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">
             {t(`errors.${state.error}`)}
           </div>
         )}
@@ -92,12 +92,12 @@ function OtpStep({ orgId, phone }: { orgId: string; phone: string }) {
     <div className="flex flex-col flex-1 justify-center px-6 py-10">
       <div className="mb-8 text-center">
         <h1 className="text-xl font-bold text-gray-900">{t('otpTitle')}</h1>
-        <p className="text-sm text-gray-500 mt-1">{t('otpSubtitle')}</p>
+        <p className="text-sm text-muted-foreground mt-1">{t('otpSubtitle')}</p>
       </div>
 
       <form action={action} className="space-y-4">
         {state.error && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+          <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">
             {t(`errors.${state.error}`)}
           </div>
         )}
@@ -129,7 +129,7 @@ function OtpStep({ orgId, phone }: { orgId: string; phone: string }) {
 
         <a
           href={`/portal/${orgId}/login`}
-          className="flex items-center justify-center gap-1 text-center text-sm text-gray-500 hover:text-gray-700"
+          className="flex items-center justify-center gap-1 text-center text-sm text-muted-foreground hover:text-gray-700"
         >
           <ArrowLeft className="size-3.5 rtl:rotate-180" aria-hidden />
           {t('backToPhone')}

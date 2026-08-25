@@ -40,7 +40,7 @@ export default async function TeacherDashboardPage() {
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) {
     return (
-      <div className="text-center mt-16 text-sm text-gray-500">
+      <div className="text-center mt-16 text-sm text-muted-foreground">
         {t('noTeacherRecordContact')}
       </div>
     )

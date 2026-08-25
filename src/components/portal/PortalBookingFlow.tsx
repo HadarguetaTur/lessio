@@ -172,7 +172,7 @@ function TeacherStep({
       )}
       {error && <p className="text-sm text-red-600">{t('loadError')}</p>}
       {!loading && !error && teachers.length === 0 && (
-        <p className="text-sm text-gray-400">{t('empty')}</p>
+        <p className="text-sm text-muted-foreground">{t('empty')}</p>
       )}
       <div className="space-y-2">
         {teachers.map((teacher) => (
@@ -308,7 +308,7 @@ function SlotsStep({
         <div className="flex items-center gap-2 mb-3">
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 p-1 -ms-1"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-gray-800 p-1 -ms-1"
           >
             <ArrowLeft className="size-3.5 rtl:rotate-180" aria-hidden />
             {t('back')}
@@ -341,17 +341,17 @@ function SlotsStep({
             onClick={() => setWeekStart((w) => addWeeks(w, -1))}
             disabled={!canGoPrev}
             aria-label={t('prevWeek')}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-30"
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-muted-foreground disabled:opacity-30"
           >
             <ChevronLeft className="size-5 rtl:rotate-180" aria-hidden />
           </button>
-          <span className="text-xs font-medium text-gray-500">
+          <span className="text-xs font-medium text-muted-foreground">
             {summary ? formatMonthYear(summary.days[0].date) : ''}
           </span>
           <button
             onClick={() => setWeekStart((w) => addWeeks(w, 1))}
             aria-label={t('nextWeek')}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-muted-foreground"
           >
             <ChevronRight className="size-5 rtl:rotate-180" aria-hidden />
           </button>
@@ -383,7 +383,7 @@ function SlotsStep({
                         ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
                         : hasSlots
                           ? 'bg-green-50 text-gray-800 hover:bg-green-100 border border-green-200'
-                          : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                          : 'bg-gray-50 text-muted-foreground hover:bg-gray-100'
                   }`}
                 >
                   <span className="text-[10px] font-medium">{formatWeekday(day.date)}</span>
@@ -401,7 +401,7 @@ function SlotsStep({
       {/* Slots for selected day */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {selectedDayData && (
-          <p className="text-xs font-medium text-gray-500 mb-2">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
             {new Date(selectedDate + 'T12:00:00Z').toLocaleDateString(intlLocale, {
               weekday: 'long', day: 'numeric', month: 'long',
             })}
@@ -422,7 +422,7 @@ function SlotsStep({
 
         {!slotsLoading && !error && slots.length === 0 && (
           <div className="text-center py-8">
-            <p className="text-sm text-gray-400">{t('noSlotsThisDay')}</p>
+            <p className="text-sm text-muted-foreground">{t('noSlotsThisDay')}</p>
             <p className="text-xs text-gray-300 mt-1">{t('tryAnotherDay')}</p>
           </div>
         )}
@@ -436,11 +436,11 @@ function SlotsStep({
           >
             <span className="font-semibold text-gray-900" dir="ltr">
               {formatSlotTime(slot.startAt)}
-              <span className="font-normal text-gray-400 mx-1">–</span>
+              <span className="font-normal text-muted-foreground mx-1">–</span>
               {formatSlotTime(slot.endAt)}
             </span>
             {locking === slot.startAt ? (
-              <span className="text-xs text-gray-400">{t('locking')}</span>
+              <span className="text-xs text-muted-foreground">{t('locking')}</span>
             ) : (
               <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
                 {t('choose')}
@@ -534,17 +534,17 @@ function ConfirmStep({
 
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-gray-500">{t('teacher')}</span>
+          <span className="text-muted-foreground">{t('teacher')}</span>
           <span className="font-medium">{teacherName}</span>
         </div>
         <hr className="border-gray-100" />
         <div className="flex justify-between">
-          <span className="text-gray-500">{t('date')}</span>
+          <span className="text-muted-foreground">{t('date')}</span>
           <span className="font-medium">{formatDate(slot.startAt)}</span>
         </div>
         <hr className="border-gray-100" />
         <div className="flex justify-between">
-          <span className="text-gray-500">{t('time')}</span>
+          <span className="text-muted-foreground">{t('time')}</span>
           <span className="font-medium" dir="ltr">
             {formatTime(slot.startAt)} – {formatTime(slot.endAt)}
           </span>

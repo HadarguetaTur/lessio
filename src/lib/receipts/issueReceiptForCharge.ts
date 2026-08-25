@@ -104,6 +104,10 @@ export async function issueReceiptForCharge(
     orgDefault: org?.default_locale,
   })
   const t = await getT('receipts', locale)
+  // renderChargeNote resolves fully-qualified keys (charges.*), so it needs a
+  // root-scoped translator — the receipts-scoped `t` would leak the raw key
+  // onto the printed document.
+  const tRoot = await getT(undefined, locale)
 
   const parentName = parent?.full_name ?? t('customer')
   const orgName = org?.name ?? ''
@@ -116,7 +120,7 @@ export async function issueReceiptForCharge(
 
   // `charge.notes` holds a code for generated notes, so it has to go through
   // renderChargeNote rather than being printed raw.
-  const noteText = renderChargeNote(charge.notes as string | null, t)
+  const noteText = renderChargeNote(charge.notes as string | null, tRoot)
 
   const description =
     chargeType === 'monthly'

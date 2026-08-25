@@ -37,7 +37,7 @@ function PlanBulletList({ items, className }: { items: string[]; className?: str
     >
       {items.map((line, i) => (
         <li key={i} className="flex gap-2">
-          <Check className="mt-[0.2rem] size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          <Check className="mt-[0.2rem] size-3.5 shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden />
           <span className="min-w-0 break-words">{line}</span>
         </li>
       ))}
@@ -207,7 +207,7 @@ export function PlanSelectionStep({
           <ul className="grid gap-2.5 text-sm text-muted-foreground md:grid-cols-3">
             {outcomes.map((line, i) => (
               <li key={i} className="flex gap-2">
-                <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                <Check className="mt-0.5 size-4 shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden />
                 <span className="min-w-0 leading-snug">{line}</span>
               </li>
             ))}

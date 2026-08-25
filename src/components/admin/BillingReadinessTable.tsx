@@ -8,7 +8,7 @@ interface Props {
 }
 
 function Fmt({ iso }: { iso: string | null }) {
-  if (!iso) return <span className="text-gray-400">—</span>
+  if (!iso) return <span className="text-muted-foreground">—</span>
   return <>{DateTime.fromISO(iso).toFormat('dd/MM/yyyy')}</>
 }
 
@@ -19,7 +19,7 @@ export async function BillingReadinessTable({ rows }: Props) {
 
   function Yn({ value }: { value: boolean }) {
     return (
-      <span className={value ? 'text-green-600 font-medium' : 'text-gray-400'}>
+      <span className={value ? 'text-green-700 font-medium' : 'text-muted-foreground'}>
         {value ? yesLabel : noLabel}
       </span>
     )
@@ -30,12 +30,12 @@ export async function BillingReadinessTable({ rows }: Props) {
       <table className="w-full text-sm min-w-[760px]">
         <thead>
           <tr className="border-b border-gray-100 bg-gray-50 text-start">
-            <th className="px-4 py-3 font-medium text-gray-500">{t('billing.headers.org')}</th>
-            <th className="px-4 py-3 font-medium text-gray-500 text-center">{t('billing.headers.paymentProvider')}</th>
-            <th className="px-4 py-3 font-medium text-gray-500 text-center">{t('billing.headers.receipts')}</th>
-            <th className="px-4 py-3 font-medium text-gray-500">{t('billing.headers.firstPayment')}</th>
-            <th className="px-4 py-3 font-medium text-gray-500">{t('billing.headers.totalRevenue')}</th>
-            <th className="px-4 py-3 font-medium text-gray-500">{t('billing.headers.lastPayment')}</th>
+            <th className="px-4 py-3 font-medium text-muted-foreground">{t('billing.headers.org')}</th>
+            <th className="px-4 py-3 font-medium text-muted-foreground text-center">{t('billing.headers.paymentProvider')}</th>
+            <th className="px-4 py-3 font-medium text-muted-foreground text-center">{t('billing.headers.receipts')}</th>
+            <th className="px-4 py-3 font-medium text-muted-foreground">{t('billing.headers.firstPayment')}</th>
+            <th className="px-4 py-3 font-medium text-muted-foreground">{t('billing.headers.totalRevenue')}</th>
+            <th className="px-4 py-3 font-medium text-muted-foreground">{t('billing.headers.lastPayment')}</th>
           </tr>
         </thead>
         <tbody>
@@ -50,7 +50,7 @@ export async function BillingReadinessTable({ rows }: Props) {
               <td className="px-4 py-3 text-center"><Yn value={r.receiptConnected} /></td>
               <td className="px-4 py-3 text-gray-700"><Fmt iso={r.firstPaidChargeDate} /></td>
               <td className="px-4 py-3 font-medium text-gray-900 tabular-nums">
-                {r.totalPaidRevenue > 0 ? `₪${r.totalPaidRevenue.toLocaleString('he-IL')}` : <span className="text-gray-400">—</span>}
+                {r.totalPaidRevenue > 0 ? `₪${r.totalPaidRevenue.toLocaleString('he-IL')}` : <span className="text-muted-foreground">—</span>}
               </td>
               <td className="px-4 py-3 text-gray-700"><Fmt iso={r.lastPaidChargeDate} /></td>
             </tr>

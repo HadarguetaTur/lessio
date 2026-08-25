@@ -69,17 +69,17 @@ export function ImportStudentsStep({
         <button type="button" onClick={() => setTab('family-list')} className={tabClass(tab === 'family-list')}>
           <UsersRound size={15} />
           {t('familyListTab')}
-          {familyListDone && <span className="text-emerald-600 text-xs me-1">✓</span>}
+          {familyListDone && <span className="text-emerald-700 text-xs me-1">✓</span>}
         </button>
         <button type="button" onClick={() => setTab('students')} className={tabClass(tab === 'students')}>
           <GraduationCap size={15} />
           {t('studentsTab')}
-          {studentsDone && <span className="text-emerald-600 text-xs me-1">✓</span>}
+          {studentsDone && <span className="text-emerald-700 text-xs me-1">✓</span>}
         </button>
         <button type="button" onClick={() => setTab('parents')} className={tabClass(tab === 'parents')}>
           <Users size={15} />
           {t('parentsTab')}
-          {parentsDone && <span className="text-emerald-600 text-xs me-1">✓</span>}
+          {parentsDone && <span className="text-emerald-700 text-xs me-1">✓</span>}
         </button>
       </div>
 

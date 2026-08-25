@@ -14,6 +14,7 @@ import { getShareableBaseUrl } from '@/lib/url/appUrl'
 export default async function TeacherCalendarPage() {
   const { userId, orgId, role } = await getSession()
   const t = await getTranslations('teacherSelf.calendar')
+  const tSelf = await getTranslations('teacherSelf')
 
   if (role !== 'teacher') redirect('/dashboard')
 
@@ -30,8 +31,8 @@ export default async function TeacherCalendarPage() {
 
   if (error || !teacher) {
     return (
-      <div className="text-center mt-16 text-sm text-gray-500">
-        {t('noTeacherRecordContact')}
+      <div className="text-center mt-16 text-sm text-muted-foreground">
+        {tSelf('noTeacherRecordContact')}
       </div>
     )
   }
@@ -45,7 +46,7 @@ export default async function TeacherCalendarPage() {
         <CalendarDays size={24} className="text-blue-600 shrink-0" />
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             {t('description')}
           </p>
         </div>

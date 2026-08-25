@@ -100,6 +100,7 @@ export function WeekNav({
         <select
           value={teacherId ?? ''}
           onChange={(e) => onTeacherChange(e.target.value)}
+          aria-label={t('allTeachers')}
           className="w-full min-w-0 text-sm border border-gray-200 rounded-md px-2 py-1.5 text-center bg-white text-gray-700 sm:w-auto sm:max-w-xs sm:text-start"
         >
           <option value="">{t('allTeachers')}</option>

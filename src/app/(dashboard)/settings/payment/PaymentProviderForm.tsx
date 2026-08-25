@@ -28,7 +28,7 @@ export function PaymentProviderForm() {
   return (
     <form action={formAction} className="space-y-5">
       {state.error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
           {state.error}
         </p>
       )}
@@ -52,7 +52,7 @@ export function PaymentProviderForm() {
           ))}
         </select>
         {selectedProvider && (
-          <p className="mt-1 text-xs text-gray-500">{tp(`${selectedProvider.id}.description`)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{tp(`${selectedProvider.id}.description`)}</p>
         )}
       </div>
 
@@ -77,7 +77,7 @@ function ProviderFields({ provider }: { provider: ProviderUIDef }) {
       <hr className="border-gray-100" />
 
       {(
-        <div className="text-xs text-gray-500 bg-gray-50 rounded-md p-3 leading-relaxed">
+        <div className="text-xs text-muted-foreground bg-gray-50 rounded-md p-3 leading-relaxed">
           {tp('setupHint')}
           {provider.docsUrl && (
             <a
@@ -111,7 +111,7 @@ function ProviderFields({ provider }: { provider: ProviderUIDef }) {
             className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
           />
           {field.hasHint && (
-            <p className="mt-1 text-xs text-gray-400">{tp(`fields.${field.name}.hint`)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{tp(`fields.${field.name}.hint`)}</p>
           )}
         </div>
       ))}

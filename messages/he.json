@@ -117,7 +117,8 @@
       "refresh": "רענן",
       "saving": "שומר...",
       "hide": "הסתר",
-      "showAll": "הצג הכל"
+      "showAll": "הצג הכל",
+      "more": "פעולות נוספות"
     },
     "comingSoon": "בקרוב",
     "optional": "(אופציונלי)",
@@ -669,7 +670,8 @@
       "parentsOnlyDesc": "ייבוא הורים עם קישור לתלמידים קיימים לפי שם. מתאים אם התלמידים כבר קיימים במערכת.",
       "studentsOnlyDesc": "ייבוא תלמידים ללא הורים. ניתן להוסיף הורים בנפרד לאחר מכן.",
       "changeMode": "שנה מצב יבוא"
-    }
+    },
+    "importLabel": "ייבוא הורים"
   },
   "teachers": {
     "title": "מורים",
@@ -1090,7 +1092,9 @@
       "summary": "שולם ₪{paid} מתוך ₪{total}",
       "remaining": "נותר ₪{amount}"
     },
-    "partiallyPaid": "שולם ₪{paid} מתוך ₪{total}"
+    "partiallyPaid": "שולם ₪{paid} מתוך ₪{total}",
+    "filterFrom": "מתאריך",
+    "filterTo": "עד תאריך"
   },
   "billing": {
     "title": "חיוב חודשי",
@@ -1169,6 +1173,7 @@
       "title": "חשבונית מס",
       "creditNoteTitle": "חשבונית זיכוי",
       "taxIdPrefix": "ע.מ. ",
+      "number": "חשבונית",
       "invoiceNumber": "מספר חשבונית",
       "date": "תאריך",
       "billingPeriod": "תקופת חיוב",
@@ -1184,7 +1189,8 @@
       "lineSubscription": "מנוי חודשי",
       "lineCancellations": "חיובי ביטול",
       "lineAdjustmentWithReason": "התאמה ידנית: {reason}",
-      "lineAdjustment": "התאמה ידנית"
+      "lineAdjustment": "התאמה ידנית",
+      "download": "הורדת PDF"
     },
     "creditNote": {
       "issue": "הנפק חשבונית זיכוי",
@@ -1367,6 +1373,20 @@
       "disconnectConfirm": "לנתק את ספק הקבלות?"
     },
     "cancellationPolicy": {
+      "title": "מדיניות ביטולים",
+      "saved": "המדיניות נשמרה בהצלחה",
+      "noticeHoursFull": "הודעה מוקדמת לביטול ללא חיוב (שעות)",
+      "noticeHoursFullHint": "ביטול שנמסר לפחות כך וכך שעות מראש — ללא חיוב",
+      "noticeHoursPartial": "הודעה מוקדמת לחיוב חלקי (שעות)",
+      "noticeHoursPartialHint": "ביטול מאוחר יותר מהסף המלא אך לפני סף זה — חיוב חלקי",
+      "partialChargePercent": "אחוז חיוב חלקי",
+      "partialChargePercentHint": "אחוז ממחיר השיעור שנגבה בביטול חלקי",
+      "howItWorks": "איך זה עובד?",
+      "ruleNoCharge": "ביטול {hours} שעות ומעלה מראש — ללא חיוב",
+      "rulePartial": "ביטול בין {partialHours} ל-{fullHours} שעות מראש — חיוב של {percent}% ממחיר השיעור",
+      "ruleFull": "ביטול פחות מ-{hours} שעות מראש — חיוב מלא",
+      "saving": "שומר…",
+      "saveButton": "שמירת מדיניות",
       "errors": {
         "ownerOnly": "רק בעל העסק יכול לעדכן את מדיניות הביטולים",
         "fullHoursPositive": "שעות הודעה מוקדמת (ביטול מלא) חייבות להיות מספר חיובי",
@@ -1463,6 +1483,32 @@
       }
     },
     "aiAssistant": {
+      "title": "עוזר AI",
+      "description": "עוזר חכם שעונה להורים בוואטסאפ בשם העסק — הגדרת ספק, מודל והפעלה.",
+      "tabSettings": "הגדרות",
+      "tabUsage": "שימוש",
+      "conversationLog": "יומן שיחות",
+      "roleParent": "הורה",
+      "noLog": "אין עדיין שיחות",
+      "logHeaders": {
+        "time": "זמן",
+        "phone": "טלפון",
+        "aiReply": "תשובת העוזר",
+        "parentMessage": "הודעת ההורה"
+      },
+      "keyMissingWarning": "כדי להפעיל את העוזר יש להגדיר קודם מפתח API בהגדרות הספק למעלה.",
+      "enable": "הפעלת עוזר ה-AI",
+      "providerSettings": "הגדרות ספק",
+      "provider": "ספק",
+      "model": "מודל",
+      "apiKey": "מפתח API",
+      "apiKeyPlaceholder": "הדביקו כאן את מפתח ה-API",
+      "apiKeyPlaceholderSaved": "מפתח שמור — הדביקו מפתח חדש כדי להחליף",
+      "openaiKeyOptional": "אפשר להשאיר ריק כדי להשתמש במפתח המערכת",
+      "apiKeyRequired": "נדרש מפתח API של הספק שנבחר",
+      "providerSaved": "הגדרות הספק נשמרו",
+      "testConnection": "בדיקת חיבור",
+      "testSuccess": "החיבור תקין!",
       "errors": {
         "needsApiKey": "לא ניתן להפעיל את עוזר ה-AI לפני שמוגדר מפתח API (בהגדרות הספק או בשרת).",
         "saveFailed": "שגיאה בשמירת ההגדרות",
@@ -1665,7 +1711,8 @@
             "hint": "קוד מטבע ISO 4217 — 3 אותיות גדולות"
           }
         }
-      }
+      },
+      "setupHint": "את פרטי החיבור מאתרים באזור האישי של ספק הסליקה."
     },
     "emailActions": {
       "errors": {

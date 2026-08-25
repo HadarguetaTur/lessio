@@ -60,7 +60,7 @@ export function OrganizationSettingsForm({ org, action }: Props) {
             dir="ltr"
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
-          <p className="text-xs text-gray-400 mt-1">{t('orgs.settings.slugHint')}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t('orgs.settings.slugHint')}</p>
         </div>
 
         <div>
@@ -120,7 +120,7 @@ export function OrganizationSettingsForm({ org, action }: Props) {
             {isPending ? t('orgs.settings.saving') : t('orgs.settings.save')}
           </button>
           {state === null && !isPending && (
-            <span className="text-xs text-green-600">{t('orgs.settings.saved')}</span>
+            <span className="text-xs text-green-700">{t('orgs.settings.saved')}</span>
           )}
         </div>
       </form>

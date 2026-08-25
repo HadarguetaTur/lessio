@@ -34,12 +34,13 @@ export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
       <div className="flex items-start justify-between gap-6">
         <div>
           <p className="text-sm font-semibold text-gray-900">{t('enable')}</p>
-          <p className="text-xs text-gray-500 mt-1 max-w-sm">{tp('aiAssistantForm.enableHint')}</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm">{tp('aiAssistantForm.enableHint')}</p>
         </div>
         <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
           <input
             type="checkbox"
             name="ai_assistant_enabled"
+            aria-label={t('enable')}
             defaultChecked={defaultEnabled}
             disabled={!canToggle}
             className="sr-only peer"
@@ -53,15 +54,15 @@ export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
       </div>
 
       {isPending && (
-        <p className="text-xs text-gray-400 mt-3">{tCommon('actions.save')}…</p>
+        <p className="text-xs text-muted-foreground mt-3">{tCommon('actions.save')}…</p>
       )}
 
       {state.success && (
-        <p className="text-xs text-green-600 mt-3">{tp('aiAssistantForm.saved')}</p>
+        <p className="text-xs text-green-700 mt-3">{tp('aiAssistantForm.saved')}</p>
       )}
 
       {state.error && (
-        <p className="text-xs text-red-500 mt-3">{state.error}</p>
+        <p className="text-xs text-red-600 mt-3">{state.error}</p>
       )}
     </form>
   )

@@ -48,7 +48,7 @@ export default async function HomeworkDetailPage(props: {
   return (
     <div className="max-w-2xl space-y-4">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Link href="/homework" className="hover:text-gray-700">{t('title')}</Link>
         <ArrowRight size={14} className="rotate-180" />
         <span className="text-gray-900 font-medium truncate">{assignment.title}</span>
@@ -69,16 +69,16 @@ export default async function HomeworkDetailPage(props: {
 
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <dt className="text-gray-500">{t('fields.student')}</dt>
+            <dt className="text-muted-foreground">{t('fields.student')}</dt>
             <dd className="font-medium">{assignment.studentName}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-500">{t('fields.dueDate')}</dt>
+            <dt className="text-muted-foreground">{t('fields.dueDate')}</dt>
             <dd className="font-medium">{assignment.dueDate ?? '—'}</dd>
           </div>
           {assignment.sendAt && (
             <div className="flex justify-between">
-              <dt className="text-gray-500">{t('scheduledSend')}</dt>
+              <dt className="text-muted-foreground">{t('scheduledSend')}</dt>
               <dd className="font-medium">{new Date(assignment.sendAt).toLocaleString('he-IL')}</dd>
             </div>
           )}
@@ -95,17 +95,17 @@ export default async function HomeworkDetailPage(props: {
           <ul className="space-y-2">
             {attachmentsWithUrls.map((a) => (
               <li key={a.id} className="flex items-center gap-2 text-sm">
-                <FileText size={14} className="text-gray-400 shrink-0" />
+                <FileText size={14} className="text-muted-foreground shrink-0" />
                 {a.downloadUrl ? (
                   <a href={a.downloadUrl} target="_blank" rel="noopener noreferrer"
                     className="text-blue-600 hover:underline truncate">
                     {a.fileName}
                   </a>
                 ) : (
-                  <span className="text-gray-500">{a.fileName}</span>
+                  <span className="text-muted-foreground">{a.fileName}</span>
                 )}
                 {a.sizeBytes && (
-                  <span className="text-gray-400 text-xs shrink-0">
+                  <span className="text-muted-foreground text-xs shrink-0">
                     ({Math.round(a.sizeBytes / 1024)} KB)
                   </span>
                 )}
@@ -120,14 +120,14 @@ export default async function HomeworkDetailPage(props: {
         <h2 className="text-sm font-semibold text-gray-700">{t('submissions')} ({submissions.length})</h2>
 
         {submissions.length === 0 ? (
-          <p className="text-sm text-gray-400">{t('noSubmissions')}</p>
+          <p className="text-sm text-muted-foreground">{t('noSubmissions')}</p>
         ) : (
           <div className="space-y-4">
             {submissions.map((sub) => (
               <div key={sub.id} className="border border-gray-100 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">{sub.studentName}</span>
-                  <span className="text-gray-400 text-xs">
+                  <span className="text-muted-foreground text-xs">
                     {new Date(sub.submittedAt).toLocaleDateString('he-IL')}
                   </span>
                 </div>
@@ -137,7 +137,7 @@ export default async function HomeworkDetailPage(props: {
                 )}
 
                 {sub.fileName && (
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Paperclip size={12} />
                     {sub.fileName}
                   </p>

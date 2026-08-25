@@ -102,7 +102,7 @@ export default async function TeacherStudentsReportPage({ searchParams }: Props)
                     <TableCell className="px-4 py-3 tabular-nums text-end text-muted-foreground">
                       {row.totalLessons}
                     </TableCell>
-                    <TableCell className="px-4 py-3 tabular-nums text-end text-emerald-600">
+                    <TableCell className="px-4 py-3 tabular-nums text-end text-emerald-700">
                       {row.completed}
                     </TableCell>
                     <TableCell className="px-4 py-3 tabular-nums text-end">

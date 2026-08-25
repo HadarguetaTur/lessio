@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation'
+import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
 import { getTeachers } from '@/lib/teachers'
 import { getStudents } from '@/lib/students'
 import { getGroups } from '@/lib/groups'
+import { getOrgTimezone } from '@/lib/organizations'
 import { LESSON_FORM_MIN_DATE_STR } from '@/lib/lessons/lessonFormDates'
 import { NewLessonForm } from '@/components/dashboard/lessons/NewLessonForm'
 import { createLessonAction } from './actions'
@@ -16,10 +18,11 @@ export default async function NewLessonPage(props: {
   const { orgId, role } = await getSession()
   if (role !== 'owner' && role !== 'admin') redirect('/lessons')
 
-  const [teachers, students, groups] = await Promise.all([
+  const [teachers, students, groups, timezone] = await Promise.all([
     getTeachers(orgId),
     getStudents(orgId),
     getGroups(orgId),
+    getOrgTimezone(orgId),
   ])
 
   const activeTeachers = teachers
@@ -32,11 +35,18 @@ export default async function NewLessonPage(props: {
 
   const t = await getTranslations('lessons')
 
+  const now = DateTime.now().setZone(timezone)
+  const todayStr = now.toFormat('yyyy-MM-dd')
+  // Next round half hour in the org's timezone, e.g. 14:12 → 14:30.
+  const nextHalfHour = now
+    .plus({ minutes: 30 - (now.minute % 30) })
+    .toFormat('HH:mm')
+
   const dateParsed = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(dateParam)
   const initialDate =
     dateParsed.success && dateParsed.data >= LESSON_FORM_MIN_DATE_STR
       ? dateParsed.data
-      : undefined
+      : todayStr
 
   return (
     <div className="max-w-lg">
@@ -48,6 +58,7 @@ export default async function NewLessonPage(props: {
         action={createLessonAction}
         minDateStr={LESSON_FORM_MIN_DATE_STR}
         initialDate={initialDate}
+        initialTime={nextHalfHour}
       />
     </div>
   )

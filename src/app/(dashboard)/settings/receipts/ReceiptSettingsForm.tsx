@@ -75,7 +75,7 @@ export function ReceiptSettingsForm() {
               className={INPUT_CLS}
             />
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             {tp('receiptsForm.greenPrefix')}
             <a
               href="https://app.greeninvoice.co.il"
@@ -135,7 +135,7 @@ export function ReceiptSettingsForm() {
               className={INPUT_CLS}
             />
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             {tp('receiptsForm.icountPrefix')}
             <a
               href="https://app.icount.co.il"
@@ -181,7 +181,7 @@ export function ReceiptSettingsForm() {
               className={INPUT_CLS}
             />
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             {tp('receiptsForm.sumitPrefix')}
             <a
               href="https://app.sumit.co.il"

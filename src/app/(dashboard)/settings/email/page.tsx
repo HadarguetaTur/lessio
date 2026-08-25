@@ -46,7 +46,7 @@ export default async function EmailSettingsPage({
         <Mail size={22} className="text-primary" />
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
       </div>
-      <p className="text-sm text-gray-500 mb-8">{t('subtitle')}</p>
+      <p className="text-sm text-muted-foreground mb-8">{t('subtitle')}</p>
 
       {justConnected && (
         <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
@@ -93,7 +93,7 @@ async function ConnectedState({ email }: { email: string }) {
 
       <dl className="text-sm">
         <div className="flex justify-between">
-          <dt className="text-gray-500">{t('accountLabel')}</dt>
+          <dt className="text-muted-foreground">{t('accountLabel')}</dt>
           <dd className="font-mono text-gray-900 text-xs">{email}</dd>
         </div>
       </dl>
@@ -105,7 +105,7 @@ async function ConnectedState({ email }: { email: string }) {
       <hr className="border-gray-100" />
 
       <div>
-        <p className="text-xs text-gray-500 mb-2">{t('disconnectHint')}</p>
+        <p className="text-xs text-muted-foreground mb-2">{t('disconnectHint')}</p>
         <DisconnectGmailButton />
       </div>
     </div>
@@ -117,7 +117,7 @@ async function DisconnectedState({ canConnect }: { canConnect: boolean }) {
   const tG = await getTranslations('settings.googleCommon')
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-gray-500">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <AlertCircle size={20} />
         <span className="font-medium text-sm">{tG('notConnected')}</span>
       </div>

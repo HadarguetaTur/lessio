@@ -62,6 +62,7 @@ export default async function ChargesPage(props: {
   const t = await getTranslations('charges')
   const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
+  const tRoot = await getTranslations()
 
   const CHARGE_TYPE_LABELS: Record<string, string> = {
     lesson: t('types.lesson'),
@@ -110,7 +111,7 @@ export default async function ChargesPage(props: {
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
               {t('agingSummary.paidThisMonth')}
             </p>
-            <p className="text-lg font-bold text-emerald-600">₪{paidThisMonth.toFixed(2)}</p>
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">₪{paidThisMonth.toFixed(2)}</p>
           </div>
         </div>
       )}
@@ -119,6 +120,7 @@ export default async function ChargesPage(props: {
       <form method="GET" className="mb-5 grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-2 xl:grid-cols-5">
         <select
           name="status"
+          aria-label={t('allStatuses')}
           defaultValue={searchParams.status ?? ''}
           className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
@@ -132,6 +134,7 @@ export default async function ChargesPage(props: {
 
         <select
           name="parent"
+          aria-label={t('allParents')}
           defaultValue={searchParams.parent ?? ''}
           className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
@@ -143,18 +146,24 @@ export default async function ChargesPage(props: {
           ))}
         </select>
 
-        <input
-          name="from"
-          type="date"
-          defaultValue={searchParams.from ?? ''}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <input
-          name="to"
-          type="date"
-          defaultValue={searchParams.to ?? ''}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        />
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {t('filterFrom')}
+          <input
+            name="from"
+            type="date"
+            defaultValue={searchParams.from ?? ''}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {t('filterTo')}
+          <input
+            name="to"
+            type="date"
+            defaultValue={searchParams.to ?? ''}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </label>
 
         <div className="flex items-center gap-2 xl:justify-end">
           <Button type="submit">{t('filter')}</Button>
@@ -230,8 +239,8 @@ export default async function ChargesPage(props: {
                     <TableCell className="px-5 py-3.5 text-sm text-muted-foreground">
                       <div>{CHARGE_TYPE_LABELS[charge.charge_type] ?? charge.charge_type}</div>
                       {charge.notes && (
-                        <div className="mt-0.5 max-w-[120px] truncate text-xs text-muted-foreground/70">
-                          {renderChargeNote(charge.notes, t)}
+                        <div className="mt-0.5 max-w-[120px] truncate text-xs text-muted-foreground">
+                          {renderChargeNote(charge.notes, tRoot)}
                         </div>
                       )}
                     </TableCell>
@@ -283,7 +292,7 @@ export default async function ChargesPage(props: {
                           href={charge.receipt_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-emerald-600 hover:underline"
+                          className="text-xs text-emerald-700 hover:underline"
                         >
                           {t('receiptLabel')}
                         </a>

@@ -75,7 +75,7 @@ export function ExamList({
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {exams.length === 0 ? (
-        <p className="text-sm text-gray-400">{t('empty')}</p>
+        <p className="text-sm text-muted-foreground">{t('empty')}</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-100">
           <table className="min-w-full text-sm">
@@ -103,7 +103,7 @@ export function ExamList({
                         <button
                           type="button"
                           onClick={() => openEdit(ex)}
-                          className="p-1.5 rounded text-gray-500 hover:bg-gray-100"
+                          className="p-1.5 rounded text-muted-foreground hover:bg-gray-100"
                           aria-label={t('edit')}
                         >
                           <Pencil size={14} />
@@ -112,7 +112,7 @@ export function ExamList({
                           type="button"
                           onClick={() => handleDelete(ex.id)}
                           disabled={pending}
-                          className="p-1.5 rounded text-red-500 hover:bg-red-50 disabled:opacity-50"
+                          className="p-1.5 rounded text-red-700 hover:bg-red-50 disabled:opacity-50"
                           aria-label={t('delete')}
                         >
                           <Trash2 size={14} />

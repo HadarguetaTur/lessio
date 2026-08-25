@@ -104,7 +104,7 @@ export function FileUploadZone({
       ) : (
         <div className="rounded-xl border border-border p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-            <FileSpreadsheet size={20} className="text-emerald-600" />
+            <FileSpreadsheet size={20} className="text-emerald-700" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{selectedFile.name}</p>

@@ -44,14 +44,14 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
           value={phone}
           readOnly
           dir="ltr"
-          className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-500 bg-gray-50"
+          className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-muted-foreground bg-gray-50"
         />
       </div>
 
       {/* Parent full name */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('parentNameLabel')} <span className="text-red-500">*</span>
+          {t('parentNameLabel')} <span className="text-red-600">*</span>
         </label>
         <input
           type="text"
@@ -66,7 +66,7 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
       {/* Student full name */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('studentNameLabel')} <span className="text-red-500">*</span>
+          {t('studentNameLabel')} <span className="text-red-600">*</span>
         </label>
         <input
           type="text"
@@ -81,7 +81,7 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
       {/* Grade (optional) */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('gradeOptional')} <span className="text-gray-400 font-normal">{t('gradeOptionalHint')}</span>
+          {t('gradeOptional')} <span className="text-muted-foreground font-normal">{t('gradeOptionalHint')}</span>
         </label>
         <input
           type="text"
@@ -103,11 +103,11 @@ export function ConvertLeadForm({ leadId, phone }: Props) {
           />
           <span>{t('whatsappConsent')}</span>
         </label>
-        <p className="text-xs text-gray-500 mt-1">{t('whatsappConsentHint')}</p>
+        <p className="text-xs text-muted-foreground mt-1">{t('whatsappConsentHint')}</p>
       </div>
 
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
           {error}
         </p>
       )}

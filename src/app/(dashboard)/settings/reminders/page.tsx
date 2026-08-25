@@ -68,7 +68,7 @@ export default async function RemindersSettingsPage() {
   return (
     <div className="flex h-full min-h-0 w-full max-w-xl flex-col overflow-hidden">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-gray-500 mb-8">{tp('remindersPage.subtitle')}</p>
+      <p className="text-sm text-muted-foreground mb-8">{tp('remindersPage.subtitle')}</p>
 
       {/* Settings form */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
@@ -88,23 +88,23 @@ export default async function RemindersSettingsPage() {
         </h2>
 
         {!logs || logs.length === 0 ? (
-          <p className="text-sm text-gray-400">{t('noLog')}</p>
+          <p className="text-sm text-muted-foreground">{t('noLog')}</p>
         ) : (
           <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white">
             <div className="h-full overflow-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     {t('logHeaders.sentAt')}
                     </th>
-                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     {t('logHeaders.type')}
                     </th>
-                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     {tp('remindersPage.entityHeader')}
                     </th>
-                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                    <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     {t('logHeaders.recipient')}
                     </th>
                   </tr>
@@ -119,24 +119,24 @@ export default async function RemindersSettingsPage() {
                         {TYPE_LABELS[log.type] ?? log.type}
                       </td>
                       <td
-                        className="max-w-[120px] truncate px-4 py-3 font-mono text-xs text-gray-500"
+                        className="max-w-[120px] truncate px-4 py-3 font-mono text-xs text-muted-foreground"
                         title={log.entity_id}
                       >
                         {log.entity_id.slice(0, 8)}…
                       </td>
                       <td className="px-4 py-3">
                         {log.status === 'sent' ? (
-                          <span className="font-medium text-green-600">
+                          <span className="font-medium text-green-700">
                             {STATUS_LABELS.sent}
                           </span>
                         ) : (
                           <span
-                            className="font-medium text-red-500"
+                            className="font-medium text-red-600"
                             title={log.error_message ?? undefined}
                           >
                             {STATUS_LABELS.failed}
                             {log.error_message && (
-                              <span className="block text-xs font-normal text-gray-400">
+                              <span className="block text-xs font-normal text-muted-foreground">
                                 {log.error_message.slice(0, 60)}
                               </span>
                             )}

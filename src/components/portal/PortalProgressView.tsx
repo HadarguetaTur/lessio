@@ -23,7 +23,7 @@ interface Props {
 const STATUS_CLASS: Record<string, string> = {
   active: 'bg-blue-50 text-blue-700',
   achieved: 'bg-green-50 text-green-700',
-  abandoned: 'bg-gray-100 text-gray-500',
+  abandoned: 'bg-gray-100 text-muted-foreground',
 }
 
 function ProgressBar({ rate }: { rate: number }) {

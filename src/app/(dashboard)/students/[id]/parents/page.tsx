@@ -32,7 +32,7 @@ export default async function StudentParentsPage(props: {
   return (
     <div className="flex h-full min-h-0 w-full max-w-2xl flex-col overflow-hidden">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-6 text-sm text-gray-500">
+      <div className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
         <Link href="/students" className="hover:text-gray-700">
           {t('title')}
         </Link>
@@ -48,23 +48,23 @@ export default async function StudentParentsPage(props: {
 
       {/* Linked parents */}
       {linked.length === 0 ? (
-        <p className="text-sm text-gray-400 mb-6">{t('parents.noParents')}</p>
+        <p className="text-sm text-muted-foreground mb-6">{t('parents.noParents')}</p>
       ) : (
         <div className="mb-6 min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white">
           <div className="h-full overflow-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {tCommon('table.name')}
                   </th>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {tCommon('table.phone')}
                   </th>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {tCommon('table.status')}
                   </th>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {tCommon('table.actions')}
                   </th>
                 </tr>
@@ -78,7 +78,7 @@ export default async function StudentParentsPage(props: {
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">
                         {rel.parent.full_name}
                       </td>
-                      <td className="px-4 py-3 font-mono text-sm text-gray-500" dir="ltr">
+                      <td className="px-4 py-3 font-mono text-sm text-muted-foreground" dir="ltr">
                         {rel.parent.phone}
                       </td>
                       <td className="px-4 py-3">
@@ -88,7 +88,7 @@ export default async function StudentParentsPage(props: {
                             {t('parents.isPrimary')}
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-400">{t('students.secondary')}</span>
+                          <span className="text-xs text-muted-foreground">{t('secondary')}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -106,7 +106,7 @@ export default async function StudentParentsPage(props: {
                           <form action={unlinkAction}>
                             <button
                               type="submit"
-                              className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700"
+                              className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700"
                             >
                               <Trash2 size={13} />
                               {t('parents.unlink')}

@@ -14,7 +14,7 @@ export function AdminHeader({ title, description }: AdminHeaderProps) {
       </div>
       <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
       {description && (
-        <p className="text-gray-500 text-sm mt-0.5">{description}</p>
+        <p className="text-muted-foreground text-sm mt-0.5">{description}</p>
       )}
     </div>
   )

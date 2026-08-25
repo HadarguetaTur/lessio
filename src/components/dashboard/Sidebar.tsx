@@ -78,7 +78,7 @@ function NavLink({ href, label, icon: Icon, active, indent }: NavLinkProps) {
       } ${
         active
           ? 'bg-sidebar-accent text-sidebar-primary font-medium'
-          : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground font-normal'
+          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground font-normal'
       }`}
     >
       {active && (
@@ -87,7 +87,7 @@ function NavLink({ href, label, icon: Icon, active, indent }: NavLinkProps) {
       <Icon
         size={14}
         className={`shrink-0 transition-transform duration-150 group-hover:scale-110 ${
-          active ? 'text-sidebar-primary' : 'text-sidebar-foreground/35'
+          active ? 'text-sidebar-primary' : 'text-sidebar-foreground/60'
         }`}
       />
       {label}
@@ -120,16 +120,16 @@ function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathnam
         className={`group flex items-center justify-between w-full px-3 py-2 rounded-md text-[13px] transition-all duration-150 ${
           isAnyActive
             ? 'text-sidebar-foreground font-medium'
-            : 'text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/40'
+            : 'text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40'
         }`}
       >
         <span className="flex items-center gap-2.5">
-          <SectionIcon size={14} className={`shrink-0 ${isAnyActive ? 'text-sidebar-foreground/70' : 'text-sidebar-foreground/30'}`} />
+          <SectionIcon size={14} className={`shrink-0 ${isAnyActive ? 'text-sidebar-foreground/80' : 'text-sidebar-foreground/60'}`} />
           {label}
         </span>
         <ChevronDown
           size={13}
-          className={`text-sidebar-foreground/30 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
+          className={`text-sidebar-foreground/50 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -276,7 +276,7 @@ export function Sidebar({
         {/* Teacher section */}
         {isTeacher && (
           <div className="space-y-0.5">
-            <p className="px-3 pb-1.5 text-[10px] font-semibold text-sidebar-foreground/30 uppercase tracking-widest">
+            <p className="px-3 pb-1.5 text-[10px] font-semibold text-sidebar-foreground/70 uppercase tracking-widest">
               {t('teacherSection')}
             </p>
             {teacherItems.filter(({ roles }) => !roles || roles.includes(userRole)).map(({ href, label, icon: Icon }) => {
@@ -289,7 +289,7 @@ export function Sidebar({
         {/* Main ops section */}
         {!isTeacher && visibleMainItems.length > 0 && (
           <div className="space-y-0.5">
-            <p className="px-3 pb-1.5 text-[10px] font-semibold text-sidebar-foreground/30 uppercase tracking-widest">
+            <p className="px-3 pb-1.5 text-[10px] font-semibold text-sidebar-foreground/70 uppercase tracking-widest">
               {t('sections.management')}
             </p>
             {visibleMainItems.map(({ href, label, icon: Icon }) => {
@@ -351,7 +351,7 @@ export function Sidebar({
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-md hover:bg-sidebar-accent transition-colors duration-150 group">
               <Avatar className="w-7 h-7 shrink-0">
-                <AvatarFallback className="bg-sidebar-primary/30 text-sidebar-primary text-[11px] font-bold">
+                <AvatarFallback className="bg-sidebar-primary/30 text-sidebar-foreground text-[11px] font-bold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -359,13 +359,13 @@ export function Sidebar({
                 <p className="text-[13px] font-medium text-sidebar-foreground truncate leading-tight">
                   {userName}
                 </p>
-                <p className="text-[11px] text-sidebar-foreground/40 leading-tight">
+                <p className="text-[11px] text-sidebar-foreground/70 leading-tight">
                   {tc(`roles.${userRole}`) ?? userRole}
                 </p>
               </div>
               <ChevronDown
                 size={13}
-                className="text-sidebar-foreground/25 group-hover:text-sidebar-foreground/50 transition-colors shrink-0"
+                className="text-sidebar-foreground/50 group-hover:text-sidebar-foreground/75 transition-colors shrink-0"
               />
             </button>
           </DropdownMenuTrigger>

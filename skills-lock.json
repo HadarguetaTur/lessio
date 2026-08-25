@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "ux-audit": {
+      "source": "jezweb/claude-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/dev-tools/skills/ux-audit/SKILL.md",
+      "computedHash": "19ea952f10b9b7d9ba8eda02761dab80aa8c8f91cdb6b241a14610ae59497ae2"
+    }
+  }
+}

@@ -49,6 +49,7 @@ export default async function LeadsPage(props: {
       <form method="GET" className="bg-card rounded-xl border border-border p-4 mb-5 flex flex-wrap gap-3 items-end">
         <select
           name="status"
+          aria-label={t('allStatuses')}
           defaultValue={searchParams.status ?? ''}
           className="border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >

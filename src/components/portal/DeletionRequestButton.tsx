@@ -26,7 +26,7 @@ export function DeletionRequestButton({ action }: Props) {
       <button
         type="button"
         onClick={() => setShowConfirm(true)}
-        className="text-xs text-gray-400 hover:text-red-500 transition-colors underline underline-offset-2"
+        className="text-xs text-muted-foreground hover:text-red-600 transition-colors underline underline-offset-2"
       >
         {t('requestDeletion')}
       </button>

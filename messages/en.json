@@ -284,7 +284,8 @@
         "parents": "Parents",
         "lessons": "Lessons",
         "charges": "Open charges"
-      }
+      },
+      "loading": "Searching…"
     },
     "mobileQuickMenu": {
       "triggerAria": "Open quick actions",
@@ -576,7 +577,8 @@
       "back": "Back to students"
     },
     "noTeacherRecord": "No active teacher record was found for this user.",
-    "moreDetails": "More details"
+    "moreDetails": "More details",
+    "noSearchMatch": "No students match \"{query}\""
   },
   "parents": {
     "title": "Parents",

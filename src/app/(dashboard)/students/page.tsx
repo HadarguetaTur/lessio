@@ -138,8 +138,25 @@ export default async function StudentsPage(props: {
                 <EmptyState
                   icon={GraduationCap}
                   title={q ? tCommon('emptyStates.noResults') : t('title')}
-                  subtitle={!q && !isTeacher ? t('newStudent') : undefined}
-                  action={!q && !isTeacher ? <NewStudentSheet action={createStudent} teachers={activeTeachers} /> : undefined}
+                  // Say what was searched for, and offer the way out — a bare
+                  // "no results" leaves you wondering whether the filter or the
+                  // data is at fault.
+                  subtitle={
+                    q
+                      ? t('noSearchMatch', { query: q })
+                      : !isTeacher
+                        ? t('newStudent')
+                        : undefined
+                  }
+                  action={
+                    q ? (
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/students">{tCommon('actions.clear')}</Link>
+                      </Button>
+                    ) : !isTeacher ? (
+                      <NewStudentSheet action={createStudent} teachers={activeTeachers} />
+                    ) : undefined
+                  }
                 />
               </div>
             ) : (

@@ -284,7 +284,8 @@
         "parents": "הורים",
         "lessons": "שיעורים",
         "charges": "חיובים פתוחים"
-      }
+      },
+      "loading": "מחפש…"
     },
     "mobileQuickMenu": {
       "triggerAria": "פתיחת תפריט פעולות מהירות",
@@ -576,7 +577,8 @@
       "back": "חזרה לתלמידים"
     },
     "noTeacherRecord": "לא נמצאה רשומת מורה פעילה עבור משתמש זה.",
-    "moreDetails": "פרטים נוספים"
+    "moreDetails": "פרטים נוספים",
+    "noSearchMatch": "לא נמצאו תלמידים התואמים ל\"{query}\""
   },
   "parents": {
     "title": "הורים",

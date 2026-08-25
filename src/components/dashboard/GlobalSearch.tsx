@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Loader2, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import type { GlobalSearchResponse } from '@/lib/search/types'
 import { cn } from '@/lib/utils'
@@ -201,6 +202,18 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
             <p className="px-3 py-2 text-xs text-destructive">{t('error')}</p>
           )}
 
+          {/* Without this the panel is an empty box for the whole round-trip:
+              every section below needs `data`, which is null until the first
+              response lands. */}
+          {loading && !error && query.trim().length >= 2 && !data && (
+            <div className="space-y-2 px-3 py-2" aria-live="polite" aria-busy="true">
+              <span className="sr-only">{t('loading')}</span>
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-7 w-full rounded-md" />
+              ))}
+            </div>
+          )}
+
           {!loading && !error && query.trim().length >= 2 && data && !hasResults && (
             <p className="px-3 py-2 text-xs text-muted-foreground">{t('noResults')}</p>
           )}
@@ -215,6 +228,7 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
                   key={s.id}
                   type="button"
                   role="option"
+                  aria-selected={false}
                   className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80"
                   onClick={() => navigateTo(buildStudentHref(userRole, s.id))}
                 >
@@ -237,6 +251,7 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
                   key={p.id}
                   type="button"
                   role="option"
+                  aria-selected={false}
                   className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80"
                   onClick={() => navigateTo(`/parents/${p.id}/edit`)}
                 >
@@ -269,6 +284,7 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
                     key={l.id}
                     type="button"
                     role="option"
+                    aria-selected={false}
                     className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80"
                     onClick={() => navigateTo(lessonHref)}
                   >
@@ -290,6 +306,7 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
                   key={c.id}
                   type="button"
                   role="option"
+                  aria-selected={false}
                   className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80"
                   onClick={() =>
                     navigateTo(`/charges/${c.id}`)

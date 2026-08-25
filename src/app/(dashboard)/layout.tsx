@@ -19,6 +19,7 @@ import {
   markAllReadAction,
 } from './notifications/actions'
 import { getEffectiveSaasFeatures } from '@/lib/saas/subscriptions'
+import { getActiveTeacherCount } from '@/lib/teachers'
 import { LiveRefreshProvider } from '@/lib/realtime/LiveRefreshProvider'
 
 export default async function DashboardLayout({
@@ -152,11 +153,15 @@ export default async function DashboardLayout({
     profile?.role === 'owner' || profile?.role === 'admin'
 
   let saasFeatures: Awaited<ReturnType<typeof getEffectiveSaasFeatures>> | undefined
+  let teacherCount: number | undefined
   if (
     profile?.organization_id &&
     (profile.role === 'owner' || profile.role === 'admin')
   ) {
-    saasFeatures = await getEffectiveSaasFeatures(profile.organization_id)
+    ;[saasFeatures, teacherCount] = await Promise.all([
+      getEffectiveSaasFeatures(profile.organization_id),
+      getActiveTeacherCount(profile.organization_id),
+    ])
   }
 
   const showSaasBanners =
@@ -185,6 +190,7 @@ export default async function DashboardLayout({
         userName={profile?.full_name ?? user.email ?? ''}
         userRole={profile?.role ?? ''}
         saasFeatures={saasFeatures}
+        teacherCount={teacherCount}
       />
       <main className="flex min-w-0 flex-1 flex-col">
         <TopBar
@@ -197,6 +203,7 @@ export default async function DashboardLayout({
               userRole={profile?.role ?? ''}
               mobile
               saasFeatures={saasFeatures}
+              teacherCount={teacherCount}
             />
           }
         />

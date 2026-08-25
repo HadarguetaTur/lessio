@@ -228,7 +228,11 @@
       "management": "ניהול",
       "reports": "דוחות",
       "settings": "הגדרות",
-      "teacher": "מורה"
+      "teacher": "מורה",
+      "students": "תלמידים",
+      "lessons": "שיעורים",
+      "money": "כסף",
+      "teachers": "מורים"
     },
     "dashboard": "לוח הבקרה",
     "students": "תלמידים",

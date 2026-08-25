@@ -109,14 +109,23 @@ function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathnam
   const isAnyActive = visibleItems.some(
     ({ href }) => pathname === href || pathname.startsWith(href + '/')
   )
-  const [open, setOpen] = useState(defaultOpen || isAnyActive)
+  // Open follows the active route unless the user has said otherwise for this
+  // route. Without the reset, opening /charges from a link elsewhere left the
+  // section collapsed and you could not see where you were.
+  const [override, setOverride] = useState<boolean | null>(null)
+  const [lastPath, setLastPath] = useState(pathname)
+  if (pathname !== lastPath) {
+    setLastPath(pathname)
+    setOverride(null)
+  }
+  const open = override ?? (defaultOpen || isAnyActive)
 
   if (visibleItems.length === 0) return null
 
   return (
     <div>
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOverride(!open)}
         className={`group flex items-center justify-between w-full px-3 py-2 rounded-md text-[13px] transition-all duration-150 ${
           isAnyActive
             ? 'text-sidebar-foreground font-medium'
@@ -133,12 +142,14 @@ function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathnam
         />
       </button>
 
+      {/* grid-rows rather than max-height: settings has twelve entries and was
+          being clipped by the old max-h-96 ceiling. */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          open ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        className={`grid transition-all duration-300 ease-in-out ${
+          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
         }`}
       >
-        <div className="pt-0.5 space-y-0.5 pe-2">
+        <div className="overflow-hidden pt-0.5 space-y-0.5 pe-2">
           {visibleItems.map(({ href, label: itemLabel, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
             return (
@@ -162,6 +173,8 @@ interface SidebarProps {
   mobile?: boolean
   /** When set (owner/admin), hides nav entries not included in the org SaaS plan. */
   saasFeatures?: SaasFeatures
+  /** Active teachers in the org; 1 hides the teacher-management section. */
+  teacherCount?: number
 }
 
 export function Sidebar({
@@ -169,35 +182,45 @@ export function Sidebar({
   userRole,
   mobile = false,
   saasFeatures,
+  teacherCount,
 }: SidebarProps) {
   const pathname = usePathname()
   const t = useTranslations('nav')
   const tc = useTranslations('common')
   const initials = getInitials(userName)
   const isTeacher = userRole === 'teacher'
+  const soloTeacher = teacherCount !== undefined && teacherCount <= 1
 
-  const mainItems: NavItem[] = [
-    { href: '/dashboard',  label: t('dashboard'),  icon: LayoutDashboard, roles: ['owner', 'admin'] },
-    { href: '/students',   label: t('students'),   icon: GraduationCap,   roles: ['owner', 'admin', 'teacher'] },
-    { href: '/parents',    label: t('parents'),    icon: Users,           roles: ['owner', 'admin', 'teacher'] },
-    { href: '/teachers',   label: t('teachers'),   icon: UserRound,       roles: ['owner', 'admin'] },
-    { href: '/lessons',    label: t('lessons'),    icon: BookOpen,        roles: ['owner', 'admin'] },
-    { href: '/charges',    label: t('charges'),    icon: Receipt,         roles: ['owner', 'admin'] },
-    { href: '/billing',        label: t('billing'),        icon: Banknote,     roles: ['owner', 'admin'] },
-    { href: '/billing/debts',  label: t('debts'),          icon: Wallet,       roles: ['owner', 'admin'] },
-    { href: '/subscriptions',  label: t('subscriptions'),  icon: CreditCard,   roles: ['owner', 'admin'] },
-    { href: '/leads',          label: t('leads'),          icon: UserPlus,     roles: ['owner', 'admin'] },
-    { href: '/homework',   label: t('homework'),   icon: ClipboardList,   roles: ['owner', 'admin', 'teacher'] },
-    { href: '/messages',   label: t('messages'),   icon: MessageSquare,   roles: ['owner', 'admin', 'teacher'] },
+  // Six things a tutor navigates between, not twenty-nine. Reports are filed
+  // under the subject they report on — she thinks "how are my students doing",
+  // not "let me open the reports folder". Teachers only exists once there is
+  // more than one, so a solo tutor never sees a section about staff.
+  const studentsGroup: NavItem[] = [
+    { href: '/students',         label: t('students'),        icon: GraduationCap, roles: ['owner', 'admin', 'teacher'] },
+    { href: '/parents',          label: t('parents'),         icon: Users,         roles: ['owner', 'admin', 'teacher'] },
+    { href: '/leads',            label: t('leads'),           icon: UserPlus,      roles: ['owner', 'admin'] },
+    { href: '/reports/students', label: t('reportsStudents'), icon: BarChart2,     roles: ['owner', 'admin'] },
   ]
 
-  const reportsItems: NavItem[] = [
-    { href: '/reports/revenue',             label: t('reportsRevenue'),             icon: BarChart2,     roles: ['owner', 'admin'] },
-    { href: '/reports/lessons',             label: t('reportsLessons'),             icon: BookOpen,      roles: ['owner', 'admin'] },
-    { href: '/reports/debt',                label: t('reportsDebt'),                icon: Receipt,       roles: ['owner', 'admin'] },
-    { href: '/reports/teachers',            label: t('reportsTeachers'),            icon: UserRound,     roles: ['owner', 'admin'] },
-    { href: '/reports/teacher-performance', label: t('reportsTeacherPerformance'),  icon: UserRound,     roles: ['owner', 'admin'] },
-    { href: '/reports/students',            label: t('reportsStudents'),            icon: GraduationCap, roles: ['owner', 'admin'] },
+  const lessonsGroup: NavItem[] = [
+    { href: '/lessons',         label: t('lessons'),        icon: BookOpen,      roles: ['owner', 'admin'] },
+    { href: '/homework',        label: t('homework'),       icon: ClipboardList, roles: ['owner', 'admin', 'teacher'] },
+    { href: '/reports/lessons', label: t('reportsLessons'), icon: BarChart2,     roles: ['owner', 'admin'] },
+  ]
+
+  const moneyGroup: NavItem[] = [
+    { href: '/charges',         label: t('charges'),        icon: Receipt,    roles: ['owner', 'admin'] },
+    { href: '/billing',         label: t('billing'),        icon: Banknote,   roles: ['owner', 'admin'] },
+    { href: '/billing/debts',   label: t('debts'),          icon: Wallet,     roles: ['owner', 'admin'] },
+    { href: '/subscriptions',   label: t('subscriptions'),  icon: CreditCard, roles: ['owner', 'admin'] },
+    { href: '/reports/revenue', label: t('reportsRevenue'), icon: BarChart2,  roles: ['owner', 'admin'] },
+    { href: '/reports/debt',    label: t('reportsDebt'),    icon: BarChart2,  roles: ['owner', 'admin'] },
+  ]
+
+  const teachersGroup: NavItem[] = [
+    { href: '/teachers',                    label: t('teachers'),                  icon: UserRound, roles: ['owner', 'admin'] },
+    { href: '/reports/teachers',            label: t('reportsTeachers'),           icon: BarChart2, roles: ['owner', 'admin'] },
+    { href: '/reports/teacher-performance', label: t('reportsTeacherPerformance'), icon: BarChart2, roles: ['owner', 'admin'] },
   ]
 
   const settingsItems: NavItem[] = [
@@ -228,19 +251,24 @@ export function Sidebar({
     { href: '/teacher/calendar-connect', label: t('teacherCalendarConnect'),  icon: CalendarDays, roles: ['teacher'] },
   ]
 
-  const visibleMainItems = mainItems
-    .filter(({ roles }) => !roles || roles.includes(userRole))
-    .filter(({ href }) => {
-      if (href === '/leads') return hasSaasNav(saasFeatures, 'leads')
-      if (href === '/homework') return hasSaasNav(saasFeatures, 'homework')
-      return true
-    })
+  /** Role, plan gate and solo-tutor mode, applied in one place per group. */
+  const visible = (items: NavItem[]) =>
+    items
+      .filter(({ roles }) => !roles || roles.includes(userRole))
+      .filter(({ href }) => {
+        if (href === '/leads') return hasSaasNav(saasFeatures, 'leads')
+        if (href === '/homework') return hasSaasNav(saasFeatures, 'homework')
+        if (href === '/reports/revenue') return true
+        if (href.startsWith('/reports/')) return hasSaasNav(saasFeatures, 'full_reports')
+        return true
+      })
 
-  const visibleReportItems = reportsItems.filter(({ roles, href }) => {
-    if (roles && !roles.includes(userRole)) return false
-    if (href === '/reports/revenue') return true
-    return hasSaasNav(saasFeatures, 'full_reports')
-  })
+  const visibleStudents = visible(studentsGroup)
+  const visibleLessons = visible(lessonsGroup)
+  const visibleMoney = visible(moneyGroup)
+  // One teacher means every "which teacher?" has a single answer, so the whole
+  // section — and the reports that compare teachers — is noise.
+  const visibleTeachers = soloTeacher ? [] : visible(teachersGroup)
 
   const visibleSettingsItems = settingsItems.filter(({ roles, href }) => {
     if (roles && !roles.includes(userRole)) return false
@@ -286,29 +314,52 @@ export function Sidebar({
           </div>
         )}
 
-        {/* Main ops section */}
-        {!isTeacher && visibleMainItems.length > 0 && (
-          <div className="space-y-0.5">
-            <p className="px-3 pb-1.5 text-[10px] font-semibold text-sidebar-foreground/70 uppercase tracking-widest">
-              {t('sections.management')}
-            </p>
-            {visibleMainItems.map(({ href, label, icon: Icon }) => {
-              const active = pathname === href || pathname.startsWith(href + '/')
-              return <NavLink key={href} href={href} label={label} icon={Icon} active={active} />
-            })}
-          </div>
-        )}
-
-        {/* Collapsible: Reports (owner/admin) */}
+        {/* Owner/admin: six sections, each a place rather than a page. */}
         {!isTeacher && (
-          <div className="pt-1">
+          <div className="space-y-0.5">
+            <NavLink
+              href="/dashboard"
+              label={t('dashboard')}
+              icon={LayoutDashboard}
+              active={pathname === '/dashboard'}
+            />
+
             <CollapsibleSection
-              label={t('sections.reports')}
-              icon={BarChart2}
-              items={visibleReportItems}
+              label={t('sections.students')}
+              icon={GraduationCap}
+              items={visibleStudents}
               userRole={userRole}
               pathname={pathname}
-              defaultOpen={false}
+            />
+            <CollapsibleSection
+              label={t('sections.lessons')}
+              icon={BookOpen}
+              items={visibleLessons}
+              userRole={userRole}
+              pathname={pathname}
+            />
+            <CollapsibleSection
+              label={t('sections.money')}
+              icon={Banknote}
+              items={visibleMoney}
+              userRole={userRole}
+              pathname={pathname}
+            />
+            {visibleTeachers.length > 0 && (
+              <CollapsibleSection
+                label={t('sections.teachers')}
+                icon={UserRound}
+                items={visibleTeachers}
+                userRole={userRole}
+                pathname={pathname}
+              />
+            )}
+
+            <NavLink
+              href="/messages"
+              label={t('messages')}
+              icon={MessageSquare}
+              active={pathname === '/messages' || pathname.startsWith('/messages/')}
             />
           </div>
         )}

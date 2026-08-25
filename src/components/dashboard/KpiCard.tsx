@@ -1,15 +1,16 @@
+import Link from 'next/link'
 import { type LucideIcon, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type KpiVariant = 'default' | 'revenue' | 'debt' | 'students' | 'lessons' | 'warning'
 
 const VARIANT_STYLES: Record<KpiVariant, { icon: string; card: string }> = {
-  default:  { icon: 'bg-muted text-muted-foreground',       card: '' },
-  revenue:  { icon: 'bg-emerald-50 text-emerald-600',       card: '' },
-  debt:     { icon: 'bg-amber-50 text-amber-500',           card: 'border-amber-200' },
-  students: { icon: 'bg-blue-50 text-blue-600',             card: '' },
-  lessons:  { icon: 'bg-purple-50 text-purple-600',         card: '' },
-  warning:  { icon: 'bg-amber-50 text-amber-500',           card: 'border-amber-200' },
+  default:  { icon: 'bg-muted text-muted-foreground', card: '' },
+  revenue:  { icon: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400', card: '' },
+  debt:     { icon: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400',         card: 'border-amber-200 dark:border-amber-900' },
+  students: { icon: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400',             card: '' },
+  lessons:  { icon: 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400',     card: '' },
+  warning:  { icon: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400',         card: 'border-amber-200 dark:border-amber-900' },
 }
 
 interface Trend {
@@ -22,9 +23,10 @@ interface KpiCardProps {
   value: string | number
   icon?: LucideIcon
   variant?: KpiVariant
-  highlight?: boolean
   trend?: Trend
   subLabel?: string
+  /** Turns the whole card into a link to the screen behind the number. */
+  href?: string
 }
 
 export function KpiCard({
@@ -32,19 +34,21 @@ export function KpiCard({
   value,
   icon: Icon,
   variant = 'default',
-  highlight,
   trend,
   subLabel,
+  href,
 }: KpiCardProps) {
-  const effectiveVariant: KpiVariant = highlight ? 'warning' : variant
-  const styles = VARIANT_STYLES[effectiveVariant]
+  const styles = VARIANT_STYLES[variant]
 
-  const valueClass = highlight ? 'text-amber-500' : 'text-foreground'
+  const Wrapper = href ? Link : 'div'
+  const wrapperProps = href ? { href } : {}
 
   return (
-    <div
+    <Wrapper
+      {...(wrapperProps as { href: string })}
       className={cn(
         'bg-card rounded-xl border border-border shadow-sm px-5 py-4 flex flex-col gap-3 transition-shadow duration-200 hover:shadow-md',
+        href && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         styles.card
       )}
     >
@@ -58,7 +62,7 @@ export function KpiCard({
       </div>
 
       <div>
-        <p className={cn('text-2xl font-bold leading-none', valueClass)}>{value}</p>
+        <p className="text-2xl font-bold leading-none text-foreground">{value}</p>
         {subLabel && (
           <p className="text-xs text-muted-foreground mt-1">{subLabel}</p>
         )}
@@ -81,6 +85,6 @@ export function KpiCard({
           </span>
         </div>
       )}
-    </div>
+    </Wrapper>
   )
 }

@@ -28,13 +28,14 @@ export async function getMonthForecast(orgId: string, timezone: string): Promise
     subscriptionsRes,
     cancellationEventsRes,
   ] = await Promise.all([
-    // Actual paid this month
+    // Actual received this month — from charge_payments so partial payments
+    // count in the month they arrived (same source as the dashboard revenue KPI).
     db
-      .from('charges')
+      .from('charge_payments')
       .select('amount')
       .eq('organization_id', orgId)
-      .eq('status', 'paid')
-      .gte('paid_at', monthStart),
+      .gte('paid_at', monthStart)
+      .lt('paid_at', nowISO),
 
     // Remaining scheduled lessons this month
     db
@@ -54,16 +55,17 @@ export async function getMonthForecast(orgId: string, timezone: string): Promise
       .eq('charge_type', 'lesson')
       .gte('paid_at', thirtyDaysAgo),
 
-    // Active subscriptions
+    // Active subscriptions — not paused, not ended
     db
       .from('subscriptions')
       .select('monthly_amount')
       .eq('organization_id', orgId)
-      .eq('is_active', true),
+      .eq('is_paused', false)
+      .or(`end_date.is.null,end_date.gte.${now.toISODate()}`),
 
     // Cancellation events in last 30 days (to find at-risk students)
     db
-      .from('cancellation_events')
+      .from('student_cancellation_events')
       .select('student_id')
       .eq('organization_id', orgId)
       .gte('created_at', thirtyDaysAgo),

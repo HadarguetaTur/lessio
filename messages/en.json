@@ -972,7 +972,8 @@
       "teacherDayOff": "Teacher day off"
     },
     "noStudentsFound": "No students found",
-    "noTeachersFound": "No teachers found"
+    "noTeachersFound": "No teachers found",
+    "statusUpdatedFor": "{lesson} · marked {status}"
   },
   "debts": {
     "title": "Debtors",
@@ -996,7 +997,12 @@
     "sendPaymentRequest": "Consolidated request",
     "sendPaymentRequestBulk": "Request payment from {count} parents",
     "requestsSent": "{sent} payment requests sent",
-    "requestsSentWithSkipped": "{sent} payment requests sent, {skipped} skipped"
+    "requestsSentWithSkipped": "{sent} payment requests sent, {skipped} skipped",
+    "optedOutExplain": "This parent asked to stop receiving messages (replied STOP on WhatsApp). You can copy the reminder text and send it another way.",
+    "copyMessage": "Copy message",
+    "messageCopied": "Message copied",
+    "copyFailed": "Could not copy",
+    "copyMessageBody": "Hi {name}, there is an outstanding balance of {amount} for lessons. Happy to sort it out. Thank you!"
   },
   "charges": {
     "title": "Charges",
@@ -1959,7 +1965,12 @@
     "pause": "Pause",
     "resume": "Resume",
     "deleteConfirm": "Delete this subscription?",
-    "noSubscriptions": "No subscriptions"
+    "noSubscriptions": "No subscriptions",
+    "types": {
+      "monthly": "Monthly",
+      "weekly": "Weekly",
+      "per_lesson": "Per lesson"
+    }
   },
   "leads": {
     "title": "Leads",

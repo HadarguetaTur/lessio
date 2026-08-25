@@ -134,7 +134,11 @@ export default async function LessonDetailPage(props: {
       <div className="bg-white rounded-lg border border-gray-200 p-6 mt-4 space-y-5">
         <div>
           <h2 className="text-sm font-semibold text-gray-700 mb-3">{t('statusUpdate')}</h2>
-          <LessonStatusForm currentStatus={lesson.status} action={boundAction} />
+          <LessonStatusForm
+            currentStatus={lesson.status}
+            lessonLabel={`${lesson.student.full_name} · ${formatTime(lesson.start_at, timezone, appLocale)}`}
+            action={boundAction}
+          />
         </div>
 
         {canCancel && lesson.status === 'scheduled' && lessonUpcoming && (

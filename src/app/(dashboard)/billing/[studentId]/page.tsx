@@ -33,10 +33,12 @@ export default async function BillingDetailPage(props: {
   const { studentId } = await props.params
   const searchParams = await props.searchParams
   const { orgId, role } = await getSession()
-  const [timezone, t, tBilling, locale] = await Promise.all([
+  const [timezone, t, tBilling, tLessons, tSubs, locale] = await Promise.all([
     getOrgTimezone(orgId),
     getTranslations('billing.detail'),
     getTranslations('billing'),
+    getTranslations('lessons'),
+    getTranslations('subscriptions'),
     getLocale(),
   ])
 
@@ -44,6 +46,17 @@ export default async function BillingDetailPage(props: {
   const intlLocale = toIntlLocale(parseAppLocale(locale))
   const billingMonthLabel = formatBillingMonthLabel(billingMonth, timezone, intlLocale)
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
+
+  // The DB enums leaked to screen as "individual" / "monthly".
+  const lessonTypeLabel = (value: string) =>
+    value === 'group' ? tLessons('typeGroup') : tLessons('typeIndividual')
+  const subscriptionTypeLabel = (value: string | null) => {
+    if (!value) return '—'
+    const known = ['monthly', 'weekly', 'per_lesson']
+    return known.includes(value) ? tSubs(`types.${value}`) : value
+  }
+  const formatDateOnly = (isoDate: string) =>
+    new Date(`${isoDate}T12:00:00Z`).toLocaleDateString(intlLocale, { timeZone: timezone })
 
   const [student, supabase] = await Promise.all([
     getStudentById(studentId, orgId),
@@ -219,8 +232,8 @@ export default async function BillingDetailPage(props: {
                   className="rounded-lg border border-border bg-card p-3 text-sm shadow-sm"
                 >
                   <p className="font-medium text-foreground">
-                    {new Date(lesson.start_at).toLocaleDateString('he-IL', { timeZone: timezone })}{' '}
-                    {new Date(lesson.start_at).toLocaleTimeString('he-IL', {
+                    {new Date(lesson.start_at).toLocaleDateString(intlLocale, { timeZone: timezone })}{' '}
+                    {new Date(lesson.start_at).toLocaleTimeString(intlLocale, {
                       timeZone: timezone,
                       hour: '2-digit',
                       minute: '2-digit',
@@ -228,7 +241,7 @@ export default async function BillingDetailPage(props: {
                   </p>
                   <p className="mt-1 text-muted-foreground">{lesson.teacher_name}</p>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground">{lesson.lesson_type}</span>
+                    <span className="text-xs text-muted-foreground">{lessonTypeLabel(lesson.lesson_type)}</span>
                     <StatusBadge status={lesson.status} />
                   </div>
                   <div className="mt-2 grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
@@ -256,12 +269,12 @@ export default async function BillingDetailPage(props: {
                     {lessons.map((lesson) => (
                       <tr key={lesson.id} className="transition-colors hover:bg-muted/20">
                         <td className="px-4 py-2.5 text-sm text-foreground">
-                          {new Date(lesson.start_at).toLocaleDateString('he-IL', { timeZone: timezone })}
+                          {new Date(lesson.start_at).toLocaleDateString(intlLocale, { timeZone: timezone })}
                           {' '}
-                          {new Date(lesson.start_at).toLocaleTimeString('he-IL', { timeZone: timezone, hour: '2-digit', minute: '2-digit' })}
+                          {new Date(lesson.start_at).toLocaleTimeString(intlLocale, { timeZone: timezone, hour: '2-digit', minute: '2-digit' })}
                         </td>
                         <td className="px-4 py-2.5 text-sm text-foreground">{lesson.teacher_name}</td>
-                        <td className="px-4 py-2.5 text-sm text-muted-foreground">{lesson.lesson_type}</td>
+                        <td className="px-4 py-2.5 text-sm text-muted-foreground">{lessonTypeLabel(lesson.lesson_type)}</td>
                         <td className="px-4 py-2.5"><StatusBadge status={lesson.status} /></td>
                         <td className="px-4 py-2.5 font-mono text-sm text-foreground" dir="ltr">
                           {lesson.price_per_student != null ? `₪${lesson.price_per_student}` : '—'}
@@ -289,7 +302,7 @@ export default async function BillingDetailPage(props: {
                   key={sub.id}
                   className="rounded-lg border border-border bg-card p-3 text-sm shadow-sm"
                 >
-                  <p className="font-medium text-foreground">{sub.subscription_type ?? '—'}</p>
+                  <p className="font-medium text-foreground">{subscriptionTypeLabel(sub.subscription_type)}</p>
                   <div className="mt-2 grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
                     <span dir="ltr" className="font-mono text-foreground">
                       ₪{Number(sub.monthly_amount).toFixed(2)}
@@ -299,11 +312,11 @@ export default async function BillingDetailPage(props: {
                   <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
                     <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
                       <dt className="col-start-2 row-start-1 text-end">{t('colStartDate')}</dt>
-                      <dd className="col-start-1 row-start-1 text-foreground">{sub.start_date}</dd>
+                      <dd className="col-start-1 row-start-1 text-foreground">{formatDateOnly(sub.start_date)}</dd>
                     </div>
                     <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
                       <dt className="col-start-2 row-start-1 text-end">{t('colEndDate')}</dt>
-                      <dd className="col-start-1 row-start-1 text-foreground">{sub.end_date ?? '—'}</dd>
+                      <dd className="col-start-1 row-start-1 text-foreground">{sub.end_date ? formatDateOnly(sub.end_date) : '—'}</dd>
                     </div>
                   </dl>
                   <div className="mt-2">
@@ -330,10 +343,10 @@ export default async function BillingDetailPage(props: {
                   <tbody className="divide-y divide-border">
                     {subscriptions.map((sub) => (
                       <tr key={sub.id} className="transition-colors hover:bg-muted/20">
-                        <td className="px-4 py-2.5 text-sm text-foreground">{sub.subscription_type ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-sm text-foreground">{subscriptionTypeLabel(sub.subscription_type)}</td>
                         <td className="px-4 py-2.5 font-mono text-sm text-foreground" dir="ltr">₪{Number(sub.monthly_amount).toFixed(2)}</td>
-                        <td className="px-4 py-2.5 text-sm text-foreground">{sub.start_date}</td>
-                        <td className="px-4 py-2.5 text-sm text-foreground">{sub.end_date ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-sm text-foreground">{formatDateOnly(sub.start_date)}</td>
+                        <td className="px-4 py-2.5 text-sm text-foreground">{sub.end_date ? formatDateOnly(sub.end_date) : '—'}</td>
                         <td className="px-4 py-2.5">
                           <StatusBadge status={sub.is_paused ? 'cancelled' : 'completed'} label={sub.is_paused ? t('subPaused') : t('subActive')} />
                         </td>

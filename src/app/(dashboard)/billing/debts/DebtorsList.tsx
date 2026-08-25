@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { ChevronDown, CreditCard, Loader2, Send } from 'lucide-react'
+import { ChevronDown, Copy, CreditCard, Loader2, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -156,14 +156,14 @@ export function DebtorsList({
                       {row.phone ? (
                         <span dir="ltr">{row.phone}</span>
                       ) : (
-                        <span className="text-amber-600">{t('noPhone')}</span>
+                        <span className="text-amber-700 dark:text-amber-400">{t('noPhone')}</span>
                       )}
                       {row.childrenNames.length > 0 && ` · ${row.childrenNames.join(', ')}`}
                     </p>
                   </div>
 
                   <div className="text-end">
-                    <p className="font-mono text-sm font-semibold text-amber-600" dir="ltr">
+                    <p className="font-mono text-sm font-semibold text-amber-700 dark:text-amber-400" dir="ltr">
                       {formatCurrency(row.totalDebt, locale)}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -173,22 +173,52 @@ export function DebtorsList({
                   </div>
 
                   {row.optedOut && (
-                    <span className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                    // The chip used to be the whole story: a greyed-out row and
+                    // two dead buttons, with no way to tell why or what to do
+                    // instead.
+                    <span
+                      className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                      title={t('optedOutExplain')}
+                    >
                       {t('optedOut')}
                     </span>
                   )}
 
                   <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      disabled={!canMessage || isPending}
-                      onClick={() => send([row.parentId])}
-                    >
-                      <Send size={14} />
-                      {t('sendReminder')}
-                    </Button>
+                    {row.optedOut ? (
+                      // WhatsApp is closed for this parent, so hand over the
+                      // message instead of offering a button that cannot work.
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => {
+                          void navigator.clipboard
+                            ?.writeText(
+                              tRoot('debts.copyMessageBody', {
+                                name: row.parentName,
+                                amount: formatCurrency(row.totalDebt, locale),
+                              })
+                            )
+                            .then(() => toast.success(t('messageCopied')))
+                            .catch(() => toast.error(t('copyFailed')))
+                        }}
+                      >
+                        <Copy size={14} />
+                        {t('copyMessage')}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={!canMessage || isPending}
+                        onClick={() => send([row.parentId])}
+                      >
+                        <Send size={14} />
+                        {t('sendReminder')}
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

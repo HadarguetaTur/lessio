@@ -11,7 +11,8 @@ import { RecordPaymentDialog } from '@/components/dashboard/charges/RecordPaymen
 import { ResolveChargeDialog } from '@/components/dashboard/charges/ResolveChargeDialog'
 import { ChargeAuditTimeline } from '@/components/dashboard/charges/ChargeAuditTimeline'
 import { waiveChargeAction, voidChargeAction, recordChargePaymentAction } from '../actions'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 
 const STATUS_STYLES: Record<ChargeStatus, string> = {
   pending: 'bg-yellow-50 text-yellow-700',
@@ -48,6 +49,7 @@ export default async function ChargeDetailPage({
   const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
   const tRoot = await getTranslations()
+  const intlLocale = toIntlLocale(parseAppLocale(await getLocale()))
 
   const STATUS_LABELS: Record<ChargeStatus, string> = {
     pending: tCommon('chargeStatus.pending'),
@@ -125,14 +127,14 @@ export default async function ChargeDetailPage({
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">{t('fieldCreated')}</dt>
             <dd className="text-gray-700">
-              {new Date(charge.created_at).toLocaleDateString('he-IL')}
+              {new Date(charge.created_at).toLocaleDateString(intlLocale)}
             </dd>
           </div>
           {charge.paid_at && (
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">{t('fieldPaidAt')}</dt>
               <dd className="text-gray-700">
-                {new Date(charge.paid_at).toLocaleString('he-IL')}
+                {new Date(charge.paid_at).toLocaleString(intlLocale)}
               </dd>
             </div>
           )}
@@ -140,7 +142,7 @@ export default async function ChargeDetailPage({
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">{t('resolve.resolvedAt')}</dt>
               <dd className="text-gray-700">
-                {new Date(charge.resolved_at).toLocaleString('he-IL')}
+                {new Date(charge.resolved_at).toLocaleString(intlLocale)}
               </dd>
             </div>
           )}

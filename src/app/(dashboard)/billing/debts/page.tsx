@@ -43,7 +43,7 @@ export default async function DebtsPage() {
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t('totalDebt')}
               </p>
-              <p className="text-lg font-bold text-amber-600">
+              <p className="text-lg font-bold text-amber-700 dark:text-amber-400">
                 {formatCurrency(totalDebt, locale)}
               </p>
             </div>

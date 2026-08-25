@@ -15,7 +15,8 @@ import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -63,6 +64,7 @@ export default async function ChargesPage(props: {
   const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
   const tRoot = await getTranslations()
+  const intlLocale = toIntlLocale(parseAppLocale(await getLocale()))
 
   const CHARGE_TYPE_LABELS: Record<string, string> = {
     lesson: t('types.lesson'),
@@ -303,7 +305,7 @@ export default async function ChargesPage(props: {
                       )}
                     </TableCell>
                     <TableCell className="px-5 py-3.5 text-sm text-muted-foreground">
-                      {new Date(charge.created_at).toLocaleDateString('he-IL')}
+                      {new Date(charge.created_at).toLocaleDateString(intlLocale)}
                     </TableCell>
                     {canMarkPaid && (
                       <TableCell className="px-5 py-3.5">

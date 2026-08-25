@@ -972,7 +972,8 @@
       "teacherDayOff": "חופשת מורה"
     },
     "noStudentsFound": "לא נמצאו תלמידים",
-    "noTeachersFound": "לא נמצאו מורים"
+    "noTeachersFound": "לא נמצאו מורים",
+    "statusUpdatedFor": "{lesson} · הסטטוס עודכן ל{status}"
   },
   "debts": {
     "title": "חייבים",
@@ -996,7 +997,12 @@
     "sendPaymentRequest": "בקשת תשלום מרוכזת",
     "sendPaymentRequestBulk": "שלח בקשת תשלום ל-{count} הורים",
     "requestsSent": "נשלחו {sent} בקשות תשלום",
-    "requestsSentWithSkipped": "נשלחו {sent} בקשות תשלום, {skipped} דולגו"
+    "requestsSentWithSkipped": "נשלחו {sent} בקשות תשלום, {skipped} דולגו",
+    "optedOutExplain": "ההורה ביקש להפסיק לקבל הודעות (שלח STOP בוואטסאפ). אפשר להעתיק את נוסח התזכורת ולשלוח בדרך אחרת.",
+    "copyMessage": "העתקת הודעה",
+    "messageCopied": "ההודעה הועתקה",
+    "copyFailed": "ההעתקה נכשלה",
+    "copyMessageBody": "שלום {name}, נותרה יתרה פתוחה של {amount} עבור השיעורים. אשמח להסדיר. תודה!"
   },
   "charges": {
     "title": "חיובים",
@@ -1959,7 +1965,12 @@
     "pause": "השהה",
     "resume": "הפעל",
     "deleteConfirm": "למחוק את המנוי?",
-    "noSubscriptions": "אין מנויים"
+    "noSubscriptions": "אין מנויים",
+    "types": {
+      "monthly": "מנוי חודשי",
+      "weekly": "מנוי שבועי",
+      "per_lesson": "לפי שיעור"
+    }
   },
   "leads": {
     "title": "לידים",

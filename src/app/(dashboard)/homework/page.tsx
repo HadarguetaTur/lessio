@@ -4,7 +4,8 @@ import { getSession } from '@/lib/auth/session'
 import { getAssignments } from '@/lib/homework'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -38,6 +39,14 @@ export default async function HomeworkPage({
   const { orgId, role, userId } = await getSession()
   const t = await getTranslations('homework')
   const tCommon = await getTranslations('common')
+  const intlLocale = toIntlLocale(parseAppLocale(await getLocale()))
+
+  // Due dates arrived as raw YYYY-MM-DD next to columns formatted for a
+  // reader; noon avoids the date shifting a day either way across timezones.
+  const formatDay = (value: string | null | undefined) =>
+    value ? new Date(`${value}T12:00:00Z`).toLocaleDateString(intlLocale) : '—'
+  const formatStamp = (value: string | null | undefined) =>
+    value ? new Date(value).toLocaleDateString(intlLocale) : '—'
 
   if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
     return <div className="text-sm text-red-600">{t('noPermission')}</div>
@@ -165,7 +174,7 @@ export default async function HomeworkPage({
                           {a.title}
                         </Link>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-muted-foreground">{a.dueDate ?? '—'}</TableCell>
+                      <TableCell className="px-4 py-3 text-muted-foreground">{formatDay(a.dueDate)}</TableCell>
                       <TableCell className="px-4 py-3">
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CLASSES[a.status]}`}
@@ -174,14 +183,10 @@ export default async function HomeworkPage({
                         </span>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-xs text-muted-foreground">
-                        {a.sentAt
-                          ? new Date(a.sentAt).toLocaleDateString('he-IL')
-                          : '—'}
+                        {formatStamp(a.sentAt)}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-xs text-muted-foreground">
-                        {a.completedAt
-                          ? new Date(a.completedAt).toLocaleDateString('he-IL')
-                          : '—'}
+                        {formatStamp(a.completedAt)}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-xs text-muted-foreground">
                         {completionLabel}

@@ -47,10 +47,11 @@ export function ManualAdjustmentForm({
       className="bg-card rounded-xl border border-border p-4 flex flex-wrap items-end gap-3"
     >
       <div>
-        <label className="text-xs font-semibold text-muted-foreground uppercase block mb-1">
+        <label htmlFor="adjustment_amount" className="text-xs font-semibold text-muted-foreground uppercase block mb-1">
           {t('adjustmentAmount')} (₪)
         </label>
         <input
+          id="adjustment_amount"
           type="number"
           step="0.01"
           value={amount}
@@ -60,10 +61,11 @@ export function ManualAdjustmentForm({
         />
       </div>
       <div className="flex-1 min-w-[200px]">
-        <label className="text-xs font-semibold text-muted-foreground uppercase block mb-1">
+        <label htmlFor="adjustment_reason" className="text-xs font-semibold text-muted-foreground uppercase block mb-1">
           {t('adjustmentReason')}
         </label>
         <input
+          id="adjustment_reason"
           type="text"
           value={reason}
           onChange={(e) => setReason(e.target.value)}

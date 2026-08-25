@@ -4,7 +4,9 @@ import { startTransition, useEffect, useRef, useState, useActionState } from 're
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { GroupPicker } from './GroupPicker'
+import { StudentMultiPicker } from './StudentMultiPicker'
 import type { StudentGroup } from '@/lib/groups'
+import type { LessonType } from '@/lib/lessons/types'
 import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,6 +24,15 @@ import { cn } from '@/lib/utils'
 
 const DURATION_VALUES = [30, 45, 60, 90]
 
+/** Custom lessons escape the fixed durations; these bounds match the importer. */
+const CUSTOM_DURATION_MIN = 5
+const CUSTOM_DURATION_MAX = 480
+
+export interface PricingDefaults {
+  pairPricePerStudent: number
+  groupPricePerStudent: number
+}
+
 
 const selectClassName = cn(
   'h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground',
@@ -37,6 +48,8 @@ interface Props {
   teachers?: { id: string; full_name: string }[]
   fixedTeacherId?: string
   allowGroupLessons?: boolean
+  /** Org price defaults, shown as placeholders on the price field. */
+  pricingDefaults?: PricingDefaults
   /** Minimum selectable date YYYY-MM-DD (e.g. backdating / history) */
   minDateStr: string
   initialDate?: string
@@ -58,6 +71,7 @@ export function NewLessonForm({
   teachers,
   fixedTeacherId,
   allowGroupLessons = true,
+  pricingDefaults,
   minDateStr,
   initialDate,
   initialTime,
@@ -73,11 +87,24 @@ export function NewLessonForm({
   const activeTeachers = teachers ?? []
   const soleTeacherId = activeTeachers.length === 1 ? activeTeachers[0].id : null
   const [state, formAction, pending] = useActionState(action, initialState)
-  const [lessonType, setLessonType] = useState<'individual' | 'group'>('individual')
+  const [lessonType, setLessonType] = useState<LessonType>('individual')
   const [studentId, setStudentId] = useState('')
-  const effectiveLessonType = allowGroupLessons ? lessonType : 'individual'
+  const effectiveLessonType: LessonType = allowGroupLessons ? lessonType : 'individual'
   const [selectedGroupId, setSelectedGroupId] = useState('')
   const [groupStudentIds, setGroupStudentIds] = useState<string[]>([])
+  // Pair lessons name both students explicitly; custom lessons take any number.
+  const [pairStudentIds, setPairStudentIds] = useState<[string, string]>(['', ''])
+  const [customStudentIds, setCustomStudentIds] = useState<string[]>([])
+
+  const isPair = effectiveLessonType === 'pair'
+  const isCustom = effectiveLessonType === 'custom'
+  // Every type except individual is priced per student.
+  const showPriceField = effectiveLessonType !== 'individual'
+  const pricePlaceholder = isPair
+    ? pricingDefaults?.pairPricePerStudent?.toString()
+    : effectiveLessonType === 'group'
+      ? pricingDefaults?.groupPricePerStudent?.toString()
+      : undefined
   const onSuccessRef = useRef(onSuccess)
   const formRef = useRef<HTMLFormElement>(null)
   // Payload of the last submit attempt — the confirm dialogs resubmit it as-is,
@@ -195,21 +222,27 @@ export function NewLessonForm({
             name="lesson_type"
             value={lessonType}
             onChange={(e) => {
-              setLessonType(e.target.value as 'individual' | 'group')
+              setLessonType(e.target.value as LessonType)
+              // Switching type clears the roster picked for the previous one,
+              // so a stale student can never ride along on the submit.
               setSelectedGroupId('')
               setGroupStudentIds([])
+              setPairStudentIds(['', ''])
+              setCustomStudentIds([])
             }}
             className={selectClassName}
           >
             <option value="individual">{t('typeIndividual')}</option>
+            <option value="pair">{t('typePair')}</option>
             <option value="group">{t('typeGroup')}</option>
+            <option value="custom">{t('typeCustom')}</option>
           </select>
         </div>
       ) : (
         <input type="hidden" name="lesson_type" value="individual" />
       )}
 
-      {effectiveLessonType === 'individual' ? (
+      {effectiveLessonType === 'individual' && (
         <div className="space-y-1.5">
           <Label htmlFor="student_id">
             {t('fields.student')} <span className="text-destructive">*</span>
@@ -226,13 +259,57 @@ export function NewLessonForm({
             clearLabel={tCommon('actions.clear')}
           />
         </div>
-      ) : (
+      )}
+
+      {isPair && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {([0, 1] as const).map((slot) => (
+            <div key={slot} className="space-y-1.5">
+              <Label htmlFor={`pair_student_${slot}`}>
+                {slot === 0 ? t('studentFirst') : t('studentSecond')}{' '}
+                <span className="text-destructive">*</span>
+              </Label>
+              <SearchSelect
+                id={`pair_student_${slot}`}
+                name="student_ids"
+                required
+                value={pairStudentIds[slot]}
+                onChange={(v) =>
+                  setPairStudentIds((prev) => {
+                    const next: [string, string] = [prev[0], prev[1]]
+                    next[slot] = v
+                    return next
+                  })
+                }
+                // The other slot's pick is filtered out, so the same student
+                // cannot fill both halves of a pair.
+                options={students
+                  .filter((s) => s.id !== pairStudentIds[slot === 0 ? 1 : 0])
+                  .map((s) => ({ value: s.id, label: s.full_name }))}
+                placeholder={t('selectStudent')}
+                emptyText={t('noStudentsFound')}
+                clearLabel={tCommon('actions.clear')}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {effectiveLessonType === 'group' && (
         <>
           <GroupPicker groups={groups} value={selectedGroupId} onChange={handleGroupChange} />
           {groupStudentIds.map((id) => (
             <input key={id} type="hidden" name="student_ids" value={id} />
           ))}
         </>
+      )}
+
+      {isCustom && (
+        <StudentMultiPicker
+          students={students}
+          value={customStudentIds}
+          onChange={setCustomStudentIds}
+        />
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -260,15 +337,39 @@ export function NewLessonForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="duration_minutes">
-          {t('fields.duration')} <span className="text-destructive">*</span>
+          {isCustom ? t('customDuration') : t('fields.duration')}{' '}
+          <span className="text-destructive">*</span>
         </Label>
-        <select id="duration_minutes" name="duration_minutes" required className={selectClassName} defaultValue="60">
-          {DURATION_VALUES.map((n) => (
-            <option key={n} value={n}>
-              {t('durationMinutes', { n })}
-            </option>
-          ))}
-        </select>
+        {isCustom ? (
+          <>
+            <Input
+              id="duration_minutes"
+              name="duration_minutes"
+              type="number"
+              required
+              min={CUSTOM_DURATION_MIN}
+              max={CUSTOM_DURATION_MAX}
+              step="1"
+              defaultValue={60}
+              dir="ltr"
+            />
+            <p className="text-xs text-muted-foreground">{t('customDurationHint')}</p>
+          </>
+        ) : (
+          <select
+            id="duration_minutes"
+            name="duration_minutes"
+            required
+            className={selectClassName}
+            defaultValue="60"
+          >
+            {DURATION_VALUES.map((n) => (
+              <option key={n} value={n}>
+                {t('durationMinutes', { n })}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* A lesson being booked is always 'scheduled'. Asking for an outcome up
@@ -277,19 +378,27 @@ export function NewLessonForm({
           after it happened. */}
       <input type="hidden" name="status" value="scheduled" />
 
-      {effectiveLessonType === 'group' && (
+      {showPriceField && (
         <div className="space-y-1.5">
-          <Label htmlFor="price_per_student">{t('pricePerStudent')}</Label>
+          <Label htmlFor="price_per_student">
+            {isCustom ? t('pricePerStudentRequired') : t('pricePerStudent')}
+            {isCustom && <span className="text-destructive"> *</span>}
+          </Label>
           <Input
             id="price_per_student"
             name="price_per_student"
             type="number"
             step="0.01"
             min="0"
-            placeholder={t('pricePerStudentPlaceholder')}
+            // Custom lessons have no org default to fall back on, so the price
+            // is required rather than optional.
+            required={isCustom}
+            placeholder={pricePlaceholder ?? t('pricePerStudentPlaceholder')}
             dir="ltr"
           />
-          <p className="text-xs text-muted-foreground">{t('pricePerStudentHint')}</p>
+          {!isCustom && (
+            <p className="text-xs text-muted-foreground">{t('pricePerStudentHint')}</p>
+          )}
         </div>
       )}
 

@@ -7,8 +7,12 @@
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import type { LessonType } from '@/lib/lessons/types'
 
 export type SeriesFrequency = 'weekly' | 'biweekly'
+
+/** Series can repeat any type built from a fixed roster. */
+export type SeriesLessonType = Extract<LessonType, 'individual' | 'pair' | 'custom'>
 
 export type SeriesRule = {
   frequency: SeriesFrequency
@@ -21,9 +25,13 @@ export type SeriesRule = {
 export type CreateSeriesParams = {
   orgId: string
   teacherId: string
-  studentId: string
+  /** The roster every occurrence enrols: one student for individual, two for pair. */
+  studentIds: string[]
   rule: SeriesRule
   createdByProfileId: string
+  lessonType?: SeriesLessonType
+  /** Per-student price; required for custom, optional override for pair. */
+  pricePerStudent?: number | null
 }
 
 export type CreateSeriesResult = {
@@ -43,8 +51,18 @@ export type CreateSeriesResult = {
 export async function createLessonSeries(
   params: CreateSeriesParams
 ): Promise<CreateSeriesResult> {
-  const { orgId, teacherId, studentId, rule, createdByProfileId } = params
+  const {
+    orgId,
+    teacherId,
+    studentIds,
+    rule,
+    createdByProfileId,
+    lessonType = 'individual',
+    pricePerStudent = null,
+  } = params
   const db = createServiceRoleClient()
+
+  if (studentIds.length === 0) throw new Error('At least one student is required')
 
   // 1. Fetch org timezone
   const { data: org, error: orgError } = await db
@@ -62,7 +80,9 @@ export async function createLessonSeries(
     .insert({
       organization_id: orgId,
       teacher_id: teacherId,
-      student_id: studentId,
+      // lesson_series.student_id is the display/primary student; the real
+      // roster lives on each generated lesson's lesson_students rows.
+      student_id: studentIds[0],
       rule,
       created_by: createdByProfileId,
     })
@@ -154,29 +174,38 @@ export async function createLessonSeries(
       continue
     }
 
-    // d. Check student lesson overlap (status != 'cancelled')
-    const { data: studentLessonIds } = await db
-      .from('lesson_students')
-      .select('lesson_id')
-      .eq('student_id', studentId)
+    // d. Check student lesson overlap (status != 'cancelled') — every student
+    //    on the roster must be free, not just the first.
+    let studentBusy = false
+    for (const studentId of studentIds) {
+      const { data: studentLessonIds } = await db
+        .from('lesson_students')
+        .select('lesson_id')
+        .eq('student_id', studentId)
 
-    if (studentLessonIds && studentLessonIds.length > 0) {
-      const lessonIds = studentLessonIds.map((r) => r.lesson_id)
-      const { data: studentConflict } = await db
-        .from('lessons')
-        .select('id')
-        .in('id', lessonIds)
-        .eq('organization_id', orgId)
-        .neq('status', 'cancelled')
-        .lt('start_at', endUtc)
-        .gt('end_at', startUtc)
-        .limit(1)
+      if (studentLessonIds && studentLessonIds.length > 0) {
+        const lessonIds = studentLessonIds.map((r) => r.lesson_id)
+        const { data: studentConflict } = await db
+          .from('lessons')
+          .select('id')
+          .in('id', lessonIds)
+          .eq('organization_id', orgId)
+          .neq('status', 'cancelled')
+          .lt('start_at', endUtc)
+          .gt('end_at', startUtc)
+          .limit(1)
 
-      if (studentConflict && studentConflict.length > 0) {
-        skipped++
-        conflicts.push(dateStr)
-        continue
+        if (studentConflict && studentConflict.length > 0) {
+          studentBusy = true
+          break
+        }
       }
+    }
+
+    if (studentBusy) {
+      skipped++
+      conflicts.push(dateStr)
+      continue
     }
 
     // e. Check active slot_locks
@@ -198,17 +227,21 @@ export async function createLessonSeries(
     }
 
     // f. Insert lesson
+    const lessonPayload: Record<string, unknown> = {
+      organization_id: orgId,
+      teacher_id: teacherId,
+      start_at: startUtc,
+      end_at: endUtc,
+      status: 'scheduled',
+      series_id: seriesId,
+      lesson_type: lessonType,
+      max_students: studentIds.length,
+    }
+    if (pricePerStudent != null) lessonPayload.price_per_student = pricePerStudent
+
     const { data: lesson, error: lessonError } = await db
       .from('lessons')
-      .insert({
-        organization_id: orgId,
-        teacher_id: teacherId,
-        start_at: startUtc,
-        end_at: endUtc,
-        status: 'scheduled',
-        series_id: seriesId,
-        lesson_type: 'individual',
-      })
+      .insert(lessonPayload)
       .select('id')
       .single()
 
@@ -219,11 +252,13 @@ export async function createLessonSeries(
     }
 
     // g. Insert lesson_students
-    const { error: lsError } = await db.from('lesson_students').insert({
-      lesson_id: lesson.id,
-      student_id: studentId,
-      organization_id: orgId,
-    })
+    const { error: lsError } = await db.from('lesson_students').insert(
+      studentIds.map((studentId) => ({
+        lesson_id: lesson.id,
+        student_id: studentId,
+        organization_id: orgId,
+      }))
+    )
 
     if (lsError) {
       // Roll back the lesson row and count as skipped

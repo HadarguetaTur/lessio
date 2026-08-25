@@ -973,7 +973,16 @@
     },
     "noStudentsFound": "No students found",
     "noTeachersFound": "No teachers found",
-    "statusUpdatedFor": "{lesson} · marked {status}"
+    "statusUpdatedFor": "{lesson} · marked {status}",
+    "typePair": "Pair",
+    "typeCustom": "Custom",
+    "students": "Students",
+    "addStudent": "Add student",
+    "studentFirst": "First student",
+    "studentSecond": "Second student",
+    "customDuration": "Duration (minutes)",
+    "customDurationHint": "Between 5 and 480 minutes",
+    "pricePerStudentRequired": "Price per student (₪) — required"
   },
   "debts": {
     "title": "Debtors",
@@ -1332,6 +1341,10 @@
       "businessProfile": {
         "title": "Business Profile",
         "description": "Logo, legal name, tax ID and currency"
+      },
+      "pricing": {
+        "title": "Lesson Pricing",
+        "description": "Hourly rate, pair and group prices"
       }
     },
     "businessProfile": {
@@ -1934,6 +1947,21 @@
       "statusSent": "Sent",
       "statusFailed": "Failed",
       "entityHeader": "Entity"
+    },
+    "pricing": {
+      "title": "Lesson Pricing",
+      "subtitle": "The defaults every charge is calculated from",
+      "individualTitle": "Individual lesson",
+      "individualRate": "Hourly rate (₪)",
+      "individualRatePlaceholder": "Not set",
+      "individualHint": "The price scales with lesson length. A teacher's own rate overrides this default.",
+      "teacherOverrideCount": "{count, plural, one {# teacher has their own rate} other {# teachers have their own rate}}",
+      "perStudentTitle": "Price per student",
+      "pairPrice": "Pair lesson — price per student (₪)",
+      "groupPrice": "Group lesson — price per student (₪)",
+      "perStudentHint": "Each student is charged this amount. A single lesson can override it.",
+      "customHint": "Custom lessons have no default — the price is set on each lesson.",
+      "saved": "Lesson pricing saved"
     }
   },
   "quota": {
@@ -3935,7 +3963,13 @@
     "invalidAmount": "Invalid amount",
     "missingSumitConfig": "Sumit settings are missing (SUMIT_COMPANY_ID / SUMIT_API_KEY), or set SUMIT_CHECKOUT_MOCK=1 for a test environment",
     "invalidData": "Invalid data",
-    "saveReferralFailed": "Could not save the referral"
+    "saveReferralFailed": "Could not save the referral",
+    "pairNeedsTwoStudents": "A pair lesson needs exactly two students",
+    "pairDistinctStudents": "Pick two different students",
+    "atLeastOneStudent": "Pick at least one student",
+    "duplicateStudents": "The same student was picked more than once",
+    "customPriceRequired": "A custom lesson needs a price per student",
+    "noLessonPrice": "No price is set for this lesson"
   },
   "receipts": {
     "customer": "Customer",

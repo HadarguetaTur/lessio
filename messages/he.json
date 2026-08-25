@@ -973,7 +973,16 @@
     },
     "noStudentsFound": "לא נמצאו תלמידים",
     "noTeachersFound": "לא נמצאו מורים",
-    "statusUpdatedFor": "{lesson} · הסטטוס עודכן ל{status}"
+    "statusUpdatedFor": "{lesson} · הסטטוס עודכן ל{status}",
+    "typePair": "זוגי",
+    "typeCustom": "מותאם אישית",
+    "students": "תלמידים",
+    "addStudent": "הוסף תלמיד",
+    "studentFirst": "תלמיד ראשון",
+    "studentSecond": "תלמיד שני",
+    "customDuration": "משך השיעור (דקות)",
+    "customDurationHint": "בין 5 ל-480 דקות",
+    "pricePerStudentRequired": "מחיר לתלמיד (₪) — חובה"
   },
   "debts": {
     "title": "חייבים",
@@ -1332,6 +1341,10 @@
       "businessProfile": {
         "title": "פרופיל עסקי",
         "description": "לוגו, שם עסק, מספר עוסק ומטבע"
+      },
+      "pricing": {
+        "title": "מחירי שיעורים",
+        "description": "תעריף שעתי, מחיר לשיעור זוגי ולשיעור קבוצתי"
       }
     },
     "businessProfile": {
@@ -1934,6 +1947,21 @@
       "statusSent": "נשלח",
       "statusFailed": "נכשל",
       "entityHeader": "ישות"
+    },
+    "pricing": {
+      "title": "מחירי שיעורים",
+      "subtitle": "ברירות המחדל שלפיהן מחושב כל חיוב",
+      "individualTitle": "שיעור אישי",
+      "individualRate": "תעריף שעתי (₪)",
+      "individualRatePlaceholder": "לא הוגדר",
+      "individualHint": "המחיר מחושב לפי משך השיעור. תעריף אישי של מורה גובר על ברירת המחדל הזו.",
+      "teacherOverrideCount": "{count, plural, one {למורה אחד מוגדר תעריף אישי} other {ל-# מורים מוגדר תעריף אישי}}",
+      "perStudentTitle": "מחיר לתלמיד",
+      "pairPrice": "שיעור זוגי — מחיר לתלמיד (₪)",
+      "groupPrice": "שיעור קבוצתי — מחיר לתלמיד (₪)",
+      "perStudentHint": "כל תלמיד מחויב בסכום הזה. אפשר לעקוף אותו בשיעור בודד.",
+      "customHint": "לשיעור מותאם אישית אין ברירת מחדל — המחיר נקבע בכל שיעור בנפרד.",
+      "saved": "מחירי השיעורים נשמרו"
     }
   },
   "quota": {
@@ -3935,7 +3963,13 @@
     "invalidAmount": "סכום לא חוקי",
     "missingSumitConfig": "חסרות הגדרות Sumit (SUMIT_COMPANY_ID / SUMIT_API_KEY) או הפעל SUMIT_CHECKOUT_MOCK=1 לסביבת טסט",
     "invalidData": "נתונים לא חוקיים",
-    "saveReferralFailed": "שמירת הפניה נכשלה"
+    "saveReferralFailed": "שמירת הפניה נכשלה",
+    "pairNeedsTwoStudents": "שיעור זוגי דורש בדיוק שני תלמידים",
+    "pairDistinctStudents": "יש לבחור שני תלמידים שונים",
+    "atLeastOneStudent": "יש לבחור לפחות תלמיד אחד",
+    "duplicateStudents": "אותו תלמיד נבחר יותר מפעם אחת",
+    "customPriceRequired": "שיעור מותאם אישית דורש מחיר לתלמיד",
+    "noLessonPrice": "לא הוגדר מחיר לשיעור"
   },
   "receipts": {
     "customer": "לקוח",

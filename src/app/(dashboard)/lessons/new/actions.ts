@@ -36,6 +36,47 @@ const GroupLessonSchema = z.object({
   price_per_student: z.coerce.number().positive().optional().nullable(),
 })
 
+const PairLessonSchema = z.object({
+  lesson_type:      z.literal('pair'),
+  teacher_id:       z.string().uuid(),
+  student_ids:      z
+    .array(z.string().uuid())
+    .length(2, 'validation.pairNeedsTwoStudents')
+    .refine((ids) => new Set(ids).size === 2, 'validation.pairDistinctStudents'),
+  date:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  start_time:       z.string().regex(/^\d{2}:\d{2}$/),
+  duration_minutes: z.coerce.number().refine((v) => [30, 45, 60, 90].includes(v)),
+  status:           lessonStatusZ,
+  // Optional: falls back to the org pair price.
+  price_per_student: z.coerce.number().positive().optional().nullable(),
+})
+
+const CustomLessonSchema = z.object({
+  lesson_type:      z.literal('custom'),
+  teacher_id:       z.string().uuid(),
+  student_ids:      z
+    .array(z.string().uuid())
+    .min(1, 'validation.atLeastOneStudent')
+    .refine((ids) => new Set(ids).size === ids.length, 'validation.duplicateStudents'),
+  date:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  start_time:       z.string().regex(/^\d{2}:\d{2}$/),
+  // Free-form duration: the point of a custom lesson. Bounds match the importer.
+  duration_minutes: z.coerce.number().int().min(5).max(480),
+  status:           lessonStatusZ,
+  // Required: a custom lesson has no org default to fall back on.
+  price_per_student: z.coerce.number().positive('validation.customPriceRequired'),
+})
+
+/** Lesson types built from a roster of students rather than a single one. */
+const MULTI_STUDENT_TYPES = ['pair', 'group', 'custom'] as const
+type MultiStudentType = (typeof MULTI_STUDENT_TYPES)[number]
+
+const MULTI_STUDENT_SCHEMAS = {
+  pair: PairLessonSchema,
+  group: GroupLessonSchema,
+  custom: CustomLessonSchema,
+} as const
+
 export type NewLessonState = {
   error: string | null
   success?: boolean
@@ -87,8 +128,14 @@ export async function createLessonAction(
   }
   await requireQuotaCapacity(orgId, 'lessons_monthly')
 
-  const rawType = formData.get('lesson_type') as string | null
-  const lessonType = rawType === 'group' ? 'group' : 'individual'
+  // Explicit whitelist — anything unrecognised is treated as an individual
+  // lesson rather than passed through to the DB.
+  const rawType = String(formData.get('lesson_type') ?? '')
+  const lessonType: 'individual' | MultiStudentType = (
+    MULTI_STUDENT_TYPES as readonly string[]
+  ).includes(rawType)
+    ? (rawType as MultiStudentType)
+    : 'individual'
   const confirmedOutsideAvailability =
     formData.get('confirm_outside_availability') === '1'
   const confirmedCalendarConflict =
@@ -100,7 +147,9 @@ export async function createLessonAction(
     if (role === 'teacher') {
       const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
       if (!teacher) return { error: t('lessons.newErrors.noTeacherProfile') }
-      if (lessonType === 'group') {
+      // Teachers create individual lessons only; multi-student types are an
+      // admin/owner action, whatever the form posts.
+      if (lessonType !== 'individual') {
         return { error: t('lessons.newErrors.groupAdminOnly') }
       }
       const parsed = IndividualLessonSchema.safeParse({
@@ -147,11 +196,13 @@ export async function createLessonAction(
         status,
       })
       lessonId = result.lessonId
-    } else if (lessonType === 'group') {
-      const studentIds = formData.getAll('student_ids').map(String)
+    } else if (lessonType !== 'individual') {
+      // pair / group / custom all take a roster of students and a per-student
+      // price; only their validation rules differ.
+      const studentIds = formData.getAll('student_ids').map(String).filter(Boolean)
       const rawPrice = formData.get('price_per_student')
-      const parsed = GroupLessonSchema.safeParse({
-        lesson_type: 'group',
+      const parsed = MULTI_STUDENT_SCHEMAS[lessonType].safeParse({
+        lesson_type: lessonType,
         teacher_id: formData.get('teacher_id'),
         student_ids: studentIds,
         date: formData.get('date'),
@@ -162,8 +213,8 @@ export async function createLessonAction(
       })
       if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
 
-      const { teacher_id, student_ids, date, start_time, duration_minutes, status, price_per_student } =
-        parsed.data
+      const { teacher_id, student_ids, date, start_time, duration_minutes, status } = parsed.data
+      const price_per_student = parsed.data.price_per_student ?? null
 
       if (!confirmedOutsideAvailability && status === 'scheduled') {
         const avail = await assertWithinTeacherAvailability({
@@ -185,7 +236,7 @@ export async function createLessonAction(
         orgId,
         teacherId: teacher_id,
         studentIds: student_ids,
-        lessonType: 'group',
+        lessonType,
         date,
         startTime: start_time,
         durationMinutes: duration_minutes,

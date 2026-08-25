@@ -3,7 +3,12 @@ import type { CancellationPolicy } from '@/lib/cancellation-policy'
 export interface LessonForCancellation {
   start_at: string // ISO UTC timestamptz
   end_at: string // ISO UTC timestamptz
-  hourly_rate: number | null // from teacher
+  /**
+   * What one student owes for this lesson at full price, from
+   * resolveLessonBaseAmount — hourly rate × duration for individual lessons,
+   * the per-student price for pair/group/custom. Null when it cannot be priced.
+   */
+  baseAmount: number | null
 }
 
 export interface CancellationChargeResult {
@@ -37,10 +42,8 @@ export function calculateCancellationCharge(
   const cancelledAtMs =
     cancelledAt instanceof Date ? cancelledAt.getTime() : new Date(cancelledAt).getTime()
   const startAtMs = new Date(lesson.start_at).getTime()
-  const endAtMs = new Date(lesson.end_at).getTime()
 
   const hoursLeft = (startAtMs - cancelledAtMs) / (1000 * 60 * 60)
-  const durationMinutes = (endAtMs - startAtMs) / (1000 * 60)
 
   const { notice_hours_full, notice_hours_partial, partial_charge_percent } = policy
 
@@ -48,10 +51,9 @@ export function calculateCancellationCharge(
     return { shouldCharge: false, chargeType: null, amount: 0, reasonCode: 'outside_window' }
   }
 
-  const fullLessonAmount =
-    lesson.hourly_rate != null ? round2(lesson.hourly_rate * (durationMinutes / 60)) : 0
+  const fullLessonAmount = lesson.baseAmount ?? 0
 
-  const missingRate = lesson.hourly_rate == null
+  const missingRate = lesson.baseAmount == null
 
   if (hoursLeft < notice_hours_partial) {
     // Full charge

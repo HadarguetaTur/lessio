@@ -48,8 +48,14 @@ export default async function BillingDetailPage(props: {
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
 
   // The DB enums leaked to screen as "individual" / "monthly".
+  const LESSON_TYPE_KEYS: Record<string, string> = {
+    individual: 'typeIndividual',
+    pair: 'typePair',
+    group: 'typeGroup',
+    custom: 'typeCustom',
+  }
   const lessonTypeLabel = (value: string) =>
-    value === 'group' ? tLessons('typeGroup') : tLessons('typeIndividual')
+    tLessons(LESSON_TYPE_KEYS[value] ?? 'typeIndividual')
   const subscriptionTypeLabel = (value: string | null) => {
     if (!value) return '—'
     const known = ['monthly', 'weekly', 'per_lesson']

@@ -10,8 +10,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SearchSelect } from '@/components/ui/search-select'
+import { StudentMultiPicker } from './StudentMultiPicker'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { toLuxonLocale } from '@/lib/i18n/locale'
+
+/** Series repeat a fixed roster; group lessons keep their own group flow. */
+type SeriesLessonType = 'individual' | 'pair' | 'custom'
+
+const CUSTOM_DURATION_MIN = 5
+const CUSTOM_DURATION_MAX = 480
 
 interface Props {
   teachers: { id: string; full_name: string }[]
@@ -20,6 +27,8 @@ interface Props {
   appLocale: AppLocale
   /** Org holidays, so the preview can flag dates the series will skip. */
   holidays: { date: string; name: string }[]
+  /** Org price defaults, shown as the pair price placeholder. */
+  pairPriceDefault?: number
 }
 
 const initialState: CreateSeriesState = { error: null }
@@ -55,13 +64,26 @@ function previewDates(params: {
   return dates
 }
 
-export function NewSeriesForm({ teachers, students, timezone, appLocale, holidays }: Props) {
+export function NewSeriesForm({
+  teachers,
+  students,
+  timezone,
+  appLocale,
+  holidays,
+  pairPriceDefault,
+}: Props) {
   const t = useTranslations('lessons')
   const tCommon = useTranslations('common')
   const [state, formAction, pending] = useActionState(createSeriesAction, initialState)
 
   const [teacherId, setTeacherId] = useState(teachers.length === 1 ? teachers[0].id : '')
+  const [lessonType, setLessonType] = useState<SeriesLessonType>('individual')
   const [studentId, setStudentId] = useState('')
+  const [pairStudentIds, setPairStudentIds] = useState<[string, string]>(['', ''])
+  const [customStudentIds, setCustomStudentIds] = useState<string[]>([])
+
+  const isPair = lessonType === 'pair'
+  const isCustom = lessonType === 'custom'
   const [dayOfWeek, setDayOfWeek] = useState('')
   const [frequency, setFrequency] = useState<'weekly' | 'biweekly'>('weekly')
   const [until, setUntil] = useState('')
@@ -163,21 +185,111 @@ export function NewSeriesForm({ teachers, students, timezone, appLocale, holiday
       )}
 
       <div className="space-y-1.5">
-        <Label htmlFor="student_id">
-          {t('fields.student')} <span className="text-destructive">*</span>
-        </Label>
-        <SearchSelect
-          id="student_id"
-          name="student_id"
-          required
-          value={studentId}
-          onChange={setStudentId}
-          options={students.map((s) => ({ value: s.id, label: s.full_name }))}
-          placeholder={t('selectStudent')}
-          emptyText={t('noStudentsFound')}
-          clearLabel={tCommon('actions.clear')}
-        />
+        <Label htmlFor="lesson_type">{t('lessonType')}</Label>
+        <select
+          id="lesson_type"
+          name="lesson_type"
+          value={lessonType}
+          onChange={(e) => {
+            setLessonType(e.target.value as SeriesLessonType)
+            // Clear the roster picked for the previous type so a stale student
+            // cannot ride along on the submit.
+            setStudentId('')
+            setPairStudentIds(['', ''])
+            setCustomStudentIds([])
+          }}
+          className={selectClass}
+        >
+          <option value="individual">{t('typeIndividual')}</option>
+          <option value="pair">{t('typePair')}</option>
+          <option value="custom">{t('typeCustom')}</option>
+        </select>
       </div>
+
+      {lessonType === 'individual' && (
+        <div className="space-y-1.5">
+          <Label htmlFor="student_id">
+            {t('fields.student')} <span className="text-destructive">*</span>
+          </Label>
+          <SearchSelect
+            id="student_id"
+            name="student_id"
+            required
+            value={studentId}
+            onChange={setStudentId}
+            options={students.map((s) => ({ value: s.id, label: s.full_name }))}
+            placeholder={t('selectStudent')}
+            emptyText={t('noStudentsFound')}
+            clearLabel={tCommon('actions.clear')}
+          />
+        </div>
+      )}
+
+      {isPair && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {([0, 1] as const).map((slot) => (
+            <div key={slot} className="space-y-1.5">
+              <Label htmlFor={`pair_student_${slot}`}>
+                {slot === 0 ? t('studentFirst') : t('studentSecond')}{' '}
+                <span className="text-destructive">*</span>
+              </Label>
+              <SearchSelect
+                id={`pair_student_${slot}`}
+                name="student_ids"
+                required
+                value={pairStudentIds[slot]}
+                onChange={(v) =>
+                  setPairStudentIds((prev) => {
+                    const next: [string, string] = [prev[0], prev[1]]
+                    next[slot] = v
+                    return next
+                  })
+                }
+                options={students
+                  .filter((s) => s.id !== pairStudentIds[slot === 0 ? 1 : 0])
+                  .map((s) => ({ value: s.id, label: s.full_name }))}
+                placeholder={t('selectStudent')}
+                emptyText={t('noStudentsFound')}
+                clearLabel={tCommon('actions.clear')}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isCustom && (
+        <StudentMultiPicker
+          students={students}
+          value={customStudentIds}
+          onChange={setCustomStudentIds}
+        />
+      )}
+
+      {lessonType !== 'individual' && (
+        <div className="space-y-1.5">
+          <Label htmlFor="price_per_student">
+            {isCustom ? t('pricePerStudentRequired') : t('pricePerStudent')}
+            {isCustom && <span className="text-destructive"> *</span>}
+          </Label>
+          <Input
+            id="price_per_student"
+            name="price_per_student"
+            type="number"
+            step="0.01"
+            min="0"
+            required={isCustom}
+            placeholder={
+              isPair && pairPriceDefault != null
+                ? String(pairPriceDefault)
+                : t('pricePerStudentPlaceholder')
+            }
+            dir="ltr"
+          />
+          {!isCustom && (
+            <p className="text-xs text-muted-foreground">{t('pricePerStudentHint')}</p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -210,21 +322,39 @@ export function NewSeriesForm({ teachers, students, timezone, appLocale, holiday
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="duration_minutes">
-            {t('fields.duration')} <span className="text-destructive">*</span>
+            {isCustom ? t('customDuration') : t('fields.duration')}{' '}
+            <span className="text-destructive">*</span>
           </Label>
-          {/* 60 to match the single-lesson form; without a default the browser
-              picked the first option (30) and quietly halved every lesson. */}
-          <select
-            id="duration_minutes"
-            name="duration_minutes"
-            required
-            defaultValue={60}
-            className={selectClass}
-          >
-            {DURATION_OPTIONS.map((n) => (
-              <option key={n} value={n}>{tCommon(`durations.${n}`)}</option>
-            ))}
-          </select>
+          {isCustom ? (
+            <>
+              <Input
+                id="duration_minutes"
+                name="duration_minutes"
+                type="number"
+                required
+                min={CUSTOM_DURATION_MIN}
+                max={CUSTOM_DURATION_MAX}
+                step="1"
+                defaultValue={60}
+                dir="ltr"
+              />
+              <p className="text-xs text-muted-foreground">{t('customDurationHint')}</p>
+            </>
+          ) : (
+            /* 60 to match the single-lesson form; without a default the browser
+               picked the first option (30) and quietly halved every lesson. */
+            <select
+              id="duration_minutes"
+              name="duration_minutes"
+              required
+              defaultValue={60}
+              className={selectClass}
+            >
+              {DURATION_OPTIONS.map((n) => (
+                <option key={n} value={n}>{tCommon(`durations.${n}`)}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="space-y-1.5">

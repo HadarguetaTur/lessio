@@ -5,6 +5,7 @@ import { getTeachers } from '@/lib/teachers'
 import { getStudents } from '@/lib/students'
 import { getGroups } from '@/lib/groups'
 import { getOrgTimezone } from '@/lib/organizations'
+import { getOrgPricing } from '@/lib/organizations/pricing'
 import { LESSON_FORM_MIN_DATE_STR } from '@/lib/lessons/lessonFormDates'
 import { NewLessonForm } from '@/components/dashboard/lessons/NewLessonForm'
 import { createLessonAction } from './actions'
@@ -18,11 +19,12 @@ export default async function NewLessonPage(props: {
   const { orgId, role } = await getSession()
   if (role !== 'owner' && role !== 'admin') redirect('/lessons')
 
-  const [teachers, students, groups, timezone] = await Promise.all([
+  const [teachers, students, groups, timezone, pricing] = await Promise.all([
     getTeachers(orgId),
     getStudents(orgId),
     getGroups(orgId),
     getOrgTimezone(orgId),
+    getOrgPricing(orgId),
   ])
 
   const activeTeachers = teachers
@@ -59,6 +61,10 @@ export default async function NewLessonPage(props: {
         minDateStr={LESSON_FORM_MIN_DATE_STR}
         initialDate={initialDate}
         initialTime={nextHalfHour}
+        pricingDefaults={{
+          pairPricePerStudent: pricing.pairPricePerStudent,
+          groupPricePerStudent: pricing.groupPricePerStudent,
+        }}
       />
     </div>
   )

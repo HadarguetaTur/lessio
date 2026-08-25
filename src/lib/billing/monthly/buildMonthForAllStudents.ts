@@ -10,6 +10,7 @@ import type {
 import { isMissingFieldsError } from './types'
 import { buildStudentMonth } from './buildStudentMonth'
 import { getBillingMonthRange } from './month'
+import { getOrgPricing } from '@/lib/organizations/pricing'
 
 function assertNoQueryError(
   operation: string,
@@ -150,6 +151,9 @@ export async function buildMonthForAllStudents(
 
   // ── Process each student ─────────────────────────────────────────────────
 
+  // Org price defaults are the same for every student — fetch once.
+  const pricing = await getOrgPricing(organizationId)
+
   const result: BuildMonthResult = { success: [], errors: [], skipped: [] }
 
   for (const student of students) {
@@ -160,6 +164,7 @@ export async function buildMonthForAllStudents(
       subscriptions: subsByStudent.get(sid) ?? [],
       existingBilling: billingByStudent.get(sid) ?? null,
       studentCountByLesson,
+      pricing,
     }
 
     try {

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { CalendarPlus } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
-import { NewLessonForm } from '@/components/dashboard/lessons/NewLessonForm'
+import { NewLessonForm, type PricingDefaults } from '@/components/dashboard/lessons/NewLessonForm'
 import { createLessonAction } from '@/app/(dashboard)/lessons/new/actions'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import type { StudentGroup } from '@/lib/groups'
@@ -19,6 +19,7 @@ export interface NewLessonSheetProps {
   groups: StudentGroup[]
   defaultTeacherId?: string
   allowGroupLessons?: boolean
+  pricingDefaults?: PricingDefaults
 }
 
 export function NewLessonSheet({
@@ -31,6 +32,7 @@ export function NewLessonSheet({
   groups,
   defaultTeacherId,
   allowGroupLessons = true,
+  pricingDefaults,
 }: NewLessonSheetProps) {
   const router = useRouter()
   const t = useTranslations('lessons')
@@ -83,6 +85,7 @@ export function NewLessonSheet({
               initialDate={initialDate}
               defaultTeacherId={defaultTeacherId}
               allowGroupLessons={allowGroupLessons}
+              pricingDefaults={pricingDefaults}
               calendarFlow
               variant="sheet"
               onCancel={() => onOpenChange(false)}

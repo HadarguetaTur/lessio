@@ -19,22 +19,24 @@ const POLICY: CancellationPolicy = {
   partial_charge_percent: 50,
 }
 
+// baseAmount is what one student owes at full price — 200/hr scaled by duration,
+// as resolveLessonBaseAmount would return for an individual lesson.
 const LESSON_60MIN: LessonForCancellation = {
   start_at: '2026-04-01T10:00:00Z',
   end_at: '2026-04-01T11:00:00Z',
-  hourly_rate: 200,
+  baseAmount: 200,
 }
 
 const LESSON_45MIN: LessonForCancellation = {
   start_at: '2026-04-01T10:00:00Z',
   end_at: '2026-04-01T10:45:00Z',
-  hourly_rate: 200,
+  baseAmount: 150,
 }
 
 const LESSON_90MIN: LessonForCancellation = {
   start_at: '2026-04-01T10:00:00Z',
   end_at: '2026-04-01T11:30:00Z',
-  hourly_rate: 200,
+  baseAmount: 300,
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +148,7 @@ describe('calculateCancellationCharge', () => {
       const lesson: LessonForCancellation = {
         start_at: '2026-04-02T10:00:00Z',
         end_at: '2026-04-02T11:00:00Z',
-        hourly_rate: 200,
+        baseAmount: 200,
       }
       const cancelledAt = new Date('2026-04-01T21:30:00Z')
       const result = calculateCancellationCharge(lesson, cancelledAt, POLICY)
@@ -172,7 +174,7 @@ describe('calculateCancellationCharge', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // hourly_rate — amount calculation for different durations
+  // Amount calculation across lesson durations
   // ---------------------------------------------------------------------------
 
   describe('amount calculation by duration', () => {
@@ -208,14 +210,14 @@ describe('calculateCancellationCharge', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // Missing hourly_rate
+  // Lesson that could not be priced (no teacher rate, no org default, no price)
   // ---------------------------------------------------------------------------
 
-  describe('missing hourly_rate', () => {
+  describe('unpriceable lesson', () => {
     const lessonNoRate: LessonForCancellation = {
       start_at: '2026-04-01T10:00:00Z',
       end_at: '2026-04-01T11:00:00Z',
-      hourly_rate: null,
+      baseAmount: null,
     }
 
     it('full charge scenario with null rate → shouldCharge=true, amount=0, reasonCode=missing_rate', () => {

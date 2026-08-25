@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
-import { MessageCircle, MessageSquare, CreditCard, Settings, CalendarOff, Bell, FileText, Bot, Languages, Shield, Mail, CalendarDays } from 'lucide-react'
+import { MessageCircle, MessageSquare, CreditCard, Settings, CalendarOff, Bell, FileText, Bot, Languages, Shield, Mail, CalendarDays, Banknote, Building2 } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { PageHeader } from '@/components/ui/page-header'
 import {
@@ -37,6 +37,20 @@ export default async function SettingsPage() {
       icon: MessageSquare,
       label: t('cards.messages.title'),
       desc: t('cards.messages.description'),
+      ownerOnly: true,
+    },
+    {
+      href: '/settings/pricing',
+      icon: Banknote,
+      label: t('cards.pricing.title'),
+      desc: t('cards.pricing.description'),
+      ownerOnly: true,
+    },
+    {
+      href: '/settings/business-profile',
+      icon: Building2,
+      label: t('cards.businessProfile.title'),
+      desc: t('cards.businessProfile.description'),
       ownerOnly: true,
     },
     {

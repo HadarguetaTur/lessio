@@ -5,6 +5,7 @@ import { DateTime } from 'luxon'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
+import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createLessonSeries } from '@/lib/lessons/createSeries'
 import {
   extendLessonSeries,
@@ -14,15 +15,45 @@ import {
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 
-const SeriesFormSchema = z.object({
+const seriesBase = {
   teacher_id: z.string().uuid(),
-  student_id: z.string().uuid(),
   day_of_week: z.coerce.number().int().min(0).max(6),
   start_time: z.string().regex(/^\d{2}:\d{2}$/),
-  duration_minutes: z.coerce.number().int().positive(),
   frequency: z.enum(['weekly', 'biweekly']),
   until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-})
+}
+
+const SeriesFormSchema = z.discriminatedUnion('lesson_type', [
+  z.object({
+    ...seriesBase,
+    lesson_type: z.literal('individual'),
+    student_ids: z.array(z.string().uuid()).length(1, 'validation.atLeastOneStudent'),
+    duration_minutes: z.coerce.number().int().positive(),
+    price_per_student: z.null(),
+  }),
+  z.object({
+    ...seriesBase,
+    lesson_type: z.literal('pair'),
+    student_ids: z
+      .array(z.string().uuid())
+      .length(2, 'validation.pairNeedsTwoStudents')
+      .refine((ids) => new Set(ids).size === 2, 'validation.pairDistinctStudents'),
+    duration_minutes: z.coerce.number().int().positive(),
+    price_per_student: z.coerce.number().positive().optional().nullable(),
+  }),
+  z.object({
+    ...seriesBase,
+    lesson_type: z.literal('custom'),
+    student_ids: z
+      .array(z.string().uuid())
+      .min(1, 'validation.atLeastOneStudent')
+      .refine((ids) => new Set(ids).size === ids.length, 'validation.duplicateStudents'),
+    duration_minutes: z.coerce.number().int().min(5).max(480),
+    price_per_student: z.coerce.number().positive('validation.customPriceRequired'),
+  }),
+])
+
+const SERIES_LESSON_TYPES = ['individual', 'pair', 'custom'] as const
 
 export type CreateSeriesState = {
   error: string | null
@@ -47,23 +78,43 @@ export async function createSeriesAction(
     return { error: await commonError('noPermission') }
   }
 
+  await requireQuotaCapacity(orgId, 'lessons_monthly')
+
+  const rawType = String(formData.get('lesson_type') ?? '')
+  const lessonType = (SERIES_LESSON_TYPES as readonly string[]).includes(rawType)
+    ? (rawType as (typeof SERIES_LESSON_TYPES)[number])
+    : 'individual'
+
+  // Individual series still post a single `student_id`; the roster types post
+  // repeated `student_ids`.
+  const studentIds =
+    lessonType === 'individual'
+      ? [String(formData.get('student_id') ?? '')].filter(Boolean)
+      : formData.getAll('student_ids').map(String).filter(Boolean)
+
+  const rawPrice = formData.get('price_per_student')
+
   const parsed = SeriesFormSchema.safeParse({
+    lesson_type: lessonType,
     teacher_id: formData.get('teacher_id'),
-    student_id: formData.get('student_id'),
+    student_ids: studentIds,
     day_of_week: formData.get('day_of_week'),
     start_time: formData.get('start_time'),
     duration_minutes: formData.get('duration_minutes'),
     frequency: formData.get('frequency'),
     until: formData.get('until'),
+    price_per_student:
+      lessonType === 'individual' || !rawPrice || !String(rawPrice).trim() ? null : rawPrice,
   })
 
   if (!parsed.success) {
     const firstError = parsed.error.issues[0]
-    return { error: firstError?.message ?? await commonError('invalidData') }
+    return { error: await zodError(firstError) }
   }
 
-  const { teacher_id, student_id, day_of_week, start_time, duration_minutes, frequency, until } =
+  const { teacher_id, student_ids, day_of_week, start_time, duration_minutes, frequency, until } =
     parsed.data
+  const price_per_student = parsed.data.price_per_student ?? null
 
   // "In the future" means the org's calendar day, not UTC's: createLessonSeries
   // walks dates in the org timezone, so comparing against a UTC date rejects a
@@ -78,15 +129,17 @@ export async function createSeriesAction(
     const result = await createLessonSeries({
       orgId,
       teacherId: teacher_id,
-      studentId: student_id,
+      studentIds: student_ids,
       rule: { frequency, day_of_week, start_time, duration_minutes, until },
       createdByProfileId: userId,
+      lessonType,
+      pricePerStudent: price_per_student,
     })
 
     revalidatePath('/lessons')
 
     return { error: null, result }
-  } catch (e) {
+  } catch {
     return { error: t('lessons.seriesErrors.createSeriesFailed') }
   }
 }

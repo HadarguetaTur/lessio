@@ -10,6 +10,9 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { createLessonCharge, createCancellationCharge } from '@/lib/billing/createCharge'
 import { getCancellationPolicy } from '@/lib/cancellation-policy'
 import { calculateCancellationCharge } from '@/lib/billing/calculateCancellationCharge'
+import { getOrgPricing } from '@/lib/organizations/pricing'
+import { resolveLessonBaseAmount, isMissingPrice } from '@/lib/billing/lessonPricing'
+import type { LessonType } from '@/lib/lessons/types'
 import { resolveBillingParent, MissingPrimaryParentError } from '@/lib/billing/resolveBillingParent'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { autoSendPaymentRequest } from '@/lib/payment-request/autoSend'
@@ -107,7 +110,7 @@ export async function cancelLesson(
   // Fetch lesson with teacher hourly_rate; student resolved via lesson_students
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
-    .select('id, start_at, end_at, status, lesson_students(student_id), teachers(id, hourly_rate)')
+    .select('id, start_at, end_at, status, lesson_type, price_per_student, lesson_students(student_id), teachers(id, hourly_rate)')
     .eq('id', lessonId)
     .eq('organization_id', orgId)
     .single()
@@ -129,8 +132,25 @@ export async function cancelLesson(
     const policy = await getCancellationPolicy(orgId)
     const teacher = (lesson.teachers as unknown as { id: string; hourly_rate: number | null })
 
+    const pricing = await getOrgPricing(orgId)
+    const baseAmount = resolveLessonBaseAmount(
+      {
+        lessonType: ((lesson.lesson_type as LessonType) ?? 'individual'),
+        pricePerStudent: (lesson.price_per_student as number | null) ?? null,
+        durationMinutes:
+          (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) /
+          (1000 * 60),
+        teacherHourlyRate: teacher?.hourly_rate ?? null,
+      },
+      pricing
+    )
+
     const chargeResult = calculateCancellationCharge(
-      { start_at: lesson.start_at, end_at: lesson.end_at, hourly_rate: teacher.hourly_rate },
+      {
+        start_at: lesson.start_at,
+        end_at: lesson.end_at,
+        baseAmount: isMissingPrice(baseAmount) ? null : baseAmount,
+      },
       new Date(),
       policy
     )

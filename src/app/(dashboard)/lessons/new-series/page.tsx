@@ -6,6 +6,7 @@ import { getStudents } from '@/lib/students'
 import { getLessonSeriesList } from '@/lib/lessons/getSeries'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getOrgHolidays } from '@/lib/organizations/holidays'
+import { getOrgPricing } from '@/lib/organizations/pricing'
 import { NewSeriesForm } from '@/components/dashboard/lessons/NewSeriesForm'
 import { SeriesRowActions } from '@/components/dashboard/lessons/SeriesRowActions'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -22,12 +23,13 @@ export default async function NewSeriesPage() {
     redirect('/lessons')
   }
 
-  const [teachers, students, series, timezone, holidays] = await Promise.all([
+  const [teachers, students, series, timezone, holidays, pricing] = await Promise.all([
     getTeachers(orgId),
     getStudents(orgId),
     getLessonSeriesList(orgId),
     getOrgTimezone(orgId),
     getOrgHolidays(orgId),
+    getOrgPricing(orgId),
   ])
 
   const activeTeachers = teachers
@@ -57,6 +59,7 @@ export default async function NewSeriesPage() {
           timezone={timezone}
           appLocale={locale}
           holidays={holidays.map((h) => ({ date: h.date, name: h.name }))}
+          pairPriceDefault={pricing.pairPricePerStudent}
         />
       </div>
 

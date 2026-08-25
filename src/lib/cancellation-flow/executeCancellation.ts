@@ -12,6 +12,9 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { calculateCancellationCharge } from '@/lib/billing/calculateCancellationCharge'
 import { createCancellationCharge } from '@/lib/billing/createCharge'
 import type { CancellationChargeResult } from '@/lib/billing/calculateCancellationCharge'
+import { getOrgPricing } from '@/lib/organizations/pricing'
+import { resolveLessonBaseAmount, isMissingPrice } from '@/lib/billing/lessonPricing'
+import type { LessonType } from '@/lib/lessons/types'
 
 export type CancellationError = 'already_cancelled' | 'not_eligible' | 'not_found'
 
@@ -46,7 +49,7 @@ export async function executeCancellation(
   const { data: lesson, error: lessonError } = await db
     .from('lessons')
     .select(
-      'id, start_at, end_at, status, lesson_students(student_id, students(full_name)), teachers(id, hourly_rate, profiles(full_name))'
+      'id, start_at, end_at, status, lesson_type, price_per_student, lesson_students(student_id, students(full_name)), teachers(id, hourly_rate, profiles(full_name))'
     )
     .eq('id', lessonId)
     .eq('organization_id', orgId)
@@ -106,8 +109,25 @@ export async function executeCancellation(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const teacher = (lesson.teachers as any) as { id: string; hourly_rate: number | null; profiles: { full_name: string } }
   const studentName = lessonStudents[0]?.students.full_name ?? '—'
+
+  const pricing = await getOrgPricing(orgId)
+  const baseAmount = resolveLessonBaseAmount(
+    {
+      lessonType: ((lesson.lesson_type as LessonType) ?? 'individual'),
+      pricePerStudent: (lesson.price_per_student as number | null) ?? null,
+      durationMinutes:
+        (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / (1000 * 60),
+      teacherHourlyRate: teacher?.hourly_rate ?? null,
+    },
+    pricing
+  )
+
   const chargeResult = calculateCancellationCharge(
-    { start_at: lesson.start_at, end_at: lesson.end_at, hourly_rate: teacher.hourly_rate },
+    {
+      start_at: lesson.start_at,
+      end_at: lesson.end_at,
+      baseAmount: isMissingPrice(baseAmount) ? null : baseAmount,
+    },
     now,
     policy ?? null
   )

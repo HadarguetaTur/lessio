@@ -316,7 +316,19 @@
       "allClear": "הכל מטופל — אין מה שדורש תשומת לב",
       "unloggedLessons": "שיעורים שעדיין לא עודכנו ({count})",
       "pendingBilling": "חיוב חודשי ממתין לאישור ({count})",
-      "overdueHomework": "שיעורי בית באיחור ({count})"
+      "overdueHomework": "שיעורי בית באיחור ({count})",
+      "cards": {
+        "unloggedLessons": "שיעורים שעדיין לא עודכנו",
+        "billing": "חיובים",
+        "overdueHomework": "שיעורי בית באיחור",
+        "newLeads": "לידים חדשים",
+        "atRisk": "תלמידים בסיכון"
+      },
+      "pendingApproval": "ממתין לאישור",
+      "debtorsLabel": "חייבים",
+      "viewAll": "הצג הכל",
+      "sectionClear": "אין פריטים פתוחים",
+      "openItems": "{count} פריטים פתוחים"
     },
     "business": {
       "title": "החודש",

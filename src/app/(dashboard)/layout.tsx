@@ -77,7 +77,7 @@ export default async function DashboardLayout({
         />
         <div
           dir={dir}
-          className="mx-auto flex w-full max-w-screen-xl flex-1 min-h-0 flex-col overflow-y-auto px-4 py-4 max-lg:scroll-pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] max-lg:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 sm:px-6 sm:py-5 lg:px-8 lg:py-6"
+          className="mx-auto flex w-full max-w-[1440px] flex-1 min-h-0 flex-col overflow-y-auto px-4 py-4 max-lg:scroll-pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] max-lg:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 sm:px-6 sm:py-5 lg:px-8 lg:py-6"
         >
               <SaasOwnerBanners orgId={supportSession.targetOrgId} />
               {children}
@@ -202,7 +202,7 @@ export default async function DashboardLayout({
         />
         <div
           dir={dir}
-          className="mx-auto flex w-full max-w-screen-xl flex-1 min-h-0 flex-col overflow-y-auto px-4 py-4 max-lg:scroll-pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] max-lg:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 sm:px-6 sm:py-5 lg:px-8 lg:py-6"
+          className="mx-auto flex w-full max-w-[1440px] flex-1 min-h-0 flex-col overflow-y-auto px-4 py-4 max-lg:scroll-pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] max-lg:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 sm:px-6 sm:py-5 lg:px-8 lg:py-6"
         >
           {showSaasBanners ? <SaasOwnerBanners orgId={profile!.organization_id as string} /> : null}
           {children}

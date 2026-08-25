@@ -27,6 +27,9 @@ interface KpiCardProps {
   subLabel?: string
   /** Turns the whole card into a link to the screen behind the number. */
   href?: string
+  /** `lg` is for the dashboard's two primary money cards. */
+  size?: 'default' | 'lg'
+  className?: string
 }
 
 export function KpiCard({
@@ -37,6 +40,8 @@ export function KpiCard({
   trend,
   subLabel,
   href,
+  size = 'default',
+  className,
 }: KpiCardProps) {
   const styles = VARIANT_STYLES[variant]
 
@@ -48,21 +53,37 @@ export function KpiCard({
       {...(wrapperProps as { href: string })}
       className={cn(
         'bg-card rounded-xl border border-border shadow-sm px-5 py-4 flex flex-col gap-3 transition-shadow duration-200 hover:shadow-md',
+        size === 'lg' && 'h-full px-5 py-5 sm:px-6',
         href && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        styles.card
+        styles.card,
+        className
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-medium text-muted-foreground leading-tight">{label}</p>
+        <p
+          className={cn(
+            'text-xs font-medium text-muted-foreground leading-tight',
+            size === 'lg' && 'text-sm'
+          )}
+        >
+          {label}
+        </p>
         {Icon && (
-          <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-150 hover:scale-110', styles.icon)}>
-            <Icon size={16} />
+          <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-150 hover:scale-110', size === 'lg' && 'w-9 h-9', styles.icon)}>
+            <Icon size={size === 'lg' ? 18 : 16} />
           </div>
         )}
       </div>
 
-      <div>
-        <p className="text-2xl font-bold leading-none text-foreground">{value}</p>
+      <div className={cn(size === 'lg' && 'mt-auto')}>
+        <p
+          className={cn(
+            'text-2xl font-bold leading-none text-foreground',
+            size === 'lg' && 'text-3xl tracking-tight'
+          )}
+        >
+          {value}
+        </p>
         {subLabel && (
           <p className="text-xs text-muted-foreground mt-1">{subLabel}</p>
         )}

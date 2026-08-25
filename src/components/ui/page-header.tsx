@@ -7,14 +7,17 @@ interface PageHeaderProps {
   actions?: React.ReactNode
   /** Center title and actions on small screens (stacked layout). */
   mobileCentered?: boolean
+  /** Escape hatch for per-page spacing (the dashboard tightens the bottom gap). */
+  className?: string
 }
 
-export function PageHeader({ title, subtitle, actions, mobileCentered }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, actions, mobileCentered, className }: PageHeaderProps) {
   return (
     <div
       className={cn(
         'mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-start sm:justify-between',
         mobileCentered && 'items-center text-center sm:items-start sm:text-start',
+        className,
       )}
     >
       <div

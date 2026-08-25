@@ -21,7 +21,6 @@ import { ForecastCard } from '@/components/dashboard/ForecastCard'
 import { MiniRevenueChart } from '@/components/dashboard/MiniRevenueChart'
 import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
@@ -66,9 +65,13 @@ export default async function DashboardPage() {
   }))
 
   return (
-    <div className="flex flex-col">
+    // Command-centre order: today → what needs a decision → how the business is
+    // doing. Every band is a direct child of this column, so they all align to
+    // the same container edges. Gaps are the 8px scale (gap-6 = 24px).
+    <div className="flex w-full flex-col gap-6">
       <LiveRefresh tables={['lessons', 'charges', 'leads']} />
       <PageHeader
+        className="mb-0 gap-3 sm:mb-0"
         title={t('title')}
         subtitle={todayLabel}
         actions={
@@ -81,67 +84,67 @@ export default async function DashboardPage() {
         }
       />
 
-      {/* Today band: lessons (2/3) + needs-attention (1/3) */}
-      <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <TodayLessonsList lessons={lessons} timezone={timezone} appLocale={appLocale} />
-        </div>
-        <AttentionPanel data={attention} timezone={timezone} appLocale={appLocale} />
-      </div>
+      {/* 1 — Today, full width. */}
+      <TodayLessonsList lessons={lessons} timezone={timezone} appLocale={appLocale} />
 
-      {/* Business strip — two numbers a tutor acts on: what came in, what is
-          still owed. Lesson volume rides along in the heading rather than
-          competing with money for a card. */}
-      <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <h2 className="text-sm font-semibold text-foreground">{t('business.title')}</h2>
-        <Link
-          href="/reports/lessons"
-          className="text-xs text-muted-foreground transition-colors hover:text-primary"
-        >
-          {t('business.subtitle', {
-            lessons: summary.lessonsThisMonth,
-            rate: summary.cancellation.rate,
-          })}
-        </Link>
-      </div>
-      <section className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <KpiCard
-          label={t('kpi.monthlyRevenue')}
-          value={formatCurrency(summary.monthlyRevenue, locale)}
-          subLabel={t('kpi.monthToDate')}
-          icon={TrendingUp}
-          variant="revenue"
-          trend={summary.deltas.revenue}
-          href="/reports/revenue"
-        />
-        <KpiCard
-          label={t('kpi.pendingDebt')}
-          value={formatCurrency(summary.pendingDebt, locale)}
-          subLabel={
-            attention.debtors.count > 0
-              ? t('kpi.debtorsSub', { count: attention.debtors.count })
-              : t('kpi.noDebt')
-          }
-          icon={AlertCircle}
-          variant={summary.pendingDebt > 0 ? 'debt' : 'default'}
-          href="/billing/debts"
-        />
+      {/* 2 — Needs attention, as a row of equal-height cards. */}
+      <AttentionPanel data={attention} timezone={timezone} appLocale={appLocale} />
+
+      {/* 3 — Business performance. Two numbers a tutor acts on: what came in,
+          what is still owed. Lesson volume rides along in the heading rather
+          than competing with money for a card. */}
+      <section aria-label={t('business.title')}>
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h2 className="text-base font-semibold text-foreground">{t('business.title')}</h2>
+          <Link
+            href="/reports/lessons"
+            className="text-xs text-muted-foreground transition-colors hover:text-primary"
+          >
+            {t('business.subtitle', {
+              lessons: summary.lessonsThisMonth,
+              rate: summary.cancellation.rate,
+            })}
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
+          <KpiCard
+            label={t('kpi.monthlyRevenue')}
+            value={formatCurrency(summary.monthlyRevenue, locale)}
+            subLabel={t('kpi.monthToDate')}
+            icon={TrendingUp}
+            variant="revenue"
+            size="lg"
+            trend={summary.deltas.revenue}
+            href="/reports/revenue"
+          />
+          <KpiCard
+            label={t('kpi.pendingDebt')}
+            value={formatCurrency(summary.pendingDebt, locale)}
+            subLabel={
+              attention.debtors.count > 0
+                ? t('kpi.debtorsSub', { count: attention.debtors.count })
+                : t('kpi.noDebt')
+            }
+            icon={AlertCircle}
+            variant={summary.pendingDebt > 0 ? 'debt' : 'default'}
+            size="lg"
+            href="/billing/debts"
+          />
+        </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              <Link href="/reports/revenue" className="transition-colors hover:text-primary">
-                {t('revenueTrend.title')}
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MiniRevenueChart data={trendData} locale={locale} />
-          </CardContent>
-        </Card>
+      {/* 4 — Forecast beside the 12-month trend. */}
+      <section className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
         <ForecastCard forecast={forecast} locale={locale} />
+        <div className="flex h-full min-w-0 flex-col rounded-xl border border-border bg-card px-4 pt-4 pb-4 shadow-sm sm:px-5">
+          <h3 className="mb-3 text-sm font-semibold text-foreground">
+            <Link href="/reports/revenue" className="transition-colors hover:text-primary">
+              {t('revenueTrend.title')}
+            </Link>
+          </h3>
+          <MiniRevenueChart data={trendData} locale={locale} />
+        </div>
       </section>
     </div>
   )

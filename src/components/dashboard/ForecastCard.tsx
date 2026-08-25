@@ -1,7 +1,6 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import type { MonthForecast } from '@/lib/reports/forecast'
 
@@ -17,13 +16,11 @@ export function ForecastCard({ forecast, locale }: ForecastCardProps) {
     : 0
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">
-          {t('forecast.title')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    // Same shell as every other dashboard card: one radius, one border, one shadow.
+    <section className="flex h-full flex-col rounded-xl border border-border bg-card px-4 pt-4 pb-4 shadow-sm sm:px-5">
+      <h3 className="mb-3 text-sm font-semibold text-foreground">{t('forecast.title')}</h3>
+
+      <div className="flex flex-1 flex-col gap-3">
         {/* Actual */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">{t('forecast.actual')}</span>
@@ -41,15 +38,15 @@ export function ForecastCard({ forecast, locale }: ForecastCardProps) {
         </div>
 
         {/* Total */}
-        <div className="flex items-center justify-between pt-1 border-t border-border">
-          <span className="font-semibold">{t('forecast.total')}</span>
-          <span className="text-lg font-bold">
+        <div className="flex items-center justify-between border-t border-border pt-3">
+          <span className="text-sm font-semibold">{t('forecast.total')}</span>
+          <span className="text-xl font-bold tracking-tight">
             {formatCurrency(forecast.total, locale)}
           </span>
         </div>
 
         {/* Progress bar */}
-        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-emerald-500 transition-all duration-300"
             style={{ width: `${progressPct}%` }}
@@ -64,7 +61,7 @@ export function ForecastCard({ forecast, locale }: ForecastCardProps) {
             </span>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }

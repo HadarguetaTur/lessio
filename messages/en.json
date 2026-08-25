@@ -316,7 +316,19 @@
       "allClear": "All clear — nothing needs attention",
       "unloggedLessons": "Lessons not logged yet ({count})",
       "pendingBilling": "Billing awaiting approval ({count})",
-      "overdueHomework": "Overdue homework ({count})"
+      "overdueHomework": "Overdue homework ({count})",
+      "cards": {
+        "unloggedLessons": "Lessons not logged",
+        "billing": "Billing",
+        "overdueHomework": "Overdue homework",
+        "newLeads": "New leads",
+        "atRisk": "At-risk students"
+      },
+      "pendingApproval": "Awaiting approval",
+      "debtorsLabel": "Debtors",
+      "viewAll": "View all",
+      "sectionClear": "Nothing open",
+      "openItems": "{count} open items"
     },
     "business": {
       "title": "This month",

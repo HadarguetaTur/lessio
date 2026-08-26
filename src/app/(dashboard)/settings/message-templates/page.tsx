@@ -20,6 +20,7 @@ import {
   type TemplateStatusRow,
 } from '@/lib/whatsapp/templateStatus'
 import { resolveTemplateApproval } from '@/lib/whatsapp/templateApprovalView'
+import { TestPhoneProvider, TestPhoneInput } from '@/components/dashboard/settings/TestPhone'
 import { decryptToken } from '@/lib/crypto'
 
 /**
@@ -185,6 +186,11 @@ export default async function MessageTemplatesPage({
         ))}
       </div>
 
+      {/* The context provider renders no DOM node, so the sections below stay
+          direct children of the space-y-6 column. */}
+      <TestPhoneProvider>
+      <TestPhoneInput />
+
       <section className="space-y-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -203,6 +209,7 @@ export default async function MessageTemplatesPage({
         </div>
         {inWindow.map(renderCard)}
       </section>
+      </TestPhoneProvider>
     </div>
   )
 }

@@ -24,9 +24,12 @@ import { ChevronDown } from 'lucide-react'
 import {
   saveTemplateAction,
   resetTemplateAction,
+  sendTestTemplateAction,
   submitTemplateForApprovalAction,
   type ActionState,
+  type SendTestResult,
 } from '@/app/(dashboard)/settings/message-templates/actions'
+import { useTestPhone } from '@/components/dashboard/settings/TestPhone'
 import { normalizeTemplateBody, substituteVars } from '@/lib/whatsapp/templates'
 import type { MessageTemplateType } from '@/lib/whatsapp/templates'
 import type { AppLocale } from '@/lib/i18n/locale'
@@ -300,6 +303,8 @@ export function MessageTemplateCard({
         )}
       </form>
 
+      <SendTestRow type={type} locale={locale} />
+
       {/* Live preview */}
       {showPreview && (
         <div className="border border-gray-200 rounded-md bg-gray-50 p-3">
@@ -402,5 +407,45 @@ export function MessageTemplateCard({
       )}
       </div>
     </details>
+  )
+}
+
+const initialSendTestState: SendTestResult = { error: null }
+
+/**
+ * "Send this one to my own number."
+ *
+ * The number itself lives once at the top of the page (TestPhoneProvider), so
+ * this row is just the button plus whatever the action said.
+ */
+function SendTestRow({ type, locale }: { type: MessageTemplateType; locale: AppLocale }) {
+  const t = useTranslations('settings.messageTemplates.test')
+  const { phone } = useTestPhone()
+  const [state, formAction, isPending] = useActionState(
+    sendTestTemplateAction,
+    initialSendTestState
+  )
+  const trimmed = phone.trim()
+
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="templateType" value={type} />
+      <input type="hidden" name="locale" value={locale} />
+      <input type="hidden" name="phone" value={trimmed} />
+      <button
+        type="submit"
+        disabled={isPending || trimmed.length === 0}
+        className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+      >
+        {isPending ? t('sending') : t('send')}
+      </button>
+      {trimmed.length === 0 && (
+        <span className="text-xs text-muted-foreground">{t('missingPhone')}</span>
+      )}
+      {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+      {state.success && !state.error && (
+        <span className="text-xs text-green-700">{t('sent')}</span>
+      )}
+    </form>
   )
 }

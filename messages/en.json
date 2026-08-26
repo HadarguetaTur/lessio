@@ -1555,6 +1555,18 @@
         "approved": "Approved by WhatsApp — can be sent even when the parent hasn't messaged you in the last 24 hours.",
         "pending": "Waiting for WhatsApp approval — until then this message only sends within 24 hours of the parent's last message.",
         "rejected": "Rejected by WhatsApp — contact support."
+      },
+      "test": {
+        "phoneLabel": "Test number",
+        "phoneHint": "International format, e.g. +972501234567. The message is really sent — to this number only.",
+        "send": "Send test",
+        "sending": "Sending…",
+        "sent": "Sent.",
+        "connectFirst": "Connect a WhatsApp number first.",
+        "rateLimited": "Too many test messages in the last hour. Try again later.",
+        "sendFailed": "Sending failed. Check the number and that the WhatsApp connection is live.",
+        "unknownType": "Unknown template type.",
+        "missingPhone": "Enter a test number at the top of the page."
       }
     },
     "aiAssistant": {
@@ -3996,7 +4008,8 @@
     "atLeastOneStudent": "Pick at least one student",
     "duplicateStudents": "The same student was picked more than once",
     "customPriceRequired": "A custom lesson needs a price per student",
-    "noLessonPrice": "No price is set for this lesson"
+    "noLessonPrice": "No price is set for this lesson",
+    "invalidPhone": "The phone number must be in international format, e.g. +972501234567"
   },
   "receipts": {
     "customer": "Customer",

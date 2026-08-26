@@ -12,7 +12,8 @@ import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
-import { DEFAULT_TEMPLATES, normalizeTemplateBody, type MessageTemplateType } from '@/lib/whatsapp/templates'
+import { DEFAULT_TEMPLATES, TEMPLATE_PREVIEW_VARS, normalizeTemplateBody, type MessageTemplateType } from '@/lib/whatsapp/templates'
+import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 import {
@@ -315,5 +316,130 @@ export async function refreshTemplateStatusesAction(): Promise<SubmitTemplateRes
   }
 
   revalidatePath('/settings/message-templates')
+  return { error: null, success: true }
+}
+
+// ── sendTestTemplateAction ────────────────────────────────────────────────────
+
+export type SendTestResult = {
+  error: string | null
+  success?: boolean
+  /** True when the send was skipped because the number is not connected. */
+  notConnected?: boolean
+}
+
+const SendTestSchema = z.object({
+  templateType: z.string().min(1),
+  locale: z.enum(['he', 'en']),
+  // International format only — Meta rejects anything else, and a local-format
+  // number silently reaches nobody.
+  phone: z.string().regex(/^\+\d{9,15}$/, 'validation.invalidPhone'),
+})
+
+/**
+ * Per-org throttle, in memory.
+ *
+ * Deliberately not persisted: this exists to stop a stuck finger sending twenty
+ * WhatsApp messages, not as a security control. A deploy resets it, which is
+ * fine — the blast radius is the owner's own phone.
+ */
+const TEST_SEND_LIMIT = 5
+const TEST_SEND_WINDOW_MS = 60 * 60 * 1000
+const testSendLog = new Map<string, number[]>()
+
+function withinTestSendLimit(orgId: string): boolean {
+  const now = Date.now()
+  const recent = (testSendLog.get(orgId) ?? []).filter((at) => now - at < TEST_SEND_WINDOW_MS)
+  if (recent.length >= TEST_SEND_LIMIT) {
+    testSendLog.set(orgId, recent)
+    return false
+  }
+  recent.push(now)
+  testSendLog.set(orgId, recent)
+  return true
+}
+
+/**
+ * Sends one template to a number the owner chooses, rendered with the same
+ * sample values the Preview uses.
+ *
+ * Goes through sendSmartMessage so it behaves exactly like a real send: inside
+ * the 24h window it is the editable text, outside it the approved template.
+ * That is the point — a "test" that took a different path would not tell the
+ * owner whether her parents will actually receive anything.
+ */
+export async function sendTestTemplateAction(
+  _prev: SendTestResult,
+  formData: FormData
+): Promise<SendTestResult> {
+  const t = await getTranslations()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
+
+  if (role !== 'owner') {
+    return { error: await commonError('noPermission') }
+  }
+
+  await requireFeature(orgId, 'whatsapp_automation')
+
+  const parsed = SendTestSchema.safeParse({
+    templateType: formData.get('templateType'),
+    locale: formData.get('locale'),
+    phone: String(formData.get('phone') ?? '').replace(/[\s-]/g, ''),
+  })
+  if (!parsed.success) {
+    return { error: await zodError(parsed.error.issues[0]) }
+  }
+
+  const templateType = parsed.data.templateType as MessageTemplateType
+  const previewVars = TEMPLATE_PREVIEW_VARS[templateType]
+  if (!previewVars) {
+    return { error: t('settings.messageTemplates.test.unknownType') }
+  }
+
+  const db = createServiceRoleClient()
+  const { data: org } = await db
+    .from('organizations')
+    .select('whatsapp_phone_number_id, whatsapp_access_token')
+    .eq('id', orgId)
+    .maybeSingle()
+
+  if (!org?.whatsapp_phone_number_id || !org?.whatsapp_access_token) {
+    return { error: t('settings.messageTemplates.test.connectFirst'), notConnected: true }
+  }
+
+  if (!withinTestSendLimit(orgId)) {
+    return { error: t('settings.messageTemplates.test.rateLimited') }
+  }
+
+  let accessToken: string
+  try {
+    accessToken = decryptToken(org.whatsapp_access_token)
+  } catch (err) {
+    console.error('[message-templates] Token decryption failed', { orgId, err })
+    return { error: t('settings.messageTemplates.test.sendFailed') }
+  }
+
+  try {
+    const result = await sendSmartMessage({
+      orgId,
+      phone: parsed.data.phone,
+      accessToken,
+      phoneNumberId: org.whatsapp_phone_number_id,
+      templateType,
+      vars: previewVars,
+      locale: parsed.data.locale as AppLocale,
+    })
+    if (!result.sent) {
+      console.warn('[message-templates] Test send skipped', { orgId, reason: result.reason })
+      return { error: t('settings.messageTemplates.test.sendFailed') }
+    }
+  } catch (err) {
+    console.error('[message-templates] Test send failed', { orgId, templateType, err })
+    return { error: t('settings.messageTemplates.test.sendFailed') }
+  }
+
+  console.info('[message-templates] Test message sent', { orgId, templateType })
   return { error: null, success: true }
 }

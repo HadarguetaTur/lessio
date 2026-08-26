@@ -5,21 +5,20 @@
  * Steps:
  * 1. Load charge (with parent + org).
  * 2. Guard: if receipt_issued_at already set → return (already issued).
- * 3. Guard: if no receipt provider configured → return null silently.
- * 4. Call provider.issueReceipt(...).
- * 5. UPDATE charges SET receipt_url, receipt_issued_at WHERE receipt_issued_at IS NULL (atomic).
- * 6. Send WhatsApp to parent: best-effort, catch + log.
- * 7. Return receipt URL.
+ * 3. Resolve the parties printed on the document.
+ * 4. Guard: if receipt_mode says someone else issues → return null silently.
+ * 5. Guard: if no receipt provider configured → return null silently.
+ * 6. Call provider.issueReceipt(...).
+ * 7. UPDATE charges SET receipt_url, receipt_issued_at WHERE receipt_issued_at IS NULL (atomic).
+ * 8. Send WhatsApp to parent: best-effort, catch + log.
+ * 9. Return receipt URL.
  */
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { decryptToken } from '@/lib/crypto'
 import { getReceiptProvider } from './factory'
-import { ReceiptProviderNotConfiguredError } from './index'
-import { sendTextMessage } from '@/lib/whatsapp'
-import { prepareBusinessSend } from '@/lib/whatsapp/consent'
-import { resolveTemplate } from '@/lib/whatsapp/templates'
+import { ReceiptProviderNotConfiguredError, type ReceiptMode } from './index'
+import { notifyParentOfReceipt } from './notifyParentOfReceipt'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { renderChargeNote } from '@/lib/charges/renderNote'
@@ -40,7 +39,7 @@ export async function issueReceiptForCharge(
   const { data: charge, error: chargeError } = await db
     .from('charges')
     .select(
-      'id, amount, charge_type, billing_month, notes, status, receipt_issued_at, parent_id, parents(full_name, phone, tax_id, preferred_locale), organizations(name, timezone, whatsapp_phone_number_id, whatsapp_access_token, receipt_document_type, default_vat_rate, default_locale)'
+      'id, amount, charge_type, billing_month, notes, status, receipt_issued_at, parent_id, parents(full_name, phone, tax_id, preferred_locale), organizations(name, timezone, whatsapp_phone_number_id, whatsapp_access_token, receipt_document_type, receipt_mode, default_vat_rate, default_locale)'
     )
     .eq('id', chargeId)
     .eq('organization_id', orgId)
@@ -66,19 +65,7 @@ export async function issueReceiptForCharge(
     return null
   }
 
-  // ── 3. Load receipt provider ───────────────────────────────────────────────
-  let provider: Awaited<ReturnType<typeof getReceiptProvider>>
-  try {
-    provider = await getReceiptProvider(orgId)
-  } catch (err) {
-    if (err instanceof ReceiptProviderNotConfiguredError) {
-      console.debug('[receipts] No receipt provider configured — skipping', { orgId })
-      return null
-    }
-    throw err
-  }
-
-  // ── 4. Issue receipt via provider ─────────────────────────────────────────
+  // ── 3. The parties on the document ────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parent = (charge as any).parents as {
     full_name: string
@@ -93,9 +80,37 @@ export async function issueReceiptForCharge(
     whatsapp_phone_number_id: string | null
     whatsapp_access_token: string | null
     receipt_document_type: string | null
+    receipt_mode: string | null
     default_vat_rate: number | null
     default_locale: string | null
   } | null
+
+  // ── 4. Does this org issue its documents here at all? ─────────────────────
+  // The owner may have told us their payment provider issues the invoice, or
+  // that they invoice outside Lessio entirely. Issuing anyway would put a
+  // second document on a payment that already has one. Checked before the
+  // provider is loaded so stale credentials from a previous choice cannot fire.
+  const receiptMode = (org?.receipt_mode ?? null) as ReceiptMode | null
+  if (receiptMode !== null && receiptMode !== 'external') {
+    console.debug('[receipts] Issuing happens outside Lessio — skipping', {
+      chargeId,
+      orgId,
+      receiptMode,
+    })
+    return null
+  }
+
+  // ── 5. Load receipt provider ───────────────────────────────────────────────
+  let provider: Awaited<ReturnType<typeof getReceiptProvider>>
+  try {
+    provider = await getReceiptProvider(orgId)
+  } catch (err) {
+    if (err instanceof ReceiptProviderNotConfiguredError) {
+      console.debug('[receipts] No receipt provider configured — skipping', { orgId })
+      return null
+    }
+    throw err
+  }
 
   // Printed on the real tax document the parent receives, so it follows their
   // language rather than whoever triggered the receipt.
@@ -148,7 +163,7 @@ export async function issueReceiptForCharge(
     customerTaxId,
   })
 
-  // ── 5. Atomic update — only if not already issued ─────────────────────────
+  // ── 7. Atomic update — only if not already issued ─────────────────────────
   const { data: updatedRows, error: updateError } = await db
     .from('charges')
     .update({
@@ -177,38 +192,18 @@ export async function issueReceiptForCharge(
     return null
   }
 
-  // ── 6. WhatsApp notification — best-effort ────────────────────────────────
-  const parentPhone = parent?.phone
-  const phoneNumberId = org?.whatsapp_phone_number_id
-  const encryptedToken = org?.whatsapp_access_token
-
-  if (parentPhone && phoneNumberId && encryptedToken) {
-    try {
-      const accessToken = decryptToken(encryptedToken)
-      const locale = resolveRecipientLocale({
-        stored: parent?.preferred_locale,
-        orgDefault: org?.default_locale,
-      })
-      // Business-initiated: honour opt-out and the one-time welcome notice.
-      const gate = await prepareBusinessSend({ orgId, phone: parentPhone, accessToken, phoneNumberId, locale })
-      if (!gate.ok) {
-        console.info('[receipts] receipt notification skipped — parent opted out', { chargeId, orgId })
-        return receiptUrl
-      }
-      const receiptBody = await resolveTemplate(orgId, 'receipt_notification', {
-        amount: charge.amount.toFixed(2),
-        receipt_url: receiptUrl,
-      }, locale)
-      await sendTextMessage(parentPhone, receiptBody, accessToken, phoneNumberId)
-    } catch (err) {
-      console.error('[receipts] Failed to send WhatsApp receipt message', {
-        chargeId,
-        orgId,
-        parentPhone,
-        err,
-      })
-    }
-  }
+  // ── 8. WhatsApp notification — best-effort ────────────────────────────────
+  await notifyParentOfReceipt({
+    orgId,
+    chargeId,
+    amount: charge.amount,
+    receiptUrl,
+    parentPhone: parent?.phone,
+    parentLocale: parent?.preferred_locale,
+    orgDefaultLocale: org?.default_locale,
+    phoneNumberId: org?.whatsapp_phone_number_id,
+    encryptedToken: org?.whatsapp_access_token,
+  })
 
   console.info('[receipts] Receipt issued successfully', { chargeId, orgId, receiptUrl })
   return receiptUrl

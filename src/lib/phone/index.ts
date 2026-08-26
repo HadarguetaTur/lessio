@@ -43,3 +43,18 @@ export function normalizePhone(phone: string): string {
 
   throw new PhoneNormalizationError(raw)
 }
+
+/**
+ * E.164 → the local Israeli form (05XXXXXXXX) that some providers insist on.
+ * Grow rejects a payer phone in any other shape.
+ * Returns null when the number cannot be expressed that way, so callers can
+ * simply omit the field rather than send something the provider will reject.
+ */
+export function toIsraeliLocalPhone(phone: string | null | undefined): string | null {
+  if (!phone) return null
+  try {
+    return `0${normalizePhone(phone).slice(4)}`
+  } catch {
+    return null
+  }
+}

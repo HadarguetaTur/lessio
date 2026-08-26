@@ -622,6 +622,7 @@ async function sendBillingPaymentRequestCore(
       amount: Number(charge.amount),
       description: tr('paymentDescription', { month: billing.billing_month as string, parent: parent.full_name as string }),
       orgId,
+      payer: { fullName: parent.full_name as string, phone: parent.phone as string },
     })
   } catch (err) {
     if (

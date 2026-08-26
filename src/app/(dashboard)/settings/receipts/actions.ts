@@ -9,6 +9,7 @@ import { encryptWithKey } from '@/lib/crypto'
 import { ICountProvider } from '@/lib/receipts/icount'
 import { SumitProvider } from '@/lib/receipts/sumit'
 import type { ReceiptProviderType } from '@/lib/receipts/factory'
+import type { ReceiptMode } from '@/lib/receipts'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 
@@ -150,6 +151,7 @@ export async function saveReceiptConfigAction(
     .update({
       receipt_provider:          parsed.data.provider as ReceiptProviderType,
       receipt_config_encrypted:  encrypted,
+      receipt_mode:              'external' satisfies ReceiptMode,
     })
     .eq('id', orgId)
 
@@ -177,11 +179,54 @@ export async function disconnectReceiptAction(): Promise<{ error?: string }> {
     .update({
       receipt_provider:         null,
       receipt_config_encrypted: null,
+      // Back to unanswered, so the screen asks again rather than silently
+      // leaving the org in a mode whose credentials are gone.
+      receipt_mode:             null,
     })
     .eq('id', orgId)
 
   if (error) {
     return { error: t('settings.receiptsActions.errors.disconnectFailed') }
+  }
+
+  revalidatePath('/settings/receipts')
+  return {}
+}
+
+/**
+ * Records who issues this org's invoices.
+ *
+ * Choosing anything other than 'external' deletes any stored invoicing
+ * credentials: leaving them behind would mean a single mistaken click could
+ * start issuing a second document per payment again.
+ */
+export async function setReceiptModeAction(mode: ReceiptMode): Promise<{ error?: string }> {
+  const t = await getTranslations()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
+
+  if (role !== 'owner') {
+    forbidden()
+  }
+
+  const parsed = z.enum(['external', 'payment_provider', 'none']).safeParse(mode)
+  if (!parsed.success) {
+    return { error: t('settings.receiptsActions.errors.saveFailed') }
+  }
+
+  const db = createServiceRoleClient()
+  const { error } = await db
+    .from('organizations')
+    .update(
+      parsed.data === 'external'
+        ? { receipt_mode: 'external' }
+        : { receipt_mode: parsed.data, receipt_provider: null, receipt_config_encrypted: null }
+    )
+    .eq('id', orgId)
+
+  if (error) {
+    return { error: t('settings.receiptsActions.errors.saveFailed') }
   }
 
   revalidatePath('/settings/receipts')

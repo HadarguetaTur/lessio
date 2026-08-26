@@ -81,6 +81,15 @@ export const PROVIDERS_UI: ProviderUIDef[] = [
       { name: 'currency', type: 'text', hasPlaceholder: true, hasHint: true },
     ],
   },
+  {
+    id: 'grow',
+    docsUrl: 'https://developers.grow.business/',
+    fields: [
+      { name: 'userId', type: 'text', hasPlaceholder: true, hasHint: true },
+      { name: 'pageCode', type: 'text', hasPlaceholder: true, hasHint: true },
+      { name: 'apiKey', type: 'password', hasHint: true },
+    ],
+  },
 ]
 
 /**

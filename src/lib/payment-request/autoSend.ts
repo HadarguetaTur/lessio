@@ -95,6 +95,7 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
         name: parent.full_name as string,
       }),
       orgId,
+      payer: { fullName: parent.full_name as string, phone: parent.phone },
     })
 
     // 5. Persist payment link on the charge

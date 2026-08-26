@@ -104,6 +104,7 @@ export async function sendConsolidatedPaymentRequest(
       amount: total,
       description: tr('lessonPayment', { name: parent.full_name as string }),
       orgId,
+      payer: { fullName: parent.full_name as string, phone: parent.phone as string },
     })
     paymentUrl = result.url
     paymentReference = result.reference

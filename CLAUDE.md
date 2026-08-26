@@ -129,7 +129,7 @@ Locale is stored as a cookie named `locale` (read in `src/i18n/request.ts`) and 
 `buildStudentMonth(studentId, month, orgId)` computes a student's bill from subscriptions + per-lesson charges + cancellation events. `syncMonthlyCharge(...)` is idempotent — call it to upsert the charge record for a billing period. The workflow is: generate → approve → send WhatsApp payment request → mark paid. Approval and send are separate Server Actions in `src/app/(dashboard)/billing/actions.ts`.
 
 **Payment and receipt provider abstraction:**
-`src/lib/payments/factory.ts` decrypts `payment_config_encrypted` and returns the correct `PaymentProvider` (Cardcom, PayPlus, Bit, PayBox). `src/lib/receipts/factory.ts` does the same for `receipt_config_encrypted` → `ReceiptProvider` (Green Invoice). Always go through the factory; never instantiate adapters directly.
+`src/lib/payments/factory.ts` decrypts `payment_config_encrypted` and returns the correct `PaymentProvider` (Cardcom, PayPlus, Bit, PayBox, Stripe, Grow). `src/lib/receipts/factory.ts` does the same for `receipt_config_encrypted` → `ReceiptProvider` (Green Invoice). Always go through the factory; never instantiate adapters directly.
 
 **Server Action prop rule:**
 UI components that invoke server actions must receive the action as a prop — never import server actions directly inside shared UI components. This prevents cross-context contamination between dashboard, admin, and portal shells.

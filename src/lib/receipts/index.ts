@@ -9,6 +9,14 @@
 
 export type DocumentType = 'receipt' | 'tax_invoice'
 
+/**
+ * Who issues this org's invoices. Only 'external' lets Lessio issue one itself;
+ * the other two exist to stop us adding a second document to a payment that
+ * already produced one somewhere else.
+ * null (not represented here) means the owner has not been asked yet.
+ */
+export type ReceiptMode = 'external' | 'payment_provider' | 'none'
+
 export interface ReceiptProvider {
   /**
    * Issues a receipt or tax invoice for a completed payment.

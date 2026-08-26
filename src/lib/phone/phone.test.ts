@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizePhone, PhoneNormalizationError } from './index'
+import { normalizePhone, toIsraeliLocalPhone, PhoneNormalizationError } from './index'
 
 describe('normalizePhone', () => {
   describe('valid inputs', () => {
@@ -45,5 +45,27 @@ describe('normalizePhone', () => {
     it('error message includes the offending number', () => {
       expect(() => normalizePhone('bad')).toThrow('bad')
     })
+  })
+})
+
+describe('toIsraeliLocalPhone', () => {
+  it('converts E.164 to the local 05 form', () => {
+    expect(toIsraeliLocalPhone('+972501234567')).toBe('0501234567')
+  })
+
+  it('accepts any shape normalizePhone accepts', () => {
+    expect(toIsraeliLocalPhone('050-123-4567')).toBe('0501234567')
+    expect(toIsraeliLocalPhone('972501234567')).toBe('0501234567')
+  })
+
+  it('returns null for a number that is not an Israeli mobile', () => {
+    expect(toIsraeliLocalPhone('+14155550000')).toBeNull()
+    expect(toIsraeliLocalPhone('not a phone')).toBeNull()
+  })
+
+  it('returns null for missing input', () => {
+    expect(toIsraeliLocalPhone(null)).toBeNull()
+    expect(toIsraeliLocalPhone(undefined)).toBeNull()
+    expect(toIsraeliLocalPhone('')).toBeNull()
   })
 })

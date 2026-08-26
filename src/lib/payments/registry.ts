@@ -22,6 +22,12 @@ import { PayPlusProvider } from './payplus'
 import { BitProvider } from './bit'
 import { PayBoxProvider } from './paybox'
 import { StripeProvider } from './stripe'
+import {
+  GrowProvider,
+  parseGrowWebhookBody,
+  parseGrowInvoiceWebhookBody,
+  growWebhookTransactionIds,
+} from './grow'
 import type { PaymentProvider } from './index'
 import { verifyWebhookHmacSha256Base64 } from './webhook-verify'
 
@@ -61,6 +67,23 @@ export interface RegistryEntry {
    * If verification fails, the route still returns HTTP 200 but skips updates.
    */
   verifyWebhookRequest?(headers: Headers, rawBody: string): boolean
+
+  /**
+   * Every identifier the provider gave for the transaction, taken from the
+   * payment webhook body and stored on the charge. Only needed by providers
+   * that later send asynchronous events keyed on something other than the
+   * payment reference — Grow's invoice webhook is the case this exists for.
+   */
+  webhookTransactionIds?(body: Record<string, string>): string[]
+
+  /**
+   * Parses a provider's separate invoice-issued webhook. Present only for
+   * providers that issue the tax document themselves and announce it.
+   * `transactionCode` is matched against the ids stored by webhookTransactionIds.
+   */
+  parseInvoiceWebhookBody?(
+    body: Record<string, string>
+  ): { transactionCode: string; invoiceUrl: string; invoiceNumber: string | null } | null
 }
 
 // ── Cardcom ───────────────────────────────────────────────────────────────────
@@ -305,9 +328,43 @@ const stripeEntry: RegistryEntry = {
   },
 }
 
+// ── Grow (formerly Meshulam) ──────────────────────────────────────────────────
+
+const growEntry: RegistryEntry = {
+  id: 'grow',
+
+  validateConfig(data) {
+    const schema = z.object({
+      userId:   z.string().min(1, 'validation.userIdRequired'),
+      pageCode: z.string().min(1, 'validation.pageCodeRequired'),
+      apiKey:   z.string().min(1, 'validation.apiKeyRequired'),
+    })
+    const result = schema.safeParse(data)
+    if (!result.success) {
+      return { success: false, errorKey: result.error.issues[0]?.message }
+    }
+    return { success: true, config: result.data }
+  },
+
+  createAdapter(config) {
+    return new GrowProvider({
+      userId:   config.userId!,
+      pageCode: config.pageCode!,
+      apiKey:   config.apiKey!,
+    })
+  },
+
+  // No verifyWebhookRequest: Grow signs nothing. The reference itself is the
+  // shared secret — processToken is minted by Grow and known only to us — and
+  // the adapter's acknowledgeWebhook closes the loop with approveTransaction.
+  parseWebhookBody: parseGrowWebhookBody,
+  webhookTransactionIds: growWebhookTransactionIds,
+  parseInvoiceWebhookBody: parseGrowInvoiceWebhookBody,
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
-const PROVIDER_REGISTRY: RegistryEntry[] = [cardcomEntry, payPlusEntry, bitEntry, payboxEntry, stripeEntry]
+const PROVIDER_REGISTRY: RegistryEntry[] = [cardcomEntry, payPlusEntry, bitEntry, payboxEntry, stripeEntry, growEntry]
 
 /**
  * Returns the registry entry for a given provider ID.

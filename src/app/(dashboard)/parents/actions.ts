@@ -479,6 +479,7 @@ export async function sendPaymentRequestAction(
       amount: totalAmount,
       description,
       orgId,
+      payer: { fullName: parent.full_name as string, phone: parent.phone },
     })
 
     paymentUrl = result.url

@@ -21,33 +21,31 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { runAfterResponse } from '@/lib/server/afterResponse'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getRegistryEntry } from '@/lib/payments/registry'
+import { webhookBodyFromPayload } from '@/lib/payments/webhookBody'
+import { getPaymentProvider } from '@/lib/payments/factory'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import { logChargeAudit } from '@/lib/charges/audit'
 
 /**
- * Flattens JSON webhook payloads: top-level primitives plus one nested object
- * (e.g. `{ "data": { "transactionId": "..." } }`) into string values for parsers.
+ * Confirms receipt of the notification back to the provider, for the ones that
+ * require it. Resolving the adapter through the factory keeps this route
+ * provider-agnostic: an adapter with no acknowledgeWebhook is a no-op.
  */
-function webhookBodyFromPayload(
-  rawBody: string,
-  contentType: string
-): Record<string, string> {
-  const ct = contentType.toLowerCase()
-  if (ct.includes('application/json')) {
-    const parsed = JSON.parse(rawBody) as Record<string, unknown>
-    const flat: Record<string, string> = {}
-    for (const [k, v] of Object.entries(parsed)) {
-      if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
-        for (const [k2, v2] of Object.entries(v as Record<string, unknown>)) {
-          flat[k2] = v2 === undefined || v2 === null ? '' : String(v2)
-        }
-      } else {
-        flat[k] = v === undefined || v === null ? '' : String(v)
-      }
-    }
-    return flat
+async function acknowledgeWebhook(
+  orgId: string,
+  provider: string,
+  body: Record<string, string>
+): Promise<void> {
+  try {
+    const { provider: adapter } = await getPaymentProvider(orgId)
+    await adapter.acknowledgeWebhook?.(body)
+  } catch (err) {
+    console.error('[payments/webhook] provider acknowledgement failed', {
+      provider,
+      orgId,
+      err,
+    })
   }
-  return Object.fromEntries(new URLSearchParams(rawBody))
 }
 
 export async function POST(
@@ -207,6 +205,26 @@ export async function POST(
     paymentReference,
   })
 
+  // Some providers issue the tax document themselves and announce it later on a
+  // separate webhook keyed by a transaction id rather than by our payment
+  // reference. Keep every id they gave us so that event can find its charge.
+  const transactionIds = entry.webhookTransactionIds?.(body) ?? []
+  if (transactionIds.length > 0) {
+    const { error: idsError } = await db
+      .from('charges')
+      .update({ provider_transaction_ids: transactionIds })
+      .in('id', chargeIds)
+
+    if (idsError) {
+      console.error('[payments/webhook] Failed to store provider transaction ids', {
+        provider,
+        orgId,
+        paymentReference,
+        error: idsError.message,
+      })
+    }
+  }
+
   if (resolvedCharges.length > 0) {
     console.warn('[payments/webhook] Payment arrived for a settled charge', {
       provider,
@@ -263,8 +281,8 @@ export async function POST(
     .map((c) => c.id as string)
 
   await runAfterResponse(
-    Promise.all(
-      receiptChargeIds.map((chargeId) =>
+    Promise.all([
+      ...receiptChargeIds.map((chargeId) =>
         issueReceiptForCharge(chargeId, orgId).catch((err) => {
           console.error('[payments/webhook] receipt issuance failed', {
             provider,
@@ -273,8 +291,12 @@ export async function POST(
             err,
           })
         })
-      )
-    )
+      ),
+      // Providers that require the merchant to confirm receipt of the
+      // notification (Grow's approveTransaction) do it here, with the org's own
+      // credentials resolved by the factory.
+      acknowledgeWebhook(orgId, provider, body),
+    ])
   )
 
   return NextResponse.json({ ok: true }, { status: 200 })

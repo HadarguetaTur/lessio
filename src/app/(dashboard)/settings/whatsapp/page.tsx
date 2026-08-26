@@ -7,6 +7,7 @@ import { DisconnectButton } from './DisconnectButton'
 import { RegisterTemplatesButton } from './RegisterTemplatesButton'
 import { PortalUrlCopy } from '@/components/dashboard/settings/PortalUrlCopy'
 import { AutomationsSettings } from './AutomationsSettings'
+import { getSiteContact } from '@/lib/marketing/siteContact'
 import { getTranslations } from 'next-intl/server'
 
 /**
@@ -54,6 +55,11 @@ export default async function WhatsAppSettingsPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('whatsapp.title')}</h1>
       <p className="text-sm text-muted-foreground mb-8">{tp('whatsappPage.subtitle')}</p>
 
+      {/* Prerequisites come before the button, not after it: two of the three
+          take days to obtain, and the third quietly disables the number in the
+          WhatsApp app. Reading them after clicking Connect is too late. */}
+      {!isConnected && <RequirementsBlock />}
+
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {isConnected ? (
           <ConnectedState phoneNumberId={phoneNumberId!} connectedLabel={t('whatsapp.connected')} />
@@ -95,14 +101,45 @@ export default async function WhatsAppSettingsPage() {
         </div>
       )}
 
-      <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-        <p className="font-medium mb-1">{tp('whatsappPage.requirementsTitle')}</p>
-        <ul className="list-disc list-inside space-y-1 text-amber-700">
-          <li>{tp('whatsappPage.req1')}</li>
-          <li>{tp('whatsappPage.req2')}</li>
-          <li>{tp('whatsappPage.req3')}</li>
-        </ul>
-      </div>
+    </div>
+  )
+}
+
+const META_BUSINESS_URL = 'https://business.facebook.com/'
+const META_VERIFICATION_URL = 'https://www.facebook.com/business/help/2058515294227817'
+
+async function RequirementsBlock() {
+  const tp = await getTranslations('settings')
+  const { supportEmail } = getSiteContact()
+  const email = supportEmail || 'support@getlessio.com'
+  const linkCls = 'underline hover:text-amber-900'
+
+  return (
+    <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+      <p className="font-medium mb-1">{tp('whatsappPage.requirementsTitle')}</p>
+      <ul className="list-disc list-inside space-y-1 text-amber-700">
+        <li>
+          <a href={META_BUSINESS_URL} target="_blank" rel="noopener noreferrer" className={linkCls}>
+            {tp('whatsappPage.req1')}
+          </a>
+        </li>
+        <li>
+          {tp('whatsappPage.req2')}
+          <span className="mt-0.5 block ps-5 text-xs text-amber-800">
+            {tp('whatsappPage.req2Hint')}
+          </span>
+        </li>
+        <li>
+          <a href={META_VERIFICATION_URL} target="_blank" rel="noopener noreferrer" className={linkCls}>
+            {tp('whatsappPage.req3')}
+          </a>
+        </li>
+      </ul>
+      <p className="mt-3 text-xs text-amber-800">
+        <a href={`mailto:${email}`} className={linkCls}>
+          {tp('whatsappPage.requirementsHelp')}
+        </a>
+      </p>
     </div>
   )
 }

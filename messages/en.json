@@ -1929,7 +1929,7 @@
     "whatsappPage": {
       "subtitle": "Connect your organization WhatsApp number to send and receive messages. Each organization is connected to its own number.",
       "portalUrlHint": "Share this link with parents so they can reach their personal portal.",
-      "requirementsTitle": "Connection requirements",
+      "requirementsTitle": "Before you start — about 2–3 days",
       "req1": "A Meta Business account with access to the WhatsApp Business API",
       "req2": "A phone number not already registered on WhatsApp",
       "req3": "Meta Business Verification",
@@ -1942,7 +1942,9 @@
       "cancelledAtStep": "The connection was not completed. Meta stopped at: {step}.",
       "metaError": "Meta reported an error: {message}",
       "noPhoneNumber": "A WhatsApp Business account was selected but no phone number was connected. Reopen the flow and add a phone number to finish.",
-      "missingIds": "Meta finished without returning the account details needed to connect. Nothing was saved — please try again."
+      "missingIds": "Meta finished without returning the account details needed to connect. Nothing was saved — please try again.",
+      "req2Hint": "A number that is already active in the WhatsApp app can't be connected. Use a second number, or migrate your existing one — it will then stop working in the app.",
+      "requirementsHelp": "Not sure? Write to us"
     },
     "remindersPage": {
       "subtitle": "Set automatic WhatsApp reminders to parents before lessons and about open charges.",

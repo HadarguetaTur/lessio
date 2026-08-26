@@ -101,12 +101,26 @@ export default async function MessageTemplatesPage({
   if (role !== 'owner') redirect('/settings')
 
   const { lang } = await searchParams
-  const locale = parseAppLocale(lang)
   // The dashboard's own language, not the language being edited — labels and
   // status chips should read in the language the person is working in.
   const uiLocale = parseAppLocale(await getLocale())
 
   const db = createServiceRoleClient()
+
+  // Without ?lang, parseAppLocale used to fall through to Hebrew for every org,
+  // so an English tenant landed on the Hebrew tab and edited the wrong copy.
+  const { data: orgLocaleRow } = await db
+    .from('organizations')
+    .select('default_locale')
+    .eq('id', orgId)
+    .maybeSingle()
+  const locale = parseAppLocale(lang ?? orgLocaleRow?.default_locale)
+  const orgLocale = parseAppLocale(orgLocaleRow?.default_locale)
+  // The org's own language leads — it is the one nearly every edit lands in.
+  const langTabs = [...LANG_TABS].sort(
+    (a, b) => Number(b.locale === orgLocale) - Number(a.locale === orgLocale)
+  )
+
   const [{ data: rows }, statusRows] = await Promise.all([
     db
       .from('message_templates')
@@ -156,7 +170,7 @@ export default async function MessageTemplatesPage({
 
       {/* Language tabs */}
       <div className="flex gap-1 border-b border-gray-200">
-        {LANG_TABS.map(tab => (
+        {langTabs.map(tab => (
           <Link
             key={tab.locale}
             href={`/settings/message-templates?lang=${tab.locale}`}

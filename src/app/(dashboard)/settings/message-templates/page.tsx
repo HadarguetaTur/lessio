@@ -5,6 +5,8 @@ import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { MessageTemplateCard } from '@/components/dashboard/settings/MessageTemplateCard'
 import { RefreshTemplateStatusButton } from './RefreshTemplateStatusButton'
+import { buttonsFor } from '@/lib/whatsapp/templateButtons'
+import { getOrgBotStrings, resolveBotString } from '@/lib/whatsapp/orgStrings'
 import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
 import {
   DEFAULT_TEMPLATES,
@@ -122,18 +124,32 @@ export default async function MessageTemplatesPage({
     (a, b) => Number(b.locale === orgLocale) - Number(a.locale === orgLocale)
   )
 
-  const [{ data: rows }, statusRows] = await Promise.all([
+  const [{ data: rows }, statusRows, labelOverrides] = await Promise.all([
     db
       .from('message_templates')
       .select('type, body_template')
       .eq('organization_id', orgId)
       .eq('locale', locale),
     loadStatusesWithCatchUp(db, orgId),
+    getOrgBotStrings(orgId, locale),
   ])
 
   const customMap = new Map<string, string>(
     (rows ?? []).map(r => [r.type, r.body_template])
   )
+
+  /**
+   * The label each of a type's buttons currently carries. Resolved here rather
+   * than in the card so the string tables stay off the client bundle, and so
+   * the preview shows exactly what a send would produce.
+   */
+  const labelsFor = (type: MessageTemplateType) =>
+    Object.fromEntries(
+      buttonsFor(type).map((b) => [
+        b.labelKey,
+        resolveBotString(labelOverrides, b.labelKey, locale),
+      ])
+    )
 
   const renderCard = (type: MessageTemplateType) => {
     const customBody = customMap.get(type) ?? null
@@ -155,6 +171,7 @@ export default async function MessageTemplatesPage({
         submittable={SUBMITTABLE_TYPES.includes(type)}
         needsApproval={OUT_OF_WINDOW_TYPES.includes(type)}
         approval={approval}
+        buttonLabels={labelsFor(type)}
       />
     )
   }

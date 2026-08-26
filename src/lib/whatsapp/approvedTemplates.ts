@@ -253,3 +253,81 @@ export function getApprovedTemplate(
 ): ApprovedTemplate | null {
   return APPROVED_TEMPLATES[locale]?.[type] ?? null
 }
+
+// ── Button-carrying templates (v3) ────────────────────────────────────────────
+
+/** A Meta template registered WITH buttons, addressed by name and language. */
+export type ButtonTemplate = { name: string; languageCode: string }
+
+/**
+ * Reminder templates registered with quick-reply buttons.
+ *
+ * These live apart from APPROVED_TEMPLATES for the same reason
+ * LESSON_CANCELLED_BY_TEACHER_TEMPLATE does: sendTemplateMessage posts a
+ * body-only component list, and Meta rejects that against a template that has
+ * buttons. They go out through sendTemplateWithQuickReplies, which binds the
+ * payload at send time — so one approved template serves every lesson and
+ * every assignment.
+ *
+ * The body copy is identical to the v2 entry of the same type, which is what
+ * lets the send path reuse buildBodyParams and degrade to v2 unchanged while
+ * these are still PENDING at Meta.
+ */
+export const QUICK_REPLY_TEMPLATES: Partial<
+  Record<MessageTemplateType, Record<AppLocale, ButtonTemplate>>
+> = {
+  lesson_reminder: {
+    he: { name: 'lessio_lesson_reminder_he_v3', languageCode: 'he' },
+    en: { name: 'lessio_lesson_reminder_en_v3', languageCode: 'en' },
+  },
+  homework_assignment: {
+    he: { name: 'lessio_homework_assignment_he_v3', languageCode: 'he' },
+    en: { name: 'lessio_homework_assignment_en_v3', languageCode: 'en' },
+  },
+  homework_reminder: {
+    he: { name: 'lessio_homework_reminder_he_v3', languageCode: 'he' },
+    en: { name: 'lessio_homework_reminder_en_v3', languageCode: 'en' },
+  },
+}
+
+/**
+ * Payment templates registered with a URL button pointing at /pay/<chargeId>.
+ *
+ * Unlike the quick-reply set, the v3 bodies here differ from v2: the bare link
+ * line is gone, replaced by the button. So the body parameters differ too —
+ * payment_request takes the amount alone, not amount + link.
+ */
+export const URL_BUTTON_TEMPLATES: Partial<
+  Record<MessageTemplateType, Record<AppLocale, ButtonTemplate>>
+> = {
+  payment_request: {
+    he: { name: 'lessio_payment_request_he_v3', languageCode: 'he' },
+    en: { name: 'lessio_payment_request_en_v3', languageCode: 'en' },
+  },
+  payment_reminder: {
+    he: { name: 'lessio_payment_reminder_he_v3', languageCode: 'he' },
+    en: { name: 'lessio_payment_reminder_en_v3', languageCode: 'en' },
+  },
+}
+
+/**
+ * The body parameters for a type, as the plain strings
+ * sendTemplateWithQuickReplies expects.
+ *
+ * Derived from the v2 spec's buildComponents rather than rebuilt, so the
+ * empty/newline normalisation in param() and every language fallback apply to
+ * the button templates too. Returns null when the type has no approved spec.
+ */
+export function buildBodyParams(
+  type: MessageTemplateType,
+  locale: AppLocale,
+  vars: Record<string, string>
+): string[] | null {
+  const spec = getApprovedTemplate(type, locale) ?? getApprovedTemplate(type, 'he')
+  if (!spec) return null
+
+  const body = spec.buildComponents(vars).find((c) => c.type === 'body')
+  if (!body) return null
+
+  return body.parameters.map((p) => (p.type === 'text' ? p.text : ''))
+}

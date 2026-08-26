@@ -26,6 +26,14 @@ export type BotStringKey =
   | 'renewal_plan_label'
   | 'renewal_your_plan'
   | 'renewal_message'
+  // Button labels on proactive messages. These MUST read the same as the
+  // labels registered on the v3 Meta templates: inside the 24h window the
+  // interactive message uses these, outside it Meta renders its own copy, and
+  // the same reminder must not offer differently-worded buttons.
+  | 'btn_confirm_attendance'
+  | 'btn_need_to_cancel'
+  | 'btn_homework_done'
+  | 'cta_pay_now'
 
 const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
   he: {
@@ -48,6 +56,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     renewal_your_plan: 'המנוי שלך',
     renewal_message:
       '🔔 תזכורת מ-Lessio\n\n{plan} יתחדש אוטומטית ב-{date}.\n\nלניהול המנוי: https://www.getlessio.com/subscriptions',
+    btn_confirm_attendance: 'מאשר/ת הגעה',
+    btn_need_to_cancel: 'צריך לבטל',
+    btn_homework_done: 'סיימתי ✅',
+    cta_pay_now: 'לתשלום מאובטח',
   },
   en: {
     due_by: 'Due by',
@@ -68,6 +80,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     renewal_your_plan: 'your subscription',
     renewal_message:
       '🔔 Reminder from Lessio\n\n{plan} renews automatically on {date}.\n\nManage your subscription: https://www.getlessio.com/subscriptions',
+    btn_confirm_attendance: 'Confirm attendance',
+    btn_need_to_cancel: 'Need to cancel',
+    btn_homework_done: 'Done ✅',
+    cta_pay_now: 'Pay securely',
   },
 }
 

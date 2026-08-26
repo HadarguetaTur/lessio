@@ -17,7 +17,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
-import { sendSmartMessage } from '../_shared/whatsapp.ts'
+import { sendSmartInteractive } from '../_shared/whatsapp.ts'
 import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
 import { botString } from '../_shared/botStrings.ts'
 import { sendEmail } from '../_shared/email.ts'
@@ -173,18 +173,25 @@ async function processOrg(db: any, org: any, now: Date) {
     // ── 5. Send WhatsApp message (session-window aware) ───────────────────────
     let sendError: string | null = null
     try {
-      await sendSmartMessage(
-        db,
-        org.id,
+      // The buttons let a parent answer the reminder with one tap: confirming
+      // stamps the lesson, "need to cancel" jumps straight to the confirm step
+      // of the cancellation flow for this specific lesson.
+      await sendSmartInteractive(db, {
+        orgId: org.id,
         phone,
         accessToken,
-        org.whatsapp_phone_number_id,
-        'lesson_reminder',
-        message,
-        [teacherName, dateStr, timeStr],
+        phoneNumberId: org.whatsapp_phone_number_id,
+        templateType: 'lesson_reminder',
+        textBody: message,
+        templateVars: [teacherName, dateStr, timeStr],
         locale,
-        { teacher_name: teacherName, date: dateStr, time: timeStr }
-      )
+        namedVars: { teacher_name: teacherName, date: dateStr, time: timeStr },
+        payloads: [`att:ok:${lesson.id}`, `att:cancel:${lesson.id}`],
+        buttonLabels: [
+          botString('btn_confirm_attendance', locale),
+          botString('btn_need_to_cancel', locale),
+        ],
+      })
     } catch (err) {
       sendError = String(err)
       console.error('[lesson-reminders] WhatsApp send failed', {

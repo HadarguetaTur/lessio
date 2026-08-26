@@ -4,14 +4,12 @@ const {
   mockCreateServiceRoleClient,
   mockDecryptToken,
   mockGetPaymentProvider,
-  mockPrepareBusinessSend,
-  mockSendTextMessage,
+  mockSendPaymentWithButton,
 } = vi.hoisted(() => ({
   mockCreateServiceRoleClient: vi.fn(),
   mockDecryptToken: vi.fn(),
   mockGetPaymentProvider: vi.fn(),
-  mockPrepareBusinessSend: vi.fn(),
-  mockSendTextMessage: vi.fn(),
+  mockSendPaymentWithButton: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/service-role', () => ({
@@ -26,12 +24,10 @@ vi.mock('@/lib/payments/factory', () => ({
   getPaymentProvider: mockGetPaymentProvider,
 }))
 
-vi.mock('@/lib/whatsapp/consent', () => ({
-  prepareBusinessSend: mockPrepareBusinessSend,
-}))
-
-vi.mock('@/lib/whatsapp', () => ({
-  sendTextMessage: mockSendTextMessage,
+// The opt-out gate and the window-vs-template decision both live inside
+// sendPaymentWithButton now, so that is the boundary this test asserts against.
+vi.mock('@/lib/whatsapp/sendSmart', () => ({
+  sendPaymentWithButton: mockSendPaymentWithButton,
 }))
 
 import { autoSendPaymentRequest } from './autoSend'
@@ -99,8 +95,7 @@ function makeSendableDbClient(orgRow: Record<string, unknown>) {
 describe('autoSendPaymentRequest', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPrepareBusinessSend.mockResolvedValue({ ok: true })
-    mockSendTextMessage.mockResolvedValue(undefined)
+    mockSendPaymentWithButton.mockResolvedValue({ sent: true })
     mockDecryptToken.mockReturnValue('plain-token')
     mockGetPaymentProvider.mockResolvedValue({
       providerName: 'cardcom',
@@ -134,19 +129,18 @@ describe('autoSendPaymentRequest', () => {
     consoleWarnSpy.mockRestore()
   })
 
-  // This path sends via sendTextMessage rather than sendSmartMessage, so it
-  // used to bypass the opt-out gate entirely — an opted-out parent still got an
-  // automatic payment request after every completed lesson.
+  // This path used to send raw text, which bypassed the opt-out gate entirely
+  // — an opted-out parent still got an automatic payment request after every
+  // completed lesson — and failed with 131047 outside the 24h window.
   it('sends nothing when the parent opted out', async () => {
     const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const db = makeSendableDbClient(makeOrgRow())
     mockCreateServiceRoleClient.mockReturnValue(db.client)
-    mockPrepareBusinessSend.mockResolvedValue({ ok: false, reason: 'opted_out' })
+    mockSendPaymentWithButton.mockResolvedValue({ sent: false, reason: 'opted_out' })
 
     await autoSendPaymentRequest('lesson-1', 'org-1')
 
-    expect(mockSendTextMessage).not.toHaveBeenCalled()
-    // No sent_at stamped either — the charge must not look like it was sent.
+    // No sent_at stamped — the charge must not look like it was sent.
     expect(db.updates.some((u) => 'sent_at' in u)).toBe(false)
 
     consoleInfoSpy.mockRestore()
@@ -158,10 +152,21 @@ describe('autoSendPaymentRequest', () => {
 
     await autoSendPaymentRequest('lesson-1', 'org-1')
 
-    expect(mockPrepareBusinessSend).toHaveBeenCalledWith(
-      expect.objectContaining({ orgId: 'org-1', phone: '+972501234567', accessToken: 'plain-token', phoneNumberId: 'pn-1' })
+    expect(mockSendPaymentWithButton).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orgId: 'org-1',
+        phone: '+972501234567',
+        accessToken: 'plain-token',
+        phoneNumberId: 'pn-1',
+        templateType: 'payment_request',
+        // The button resolves through this charge, and the provider URL is what
+        // it points at while the 24h window is open.
+        chargeId: 'charge-1',
+        paymentUrl: 'https://pay.example.com/1',
+        body: expect.any(String),
+      })
     )
-    expect(mockSendTextMessage).toHaveBeenCalledWith('+972501234567', expect.any(String), 'plain-token', 'pn-1')
+    expect(db.updates.some((u) => 'sent_at' in u)).toBe(true)
   })
 
   it('still respects the legacy auto_send_payment_request master switch', async () => {

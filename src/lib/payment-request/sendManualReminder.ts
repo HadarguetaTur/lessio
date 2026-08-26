@@ -10,7 +10,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
-import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
+import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { OPEN_CHARGE_STATUSES, sumRemaining } from '@/lib/charges'
@@ -76,16 +76,24 @@ export async function sendDebtReminderForParent(
     orgDefault: (org?.default_locale as string | null) ?? null,
   })
 
-  const result = await sendSmartMessage({
+  // The button resolves through the charge that actually carries the provider
+  // link. With none, /pay/<id> falls back to the portal — the same place the
+  // inline link above would have pointed.
+  const linkedChargeId = (charges.find((c) => c.payment_link) ?? charges[0]).id as string
+
+  const result = await sendPaymentWithButton({
     orgId,
     phone: parent.phone as string,
     accessToken: decryptToken(encryptedToken),
     phoneNumberId,
     templateType: 'payment_reminder',
     vars: {
+      parent_name: (parent.full_name as string | null) ?? '',
       amount: total.toFixed(2),
       payment_link: paymentLink,
     },
+    chargeId: linkedChargeId,
+    paymentUrl: paymentLink,
     locale,
   })
 

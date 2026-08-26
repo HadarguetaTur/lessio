@@ -1,6 +1,16 @@
 /**
- * The WhatsApp cancellation exchange: a numbered list of lessons, a reply with
- * a number, the lesson cancelled and everyone who needs to know told.
+ * The WhatsApp cancellation exchange: an interactive list of lessons, a tap,
+ * a confirm button, the lesson cancelled and everyone who needs to know told.
+ *
+ * Two input paths lead to the same commit:
+ *
+ *   Taps — `c:` payloads (see cancellationPayloads.ts), stateless: the lesson
+ *   id rides in the payload and is re-validated on every step, so a tap still
+ *   works after the session expired.
+ *
+ *   Typed numbers — the pre-interactive exchange, kept as the fallback when
+ *   the interactive send fails and for parents answering an old numbered list.
+ *   The session row (10-minute TTL) exists for this path alone.
  *
  * Lifted out of route.ts so the student path can run the same flow instead of a
  * second, drifting copy. Two things are parameterised:
@@ -24,6 +34,12 @@ import {
   sendNoEligibleLessonsReply,
   sendTextMessage,
 } from '@/lib/whatsapp'
+import { sendListMessage, sendReplyButtons, type InteractiveRow } from '@/lib/whatsapp/interactive'
+import {
+  CANCEL_PAGE_SIZE,
+  encodeCancellationPayload,
+  type CancellationPayload,
+} from '@/lib/whatsapp/cancellationPayloads'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { botString } from '@/lib/whatsapp/strings'
 import { parseAppLocale, toIntlLocale, type AppLocale } from '@/lib/i18n/locale'
@@ -93,8 +109,7 @@ export async function applyCancellationSelection(
     session: { lesson_ids: string[] }
   }
 ): Promise<void> {
-  const { orgId, senderPhone, timezone, accessToken, phoneNumberId, locale, actor, text, session } =
-    params
+  const { senderPhone, accessToken, phoneNumberId, locale, text, session } = params
 
   const num = parseInt(text.trim(), 10)
   const count = session.lesson_ids.length
@@ -106,7 +121,110 @@ export async function applyCancellationSelection(
     return
   }
 
-  const selectedLessonId = session.lesson_ids[num - 1]
+  await commitCancellation(params, session.lesson_ids[num - 1])
+}
+
+/**
+ * Handles a tapped `c:` payload — a lesson row, a confirm button, a back-out
+ * or a page turn. Stateless: every step re-validates the lesson against the
+ * database, because a tap can arrive long after the list was sent.
+ */
+export async function handleCancellationPayload(
+  params: Transport & { actor: CancellationActor; payload: CancellationPayload }
+): Promise<void> {
+  const { orgId, senderPhone, timezone, accessToken, phoneNumberId, locale, actor, payload } =
+    params
+
+  switch (payload.step) {
+    case 'abort': {
+      await deleteCancellationSession(orgId, senderPhone)
+      await sendTextMessage(
+        senderPhone,
+        botString('cancel_flow_closed', locale),
+        accessToken,
+        phoneNumberId
+      )
+      return
+    }
+
+    case 'page': {
+      const lessons = await getEligibleLessons(orgId, actor.parentId, actor.studentIds)
+      if (lessons.length === 0) {
+        await deleteCancellationSession(orgId, senderPhone)
+        await sendNoEligibleLessonsReply(senderPhone, accessToken, phoneNumberId, locale)
+        return
+      }
+      // The list may have shrunk since the "more" row was sent — an offset that
+      // now points past the end restarts from the first page instead of a blank.
+      const offset = payload.offset < lessons.length ? payload.offset : 0
+      await sendLessonList(params, lessons, { offset })
+      return
+    }
+
+    case 'pick': {
+      // Eligibility is re-checked through the same parent-scoped (and, for a
+      // student, student-narrowed) query that built the list: the payload is
+      // client-supplied, and the lesson may have been cancelled elsewhere.
+      const lessons = await getEligibleLessons(orgId, actor.parentId, actor.studentIds)
+      const lesson = lessons.find((l) => l.id === payload.lessonId)
+      if (!lesson) {
+        await rebuildLessonList(params, botString('lesson_no_longer_cancellable', locale))
+        return
+      }
+
+      const when = formatWhen(lesson.start_at, timezone, locale)
+      await sendReplyButtons(
+        senderPhone,
+        {
+          body: botString('cancel_confirm_body', locale, {
+            student_name: lesson.student_name,
+            date: when.date,
+            time: when.time,
+          }),
+          buttons: [
+            {
+              id: encodeCancellationPayload({ step: 'confirm', lessonId: lesson.id }),
+              title: botString('cancel_confirm_yes', locale),
+            },
+            {
+              id: encodeCancellationPayload({ step: 'abort' }),
+              title: botString('cancel_confirm_no', locale),
+            },
+          ],
+        },
+        accessToken,
+        phoneNumberId
+      )
+      return
+    }
+
+    case 'confirm': {
+      // executeCancellation authorises through the parent relationship, which
+      // for a student actor spans every sibling too — so the student narrowing
+      // has to be enforced here, before the commit. The cost: a student's
+      // double-tap rebuilds the list instead of closing silently.
+      if (actor.studentIds) {
+        const lessons = await getEligibleLessons(orgId, actor.parentId, actor.studentIds)
+        if (!lessons.some((l) => l.id === payload.lessonId)) {
+          await rebuildLessonList(params, botString('lesson_no_longer_cancellable', locale))
+          return
+        }
+      }
+      await commitCancellation(params, payload.lessonId)
+      return
+    }
+  }
+}
+
+/**
+ * The commit shared by both input paths: cancel, close the session, notify.
+ */
+async function commitCancellation(
+  params: Transport & { actor: CancellationActor },
+  selectedLessonId: string
+): Promise<void> {
+  const { orgId, senderPhone, timezone, accessToken, phoneNumberId, locale, actor } = params
+
   const outcome = await executeCancellation(selectedLessonId, actor.parentId, orgId)
 
   if (!outcome.success) {
@@ -153,20 +271,73 @@ export async function applyCancellationSelection(
 
 // ── Internals ─────────────────────────────────────────────────────────────────
 
-/** Stores the session for a list and sends it. */
+/**
+ * Sends the list of cancellable lessons as an interactive list and stores the
+ * session behind it.
+ *
+ * The session holds every eligible lesson, not just the page on screen, so a
+ * parent answering with a number — the text fallback, or an older list still in
+ * their chat — indexes into the same order they were shown.
+ *
+ * A failed interactive send falls back to the numbered text list rather than
+ * leaving the parent with nothing: some devices and some WABA states reject
+ * interactive messages, and cancelling must not depend on that.
+ */
 async function sendLessonList(
   params: Transport & { actor: CancellationActor },
   lessons: EligibleLesson[],
-  prefix?: string
+  opts: { prefix?: string; offset?: number } = {}
 ): Promise<void> {
   const { orgId, senderPhone, timezone, accessToken, phoneNumberId, locale } = params
+  const { prefix, offset = 0 } = opts
 
-  const body = formatLessonListMessage(lessons, timezone, locale)
   await upsertCancellationSession(
     orgId,
     senderPhone,
     lessons.map((l) => l.id)
   )
+
+  const page = lessons.slice(offset, offset + CANCEL_PAGE_SIZE)
+  const rows: InteractiveRow[] = page.map((lesson) => {
+    const when = formatWhen(lesson.start_at, timezone, locale)
+    return {
+      id: encodeCancellationPayload({ step: 'pick', lessonId: lesson.id }),
+      title: `${lesson.student_name} · ${when.time}`,
+      description: `${when.date} · ${lesson.teacher_name}`,
+    }
+  })
+
+  const nextOffset = offset + CANCEL_PAGE_SIZE
+  if (nextOffset < lessons.length) {
+    rows.push({
+      id: encodeCancellationPayload({ step: 'page', offset: nextOffset }),
+      title: botString('cancel_list_more', locale),
+    })
+  }
+
+  const header = botString('cancellation_list_header', locale)
+
+  try {
+    await sendListMessage(
+      senderPhone,
+      {
+        body: prefix ? `${prefix}\n\n${header}` : header,
+        buttonLabel: botString('cancel_list_button', locale),
+        rows,
+      },
+      accessToken,
+      phoneNumberId
+    )
+    return
+  } catch (err) {
+    console.warn('[whatsapp/cancellation] Interactive list failed — falling back to text', {
+      orgId,
+      senderPhone,
+      err,
+    })
+  }
+
+  const body = formatLessonListMessage(lessons, timezone, locale)
   await sendCancellationLessonList(
     senderPhone,
     prefix ? `${prefix}\n\n${body}` : body,
@@ -194,7 +365,7 @@ async function rebuildLessonList(
     return
   }
 
-  await sendLessonList(params, lessons, prefix)
+  await sendLessonList(params, lessons, { prefix })
 }
 
 /** Date and time of a lesson, in the reader's own language. */

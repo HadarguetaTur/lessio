@@ -7,6 +7,7 @@
  */
 
 import { META_API_VERSION } from './graphVersion'
+import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
 type TemplateDefinition = {
   name: string
@@ -230,6 +231,108 @@ export const TEMPLATES: TemplateDefinition[] = [
       },
     ],
   },
+  // ── Button-carrying reminders (v3) ──────────────────────────────────────
+  // Same bodies as the v2 set above, plus the buttons that turn a reminder into
+  // something a parent can act on with one tap. New names, not edits: editing
+  // an approved template resets it to PENDING and blocks out-of-window sends,
+  // so v2 stays live as the no-button fallback until these are approved.
+  //
+  // Meta stores only the labels. The payloads (att:ok:<lessonId>,
+  // hw:done:<assignmentId>) are bound at send time and come back in
+  // button.payload, so one approved template serves every lesson.
+  {
+    name: 'lessio_lesson_reminder_he_v3',
+    language: 'he',
+    rawComponents: [
+      {
+        type: 'BODY',
+        text: 'תזכורת: שיעור עם {{1}} מתקיים {{2}} בשעה {{3}}. נתראה!',
+        example: { body_text: [['שרה כהן', 'יום שני 12/5', '16:00']] },
+      },
+      {
+        type: 'BUTTONS',
+        buttons: [
+          { type: 'QUICK_REPLY', text: 'מאשר/ת הגעה' },
+          { type: 'QUICK_REPLY', text: 'צריך לבטל' },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'lessio_lesson_reminder_en_v3',
+    language: 'en',
+    rawComponents: [
+      {
+        type: 'BODY',
+        text: 'Reminder: your lesson with {{1}} is on {{2}} at {{3}}. See you there!',
+        example: { body_text: [['Sarah Cohen', 'Monday 12/5', '16:00']] },
+      },
+      {
+        type: 'BUTTONS',
+        buttons: [
+          { type: 'QUICK_REPLY', text: 'Confirm attendance' },
+          { type: 'QUICK_REPLY', text: 'Need to cancel' },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'lessio_homework_assignment_he_v3',
+    language: 'he',
+    rawComponents: [
+      {
+        type: 'BODY',
+        text: 'שיעורי בית חדשים ממתינים לכם 📚\nנושא: {{1}}\nפירוט המשימה: {{2}}\nמועד הגשה: {{3}}\nבהצלחה, ונשמח לעדכון כשסיימתם.',
+        example: {
+          body_text: [['חיבור על הקיץ', 'כתיבת חיבור של 300 מילים', 'להגשה עד: 20/5']],
+        },
+      },
+      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'סיימתי ✅' }] },
+    ],
+  },
+  {
+    name: 'lessio_homework_assignment_en_v3',
+    language: 'en',
+    rawComponents: [
+      {
+        type: 'BODY',
+        text: 'New homework is waiting for you 📚\nTopic: {{1}}\nWhat to do: {{2}}\nDue date: {{3}}\nGood luck, and let us know when it is done.',
+        example: { body_text: [['Summer essay', 'Write a 300-word essay', 'Due by: 20/5']] },
+      },
+      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'Done ✅' }] },
+    ],
+  },
+  {
+    name: 'lessio_homework_reminder_he_v3',
+    language: 'he',
+    rawComponents: [
+      {
+        type: 'BODY',
+        text: 'תזכורת: שיעורי הבית של {{1}}, "{{2}}", צריכים להיות מוכנים עד {{3}}. בהצלחה!',
+        example: { body_text: [['דוד כהן', 'פרק ג בספר', '15/5']] },
+      },
+      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'סיימתי ✅' }] },
+    ],
+  },
+  {
+    name: 'lessio_homework_reminder_en_v3',
+    language: 'en',
+    rawComponents: [
+      {
+        type: 'BODY',
+        text: 'Reminder: {{1}}\'s homework, "{{2}}", is due by {{3}}. Good luck!',
+        example: { body_text: [['David Cohen', 'Chapter 3', '15/5']] },
+      },
+      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'Done ✅' }] },
+    ],
+  },
+  // ── Payment messages with a pay button (v3) ─────────────────────────────
+  // The body drops the bare link the v2 copy carried; the URL button takes its
+  // place. Meta only accepts a dynamic SUFFIX on a fixed base, and a provider
+  // link's domain varies per org, so the button points at our own /pay/<id>
+  // redirect. That bakes this deployment's origin into the approved template:
+  // an org on a different domain would need its own registration.
+  ...paymentButtonTemplates(),
   {
     // Portal OTP login (Sprint 31). Body copy is fixed by Meta for AUTHENTICATION
     // templates; the footer expiry must match the 10-minute OTP TTL in
@@ -256,6 +359,78 @@ export const TEMPLATES: TemplateDefinition[] = [
     ],
   },
 ]
+
+/**
+ * The four payment templates that carry a pay button.
+ *
+ * Built rather than written out because the button URL has to be resolved from
+ * this deployment's origin, and all four differ only in copy.
+ */
+function paymentButtonTemplates(): TemplateDefinition[] {
+  const payBase = `${getShareableBaseUrl()}/pay/`
+  const urlButton = (text: string) => ({
+    type: 'BUTTONS',
+    buttons: [
+      {
+        type: 'URL',
+        text,
+        url: `${payBase}{{1}}`,
+        example: [`${payBase}3f2b8a1c-9d4e-4f6a-8b2c-1e5d7a9c3b0f`],
+      },
+    ],
+  })
+
+  return [
+    {
+      name: 'lessio_payment_request_he_v3',
+      language: 'he',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'היי! התקבלה בקשת תשלום בסך ₪{{1}}.\nאפשר לשלם בבטחה בכפתור שלמטה. תודה רבה!',
+          example: { body_text: [['350']] },
+        },
+        urlButton('לתשלום מאובטח'),
+      ],
+    },
+    {
+      name: 'lessio_payment_request_en_v3',
+      language: 'en',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'Hi! A payment request for ₪{{1}} is ready.\nYou can pay securely using the button below. Thank you very much!',
+          example: { body_text: [['350']] },
+        },
+        urlButton('Pay securely'),
+      ],
+    },
+    {
+      name: 'lessio_payment_reminder_he_v3',
+      language: 'he',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'היי {{1}}, תזכורת קטנה: יש יתרה פתוחה של ₪{{2}}. אפשר לשלם בכפתור שלמטה. תודה!',
+          example: { body_text: [['משה לוי', '350']] },
+        },
+        urlButton('לתשלום מאובטח'),
+      ],
+    },
+    {
+      name: 'lessio_payment_reminder_en_v3',
+      language: 'en',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'Hi {{1}}, a small reminder: you have an open balance of ₪{{2}}. You can pay using the button below. Thank you!',
+          example: { body_text: [['Moshe Levi', '350']] },
+        },
+        urlButton('Pay securely'),
+      ],
+    },
+  ]
+}
 
 /**
  * Registers every template on a WABA. Never throws — this runs fire-and-forget

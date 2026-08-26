@@ -22,6 +22,15 @@ export type BotStringKey =
   | 'lesson_no_longer_cancellable'
   | 'cancellation_list_header'
   | 'cancellation_list_footer'
+  | 'cancel_list_button'
+  | 'cancel_list_more'
+  | 'cancel_confirm_body'
+  | 'cancel_confirm_yes'
+  | 'cancel_confirm_no'
+  | 'cancel_flow_closed'
+  | 'attendance_confirmed'
+  | 'attendance_lesson_gone'
+  | 'homework_already_done'
   | 'booking_no_student'
   | 'booking_multiple_students'
   | 'no_open_homework'
@@ -51,6 +60,14 @@ export type BotStringKey =
   // CTA button labels (Meta caps display_text at 20 chars — keep them short)
   | 'cta_book_lesson'
   | 'cta_open_portal'
+  | 'cta_pay_now'
+  // Buttons on proactive messages. Sent from the Edge Functions, which have
+  // their own copy in supabase/functions/_shared/botStrings.ts — these exist
+  // here so the settings preview can show what a parent actually receives, and
+  // MUST stay identical to both that file and the v3 Meta template labels.
+  | 'btn_confirm_attendance'
+  | 'btn_need_to_cancel'
+  | 'btn_homework_done'
   // Interactive menu. Row titles are capped at 24 chars and the list button at
   // 20 by Meta, so these are deliberately terse.
   | 'menu_greeting'
@@ -180,6 +197,15 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     lesson_no_longer_cancellable: 'השיעור שנבחר כבר לא זמין לביטול. הנה הרשימה המעודכנת:',
     cancellation_list_header: 'איזה שיעור לבטל? הנה השיעורים הקרובים:',
     cancellation_list_footer: 'אפשר לענות במספר השיעור (הרשימה בתוקף ל-10 דקות).',
+    cancel_list_button: 'בחירת שיעור',
+    cancel_list_more: 'עוד שיעורים ⬇️',
+    cancel_confirm_body: 'לבטל את השיעור של {{student_name}} ב{{date}} בשעה {{time}}?',
+    cancel_confirm_yes: 'כן, לבטל',
+    cancel_confirm_no: 'לא, חזרה',
+    cancel_flow_closed: 'סגרתי את הבקשה — שום שיעור לא בוטל 🙂',
+    attendance_confirmed: 'מעולה, רשמנו שאתם מגיעים 👍 נתראה בשיעור!',
+    attendance_lesson_gone: 'השיעור הזה כבר לא מופיע ביומן. אם משהו לא ברור, הצוות כאן בשבילכם 🙂',
+    homework_already_done: 'שיעורי הבית האלה כבר מסומנים כהושלמו 🎉',
     booking_no_student:
       'עדיין אין תלמיד מקושר לחשבון, ולכן אי אפשר ליצור קישור לקביעת שיעור.\nאפשר לפנות לצוות ונסדר את זה 😊',
     booking_multiple_students:
@@ -215,6 +241,12 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
 
     cta_book_lesson: 'לקביעת שיעור',
     cta_open_portal: 'לאזור האישי',
+    // Must read the same as the URL button registered on the v3 payment
+    // templates: the same request reaches a parent either way.
+    cta_pay_now: 'לתשלום מאובטח',
+    btn_confirm_attendance: 'מאשר/ת הגעה',
+    btn_need_to_cancel: 'צריך לבטל',
+    btn_homework_done: 'סיימתי ✅',
 
     menu_greeting: 'היי {{first_name}} 👋\nאיך אפשר לעזור?',
     menu_greeting_noname: 'היי 👋\nאיך אפשר לעזור?',
@@ -359,6 +391,16 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'That lesson is no longer available to cancel. Here is the updated list:',
     cancellation_list_header: 'Which lesson would you like to cancel? Here are the upcoming ones:',
     cancellation_list_footer: 'Just reply with the lesson number (this list is valid for 10 minutes).',
+    cancel_list_button: 'Choose a lesson',
+    cancel_list_more: 'More lessons ⬇️',
+    cancel_confirm_body: "Cancel {{student_name}}'s lesson on {{date}} at {{time}}?",
+    cancel_confirm_yes: 'Yes, cancel it',
+    cancel_confirm_no: 'No, go back',
+    cancel_flow_closed: 'All closed — no lesson was cancelled 🙂',
+    attendance_confirmed: 'Great, we have you down as coming 👍 See you at the lesson!',
+    attendance_lesson_gone:
+      'That lesson is no longer on the calendar. If something looks off, the team is here for you 🙂',
+    homework_already_done: 'That homework is already marked as done 🎉',
     booking_no_student:
       'There is no student linked to this account yet, so I cannot create a booking link.\nReach out to the team and we will sort it out 😊',
     booking_multiple_students:
@@ -397,6 +439,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
 
     cta_book_lesson: 'Book a lesson',
     cta_open_portal: 'My personal area',
+    cta_pay_now: 'Pay securely',
+    btn_confirm_attendance: 'Confirm attendance',
+    btn_need_to_cancel: 'Need to cancel',
+    btn_homework_done: 'Done ✅',
 
     // Names are stored in Hebrew, so an English greeting deliberately omits
     // them rather than reading "Hi יעל 👋". Transliterating is worse: Hebrew

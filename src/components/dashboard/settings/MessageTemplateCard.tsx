@@ -24,12 +24,19 @@ import { ChevronDown } from 'lucide-react'
 import {
   saveTemplateAction,
   resetTemplateAction,
+  saveButtonLabelAction,
   sendTestTemplateAction,
   submitTemplateForApprovalAction,
   type ActionState,
   type SendTestResult,
 } from '@/app/(dashboard)/settings/message-templates/actions'
 import { useTestPhone } from '@/components/dashboard/settings/TestPhone'
+import { WhatsAppPreview } from '@/components/dashboard/settings/WhatsAppPreview'
+import {
+  BUTTON_LABEL_MAX,
+  buttonsFor,
+  type TemplateButton,
+} from '@/lib/whatsapp/templateButtons'
 import { normalizeTemplateBody, substituteVars } from '@/lib/whatsapp/templates'
 import type { MessageTemplateType } from '@/lib/whatsapp/templates'
 import type { AppLocale } from '@/lib/i18n/locale'
@@ -50,6 +57,12 @@ interface MessageTemplateCardProps {
   /** This type is sent outside the 24h window, so Meta approval is relevant. */
   needsApproval?: boolean
   approval?: TemplateApproval | null
+  /**
+   * The label each of this type's buttons currently carries — the org's own
+   * wording where it set one, Lessio's otherwise. Resolved on the server so the
+   * card does not need the string tables.
+   */
+  buttonLabels?: Record<string, string>
 }
 
 const initialState: ActionState = { error: null }
@@ -82,6 +95,7 @@ export function MessageTemplateCard({
   submittable = false,
   needsApproval = false,
   approval = null,
+  buttonLabels = {},
 }: MessageTemplateCardProps) {
   const t = useTranslations('settings.messageTemplates')
   const tCommon = useTranslations('common')
@@ -96,7 +110,9 @@ export function MessageTemplateCard({
   const [submitVariable, setSubmitVariable] = useState<string | undefined>(undefined)
   const [submitMetaMessage, setSubmitMetaMessage] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
+  const [labelDrafts, setLabelDrafts] = useState<Record<string, string>>({})
   const isCustom = customBody !== null
+  const buttons = buttonsFor(type)
 
   // Reflect optimistic reset: if saved body becomes null, revert textarea to default
   useEffect(() => {
@@ -164,6 +180,10 @@ export function MessageTemplateCard({
   }
 
   const preview = substituteVars(body, previewVars)
+
+  // Labels shown in the preview follow the editor live: typing a new label and
+  // watching the bubble change is the whole reason the two sit together.
+  const labels: Record<string, string> = { ...buttonLabels, ...labelDrafts }
   // The collapsed row has to say something about the message itself; the label
   // alone does not distinguish twenty templates.
   const firstLine = body.split('\n').find((line) => line.trim().length > 0)?.trim() ?? ''
@@ -305,14 +325,26 @@ export function MessageTemplateCard({
 
       <SendTestRow type={type} locale={locale} />
 
-      {/* Live preview */}
+      {/* Live preview — the message as WhatsApp draws it, buttons included. */}
       {showPreview && (
-        <div className="border border-gray-200 rounded-md bg-gray-50 p-3">
-          <p className="text-xs font-medium text-muted-foreground mb-2">{t('preview')}:</p>
-          <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed" dir={locale === 'he' ? 'rtl' : 'ltr'}>
-            {preview}
-          </pre>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">{t('preview')}:</p>
+          <WhatsAppPreview
+            body={preview}
+            buttons={buttons.map((b) => ({ label: labels[b.labelKey], kind: b.kind }))}
+            locale={locale}
+          />
         </div>
+      )}
+
+      {/* Button labels */}
+      {buttons.length > 0 && (
+        <ButtonLabelsSection
+          buttons={buttons}
+          labels={labels}
+          locale={locale}
+          onDraftChange={setLabelDrafts}
+        />
       )}
 
       {/* Meta approval */}
@@ -407,6 +439,113 @@ export function MessageTemplateCard({
       )}
       </div>
     </details>
+  )
+}
+
+/**
+ * The buttons this message carries, and — where the wording is the org's to
+ * choose — an input for each.
+ *
+ * Labels on a Meta-approved template are locked: Meta approved that exact
+ * wording, and changing it means a new template version and another review.
+ * Showing them greyed with a reason beats hiding them, because a tutor
+ * comparing the preview to a real message needs to know why one field is
+ * editable and the next is not.
+ */
+function ButtonLabelsSection({
+  buttons,
+  labels,
+  locale,
+  onDraftChange,
+}: {
+  buttons: TemplateButton[]
+  labels: Record<string, string>
+  locale: AppLocale
+  onDraftChange: React.Dispatch<React.SetStateAction<Record<string, string>>>
+}) {
+  const t = useTranslations('settings.messageTemplates')
+  const editable = buttons.filter((b) => b.editable)
+  const locked = buttons.filter((b) => !b.editable)
+
+  return (
+    <div className="space-y-2 border-t border-gray-100 pt-3">
+      <p className="text-xs font-medium text-muted-foreground">{t('buttons.title')}</p>
+
+      {editable.map((button) => (
+        <ButtonLabelRow
+          key={button.labelKey}
+          labelKey={button.labelKey}
+          value={labels[button.labelKey] ?? ''}
+          locale={locale}
+          onDraftChange={onDraftChange}
+        />
+      ))}
+
+      {locked.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap gap-1.5">
+            {locked.map((button, i) => (
+              <span
+                key={`${button.labelKey}-${i}`}
+                className="rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-600"
+              >
+                {labels[button.labelKey]}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">{t('buttons.lockedByMeta')}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** One editable label: an input that updates the preview as it is typed. */
+function ButtonLabelRow({
+  labelKey,
+  value,
+  locale,
+  onDraftChange,
+}: {
+  labelKey: string
+  value: string
+  locale: AppLocale
+  onDraftChange: React.Dispatch<React.SetStateAction<Record<string, string>>>
+}) {
+  const t = useTranslations('settings.messageTemplates')
+  const tCommon = useTranslations('common')
+  const [state, formAction, isPending] = useActionState(saveButtonLabelAction, initialState)
+  const [draft, setDraft] = useState(value)
+
+  function handleChange(next: string) {
+    setDraft(next)
+    onDraftChange((drafts) => ({ ...drafts, [labelKey]: next }))
+  }
+
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="key" value={labelKey} />
+      <input type="hidden" name="locale" value={locale} />
+      <input
+        name="value"
+        value={draft}
+        onChange={(e) => handleChange(e.target.value)}
+        maxLength={BUTTON_LABEL_MAX}
+        dir={locale === 'he' ? 'rtl' : 'ltr'}
+        className="w-48 rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <button
+        type="submit"
+        disabled={isPending || draft.trim().length === 0 || draft === value}
+        className="rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+      >
+        {isPending ? `${tCommon('actions.save')}…` : tCommon('actions.save')}
+      </button>
+      <span className="text-[11px] text-muted-foreground">
+        {t('buttons.maxLength', { max: String(BUTTON_LABEL_MAX) })}
+      </span>
+      {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+    </form>
   )
 }
 

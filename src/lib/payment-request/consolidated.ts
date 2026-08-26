@@ -12,7 +12,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
-import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
+import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
@@ -153,7 +153,7 @@ export async function sendConsolidatedPaymentRequest(
     .in('id', chargeIds)
     .eq('organization_id', orgId)
 
-  const result = await sendSmartMessage({
+  const result = await sendPaymentWithButton({
     orgId,
     phone: parent.phone as string,
     accessToken: decryptToken(encryptedToken),
@@ -166,6 +166,10 @@ export async function sendConsolidatedPaymentRequest(
       description: tr('consolidatedPayment', { count: String(chargeIds.length) }),
       payment_link: paymentUrl,
     },
+    // Every charge in the request now carries the same link, so any of them
+    // resolves the button to the same checkout.
+    chargeId: chargeIds[0],
+    paymentUrl,
     locale,
   })
 

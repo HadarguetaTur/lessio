@@ -232,6 +232,10 @@ const BASE_URL = 'https://example.com'
 const ORG_ID = 'org-1'
 const PARENT_ID = 'parent-1'
 const STUDENT_ID = 'student-1'
+// Cancellation reply payloads carry a lesson id the decoder shape-checks as a
+// uuid, so these two have to look like the real thing.
+const OWN_LESSON_ID = '3f2b8a1c-9d4e-4f6a-8b2c-1e5d7a9c3b0f'
+const SIBLING_LESSON_ID = '7c1e4d2b-5a8f-4e3c-9b6d-2f0a8c4e1d7b'
 
 // Sender phone as Meta sends it (without +)
 const SENDER_PHONE_META = '972501234567'
@@ -893,9 +897,11 @@ describe('WhatsApp cancellation intent', () => {
       SENDER_PHONE_E164,
       ['lesson-1']
     )
-    expect(mockSendCancellationLessonList).toHaveBeenCalledWith(
+    expect(mockSendListMessage).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
-      'lesson list message',
+      expect.objectContaining({
+        rows: [expect.objectContaining({ id: 'c:pick:lesson-1' })],
+      }),
       'test-access-token',
       'phone-number-id-1'
     )
@@ -923,9 +929,12 @@ describe('WhatsApp cancellation intent', () => {
     const req = makeRequest(makeWebhookPayload('1'))
     const res = await POST(req)
     expect(res.status).toBe(200)
-    expect(mockSendCancellationLessonList).toHaveBeenCalledWith(
+    expect(mockSendListMessage).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
-      expect.stringContaining('השיעור שנבחר כבר לא זמין לביטול.'),
+      expect.objectContaining({
+        body: expect.stringContaining('השיעור שנבחר כבר לא זמין לביטול.'),
+        rows: [expect.objectContaining({ id: 'c:pick:lesson-2' })],
+      }),
       'test-access-token',
       'phone-number-id-1'
     )
@@ -935,6 +944,203 @@ describe('WhatsApp cancellation intent', () => {
       ['lesson-2']
     )
     expect(mockDeleteCancellationSession).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The tapped path. Stateless by design: every step re-reads the eligible
+   * lessons, so a tap that arrives after the session expired still works and a
+   * lesson cancelled in between is caught before anything is committed.
+   */
+  describe('tapped cancellation payloads', () => {
+    function mockParentOrg() {
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'organizations')
+          return buildChain({
+            data: {
+              id: ORG_ID,
+              whatsapp_access_token: 'encrypted-token',
+              timezone: 'Asia/Jerusalem',
+            },
+            error: null,
+          })
+        if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+        return buildChain({ data: null, error: null })
+      })
+    }
+
+    it('answers a tapped lesson row with confirm buttons instead of cancelling', async () => {
+      mockParentOrg()
+      mockGetEligibleLessons.mockResolvedValueOnce([
+        {
+          id: OWN_LESSON_ID,
+          start_at: new Date(Date.now() + 86400000).toISOString(),
+          student_name: 'יעל',
+          teacher_name: 'מיכל',
+        },
+      ])
+
+      // The row title is bot copy in the parent's own language, so a Hebrew
+      // list keeps the exchange in Hebrew.
+      const res = await POST(
+        makeRequest(makeInteractivePayload(`c:pick:${OWN_LESSON_ID}`, 'יעל · 16:00'))
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockExecuteCancellation).not.toHaveBeenCalled()
+      expect(mockSendReplyButtons).toHaveBeenCalledWith(
+        SENDER_PHONE_E164,
+        expect.objectContaining({
+          body: expect.stringContaining('יעל'),
+          buttons: [
+            expect.objectContaining({ id: `c:confirm:${OWN_LESSON_ID}` }),
+            expect.objectContaining({ id: 'c:abort' }),
+          ],
+        }),
+        'test-access-token',
+        'phone-number-id-1'
+      )
+    })
+
+    it('rebuilds the list when the tapped lesson is no longer eligible', async () => {
+      mockParentOrg()
+      mockGetEligibleLessons.mockResolvedValue([
+        {
+          id: SIBLING_LESSON_ID,
+          start_at: new Date(Date.now() + 86400000).toISOString(),
+          student_name: 'יעל',
+          teacher_name: 'מיכל',
+        },
+      ])
+
+      const res = await POST(
+        makeRequest(makeInteractivePayload(`c:pick:${OWN_LESSON_ID}`, 'יעל · 16:00'))
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockSendReplyButtons).not.toHaveBeenCalled()
+      expect(mockSendListMessage).toHaveBeenCalledWith(
+        SENDER_PHONE_E164,
+        expect.objectContaining({
+          body: expect.stringContaining('כבר לא זמין לביטול'),
+        }),
+        'test-access-token',
+        'phone-number-id-1'
+      )
+    })
+
+    it('cancels on a tapped confirm button', async () => {
+      mockParentOrg()
+      mockExecuteCancellation.mockResolvedValueOnce({
+        success: true,
+        lessonStartAt: '2026-08-20T10:00:00Z',
+        studentName: 'יעל',
+        teacherName: 'מיכל',
+        chargeResult: { shouldCharge: false, amount: 0, chargeType: null, reasonCode: 'no_policy' },
+      })
+
+      const res = await POST(makeRequest(makeInteractivePayload(`c:confirm:${OWN_LESSON_ID}`)))
+
+      expect(res.status).toBe(200)
+      expect(mockExecuteCancellation).toHaveBeenCalledWith(OWN_LESSON_ID, PARENT_ID, ORG_ID)
+      expect(mockDeleteCancellationSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164)
+    })
+
+    it('closes the flow quietly when the parent backs out', async () => {
+      mockParentOrg()
+
+      const res = await POST(makeRequest(makeInteractivePayload('c:abort', 'לא, חזרה')))
+
+      expect(res.status).toBe(200)
+      expect(mockExecuteCancellation).not.toHaveBeenCalled()
+      expect(mockDeleteCancellationSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164)
+      expect(mockSendTextMessage).toHaveBeenCalledWith(
+        SENDER_PHONE_E164,
+        expect.stringContaining('שום שיעור לא בוטל'),
+        'test-access-token',
+        'phone-number-id-1'
+      )
+    })
+
+    it('re-taps of an already-cancelled lesson close silently', async () => {
+      mockParentOrg()
+      mockExecuteCancellation.mockResolvedValueOnce({
+        success: false,
+        error: 'already_cancelled',
+      })
+
+      const res = await POST(makeRequest(makeInteractivePayload(`c:confirm:${OWN_LESSON_ID}`)))
+
+      expect(res.status).toBe(200)
+      expect(mockDeleteCancellationSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164)
+      expect(mockSendTextMessage).not.toHaveBeenCalled()
+      expect(mockSendListMessage).not.toHaveBeenCalled()
+    })
+
+    it('pages the list past the first eight lessons', async () => {
+      mockParentOrg()
+      const lessons = Array.from({ length: 11 }, (_, i) => ({
+        id: `0000000${i}-9d4e-4f6a-8b2c-1e5d7a9c3b0f`.slice(-36),
+        start_at: new Date(Date.now() + (i + 1) * 86400000).toISOString(),
+        student_name: `תלמיד ${i}`,
+        teacher_name: 'מיכל',
+      }))
+      mockGetEligibleLessons.mockResolvedValueOnce(lessons)
+
+      const res = await POST(makeRequest(makeInteractivePayload('c:page:8')))
+
+      expect(res.status).toBe(200)
+      const rows = mockSendListMessage.mock.calls[0][1].rows
+      // The last three lessons, and no "more" row — this is the final page.
+      expect(rows).toHaveLength(3)
+      expect(rows[0].id).toBe(`c:pick:${lessons[8].id}`)
+      expect(rows.some((r) => r.id.startsWith('c:page:'))).toBe(false)
+    })
+
+    it('offers a "more lessons" row when more than eight are eligible', async () => {
+      mockParentOrg()
+      const lessons = Array.from({ length: 11 }, (_, i) => ({
+        id: `0000000${i}-9d4e-4f6a-8b2c-1e5d7a9c3b0f`.slice(-36),
+        start_at: new Date(Date.now() + (i + 1) * 86400000).toISOString(),
+        student_name: `תלמיד ${i}`,
+        teacher_name: 'מיכל',
+      }))
+      mockGetEligibleLessons.mockResolvedValueOnce(lessons)
+
+      await POST(makeRequest(makeWebhookPayload('ביטול')))
+
+      const rows = mockSendListMessage.mock.calls[0][1].rows
+      expect(rows).toHaveLength(9)
+      expect(rows[8].id).toBe('c:page:8')
+      // The session still holds every lesson, so a typed number keeps working.
+      expect(mockUpsertCancellationSession).toHaveBeenCalledWith(
+        ORG_ID,
+        SENDER_PHONE_E164,
+        lessons.map((l) => l.id)
+      )
+    })
+
+    it('falls back to the numbered text list when the interactive send fails', async () => {
+      mockParentOrg()
+      mockSendListMessage.mockRejectedValueOnce(new Error('131047'))
+      mockGetEligibleLessons.mockResolvedValueOnce([
+        {
+          id: OWN_LESSON_ID,
+          start_at: new Date(Date.now() + 86400000).toISOString(),
+          student_name: 'יעל',
+          teacher_name: 'מיכל',
+        },
+      ])
+
+      const res = await POST(makeRequest(makeWebhookPayload('ביטול')))
+
+      expect(res.status).toBe(200)
+      expect(mockSendCancellationLessonList).toHaveBeenCalledWith(
+        SENDER_PHONE_E164,
+        'lesson list message',
+        'test-access-token',
+        'phone-number-id-1'
+      )
+    })
   })
 })
 
@@ -1717,7 +1923,14 @@ describe('WhatsApp sender roles', () => {
       expect(mockUpsertCancellationSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164, [
         'lesson-1',
       ])
-      expect(mockSendCancellationLessonList).toHaveBeenCalled()
+      expect(mockSendListMessage).toHaveBeenCalledWith(
+        SENDER_PHONE_E164,
+        expect.objectContaining({
+          rows: [expect.objectContaining({ id: 'c:pick:lesson-1' })],
+        }),
+        'test-access-token',
+        'phone-number-id-1'
+      )
     })
 
     it('honours the org switch that turns cancellations off', async () => {
@@ -1789,7 +2002,43 @@ describe('WhatsApp sender roles', () => {
       expect(mockExecuteCancellation).not.toHaveBeenCalled()
       // The flow stays open with a freshly rebuilt list.
       expect(mockSendInvalidSelectionReply).toHaveBeenCalled()
-      expect(mockSendCancellationLessonList).toHaveBeenCalled()
+      expect(mockSendListMessage).toHaveBeenCalled()
+    })
+
+    it('cancels on a tapped confirm button, scoped to the student themselves', async () => {
+      mockIdentity({ students: STUDENT_ROW, relationships: BILLING_PARENT })
+      mockGetEligibleLessons.mockResolvedValue([
+        { id: OWN_LESSON_ID, start_at: '2026-08-20T10:00:00Z', student_name: 'יעל', teacher_name: 'מיכל' },
+      ])
+      mockExecuteCancellation.mockResolvedValue({
+        success: true,
+        lessonStartAt: '2026-08-20T10:00:00Z',
+        studentName: 'יעל',
+        teacherName: 'מיכל',
+        chargeResult: { shouldCharge: false, amount: 0, chargeType: null, reasonCode: 'no_policy' },
+      })
+
+      const res = await POST(makeRequest(makeInteractivePayload(`c:confirm:${OWN_LESSON_ID}`)))
+
+      expect(res.status).toBe(200)
+      // The student narrowing is re-applied before the commit: executeCancellation
+      // authorises through the parent, which spans siblings too.
+      expect(mockGetEligibleLessons).toHaveBeenCalledWith(ORG_ID, PARENT_ID, [STUDENT_ID])
+      expect(mockExecuteCancellation).toHaveBeenCalledWith(OWN_LESSON_ID, PARENT_ID, ORG_ID)
+    })
+
+    it('refuses a tapped confirm naming a lesson that is not the student’s', async () => {
+      mockIdentity({ students: STUDENT_ROW, relationships: BILLING_PARENT })
+      // The sibling's lesson is not in the student-narrowed eligible set, so the
+      // tap is refused even though the parent relationship would authorise it.
+      mockGetEligibleLessons.mockResolvedValue([
+        { id: OWN_LESSON_ID, start_at: '2026-08-20T10:00:00Z', student_name: 'יעל', teacher_name: 'מיכל' },
+      ])
+
+      const res = await POST(makeRequest(makeInteractivePayload(`c:confirm:${SIBLING_LESSON_ID}`)))
+
+      expect(res.status).toBe(200)
+      expect(mockExecuteCancellation).not.toHaveBeenCalled()
     })
   })
 

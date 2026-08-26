@@ -85,7 +85,14 @@ import {
   getActiveCancellationSession,
   deleteCancellationSession,
 } from '@/lib/cancellation-flow'
-import { applyCancellationSelection, startCancellationFlow } from './cancellation'
+import {
+  applyCancellationSelection,
+  handleCancellationPayload,
+  startCancellationFlow,
+} from './cancellation'
+import { decodeCancellationPayload } from '@/lib/whatsapp/cancellationPayloads'
+import { decodeEntityPayload } from '@/lib/whatsapp/entityPayloads'
+import { handleEntityPayload } from './handlers/entityPayloads'
 import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { isAiConfiguredForOrg } from '@/lib/ai-assistant/providers/factory'
 import { findRecentUsageLog, updateSatisfaction } from '@/lib/ai-assistant/usage'
@@ -506,6 +513,29 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
     return
   }
 
+  // 6a'''. A button on a message we sent proactively — a lesson reminder, a
+  //        homework assignment. Dispatched ahead of the role fork because these
+  //        are addressed to a phone, not to a capacity: a number that is both a
+  //        parent and a teacher, with teacher preferred, would otherwise land in
+  //        the teacher flow, which has no idea what an `att:` payload is.
+  const entityPayload = decodeEntityPayload(msg.replyId)
+  if (entityPayload) {
+    const handled = await handleEntityPayload({
+      db,
+      orgId: org.id,
+      senderPhone,
+      accessToken,
+      phoneNumberId,
+      locale,
+      timezone,
+      cancellationEnabled: org.automation_cancellation_enabled !== false,
+      payload: entityPayload,
+    })
+    if (handled) return
+    // Nobody on this number can answer for the lesson or assignment named. Fall
+    // through to normal routing rather than leaving the tap unanswered.
+  }
+
   // 6a''. Non-parent capacities have their own, much narrower flows.
   if (sender.role !== 'parent') {
     const ctx: HandlerContext = {
@@ -597,6 +627,24 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
       })
       return
     }
+  }
+
+  // 6b'. Tapped a row or button in the cancellation flow. Ahead of the session
+  //      check for the same reason as the menu: an explicit tap must never be
+  //      read as an answer to an older numbered list.
+  const cancelPayload = decodeCancellationPayload(msg.replyId)
+  if (cancelPayload && org.automation_cancellation_enabled !== false) {
+    await handleCancellationPayload({
+      actor: { parentId: parent.id, cancelledBy: 'parent' },
+      payload: cancelPayload,
+      orgId: org.id,
+      senderPhone,
+      timezone,
+      accessToken,
+      phoneNumberId,
+      locale,
+    })
+    return
   }
 
   // 6c. Bare greeting → greet by name and show the menu.

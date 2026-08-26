@@ -30,7 +30,16 @@ import {
   deleteCancellationSession,
   getActiveCancellationSession,
 } from '@/lib/cancellation-flow'
-import { applyCancellationSelection, startCancellationFlow, type CancellationActor } from '../cancellation'
+import {
+  applyCancellationSelection,
+  handleCancellationPayload,
+  startCancellationFlow,
+  type CancellationActor,
+} from '../cancellation'
+import {
+  decodeCancellationPayload,
+  type CancellationPayload,
+} from '@/lib/whatsapp/cancellationPayloads'
 import {
   buildUpcomingLessonLines,
   findBillingParent,
@@ -83,6 +92,14 @@ export async function handleStudentMessage(
       default:
         return false
     }
+  }
+
+  // A tapped cancellation row or confirm button, ahead of the session for the
+  // same reason a menu tap is: it is an explicit choice, not a lesson number.
+  const cancelPayload = decodeCancellationPayload(ctx.msg.replyId)
+  if (cancelPayload && ctx.org.automation_cancellation_enabled !== false) {
+    await continueCancellationTap(ctx, cancelPayload)
+    return true
   }
 
   // A bare number answers the lesson list we just sent, so the open session is
@@ -187,6 +204,25 @@ async function startCancellation(ctx: HandlerContext): Promise<void> {
 
   await startCancellationFlow({
     actor: actorFor(ctx, parent),
+    orgId: ctx.org.id,
+    senderPhone: ctx.senderPhone,
+    timezone: ctx.timezone,
+    accessToken: ctx.accessToken,
+    phoneNumberId: ctx.phoneNumberId,
+    locale: ctx.locale,
+  })
+}
+
+async function continueCancellationTap(
+  ctx: HandlerContext,
+  payload: CancellationPayload
+): Promise<void> {
+  const parent = await requireBillingParent(ctx)
+  if (!parent) return
+
+  await handleCancellationPayload({
+    actor: actorFor(ctx, parent),
+    payload,
     orgId: ctx.org.id,
     senderPhone: ctx.senderPhone,
     timezone: ctx.timezone,

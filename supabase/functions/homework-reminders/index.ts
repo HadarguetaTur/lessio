@@ -18,7 +18,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
-import { sendSmartMessage } from '../_shared/whatsapp.ts'
+import { sendSmartInteractive } from '../_shared/whatsapp.ts'
 import { resolveTemplate, resolveRecipientLocale, type AppLocale } from '../_shared/templates.ts'
 import { botString } from '../_shared/botStrings.ts'
 import { sendEmail } from '../_shared/email.ts'
@@ -171,22 +171,23 @@ async function processOrg(db: any, org: any): Promise<void> {
 
     let sendError: string | null = null
     try {
-      await sendSmartMessage(
-        db,
+      await sendSmartInteractive(db, {
         orgId,
         phone,
         accessToken,
-        org.whatsapp_phone_number_id,
-        'homework_reminder',
-        message,
-        [
+        phoneNumberId: org.whatsapp_phone_number_id,
+        templateType: 'homework_reminder',
+        textBody: message,
+        templateVars: [
           assignment.students?.full_name || botString('the_student', locale),
           assignment.title,
           assignment.due_date || dueTomorrowLabel(locale),
         ],
         locale,
-        { title: assignment.title, due_date_suffix: dueDateSuffix }
-      )
+        namedVars: { title: assignment.title, due_date_suffix: dueDateSuffix },
+        payloads: [`hw:done:${assignment.id}`],
+        buttonLabels: [botString('btn_homework_done', locale)],
+      })
     } catch (err) {
       sendError = String(err)
       console.error('[homework-reminders] WhatsApp send failed', {

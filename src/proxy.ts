@@ -89,6 +89,10 @@ export async function proxy(request: NextRequest) {
     // entry (HMAC, or a reference only the provider could mint). No Supabase
     // session exists on these calls, so the auth round-trip is pure latency.
     request.nextUrl.pathname.startsWith('/api/payments/') ||
+    // /pay/<chargeId> — the redirect a WhatsApp template's pay button points at.
+    // Anyone holding the link is the parent who was sent it; it only ever
+    // forwards to the provider's own checkout, which does its own auth.
+    request.nextUrl.pathname.startsWith('/pay/') ||
     // Client error reports. Unauthenticated on purpose: the boundary that most
     // needs to report is the one that fired because the session or the shell
     // itself broke, and an auth round-trip here would silently drop exactly

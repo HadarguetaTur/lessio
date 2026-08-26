@@ -42,7 +42,17 @@ export async function sendTextMessage(
 }
 
 // deno-lint-ignore no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MetaTemplateComponent = Record<string, any>
+
+/**
+ * The Supabase service-role client. Untyped because Edge Functions cannot
+ * import the generated database types from src/, and hand-writing them here
+ * would be a third copy to keep in sync.
+ */
+// deno-lint-ignore no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Db = any
 
 /**
  * Sends a Meta-approved WhatsApp template message.
@@ -83,6 +93,136 @@ export async function sendTemplateMessage(
 }
 
 /**
+ * Sends up to three reply buttons alongside a body.
+ * SYNC: mirrors sendReplyButtons in src/lib/whatsapp/interactive.ts.
+ *
+ * Only valid INSIDE the 24h window — outside it Meta rejects interactive
+ * messages with 131047, and the quick-reply template below is the only option.
+ */
+export async function sendReplyButtons(
+  to: string,
+  opts: { body: string; buttons: Array<{ id: string; title: string }> },
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'interactive',
+      interactive: {
+        type: 'button',
+        body: { text: clip(opts.body, 1024) },
+        action: {
+          buttons: opts.buttons.slice(0, 3).map((b) => ({
+            type: 'reply',
+            reply: { id: b.id, title: clip(b.title, 20) },
+          })),
+        },
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`WhatsApp reply-buttons API error ${res.status}: ${detail}`)
+  }
+}
+
+/**
+ * Sends an approved template that was registered WITH quick-reply buttons,
+ * binding one payload per button at send time.
+ * SYNC: mirrors sendTemplateWithQuickReplies in src/lib/whatsapp/interactive.ts.
+ */
+export async function sendTemplateWithQuickReplies(
+  to: string,
+  opts: { name: string; languageCode: string; bodyParams: string[]; payloads: string[] },
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const components: MetaTemplateComponent[] = []
+
+  if (opts.bodyParams.length > 0) {
+    components.push({
+      type: 'body',
+      parameters: opts.bodyParams.map((t) => ({ type: 'text', text: t })),
+    })
+  }
+
+  opts.payloads.forEach((payload, i) => {
+    components.push({
+      type: 'button',
+      sub_type: 'quick_reply',
+      index: String(i),
+      parameters: [{ type: 'payload', payload }],
+    })
+  })
+
+  await sendTemplateMessage(
+    to,
+    accessToken,
+    phoneNumberId,
+    opts.name,
+    opts.languageCode,
+    components
+  )
+}
+
+/**
+ * Sends a body with a single URL button.
+ * SYNC: mirrors sendCtaUrlMessage in src/lib/whatsapp/index.ts.
+ */
+export async function sendCtaUrlMessage(
+  to: string,
+  body: string,
+  buttonText: string,
+  linkUrl: string,
+  accessToken: string,
+  phoneNumberId: string
+): Promise<void> {
+  const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'interactive',
+      interactive: {
+        type: 'cta_url',
+        body: { text: clip(body, 1024) },
+        action: {
+          name: 'cta_url',
+          parameters: { display_text: clip(buttonText, 20), url: linkUrl },
+        },
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`WhatsApp cta_url API error ${res.status}: ${detail}`)
+  }
+}
+
+/** Meta's size limits are hard errors, so every field is truncated at the boundary. */
+function clip(value: string, max: number): string {
+  const v = value.trim()
+  return v.length <= max ? v : v.slice(0, max - 1).trimEnd() + '…'
+}
+
+/**
  * Approved template specs for Edge Function use.
  * SYNC: must be kept in sync with src/lib/whatsapp/approvedTemplates.ts
  * (and template names with src/lib/whatsapp/registerTemplates.ts) —
@@ -109,6 +249,45 @@ const APPROVED_TEMPLATES: Record<
     homework_assignment: { name: 'lessio_homework_assignment_en_v2', languageCode: 'en', bodyParamCount: 3 },
     homework_graded: { name: 'lessio_homework_graded_en_v2', languageCode: 'en', bodyParamCount: 3 },
     welcome_notice: { name: 'lessio_welcome_notice_en_v2', languageCode: 'en', bodyParamCount: 1 },
+  },
+}
+
+/**
+ * Templates registered WITH quick-reply buttons (the v3 set).
+ * SYNC: mirrors QUICK_REPLY_TEMPLATES in src/lib/whatsapp/approvedTemplates.ts.
+ *
+ * The bodies are identical to their v2 twins above, which is what lets the
+ * same positional `templateVars` feed either — and lets a send degrade to the
+ * button-less v2 while v3 is still PENDING at Meta.
+ */
+const QUICK_REPLY_TEMPLATES: Record<string, Record<string, { name: string; languageCode: string }>> = {
+  he: {
+    lesson_reminder: { name: 'lessio_lesson_reminder_he_v3', languageCode: 'he' },
+    homework_assignment: { name: 'lessio_homework_assignment_he_v3', languageCode: 'he' },
+    homework_reminder: { name: 'lessio_homework_reminder_he_v3', languageCode: 'he' },
+  },
+  en: {
+    lesson_reminder: { name: 'lessio_lesson_reminder_en_v3', languageCode: 'en' },
+    homework_assignment: { name: 'lessio_homework_assignment_en_v3', languageCode: 'en' },
+    homework_reminder: { name: 'lessio_homework_reminder_en_v3', languageCode: 'en' },
+  },
+}
+
+/**
+ * Payment templates registered with a URL button pointing at /pay/<chargeId>.
+ * SYNC: mirrors URL_BUTTON_TEMPLATES in src/lib/whatsapp/approvedTemplates.ts.
+ *
+ * Their bodies differ from the v2 twins: the line holding the bare link is
+ * gone, so payment_reminder takes name + amount and nothing else.
+ */
+const URL_BUTTON_TEMPLATES: Record<string, Record<string, { name: string; languageCode: string }>> = {
+  he: {
+    payment_request: { name: 'lessio_payment_request_he_v3', languageCode: 'he' },
+    payment_reminder: { name: 'lessio_payment_reminder_he_v3', languageCode: 'he' },
+  },
+  en: {
+    payment_request: { name: 'lessio_payment_request_en_v3', languageCode: 'en' },
+    payment_reminder: { name: 'lessio_payment_reminder_en_v3', languageCode: 'en' },
   },
 }
 
@@ -368,4 +547,272 @@ export async function sendSmartMessage(
   // Fallback to text (no approved template registered)
   console.warn(`[sendSmart] No approved template for ${templateType} — falling back to text`)
   await sendTextMessage(phone, textBody, accessToken, phoneNumberId)
+}
+
+/**
+ * A session-window aware send that carries buttons — a lesson reminder the
+ * parent can confirm, a homework message they can mark done.
+ *
+ * A separate function rather than more positional parameters on
+ * sendSmartMessage, which is already ten arguments deep.
+ *
+ * The ladder, and why each rung exists:
+ *
+ *   1. Inside the 24h window → a free-form interactive message. Buttons and
+ *      the org's own copy both survive.
+ *   2. Outside it, org has its own APPROVED template → that template, WITHOUT
+ *      buttons. An owner who rewrote the copy in settings gets their wording;
+ *      body-only submissions cannot carry buttons, and their copy matters more
+ *      than the tap.
+ *   3. Otherwise the built-in v3 template, buttons bound at send time.
+ *   4. Anything above throwing (v3 still PENDING at Meta is the usual reason)
+ *      falls back to the plain sendSmartMessage path, i.e. v2 without buttons.
+ *      A reminder that arrives without a button beats no reminder.
+ */
+export async function sendSmartInteractive(
+  db: Db,
+  opts: {
+    orgId: string
+    phone: string
+    accessToken: string
+    phoneNumberId: string
+    templateType: string
+    textBody: string
+    templateVars?: string[]
+    locale?: string
+    namedVars?: Record<string, string>
+    /** One payload per button, in the order the template registers them. */
+    payloads: string[]
+    /** Button labels for the in-window interactive message. */
+    buttonLabels: string[]
+  }
+): Promise<void> {
+  const {
+    orgId,
+    phone,
+    accessToken,
+    phoneNumberId,
+    templateType,
+    textBody,
+    templateVars = [],
+    locale = 'he',
+    namedVars,
+    payloads,
+    buttonLabels,
+  } = opts
+
+  const gate = await prepareBusinessSend(db, orgId, phone, accessToken, phoneNumberId, locale)
+  if (!gate.ok) {
+    console.info(`[sendSmart] Recipient opted out — skipping ${templateType}`)
+    return
+  }
+
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { data: recent } = await db
+    .from('whatsapp_processed_messages')
+    .select('message_id')
+    .eq('organization_id', orgId)
+    .eq('phone', phone)
+    .gt('created_at', cutoff)
+    .limit(1)
+    .maybeSingle()
+
+  try {
+    if (recent) {
+      await sendReplyButtons(
+        phone,
+        {
+          body: textBody,
+          buttons: payloads.map((id, i) => ({ id, title: buttonLabels[i] ?? '' })),
+        },
+        accessToken,
+        phoneNumberId
+      )
+      return
+    }
+
+    if (namedVars) {
+      const custom = await getApprovedCustomTemplate(db, orgId, templateType, locale)
+      if (custom) {
+        const components: MetaTemplateComponent[] = custom.varOrder.length > 0
+          ? [{
+              type: 'body',
+              parameters: custom.varOrder.map((name) =>
+                metaParam(namedVars[name], VAR_FALLBACKS[locale]?.[name] || VAR_FALLBACKS.he[name] || '-')
+              ),
+            }]
+          : []
+        await sendTemplateMessage(phone, accessToken, phoneNumberId, custom.name, custom.language, components)
+        return
+      }
+    }
+
+    const tmpl = QUICK_REPLY_TEMPLATES[locale]?.[templateType] ?? QUICK_REPLY_TEMPLATES.he[templateType]
+    if (tmpl) {
+      await sendTemplateWithQuickReplies(
+        phone,
+        {
+          name: tmpl.name,
+          languageCode: tmpl.languageCode,
+          bodyParams: templateVars,
+          payloads,
+        },
+        accessToken,
+        phoneNumberId
+      )
+      return
+    }
+  } catch (err) {
+    console.warn(
+      `[sendSmart] Buttoned ${templateType} failed — retrying without buttons: ${String(err)}`
+    )
+  }
+
+  // The welcome-notice claim in prepareBusinessSend is idempotent once sent, so
+  // running the plain path here does not double-send it.
+  await sendSmartMessage(
+    db,
+    orgId,
+    phone,
+    accessToken,
+    phoneNumberId,
+    templateType,
+    textBody,
+    templateVars,
+    locale,
+    namedVars
+  )
+}
+
+/**
+ * A payment message whose link is a button rather than a bare URL in the body.
+ * SYNC: mirrors sendPaymentWithButton in src/lib/whatsapp/sendSmart.ts.
+ *
+ * Inside the window the button points straight at the provider's checkout;
+ * outside it, Meta only accepts a dynamic SUFFIX on a fixed base, so the
+ * charge id goes out instead and /pay/<id> resolves it. Any failure falls back
+ * to sendSmartMessage — the inline link. While the v3 templates are PENDING at
+ * Meta that fallback is the normal path.
+ */
+export async function sendSmartPayButton(
+  db: Db,
+  opts: {
+    orgId: string
+    phone: string
+    accessToken: string
+    phoneNumberId: string
+    templateType: string
+    textBody: string
+    /** Body params for the v3 template — NOT the same order as v2. */
+    buttonTemplateVars: string[]
+    /** Body params for the v2 fallback. */
+    templateVars?: string[]
+    locale?: string
+    namedVars?: Record<string, string>
+    chargeId: string
+    /** The provider checkout URL, used directly inside the window. */
+    paymentUrl: string
+    buttonLabel: string
+  }
+): Promise<void> {
+  const {
+    orgId,
+    phone,
+    accessToken,
+    phoneNumberId,
+    templateType,
+    textBody,
+    buttonTemplateVars,
+    templateVars = [],
+    locale = 'he',
+    namedVars,
+    chargeId,
+    paymentUrl,
+    buttonLabel,
+  } = opts
+
+  const gate = await prepareBusinessSend(db, orgId, phone, accessToken, phoneNumberId, locale)
+  if (!gate.ok) {
+    console.info(`[sendSmart] Recipient opted out — skipping ${templateType}`)
+    return
+  }
+
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { data: recent } = await db
+    .from('whatsapp_processed_messages')
+    .select('message_id')
+    .eq('organization_id', orgId)
+    .eq('phone', phone)
+    .gt('created_at', cutoff)
+    .limit(1)
+    .maybeSingle()
+
+  try {
+    if (recent && paymentUrl) {
+      await sendCtaUrlMessage(
+        phone,
+        stripUrlLine(textBody, paymentUrl),
+        buttonLabel,
+        paymentUrl,
+        accessToken,
+        phoneNumberId
+      )
+      return
+    }
+
+    if (!recent) {
+      // An org that got its own copy approved keeps it — body-only submissions
+      // cannot carry a button, and their wording wins over the tap.
+      const custom = namedVars
+        ? await getApprovedCustomTemplate(db, orgId, templateType, locale)
+        : null
+
+      if (!custom) {
+        const tmpl = URL_BUTTON_TEMPLATES[locale]?.[templateType] ?? URL_BUTTON_TEMPLATES.he[templateType]
+        if (tmpl) {
+          await sendTemplateMessage(phone, accessToken, phoneNumberId, tmpl.name, tmpl.languageCode, [
+            {
+              type: 'body',
+              parameters: buttonTemplateVars.map((t) => ({ type: 'text', text: t })),
+            },
+            {
+              type: 'button',
+              sub_type: 'url',
+              index: '0',
+              parameters: [{ type: 'text', text: chargeId }],
+            },
+          ])
+          return
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(
+      `[sendSmart] Pay button failed — falling back to the inline link: ${String(err)}`
+    )
+  }
+
+  await sendSmartMessage(
+    db,
+    orgId,
+    phone,
+    accessToken,
+    phoneNumberId,
+    templateType,
+    textBody,
+    templateVars,
+    locale,
+    namedVars
+  )
+}
+
+/**
+ * Drops the line holding nothing but `url`, now that the button carries it.
+ * SYNC: mirrors stripUrlLine in src/lib/whatsapp/sendSmart.ts.
+ */
+function stripUrlLine(body: string, url: string): string {
+  const lines = body.split('\n')
+  const kept = lines.filter((line) => line.trim() !== url.trim())
+  if (kept.length === lines.length) return body
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }

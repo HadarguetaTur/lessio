@@ -13,8 +13,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
-import { sendTextMessage } from '@/lib/whatsapp'
-import { prepareBusinessSend } from '@/lib/whatsapp/consent'
+import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { buildPaymentRequestMessage } from './index'
@@ -134,16 +133,27 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
       recipientLocale
     )
 
-    // Business-initiated and sent via sendTextMessage, so the opt-out /
-    // welcome-notice gate is applied explicitly here.
-    const gate = await prepareBusinessSend({ orgId, phone: parent.phone, accessToken, phoneNumberId, locale: recipientLocale })
-    if (!gate.ok) {
-      console.info('[autoSendPaymentRequest] parent opted out — not sending', { orgId, lessonId })
-      return
-    }
-
+    // sendPaymentWithButton applies the opt-out / welcome-notice gate itself,
+    // and picks the mechanics that actually work for the current window: a
+    // cta_url button inside it, the URL-button template outside — where the
+    // plain text this used to send failed with 131047 every time.
     try {
-      await sendTextMessage(parent.phone, message, accessToken, phoneNumberId)
+      const result = await sendPaymentWithButton({
+        orgId,
+        phone: parent.phone,
+        accessToken,
+        phoneNumberId,
+        templateType: 'payment_request',
+        vars: { amount: Number(charge.amount).toFixed(2), payment_link: paymentResult.url },
+        body: message,
+        chargeId: charge.id,
+        paymentUrl: paymentResult.url,
+        locale: recipientLocale,
+      })
+      if (!result.sent) {
+        console.info('[autoSendPaymentRequest] parent opted out — not sending', { orgId, lessonId })
+        return
+      }
     } catch (sendErr) {
       console.error('[autoSendPaymentRequest] WhatsApp send failed', {
         orgId,

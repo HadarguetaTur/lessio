@@ -14,7 +14,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
-import { sendSmartMessage } from '../_shared/whatsapp.ts'
+import { sendSmartInteractive } from '../_shared/whatsapp.ts'
 import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
 import { botString } from '../_shared/botStrings.ts'
 
@@ -130,22 +130,23 @@ Deno.serve(async (_req) => {
         // Approved-template params must match lessio_homework_assignment_*_v2
         // body order ({{1}}=title, {{2}}=body, {{3}}=due line) and must be
         // non-empty, newline-free strings (Meta API constraint).
-        await sendSmartMessage(
-          db,
+        await sendSmartInteractive(db, {
           orgId,
           phone,
           accessToken,
-          org.whatsapp_phone_number_id,
-          'homework_assignment',
-          message,
-          [assignment.title, assignment.body, dueLabel],
+          phoneNumberId: org.whatsapp_phone_number_id,
+          templateType: 'homework_assignment',
+          textBody: message,
+          templateVars: [assignment.title, assignment.body, dueLabel],
           locale,
-          {
+          namedVars: {
             title: assignment.title,
             body: assignment.body,
             due_line: assignment.due_date ? `\n${dueLabel}` : '',
-          }
-        )
+          },
+          payloads: [`hw:done:${assignment.id}`],
+          buttonLabels: [botString('btn_homework_done', locale)],
+        })
 
         await markSent(db, assignment.id)
 

@@ -1514,6 +1514,11 @@
         "inWindowTitle": "Replies inside the 24-hour window",
         "inWindowDescription": "These are only sent in reply to an incoming message, so you can change them freely without approval."
       },
+      "buttons": {
+        "title": "Buttons on this message",
+        "lockedByMeta": "These buttons come from a Meta-approved template, so their wording is locked. Changing it needs a new review.",
+        "maxLength": "Up to {max} characters"
+      },
       "metaStatus": "Meta status",
       "status": {
         "UNKNOWN": "Unknown — refresh statuses",

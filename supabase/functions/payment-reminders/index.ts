@@ -20,7 +20,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decryptToken } from '../_shared/crypto.ts'
-import { sendSmartMessage } from '../_shared/whatsapp.ts'
+import { sendSmartPayButton } from '../_shared/whatsapp.ts'
 import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
 import { botString } from '../_shared/botStrings.ts'
 import { sendEmail } from '../_shared/email.ts'
@@ -144,18 +144,25 @@ async function processOrg(db: any, org: any, now: Date) {
     // ── 5. Send WhatsApp message (session-window aware) ───────────────────────
     let sendError: string | null = null
     try {
-      await sendSmartMessage(
-        db,
-        org.id,
+      await sendSmartPayButton(db, {
+        orgId: org.id,
         phone,
         accessToken,
-        org.whatsapp_phone_number_id,
-        'payment_reminder',
-        message,
-        [charge.parent?.full_name || botString('dear_parents', locale), amount],
+        phoneNumberId: org.whatsapp_phone_number_id,
+        templateType: 'payment_reminder',
+        textBody: message,
+        // v3 dropped the link line, so its body params stop at the amount.
+        buttonTemplateVars: [
+          charge.parent?.full_name || botString('dear_parents', locale),
+          amount,
+        ],
+        templateVars: [charge.parent?.full_name || botString('dear_parents', locale), amount],
         locale,
-        { amount, payment_link: charge.payment_link ?? '' }
-      )
+        namedVars: { amount, payment_link: charge.payment_link ?? '' },
+        chargeId: charge.id,
+        paymentUrl: charge.payment_link ?? '',
+        buttonLabel: botString('cta_pay_now', locale),
+      })
     } catch (err) {
       sendError = String(err)
       console.error('[payment-reminders] WhatsApp send failed', {

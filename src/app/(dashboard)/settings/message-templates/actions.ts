@@ -14,6 +14,8 @@ import { decryptToken } from '@/lib/crypto'
 import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
 import { DEFAULT_TEMPLATES, TEMPLATE_PREVIEW_VARS, normalizeTemplateBody, type MessageTemplateType } from '@/lib/whatsapp/templates'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
+import { BUTTON_LABEL_MAX, CUSTOMIZABLE_BOT_STRINGS } from '@/lib/whatsapp/templateButtons'
+import type { BotStringKey } from '@/lib/whatsapp/strings'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 import {
@@ -34,6 +36,14 @@ const TemplateSchema = z.object({
   type: z.string().min(1),
   locale: z.enum(['he', 'en']),
   body_template: z.string().min(1, 'validation.messageBodyRequired'),
+})
+
+const ButtonLabelSchema = z.object({
+  key: z.string().min(1),
+  locale: z.enum(['he', 'en']),
+  // BUTTON_LABEL_MAX is Meta's cap and also what the senders clip to; enforcing
+  // it here is what lets an owner see the truncation before a parent does.
+  value: z.string().min(1, 'validation.messageBodyRequired').max(BUTTON_LABEL_MAX),
 })
 
 // ── Result types ──────────────────────────────────────────────────────────────
@@ -130,6 +140,110 @@ export async function resetTemplateAction(
   }
 
   console.info('[message-templates] Template reset to default', { orgId, type, locale })
+  revalidatePath('/settings/message-templates')
+  return {}
+}
+
+// ── Button labels ─────────────────────────────────────────────────────────────
+
+/**
+ * Rewords one button label for this org, in one language.
+ *
+ * Only labels on messages sent INSIDE the 24h window can be changed: a label
+ * on a Meta-approved template is part of what Meta approved, and the card
+ * renders those read-only. The whitelist is the enforcement point — a form can
+ * post any key, and CUSTOMIZABLE_BOT_STRINGS is derived from the flows that
+ * actually render a label at send time.
+ */
+export async function saveButtonLabelAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const t = await getTranslations()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
+
+  if (role !== 'owner') {
+    return { error: await commonError('noPermission') }
+  }
+
+  await requireFeature(orgId, 'whatsapp_automation')
+
+  const parsed = ButtonLabelSchema.safeParse({
+    key: formData.get('key'),
+    locale: formData.get('locale'),
+    value: String(formData.get('value') ?? '').trim(),
+  })
+
+  if (!parsed.success) {
+    return { error: await zodError(parsed.error.issues[0]) }
+  }
+
+  const { key, locale, value } = parsed.data
+
+  if (!CUSTOMIZABLE_BOT_STRINGS.includes(key as BotStringKey)) {
+    console.warn('[message-templates] Rejected a label not open for editing', { orgId, key })
+    return { error: await commonError('noPermission') }
+  }
+
+  const db = createServiceRoleClient()
+  const { error } = await db
+    .from('org_bot_strings')
+    .upsert(
+      { organization_id: orgId, key, locale, value, updated_at: new Date().toISOString() },
+      { onConflict: 'organization_id,key,locale' }
+    )
+
+  if (error) {
+    console.error('[message-templates] Failed to save button label', {
+      orgId,
+      key,
+      locale,
+      error: error.message,
+    })
+    return { error: t('settings.messageTemplatesActions.errors.saveFailed') }
+  }
+
+  console.info('[message-templates] Button label saved', { orgId, key, locale })
+  revalidatePath('/settings/message-templates')
+  return { error: null, success: true }
+}
+
+/** Drops the override — the button reverts to Lessio's wording. */
+export async function resetButtonLabelAction(
+  key: string,
+  locale: 'he' | 'en' = 'he'
+): Promise<{ error?: string }> {
+  const t = await getTranslations()
+  const session = await getSession()
+  requireMutation(session)
+  const { orgId, role } = session
+
+  if (role !== 'owner') {
+    return { error: await commonError('noPermission') }
+  }
+
+  await requireFeature(orgId, 'whatsapp_automation')
+
+  const db = createServiceRoleClient()
+  const { error } = await db
+    .from('org_bot_strings')
+    .delete()
+    .eq('organization_id', orgId)
+    .eq('key', key)
+    .eq('locale', locale)
+
+  if (error) {
+    console.error('[message-templates] Failed to reset button label', {
+      orgId,
+      key,
+      locale,
+      error: error.message,
+    })
+    return { error: t('settings.messageTemplatesActions.errors.resetFailed') }
+  }
+
   revalidatePath('/settings/message-templates')
   return {}
 }

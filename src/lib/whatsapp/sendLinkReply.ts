@@ -18,7 +18,8 @@
  */
 
 import type { AppLocale } from '@/lib/i18n/locale'
-import { botString, type BotStringKey } from './strings'
+import { type BotStringKey } from './strings'
+import { getOrgBotStrings, resolveBotString } from './orgStrings'
 import {
   resolveTemplate,
   substituteVars,
@@ -106,10 +107,13 @@ export async function sendLinkReply(params: SendLinkReplyParams): Promise<void> 
     const ctaBody = substituteVars(bodyWithoutUrl, allVars)
     if (ctaBody.length > 0 && ctaBody.length <= CTA_BODY_MAX) {
       try {
+        // The org's own label where it set one — this is the button an owner
+        // edits on the settings page.
+        const overrides = await getOrgBotStrings(orgId, locale)
         await sendCtaUrlMessage(
           to,
           ctaBody,
-          botString(buttonKey, locale),
+          resolveBotString(overrides, buttonKey, locale),
           url,
           accessToken,
           phoneNumberId

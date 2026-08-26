@@ -95,6 +95,7 @@ export default async function AiAssistantSettingsPage({
               currentProvider={(org?.ai_provider ?? 'openai') as AiProviderName}
               currentModel={org?.ai_model ?? 'gpt-4o-mini'}
               hasEncryptedKey={Boolean(org?.ai_config_encrypted)}
+              hasPlatformKey={isAiAssistantConfigured()}
               saveAction={saveAiProviderAction}
               testAction={testAiConnectionAction}
             />

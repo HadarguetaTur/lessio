@@ -16,6 +16,8 @@ interface Props {
   currentProvider: AiProviderName
   currentModel: string
   hasEncryptedKey: boolean
+  /** Whether the platform itself holds an OpenAI key an org can fall back to. */
+  hasPlatformKey: boolean
   saveAction: (
     prevState: AiProviderActionState,
     formData: FormData
@@ -33,6 +35,7 @@ export function AiProviderForm({
   currentProvider,
   currentModel,
   hasEncryptedKey,
+  hasPlatformKey,
   saveAction,
   testAction,
 }: Props) {
@@ -108,12 +111,14 @@ export function AiProviderForm({
             placeholder={hasEncryptedKey ? t('apiKeyPlaceholderSaved') : t('apiKeyPlaceholder')}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
           />
-          {selectedProvider === 'openai' && (
-            <p className="text-xs text-muted-foreground mt-1">{t('openaiKeyOptional')}</p>
-          )}
-          {selectedProvider !== 'openai' && (
-            <p className="text-xs text-muted-foreground mt-1">{t('apiKeyRequired')}</p>
-          )}
+          {/* "Leave empty to use the system key" is only true when there IS a
+              system key. Promising one that does not exist is how a tenant ends
+              up switched on with nothing behind it. */}
+          <p className="text-xs text-muted-foreground mt-1">
+            {selectedProvider === 'openai' && hasPlatformKey
+              ? t('openaiKeyOptional')
+              : t('apiKeyRequired')}
+          </p>
         </div>
 
         <button
@@ -142,6 +147,11 @@ export function AiProviderForm({
         >
           {isTesting ? `${t('testConnection')}…` : t('testConnection')}
         </button>
+
+        {/* The action reads the saved configuration and ignores this form's
+            current selection, so say so rather than let a "pass" describe a
+            provider the user has not saved yet. */}
+        <p className="text-xs text-muted-foreground mt-2">{t('testHint')}</p>
 
         {testState.success && (
           <p className="text-xs text-green-700 mt-2">{t('testSuccess')}</p>

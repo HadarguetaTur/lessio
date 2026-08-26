@@ -195,7 +195,14 @@ export async function testAiConnectionAction(
     return { error: null, success: true }
   } catch (err) {
     console.error('[ai-settings] Connection test failed', { orgId: session.orgId, err })
-    const message = err instanceof Error ? err.message : t('settings.aiAssistant.errors.unknownError')
-    return { error: t('settings.aiAssistant.errors.testFailed', { message }) }
+    // Never surface err.message: it carries the internal "[ai/factory] …" prefix
+    // and the organisation's UUID straight into the settings page.
+    const { AiProviderNotConfiguredError } = await import(
+      '@/lib/ai-assistant/providers/factory'
+    )
+    if (err instanceof AiProviderNotConfiguredError) {
+      return { error: t('settings.aiAssistant.errors.noKey') }
+    }
+    return { error: t('settings.aiAssistant.errors.unknownError') }
   }
 }

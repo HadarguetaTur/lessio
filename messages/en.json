@@ -1574,9 +1574,12 @@
         "saveProviderFailed": "Could not save the provider settings",
         "emptyResponse": "The provider returned an empty response",
         "unknownError": "Unknown error",
-        "testFailed": "Connection test failed: {message}"
+        "testFailed": "Connection test failed: {message}",
+        "noKey": "No API key is configured for this provider. Paste a key above and save."
       },
-      "saved": "Settings saved successfully."
+      "saved": "Settings saved successfully.",
+      "onButNotAnswering": "On, but not answering — add an API key",
+      "testHint": "Tests the saved configuration — save before testing."
     },
     "aiUsage": {
       "title": "AI Usage",

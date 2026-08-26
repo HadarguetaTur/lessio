@@ -7,7 +7,9 @@
 
 import { useActionState } from 'react'
 import { useTranslations } from 'next-intl'
+import { AlertTriangle } from 'lucide-react'
 import { saveAiAssistantSettings, type AiAssistantActionState } from './actions'
+import { resolveAiToggleState } from './toggleState'
 
 interface Props {
   defaultEnabled: boolean
@@ -21,7 +23,10 @@ export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
   const t = useTranslations('settings.aiAssistant')
   const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(saveAiAssistantSettings, initialState)
-  const canToggle = isConfigured || defaultEnabled
+  const { disabled, onButNotAnswering } = resolveAiToggleState({
+    isConfigured,
+    currentlyEnabled: defaultEnabled,
+  })
 
   return (
     <form key={String(defaultEnabled)} action={formAction}>
@@ -42,16 +47,29 @@ export function AiAssistantForm({ defaultEnabled, isConfigured }: Props) {
             name="ai_assistant_enabled"
             aria-label={t('enable')}
             defaultChecked={defaultEnabled}
-            disabled={!canToggle}
+            disabled={disabled}
             className="sr-only peer"
             onChange={(e) => {
               // Auto-submit on toggle change
               ;(e.target.form as HTMLFormElement | null)?.requestSubmit()
             }}
           />
-          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
+          {/* On without a key is not a healthy state, so it does not get the
+              healthy blue. */}
+          <div
+            className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${
+              onButNotAnswering ? 'peer-checked:bg-amber-500' : 'peer-checked:bg-blue-600'
+            }`}
+          />
         </label>
       </div>
+
+      {onButNotAnswering && (
+        <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+          <AlertTriangle size={13} className="shrink-0" aria-hidden />
+          {t('onButNotAnswering')}
+        </p>
+      )}
 
       {isPending && (
         <p className="text-xs text-muted-foreground mt-3">{tCommon('actions.save')}…</p>

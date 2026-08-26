@@ -406,6 +406,16 @@ deno_version = 2
 #   notification-cleanup: "0 4 * * *"  (daily at 04:00 UTC)
 [functions.notification-cleanup]
 
+# Sprint 32: Error monitor — groups the last 24h of error_events by fingerprint,
+# promotes anything past the threshold into a dev_issue (+ GitHub issue + a
+# throttled superadmin alert), then sweeps events older than 30 days.
+#   error-monitor: "0 * * * *"  (hourly)
+# Secrets (both optional — without them the internal queue still works, no
+# GitHub issue is filed):
+#   supabase secrets set GITHUB_ISSUES_TOKEN=<fine-grained PAT, issues:write>
+#   supabase secrets set GITHUB_ISSUES_REPO=<owner/repo>
+[functions.error-monitor]
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

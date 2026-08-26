@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { reportClientError } from '@/lib/telemetry/reportClientError'
 
 /**
  * Root *segment* error boundary — it renders inside the root layout, so it must not
@@ -18,6 +19,7 @@ export default function RootError({
   const t = useTranslations()
   useEffect(() => {
     console.error('[error-boundary] Unhandled error', error)
+    reportClientError(error)
   }, [error])
 
   return (

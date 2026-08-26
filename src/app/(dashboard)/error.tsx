@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { AlertTriangle, ArrowUpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { reportClientError } from '@/lib/telemetry/reportClientError'
 
 function parseQuotaKind(message: string): 'students' | 'lessons_monthly' | null {
   if (!message.startsWith('QUOTA_EXCEEDED:')) return null
@@ -25,7 +26,10 @@ export default function DashboardError({
 
   useEffect(() => {
     console.error('[dashboard/error-boundary] Unhandled error', error)
-  }, [error])
+    // A quota block is a product state the user can act on, not a defect —
+    // reporting it would bury the real bugs in the feed.
+    if (!quotaKind) reportClientError(error)
+  }, [error, quotaKind])
 
   if (quotaKind) {
     return (

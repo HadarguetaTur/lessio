@@ -51,6 +51,7 @@ export type MenuAction =
   // Staff (owner/admin)
   | 'today_summary'
   | 'pending_requests'
+  | 'support'
   // Teacher and staff — each to their own shell
   | 'dashboard'
   // Any role whose phone holds several capacities
@@ -68,6 +69,7 @@ const ALL_ACTIONS: readonly MenuAction[] = [
   'day_off',
   'today_summary',
   'pending_requests',
+  'support',
   'dashboard',
   'switch_role',
 ]
@@ -89,12 +91,16 @@ const ALL_ACTIONS: readonly MenuAction[] = [
  * `day_off` is the one deliberate exception, and it is not really a write: it
  * files a request. Nothing moves until an owner or admin taps approve, which is
  * what makes it safe to expose on a channel with no confirmation step.
+ *
+ * `support` is the same shape of exception on the staff list: it writes only a
+ * support ticket addressed to us, touches no org data, and asks for an explicit
+ * confirmation before it files anything.
  */
 const ROLE_MENUS: Record<KnownSenderRole, readonly MenuAction[]> = {
   parent: ['book', 'cancel', 'balance', 'schedule', 'portal'],
   student: ['book', 'cancel', 'schedule', 'homework'],
   teacher: ['my_schedule', 'my_students', 'day_off', 'dashboard'],
-  staff: ['today_summary', 'pending_requests', 'dashboard'],
+  staff: ['today_summary', 'pending_requests', 'support', 'dashboard'],
 }
 
 /** The actions a role may invoke, plus the role switcher when it applies. */

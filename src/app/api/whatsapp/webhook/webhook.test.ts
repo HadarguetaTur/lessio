@@ -60,6 +60,21 @@ vi.mock('@/lib/cancellation-flow', () => ({
   executeCancellation: vi.fn().mockResolvedValue({ success: false, error: 'not_found' }),
 }))
 
+vi.mock('@/lib/support/supportSessions', () => ({
+  startSupportSession: vi.fn().mockResolvedValue(undefined),
+  setSupportDraft: vi.fn().mockResolvedValue(undefined),
+  getActiveSupportSession: vi.fn().mockResolvedValue(null),
+  deleteSupportSession: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/lib/support/tickets', () => ({
+  createTicket: vi.fn().mockResolvedValue('ticket-1'),
+}))
+
+vi.mock('@/lib/support/classify', () => ({
+  classifyTicketInBackground: vi.fn(),
+}))
+
 vi.mock('@/lib/ai-assistant', () => ({
   aiAssistant: vi.fn().mockResolvedValue({
     reply: 'ai-reply',
@@ -158,7 +173,20 @@ import {
   notifyStaffOfRequest,
   rejectDayOffRequest,
 } from '@/lib/day-off'
+import {
+  startSupportSession,
+  setSupportDraft,
+  getActiveSupportSession,
+  deleteSupportSession,
+} from '@/lib/support/supportSessions'
+import { createTicket } from '@/lib/support/tickets'
 import * as Sentry from '@sentry/nextjs'
+
+const mockStartSupportSession = vi.mocked(startSupportSession)
+const mockSetSupportDraft = vi.mocked(setSupportDraft)
+const mockGetActiveSupportSession = vi.mocked(getActiveSupportSession)
+const mockDeleteSupportSession = vi.mocked(deleteSupportSession)
+const mockCreateTicket = vi.mocked(createTicket)
 
 const mockSendListMessage = vi.mocked(sendListMessage)
 const mockSendTemplateWithQuickReplies = vi.mocked(sendTemplateWithQuickReplies)
@@ -1269,6 +1297,10 @@ describe('WhatsApp sender roles', () => {
     mockIsRateLimited.mockResolvedValue(false)
     mockAiAssistantConfigured.mockReturnValue(false)
     mockGetActiveCancellationSession.mockResolvedValue(null)
+    // clearAllMocks resets calls but keeps implementations, so a session set by
+    // one support test would otherwise still be open in the next one.
+    mockGetActiveSupportSession.mockResolvedValue(null)
+    mockCreateTicket.mockResolvedValue('ticket-1')
   })
 
   it('recognises a student instead of filing them as a lead', async () => {
@@ -1326,7 +1358,120 @@ describe('WhatsApp sender roles', () => {
     expect(mockUpsertLead).not.toHaveBeenCalled()
     // …and no "new lead" notification pointing them at /leads for themselves.
     expect(mockNotifyMultiple).not.toHaveBeenCalled()
-    expect(menuRowIds()).toEqual(['m:today_summary', 'm:pending_requests', 'm:dashboard'])
+    expect(menuRowIds()).toEqual([
+      'm:today_summary',
+      'm:pending_requests',
+      'm:support',
+      'm:dashboard',
+    ])
+  })
+
+  // ── Support requests from the staff menu ────────────────────────────────────
+
+  it('opens a support session and asks what happened', async () => {
+    mockIdentity({ profiles: OWNER_ROW })
+
+    const res = await POST(makeRequest(makeInteractivePayload('m:support')))
+
+    expect(res.status).toBe(200)
+    expect(mockStartSupportSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164)
+    expect(mockCreateTicket).not.toHaveBeenCalled()
+  })
+
+  it('echoes the typed description back for confirmation instead of filing it', async () => {
+    mockIdentity({ profiles: OWNER_ROW })
+    mockGetActiveSupportSession.mockResolvedValue({
+      id: 's1',
+      organization_id: ORG_ID,
+      phone: SENDER_PHONE_E164,
+      step: 'awaiting_description',
+      draft_text: null,
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+    })
+
+    await POST(makeRequest(makeWebhookPayload('כפתור התשלום לא עובד')))
+
+    expect(mockSetSupportDraft).toHaveBeenCalledWith(
+      ORG_ID,
+      SENDER_PHONE_E164,
+      'כפתור התשלום לא עובד'
+    )
+    // Nothing is filed until they confirm — an unconfirmed draft is a
+    // half-typed thought, not a ticket.
+    expect(mockCreateTicket).not.toHaveBeenCalled()
+    expect(mockSendReplyButtons).toHaveBeenCalledTimes(1)
+  })
+
+  it('files the ticket and ends the session when they confirm', async () => {
+    mockIdentity({ profiles: OWNER_ROW })
+    mockGetActiveSupportSession.mockResolvedValue({
+      id: 's1',
+      organization_id: ORG_ID,
+      phone: SENDER_PHONE_E164,
+      step: 'awaiting_confirm',
+      draft_text: 'כפתור התשלום לא עובד. ניסיתי פעמיים.',
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+    })
+
+    await POST(makeRequest(makeInteractivePayload('sup:send')))
+
+    expect(mockCreateTicket).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orgId: ORG_ID,
+        source: 'whatsapp',
+        body: 'כפתור התשלום לא עובד. ניסיתי פעמיים.',
+        // Subject is derived from the first sentence — WhatsApp has no subject line.
+        subject: 'כפתור התשלום לא עובד.',
+      })
+    )
+    expect(mockDeleteSupportSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164)
+    expect(mockNotifySuperadmins).toHaveBeenCalled()
+  })
+
+  it('files nothing when they cancel', async () => {
+    mockIdentity({ profiles: OWNER_ROW })
+    mockGetActiveSupportSession.mockResolvedValue({
+      id: 's1',
+      organization_id: ORG_ID,
+      phone: SENDER_PHONE_E164,
+      step: 'awaiting_confirm',
+      draft_text: 'never mind',
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+    })
+
+    await POST(makeRequest(makeInteractivePayload('sup:cancel')))
+
+    expect(mockCreateTicket).not.toHaveBeenCalled()
+    expect(mockDeleteSupportSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164)
+  })
+
+  it('abandons an open support request when another menu row is tapped', async () => {
+    mockIdentity({ profiles: OWNER_ROW })
+    mockGetActiveSupportSession.mockResolvedValue({
+      id: 's1',
+      organization_id: ORG_ID,
+      phone: SENDER_PHONE_E164,
+      step: 'awaiting_description',
+      draft_text: null,
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+    })
+
+    await POST(makeRequest(makeInteractivePayload('m:today_summary')))
+
+    // The tap is a new intent, not the description of the open request.
+    expect(mockDeleteSupportSession).toHaveBeenCalledWith(ORG_ID, SENDER_PHONE_E164)
+    expect(mockSetSupportDraft).not.toHaveBeenCalled()
+    expect(mockCreateTicket).not.toHaveBeenCalled()
+  })
+
+  it('leaves staff with no open session on their normal path', async () => {
+    mockIdentity({ profiles: OWNER_ROW })
+    mockGetActiveSupportSession.mockResolvedValue(null)
+
+    await POST(makeRequest(makeWebhookPayload('מה יש היום')))
+
+    expect(mockSetSupportDraft).not.toHaveBeenCalled()
+    expect(mockCreateTicket).not.toHaveBeenCalled()
   })
 
   it('still files a genuinely unknown number as a lead', async () => {

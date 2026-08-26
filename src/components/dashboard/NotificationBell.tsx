@@ -45,6 +45,8 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   goal_achieved: '\uD83C\uDFC6',
   day_off_requested: '\uD83C\uDFD6\uFE0F',
   day_off_decided: '\uD83D\uDDD3\uFE0F',
+  support_ticket_reply: '\uD83D\uDCAC',
+  support_ticket_resolved: '\u2705',
 }
 
 export function NotificationBell({

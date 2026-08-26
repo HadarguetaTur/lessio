@@ -84,7 +84,16 @@ export async function proxy(request: NextRequest) {
     // Meta WhatsApp webhook — verify token (GET) / X-Hub-Signature-256 (POST).
     // Must not depend on Supabase Auth: a failing auth.getUser() here would turn
     // into a 500 towards Meta, and repeated failures disable the subscription.
-    request.nextUrl.pathname.startsWith('/api/whatsapp/')
+    request.nextUrl.pathname.startsWith('/api/whatsapp/') ||
+    // Payment provider webhooks — each provider is authenticated by the registry
+    // entry (HMAC, or a reference only the provider could mint). No Supabase
+    // session exists on these calls, so the auth round-trip is pure latency.
+    request.nextUrl.pathname.startsWith('/api/payments/') ||
+    // Client error reports. Unauthenticated on purpose: the boundary that most
+    // needs to report is the one that fired because the session or the shell
+    // itself broke, and an auth round-trip here would silently drop exactly
+    // those reports. The route is bounded and rate-limited instead.
+    request.nextUrl.pathname.startsWith('/api/telemetry/')
   ) {
     return NextResponse.next()
   }

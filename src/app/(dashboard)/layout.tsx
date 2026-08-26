@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import { TopBar } from '@/components/dashboard/TopBar'
 import { MobileAdminQuickSheet } from '@/components/dashboard/MobileAdminQuickSheet'
+import { SupportWidget } from '@/components/dashboard/SupportWidget'
+import { createTicketAction } from './support/actions'
 import { SupportModeBanner } from '@/components/dashboard/SupportModeBanner'
 import { getSupportSession } from '@/lib/support-session'
 import { PATHNAME_HEADER } from '@/proxy'
@@ -52,35 +54,41 @@ export default async function DashboardLayout({
       .single()
 
     return (
-      <div className="flex flex-col h-screen bg-background" dir={dir}>
+      <div className="flex h-screen flex-col bg-background" dir={dir}>
         <SupportModeBanner
           orgName={org?.name ?? supportSession.targetOrgId}
           expiresAt={supportSession.expiresAt}
         />
-        <div className="flex flex-1">
+        {/*
+          min-h-0 + overflow-hidden matter here: the banner eats part of the
+          h-screen column, so without them the sidebar/main row keeps its
+          content height, pushes the scroll container below the fold, and the
+          page becomes unscrollable.
+        */}
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           <Sidebar
             userName={t('admin.supportSuffix', { name: adminProfile?.full_name ?? 'Admin' })}
             userRole="owner"
             saasFeatures={saasFeaturesSupport}
           />
-      <main className="flex min-w-0 flex-1 flex-col">
-        <TopBar
-          currentLocale={locale}
-          userRole="owner"
-          saasFeatures={saasFeaturesSupport}
-          mobileNavigation={
-            <Sidebar
-              userName={t('admin.supportSuffix', { name: adminProfile?.full_name ?? 'Admin' })}
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <TopBar
+              currentLocale={locale}
               userRole="owner"
-              mobile
               saasFeatures={saasFeaturesSupport}
+              mobileNavigation={
+                <Sidebar
+                  userName={t('admin.supportSuffix', { name: adminProfile?.full_name ?? 'Admin' })}
+                  userRole="owner"
+                  mobile
+                  saasFeatures={saasFeaturesSupport}
+                />
+              }
             />
-          }
-        />
-        <div
-          dir={dir}
-          className="mx-auto flex w-full max-w-[1440px] flex-1 min-h-0 flex-col overflow-y-auto px-4 py-4 max-lg:scroll-pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] max-lg:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 sm:px-6 sm:py-5 lg:px-8 lg:py-6"
-        >
+            <div
+              dir={dir}
+              className="mx-auto flex w-full max-w-[1440px] flex-1 min-h-0 flex-col overflow-y-auto px-4 py-4 max-lg:scroll-pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] max-lg:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 sm:px-6 sm:py-5 lg:px-8 lg:py-6"
+            >
               <SaasOwnerBanners orgId={supportSession.targetOrgId} />
               {children}
             </div>
@@ -150,8 +158,9 @@ export default async function DashboardLayout({
     }
   }
 
-  const showMobileQuick =
-    profile?.role === 'owner' || profile?.role === 'admin'
+  // Owner/admin surfaces: the mobile quick menu and the support widget.
+  // Teachers get neither — a teacher's support route is their own org's owner.
+  const isOrgStaff = profile?.role === 'owner' || profile?.role === 'admin'
 
   let saasFeatures: Awaited<ReturnType<typeof getEffectiveSaasFeatures>> | undefined
   let teacherCount: number | undefined
@@ -216,7 +225,13 @@ export default async function DashboardLayout({
           {showSaasBanners ? <SaasOwnerBanners orgId={profile!.organization_id as string} /> : null}
           {children}
         </div>
-        {showMobileQuick ? <MobileAdminQuickSheet /> : null}
+        {isOrgStaff ? <MobileAdminQuickSheet /> : null}
+        {/*
+          Deliberately absent from the support-mode branch above: there, the
+          "customer" is a superadmin impersonating the org, and a ticket filed
+          from that seat is noise in their own queue.
+        */}
+        {isOrgStaff ? <SupportWidget locale={locale} createTicket={createTicketAction} /> : null}
       </main>
     </div>
     </LiveRefreshProvider>

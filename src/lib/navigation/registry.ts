@@ -51,6 +51,7 @@ import {
   Building2,
   Mail,
   Shield,
+  LifeBuoy,
 } from 'lucide-react'
 import type { SaasFeatures } from '@/lib/saas/types'
 
@@ -349,6 +350,16 @@ export const MAIN_NAV: NavEntry[] = [
     // must not be stricter than the sidebar.
     roles: ['owner', 'admin'],
     synonyms: ['message', 'messages', 'portal', 'inbox', 'הודעה', 'הודעות', 'פורטל', 'תיבה'],
+  },
+  {
+    href: '/support',
+    navKey: 'support',
+    icon: LifeBuoy,
+    roles: ['owner', 'admin'],
+    // Registered but deliberately absent from the sidebar: the floating help
+    // widget is how you get here. Without an entry, /support and every
+    // /support/<uuid> thread render their own URL slug as the breadcrumb.
+    synonyms: ['support', 'help', 'ticket', 'תמיכה', 'עזרה', 'פנייה', 'פניות'],
   },
 ]
 

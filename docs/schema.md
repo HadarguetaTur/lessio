@@ -27,7 +27,7 @@ min_booking_notice_hours      int not null default 0
 billing_mode                  text check (billing_mode in ('monthly','per_lesson')) default 'monthly'
 group_pricing_mode            text check (group_pricing_mode in ('fixed','per_student')) default 'per_student'
 -- Payments (Sprint 8)
-payment_provider              text check (payment_provider in ('cardcom','payplus'))
+payment_provider              text check (payment_provider in ('cardcom','payplus','bit','paybox','stripe','grow'))
 payment_config_encrypted      text                     -- AES-256-GCM encrypted JSON with credentials
 -- Auto payment (Sprint 9)
 auto_send_payment_request     boolean not null default false
@@ -314,7 +314,7 @@ sent_by_profile_id  uuid references profiles(id)
 -- Payment provider (Sprint 8)
 payment_link        text                              -- URL for parent to pay online
 payment_reference   text                              -- provider transaction reference
-payment_provider    text                              -- cardcom | payplus | etc.
+payment_provider    text                              -- cardcom | payplus | bit | paybox | stripe | grow
 -- Receipt (planned Sprint 15)
 receipt_url         text
 receipt_issued_at   timestamptz
@@ -558,3 +558,123 @@ CREATE TABLE subscription_plans (
   stripe_price_id   text not null
 );
 ```
+
+---
+
+## Support (Sprint 32)
+
+Customer→platform support. The "customer" is an org owner/admin; the responder
+is the platform operator in `/admin/support`. Both tables are service-role only
+(RLS deny-all) — all access goes through server actions that resolve the org
+from the session.
+
+```sql
+CREATE TABLE support_tickets (
+  id                uuid pk
+  organization_id   uuid not null references organizations(id) on delete cascade
+  created_by        uuid references profiles(id) on delete set null
+  subject           text not null
+  status            text not null default 'open'
+                    check (status in ('open','in_progress','waiting_on_customer','resolved','closed'))
+  category          text check (category in ('bug','question','feature_request','other'))  -- null until AI triage
+  severity          text check (severity in ('low','medium','high','critical'))            -- null until AI triage
+  source            text not null check (source in ('widget','whatsapp','auto'))
+  page_url          text            -- captured by the widget
+  user_agent        text            -- captured by the widget
+  ai_classified_at  timestamptz
+  resolved_at       timestamptz
+  created_at        timestamptz not null default now()
+  updated_at        timestamptz not null default now()   -- update_updated_at() trigger
+);
+
+index: (organization_id, created_at desc)
+index: (status, created_at desc) where status in ('open','in_progress','waiting_on_customer')
+
+CREATE TABLE support_ticket_messages (
+  id                uuid pk
+  ticket_id         uuid not null references support_tickets(id) on delete cascade
+  author_type       text not null check (author_type in ('customer','admin','ai','system'))
+  author_profile_id uuid references profiles(id) on delete set null
+  body              text not null
+  created_at        timestamptz not null default now()
+);
+
+index: (ticket_id, created_at)
+```
+
+Notes:
+- A ticket is a thread. The opening customer message is a `support_ticket_messages`
+  row like any other, so a reply from either side is the same insert.
+- Tickets outlive notifications: `in_app_notifications` is swept after 30 days by
+  the `notification-cleanup` cron, so notifications carry only an `action_url`
+  pointer into these tables, never the content.
+- Support is not plan-gated — no `saasFeature` / `requireFeature` on any of it.
+
+---
+
+## Support sessions + error telemetry (Sprint 32 M2/M3)
+
+```sql
+CREATE TABLE support_sessions (          -- in-flight WhatsApp support requests
+  id              uuid pk
+  organization_id uuid not null references organizations(id) on delete cascade
+  phone           text not null
+  step            text not null default 'awaiting_description'
+                  check (step in ('awaiting_description','awaiting_confirm'))
+  draft_text      text                   -- typed but not yet confirmed
+  expires_at      timestamptz not null   -- read-time expiry, no cleanup cron
+  created_at      timestamptz not null default now()
+  unique (organization_id, phone)        -- upsert target: one request per phone
+);
+
+CREATE TABLE error_events (              -- raw production error feed
+  id              uuid pk
+  fingerprint     text not null          -- sha256(name + norm message + norm route)[:16]
+  name            text
+  message         text
+  route           text
+  digest          text                   -- Next's per-build error id (NOT in fingerprint)
+  source          text not null check (source in ('server','client','edge'))
+  organization_id uuid references organizations(id) on delete set null
+  url             text
+  user_agent      text
+  stack           text                   -- truncated to 8k
+  created_at      timestamptz not null default now()
+);
+
+index: (fingerprint, created_at desc)    -- the detection query
+index: (created_at)                      -- the 30-day sweep
+
+CREATE TABLE dev_issues (                -- recurring bugs promoted from the feed
+  id                  uuid pk
+  fingerprint         text unique        -- null for a hand-opened issue
+  title               text not null
+  status              text not null default 'open'
+                      check (status in ('open','investigating','fixed','wont_fix'))
+  severity            text check (severity in ('low','medium','high','critical'))
+  event_count         integer not null default 0
+  org_count           integer not null default 0
+  first_seen          timestamptz
+  last_seen           timestamptz
+  sample_stack        text
+  github_issue_number integer
+  github_issue_url    text               -- also the anti-double-file guard
+  resolved_at         timestamptz
+  created_at          timestamptz not null default now()
+  updated_at          timestamptz not null default now()   -- update_updated_at() trigger
+);
+
+index: (status, last_seen desc)
+
+ALTER TABLE support_tickets
+  ADD COLUMN dev_issue_id uuid references dev_issues(id) on delete set null;
+index: (dev_issue_id) where dev_issue_id is not null
+```
+
+Notes:
+- All three are service-role only (RLS deny-all restrictive).
+- `dev_issues.fingerprint` is UNIQUE and the cron upserts on it — that is the
+  guarantee one bug can never open two issues, however often the cron runs.
+- `ON DELETE SET NULL` on `dev_issue_id`: deleting an issue must never take a
+  customer's support ticket with it.
+- The fingerprint excludes Next's `digest`, which changes every build.

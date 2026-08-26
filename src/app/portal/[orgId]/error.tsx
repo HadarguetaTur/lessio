@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { AlertCircle } from 'lucide-react'
+import { reportClientError } from '@/lib/telemetry/reportClientError'
 
 /**
  * Portal-scoped error boundary.
@@ -25,6 +26,7 @@ export default function PortalError({
 
   useEffect(() => {
     console.error('[portal] Unhandled error', error)
+    reportClientError(error)
   }, [error])
 
   return (

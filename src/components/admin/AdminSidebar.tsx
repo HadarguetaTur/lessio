@@ -11,6 +11,8 @@ import {
   LogOut,
   ShieldCheck,
   Inbox,
+  LifeBuoy,
+  Bug,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 import { cn } from '@/lib/utils'
@@ -30,6 +32,8 @@ export function AdminSidebar({ userName, mobile = false }: AdminSidebarProps) {
     { href: '/admin/orgs',      label: t('nav.orgs'),      icon: Building2       },
     { href: '/admin/billing',   label: t('nav.billing'),   icon: CreditCard      },
     { href: '/admin/saas-inquiries', label: t('nav.saasInquiries'), icon: Inbox },
+    { href: '/admin/support',   label: t('nav.support'),   icon: LifeBuoy       },
+    { href: '/admin/dev-issues', label: t('nav.devIssues'), icon: Bug           },
   ]
 
   const initials = userName

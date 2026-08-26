@@ -19,6 +19,17 @@ export type NotificationType =
   | 'webhook_unroutable'
   | 'day_off_requested'
   | 'day_off_decided'
+  // Support (Sprint 32). The first two are platform-level (superadmin,
+  // organization_id IS NULL); the last two go to the org that raised the ticket.
+  | 'support_ticket_new'
+  | 'support_ticket_activity'
+  | 'support_ticket_reply'
+  | 'support_ticket_resolved'
+  // Recurring-bug detection (Sprint 32 M3). `dev_issue_new` is platform-level
+  // and written by the error-monitor Edge Function, which inserts the row
+  // directly — Deno cannot import this module, so its shape is mirrored there.
+  | 'dev_issue_new'
+  | 'dev_issue_fixed'
 
 export interface CreateNotificationParams {
   orgId: string

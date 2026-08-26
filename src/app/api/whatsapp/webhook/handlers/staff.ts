@@ -32,7 +32,23 @@ import {
 } from '@/lib/day-off'
 import { OPEN_CHARGE_STATUSES, sumRemaining } from '@/lib/charges'
 import { getTodayRange } from '@/lib/lessons'
+import {
+  startSupportSession,
+  setSupportDraft,
+  getActiveSupportSession,
+  deleteSupportSession,
+} from '@/lib/support/supportSessions'
+import { createTicket } from '@/lib/support/tickets'
+import { classifyTicketInBackground } from '@/lib/support/classify'
+import { notifySuperadmins } from '@/lib/notifications'
 import { replyWith, type HandlerContext } from '../shared'
+
+/** Reply-button ids for the support confirmation step. */
+const SUPPORT_SEND = 'sup:send'
+const SUPPORT_CANCEL = 'sup:cancel'
+
+/** WhatsApp has no subject line, so the ticket gets one from the first words. */
+const SUBJECT_MAX = 80
 
 /** Routes a message from an owner/admin. Returns true when it was handled. */
 export async function handleStaffMessage(
@@ -54,6 +70,28 @@ export async function handleStaffMessage(
     return true
   }
 
+  // Support: the confirmation buttons first, then the menu tap, then free text
+  // that belongs to an open session. Order matters — a tap on any menu row must
+  // abandon an in-flight support request rather than be read as its description.
+  if (ctx.msg.replyId === SUPPORT_SEND || ctx.msg.replyId === SUPPORT_CANCEL) {
+    await handleSupportDecision(ctx, ctx.msg.replyId === SUPPORT_SEND)
+    return true
+  }
+
+  if (menuAction === 'support') {
+    await startSupportSession(ctx.org.id, ctx.senderPhone)
+    await replyWith(ctx, 'support_prompt')
+    return true
+  }
+
+  if (menuAction) {
+    // Any other menu tap ends an open support request, exactly as it does for a
+    // cancellation session.
+    await deleteSupportSession(ctx.org.id, ctx.senderPhone)
+  } else if (await handleSupportFreeText(ctx)) {
+    return true
+  }
+
   if (menuAction === 'pending_requests') {
     await sendPendingRequests(ctx)
     return true
@@ -72,6 +110,122 @@ export async function handleStaffMessage(
   }
 
   return false
+}
+
+// ── Support requests ──────────────────────────────────────────────────────────
+
+/**
+ * Free text while a support request is open.
+ *
+ * Returns true only when the message was consumed by the flow, so a staff
+ * member with no open session keeps falling through to the summary intent.
+ */
+async function handleSupportFreeText(ctx: HandlerContext): Promise<boolean> {
+  const session = await getActiveSupportSession(ctx.org.id, ctx.senderPhone)
+  if (!session) return false
+
+  if (session.step === 'awaiting_confirm') {
+    // They typed instead of tapping. Treat it as a correction — replace the
+    // draft and ask again, rather than filing the older text.
+    const replacement = ctx.msg.text?.trim()
+    if (!replacement) {
+      await replyWith(ctx, 'support_empty_text')
+      return true
+    }
+    await setSupportDraft(ctx.org.id, ctx.senderPhone, replacement)
+    await askSupportConfirmation(ctx, replacement)
+    return true
+  }
+
+  const text = ctx.msg.text?.trim()
+  if (!text) {
+    // An image or a sticker: the session stays open and we ask for words.
+    await replyWith(ctx, 'support_empty_text')
+    return true
+  }
+
+  await setSupportDraft(ctx.org.id, ctx.senderPhone, text)
+  await askSupportConfirmation(ctx, text)
+  return true
+}
+
+async function askSupportConfirmation(ctx: HandlerContext, text: string): Promise<void> {
+  await sendReplyButtons(
+    ctx.senderPhone,
+    {
+      body: botString('support_confirm', ctx.locale, { text: clipForConfirm(text) }),
+      buttons: [
+        { id: SUPPORT_SEND, title: botString('support_send_button', ctx.locale) },
+        { id: SUPPORT_CANCEL, title: botString('support_cancel_button', ctx.locale) },
+      ],
+    },
+    ctx.accessToken,
+    ctx.phoneNumberId
+  )
+}
+
+/**
+ * Meta caps an interactive body at 1024 characters, and the confirmation wraps
+ * the draft in a sentence. Echoing a long report back in full would fail the
+ * send outright, so the echo is trimmed — the ticket still carries everything.
+ */
+function clipForConfirm(text: string): string {
+  return text.length <= 600 ? text : text.slice(0, 600) + '…'
+}
+
+async function handleSupportDecision(ctx: HandlerContext, send: boolean): Promise<void> {
+  const session = await getActiveSupportSession(ctx.org.id, ctx.senderPhone)
+
+  if (!send) {
+    await deleteSupportSession(ctx.org.id, ctx.senderPhone)
+    await replyWith(ctx, 'support_cancelled')
+    return
+  }
+
+  // Expired between typing and tapping, or a stale button from an old thread.
+  if (!session?.draft_text) {
+    await deleteSupportSession(ctx.org.id, ctx.senderPhone)
+    await replyWith(ctx, 'support_prompt')
+    await startSupportSession(ctx.org.id, ctx.senderPhone)
+    return
+  }
+
+  const body = session.draft_text
+  const ticketId = await createTicket({
+    orgId: ctx.org.id,
+    createdBy: ctx.sender.role === 'staff' ? ctx.sender.profileId : null,
+    subject: subjectFrom(body),
+    body,
+    source: 'whatsapp',
+  })
+
+  // Clear the session either way: a failed insert must not leave them stuck in
+  // a confirmation loop with a button that keeps failing.
+  await deleteSupportSession(ctx.org.id, ctx.senderPhone)
+
+  if (!ticketId) {
+    await replyWith(ctx, 'support_empty_text')
+    return
+  }
+
+  classifyTicketInBackground(ticketId, subjectFrom(body), body)
+
+  await notifySuperadmins(
+    'support_ticket_new',
+    subjectFrom(body),
+    ctx.org.name ?? ctx.org.id,
+    `/admin/support/${ticketId}`
+  )
+
+  await replyWith(ctx, 'support_created')
+}
+
+/** First sentence or first line, whichever is shorter, as the ticket subject. */
+function subjectFrom(body: string): string {
+  const firstLine = body.split('\n')[0]!.trim()
+  const firstSentence = firstLine.split(/(?<=[.!?])\s/)[0]!.trim()
+  const candidate = firstSentence || firstLine || body.trim()
+  return candidate.length <= SUBJECT_MAX ? candidate : candidate.slice(0, SUBJECT_MAX - 1) + '…'
 }
 
 // ── Day-off requests ──────────────────────────────────────────────────────────

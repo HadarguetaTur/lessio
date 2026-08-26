@@ -85,6 +85,8 @@ export type BotStringKey =
   | 'menu_today_summary_desc'
   | 'menu_pending_requests'
   | 'menu_pending_requests_desc'
+  | 'menu_support'
+  | 'menu_support_desc'
   | 'menu_dashboard'
   | 'menu_dashboard_desc'
   | 'menu_switch_role'
@@ -138,6 +140,14 @@ export type BotStringKey =
   | 'staff_request_already_decided'
   | 'staff_request_stale'
   | 'staff_request_not_found'
+  // Support requests raised from the staff menu
+  | 'support_prompt'
+  | 'support_confirm'
+  | 'support_send_button'
+  | 'support_cancel_button'
+  | 'support_created'
+  | 'support_cancelled'
+  | 'support_empty_text'
   // Cross-role
   | 'action_not_for_role'
   | 'role_switch_body'
@@ -238,6 +248,8 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     menu_today_summary_desc: 'שיעורים, ביטולים ויתרה פתוחה',
     menu_pending_requests: 'בקשות ממתינות',
     menu_pending_requests_desc: 'בקשות חופש שמחכות להחלטה',
+    menu_support: 'תמיכה',
+    menu_support_desc: 'פנייה לצוות Lessio',
     menu_dashboard: 'האזור האישי',
     menu_dashboard_desc: 'כניסה למערכת מהדפדפן',
     menu_switch_role: 'החלפת תפקיד',
@@ -303,6 +315,17 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     staff_request_stale:
       'התאריכים בבקשה כבר עברו, ולכן היא סומנה כנדחתה. לא בוטלו שיעורים.',
     staff_request_not_found: 'לא מצאתי את הבקשה הזו. אפשר לנסות שוב מהתפריט 🙂',
+
+    support_prompt:
+      'מה קרה? כתבי לי כאן בהודעה אחת מה ניסית לעשות ומה קרה בפועל, ואני אעביר לצוות Lessio.',
+    support_confirm: 'זה מה שיישלח לצוות Lessio:\n\n"{{text}}"\n\nלשלוח?',
+    support_send_button: 'שליחה',
+    support_cancel_button: 'ביטול',
+    support_created:
+      'הפנייה נשלחה לצוות Lessio ✅\nנחזור אלייך כאן או במערכת. אפשר לעקוב באזור האישי תחת "הפניות שלי".',
+    support_cancelled: 'הפנייה בוטלה ולא נשלחה 🙂',
+    support_empty_text:
+      'לא הצלחתי לקרוא את ההודעה. אפשר לכתוב לי במילים מה קרה?',
 
     action_not_for_role: 'הפעולה הזו לא זמינה מהתפריט שלך 🙂 הנה מה שאפשר לעשות:',
     role_switch_body: 'באיזה תפקיד להמשיך?',
@@ -410,6 +433,8 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     menu_today_summary_desc: 'Lessons, cancellations, open balance',
     menu_pending_requests: 'Pending requests',
     menu_pending_requests_desc: 'Time-off requests awaiting a decision',
+    menu_support: 'Support',
+    menu_support_desc: 'Contact the Lessio team',
     menu_dashboard: 'My dashboard',
     menu_dashboard_desc: 'Open the system in your browser',
     menu_switch_role: 'Switch role',
@@ -476,6 +501,16 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     staff_request_stale:
       'The dates in that request have already passed, so it was marked as declined. No lessons were cancelled.',
     staff_request_not_found: 'I could not find that request. Try again from the menu 🙂',
+
+    support_prompt:
+      'What happened? Send me one message describing what you were trying to do and what happened instead, and I will pass it to the Lessio team.',
+    support_confirm: 'This is what will be sent to the Lessio team:\n\n"{{text}}"\n\nSend it?',
+    support_send_button: 'Send',
+    support_cancel_button: 'Cancel',
+    support_created:
+      'Sent to the Lessio team ✅\nWe will reply here or in the app. You can follow it under "My requests" in your dashboard.',
+    support_cancelled: 'Request cancelled — nothing was sent 🙂',
+    support_empty_text: 'I could not read that message. Could you describe what happened in words?',
 
     action_not_for_role: 'That action is not available from your menu 🙂 Here is what you can do:',
     role_switch_body: 'Which role would you like to continue as?',

@@ -303,7 +303,8 @@
     "openNavigation": "פתיחת תפריט הניווט",
     "settingsPricing": "תמחור",
     "settingsPrivacy": "פרטיות ונתונים",
-    "settingsCalendar": "יומן Google"
+    "settingsCalendar": "יומן Google",
+    "support": "תמיכה"
   },
   "dashboard": {
     "title": "לוח הבקרה",
@@ -1802,6 +1803,27 @@
           }
         }
       },
+      "grow": {
+        "label": "Grow (משולם)",
+        "description": "ספק תשלום ישראלי — כרטיסי אשראי, ביט, Apple Pay, Google Pay",
+        "setupHint": "יש לבקש מתמיכת Grow את User ID, Page Code ו-API Key. אם חיובים ששולמו לא נסגרים מעצמם, יש לבקש מהם להפעיל webhooks לחשבון.",
+        "fields": {
+          "userId": {
+            "label": "User ID",
+            "placeholder": "לדוגמה: 3f9c2b7e",
+            "hint": "המזהה של בית העסק שלך ב-Grow"
+          },
+          "pageCode": {
+            "label": "Page Code",
+            "placeholder": "לדוגמה: b73ca07591f8",
+            "hint": "הקוד של דף התשלום שהגדרת ב-Grow"
+          },
+          "apiKey": {
+            "label": "API Key",
+            "hint": "נשלח בכל בקשה בכותרת x-api-key"
+          }
+        }
+      },
       "setupHint": "את פרטי החיבור מאתרים באזור האישי של ספק הסליקה."
     },
     "emailActions": {
@@ -1930,6 +1952,32 @@
       "autoIssueValue": "בכל סימון «שולם» או קבלת תשלום מקוון",
       "disconnectHint": "ניתוק יפסיק את ההפקה האוטומטית של קבלות עד לחיבור מחדש.",
       "disconnectedHint": "בחר ספק קבלות, הזן את פרטי ה-API שלו, ולחץ שמור וחבר. הפרטים יאומתו ויוצפנו לפני השמירה."
+    },
+    "receiptMode": {
+      "question": "מי מפיק את החשבוניות שלך?",
+      "intro": "התשובה קובעת אם Lessio מפיק מסמך בעצמו. טעות כאן פירושה שתי חשבוניות על אותו תשלום.",
+      "external": {
+        "title": "שירות חשבוניות",
+        "description": "חשבוניות ירוקות, iCount או Sumit. ‏Lessio יפיק את המסמך וישלח אותו להורה."
+      },
+      "paymentProvider": {
+        "title": "{provider} מפיק אותן אוטומטית",
+        "description": "ספק הסליקה מפיק את החשבונית ברגע שהתשלום עובר. ‏Lessio לא יפיק חשבונית נוספת.",
+        "summaryTitle": "החשבוניות שלך מופקות על ידי {provider}",
+        "summaryBody": "‏Lessio לא מפיק מסמך משלו. כשספק הסליקה מפיק חשבונית, ‏Lessio שומר אותה על החיוב ושולח אותה להורה.",
+        "fallbackName": "ספק הסליקה שלך"
+      },
+      "none": {
+        "title": "אני לא מפיק חשבוניות דרך Lessio",
+        "description": "החשבוניות מטופלות מחוץ למערכת. שום מסמך לא יופק ולא יישלח אוטומטית.",
+        "summaryTitle": "החשבוניות מטופלות מחוץ ל-Lessio",
+        "summaryBody": "לא מופק ולא נשלח מסמך כשמתקבל תשלום."
+      },
+      "continue": "שמירה",
+      "change": "שינוי התשובה",
+      "wrongChoiceHint": "החשבוניות מופקות במקום אחר? עדיף לשנות את התשובה מאשר לחבר שירות.",
+      "paymentLinkPrefix": "את ספק הסליקה מגדירים ב",
+      "paymentLinkText": "מסך התשלומים"
     },
     "receiptProviders": {
       "green-invoice": "חשבוניות ירוקות (Morning)",
@@ -2438,7 +2486,9 @@
       "dashboard": "לוח בקרה",
       "orgs": "ארגונים",
       "billing": "בילינג",
-      "saasInquiries": "פניות מנוי"
+      "saasInquiries": "פניות מנוי",
+      "support": "פניות תמיכה",
+      "devIssues": "באגים חוזרים"
     },
     "saasInquiries": {
       "title": "פניות תוכנית מותאמת",
@@ -2567,7 +2617,93 @@
       "createProfileFailed": "יצירת הפרופיל נכשלה. הארגון נמחק. נסה שוב."
     },
     "supportSuffix": "{name} (תמיכה)",
-    "deletedName": "[מחוק]"
+    "deletedName": "[מחוק]",
+    "support": {
+      "title": "פניות תמיכה",
+      "description": "פניות שנפתחו על ידי לקוחות הפלטפורמה.",
+      "back": "חזרה לתור הפניות",
+      "empty": "אין פניות בתצוגה הזו.",
+      "filterLabel": "סינון פניות",
+      "changeStatus": "שינוי סטטוס",
+      "filter": {
+        "open": "בטיפול",
+        "resolved": "נפתרו",
+        "closed": "סגורות",
+        "all": "הכול"
+      },
+      "source": {
+        "widget": "מהאפליקציה",
+        "whatsapp": "מוואטסאפ",
+        "auto": "אוטומטי"
+      },
+      "category": {
+        "bug": "תקלה",
+        "question": "שאלה",
+        "feature_request": "בקשת פיצ׳ר",
+        "other": "אחר"
+      },
+      "severity": {
+        "low": "נמוכה",
+        "medium": "בינונית",
+        "high": "גבוהה",
+        "critical": "קריטית"
+      },
+      "fields": {
+        "org": "ארגון",
+        "reporter": "פותח/ת הפנייה",
+        "opened": "נפתחה",
+        "source": "מקור",
+        "category": "סוג",
+        "severity": "חומרה",
+        "page": "עמוד",
+        "status": "סטטוס",
+        "devIssue": "באג מקושר"
+      },
+      "linkIssue": {
+        "title": "קישור לבאג",
+        "link": "קישור לבאג",
+        "change": "שינוי הבאג",
+        "unlink": "ביטול הקישור",
+        "none": "אין באגים פתוחים לקישור.",
+        "meta": "{events} מופעים · {orgs} ארגונים"
+      }
+    },
+    "devIssues": {
+      "title": "באגים חוזרים",
+      "description": "תקלות שזוהו אוטומטית מהניטור בפרודקשן.",
+      "back": "חזרה לרשימה",
+      "empty": "אין באגים בתצוגה הזו 🙂",
+      "filterLabel": "סינון באגים",
+      "changeStatus": "שינוי סטטוס",
+      "fixedNotice": "סימון כ\"תוקן\" ישלח הודעה לכל הפניות המקושרות.",
+      "occurrences": "{events} מופעים · {orgs} ארגונים",
+      "lastSeen": "לאחרונה {date}",
+      "sampleStack": "דוגמת Stack",
+      "linkedTickets": "פניות מקושרות ({count})",
+      "noLinkedTickets": "אין פניות מקושרות לבאג הזה.",
+      "recentEvents": "אירועים אחרונים",
+      "filter": {
+        "open": "פתוחים",
+        "fixed": "תוקנו",
+        "wont_fix": "לא לתיקון",
+        "all": "הכול"
+      },
+      "status": {
+        "open": "פתוח",
+        "investigating": "בבדיקה",
+        "fixed": "תוקן",
+        "wont_fix": "לא לתיקון"
+      },
+      "fields": {
+        "status": "סטטוס",
+        "events": "מופעים",
+        "orgs": "ארגונים",
+        "firstSeen": "זוהה לראשונה",
+        "lastSeen": "זוהה לאחרונה",
+        "fingerprint": "טביעת אצבע",
+        "github": "GitHub"
+      }
+    }
   },
   "auth": {
     "common": {
@@ -3918,7 +4054,10 @@
     "dayOffRequested": "🏖️ בקשת חופש — {teacher}",
     "dayOffRequestedBody": "{range} · {count} שיעורים מתוכננים",
     "dayOffApproved": "בקשת החופש שלך אושרה ✅",
-    "dayOffRejected": "בקשת החופש שלך נדחתה"
+    "dayOffRejected": "בקשת החופש שלך נדחתה",
+    "supportTicketReply": "קיבלת תשובה מהתמיכה",
+    "supportTicketResolved": "הפנייה שלך נסגרה",
+    "devIssueFixed": "התקלה שדיווחת עליה תוקנה"
   },
   "notFound": {
     "title": "הדף לא נמצא",
@@ -3960,9 +4099,11 @@
     "apiPasswordRequired": "API Password נדרשת",
     "companyIdRequired": "Company ID נדרש",
     "merchantIdRequired": "Merchant ID נדרש",
+    "pageCodeRequired": "Page Code נדרש",
     "paymentPageUidRequired": "Payment Page UID נדרש",
     "secretKeyRequired": "Secret Key נדרש",
     "secretRequired": "Secret נדרש",
+    "userIdRequired": "User ID נדרש",
     "webhookSecretRequired": "Webhook Secret נדרש",
     "timezoneRequired": "אזור זמן נדרש",
     "maxRange60Days": "הטווח המקסימלי הוא 60 ימים",
@@ -4029,5 +4170,75 @@
     "creditNoteLine": "זיכוי — {reason}",
     "chargeFallback": "חיוב {month}",
     "consolidatedPayment": "תשלום עבור {count} חיובים פתוחים"
+  },
+  "support": {
+    "widget": {
+      "trigger": "עזרה",
+      "triggerAria": "פתיחת פנייה לתמיכה",
+      "title": "איך אפשר לעזור?",
+      "description": "נענה לך כאן במערכת, בדרך כלל תוך יום עסקים.",
+      "categoryLabel": "על מה מדובר?",
+      "category": {
+        "bug": "משהו לא עובד",
+        "question": "שאלה",
+        "feature_request": "רעיון לשיפור",
+        "other": "אחר"
+      },
+      "subjectLabel": "נושא",
+      "subjectPlaceholder": "למשל: לא מצליחה לשלוח בקשת תשלום",
+      "bodyLabel": "מה קרה?",
+      "bodyPlaceholder": "ספרי לנו מה ניסית לעשות ומה קרה בפועל",
+      "bodyHint": "ככל שתפרטי יותר, כך נוכל לעזור מהר יותר.",
+      "send": "שליחה",
+      "sending": "שולח…",
+      "sentTitle": "הפנייה נשלחה",
+      "sentBody": "נחזור אלייך כאן במערכת. תקבלי התראה כשנענה.",
+      "viewTicket": "מעבר לפנייה",
+      "myTickets": "הפניות שלי"
+    },
+    "list": {
+      "title": "הפניות שלי",
+      "description": "פניות שפתחת לתמיכה של Lessio.",
+      "emptyTitle": "אין עדיין פניות",
+      "emptySubtitle": "אפשר לפתוח פנייה מכפתור העזרה בפינת המסך.",
+      "meta": "{count} הודעות · עדכון אחרון {date}"
+    },
+    "detail": {
+      "back": "חזרה לפניות",
+      "opened": "נפתחה ב-{date}",
+      "closedNotice": "הפנייה נסגרה. לפתיחת נושא חדש, אפשר לפתוח פנייה חדשה מכפתור העזרה."
+    },
+    "thread": {
+      "empty": "אין הודעות בפנייה הזו.",
+      "author": {
+        "customer": "את/ה",
+        "admin": "צוות Lessio",
+        "ai": "עוזר אוטומטי",
+        "system": "מערכת"
+      }
+    },
+    "reply": {
+      "label": "הודעה חדשה בפנייה",
+      "placeholder": "הוספת פרטים או תגובה…",
+      "adminPlaceholder": "תשובה ללקוח…",
+      "send": "שליחה",
+      "sending": "שולח…"
+    },
+    "status": {
+      "open": "פתוחה",
+      "in_progress": "בטיפול",
+      "waiting_on_customer": "ממתינה לך",
+      "resolved": "נפתרה",
+      "closed": "סגורה"
+    },
+    "errors": {
+      "subjectRequired": "יש לכתוב נושא לפנייה",
+      "bodyRequired": "יש לתאר את הבעיה בכמה מילים",
+      "rateLimited": "נפתחו כבר {limit} פניות היום. נטפל בקיימות ונחזור אלייך.",
+      "ticketClosed": "הפנייה סגורה ולא ניתן להוסיף לה הודעות."
+    },
+    "system": {
+      "bugFixed": "התקלה שדיווחת עליה תוקנה ועלתה לאוויר. אם זה עדיין קורה אצלך, כתבי לנו כאן ונבדוק שוב."
+    }
   }
 }

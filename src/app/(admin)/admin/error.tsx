@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import { reportClientError } from '@/lib/telemetry/reportClientError'
 
 export default function AdminError({
   error,
@@ -12,6 +13,7 @@ export default function AdminError({
 }) {
   useEffect(() => {
     console.error('[admin/error-boundary] Unhandled error', error)
+    reportClientError(error)
   }, [error])
 
   return (

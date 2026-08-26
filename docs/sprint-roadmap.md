@@ -39,6 +39,7 @@
 | 29 | Google Login + Google Calendar Integration | 🚧 In Progress |
 | 30 | Revenue Integrity & Reliability | 📝 Planned |
 | 31 | WhatsApp Production Launch | 📝 Planned |
+| 32 | Customer Support System (tickets, AI triage, recurring-bug detection) | ✅ M1–M3 done |
 
 ---
 
@@ -91,6 +92,24 @@
 - Story 9: Parent messaging consent (opt-in) — the first business-initiated message to any parent is preceded by a one-time `welcome_notice` template naming the business and the stop word (`parents.welcome_sent_at`, claimed atomically). Consent evidence recorded per source (`attested`/`import`/`portal`/`booking`/`whatsapp_reply`) on `parents.consent_source`; captured on the parent + student + lead-conversion forms, the import screen, the portal login and the booking confirm. Closes three opt-out leaks Story 8 left open (auto payment request, receipt notice, day-off cancellation notice). Nothing is blocked for a parent without consent — Meta's policy wants the notice, not silence
 - Ops: Meta Business App + Business Verification + App Review + Embedded Signup Configuration, cron registration, migrations, WABA backfill
 - Ops: English demo tenant for App Review (`scripts/seed-review-demo.ts` / `cleanup-review-demo.ts`) — see `docs/meta-app-review-submission.md`
+
+---
+
+## Sprint 32 — Customer Support System
+**Status:** ✅ M1–M3 shipped (migrations live in production), M4 optional
+**Depends on:** none (independent of the WhatsApp launch track)
+**Scope:** See `docs/sprint-32-scope.md`
+**Source:** Support architecture session (2026-08-26)
+
+**Goal:** Support that scales past answering WhatsApp messages by hand — customers reach us in-product, tickets triage themselves, and repeating production errors become dev issues before anyone notices them.
+
+### Milestones
+- M1 ✅: Ticket core — `support_tickets` + `support_ticket_messages`, floating help widget for owners/admins, `/support` thread pages, `/admin/support` operator queue with replies and status, in-app notifications both directions, 10-tickets-per-org-per-day limit
+- M2 ✅: WhatsApp intake (staff menu 4th action + `support_sessions` three-step state) and AI triage (category + severity on every ticket, platform OpenAI key). Deferred: screenshot attachments, self-service KB answers
+- M3 ✅: Error telemetry (`error_events`, fingerprinting, all four boundaries instrumented + the previously missing `global-error.tsx`, `onRequestError` feeding the DB alongside Sentry) and the hourly `error-monitor` cron that promotes a fingerprint into a `dev_issue` + GitHub issue + a throttled superadmin alert
+- M4 (optional): SLA/aging badges, admin metrics, canned responses, platform email, CSAT
+
+**Manual ops still outstanding for M3:** register the `error-monitor` schedule in the Supabase Dashboard (`0 * * * *`) — the CLI cannot do it; and optionally `supabase secrets set GITHUB_ISSUES_TOKEN` + `GITHUB_ISSUES_REPO` to enable GitHub filing (without them the internal queue works and filing is skipped).
 
 ---
 

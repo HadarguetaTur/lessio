@@ -1953,7 +1953,9 @@
       "daysRange": "בין 1 ל-30 ימים",
       "statusSent": "נשלח",
       "statusFailed": "נכשל",
-      "entityHeader": "ישות"
+      "entityHeader": "ישות",
+      "offWarning": "התזכורות כבויות — ההגדרות נשמרות, אבל שום הודעה לא תישלח.",
+      "saved": "ההגדרות נשמרו בהצלחה"
     },
     "pricing": {
       "title": "מחירי שיעורים",

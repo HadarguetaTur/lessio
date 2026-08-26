@@ -1953,7 +1953,9 @@
       "daysRange": "Between 1 and 30 days",
       "statusSent": "Sent",
       "statusFailed": "Failed",
-      "entityHeader": "Entity"
+      "entityHeader": "Entity",
+      "offWarning": "Reminders are off — these settings are saved but nothing will be sent.",
+      "saved": "Settings saved successfully"
     },
     "pricing": {
       "title": "Lesson Pricing",

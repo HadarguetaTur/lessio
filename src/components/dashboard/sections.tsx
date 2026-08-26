@@ -14,6 +14,8 @@ import { TodayLessonsList } from '@/components/dashboard/TodayLessonsList'
 import { AttentionPanel } from '@/components/dashboard/AttentionPanel'
 import { ForecastCard } from '@/components/dashboard/ForecastCard'
 import { MiniRevenueChart } from '@/components/dashboard/MiniRevenueChart'
+import { SetupStrip, type SetupGap } from '@/components/dashboard/SetupStrip'
+import { getOrgReadiness } from '@/lib/organizations/readiness'
 
 /**
  * Each band fetches its own data so it can stream independently.
@@ -121,4 +123,22 @@ export async function OutlookSection({ orgId, timezone, appLocale, locale }: Sec
       </div>
     </section>
   )
+}
+
+/**
+ * "You are not live yet", or nothing at all.
+ *
+ * Kept out of the dashboard's Promise.all and given its own Suspense boundary
+ * with a null fallback, so this extra query never delays the LCP.
+ */
+export async function SetupSection({ orgId, appLocale }: { orgId: string; appLocale: AppLocale }) {
+  const readiness = await getOrgReadiness(orgId)
+  if (readiness.isReady) return null
+
+  const missing: SetupGap[] = []
+  if (!readiness.hasWhatsApp) missing.push('whatsapp')
+  if (!readiness.hasAi) missing.push('ai')
+  if (!readiness.hasPayment) missing.push('payment')
+
+  return <SetupStrip orgId={orgId} missing={missing} isRtl={appLocale === 'he'} />
 }

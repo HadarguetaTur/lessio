@@ -16,6 +16,7 @@ import {
   AttentionSection,
   MoneySection,
   OutlookSection,
+  SetupSection,
   TodaySection,
 } from '@/components/dashboard/sections'
 
@@ -75,6 +76,14 @@ export default async function DashboardPage() {
           </Button>
         }
       />
+
+      {/* 0 — Only when the org is not live yet. Its own boundary with a null
+          fallback: the readiness query must never hold up the LCP. */}
+      {role === 'owner' && (
+        <Suspense fallback={null}>
+          <SetupSection orgId={orgId} appLocale={appLocale} />
+        </Suspense>
+      )}
 
       {/* 1 — Today, full width. */}
       <Suspense fallback={<BandSkeleton className="h-64 w-full rounded-xl" />}>

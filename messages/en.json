@@ -364,6 +364,15 @@
       "projected": "Projected remaining",
       "total": "Total projected",
       "atRisk": "At risk"
+    },
+    "setup": {
+      "title": "Finish setting up Lessio",
+      "items": {
+        "whatsapp": "No WhatsApp number connected — automatic messages are not being sent.",
+        "ai": "The AI assistant isn't configured — parent messages aren't answered automatically.",
+        "payment": "No payment provider configured — payment links can't be sent."
+      },
+      "dismiss": "Dismiss"
     }
   },
   "students": {

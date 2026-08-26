@@ -100,6 +100,10 @@ export async function getAiProvider(
 /**
  * Checks whether the AI assistant is configured for a specific org.
  * Async because it queries the DB.
+ *
+ * The same rule is restated in computeOrgReadiness
+ * (src/lib/organizations/readiness.ts), which answers this question alongside
+ * WhatsApp and payments in a single query. Change both together.
  */
 export async function isAiConfiguredForOrg(orgId: string): Promise<boolean> {
   const db = createServiceRoleClient()

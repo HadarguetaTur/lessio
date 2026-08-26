@@ -1,12 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Loader2, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { SEARCHABLE_PAGES, filterNav, matchPages } from '@/lib/navigation/registry'
+import type { SaasFeatures } from '@/lib/saas/types'
 import type { GlobalSearchResponse } from '@/lib/search/types'
 import { cn } from '@/lib/utils'
 
@@ -44,11 +46,14 @@ function buildLessonHref(
 
 interface GlobalSearchProps {
   userRole: string
+  /** Undefined = show everything, matching the sidebar's semantics. */
+  saasFeatures?: SaasFeatures
   className?: string
 }
 
-export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
+export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearchProps) {
   const t = useTranslations('nav.globalSearch')
+  const tNav = useTranslations('nav')
   const router = useRouter()
   const locale = useLocale()
   const uiLocale = parseAppLocale(locale)
@@ -70,6 +75,18 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
   }, [query])
 
   const canSeeCharges = userRole === 'owner' || userRole === 'admin'
+
+  // Local, synchronous and independent of the fetch: typing "reminder" used to
+  // return nothing at all, because the API only ever searched people and money.
+  // Keyed off the raw query rather than the debounced one — there is no request
+  // to save here.
+  const pageHits = useMemo(
+    () =>
+      matchPages(query, filterNav(SEARCHABLE_PAGES, userRole, saasFeatures), (entry) =>
+        tNav(entry.navKey as Parameters<typeof tNav>[0])
+      ),
+    [query, userRole, saasFeatures, tNav]
+  )
 
   const runSearch = useCallback(async (q: string) => {
     if (q.length < 2) {
@@ -214,7 +231,7 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
             </div>
           )}
 
-          {!loading && !error && query.trim().length >= 2 && data && !hasResults && (
+          {!loading && !error && query.trim().length >= 2 && data && !hasResults && pageHits.length === 0 && (
             <p className="px-3 py-2 text-xs text-muted-foreground">{t('noResults')}</p>
           )}
 
@@ -318,6 +335,32 @@ export function GlobalSearch({ userRole, className }: GlobalSearchProps) {
                   <span className="text-xs text-muted-foreground">{c.status}</span>
                 </button>
               ))}
+            </div>
+          )}
+
+          {pageHits.length > 0 && (
+            <div className="mt-1">
+              <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t('sections.pages')}
+              </div>
+              {pageHits.map((entry) => {
+                const Icon = entry.icon
+                return (
+                  <button
+                    key={entry.href}
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-start text-sm hover:bg-muted/80"
+                    onClick={() => navigateTo(entry.href)}
+                  >
+                    <Icon size={14} className="shrink-0 text-muted-foreground" aria-hidden />
+                    <span className="font-medium">
+                      {tNav(entry.navKey as Parameters<typeof tNav>[0])}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>

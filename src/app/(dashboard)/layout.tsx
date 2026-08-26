@@ -67,6 +67,7 @@ export default async function DashboardLayout({
         <TopBar
           currentLocale={locale}
           userRole="owner"
+          saasFeatures={saasFeaturesSupport}
           mobileNavigation={
             <Sidebar
               userName={t('admin.supportSuffix', { name: adminProfile?.full_name ?? 'Admin' })}
@@ -196,6 +197,7 @@ export default async function DashboardLayout({
         <TopBar
           currentLocale={locale}
           userRole={profile?.role ?? 'owner'}
+          saasFeatures={saasFeatures}
           notificationBell={bellElement}
           mobileNavigation={
             <Sidebar

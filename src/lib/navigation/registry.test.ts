@@ -5,6 +5,7 @@ import {
   MAIN_NAV,
   SEARCHABLE_PAGES,
   filterNav,
+  matchPages,
   resolveBreadcrumb,
 } from './registry'
 
@@ -124,5 +125,71 @@ describe('resolveBreadcrumb', () => {
 
   it('reads /billing/debts as its own page, not as billing', () => {
     expect(resolveBreadcrumb('/billing/debts').pageKey).toBe('debts')
+  })
+})
+
+describe('matchPages', () => {
+  // Stands in for next-intl: the Hebrew UI title of each page.
+  const heTitles: Record<string, string> = {
+    settingsReminders: 'תזכורות',
+    settingsCancellation: 'מדיניות ביטולים',
+    settingsWhatsApp: 'WhatsApp',
+    settingsPayment: 'תשלומים',
+    students: 'תלמידים',
+  }
+  const heTitle = (e: { navKey: string }) => heTitles[e.navKey] ?? e.navKey
+
+  it('ignores a query shorter than two characters', () => {
+    expect(matchPages('t', SEARCHABLE_PAGES, heTitle)).toEqual([])
+    expect(matchPages('', SEARCHABLE_PAGES, heTitle)).toEqual([])
+    expect(matchPages('  ', SEARCHABLE_PAGES, heTitle)).toEqual([])
+  })
+
+  it('finds a settings page by its Hebrew title', () => {
+    const hrefs = matchPages('תזכור', SEARCHABLE_PAGES, heTitle).map((e) => e.href)
+    expect(hrefs).toContain('/settings/reminders')
+  })
+
+  it('finds the same page typed in English inside a Hebrew UI', () => {
+    // The whole reason synonyms mix both languages: heTitle only knows Hebrew.
+    const hrefs = matchPages('reminder', SEARCHABLE_PAGES, heTitle).map((e) => e.href)
+    expect(hrefs).toContain('/settings/reminders')
+  })
+
+  it('covers the four routes the audit could not reach by search', () => {
+    const cases: [string, string][] = [
+      ['reminder', '/settings/reminders'],
+      ['חוב', '/settings/reminders'],
+      ['ביטול', '/settings/cancellation-policy'],
+      ['בוט', '/settings/whatsapp'],
+      ['סליקה', '/settings/payment'],
+    ]
+    for (const [query, href] of cases) {
+      const hrefs = matchPages(query, SEARCHABLE_PAGES, heTitle).map((e) => e.href)
+      expect(hrefs, query).toContain(href)
+    }
+  })
+
+  it('is case-insensitive', () => {
+    const lower = matchPages('whatsapp', SEARCHABLE_PAGES, heTitle).map((e) => e.href)
+    const upper = matchPages('WhatsApp', SEARCHABLE_PAGES, heTitle).map((e) => e.href)
+    expect(upper).toEqual(lower)
+    expect(lower).toContain('/settings/whatsapp')
+  })
+
+  it('caps the result list', () => {
+    expect(matchPages('e', SEARCHABLE_PAGES, heTitle, 3).length).toBeLessThanOrEqual(3)
+    expect(matchPages('te', SEARCHABLE_PAGES, heTitle, 3).length).toBeLessThanOrEqual(3)
+    expect(matchPages('te', SEARCHABLE_PAGES, heTitle).length).toBeLessThanOrEqual(5)
+  })
+
+  it('searches only the entries it is handed', () => {
+    const owner = filterNav(SEARCHABLE_PAGES, 'teacher')
+    const hrefs = matchPages('תזכור', owner, heTitle).map((e) => e.href)
+    expect(hrefs).not.toContain('/settings/reminders')
+  })
+
+  it('returns nothing for a query that matches no page', () => {
+    expect(matchPages('zzzqqq', SEARCHABLE_PAGES, heTitle)).toEqual([])
   })
 })

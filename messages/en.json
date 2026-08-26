@@ -278,7 +278,7 @@
     "debts": "Debtors",
     "subscriptions": "Subscriptions",
     "globalSearch": {
-      "placeholder": "Search students, parents, lessons…",
+      "placeholder": "Search students, parents, lessons, settings…",
       "ariaLabel": "Global search",
       "minLength": "Type at least 2 characters",
       "noResults": "No matches",
@@ -287,7 +287,8 @@
         "students": "Students",
         "parents": "Parents",
         "lessons": "Lessons",
-        "charges": "Open charges"
+        "charges": "Open charges",
+        "pages": "Pages & settings"
       },
       "loading": "Searching…"
     },

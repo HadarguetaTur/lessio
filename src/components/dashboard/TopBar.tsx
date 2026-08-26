@@ -8,6 +8,7 @@ import { Menu } from 'lucide-react'
 import { LocaleSwitcher } from '@/components/dashboard/LocaleSwitcher'
 import { GlobalSearch } from '@/components/dashboard/GlobalSearch'
 import { resolveBreadcrumb } from '@/lib/navigation/registry'
+import type { SaasFeatures } from '@/lib/saas/types'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -21,11 +22,13 @@ import {
 interface TopBarProps {
   currentLocale: string
   userRole: string
+  /** Undefined = show everything, matching the sidebar's semantics. */
+  saasFeatures?: SaasFeatures
   mobileNavigation?: ReactNode
   notificationBell?: ReactNode
 }
 
-export function TopBar({ currentLocale, userRole, mobileNavigation, notificationBell }: TopBarProps) {
+export function TopBar({ currentLocale, userRole, saasFeatures, mobileNavigation, notificationBell }: TopBarProps) {
   const pathname = usePathname()
   const t = useTranslations('nav')
   const tc = useTranslations('common')
@@ -92,6 +95,7 @@ export function TopBar({ currentLocale, userRole, mobileNavigation, notification
 
       <GlobalSearch
         userRole={userRole}
+        saasFeatures={saasFeatures}
         className="hidden min-w-0 max-w-xl flex-1 md:block"
       />
 

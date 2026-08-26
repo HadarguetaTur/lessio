@@ -278,7 +278,7 @@
     "debts": "חייבים",
     "subscriptions": "מנויים",
     "globalSearch": {
-      "placeholder": "חיפוש תלמידים, הורים, שיעורים…",
+      "placeholder": "חיפוש תלמידים, הורים, שיעורים, הגדרות…",
       "ariaLabel": "חיפוש כללי",
       "minLength": "הקלידו לפחות 2 תווים",
       "noResults": "אין תוצאות",
@@ -287,7 +287,8 @@
         "students": "תלמידים",
         "parents": "הורים",
         "lessons": "שיעורים",
-        "charges": "חיובים פתוחים"
+        "charges": "חיובים פתוחים",
+        "pages": "עמודים והגדרות"
       },
       "loading": "מחפש…"
     },

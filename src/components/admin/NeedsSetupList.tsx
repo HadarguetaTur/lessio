@@ -25,7 +25,7 @@ export async function NeedsSetupList({ orgs }: Props) {
                 <p className="text-sm font-medium text-gray-800">{o.name}</p>
                 <div className="flex gap-2 mt-0.5">
                   {o.missingWhatsApp && (
-                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">{t('orgs.missingWhatsApp')}</span>
+                    <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">{t('orgs.missingWhatsApp')}</span>
                   )}
                   {o.missingPayment && (
                     <span className="text-xs text-red-700 bg-red-50 px-2 py-0.5 rounded-full">{t('orgs.missingPayment')}</span>

@@ -26,9 +26,10 @@ export function DataRetentionForm({ currentDays, action }: Props) {
   return (
     <form action={formAction} className="mt-4 space-y-4">
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1.5">{tp('dataRetention.label')}</label>
+        <label htmlFor="retention_days" className="block text-sm font-medium text-foreground mb-1.5">{tp('dataRetention.label')}</label>
         <p className="text-xs text-muted-foreground mb-2">{tp('dataRetention.hint')}</p>
         <select
+          id="retention_days"
           name="retention_days"
           defaultValue={currentValueFromDays(currentDays)}
           className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -111,7 +112,7 @@ export function TopBar({ currentLocale, userRole, mobileNavigation, notification
                 variant="ghost"
                 size="icon-sm"
                 className="lg:hidden"
-                aria-label="Open navigation"
+                aria-label={t('openNavigation')}
               >
                 <Menu size={16} />
               </Button>
@@ -124,6 +125,7 @@ export function TopBar({ currentLocale, userRole, mobileNavigation, notification
             >
               <SheetHeader className="sr-only">
                 <SheetTitle>{page}</SheetTitle>
+                <SheetDescription>{t('drawerDescription')}</SheetDescription>
               </SheetHeader>
               {mobileNavigation}
             </SheetContent>

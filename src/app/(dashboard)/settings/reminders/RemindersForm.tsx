@@ -43,18 +43,18 @@ export function RemindersForm({
   return (
     <form action={formAction} className="space-y-6">
       {/* Master switch */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-gray-900">{t('lessonReminder')}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{tp('remindersPage.masterHint')}</p>
-        </div>
+      <label className="flex items-start justify-between gap-4">
+        <span className="block">
+          <span className="block text-sm font-medium text-gray-900">{t('masterLabel')}</span>
+          <span className="block text-xs text-muted-foreground mt-0.5">{tp('remindersPage.masterHint')}</span>
+        </span>
         <input
           type="checkbox"
           name="reminders_enabled"
           defaultChecked={defaultEnabled}
           className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
-      </div>
+      </label>
 
       <hr className="border-gray-100" />
 

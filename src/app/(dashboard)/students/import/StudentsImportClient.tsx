@@ -27,7 +27,7 @@ export function StudentsImportClient() {
             onClick={() => setTab(id)}
             className={`-mb-px flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
               tab === id
-                ? 'border-teal-500 text-teal-600 dark:text-teal-400'
+                ? 'border-teal-600 text-teal-700 dark:text-teal-400'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >

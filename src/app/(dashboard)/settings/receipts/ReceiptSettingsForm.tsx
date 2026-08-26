@@ -81,7 +81,7 @@ export function ReceiptSettingsForm() {
               href="https://app.greeninvoice.co.il"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+              className="text-blue-600 underline"
             >
               {tp('receiptsForm.greenLink')}
             </a>
@@ -141,7 +141,7 @@ export function ReceiptSettingsForm() {
               href="https://app.icount.co.il"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+              className="text-blue-600 underline"
             >
               iCount
             </a>
@@ -187,7 +187,7 @@ export function ReceiptSettingsForm() {
               href="https://app.sumit.co.il"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+              className="text-blue-600 underline"
             >
               Sumit
             </a>

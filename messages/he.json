@@ -297,7 +297,9 @@
       "scheduleLesson": "קביעת שיעור",
       "openDebt": "חובות פתוחים",
       "dailySchedule": "לוח שיעורים יומי"
-    }
+    },
+    "drawerDescription": "תפריט ניווט ראשי",
+    "openNavigation": "פתיחת תפריט הניווט"
   },
   "dashboard": {
     "title": "לוח הבקרה",
@@ -1482,7 +1484,8 @@
         "receipt": "קבלה על תשלום",
         "homework_graded": "ציון שיעורי בית",
         "progress_report": "דוח התקדמות (שליחה מהדשבורד)"
-      }
+      },
+      "masterLabel": "תזכורות אוטומטיות"
     },
     "messageTemplates": {
       "title": "התאמה אישית של הודעות",

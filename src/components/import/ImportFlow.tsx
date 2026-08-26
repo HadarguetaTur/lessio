@@ -164,9 +164,9 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
         <>
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-semibold text-foreground">
+              <h2 className="text-base font-semibold text-foreground">
                 {t('title', { entity: entityTitle })}
-              </h3>
+              </h2>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {t('requiredFields', { fields: requiredFieldLabels.join(', ') })}
               </p>
@@ -193,9 +193,9 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
       {step === 'preview' && (
         <>
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-foreground">
+            <h2 className="text-base font-semibold text-foreground">
               {t('preview.title', { entity: entityTitle })}
-            </h3>
+            </h2>
             <Button variant="ghost" size="sm" onClick={handleReset}>
               {t('uploadFile')}
             </Button>

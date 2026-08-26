@@ -18,7 +18,7 @@ export function ImportResultsSummary({ result }: ImportResultsSummaryProps) {
 
   return (
     <div className="rounded-xl border border-border p-6 space-y-4">
-      <h3 className="text-lg font-semibold text-foreground">{t('results.title')}</h3>
+      <h2 className="text-lg font-semibold text-foreground">{t('results.title')}</h2>
 
       <div className={`grid gap-3 grid-cols-${colCount}`} style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}>
         <div className="flex items-center gap-3 rounded-lg bg-emerald-50 p-3">

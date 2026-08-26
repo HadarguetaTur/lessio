@@ -73,7 +73,7 @@ function NavLink({ href, label, icon: Icon, active, indent }: NavLinkProps) {
   return (
     <Link
       href={href}
-      className={`group flex items-center gap-2.5 rounded-md text-[13px] transition-all duration-150 relative ${
+      className={`group flex items-center gap-2.5 rounded-md text-[13px] transition-all duration-150 relative max-lg:min-h-11 ${
         indent ? 'px-3 py-1.5' : 'px-3 py-2'
       } ${
         active
@@ -125,8 +125,10 @@ function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathnam
   return (
     <div>
       <button
+        type="button"
+        aria-expanded={open}
         onClick={() => setOverride(!open)}
-        className={`group flex items-center justify-between w-full px-3 py-2 rounded-md text-[13px] transition-all duration-150 ${
+        className={`group flex items-center justify-between w-full px-3 py-2 rounded-md text-[13px] transition-all duration-150 max-lg:min-h-11 ${
           isAnyActive
             ? 'text-sidebar-foreground font-medium'
             : 'text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40'
@@ -143,8 +145,11 @@ function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathnam
       </button>
 
       {/* grid-rows rather than max-height: settings has twelve entries and was
-          being clipped by the old max-h-96 ceiling. */}
+          being clipped by the old max-h-96 ceiling. `inert` while collapsed —
+          without it the hidden links stay in the tab order and Tab walks
+          through a dozen invisible stops. */}
       <div
+        inert={!open}
         className={`grid transition-all duration-300 ease-in-out ${
           open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
         }`}

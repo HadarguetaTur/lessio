@@ -297,7 +297,9 @@
       "scheduleLesson": "Schedule a lesson",
       "openDebt": "Open debts",
       "dailySchedule": "Daily lesson schedule"
-    }
+    },
+    "drawerDescription": "Main navigation",
+    "openNavigation": "Open navigation"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1482,7 +1484,8 @@
         "receipt": "Payment receipt",
         "homework_graded": "Homework graded",
         "progress_report": "Progress report (sent from dashboard)"
-      }
+      },
+      "masterLabel": "Automatic reminders"
     },
     "messageTemplates": {
       "title": "Customize Messages",

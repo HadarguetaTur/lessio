@@ -336,11 +336,11 @@ export default async function BillingDetailPage(props: {
                   className="rounded-lg border border-border bg-card p-3 text-sm shadow-sm"
                 >
                   <p className="font-medium text-foreground">{subscriptionTypeLabel(sub.subscription_type)}</p>
-                  <div className="mt-2 grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
-                    <span dir="ltr" className="font-mono text-foreground">
-                      ₪{Number(sub.monthly_amount).toFixed(2)}
+                  <div className="mt-2 flex items-baseline justify-between gap-x-2">
+                    <span className="text-xs text-muted-foreground">{t('colMonthlyAmount')}</span>
+                    <span className="text-foreground tabular-nums">
+                      {money(Number(sub.monthly_amount))}
                     </span>
-                    <span className="text-end text-xs text-muted-foreground">{t('colMonthlyAmount')}</span>
                   </div>
                   <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
                     <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
@@ -377,7 +377,7 @@ export default async function BillingDetailPage(props: {
                     {subscriptions.map((sub) => (
                       <tr key={sub.id} className="transition-colors hover:bg-muted/20">
                         <td className="px-4 py-2.5 text-sm text-foreground">{subscriptionTypeLabel(sub.subscription_type)}</td>
-                        <td className="px-4 py-2.5 font-mono text-sm text-foreground" dir="ltr">₪{Number(sub.monthly_amount).toFixed(2)}</td>
+                        <td className="px-4 py-2.5 text-sm text-foreground tabular-nums">{money(Number(sub.monthly_amount))}</td>
                         <td className="px-4 py-2.5 text-sm text-foreground">{formatDateOnly(sub.start_date)}</td>
                         <td className="px-4 py-2.5 text-sm text-foreground">{sub.end_date ? formatDateOnly(sub.end_date) : '—'}</td>
                         <td className="px-4 py-2.5">

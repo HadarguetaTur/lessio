@@ -59,7 +59,11 @@ export default async function PortalMessageThreadPage({
         <h1 className="font-semibold text-foreground text-sm">{studentName}</h1>
       </header>
 
-      <PortalMessageThread messages={messages} sendAction={boundAction} />
+      <PortalMessageThread
+        messages={messages}
+        sendAction={boundAction}
+        draftKey={`portal-draft:${orgId}:${studentId}`}
+      />
 
       <PortalTabBar orgId={orgId} active="messages" />
     </div>

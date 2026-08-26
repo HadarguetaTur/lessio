@@ -13,7 +13,7 @@ export default async function LoginPage({
   searchParams,
 }: {
   params: Promise<{ orgId: string }>
-  searchParams: Promise<{ step?: string; phone?: string }>
+  searchParams: Promise<{ step?: string; phone?: string; resend?: string }>
 }) {
   const { orgId } = await params
   const { step, phone } = await searchParams

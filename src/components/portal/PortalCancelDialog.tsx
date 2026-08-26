@@ -34,6 +34,7 @@ export interface CancelTarget {
 
 interface Props {
   target: CancelTarget | null
+  orgId: string
   onClose: () => void
   cancelAction: (lessonId: string) => Promise<CancelLessonResult>
 }
@@ -46,7 +47,7 @@ interface Props {
  * that row would unmount mid-flight — taking the "cancelled, ₪120 charged"
  * confirmation with it.
  */
-export function PortalCancelDialog({ target, onClose, cancelAction }: Props) {
+export function PortalCancelDialog({ target, orgId, onClose, cancelAction }: Props) {
   const t = useTranslations('portal.schedule.cancel')
   const tSchedule = useTranslations('portal.schedule')
   const appLocale = parseAppLocale(useLocale())
@@ -85,6 +86,16 @@ export function PortalCancelDialog({ target, onClose, cancelAction }: Props) {
               </AlertDialogTitle>
             </AlertDialogHeader>
             <AlertDialogFooter>
+              {/* An expired session is not a permissions problem, and "close"
+                  leaves the parent stuck on a screen that will keep failing. */}
+              {!result.ok && result.error === 'unauthorized' && (
+                <a
+                  href={`/portal/${orgId}/login`}
+                  className="min-h-11 px-4 inline-flex items-center justify-center text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  {t('signIn')}
+                </a>
+              )}
               <button
                 onClick={() => handleOpenChange(false)}
                 className="min-h-11 px-4 text-sm font-medium rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"

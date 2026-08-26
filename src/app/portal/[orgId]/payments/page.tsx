@@ -1,6 +1,11 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { formatCurrency } from '@/lib/i18n/formatCurrency'
+import { formatBillingMonthLabel } from '@/lib/billing/monthly/month'
+import { getOrgTimezone } from '@/lib/organizations'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
@@ -21,11 +26,13 @@ export default async function PortalPaymentsPage({
     redirect(`/portal/${orgId}/login`)
   }
 
-  const [t, locale] = await Promise.all([
+  const [t, locale, timezone] = await Promise.all([
     getTranslations('portal.payments'),
     getLocale(),
+    getOrgTimezone(orgId),
   ])
-  const intlLocale = toIntlLocale(parseAppLocale(locale))
+  const appLocale = parseAppLocale(locale)
+  const intlLocale = toIntlLocale(appLocale)
 
   const db = createServiceRoleClient()
 
@@ -40,19 +47,37 @@ export default async function PortalPaymentsPage({
 
   const { data: charges } = await db
     .from('charges')
-    .select('id, amount, amount_paid, status, charge_type, payment_link, receipt_url, created_at, paid_at')
+    .select(
+      'id, amount, amount_paid, status, charge_type, payment_link, receipt_url, created_at, paid_at, due_date, billing_month'
+    )
     .eq('parent_id', session.parentId)
     .eq('organization_id', orgId)
     .order('created_at', { ascending: false })
     .limit(50)
 
-  const pending = (charges ?? []).filter((c) => c.status === 'pending' || c.status === 'invoiced')
-  const paid    = (charges ?? []).filter((c) => c.status === 'paid').slice(0, 20)
+  type ChargeRow = {
+    id: string
+    amount: number
+    amount_paid: number | null
+    status: string
+    charge_type: string
+    payment_link: string | null
+    receipt_url: string | null
+    created_at: string
+    paid_at: string | null
+    due_date: string | null
+    billing_month: string | null
+  }
+  const rows = (charges ?? []) as unknown as ChargeRow[]
+
+  const open = rows.filter((c) => c.status === 'pending' || c.status === 'invoiced')
+  // `waived` and `voided` are settled outcomes, not open charges. They used to
+  // match neither filter and vanished from the screen entirely, so a parent
+  // whose charge had been written off saw no record it ever existed.
+  const settled = rows.filter((c) => ['paid', 'waived', 'voided'].includes(c.status)).slice(0, 20)
 
   function formatAmount(amount: number) {
-    return new Intl.NumberFormat(intlLocale, { style: 'currency', currency: 'ILS' }).format(
-      Number(amount)
-    )
+    return formatCurrency(Number(amount), appLocale, 2)
   }
 
   /** What is still owed on an open charge, after any partial payment. */
@@ -68,34 +93,83 @@ export default async function PortalPaymentsPage({
     })
   }
 
-  // next-intl throws on missing keys — guard unknown charge types with the raw value.
+  /** Today in the org's timezone, as 'YYYY-MM-DD', to compare against a date column. */
+  const todayLocal = new Date().toLocaleDateString('sv-SE', { timeZone: timezone })
+  const isOverdue = (c: ChargeRow) => c.due_date != null && c.due_date < todayLocal
+  const daysLate = (c: ChargeRow) =>
+    c.due_date == null
+      ? 0
+      : Math.max(
+          0,
+          Math.round(
+            (new Date(`${todayLocal}T00:00:00Z`).getTime() - new Date(`${c.due_date}T00:00:00Z`).getTime()) /
+              86_400_000
+          )
+        )
+
+  // next-intl throws on missing keys — guard unknown values with the raw string.
   const KNOWN_CHARGE_TYPES = new Set(['lesson', 'cancellation', 'manual', 'monthly'])
   const chargeTypeLabel = (type: string) =>
     KNOWN_CHARGE_TYPES.has(type) ? t(`chargeType.${type}`) : type
+  const KNOWN_SETTLED = new Set(['paid', 'waived', 'voided'])
+  const settledLabel = (status: string) => (KNOWN_SETTLED.has(status) ? t(status) : status)
+
+  /**
+   * What the charge is for. A monthly bill says which month; everything else
+   * falls back to its type. Two rows reading "Monthly · 05.08.2026" with
+   * different amounts were impossible to tell apart.
+   */
+  function describe(c: ChargeRow) {
+    if (c.charge_type === 'monthly' && c.billing_month) {
+      return t('forMonth', { month: formatBillingMonthLabel(c.billing_month, timezone, intlLocale) })
+    }
+    return chargeTypeLabel(c.charge_type)
+  }
 
   return (
     <div className="flex flex-col flex-1 pb-16">
-      <header className="px-4 py-3 border-b border-gray-200">
+      {/* This screen is not in the tab bar, so it needs its own way back. */}
+      <header className="px-4 py-3 border-b border-gray-200 flex items-center gap-3">
+        <Link
+          href={`/portal/${orgId}/home`}
+          aria-label={t('back')}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft size={18} className="rtl:rotate-180" aria-hidden />
+        </Link>
         <h1 className="font-bold text-gray-900">{t('title')}</h1>
       </header>
 
       <main className="flex-1 p-4 space-y-6">
-        {/* Pending charges */}
+        {/* Open charges */}
         <section>
           <h2 className="text-sm font-semibold text-muted-foreground mb-3">{t('pendingTitle')}</h2>
-          {pending.length === 0 ? (
+          {open.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('noOpenCharges')}</p>
           ) : (
             <div className="space-y-2">
-              {pending.map((c) => (
-                <div key={c.id} className="bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-start gap-3">
+              {open.map((c) => (
+                <div
+                  key={c.id}
+                  className={`bg-white border rounded-lg p-3 flex justify-between items-start gap-3 ${
+                    isOverdue(c) ? 'border-red-300 bg-red-50/40' : 'border-gray-200'
+                  }`}
+                >
                   <div>
                     <p className="text-sm font-medium text-gray-900">
                       {formatAmount(remaining(c))}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {chargeTypeLabel(c.charge_type)} · {formatDate(c.created_at)}
+                      {describe(c)}
+                      {c.due_date && <> · {t('dueOn', { date: formatDate(c.due_date) })}</>}
                     </p>
+                    {/* An overdue charge used to look calmer than a paid one:
+                        neutral grey next to green. */}
+                    {isOverdue(c) && (
+                      <p className="text-xs font-medium text-red-700 mt-0.5">
+                        {t('overdueBy', { days: daysLate(c) })}
+                      </p>
+                    )}
                     {Number(c.amount_paid ?? 0) > 0 && (
                       <p className="text-xs text-muted-foreground">
                         {t('partiallyPaid', {
@@ -134,23 +208,29 @@ export default async function PortalPaymentsPage({
         </section>
 
         {/* Payment history */}
-        {paid.length > 0 && (
+        {settled.length > 0 && (
           <section>
             <h2 className="text-sm font-semibold text-muted-foreground mb-3">{t('historyTitle')}</h2>
             <div className="space-y-2">
-              {paid.map((c) => (
+              {settled.map((c) => (
                 <div key={c.id} className="bg-white border border-gray-100 rounded-lg p-3 flex justify-between items-center">
                   <div>
                     <p className="text-sm text-gray-700">{formatAmount(c.amount)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {chargeTypeLabel(c.charge_type)} · {c.paid_at ? formatDate(c.paid_at) : formatDate(c.created_at)}
+                      {describe(c)} · {c.paid_at ? formatDate(c.paid_at) : formatDate(c.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-green-700 font-medium">{t('paid')}</span>
-                    {(c as { receipt_url?: string | null }).receipt_url && (
+                    <span
+                      className={`text-xs font-medium ${
+                        c.status === 'paid' ? 'text-green-700' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {settledLabel(c.status)}
+                    </span>
+                    {c.status === 'paid' && c.receipt_url && (
                       <a
-                        href={(c as { receipt_url: string }).receipt_url}
+                        href={c.receipt_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-blue-600 underline"

@@ -12,7 +12,8 @@
         "teacher": "Teacher",
         "availability": "Date & time",
         "confirm": "Confirm"
-      }
+      },
+      "back": "Back to the schedule"
     },
     "teacher": {
       "title": "Which teacher would you like to book with?",
@@ -2951,7 +2952,9 @@
       "title": "Something went wrong",
       "body": "We couldn't load this page. Please try again — if it keeps happening, contact the school.",
       "retry": "Try again",
-      "backToLogin": "Back to sign-in"
+      "backToLogin": "Back to sign-in",
+      "offlineTitle": "No internet connection",
+      "offlineBody": "The connection dropped. Anything you typed was saved — try again once you are back online."
     },
     "gdpr": {
       "requestDeletion": "Request data deletion (GDPR)",
@@ -2993,14 +2996,16 @@
       "errors": {
         "invalidPhone": "Invalid phone number",
         "tooManyAttempts": "Too many attempts. Please try again later.",
-        "noAccount": "No account is linked to this number. Please contact the school.",
-        "serviceUnavailable": "Sign-in is unavailable right now. Please contact the school.",
+        "noAccount": "No account is linked to this number at {org}. Contact them and ask to be added.",
+        "serviceUnavailable": "Signing in to {org}'s portal is unavailable right now. Please contact them directly.",
         "sendFailed": "Failed to send the code. Please try again.",
         "invalidCode": "Invalid code — must be 6 digits",
         "wrongCode": "Wrong or expired code. Go back and request a new one.",
         "generic": "Something went wrong — please try again",
-        "consentRequired": "Please accept the terms and messaging consent to receive a code."
-      }
+        "consentRequired": "Please accept the terms and messaging consent to receive a code.",
+        "unauthorized": "Your session has expired. Please sign in again."
+      },
+      "resendCode": "Did not get a code? Send it again"
     },
     "home": {
       "greeting": "Hello, {name}",
@@ -3010,7 +3015,8 @@
       "viewAll": "All",
       "noUpcoming": "No scheduled lessons",
       "goalsTitle": "Learning goals",
-      "paymentHistory": "Payment history"
+      "paymentHistory": "Payment history",
+      "goalTarget": "Target: {date}"
     },
     "schedule": {
       "title": "Lesson schedule",
@@ -3036,10 +3042,11 @@
         "close": "Close",
         "back": "Back",
         "cancelling": "Cancelling...",
-        "confirm": "Confirm cancellation"
+        "confirm": "Confirm cancellation",
+        "signIn": "Sign in"
       },
       "errors": {
-        "unauthorized": "Not authorised",
+        "unauthorized": "Your session has expired. Sign in again to continue.",
         "already_cancelled": "This lesson is already cancelled",
         "not_eligible": "This lesson can't be cancelled",
         "not_found": "Lesson not found",
@@ -3064,7 +3071,13 @@
         "cancellation": "Cancellation",
         "manual": "Manual",
         "monthly": "Monthly"
-      }
+      },
+      "back": "Back to home",
+      "overdueBy": "{days} days overdue",
+      "dueOn": "Due {date}",
+      "forMonth": "Monthly bill — {month}",
+      "waived": "Written off",
+      "voided": "Voided"
     },
     "homework": {
       "title": "Homework",
@@ -3116,7 +3129,7 @@
       "title": "Progress",
       "noStudents": "No linked students",
       "periodDays": "{days} days",
-      "monthSummary": "This month: {lessons} lessons, {homework} assignments completed",
+      "monthSummary": "Last {days} days: {lessons} lessons, {homework} tasks completed",
       "attendance": "Attendance",
       "attendanceOf": "{attended} of {total} lessons",
       "homeworkTitle": "Homework",

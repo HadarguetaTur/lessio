@@ -9,10 +9,23 @@ const initialState: LoginState = { error: null }
 
 // ── Phone step ────────────────────────────────────────────────────────────────
 
-function PhoneStep({ orgId, orgName }: { orgId: string; orgName: string }) {
+function PhoneStep({
+  orgId,
+  orgName,
+  initialPhone,
+}: {
+  orgId: string
+  orgName: string
+  /** Carried back from the OTP step's "resend" link, so the number is already there. */
+  initialPhone?: string
+}) {
   const t = useTranslations('portal.login')
   const boundAction = requestOtpAction.bind(null, orgId)
   const [state, action, pending] = useActionState(boundAction, initialState)
+  // Keyed on the error so a fresh failure re-seeds the inputs from the action's
+  // echo rather than leaving React's own uncontrolled values in place.
+  const formKey = `${state.error ?? 'ok'}:${state.phone ?? initialPhone ?? ''}`
+  const phoneValue = state.phone ?? initialPhone ?? ''
 
   return (
     <div className="flex flex-col flex-1 justify-center px-6 py-10">
@@ -21,10 +34,10 @@ function PhoneStep({ orgId, orgName }: { orgId: string; orgName: string }) {
         <p className="text-sm text-muted-foreground mt-1">{t('phoneSubtitle')}</p>
       </div>
 
-      <form action={action} className="space-y-4">
+      <form action={action} className="space-y-4" key={formKey}>
         {state.error && (
           <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">
-            {t(`errors.${state.error}`)}
+            {t(`errors.${state.error}`, { org: orgName })}
           </div>
         )}
 
@@ -37,7 +50,9 @@ function PhoneStep({ orgId, orgName }: { orgId: string; orgName: string }) {
             name="phone"
             type="tel"
             inputMode="numeric"
+            autoComplete="tel"
             placeholder="05X-XXXXXXX"
+            defaultValue={phoneValue}
             required
             dir="ltr"
             className="w-full border border-gray-300 rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -62,6 +77,7 @@ function PhoneStep({ orgId, orgName }: { orgId: string; orgName: string }) {
             type="checkbox"
             name="consent"
             required
+            defaultChecked={state.consent ?? false}
             className="mt-0.5 size-4 shrink-0 rounded border-gray-300 accent-blue-600"
           />
           <span>
@@ -83,7 +99,7 @@ function PhoneStep({ orgId, orgName }: { orgId: string; orgName: string }) {
 
 // ── OTP step ──────────────────────────────────────────────────────────────────
 
-function OtpStep({ orgId, phone }: { orgId: string; phone: string }) {
+function OtpStep({ orgId, phone, orgName }: { orgId: string; phone: string; orgName: string }) {
   const t = useTranslations('portal.login')
   const boundAction = verifyOtpAction.bind(null, orgId, phone)
   const [state, action, pending] = useActionState(boundAction, initialState)
@@ -98,7 +114,7 @@ function OtpStep({ orgId, phone }: { orgId: string; phone: string }) {
       <form action={action} className="space-y-4">
         {state.error && (
           <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">
-            {t(`errors.${state.error}`)}
+            {t(`errors.${state.error}`, { org: orgName })}
           </div>
         )}
 
@@ -106,11 +122,16 @@ function OtpStep({ orgId, phone }: { orgId: string; phone: string }) {
           <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
             {t('otpLabel')}
           </label>
+          {/* autoComplete lets iOS and Android offer the code straight from the
+              WhatsApp message; autoFocus saves aiming at the field. */}
           <input
             id="otp"
             name="otp"
             type="text"
             inputMode="numeric"
+            autoComplete="one-time-code"
+            autoFocus
+            pattern="\d{6}"
             maxLength={6}
             placeholder="123456"
             required
@@ -126,6 +147,15 @@ function OtpStep({ orgId, phone }: { orgId: string; phone: string }) {
         >
           {pending ? t('verifying') : t('verify')}
         </button>
+
+        {/* A code that never arrived, or expired, used to be a dead end: the
+            only way on was back to step one and a full retype. */}
+        <a
+          href={`/portal/${orgId}/login?resend=1&phone=${encodeURIComponent(phone)}`}
+          className="block text-center text-sm text-blue-600 hover:underline"
+        >
+          {t('resendCode')}
+        </a>
 
         <a
           href={`/portal/${orgId}/login`}
@@ -153,7 +183,7 @@ export function LoginForm({
   orgName: string
 }) {
   if (step === 'verify' && phone) {
-    return <OtpStep orgId={orgId} phone={phone} />
+    return <OtpStep orgId={orgId} phone={phone} orgName={orgName} />
   }
-  return <PhoneStep orgId={orgId} orgName={orgName} />
+  return <PhoneStep orgId={orgId} orgName={orgName} initialPhone={phone} />
 }

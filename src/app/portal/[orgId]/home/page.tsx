@@ -6,8 +6,9 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { formatTime, formatDate } from '@/lib/lessons'
-import { parseAppLocale } from '@/lib/i18n/locale'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
+import { OPEN_CHARGE_STATUSES } from '@/lib/charges'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
 import { DeletionRequestButton } from '@/components/portal/DeletionRequestButton'
 import { getActiveGoalsForStudents } from '@/lib/goals'
@@ -46,12 +47,15 @@ export default async function PortalHomePage({
   const [parentResult, orgResult, balanceResult, goals] = await Promise.all([
     db.from('parents').select('full_name').eq('id', session.parentId).single(),
     db.from('organizations').select('name').eq('id', orgId).single(),
+    // Same definition of "owed" as /payments: every open status, and what is
+    // left after partial payments. Summing raw `amount` over `pending` alone
+    // showed a different number on each of the two screens.
     db
       .from('charges')
-      .select('amount')
+      .select('amount, amount_paid')
       .eq('parent_id', session.parentId)
       .eq('organization_id', orgId)
-      .eq('status', 'pending'),
+      .in('status', OPEN_CHARGE_STATUSES),
     getActiveGoalsForStudents(orgId, studentIds),
   ])
 
@@ -74,7 +78,17 @@ export default async function PortalHomePage({
   const parentName = parentResult.data?.full_name ?? ''
   const orgName = orgResult.data?.name ?? ''
   const lessons = lessonsResult.data ?? []
-  const balance = (balanceResult.data ?? []).reduce((sum, c) => sum + Number(c.amount), 0)
+  const formatGoalDate = (isoDate: string) =>
+    new Intl.DateTimeFormat(toIntlLocale(appLocale), {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date(`${isoDate}T12:00:00Z`))
+
+  const balance = (balanceResult.data ?? []).reduce(
+    (sum, c) => sum + Math.max(0, Number(c.amount) - Number((c as { amount_paid?: number | null }).amount_paid ?? 0)),
+    0
+  )
 
   return (
     <div className="flex flex-col flex-1 pb-20">
@@ -87,7 +101,9 @@ export default async function PortalHomePage({
           <div className="w-6 h-6 shrink-0 rounded-md bg-primary flex items-center justify-center">
             <span className="text-primary-foreground text-[10px] font-bold leading-none">L</span>
           </div>
-          <span className="font-semibold text-foreground text-sm truncate">{orgName}</span>
+          {/* The org name is the page's heading — every other portal screen has
+              an h1 and this one had none. */}
+          <h1 className="font-semibold text-foreground text-sm truncate">{orgName}</h1>
         </div>
         {/* The org name is the one that gives way: it truncates (min-w-0 above)
             while the short greeting keeps its full width. Letting both shrink
@@ -195,8 +211,12 @@ export default async function PortalHomePage({
                       <p className="text-sm text-foreground mt-0.5">{goal.description}</p>
                       <p className="text-xs text-muted-foreground mt-1">{goal.studentName}</p>
                     </div>
+                    {/* target_date is a raw 'YYYY-MM-DD' from Postgres; it used
+                        to print as-is next to fully localised dates. */}
                     {goal.targetDate && (
-                      <span className="text-xs text-muted-foreground shrink-0">{goal.targetDate}</span>
+                      <span className="text-xs text-muted-foreground shrink-0 text-end">
+                        {t('goalTarget', { date: formatGoalDate(goal.targetDate) })}
+                      </span>
                     )}
                   </div>
                 </div>

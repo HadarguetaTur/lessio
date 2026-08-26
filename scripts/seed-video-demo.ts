@@ -638,6 +638,9 @@ async function main(): Promise<void> {
         body: hw.body,
         due_date: now.plus({ days: hw.due }).toISODate(),
         status: hw.status,
+        // Both, as the real send path writes them — `sent` is what the parent
+        // portal filters on, `sent_at` is the timestamp the teacher sees.
+        sent: true,
         sent_at: now.plus({ days: hw.due }).minus({ days: 5 }).toUTC().toISO(),
         completed_at:
           hw.status === 'done' ? now.plus({ days: hw.due }).minus({ days: 1 }).toUTC().toISO() : null,

@@ -87,7 +87,9 @@ describe('requestOtpAction — consent', () => {
 
     const result = await requestOtpAction(ORG, { error: null }, phoneForm(false))
 
-    expect(result).toEqual({ error: 'consentRequired' })
+    // The number is echoed back so the form can refill itself; an error must
+    // never cost the parent a retype on a phone keyboard.
+    expect(result).toEqual({ error: 'consentRequired', phone: '0500000000', consent: false })
     expect(storeOtp).not.toHaveBeenCalled()
     expect(sendOtp).not.toHaveBeenCalled()
     expect(mockRedirect).not.toHaveBeenCalled()
@@ -108,7 +110,8 @@ describe('requestOtpAction — consent', () => {
 
     const result = await requestOtpAction(ORG, { error: null }, phoneForm(true))
 
-    expect(result).toEqual({ error: 'noAccount' })
+    // A ticked box survives the error too, so only the mistake needs fixing.
+    expect(result).toEqual({ error: 'noAccount', phone: '0500000000', consent: true })
     expect(mockCreateServiceRoleClient).toHaveBeenCalled()
   })
 })

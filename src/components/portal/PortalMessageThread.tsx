@@ -22,6 +22,8 @@ const useHydrated = () =>
 type Props = {
   messages: PortalMessage[]
   sendAction: (prev: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
+  /** Scopes the saved draft to this thread. */
+  draftKey: string
 }
 
 /** Absolute, and identical on the server and the client — safe to hydrate. */
@@ -46,12 +48,13 @@ function relativeTime(iso: string, intlLocale: string): string {
   return new Date(iso).toLocaleDateString(intlLocale)
 }
 
-export function PortalMessageThread({ messages, sendAction }: Props) {
+export function PortalMessageThread({ messages, sendAction, draftKey }: Props) {
   const t = useTranslations('portal.messages')
   const intlLocale = toIntlLocale(parseAppLocale(useLocale()))
   const [state, action, isPending] = useActionState(sendAction, { error: null })
   const scrollRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [length, setLength] = useState(0)
 
   // "5 minutes ago" depends on when it is read, so the server and the client
@@ -68,8 +71,39 @@ export function PortalMessageThread({ messages, sendAction }: Props) {
   useEffect(() => {
     if (state.error === null && formRef.current) {
       formRef.current.reset()
+      try {
+        sessionStorage.removeItem(draftKey)
+      } catch {
+        // Private browsing, or storage disabled — losing a sent draft is fine.
+      }
     }
-  }, [state])
+  }, [state, draftKey])
+
+  // A dropped connection sends the whole page to the error boundary, taking an
+  // unsent message with it. Restore whatever was typed when the parent returns.
+  useEffect(() => {
+    const input = inputRef.current
+    if (!input) return
+    try {
+      const saved = sessionStorage.getItem(draftKey)
+      if (saved) {
+        input.value = saved
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    } catch {
+      // Nothing to restore.
+    }
+  }, [draftKey])
+
+  function rememberDraft(value: string) {
+    setLength(value.length)
+    try {
+      if (value) sessionStorage.setItem(draftKey, value)
+      else sessionStorage.removeItem(draftKey)
+    } catch {
+      // The draft is a convenience; never break typing over it.
+    }
+  }
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -125,11 +159,12 @@ export function PortalMessageThread({ messages, sendAction }: Props) {
           className="flex gap-2"
         >
           <input
+            ref={inputRef}
             type="text"
             name="body"
             required
             maxLength={MAX_BODY}
-            onChange={(e) => setLength(e.target.value.length)}
+            onChange={(e) => rememberDraft(e.target.value)}
             placeholder={t('inputPlaceholder')}
             className="flex-1 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             autoComplete="off"

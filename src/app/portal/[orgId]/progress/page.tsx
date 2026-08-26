@@ -18,7 +18,8 @@ type StudentProgress = {
   homework: { completed: number; total: number; rate: number; avgScore: number | null }
   goals: Array<{ id: string; subject: string; description: string; status: string; targetDate: string | null }>
   notes: Array<{ id: string; body: string; teacherName: string; lessonDate: string }>
-  monthlySummary: { lessons: number; homeworkDone: number }
+  /** Same rolling window as the cards, so the headline cannot contradict them. */
+  periodSummary: { lessons: number; homeworkDone: number }
 }
 
 export default async function PortalProgressPage({
@@ -72,12 +73,13 @@ export default async function PortalProgressPage({
     )
   }
 
-  // Compute progress for 30 and 90 day periods
+  // Compute progress for 30 and 90 day periods.
+  // Every number on this screen describes the same rolling window. The summary
+  // line used to count the calendar month while the attendance card beneath it
+  // counted the rolling window, so the two disagreed about the same child.
   async function computeProgress(days: number): Promise<StudentProgress[]> {
     const now = new Date()
     const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const monthSince = monthStart.toISOString()
 
     const results: StudentProgress[] = []
 
@@ -128,17 +130,9 @@ export default async function PortalProgressPage({
       const scores = (scoreData ?? []).map((s) => (s as { score: number }).score).filter((s) => s != null)
       const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
 
-      // Monthly summary (current calendar month)
-      const monthlyLessons = lessons.filter((l) => l.lessons.start_at >= monthSince && l.lessons.status === 'completed').length
-      const { data: monthHw } = await db
-        .from('homework_assignments')
-        .select('id')
-        .eq('organization_id', orgId)
-        .eq('student_id', student.id)
-        .eq('sent', true)
-        .eq('status', 'done')
-        .gte('created_at', monthSince)
-      const monthlyHwDone = (monthHw ?? []).length
+      // Headline summary — same window and the same rows as the cards below it.
+      const periodLessons = attended
+      const periodHwDone = hwCompleted
 
       // Teacher notes (visible to parent)
       const visibleNotes = await getVisibleNotesForStudent(orgId, student.id, 10)
@@ -155,7 +149,7 @@ export default async function PortalProgressPage({
           teacherName: n.teacherName,
           lessonDate: n.lessonStartAt ? formatDate(n.lessonStartAt, timezone, appLocale) : '',
         })),
-        monthlySummary: { lessons: monthlyLessons, homeworkDone: monthlyHwDone },
+        periodSummary: { lessons: periodLessons, homeworkDone: periodHwDone },
       })
     }
 

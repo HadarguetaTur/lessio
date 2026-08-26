@@ -74,6 +74,18 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
         </button>
       </div>
 
+      {/* Book CTA. Above the list, not below it: at the bottom it sat under
+          eight lesson cards, and /book has no other entry point. */}
+      {view === 'upcoming' && (
+        <Link
+          href={`/portal/${orgId}/book`}
+          className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
+        >
+          <Plus size={16} aria-hidden />
+          {t('bookNew')}
+        </Link>
+      )}
+
       {/* Lesson list */}
       {lessons.length === 0 ? (
         <div className="bg-muted/40 rounded-xl border border-border py-10 flex flex-col items-center gap-2 text-center">
@@ -129,20 +141,11 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
       {/* One dialog for the whole list — see PortalCancelDialog for why. */}
       <PortalCancelDialog
         target={cancelTarget}
+        orgId={orgId}
         onClose={() => setCancelTarget(null)}
         cancelAction={cancelAction}
       />
 
-      {/* Book CTA */}
-      {view === 'upcoming' && (
-        <Link
-          href={`/portal/${orgId}/book`}
-          className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
-        >
-          <Plus size={16} />
-          {t('bookNew')}
-        </Link>
-      )}
     </div>
   )
 }

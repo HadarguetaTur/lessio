@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -30,7 +32,15 @@ export default async function PortalBookPage({
 
   return (
     <div className="flex flex-col flex-1 pb-16">
-      <header className="px-4 py-3 border-b border-gray-200">
+      {/* No tab of its own, so it carries its own way back to the schedule. */}
+      <header className="px-4 py-3 border-b border-gray-200 flex items-center gap-3">
+        <Link
+          href={`/portal/${orgId}/schedule`}
+          aria-label={t('back')}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft size={18} className="rtl:rotate-180" aria-hidden />
+        </Link>
         <h1 className="font-bold text-gray-900">{t('tagline')}</h1>
       </header>
       <PortalBookingFlow orgId={orgId} timezone={timezone} />

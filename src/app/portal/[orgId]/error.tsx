@@ -1,11 +1,20 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { AlertCircle } from 'lucide-react'
 import { reportClientError } from '@/lib/telemetry/reportClientError'
+
+function subscribeToConnection(onChange: () => void) {
+  window.addEventListener('online', onChange)
+  window.addEventListener('offline', onChange)
+  return () => {
+    window.removeEventListener('online', onChange)
+    window.removeEventListener('offline', onChange)
+  }
+}
 
 /**
  * Portal-scoped error boundary.
@@ -23,6 +32,7 @@ export default function PortalError({
 }) {
   const t = useTranslations('portal.error')
   const params = useParams<{ orgId: string }>()
+  const offline = useSyncExternalStore(subscribeToConnection, () => !navigator.onLine, () => false)
 
   useEffect(() => {
     console.error('[portal] Unhandled error', error)
@@ -33,8 +43,12 @@ export default function PortalError({
     <div className="flex flex-col flex-1 items-center justify-center px-6 py-16 text-center gap-4">
       <AlertCircle size={28} className="text-muted-foreground/50" aria-hidden />
       <div className="space-y-1">
-        <h1 className="text-lg font-semibold text-foreground">{t('title')}</h1>
-        <p className="text-sm text-muted-foreground">{t('body')}</p>
+        <h1 className="text-lg font-semibold text-foreground">
+          {offline ? t('offlineTitle') : t('title')}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {offline ? t('offlineBody') : t('body')}
+        </p>
       </div>
 
       <div className="flex items-center gap-3 pt-2">
@@ -44,7 +58,9 @@ export default function PortalError({
         >
           {t('retry')}
         </button>
-        {params?.orgId && (
+        {/* Signing out is no help when the problem is the connection, and
+            offering it invites a parent to throw away a working session. */}
+        {!offline && params?.orgId && (
           <Link
             href={`/portal/${params.orgId}/login`}
             className="px-4 py-2 text-sm font-medium border border-border rounded-md hover:bg-muted transition-colors"

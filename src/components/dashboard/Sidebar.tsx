@@ -16,25 +16,18 @@ import {
   LogOut,
   UserPlus,
   CalendarDays,
-  MessageCircle,
   MessageSquare,
   CreditCard,
   Clock,
   CalendarX,
-  CalendarOff,
-  Bell,
   Plus,
-  FileText,
   BarChart2,
-  Bot,
   ChevronDown,
   Banknote,
-  Languages,
   Wallet,
-  Building2,
-  Mail,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
+import { SETTINGS_NAV, filterNav } from '@/lib/navigation/registry'
 import type { SaasFeatures } from '@/lib/saas/types'
 import {
   DropdownMenu,
@@ -102,13 +95,20 @@ interface CollapsibleSectionProps {
   userRole: string
   pathname: string
   defaultOpen?: boolean
+  /** When the section has an index page of its own, the label navigates to it. */
+  href?: string
 }
 
-function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathname, defaultOpen }: CollapsibleSectionProps) {
+function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathname, defaultOpen, href }: CollapsibleSectionProps) {
   const visibleItems = items.filter(({ roles }) => !roles || roles.includes(userRole))
-  const isAnyActive = visibleItems.some(
-    ({ href }) => pathname === href || pathname.startsWith(href + '/')
-  )
+  // The section's own index page counts as active too, so landing on /settings
+  // from the label link (or a breadcrumb) leaves the group open rather than
+  // collapsing under you.
+  const isAnyActive =
+    (href ? pathname === href || pathname.startsWith(href + '/') : false) ||
+    visibleItems.some(
+      ({ href: itemHref }) => pathname === itemHref || pathname.startsWith(itemHref + '/')
+    )
   // Open follows the active route unless the user has said otherwise for this
   // route. Without the reset, opening /charges from a link elsewhere left the
   // section collapsed and you could not see where you were.
@@ -122,27 +122,55 @@ function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathnam
 
   if (visibleItems.length === 0) return null
 
+  const rowCls = `group flex items-center rounded-md text-[13px] transition-all duration-150 max-lg:min-h-11 ${
+    isAnyActive
+      ? 'text-sidebar-foreground font-medium'
+      : 'text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40'
+  }`
+  const labelContent = (
+    <span className="flex items-center gap-2.5">
+      <SectionIcon size={14} className={`shrink-0 ${isAnyActive ? 'text-sidebar-foreground/80' : 'text-sidebar-foreground/60'}`} />
+      {label}
+    </span>
+  )
+  const chevron = (
+    <ChevronDown
+      size={13}
+      className={`text-sidebar-foreground/50 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
+    />
+  )
+
   return (
     <div>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOverride(!open)}
-        className={`group flex items-center justify-between w-full px-3 py-2 rounded-md text-[13px] transition-all duration-150 max-lg:min-h-11 ${
-          isAnyActive
-            ? 'text-sidebar-foreground font-medium'
-            : 'text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40'
-        }`}
-      >
-        <span className="flex items-center gap-2.5">
-          <SectionIcon size={14} className={`shrink-0 ${isAnyActive ? 'text-sidebar-foreground/80' : 'text-sidebar-foreground/60'}`} />
-          {label}
-        </span>
-        <ChevronDown
-          size={13}
-          className={`text-sidebar-foreground/50 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
+      {/* With an index page the label and the chevron are two siblings, never a
+          button nested inside a link: clicking the word Settings goes to the
+          hub, clicking the chevron only folds the group. */}
+      {href ? (
+        <div className={`${rowCls} justify-between pe-1`}>
+          <Link href={href} onClick={() => setOverride(true)} className="flex flex-1 items-center px-3 py-2">
+            {labelContent}
+          </Link>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={label}
+            onClick={() => setOverride(!open)}
+            className="flex items-center rounded-md px-2 py-2"
+          >
+            {chevron}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOverride(!open)}
+          className={`${rowCls} w-full justify-between px-3 py-2`}
+        >
+          {labelContent}
+          {chevron}
+        </button>
+      )}
 
       {/* grid-rows rather than max-height: settings has twelve entries and was
           being clipped by the old max-h-96 ceiling. `inert` while collapsed —
@@ -228,20 +256,15 @@ export function Sidebar({
     { href: '/reports/teacher-performance', label: t('reportsTeacherPerformance'), icon: BarChart2, roles: ['owner', 'admin'] },
   ]
 
-  const settingsItems: NavItem[] = [
-    { href: '/account/billing',              label: t('accountBilling'),      icon: Wallet,           roles: ['owner'] },
-    { href: '/settings/business-profile',    label: t('settingsBusinessProfile'), icon: Building2,    roles: ['owner'] },
-    { href: '/settings/whatsapp',            label: t('settingsWhatsApp'),    icon: MessageCircle,  roles: ['owner'] },
-    { href: '/settings/message-templates',   label: t('settingsMessages'),    icon: MessageSquare,  roles: ['owner'] },
-    { href: '/settings/payment',             label: t('settingsPayment'),     icon: CreditCard,     roles: ['owner'] },
-    { href: '/settings/receipts',            label: t('settingsReceipts'),    icon: FileText,       roles: ['owner'] },
-    { href: '/settings/cancellation-policy', label: t('settingsCancellation'),icon: Settings,       roles: ['owner'] },
-    { href: '/settings/holidays',            label: t('settingsHolidays'),    icon: CalendarOff,    roles: ['owner', 'admin'] },
-    { href: '/settings/reminders',           label: t('settingsReminders'),   icon: Bell,           roles: ['owner'] },
-    { href: '/settings/ai-assistant',        label: t('settingsAiAssistant'), icon: Bot,            roles: ['owner'] },
-    { href: '/settings/email',               label: t('settingsEmail'),       icon: Mail,           roles: ['owner'] },
-    { href: '/settings/locale',              label: t('settingsLocale'),      icon: Languages,      roles: ['owner', 'admin'] },
-  ]
+  // Settings comes from the shared registry — the sidebar used to keep its own
+  // copy and had silently fallen three pages behind the /settings hub.
+  const settingsItems: NavItem[] = filterNav(SETTINGS_NAV, userRole, saasFeatures).map(
+    ({ href, navKey, icon }) => ({
+      href,
+      label: t(navKey as Parameters<typeof t>[0]),
+      icon,
+    })
+  )
 
   const teacherItems: NavItem[] = [
     { href: '/teacher/dashboard',    label: t('teacherDashboard'),    icon: LayoutDashboard, roles: ['teacher'] },
@@ -275,14 +298,6 @@ export function Sidebar({
   // section — and the reports that compare teachers — is noise.
   const visibleTeachers = soloTeacher ? [] : visible(teachersGroup)
 
-  const visibleSettingsItems = settingsItems.filter(({ roles, href }) => {
-    if (roles && !roles.includes(userRole)) return false
-    if (href === '/settings/whatsapp' || href === '/settings/message-templates') {
-      return hasSaasNav(saasFeatures, 'whatsapp_automation')
-    }
-    if (href === '/settings/ai-assistant') return hasSaasNav(saasFeatures, 'ai_assistant')
-    return true
-  })
 
   return (
     <aside
@@ -392,7 +407,8 @@ export function Sidebar({
             <CollapsibleSection
               label={t('sections.settings')}
               icon={Settings}
-              items={visibleSettingsItems}
+              href="/settings"
+              items={settingsItems}
               userRole={userRole}
               pathname={pathname}
               defaultOpen={false}

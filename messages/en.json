@@ -242,7 +242,7 @@
     "charges": "Charges",
     "leads": "Leads",
     "homework": "Homework",
-    "messages": "Messages",
+    "messages": "Portal messages",
     "reportsRevenue": "Revenue",
     "reportsLessons": "Lessons",
     "reportsDebt": "Debt",
@@ -250,7 +250,7 @@
     "reportsTeacherPerformance": "Teacher Performance",
     "reportsStudents": "Students",
     "settingsWhatsApp": "WhatsApp",
-    "settingsMessages": "Messages",
+    "settingsMessages": "WhatsApp templates",
     "settingsPayment": "Payments",
     "settingsReceipts": "Receipts",
     "settingsBusinessProfile": "Business Profile",
@@ -299,7 +299,10 @@
       "dailySchedule": "Daily lesson schedule"
     },
     "drawerDescription": "Main navigation",
-    "openNavigation": "Open navigation"
+    "openNavigation": "Open navigation",
+    "settingsPricing": "Pricing",
+    "settingsPrivacy": "Privacy & data",
+    "settingsCalendar": "Google Calendar"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1301,7 +1304,7 @@
         "description": "Connect a WhatsApp number to your organization"
       },
       "messages": {
-        "title": "WhatsApp Messages",
+        "title": "WhatsApp templates",
         "description": "Customize automated messages"
       },
       "payment": {
@@ -1488,7 +1491,7 @@
       "masterLabel": "Automatic reminders"
     },
     "messageTemplates": {
-      "title": "Customize Messages",
+      "title": "WhatsApp templates",
       "description": "Adjust the wording of every message sent automatically over WhatsApp. Changes take effect immediately. The bot picks the language from the one the parent writes in.",
       "preview": "Preview",
       "variables": "Available Variables",
@@ -1973,7 +1976,8 @@
       "perStudentHint": "Each student is charged this amount. A single lesson can override it.",
       "customHint": "Custom lessons have no default — the price is set on each lesson.",
       "saved": "Lesson pricing saved"
-    }
+    },
+    "subtitle": "All your business settings in one place"
   },
   "quota": {
     "exceeded": "Plan Quota Reached",
@@ -2209,7 +2213,8 @@
       "students": "Students",
       "avgMonthly": "Avg Monthly",
       "orgAvgLessons": "Org avg lessons",
-      "orgAvgCancellation": "Org avg cancellation"
+      "orgAvgCancellation": "Org avg cancellation",
+      "description": "Compare load, revenue and attendance across teachers"
     },
     "csv": {
       "month": "Month",

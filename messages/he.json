@@ -242,7 +242,7 @@
     "charges": "חיובים",
     "leads": "לידים",
     "homework": "שיעורי בית",
-    "messages": "הודעות",
+    "messages": "הודעות פורטל",
     "reportsRevenue": "הכנסות",
     "reportsLessons": "שיעורים",
     "reportsDebt": "חובות",
@@ -250,7 +250,7 @@
     "reportsTeacherPerformance": "ביצועי מורים",
     "reportsStudents": "תלמידים",
     "settingsWhatsApp": "WhatsApp",
-    "settingsMessages": "הודעות",
+    "settingsMessages": "תבניות WhatsApp",
     "settingsPayment": "תשלומים",
     "settingsReceipts": "קבלות",
     "settingsBusinessProfile": "פרופיל העסק",
@@ -299,7 +299,10 @@
       "dailySchedule": "לוח שיעורים יומי"
     },
     "drawerDescription": "תפריט ניווט ראשי",
-    "openNavigation": "פתיחת תפריט הניווט"
+    "openNavigation": "פתיחת תפריט הניווט",
+    "settingsPricing": "תמחור",
+    "settingsPrivacy": "פרטיות ונתונים",
+    "settingsCalendar": "יומן Google"
   },
   "dashboard": {
     "title": "לוח הבקרה",
@@ -1301,7 +1304,7 @@
         "description": "חיבור מספר WhatsApp לארגון"
       },
       "messages": {
-        "title": "הודעות WhatsApp",
+        "title": "תבניות WhatsApp",
         "description": "התאמה אישית של הודעות אוטומטיות"
       },
       "payment": {
@@ -1488,7 +1491,7 @@
       "masterLabel": "תזכורות אוטומטיות"
     },
     "messageTemplates": {
-      "title": "התאמה אישית של הודעות",
+      "title": "תבניות WhatsApp",
       "description": "התאם את הטקסט של כל הודעה שנשלחת אוטומטית דרך WhatsApp. שינויים ייכנסו לתוקף מיד. הבוט בוחר את השפה לפי השפה שבה ההורה כותב.",
       "preview": "תצוגה מקדימה",
       "variables": "משתנים זמינים",
@@ -1973,7 +1976,8 @@
       "perStudentHint": "כל תלמיד מחויב בסכום הזה. אפשר לעקוף אותו בשיעור בודד.",
       "customHint": "לשיעור מותאם אישית אין ברירת מחדל — המחיר נקבע בכל שיעור בנפרד.",
       "saved": "מחירי השיעורים נשמרו"
-    }
+    },
+    "subtitle": "כל ההגדרות של העסק במקום אחד"
   },
   "quota": {
     "exceeded": "הגעת למכסה של החבילה",
@@ -2209,7 +2213,8 @@
       "students": "תלמידים",
       "avgMonthly": "ממוצע חודשי",
       "orgAvgLessons": "ממוצע ארגוני שיעורים",
-      "orgAvgCancellation": "ממוצע ארגוני ביטולים"
+      "orgAvgCancellation": "ממוצע ארגוני ביטולים",
+      "description": "השוואת עומס, הכנסה ונוכחות בין המורים"
     },
     "csv": {
       "month": "חודש",

@@ -1,11 +1,13 @@
 'use client'
 
 import { type ReactNode } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Menu } from 'lucide-react'
 import { LocaleSwitcher } from '@/components/dashboard/LocaleSwitcher'
 import { GlobalSearch } from '@/components/dashboard/GlobalSearch'
+import { resolveBreadcrumb } from '@/lib/navigation/registry'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -15,77 +17,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-
-// Maps route paths to nav translation keys
-const ROUTE_KEY_MAP: Record<string, string> = {
-  '/dashboard':                    'dashboard',
-  '/students':                    'students',
-  '/parents':                     'parents',
-  '/teachers':                    'teachers',
-  '/lessons':                     'lessons',
-  '/charges':                     'charges',
-  '/billing':                     'billing',
-  '/billing/debts':               'debts',
-  '/subscriptions':               'subscriptions',
-  '/leads':                       'leads',
-  '/homework':                    'homework',
-  '/reports':                     'sections.reports',
-  '/reports/revenue':             'reportsRevenue',
-  '/reports/lessons':             'reportsLessons',
-  '/reports/debt':                'reportsDebt',
-  '/reports/teachers':            'reportsTeachers',
-  '/reports/students':            'reportsStudents',
-  '/settings':                    'sections.settings',
-  '/settings/whatsapp':           'settingsWhatsApp',
-  '/settings/message-templates':  'settingsMessages',
-  '/settings/payment':            'settingsPayment',
-  '/settings/receipts':           'settingsReceipts',
-  '/settings/cancellation-policy': 'settingsCancellation',
-  '/settings/holidays':           'settingsHolidays',
-  '/settings/reminders':          'settingsReminders',
-  '/settings/ai-assistant':       'settingsAiAssistant',
-  '/settings/locale':             'settingsLocale',
-  '/teacher/schedule':            'teacherSchedule',
-  '/teacher/calendar':            'teacherCalendar',
-  '/teacher/new-lesson':          'teacherNewLesson',
-  '/teacher/availability':        'teacherAvailability',
-  '/teacher/overrides':           'teacherOverrides',
-}
-
-const SECTION_KEY_MAP: Record<string, string> = {
-  '/reports':  'sections.reports',
-  '/settings': 'sections.settings',
-  '/teacher':  'sections.teacher',
-}
-
-function getBreadcrumbKeys(pathname: string): { sectionKey: string | null; pageKey: string | null } {
-  // Exact match
-  if (ROUTE_KEY_MAP[pathname]) {
-    const sectionEntry = Object.entries(SECTION_KEY_MAP).find(([prefix]) =>
-      pathname !== prefix && pathname.startsWith(prefix + '/')
-    )
-    return {
-      sectionKey: sectionEntry ? sectionEntry[1] : null,
-      pageKey: ROUTE_KEY_MAP[pathname],
-    }
-  }
-
-  // Dynamic segments — find closest prefix match
-  const parts = pathname.split('/')
-  const parentPath = parts.slice(0, -1).join('/') || '/'
-  const grandParentPath = parts.slice(0, -2).join('/') || '/'
-
-  const pageKey =
-    ROUTE_KEY_MAP[parentPath] ??
-    ROUTE_KEY_MAP[grandParentPath] ??
-    null
-
-  const sectionEntry = Object.entries(SECTION_KEY_MAP).find(([prefix]) =>
-    pathname.startsWith(prefix + '/')
-  )
-
-  return { sectionKey: sectionEntry ? sectionEntry[1] : null, pageKey }
-}
 
 interface TopBarProps {
   currentLocale: string
@@ -98,7 +29,7 @@ export function TopBar({ currentLocale, userRole, mobileNavigation, notification
   const pathname = usePathname()
   const t = useTranslations('nav')
   const tc = useTranslations('common')
-  const { sectionKey, pageKey } = getBreadcrumbKeys(pathname)
+  const { sectionKey, sectionHref, pageKey } = resolveBreadcrumb(pathname)
   const section = sectionKey ? t(sectionKey as Parameters<typeof t>[0]) : null
   const page = pageKey ? t(pageKey as Parameters<typeof t>[0]) : (pathname.split('/').pop() ?? '')
 
@@ -136,7 +67,18 @@ export function TopBar({ currentLocale, userRole, mobileNavigation, notification
           <div className="hidden items-center gap-2 text-sm sm:flex">
             {section && (
               <>
-                <span className="text-muted-foreground">{section}</span>
+                {/* The ancestor is a link. It rendered as dead text before, and
+                    the audit clicked it expecting to reach the section hub. */}
+                {sectionHref ? (
+                  <Link
+                    href={sectionHref}
+                    className="text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                  >
+                    {section}
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground">{section}</span>
+                )}
                 <ChevronBreadcrumb />
               </>
             )}

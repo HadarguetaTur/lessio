@@ -72,6 +72,12 @@ const HEBREW_ALLOWED = [
   // from real customer spreadsheets — input-side, not output.
   "src/lib/import/parseFile.ts",
   "src/lib/import/validators.ts",
+  // Search synonyms only — never rendered. Each entry deliberately holds the
+  // Hebrew *and* English aliases at once, because the title half of the match
+  // only ever sees the active UI language: without them, typing "reminder" in
+  // a Hebrew UI finds nothing. Splitting them per locale would defeat that.
+  // Every user-visible label in this file is a translation key, not a string.
+  "src/lib/navigation/registry.ts",
   // The locale machinery itself (Hebrew-letter detection ranges).
   "src/lib/i18n/**",
   "src/i18n/**",

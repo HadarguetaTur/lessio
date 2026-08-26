@@ -14,11 +14,14 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { AvailableSlot, SlotLock, ConfirmBookingResult, AvailabilitySummary } from '@/lib/booking'
 import {
   getPortalTeachersAction,
+  getPortalStudentsAction,
   getPortalSlotsAction,
   getPortalAvailabilitySummaryAction,
   portalLockSlotAction,
   portalConfirmBookingAction,
+  portalReleaseSlotLockAction,
   type PortalTeacher,
+  type PortalStudent,
 } from '@/app/portal/[orgId]/book/actions'
 import { BookingSuccess } from '@/components/booking/BookingSuccess'
 import { BookingError } from '@/components/booking/BookingError'
@@ -44,9 +47,11 @@ function todayStr(): string {
   return new Date().toISOString().substring(0, 10)
 }
 
-type Step = 'teachers' | 'slots' | 'confirm' | 'success' | 'error'
+type Step = 'students' | 'teachers' | 'slots' | 'confirm' | 'success' | 'error'
 
 interface FlowState {
+  studentId?: string
+  studentName?: string
   teacherId?: string
   teacherName?: string
   date?: string
@@ -63,22 +68,43 @@ interface PortalBookingFlowProps {
 }
 
 export function PortalBookingFlow({ orgId, timezone }: PortalBookingFlowProps) {
-  const [step, setStep] = useState<Step>('teachers')
+  const [step, setStep] = useState<Step>('students')
   const [state, setState] = useState<FlowState>({ durationMinutes: 60 })
+  /** True when the parent has one child — the picker is skipped, so there is nothing to go back to. */
+  const [singleStudent, setSingleStudent] = useState(false)
 
   function handleRestart() {
     setState({ durationMinutes: 60 })
-    setStep('teachers')
+    setStep('students')
+  }
+
+  if (step === 'students') {
+    return (
+      <StudentStep
+        orgId={orgId}
+        onSelect={(studentId, studentName, wasOnlyChild) => {
+          setState((s) => ({ ...s, studentId, studentName }))
+          setSingleStudent(wasOnlyChild)
+          setStep('teachers')
+        }}
+        onError={(errorCode) => {
+          setState((s) => ({ ...s, errorCode }))
+          setStep('error')
+        }}
+      />
+    )
   }
 
   if (step === 'teachers') {
     return (
       <TeacherStep
         orgId={orgId}
+        studentName={state.studentName}
         onSelect={(teacherId, teacherName) => {
           setState((s) => ({ ...s, teacherId, teacherName }))
           setStep('slots')
         }}
+        onBack={singleStudent ? undefined : () => setStep('students')}
       />
     )
   }
@@ -90,6 +116,8 @@ export function PortalBookingFlow({ orgId, timezone }: PortalBookingFlowProps) {
         timezone={timezone}
         teacherId={state.teacherId!}
         teacherName={state.teacherName!}
+        studentId={state.studentId!}
+        studentName={state.studentName!}
         initialDate={state.date ?? todayStr()}
         initialDuration={state.durationMinutes ?? 60}
         onSlotLocked={(slot, lock, date, duration) => {
@@ -108,6 +136,8 @@ export function PortalBookingFlow({ orgId, timezone }: PortalBookingFlowProps) {
         timezone={timezone}
         teacherId={state.teacherId!}
         teacherName={state.teacherName!}
+        studentId={state.studentId!}
+        studentName={state.studentName!}
         slot={state.slot!}
         lock={state.lock!}
         onConfirmed={(result) => {
@@ -115,6 +145,14 @@ export function PortalBookingFlow({ orgId, timezone }: PortalBookingFlowProps) {
           setStep('success')
         }}
         onLockExpired={() => {
+          setState((s) => ({ ...s, slot: undefined, lock: undefined }))
+          setStep('slots')
+        }}
+        onBack={() => {
+          // Hand the slot back before leaving, or it stays held for the rest of
+          // its five minutes and vanishes from the list the parent returns to.
+          const lockId = state.lock?.id
+          if (lockId) void portalReleaseSlotLockAction(orgId, lockId).catch(() => {})
           setState((s) => ({ ...s, slot: undefined, lock: undefined }))
           setStep('slots')
         }}
@@ -131,6 +169,8 @@ export function PortalBookingFlow({ orgId, timezone }: PortalBookingFlowProps) {
       <BookingSuccess
         result={state.result!}
         teacherName={state.teacherName!}
+        studentName={state.studentName}
+        scheduleHref={`/portal/${orgId}/schedule`}
         timezone={timezone}
       />
     )
@@ -139,14 +179,91 @@ export function PortalBookingFlow({ orgId, timezone }: PortalBookingFlowProps) {
   return <BookingError errorCode={state.errorCode ?? 'unknown'} onRestart={handleRestart} />
 }
 
+// ── Student step ──────────────────────────────────────────────────────────────
+
+/**
+ * Which child is this lesson for? Skipped entirely when there is only one, so a
+ * single-child parent sees no extra tap.
+ */
+function StudentStep({
+  orgId,
+  onSelect,
+  onError,
+}: {
+  orgId: string
+  onSelect: (studentId: string, studentName: string, wasOnlyChild: boolean) => void
+  onError: (errorCode: string) => void
+}) {
+  const t = useTranslations('booking.student')
+  const [students, setStudents] = useState<PortalStudent[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    getPortalStudentsAction(orgId)
+      .then((list) => {
+        if (cancelled) return
+        if (list.length === 0) {
+          onError('no_students')
+          return
+        }
+        if (list.length === 1) {
+          onSelect(list[0].id, list[0].full_name, true)
+          return
+        }
+        setStudents(list)
+        setLoading(false)
+      })
+      .catch(() => {
+        if (!cancelled) onError('unknown')
+      })
+    return () => {
+      cancelled = true
+    }
+    // Selection callbacks are stable for the life of this step.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col flex-1 p-4 space-y-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="h-12 rounded-xl bg-gray-100 animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col flex-1 p-4">
+      <h2 className="text-base font-semibold text-gray-900 mb-4">{t('title')}</h2>
+      <div className="space-y-2">
+        {students.map((student) => (
+          <button
+            key={student.id}
+            onClick={() => onSelect(student.id, student.full_name, false)}
+            className="w-full text-start px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-900 hover:border-blue-400 hover:bg-blue-50 active:scale-95 transition-all"
+          >
+            {student.full_name}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Teacher step ──────────────────────────────────────────────────────────────
 
 function TeacherStep({
   orgId,
+  studentName,
   onSelect,
+  onBack,
 }: {
   orgId: string
+  studentName?: string
   onSelect: (teacherId: string, teacherName: string) => void
+  onBack?: () => void
 }) {
   const t = useTranslations('booking.teacher')
   const [teachers, setTeachers] = useState<PortalTeacher[]>([])
@@ -162,7 +279,20 @@ function TeacherStep({
 
   return (
     <div className="flex flex-col flex-1 p-4">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">{t('title')}</h2>
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="self-start flex items-center gap-1 min-h-11 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft size={14} className="rtl:rotate-180" aria-hidden />
+          {t('back')}
+        </button>
+      )}
+      <h2 className="text-base font-semibold text-gray-900 mb-1">{t('title')}</h2>
+      {studentName && (
+        <p className="text-sm text-muted-foreground mb-4">{t('forStudent', { name: studentName })}</p>
+      )}
+      {!studentName && <div className="mb-3" />}
       {loading && (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -200,6 +330,8 @@ function SlotsStep({
   timezone,
   teacherId,
   teacherName,
+  studentId,
+  studentName,
   initialDate,
   initialDuration,
   onSlotLocked,
@@ -209,6 +341,8 @@ function SlotsStep({
   timezone: string
   teacherId: string
   teacherName: string
+  studentId: string
+  studentName: string
   initialDate: string
   initialDuration: number
   onSlotLocked: (slot: AvailableSlot, lock: SlotLock, date: string, duration: number) => void
@@ -263,7 +397,7 @@ function SlotsStep({
     setLocking(slot.startAt)
     setError(null)
     try {
-      const lock = await portalLockSlotAction(orgId, teacherId, slot.startAt, slot.endAt)
+      const lock = await portalLockSlotAction(orgId, teacherId, slot.startAt, slot.endAt, studentId)
       onSlotLocked(slot, lock, selectedDate, duration)
     } catch {
       setError('lockTaken')
@@ -314,6 +448,7 @@ function SlotsStep({
             {t('back')}
           </button>
           <span className="text-sm font-semibold text-gray-900">{teacherName}</span>
+          <span className="text-sm text-muted-foreground truncate">· {studentName}</span>
         </div>
 
         {/* Duration pills */}
@@ -460,20 +595,26 @@ function ConfirmStep({
   timezone,
   teacherId,
   teacherName,
+  studentId,
+  studentName,
   slot,
   lock,
   onConfirmed,
   onLockExpired,
+  onBack,
   onError,
 }: {
   orgId: string
   timezone: string
   teacherId: string
   teacherName: string
+  studentId: string
+  studentName: string
   slot: AvailableSlot
   lock: SlotLock
   onConfirmed: (result: ConfirmBookingResult) => void
   onLockExpired: () => void
+  onBack: () => void
   onError: (errorCode: string) => void
 }) {
   const t = useTranslations('booking.confirm')
@@ -498,7 +639,7 @@ function ConfirmStep({
   async function handleConfirm() {
     setConfirming(true)
     try {
-      const result = await portalConfirmBookingAction(orgId, lock.id, teacherId)
+      const result = await portalConfirmBookingAction(orgId, lock.id, teacherId, studentId)
       onConfirmed(result)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'unknown'
@@ -534,6 +675,11 @@ function ConfirmStep({
 
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3 text-sm">
         <div className="flex justify-between">
+          <span className="text-muted-foreground">{t('student')}</span>
+          <span className="font-medium">{studentName}</span>
+        </div>
+        <hr className="border-gray-100" />
+        <div className="flex justify-between">
           <span className="text-muted-foreground">{t('teacher')}</span>
           <span className="font-medium">{teacherName}</span>
         </div>
@@ -563,6 +709,16 @@ function ConfirmStep({
         className="w-full py-3.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-40 active:scale-95 transition-all"
       >
         {confirming ? t('submitting') : t('submit')}
+      </button>
+
+      {/* Picking the wrong hour used to mean the browser back button. */}
+      <button
+        onClick={onBack}
+        disabled={confirming}
+        className="w-full min-h-11 inline-flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-gray-800 disabled:opacity-40"
+      >
+        <ArrowLeft className="size-3.5 rtl:rotate-180" aria-hidden />
+        {t('changeSlot')}
       </button>
     </div>
   )

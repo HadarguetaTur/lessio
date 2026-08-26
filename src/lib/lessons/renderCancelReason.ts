@@ -10,6 +10,7 @@
 const CODES: Record<string, string> = {
   SERIES_CANCELLED: 'lessons.cancelReasons.series',
   CANCELLED_VIA_WHATSAPP: 'lessons.cancelReasons.whatsapp',
+  CANCELLED_VIA_PORTAL: 'lessons.cancelReasons.portal',
   TEACHER_DAY_OFF: 'lessons.cancelReasons.teacherDayOff',
 }
 

@@ -42,8 +42,14 @@ export function resolveRecipientLocale(params: {
   return parseAppLocale(orgDefault ?? undefined)
 }
 
+/**
+ * `en-IL`, not `en-US`: the English UI is read by parents and teachers who live
+ * in Israel, so dates must stay day-first. `en-US` rendered 12 August as
+ * 08/12/2026, which an English-reading parent reads as 8 December — on a
+ * payment due date that is a four-month error.
+ */
 export function toIntlLocale(locale: AppLocale): string {
-  return locale === 'he' ? 'he-IL' : 'en-US'
+  return locale === 'he' ? 'he-IL' : 'en-IL'
 }
 
 /** Luxon setLocale expects short codes */

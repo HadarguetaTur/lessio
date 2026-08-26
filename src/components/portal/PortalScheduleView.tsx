@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Plus } from 'lucide-react'
 import { PortalCancelDialog } from './PortalCancelDialog'
+import type { CancelPreview } from './PortalCancelDialog'
 import type { CancelLessonResult } from '@/app/portal/[orgId]/schedule/actions'
 
 type ScheduleLesson = {
@@ -17,6 +18,9 @@ type ScheduleLesson = {
   dateLabel: string
   timeLabel: string
   dayKey: string
+  /** Future, and inside the self-service cancellation window. */
+  cancellable: boolean
+  cancelPreview: CancelPreview | null
 }
 
 interface Props {
@@ -37,6 +41,7 @@ const STATUS_CLASS: Record<string, string> = {
 export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: Props) {
   const t = useTranslations('portal.schedule')
   const [view, setView] = useState<'upcoming' | 'history'>('upcoming')
+  const [cancelTarget, setCancelTarget] = useState<ScheduleLesson | null>(null)
   const lessons = view === 'upcoming' ? upcoming : history
 
   // Group by day
@@ -103,13 +108,13 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
                         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border ${STATUS_CLASS[statusKey]}`}>
                           {t(`status.${statusKey}`)}
                         </span>
-                        {view === 'upcoming' && lesson.status === 'scheduled' && (
-                          <PortalCancelDialog
-                            lessonId={lesson.id}
-                            studentName={lesson.studentName}
-                            lessonDate={lesson.dateLabel}
-                            cancelAction={cancelAction}
-                          />
+                        {view === 'upcoming' && lesson.cancellable && (
+                          <button
+                            onClick={() => setCancelTarget(lesson)}
+                            className="min-h-11 px-3 -my-2 text-xs font-semibold text-red-600 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+                          >
+                            {t('cancel.trigger')}
+                          </button>
                         )}
                       </div>
                     </div>
@@ -120,6 +125,13 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
           ))}
         </div>
       )}
+
+      {/* One dialog for the whole list — see PortalCancelDialog for why. */}
+      <PortalCancelDialog
+        target={cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        cancelAction={cancelAction}
+      />
 
       {/* Book CTA */}
       {view === 'upcoming' && (

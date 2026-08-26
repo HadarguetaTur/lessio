@@ -1,6 +1,9 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
+import { getLocale } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
+import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { executeCancellation } from '@/lib/cancellation-flow/executeCancellation'
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -24,7 +27,7 @@ export async function cancelLessonAction(
     return { ok: false, error: 'unauthorized' }
   }
 
-  const outcome = await executeCancellation(lessonId, session.parentId, orgId)
+  const outcome = await executeCancellation(lessonId, session.parentId, orgId, 'portal')
 
   if (!outcome.success) {
     const known = ['already_cancelled', 'not_eligible', 'not_found'] as const
@@ -33,6 +36,13 @@ export async function cancelLessonAction(
       : 'generic'
     return { ok: false, error }
   }
+
+  // The lesson has moved and a charge may have appeared. Without this the
+  // parent is left looking at a schedule that still lists the lesson as
+  // scheduled, with a live cancel button on it.
+  revalidatePath(`/portal/${orgId}/schedule`)
+  revalidatePath(`/portal/${orgId}/home`)
+  revalidatePath(`/portal/${orgId}/payments`)
 
   // Fire-and-forget: notify teacher + owner/admin
   const db = createServiceRoleClient()
@@ -51,14 +61,15 @@ export async function cancelLessonAction(
     if (teacherProfileId) recipientIds.push(teacherProfileId)
     const uniqueIds = [...new Set(recipientIds)]
 
-    const tn = await getT('notifications')
+    const [tn, locale] = await Promise.all([getT('notifications'), getLocale()])
+    const intlLocale = toIntlLocale(parseAppLocale(locale))
 
     notifyMultiple(
       orgId,
       uniqueIds,
       'lesson_cancelled',
       tn('lessonCancelled', { name: outcome.studentName }),
-      `${outcome.teacherName} · ${new Date(outcome.lessonStartAt).toLocaleDateString('he-IL')}`,
+      `${outcome.teacherName} · ${new Date(outcome.lessonStartAt).toLocaleDateString(intlLocale)}`,
       `/lessons/${lessonId}`
     )
   }

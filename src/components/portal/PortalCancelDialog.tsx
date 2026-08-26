@@ -2,109 +2,146 @@
 
 import { useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { AlertTriangle, X } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import type { CancelLessonResult } from '@/app/portal/[orgId]/schedule/actions'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+
+/** What cancelling this lesson will cost, resolved on the server. */
+export interface CancelPreview {
+  willCharge: boolean
+  /** Chargeable but unpriceable — the school settles the amount. */
+  unknownAmount: boolean
+  /** Formatted, e.g. "₪120.00". Null when there is nothing to charge. */
+  amountLabel: string | null
+}
+
+export interface CancelTarget {
+  id: string
+  studentName: string
+  dateLabel: string
+  timeLabel: string
+  cancelPreview: CancelPreview | null
+}
 
 interface Props {
-  lessonId: string
-  studentName: string
-  lessonDate: string
+  target: CancelTarget | null
+  onClose: () => void
   cancelAction: (lessonId: string) => Promise<CancelLessonResult>
 }
 
-export function PortalCancelDialog({ lessonId, studentName, lessonDate, cancelAction }: Props) {
+/**
+ * One instance for the whole schedule, driven by `target`.
+ *
+ * It deliberately does not live inside the lesson row: cancelling revalidates
+ * the schedule, the cancelled lesson leaves the list, and a dialog mounted in
+ * that row would unmount mid-flight — taking the "cancelled, ₪120 charged"
+ * confirmation with it.
+ */
+export function PortalCancelDialog({ target, onClose, cancelAction }: Props) {
   const t = useTranslations('portal.schedule.cancel')
   const tSchedule = useTranslations('portal.schedule')
   const appLocale = parseAppLocale(useLocale())
-  const [open, setOpen] = useState(false)
   const [result, setResult] = useState<CancelLessonResult | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  function handleCancel() {
+  function handleConfirm() {
+    if (!target) return
     startTransition(async () => {
-      const res = await cancelAction(lessonId)
-      setResult(res)
-      if (res.ok) {
-        // Close after showing message briefly
-        setTimeout(() => setOpen(false), 2000)
-      }
+      setResult(await cancelAction(target.id))
     })
   }
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => { setOpen(true); setResult(null) }}
-        className="text-xs text-red-600 hover:text-red-700 font-medium"
-      >
-        {t('trigger')}
-      </button>
-    )
+  function handleOpenChange(next: boolean) {
+    if (next || isPending) return
+    setResult(null)
+    onClose()
   }
 
+  const preview = target?.cancelPreview
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-card rounded-xl border border-border p-5 w-full max-w-[360px] space-y-4">
+    <AlertDialog open={target !== null} onOpenChange={handleOpenChange}>
+      <AlertDialogContent>
         {result ? (
-          <div className="text-center space-y-2">
-            <p className={`text-sm font-medium ${result.ok ? 'text-green-700' : 'text-red-700'}`}>
-              {result.ok
-                ? result.charged
-                  ? tSchedule('cancelledWithCharge', {
-                      amount: formatCurrency(result.amount, appLocale, 2),
-                    })
-                  : tSchedule('cancelledOk')
-                : tSchedule(`errors.${result.error}`)}
-            </p>
-            {!result.ok && (
+          <>
+            <AlertDialogHeader>
+              <AlertDialogTitle className={result.ok ? 'text-green-700' : 'text-red-700'}>
+                {result.ok
+                  ? result.charged
+                    ? tSchedule('cancelledWithCharge', {
+                        amount: formatCurrency(result.amount, appLocale, 2),
+                      })
+                    : tSchedule('cancelledOk')
+                  : tSchedule(`errors.${result.error}`)}
+              </AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
               <button
-                onClick={() => setOpen(false)}
-                className="text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => handleOpenChange(false)}
+                className="min-h-11 px-4 text-sm font-medium rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
               >
                 {t('close')}
               </button>
-            )}
-          </div>
+            </AlertDialogFooter>
+          </>
         ) : (
           <>
-            <div className="flex items-start justify-between">
+            <AlertDialogHeader>
               <div className="flex items-center gap-2">
-                <AlertTriangle size={18} className="text-amber-500" />
-                <h3 className="text-sm font-semibold text-foreground">{t('title')}</h3>
+                <AlertTriangle size={18} className="text-amber-500 shrink-0" aria-hidden />
+                <AlertDialogTitle>{t('title')}</AlertDialogTitle>
               </div>
-              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <X size={16} />
-              </button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {t.rich('confirmBody', {
-                name: studentName,
-                date: lessonDate,
-                b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
-              })}
+              <AlertDialogDescription>
+                {t.rich('confirmBody', {
+                  name: target?.studentName ?? '',
+                  date: target?.dateLabel ?? '',
+                  time: target?.timeLabel ?? '',
+                  b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+                })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            {/* The amount, before the parent commits — not after. */}
+            <p className="text-sm">
+              {!preview || !preview.willCharge ? (
+                <span className="text-green-700">{t('noCharge')}</span>
+              ) : preview.unknownAmount ? (
+                <span className="text-amber-700">{t('chargeUnknown')}</span>
+              ) : (
+                <span className="text-amber-700 font-medium">
+                  {t('chargeAmount', { amount: preview.amountLabel ?? '' })}
+                </span>
+              )}
             </p>
-            <p className="text-xs text-muted-foreground">{t('warning')}</p>
-            <div className="flex gap-2">
+
+            <AlertDialogFooter>
               <button
-                onClick={() => setOpen(false)}
+                onClick={() => handleOpenChange(false)}
                 disabled={isPending}
-                className="flex-1 py-2.5 text-sm font-medium rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                className="flex-1 min-h-11 text-sm font-medium rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors disabled:opacity-50"
               >
                 {t('back')}
               </button>
               <button
-                onClick={handleCancel}
+                onClick={handleConfirm}
                 disabled={isPending}
-                className="flex-1 py-2.5 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="flex-1 min-h-11 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {isPending ? t('cancelling') : t('confirm')}
               </button>
-            </div>
+            </AlertDialogFooter>
           </>
         )}
-      </div>
-    </div>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

@@ -19,7 +19,9 @@
       "subtitle": "After you choose, we'll show the open availability for the coming week.",
       "empty": "No teachers are currently available for booking.",
       "loading": "Loading teachers...",
-      "loadError": "We couldn't load the teachers. Please try again."
+      "loadError": "We couldn't load the teachers. Please try again.",
+      "back": "Back",
+      "forStudent": "For {name}"
     },
     "availability": {
       "back": "Back",
@@ -66,11 +68,14 @@
         "and": " and ",
         "privacy": "Privacy Policy",
         "suffix": ", and agree to receive WhatsApp messages about this lesson. Reply \"stop\" at any time to opt out."
-      }
+      },
+      "student": "Student",
+      "changeSlot": "Change the time"
     },
     "success": {
       "title": "Your lesson is booked",
-      "whatsappNote": "A confirmation will be sent to you on WhatsApp shortly."
+      "whatsappNote": "A confirmation will be sent to you on WhatsApp shortly.",
+      "viewSchedule": "View the schedule"
     },
     "errors": {
       "lock_expired": {
@@ -93,7 +98,23 @@
         "title": "Something went wrong",
         "body": "We couldn't complete the action right now. Please try again, or contact the center if needed."
       },
-      "restart": "Start over"
+      "restart": "Start over",
+      "no_students": {
+        "title": "No student found",
+        "body": "We could not find an active student linked to you. Please contact the school."
+      },
+      "student_not_owned": {
+        "title": "Something went wrong",
+        "body": "We could not verify who the lesson was for. Please start again."
+      },
+      "lock_student_mismatch": {
+        "title": "That time is held for another student",
+        "body": "The time you held belongs to a different student. Please pick a new time."
+      }
+    },
+    "student": {
+      "title": "Which child is this lesson for?",
+      "back": "Back"
     }
   },
   "common": {
@@ -989,6 +1010,7 @@
     "cancelReasons": {
       "series": "Series cancelled",
       "whatsapp": "Cancelled over WhatsApp",
+      "portal": "Cancelled in the parent portal",
       "teacherDayOff": "Teacher day off"
     },
     "noStudentsFound": "No students found",
@@ -3007,8 +3029,10 @@
       "cancel": {
         "trigger": "Cancel",
         "title": "Cancel lesson",
-        "confirmBody": "Cancel <b>{name}</b>'s lesson on {date}?",
-        "warning": "Cancelling may incur a charge according to the cancellation policy.",
+        "confirmBody": "Cancel <b>{name}</b>'s lesson on {date} at <b>{time}</b>?",
+        "noCharge": "Cancelling now is free of charge.",
+        "chargeAmount": "Cancelling now will be charged {amount} under the cancellation policy.",
+        "chargeUnknown": "Cancelling now incurs a charge. The school will confirm the amount.",
         "close": "Close",
         "back": "Back",
         "cancelling": "Cancelling...",
@@ -3034,6 +3058,7 @@
       "paid": "Paid",
       "partiallyPaid": "Paid {paid} of {total}",
       "receipt": "Receipt",
+      "noPaymentLink": "No payment link has been sent yet. Contact {org} to settle it.",
       "chargeType": {
         "lesson": "Lesson",
         "cancellation": "Cancellation",
@@ -3077,6 +3102,9 @@
       "emptyBody": "Send the teacher a message to start a conversation",
       "threadEmpty": "No messages yet. Send the teacher a message.",
       "inputPlaceholder": "Write a message...",
+      "send": "Send message",
+      "backToList": "Back to messages",
+      "charCount": "{count} of {max} characters",
       "errors": {
         "empty": "Message is empty",
         "tooLong": "Message is too long (up to {max} characters)",

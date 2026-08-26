@@ -109,14 +109,21 @@ export default async function PortalProgressPage({
       const hwCompleted = (hwData ?? []).filter((h) => (h as { status: string }).status === 'done').length
       const hwRate = hwTotal > 0 ? Math.round((hwCompleted / hwTotal) * 100) : 0
 
-      // Average score from submissions
-      const { data: scoreData } = await db
-        .from('homework_submissions')
-        .select('score')
-        .eq('organization_id', orgId)
-        .eq('student_id', student.id)
-        .not('score', 'is', null)
-        .gte('submitted_at', since)
+      // Average score from submissions.
+      // Scoped to the same assignments the counts above are built from, so the
+      // average can never describe work the "N of M tasks" line says does not
+      // exist. Unscoped, this produced "0 of 0 tasks · average score 94".
+      const assignmentIds = (hwData ?? []).map((h) => (h as { id: string }).id)
+      const { data: scoreData } = assignmentIds.length > 0
+        ? await db
+            .from('homework_submissions')
+            .select('score')
+            .eq('organization_id', orgId)
+            .eq('student_id', student.id)
+            .in('assignment_id', assignmentIds)
+            .not('score', 'is', null)
+            .gte('submitted_at', since)
+        : { data: [] }
 
       const scores = (scoreData ?? []).map((s) => (s as { score: number }).score).filter((s) => s != null)
       const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null

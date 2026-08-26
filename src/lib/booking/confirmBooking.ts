@@ -37,6 +37,13 @@ export class NoPrimaryParentError extends Error {
   }
 }
 
+export class LockStudentMismatchError extends Error {
+  constructor() {
+    super('The slot lock was taken for a different student')
+    this.name = 'LockStudentMismatchError'
+  }
+}
+
 export interface ConfirmBookingParams {
   lockId: string
   studentId: string
@@ -54,7 +61,7 @@ export interface ConfirmBookingResult {
 
 export async function confirmBooking({
   lockId,
-  studentId,
+  studentId: requestedStudentId,
   teacherId,
   organizationId,
 }: ConfirmBookingParams): Promise<ConfirmBookingResult> {
@@ -65,6 +72,13 @@ export async function confirmBooking({
   if (!lockResult.valid) throw new LockExpiredError(lockResult.reason)
 
   const { lock } = lockResult
+
+  // The lock already names the student it was taken for. Trusting the caller's
+  // id instead would let a parent with two children hold a slot for one and
+  // have the lesson created for the other — every later check would pass,
+  // because the wrong child is a perfectly valid student.
+  if (requestedStudentId !== lock.student_id) throw new LockStudentMismatchError()
+  const studentId = lock.student_id
 
   // 2. Validate teacher is active in org
   const { data: teacher, error: teacherError } = await db

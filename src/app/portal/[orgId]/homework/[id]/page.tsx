@@ -36,15 +36,20 @@ export default async function PortalHomeworkDetailPage({
   // Fetch assignment
   const { data: assignment } = await db
     .from('homework_assignments')
-    .select('id, title, body, due_date, status, student_id')
+    .select('id, title, body, due_date, status, student_id, sent')
     .eq('id', id)
     .eq('organization_id', orgId)
     .single()
 
   if (!assignment) notFound()
 
-  type AsgRow = { id: string; title: string; body: string; due_date: string | null; status: string; student_id: string }
+  type AsgRow = { id: string; title: string; body: string; due_date: string | null; status: string; student_id: string; sent: boolean }
   const asg = assignment as unknown as AsgRow
+
+  // An assignment the teacher has not sent yet — a draft, or one scheduled for
+  // a future date — is not the parent's to read. The list already filters on
+  // `sent`; without this the detail page was reachable by guessing the id.
+  if (!asg.sent) notFound()
 
   // Verify parent owns this student
   const { data: rel } = await db

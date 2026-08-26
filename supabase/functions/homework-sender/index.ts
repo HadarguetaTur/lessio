@@ -191,11 +191,17 @@ function resolveParentLocale(assignment: any): string | null {
   return null
 }
 
+/**
+ * Both columns, always. `sent` gates the parent portal's homework list and
+ * `sent_at` is the timestamp shown to the teacher; writing one without the
+ * other leaves the two halves of the same fact disagreeing. The mirror of this
+ * write lives in src/lib/homework/sendHomework.ts.
+ */
 // deno-lint-ignore no-explicit-any
 async function markSent(db: any, assignmentId: string): Promise<void> {
   const { error } = await db
     .from('homework_assignments')
-    .update({ sent: true })
+    .update({ sent: true, sent_at: new Date().toISOString() })
     .eq('id', assignmentId)
 
   if (error) {

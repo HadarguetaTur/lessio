@@ -108,14 +108,19 @@ export async function sendHomeworkAssignment(params: {
     return false
   }
 
-  // 6. Update sent_at
+  // 6. Mark as sent.
+  // Both columns, always: `sent_at` is the timestamp, `sent` is what the parent
+  // portal filters on. Writing only one of them is what kept the portal's
+  // homework tab permanently empty — every assignment sent from the dashboard
+  // had a `sent_at` but `sent = false`.
   const { error: updateError } = await db
     .from('homework_assignments')
-    .update({ sent_at: new Date().toISOString() })
+    .update({ sent_at: new Date().toISOString(), sent: true })
     .eq('id', assignmentId)
+    .eq('organization_id', orgId)
 
   if (updateError) {
-    console.error('[sendHomeworkAssignment] Failed to update sent_at', {
+    console.error('[sendHomeworkAssignment] Failed to mark assignment sent', {
       assignmentId,
       error: updateError.message,
     })

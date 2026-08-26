@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
@@ -28,6 +29,47 @@ async function requirePortalSession(orgId: string) {
 export interface PortalTeacher {
   id: string
   display_name: string
+}
+
+export interface PortalStudent {
+  id: string
+  full_name: string
+}
+
+/**
+ * The parent's children, for the picker at the top of the booking flow.
+ *
+ * The flow used to pick whichever relationship carried `is_primary` — which
+ * flags the primary *payer*, not "the child" — so a parent with two children
+ * silently booked for one of them without ever being asked which.
+ */
+export async function getPortalStudentsAction(orgId: string): Promise<PortalStudent[]> {
+  const session = await requirePortalSession(orgId)
+  const db = createServiceRoleClient()
+  const { data } = await db
+    .from('relationships')
+    .select('student_id, students ( full_name, is_active )')
+    .eq('parent_id', session.parentId)
+    .eq('organization_id', orgId)
+
+  type Row = { student_id: string; students: { full_name: string; is_active: boolean } | null }
+  return (data ?? [])
+    .map((r) => r as unknown as Row)
+    .filter((r) => r.students?.is_active)
+    .map((r) => ({ id: r.student_id, full_name: r.students?.full_name ?? '' }))
+}
+
+/** Confirms the student is one of this parent's children before it is used. */
+async function assertOwnsStudent(orgId: string, parentId: string, studentId: string) {
+  const db = createServiceRoleClient()
+  const { data } = await db
+    .from('relationships')
+    .select('id')
+    .eq('parent_id', parentId)
+    .eq('organization_id', orgId)
+    .eq('student_id', studentId)
+    .maybeSingle()
+  if (!data) throw new Error('student_not_owned')
 }
 
 export async function getPortalTeachersAction(orgId: string): Promise<PortalTeacher[]> {
@@ -68,27 +110,17 @@ export async function portalLockSlotAction(
   orgId: string,
   teacherId: string,
   startAt: string,
-  endAt: string
+  endAt: string,
+  studentId: string
 ): Promise<SlotLock> {
   const session = await requirePortalSession(orgId)
-  const db = createServiceRoleClient()
-
-  // Resolve primary student for this parent
-  const { data: rel } = await db
-    .from('relationships')
-    .select('student_id')
-    .eq('parent_id', session.parentId)
-    .eq('organization_id', orgId)
-    .eq('is_primary', true)
-    .limit(1)
-    .maybeSingle()
-  if (!rel) throw new Error('No student found for this parent')
+  await assertOwnsStudent(orgId, session.parentId, studentId)
 
   return createSlotLock({
     teacherId,
     startAt,
     endAt,
-    studentId: rel.student_id,
+    studentId,
     organizationId: orgId,
   })
 }
@@ -96,25 +128,37 @@ export async function portalLockSlotAction(
 export async function portalConfirmBookingAction(
   orgId: string,
   lockId: string,
-  teacherId: string
+  teacherId: string,
+  studentId: string
 ): Promise<ConfirmBookingResult> {
   const session = await requirePortalSession(orgId)
-  const db = createServiceRoleClient()
+  await assertOwnsStudent(orgId, session.parentId, studentId)
 
-  const { data: rel } = await db
-    .from('relationships')
-    .select('student_id')
-    .eq('parent_id', session.parentId)
-    .eq('organization_id', orgId)
-    .eq('is_primary', true)
-    .limit(1)
-    .maybeSingle()
-  if (!rel) throw new Error('No student found for this parent')
-
-  return confirmBooking({
+  const result = await confirmBooking({
     lockId,
-    studentId: rel.student_id,
+    studentId,
     teacherId,
     organizationId: orgId,
   })
+
+  // A lesson now exists; the schedule and the home page both list it.
+  revalidatePath(`/portal/${orgId}/schedule`)
+  revalidatePath(`/portal/${orgId}/home`)
+  return result
+}
+
+/**
+ * Releases a slot the parent decided not to take. Without this, backing out of
+ * the confirmation step leaves the lock active for its full five minutes and
+ * the slot they were just holding is missing from the list they return to.
+ */
+export async function portalReleaseSlotLockAction(orgId: string, lockId: string): Promise<void> {
+  await requirePortalSession(orgId)
+  const db = createServiceRoleClient()
+  await db
+    .from('slot_locks')
+    .update({ status: 'expired' })
+    .eq('id', lockId)
+    .eq('organization_id', orgId)
+    .eq('status', 'active')
 }

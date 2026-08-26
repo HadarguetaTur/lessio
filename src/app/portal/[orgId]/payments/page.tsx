@@ -29,6 +29,15 @@ export default async function PortalPaymentsPage({
 
   const db = createServiceRoleClient()
 
+  // Named in the "no payment link" copy — an open charge the parent cannot act
+  // on has to at least say who to ask about it.
+  const { data: org } = await db
+    .from('organizations')
+    .select('name')
+    .eq('id', orgId)
+    .maybeSingle()
+  const orgName = (org?.name as string | null) ?? ''
+
   const { data: charges } = await db
     .from('charges')
     .select('id, amount, amount_paid, status, charge_type, payment_link, receipt_url, created_at, paid_at')
@@ -79,7 +88,7 @@ export default async function PortalPaymentsPage({
           ) : (
             <div className="space-y-2">
               {pending.map((c) => (
-                <div key={c.id} className="bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-center">
+                <div key={c.id} className="bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-start gap-3">
                   <div>
                     <p className="text-sm font-medium text-gray-900">
                       {formatAmount(remaining(c))}
@@ -106,7 +115,17 @@ export default async function PortalPaymentsPage({
                       {t('pay')}
                     </a>
                   ) : (
-                    <span className="text-xs text-muted-foreground">{t('pending')}</span>
+                    /* No link means the business has not sent a payment
+                       request for this charge yet. Rendering only "pending"
+                       left the parent on a screen the home page had promised
+                       they could pay on, with nothing to press and nobody to
+                       ask. */
+                    <div className="text-end shrink-0 max-w-[55%]">
+                      <p className="text-xs font-medium text-muted-foreground">{t('pending')}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                        {t('noPaymentLink', { org: orgName })}
+                      </p>
+                    </div>
                   )}
                 </div>
               ))}

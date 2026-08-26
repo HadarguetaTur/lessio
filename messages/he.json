@@ -1548,6 +1548,13 @@
         "submitFailed": "השליחה ל-Meta נכשלה",
         "recordFailed": "התבנית נשלחה ל-Meta אך לא נשמרה כאן — לחצ/י על רענון סטטוסים",
         "refreshFailed": "רענון הסטטוסים נכשל"
+      },
+      "insertVariable": "הוספת המשתנה במיקום הסמן",
+      "metaNameHint": "שם התבנית הטכני אצל Meta",
+      "statusHint": {
+        "approved": "מאושר על ידי WhatsApp — נשלח גם כשההורה לא כתב לכם ב-24 השעות האחרונות.",
+        "pending": "ממתין לאישור WhatsApp — עד אז ההודעה נשלחת רק בתוך חלון של 24 שעות משיחת ההורה.",
+        "rejected": "נדחה על ידי WhatsApp — פנו לתמיכה."
       }
     },
     "aiAssistant": {

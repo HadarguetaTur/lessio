@@ -1548,6 +1548,13 @@
         "submitFailed": "Submitting to Meta failed",
         "recordFailed": "Sent to Meta but not recorded here — press Refresh statuses",
         "refreshFailed": "Could not refresh statuses"
+      },
+      "insertVariable": "Insert at the cursor",
+      "metaNameHint": "The template's technical name at Meta",
+      "statusHint": {
+        "approved": "Approved by WhatsApp — can be sent even when the parent hasn't messaged you in the last 24 hours.",
+        "pending": "Waiting for WhatsApp approval — until then this message only sends within 24 hours of the parent's last message.",
+        "rejected": "Rejected by WhatsApp — contact support."
       }
     },
     "aiAssistant": {

@@ -4,9 +4,12 @@
  * MessageTemplateCard — editable card for a single WhatsApp message template.
  * Per /docs/sprint-16-scope.md § Story 3.
  *
+ * Collapsed to a single row by default: twenty open forms in one column made
+ * this page roughly 24,000px tall, so nothing could be found by scrolling.
+ *
  * Features:
  * - Textarea pre-filled with custom or system-default body
- * - Variable hint showing available {{vars}} for this type
+ * - Clickable chips for the {{vars}} this type accepts, inserted at the caret
  * - Live preview using client-side substituteVars (no server round-trip)
  * - Save and Reset actions
  * - For templates sent outside the 24h window: Meta approval status of the
@@ -15,8 +18,9 @@
  *   copy is sent out of window in the meantime.
  */
 
-import React, { useActionState, useState, useEffect, useTransition } from 'react'
+import React, { useActionState, useState, useEffect, useRef, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
+import { ChevronDown } from 'lucide-react'
 import {
   saveTemplateAction,
   resetTemplateAction,
@@ -80,6 +84,7 @@ export function MessageTemplateCard({
   const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(saveTemplateAction, initialState)
   const [body, setBody] = useState(customBody ?? defaultBody)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [resetError, setResetError] = useState<string | null>(null)
   const [resetPending, setResetPending] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -137,7 +142,28 @@ export function MessageTemplateCard({
     })
   }
 
+  /** Drop {{var}} where the caret is, not at the end of the message. */
+  function insertVariable(variable: string) {
+    const token = `{{${variable}}}`
+    const el = textareaRef.current
+    if (!el) {
+      setBody((b) => b + token)
+      return
+    }
+    const start = el.selectionStart ?? body.length
+    const end = el.selectionEnd ?? start
+    setBody(body.slice(0, start) + token + body.slice(end))
+    const caret = start + token.length
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(caret, caret)
+    })
+  }
+
   const preview = substituteVars(body, previewVars)
+  // The collapsed row has to say something about the message itself; the label
+  // alone does not distinguish twenty templates.
+  const firstLine = body.split('\n').find((line) => line.trim().length > 0)?.trim() ?? ''
 
   // Nothing to submit while Meta is already reviewing exactly this wording, or
   // has approved it — a second submission would just open a duplicate review.
@@ -148,6 +174,13 @@ export function MessageTemplateCard({
   const cannotSubmit = Boolean(approval?.validationError)
   const savedNotApproved = needsApproval && approval?.status === NOT_SUBMITTED
 
+  const STATUS_HINT_KEYS: Record<string, string> = {
+    APPROVED: 'approved',
+    PENDING: 'pending',
+    REJECTED: 'rejected',
+  }
+  const statusHintKey = approval ? STATUS_HINT_KEYS[approval.status] : undefined
+
   const statusClass = approval ? STATUS_STYLES[approval.status] ?? NEUTRAL_STYLE : NEUTRAL_STYLE
   const statusLabel = approval
     ? TRANSLATED_STATUSES.includes(approval.status)
@@ -156,35 +189,44 @@ export function MessageTemplateCard({
     : t('status.UNKNOWN')
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-900">{label}</h3>
+    <details className="group bg-white border border-gray-200 rounded-lg">
+      {/* Collapsed row: name, state, and the opening line of the message. */}
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+        <ChevronDown
+          size={15}
+          className="shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-gray-900">{label}</span>
+          {firstLine && (
+            <span
+              className="block truncate text-xs text-muted-foreground"
+              dir={locale === 'he' ? 'rtl' : 'ltr'}
+            >
+              {firstLine}
+            </span>
+          )}
+        </span>
         {isCustom && (
-          <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5 font-medium">
+          <span className="shrink-0 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5 font-medium">
             {t('saved')}
           </span>
         )}
-      </div>
+        {needsApproval && (
+          <span className={`shrink-0 text-xs border rounded px-2 py-0.5 font-medium ${statusClass}`}>
+            {statusLabel}
+          </span>
+        )}
+      </summary>
 
-      {/* Variable hint */}
-      {variables.length > 0 && (
-        <div className="text-xs text-muted-foreground">
-          <span className="font-medium">{t('variables')}: </span>
-          {variables.map((v, i) => (
-            <span key={v}>
-              <code className="bg-gray-100 text-gray-700 px-1 rounded font-mono">{`{{${v}}}`}</code>
-              {i < variables.length - 1 && <span className="text-muted-foreground">, </span>}
-            </span>
-          ))}
-        </div>
-      )}
-
+      <div className="space-y-4 border-t border-gray-100 p-5">
       {/* Save form */}
       <form action={formAction} className="space-y-3">
         <input type="hidden" name="type" value={type} />
         <input type="hidden" name="locale" value={locale} />
         <textarea
+          ref={textareaRef}
           name="body_template"
           value={body}
           onChange={e => setBody(e.target.value)}
@@ -195,6 +237,25 @@ export function MessageTemplateCard({
           }`}
           placeholder={defaultBody}
         />
+
+        {/* Variables are clickable, not a list to copy by hand. */}
+        {variables.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">{t('variables')}:</span>
+            {variables.map(v => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => insertVariable(v)}
+                title={t('insertVariable')}
+                className="rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                dir="ltr"
+              >
+                {`{{${v}}}`}
+              </button>
+            ))}
+          </div>
+        )}
 
         {state.error && (
           <p className="text-xs text-red-600">{state.error}</p>
@@ -260,7 +321,11 @@ export function MessageTemplateCard({
             </span>
 
             {approval?.metaName && (
-              <code className="text-[11px] text-muted-foreground font-mono" dir="ltr">
+              <code
+                className="text-[11px] text-muted-foreground font-mono"
+                dir="ltr"
+                title={t('metaNameHint')}
+              >
                 {approval.metaName}
               </code>
             )}
@@ -269,6 +334,14 @@ export function MessageTemplateCard({
               <span className="text-[11px] text-muted-foreground">{t('builtInTemplate')}</span>
             )}
           </div>
+
+          {/* APPROVED / PENDING mean nothing to a tutor on their own — say what
+              each one costs her in messages that do or do not go out. */}
+          {statusHintKey && (
+            <p className="text-xs text-muted-foreground">
+              {t(`statusHint.${statusHintKey}` as 'statusHint.approved')}
+            </p>
+          )}
 
           {approval?.reason && (
             <p className="text-xs text-red-600">
@@ -327,6 +400,7 @@ export function MessageTemplateCard({
       ) : (
         <p className="border-t border-gray-100 pt-3 text-xs text-muted-foreground">{t('inWindowOnly')}</p>
       )}
-    </div>
+      </div>
+    </details>
   )
 }

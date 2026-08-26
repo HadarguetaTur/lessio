@@ -4172,30 +4172,6 @@
     "consolidatedPayment": "תשלום עבור {count} חיובים פתוחים"
   },
   "support": {
-    "widget": {
-      "trigger": "עזרה",
-      "triggerAria": "פתיחת פנייה לתמיכה",
-      "title": "איך אפשר לעזור?",
-      "description": "נענה לך כאן במערכת, בדרך כלל תוך יום עסקים.",
-      "categoryLabel": "על מה מדובר?",
-      "category": {
-        "bug": "משהו לא עובד",
-        "question": "שאלה",
-        "feature_request": "רעיון לשיפור",
-        "other": "אחר"
-      },
-      "subjectLabel": "נושא",
-      "subjectPlaceholder": "למשל: לא מצליחה לשלוח בקשת תשלום",
-      "bodyLabel": "מה קרה?",
-      "bodyPlaceholder": "ספרי לנו מה ניסית לעשות ומה קרה בפועל",
-      "bodyHint": "ככל שתפרטי יותר, כך נוכל לעזור מהר יותר.",
-      "send": "שליחה",
-      "sending": "שולח…",
-      "sentTitle": "הפנייה נשלחה",
-      "sentBody": "נחזור אלייך כאן במערכת. תקבלי התראה כשנענה.",
-      "viewTicket": "מעבר לפנייה",
-      "myTickets": "הפניות שלי"
-    },
     "list": {
       "title": "הפניות שלי",
       "description": "פניות שפתחת לתמיכה של Lessio.",
@@ -4232,13 +4208,45 @@
       "closed": "סגורה"
     },
     "errors": {
-      "subjectRequired": "יש לכתוב נושא לפנייה",
       "bodyRequired": "יש לתאר את הבעיה בכמה מילים",
       "rateLimited": "נפתחו כבר {limit} פניות היום. נטפל בקיימות ונחזור אלייך.",
       "ticketClosed": "הפנייה סגורה ולא ניתן להוסיף לה הודעות."
     },
     "system": {
       "bugFixed": "התקלה שדיווחת עליה תוקנה ועלתה לאוויר. אם זה עדיין קורה אצלך, כתבי לנו כאן ונבדוק שוב."
+    },
+    "panel": {
+      "launcher": "עזרה",
+      "launcherAria": "פתיחת שיחה עם התמיכה",
+      "title": "התמיכה של Lessio",
+      "subtitle": "בדרך כלל עונים תוך יום עסקים",
+      "newTitle": "שיחה חדשה",
+      "back": "חזרה",
+      "close": "סגירה",
+      "emptyList": "אין כאן שיחות עדיין.",
+      "replied": "יש תשובה חדשה",
+      "newConversation": "שיחה חדשה",
+      "greeting": "היי {name} 👋 על מה נדבר?",
+      "greetingNoName": "היי 👋 על מה נדבר?",
+      "describePrompt": "ספרי לי מה קרה — מה ניסית לעשות, ומה קרה בפועל.",
+      "category": {
+        "bug": "משהו לא עובד",
+        "question": "שאלה",
+        "feature_request": "רעיון לשיפור",
+        "other": "משהו אחר"
+      },
+      "composerPlaceholder": "כתבי כאן…",
+      "composerLocked": "בחרי נושא כדי להתחיל",
+      "replyPlaceholder": "הודעה…",
+      "tooShort": "עוד כמה מילים ונדע במה לעזור.",
+      "send": "שליחה",
+      "sendFailed": "השליחה נכשלה. נסי שוב.",
+      "closedNotice": "השיחה נסגרה. לנושא חדש אפשר לפתוח שיחה חדשה.",
+      "author": {
+        "admin": "צוות Lessio",
+        "ai": "עוזר אוטומטי",
+        "system": "עדכון מערכת"
+      }
     }
   }
 }

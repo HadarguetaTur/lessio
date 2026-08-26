@@ -21,9 +21,13 @@ import {
   addMessage,
   getTicketWithMessages,
   countRecentTicketsForOrg,
+  listTicketsForOrg,
   setStatus,
   type TicketCategory,
+  type SupportTicketMessage,
+  type TicketStatus,
 } from '@/lib/support/tickets'
+import { subjectFrom } from '@/lib/support/subject'
 import { classifyTicketInBackground } from '@/lib/support/classify'
 
 /**
@@ -35,7 +39,9 @@ const DAILY_TICKET_LIMIT = 10
 const CATEGORIES = ['bug', 'question', 'feature_request', 'other'] as const
 
 const createSchema = z.object({
-  subject: z.string().trim().min(3, 'support.errors.subjectRequired').max(200),
+  // No subject field any more: the widget is a conversation, and asking someone
+  // to title their problem before describing it is a form's habit. The operator
+  // queue's one-line label is derived from the message instead.
   body: z.string().trim().min(10, 'support.errors.bodyRequired').max(5000),
   category: z.enum(CATEGORIES).optional(),
   pageUrl: z.string().trim().max(500).optional(),
@@ -62,7 +68,6 @@ export async function createTicketAction(
   if (!canOpenTickets(session.role)) return { error: await commonError('noPermission') }
 
   const parsed = createSchema.safeParse({
-    subject: formData.get('subject'),
     body: formData.get('body'),
     category: formData.get('category') || undefined,
     pageUrl: formData.get('page_url') || undefined,
@@ -76,10 +81,12 @@ export async function createTicketAction(
     return { error: t('rateLimited', { limit: DAILY_TICKET_LIMIT }) }
   }
 
+  const subject = subjectFrom(parsed.data.body)
+
   const ticketId = await createTicket({
     orgId: session.orgId,
     createdBy: session.profileId,
-    subject: parsed.data.subject,
+    subject,
     body: parsed.data.body,
     source: 'widget',
     category: (parsed.data.category ?? null) as TicketCategory | null,
@@ -91,9 +98,9 @@ export async function createTicketAction(
   if (!ticketId) return { error: await commonError('saveFailed') }
 
   // Enrichment, not a gate: the customer gets their confirmation either way.
-  classifyTicketInBackground(ticketId, parsed.data.subject, parsed.data.body)
+  classifyTicketInBackground(ticketId, subject, parsed.data.body)
 
-  await notifyOperatorOfNewTicket(session.orgId, parsed.data.subject, ticketId)
+  await notifyOperatorOfNewTicket(session.orgId, subject, ticketId)
 
   revalidatePath('/support')
   return { error: null, ticketId }
@@ -190,4 +197,61 @@ export async function replyToTicketAction(
   revalidatePath(`/support/${parsed.data.ticketId}`)
   revalidatePath('/support')
   return { error: null }
+}
+
+// ── Reads for the widget ──────────────────────────────────────────────────────
+// The widget shows conversations inline rather than sending people to a page,
+// so it needs to fetch them from the client after it opens. Both are scoped to
+// the session's org — the orgId is never accepted from the caller.
+
+/** One row in the widget's conversation list. */
+export interface WidgetConversation {
+  id: string
+  subject: string
+  status: TicketStatus
+  lastMessage: string
+  lastMessageAt: string
+  /** True when the newest message came from us — "they replied" in the list. */
+  awaitingCustomer: boolean
+}
+
+export async function fetchMyConversationsAction(): Promise<WidgetConversation[]> {
+  const session = await getSession()
+  if (!canOpenTickets(session.role)) return []
+
+  const tickets = await listTicketsForOrg(session.orgId, 20)
+
+  const conversations = await Promise.all(
+    tickets.map(async (ticket) => {
+      const thread = await getTicketWithMessages(ticket.id, session.orgId)
+      const last = thread?.messages.at(-1)
+
+      return {
+        id: ticket.id,
+        subject: ticket.subject,
+        status: ticket.status,
+        lastMessage: last?.body ?? ticket.subject,
+        lastMessageAt: last?.created_at ?? ticket.created_at,
+        awaitingCustomer: last ? last.author_type !== 'customer' : false,
+      }
+    })
+  )
+
+  return conversations
+}
+
+export async function fetchConversationAction(
+  ticketId: string
+): Promise<{ subject: string; status: TicketStatus; messages: SupportTicketMessage[] } | null> {
+  const session = await getSession()
+  if (!canOpenTickets(session.role)) return null
+
+  const thread = await getTicketWithMessages(ticketId, session.orgId)
+  if (!thread) return null
+
+  return {
+    subject: thread.ticket.subject,
+    status: thread.ticket.status,
+    messages: thread.messages,
+  }
 }

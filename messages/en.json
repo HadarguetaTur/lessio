@@ -4172,30 +4172,6 @@
     "consolidatedPayment": "Payment for {count} open charges"
   },
   "support": {
-    "widget": {
-      "trigger": "Help",
-      "triggerAria": "Open a support request",
-      "title": "How can we help?",
-      "description": "We'll answer here in the app, usually within one business day.",
-      "categoryLabel": "What's this about?",
-      "category": {
-        "bug": "Something's broken",
-        "question": "A question",
-        "feature_request": "An idea",
-        "other": "Something else"
-      },
-      "subjectLabel": "Subject",
-      "subjectPlaceholder": "e.g. Can't send a payment request",
-      "bodyLabel": "What happened?",
-      "bodyPlaceholder": "Tell us what you were trying to do and what happened instead",
-      "bodyHint": "The more detail you give, the faster we can help.",
-      "send": "Send",
-      "sending": "Sending…",
-      "sentTitle": "Request sent",
-      "sentBody": "We'll reply here in the app and notify you when we do.",
-      "viewTicket": "View request",
-      "myTickets": "My requests"
-    },
     "list": {
       "title": "My requests",
       "description": "Support requests you opened with Lessio.",
@@ -4232,13 +4208,45 @@
       "closed": "Closed"
     },
     "errors": {
-      "subjectRequired": "Please give the request a subject",
       "bodyRequired": "Please describe the problem in a few words",
       "rateLimited": "You've already opened {limit} requests today. We'll work through them and get back to you.",
       "ticketClosed": "This request is closed and cannot take new messages."
     },
     "system": {
       "bugFixed": "The problem you reported has been fixed and is live. If you are still seeing it, reply here and we will take another look."
+    },
+    "panel": {
+      "launcher": "Help",
+      "launcherAria": "Open a conversation with support",
+      "title": "Lessio support",
+      "subtitle": "We usually reply within a business day",
+      "newTitle": "New conversation",
+      "back": "Back",
+      "close": "Close",
+      "emptyList": "No conversations here yet.",
+      "replied": "New reply",
+      "newConversation": "New conversation",
+      "greeting": "Hi {name} 👋 what shall we look at?",
+      "greetingNoName": "Hi 👋 what shall we look at?",
+      "describePrompt": "Tell me what happened — what you were trying to do, and what happened instead.",
+      "category": {
+        "bug": "Something's broken",
+        "question": "A question",
+        "feature_request": "An idea",
+        "other": "Something else"
+      },
+      "composerPlaceholder": "Type here…",
+      "composerLocked": "Pick a topic to start",
+      "replyPlaceholder": "Message…",
+      "tooShort": "A few more words and we will know how to help.",
+      "send": "Send",
+      "sendFailed": "Could not send. Try again.",
+      "closedNotice": "This conversation is closed. Start a new one for anything else.",
+      "author": {
+        "admin": "Lessio team",
+        "ai": "Automated assistant",
+        "system": "System update"
+      }
     }
   }
 }

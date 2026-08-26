@@ -39,6 +39,7 @@ import {
   deleteSupportSession,
 } from '@/lib/support/supportSessions'
 import { createTicket } from '@/lib/support/tickets'
+import { subjectFrom } from '@/lib/support/subject'
 import { classifyTicketInBackground } from '@/lib/support/classify'
 import { notifySuperadmins } from '@/lib/notifications'
 import { replyWith, type HandlerContext } from '../shared'
@@ -46,9 +47,6 @@ import { replyWith, type HandlerContext } from '../shared'
 /** Reply-button ids for the support confirmation step. */
 const SUPPORT_SEND = 'sup:send'
 const SUPPORT_CANCEL = 'sup:cancel'
-
-/** WhatsApp has no subject line, so the ticket gets one from the first words. */
-const SUBJECT_MAX = 80
 
 /** Routes a message from an owner/admin. Returns true when it was handled. */
 export async function handleStaffMessage(
@@ -218,14 +216,6 @@ async function handleSupportDecision(ctx: HandlerContext, send: boolean): Promis
   )
 
   await replyWith(ctx, 'support_created')
-}
-
-/** First sentence or first line, whichever is shorter, as the ticket subject. */
-function subjectFrom(body: string): string {
-  const firstLine = body.split('\n')[0]!.trim()
-  const firstSentence = firstLine.split(/(?<=[.!?])\s/)[0]!.trim()
-  const candidate = firstSentence || firstLine || body.trim()
-  return candidate.length <= SUBJECT_MAX ? candidate : candidate.slice(0, SUBJECT_MAX - 1) + '…'
 }
 
 // ── Day-off requests ──────────────────────────────────────────────────────────

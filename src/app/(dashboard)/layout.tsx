@@ -5,8 +5,14 @@ import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import { TopBar } from '@/components/dashboard/TopBar'
 import { MobileAdminQuickSheet } from '@/components/dashboard/MobileAdminQuickSheet'
-import { SupportWidget } from '@/components/dashboard/SupportWidget'
-import { createTicketAction } from './support/actions'
+import { SupportPanelProvider } from '@/components/dashboard/support/SupportPanelProvider'
+import { SupportLauncher } from '@/components/dashboard/support/SupportLauncher'
+import {
+  createTicketAction,
+  replyToTicketAction,
+  fetchMyConversationsAction,
+  fetchConversationAction,
+} from './support/actions'
 import { SupportModeBanner } from '@/components/dashboard/SupportModeBanner'
 import { getSupportSession } from '@/lib/support-session'
 import { PATHNAME_HEADER } from '@/proxy'
@@ -225,13 +231,28 @@ export default async function DashboardLayout({
           {showSaasBanners ? <SaasOwnerBanners orgId={profile!.organization_id as string} /> : null}
           {children}
         </div>
-        {isOrgStaff ? <MobileAdminQuickSheet /> : null}
         {/*
-          Deliberately absent from the support-mode branch above: there, the
-          "customer" is a superadmin impersonating the org, and a ticket filed
-          from that seat is noise in their own queue.
+          The provider wraps both launchers because they share one panel: a
+          floating pill on desktop, a row inside the quick-actions sheet on
+          mobile. Deliberately absent from the support-mode branch above —
+          there the "customer" is a superadmin impersonating the org, and a
+          ticket filed from that seat is noise in their own queue.
         */}
-        {isOrgStaff ? <SupportWidget locale={locale} createTicket={createTicketAction} /> : null}
+        {isOrgStaff ? (
+          <SupportPanelProvider
+            locale={locale}
+            firstName={(profile?.full_name ?? '').trim().split(/\s+/)[0] ?? ''}
+            actions={{
+              createTicket: createTicketAction,
+              reply: replyToTicketAction,
+              fetchConversations: fetchMyConversationsAction,
+              fetchConversation: fetchConversationAction,
+            }}
+          >
+            <MobileAdminQuickSheet />
+            <SupportLauncher />
+          </SupportPanelProvider>
+        ) : null}
       </main>
     </div>
     </LiveRefreshProvider>

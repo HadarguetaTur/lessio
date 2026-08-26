@@ -121,7 +121,7 @@ export default async function AdminSupportTicketPage({
         </div>
       </div>
 
-      <SupportThread messages={thread.messages} />
+      <SupportThread messages={thread.messages} viewer="admin" />
 
       <div className="mt-4 pb-8">
         <SupportReplyForm

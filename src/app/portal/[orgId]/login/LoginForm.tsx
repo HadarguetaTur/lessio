@@ -82,11 +82,11 @@ function PhoneStep({
           />
           <span>
             {t('legal.prefix')}
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline underline-offset-2">
               {t('legal.terms')}
             </a>
             {t('legal.and')}
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline underline-offset-2">
               {t('legal.privacy')}
             </a>
             {t('legal.suffix', { orgName })}

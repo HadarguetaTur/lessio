@@ -3146,7 +3146,8 @@
         "students": "תלמידים",
         "parents": "הורים",
         "lessons": "שיעורים"
-      }
+      },
+      "goToWhatsApp": "סיום וחיבור WhatsApp"
     },
     "planSelection": {
       "title": "בחירת מסלול",
@@ -3295,7 +3296,8 @@
       "importLessons": "שיעורים",
       "settings": "הגדרות",
       "planSelection": "מנוי",
-      "complete": "סיום"
+      "complete": "סיום",
+      "whatsapp": "WhatsApp"
     },
     "stepIndicator": {
       "progress": "שלב {current} מתוך {total}",
@@ -3308,7 +3310,13 @@
       "saving": "שומר..."
     },
     "setup": "הגדרת המערכת",
-    "secure": "מאובטח"
+    "secure": "מאובטח",
+    "whatsapp": {
+      "title": "חיבור WhatsApp",
+      "description": "עם מספר WhatsApp מחובר, Lessio שולח תזכורות לשיעורים, בקשות תשלום וקישורי ביטול — ועונה להורים אוטומטית.",
+      "cta": "חברו WhatsApp בסיום",
+      "skip": "דלג לעכשיו"
+    }
   },
   "import": {
     "title": "יבוא {entity}",

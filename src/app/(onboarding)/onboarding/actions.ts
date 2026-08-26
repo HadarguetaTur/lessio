@@ -157,7 +157,9 @@ export async function updateBasicSettings(
   return null
 }
 
-export async function completeOnboarding(): Promise<void> {
+export async function completeOnboarding(
+  destination: 'dashboard' | 'whatsapp' = 'dashboard'
+): Promise<void> {
   const { userId, orgId, role } = await getOnboardingSession()
   if (role !== 'owner') {
     redirect('/dashboard')
@@ -196,5 +198,9 @@ export async function completeOnboarding(): Promise<void> {
     .update({ onboarding_completed: true })
     .eq('id', orgId)
 
-  redirect('/dashboard')
+  // Onboarding is complete either way — the destination only decides where she
+  // lands, never whether she is allowed to finish. The wizard cannot link to
+  // /settings/whatsapp directly: the dashboard layout bounces an owner whose
+  // onboarding is unfinished straight back to /onboarding.
+  redirect(destination === 'whatsapp' ? '/settings/whatsapp' : '/dashboard')
 }

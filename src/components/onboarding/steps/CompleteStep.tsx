@@ -18,10 +18,12 @@ interface CompleteStepProps {
     lessons: number
     teachers: number
   }
+  /** Where the final button lands — chosen on the WhatsApp step. */
+  destination?: 'dashboard' | 'whatsapp'
   onBack: () => void
 }
 
-export function CompleteStep({ counts, onBack }: CompleteStepProps) {
+export function CompleteStep({ counts, destination = 'dashboard', onBack }: CompleteStepProps) {
   const t = useTranslations('onboarding.complete')
   const tNav = useTranslations('onboarding.nav')
   const [pending, startTransition] = useTransition()
@@ -31,7 +33,7 @@ export function CompleteStep({ counts, onBack }: CompleteStepProps) {
   // the page stuck on the loading state until the user refreshes.
   const handleComplete = () => {
     startTransition(async () => {
-      await completeOnboarding()
+      await completeOnboarding(destination)
     })
   }
 
@@ -99,7 +101,7 @@ export function CompleteStep({ counts, onBack }: CompleteStepProps) {
           disabled={pending}
           className={`h-12 w-full text-base font-semibold ${onboardingGradientCta}`}
         >
-          {pending ? t('loading') : t('goToDashboard')}
+          {pending ? t('loading') : destination === 'whatsapp' ? t('goToWhatsApp') : t('goToDashboard')}
         </Button>
       </div>
     </div>

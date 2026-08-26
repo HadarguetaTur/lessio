@@ -10,6 +10,10 @@ import {
   getCurrentBillingMonth,
 } from '@/lib/billing/monthly/month'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { formatCurrency } from '@/lib/i18n/formatCurrency'
+import { resolveLessonBaseAmount, isMissingPrice } from '@/lib/billing/lessonPricing'
+import { getOrgPricing } from '@/lib/organizations/pricing'
+import type { LessonType } from '@/lib/lessons/types'
 import { getLocale } from 'next-intl/server'
 import { getStudentById } from '@/lib/students'
 import { PageHeader } from '@/components/ui/page-header'
@@ -43,7 +47,9 @@ export default async function BillingDetailPage(props: {
   ])
 
   const billingMonth = searchParams.month || getCurrentBillingMonth(timezone)
-  const intlLocale = toIntlLocale(parseAppLocale(locale))
+  const appLocale = parseAppLocale(locale)
+  const intlLocale = toIntlLocale(appLocale)
+  const money = (n: number) => formatCurrency(n, appLocale, Number.isInteger(n) ? 0 : 2)
   const billingMonthLabel = formatBillingMonthLabel(billingMonth, timezone, intlLocale)
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
 
@@ -64,8 +70,9 @@ export default async function BillingDetailPage(props: {
   const formatDateOnly = (isoDate: string) =>
     new Date(`${isoDate}T12:00:00Z`).toLocaleDateString(intlLocale, { timeZone: timezone })
 
-  const [student, supabase] = await Promise.all([
+  const [student, orgPricing, supabase] = await Promise.all([
     getStudentById(studentId, orgId),
+    getOrgPricing(orgId),
     Promise.resolve(createServiceRoleClient()),
   ])
 
@@ -89,7 +96,7 @@ export default async function BillingDetailPage(props: {
   const { data: lessonsData } = await supabase
     .from('lessons')
     .select(
-      'id, start_at, end_at, status, lesson_type, price_per_student, teachers(profiles(full_name)), lesson_students!inner(student_id)'
+      'id, start_at, end_at, status, lesson_type, price_per_student, teachers(hourly_rate, profiles(full_name)), lesson_students!inner(student_id)'
     )
     .eq('organization_id', orgId)
     .eq('lesson_students.student_id', studentId)
@@ -113,15 +120,32 @@ export default async function BillingDetailPage(props: {
     .eq('student_id', studentId)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const lessons = (lessonsData ?? []).map((l: any) => ({
-    id: l.id as string,
-    start_at: l.start_at as string,
-    end_at: l.end_at as string,
-    status: l.status as string,
-    lesson_type: l.lesson_type as string,
-    teacher_name: (l.teachers as { profiles: { full_name: string } })?.profiles?.full_name ?? '—',
-    price_per_student: l.price_per_student as number | null,
-  }))
+  const lessons = (lessonsData ?? []).map((l: any) => {
+    const durationMinutes = Math.max(
+      0,
+      (new Date(l.end_at as string).getTime() - new Date(l.start_at as string).getTime()) / 60000
+    )
+    // Same resolution the billing engine uses, so the per-lesson price column
+    // always sums up to the amount on the summary card.
+    const resolved = resolveLessonBaseAmount(
+      {
+        lessonType: (l.lesson_type ?? 'individual') as LessonType,
+        pricePerStudent: (l.price_per_student as number | null) ?? null,
+        durationMinutes,
+        teacherHourlyRate: (l.teachers as { hourly_rate: number | null })?.hourly_rate ?? null,
+      },
+      orgPricing
+    )
+    return {
+      id: l.id as string,
+      start_at: l.start_at as string,
+      end_at: l.end_at as string,
+      status: l.status as string,
+      lesson_type: l.lesson_type as string,
+      teacher_name: (l.teachers as { profiles: { full_name: string } })?.profiles?.full_name ?? '—',
+      price_per_student: isMissingPrice(resolved) ? null : resolved,
+    }
+  })
 
   const cancellations = (cancellationData ?? []) as Array<{
     id: string
@@ -182,41 +206,44 @@ export default async function BillingDetailPage(props: {
 
       {/* Billing summary card */}
       {billingData && (
-        <div className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-5 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+        <div className="mb-6 grid grid-cols-2 gap-x-4 gap-y-5 rounded-xl border border-border bg-card p-5 md:grid-cols-3 lg:grid-cols-5 lg:gap-x-6">
+          <div className="text-start">
+            <p className="text-[11px] font-semibold text-muted-foreground tracking-wider mb-1">
               {tBilling('table.lessons')}
+              {billingData.lessons_count > 0 && (
+                <span className="ms-1 font-normal">({billingData.lessons_count})</span>
+              )}
             </p>
-            <p className="text-lg font-bold text-foreground font-mono" dir="ltr">
-              ₪{Number(billingData.lessons_amount).toFixed(2)}
+            <p className="text-lg font-bold text-foreground tabular-nums">
+              {money(Number(billingData.lessons_amount))}
             </p>
           </div>
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="text-start">
+            <p className="text-[11px] font-semibold text-muted-foreground tracking-wider mb-1">
               {tBilling('table.subscriptions')}
             </p>
-            <p className="text-lg font-bold text-foreground font-mono" dir="ltr">
-              ₪{Number(billingData.subscriptions_amount).toFixed(2)}
+            <p className="text-lg font-bold text-foreground tabular-nums">
+              {money(Number(billingData.subscriptions_amount))}
             </p>
           </div>
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="text-start">
+            <p className="text-[11px] font-semibold text-muted-foreground tracking-wider mb-1">
               {tBilling('table.cancellations')}
             </p>
-            <p className="text-lg font-bold text-foreground font-mono" dir="ltr">
-              ₪{Number(billingData.cancellations_amount).toFixed(2)}
+            <p className="text-lg font-bold text-foreground tabular-nums">
+              {money(Number(billingData.cancellations_amount))}
             </p>
           </div>
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="text-start rounded-lg bg-primary/5 px-3 py-2 -my-2 lg:-my-1">
+            <p className="text-[11px] font-semibold text-primary tracking-wider mb-1">
               {tBilling('table.total')}
             </p>
-            <p className="text-xl font-bold text-foreground font-mono" dir="ltr">
-              ₪{Number(billingData.total_amount).toFixed(2)}
+            <p className="text-xl font-bold text-primary tabular-nums">
+              {money(Number(billingData.total_amount))}
             </p>
           </div>
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="text-start">
+            <p className="text-[11px] font-semibold text-muted-foreground tracking-wider mb-1">
               {tBilling('table.status')}
             </p>
             {status && <StatusBadge status={status} />}
@@ -250,11 +277,11 @@ export default async function BillingDetailPage(props: {
                     <span className="text-xs text-muted-foreground">{lessonTypeLabel(lesson.lesson_type)}</span>
                     <StatusBadge status={lesson.status} />
                   </div>
-                  <div className="mt-2 grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
-                    <span dir="ltr" className="font-mono text-foreground">
-                      {lesson.price_per_student != null ? `₪${lesson.price_per_student}` : '—'}
+                  <div className="mt-2 flex items-baseline justify-between gap-x-2">
+                    <span className="text-xs text-muted-foreground">{t('colPricePerStudent')}</span>
+                    <span className="text-foreground tabular-nums">
+                      {lesson.price_per_student != null ? money(lesson.price_per_student) : '—'}
                     </span>
-                    <span className="text-end text-xs text-muted-foreground">{t('colPricePerStudent')}</span>
                   </div>
                 </div>
               ))}
@@ -282,8 +309,8 @@ export default async function BillingDetailPage(props: {
                         <td className="px-4 py-2.5 text-sm text-foreground">{lesson.teacher_name}</td>
                         <td className="px-4 py-2.5 text-sm text-muted-foreground">{lessonTypeLabel(lesson.lesson_type)}</td>
                         <td className="px-4 py-2.5"><StatusBadge status={lesson.status} /></td>
-                        <td className="px-4 py-2.5 font-mono text-sm text-foreground" dir="ltr">
-                          {lesson.price_per_student != null ? `₪${lesson.price_per_student}` : '—'}
+                        <td className="px-4 py-2.5 text-sm text-foreground tabular-nums">
+                          {lesson.price_per_student != null ? money(lesson.price_per_student) : '—'}
                         </td>
                       </tr>
                     ))}

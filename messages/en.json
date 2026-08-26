@@ -3146,7 +3146,8 @@
         "students": "Students",
         "parents": "Parents",
         "lessons": "Lessons"
-      }
+      },
+      "goToWhatsApp": "Finish and connect WhatsApp"
     },
     "planSelection": {
       "title": "Choose a plan for your stage",
@@ -3295,7 +3296,8 @@
       "importLessons": "Lessons",
       "settings": "Settings",
       "planSelection": "Plan",
-      "complete": "Done"
+      "complete": "Done",
+      "whatsapp": "WhatsApp"
     },
     "stepIndicator": {
       "progress": "Step {current} of {total}",
@@ -3308,7 +3310,13 @@
       "saving": "Saving..."
     },
     "setup": "Setup",
-    "secure": "Secure"
+    "secure": "Secure",
+    "whatsapp": {
+      "title": "Connect WhatsApp",
+      "description": "With a WhatsApp number connected, Lessio sends lesson reminders, payment requests and cancellation links — and answers parents automatically.",
+      "cta": "Connect WhatsApp at the end",
+      "skip": "Skip for now"
+    }
   },
   "import": {
     "title": "Import {entity}",

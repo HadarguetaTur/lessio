@@ -8,6 +8,7 @@ import { TeachersStep } from './steps/TeachersStep'
 import { ImportStudentsStep } from './steps/ImportStudentsStep'
 import { ImportLessonsStep } from './steps/ImportLessonsStep'
 import { SettingsStep } from './steps/SettingsStep'
+import { WhatsAppStep } from './steps/WhatsAppStep'
 import { PlanSelectionStep } from './steps/PlanSelectionStep'
 import { CompleteStep } from './steps/CompleteStep'
 import type { SaasPlanRow } from '@/lib/saas/plans'
@@ -18,6 +19,7 @@ export type OnboardingStep =
   | 'import-students'
   | 'import-lessons'
   | 'settings'
+  | 'whatsapp'
   | 'plan-selection'
   | 'complete'
 
@@ -55,6 +57,10 @@ export function OnboardingWizard({
   const t = useTranslations('onboarding.steps')
   const [step, setStep] = useState<OnboardingStep>('welcome')
   const [counts, setCounts] = useState(initialCounts)
+  // Chosen on the WhatsApp step; decides where the final button lands. The
+  // dashboard layout redirects an unfinished owner back here, so the wizard has
+  // to finish first and land there, rather than link out mid-flow.
+  const [finishAt, setFinishAt] = useState<'dashboard' | 'whatsapp'>('dashboard')
 
   const STEPS: StepDef[] = useMemo(
     () => [
@@ -63,6 +69,7 @@ export function OnboardingWizard({
       { id: 'import-students', label: t('importStudents') },
       { id: 'import-lessons', label: t('importLessons') },
       { id: 'settings', label: t('settings') },
+      { id: 'whatsapp', label: t('whatsapp') },
       { id: 'plan-selection', label: t('planSelection') },
       { id: 'complete', label: t('complete') },
     ],
@@ -133,6 +140,20 @@ export function OnboardingWizard({
         <SettingsStep settingsDefaults={settingsDefaults} onNext={goNext} onBack={goBack} />
       )}
 
+      {step === 'whatsapp' && (
+        <WhatsAppStep
+          onConnect={() => {
+            setFinishAt('whatsapp')
+            goNext()
+          }}
+          onSkip={() => {
+            setFinishAt('dashboard')
+            goNext()
+          }}
+          onBack={goBack}
+        />
+      )}
+
       {step === 'plan-selection' && (
         <PlanSelectionStep
           plans={saasPlans}
@@ -142,7 +163,9 @@ export function OnboardingWizard({
         />
       )}
 
-      {step === 'complete' && <CompleteStep counts={counts} onBack={goBack} />}
+      {step === 'complete' && (
+        <CompleteStep counts={counts} destination={finishAt} onBack={goBack} />
+      )}
     </div>
   )
 }

@@ -24,7 +24,7 @@ export function SupportModeBanner({ orgName, expiresAt }: Props) {
   }
 
   return (
-    <div className="w-full bg-amber-500 text-white px-4 py-2 flex items-center justify-between text-sm" dir="rtl">
+    <div className="w-full shrink-0 bg-amber-500 text-white px-4 py-2 flex items-center justify-between text-sm" dir="rtl">
       <div className="flex items-center gap-2">
         <ShieldAlert size={16} />
         <span>{t('supportBanner', { orgName, timeRemaining: minsLeft })}</span>

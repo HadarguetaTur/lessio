@@ -304,7 +304,7 @@ export function Sidebar({
       className={`bg-sidebar flex flex-col shrink-0 ${
         mobile
           ? 'h-full w-full border-e border-sidebar-border'
-          : 'hidden lg:flex w-60 min-h-screen border-e border-sidebar-border'
+          : 'hidden lg:flex w-60 h-full min-h-0 border-e border-sidebar-border'
       }`}
     >
       {/* Logo */}

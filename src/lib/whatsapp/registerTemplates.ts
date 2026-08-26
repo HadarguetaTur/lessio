@@ -287,7 +287,9 @@ export const TEMPLATES: TemplateDefinition[] = [
           body_text: [['חיבור על הקיץ', 'כתיבת חיבור של 300 מילים', 'להגשה עד: 20/5']],
         },
       },
-      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'סיימתי ✅' }] },
+      // No emoji in a button label: Meta rejects the whole template ("buttons
+      // cannot contain variables, newlines, emoji or formatting characters").
+      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'סיימתי' }] },
     ],
   },
   {
@@ -299,7 +301,7 @@ export const TEMPLATES: TemplateDefinition[] = [
         text: 'New homework is waiting for you 📚\nTopic: {{1}}\nWhat to do: {{2}}\nDue date: {{3}}\nGood luck, and let us know when it is done.',
         example: { body_text: [['Summer essay', 'Write a 300-word essay', 'Due by: 20/5']] },
       },
-      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'Done ✅' }] },
+      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'Done' }] },
     ],
   },
   {
@@ -311,7 +313,9 @@ export const TEMPLATES: TemplateDefinition[] = [
         text: 'תזכורת: שיעורי הבית של {{1}}, "{{2}}", צריכים להיות מוכנים עד {{3}}. בהצלחה!',
         example: { body_text: [['דוד כהן', 'פרק ג בספר', '15/5']] },
       },
-      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'סיימתי ✅' }] },
+      // No emoji in a button label: Meta rejects the whole template ("buttons
+      // cannot contain variables, newlines, emoji or formatting characters").
+      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'סיימתי' }] },
     ],
   },
   {
@@ -323,7 +327,7 @@ export const TEMPLATES: TemplateDefinition[] = [
         text: 'Reminder: {{1}}\'s homework, "{{2}}", is due by {{3}}. Good luck!',
         example: { body_text: [['David Cohen', 'Chapter 3', '15/5']] },
       },
-      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'Done ✅' }] },
+      { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'Done' }] },
     ],
   },
   // ── Payment messages with a pay button (v3) ─────────────────────────────

@@ -132,4 +132,19 @@ describe('TEMPLATE_BUTTONS', () => {
       }
     }
   })
+
+  it('keeps emoji and newlines out of labels on Meta-approved templates', () => {
+    // Meta rejects the whole template: "buttons cannot contain variables,
+    // newlines, emoji or formatting characters". It surfaces only at
+    // registration, long after the label was written, so it is caught here.
+    const emoji = /\p{Extended_Pictographic}/u
+    for (const button of Object.values(TEMPLATE_BUTTONS).flat()) {
+      if (button.editable) continue
+      for (const locale of ['he', 'en'] as const) {
+        const label = botString(button.labelKey, locale)
+        expect(label).not.toMatch(emoji)
+        expect(label).not.toContain('\n')
+      }
+    }
+  })
 })

@@ -246,7 +246,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     cta_pay_now: 'לתשלום מאובטח',
     btn_confirm_attendance: 'מאשר/ת הגעה',
     btn_need_to_cancel: 'צריך לבטל',
-    btn_homework_done: 'סיימתי ✅',
+    btn_homework_done: 'סיימתי',
 
     menu_greeting: 'היי {{first_name}} 👋\nאיך אפשר לעזור?',
     menu_greeting_noname: 'היי 👋\nאיך אפשר לעזור?',
@@ -442,7 +442,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     cta_pay_now: 'Pay securely',
     btn_confirm_attendance: 'Confirm attendance',
     btn_need_to_cancel: 'Need to cancel',
-    btn_homework_done: 'Done ✅',
+    btn_homework_done: 'Done',
 
     // Names are stored in Hebrew, so an English greeting deliberately omits
     // them rather than reading "Hi יעל 👋". Transliterating is worse: Hebrew

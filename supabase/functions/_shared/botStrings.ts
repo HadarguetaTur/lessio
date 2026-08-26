@@ -58,7 +58,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       '🔔 תזכורת מ-Lessio\n\n{plan} יתחדש אוטומטית ב-{date}.\n\nלניהול המנוי: https://www.getlessio.com/subscriptions',
     btn_confirm_attendance: 'מאשר/ת הגעה',
     btn_need_to_cancel: 'צריך לבטל',
-    btn_homework_done: 'סיימתי ✅',
+    btn_homework_done: 'סיימתי',
     cta_pay_now: 'לתשלום מאובטח',
   },
   en: {
@@ -82,7 +82,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       '🔔 Reminder from Lessio\n\n{plan} renews automatically on {date}.\n\nManage your subscription: https://www.getlessio.com/subscriptions',
     btn_confirm_attendance: 'Confirm attendance',
     btn_need_to_cancel: 'Need to cancel',
-    btn_homework_done: 'Done ✅',
+    btn_homework_done: 'Done',
     cta_pay_now: 'Pay securely',
   },
 }

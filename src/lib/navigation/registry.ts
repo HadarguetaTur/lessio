@@ -41,6 +41,7 @@ import {
   CreditCard,
   CalendarOff,
   CalendarDays,
+  Plug,
   Bell,
   FileText,
   BarChart2,
@@ -182,6 +183,15 @@ export const SETTINGS_NAV: NavEntry[] = [
     icon: CalendarDays,
     roles: ['owner'],
     synonyms: ['calendar', 'google', 'sync', 'יומן', 'סנכרון', 'גוגל'],
+  },
+  {
+    href: '/settings/integrations',
+    navKey: 'settingsIntegrations',
+    cardKey: 'integrations',
+    icon: Plug,
+    roles: ['owner'],
+    saasFeature: 'integrations',
+    synonyms: ['integration', 'integrations', 'api', 'webhook', 'make', 'n8n', 'zapier', 'automation', 'mcp', 'claude', 'אינטגרציה', 'אינטגרציות', 'אוטומציה', 'מפתח', 'חיבור'],
   },
   {
     href: '/settings/privacy',

@@ -326,7 +326,8 @@
     "settingsPricing": "תמחור",
     "settingsPrivacy": "פרטיות ונתונים",
     "settingsCalendar": "יומן Google",
-    "support": "תמיכה"
+    "support": "תמיכה",
+    "settingsIntegrations": "אינטגרציות"
   },
   "dashboard": {
     "title": "לוח הבקרה",
@@ -1388,6 +1389,9 @@
       "pricing": {
         "title": "מחירי שיעורים",
         "description": "תעריף שעתי, מחיר לשיעור זוגי ולשיעור קבוצתי"
+      },
+      "integrations": {
+        "description": "מפתחות API לחיבור Make, n8n וקלוד"
       }
     },
     "businessProfile": {
@@ -1852,7 +1856,19 @@
           }
         }
       },
-      "setupHint": "את פרטי החיבור מאתרים באזור האישי של ספק הסליקה."
+      "setupHint": "את פרטי החיבור מאתרים באזור האישי של ספק הסליקה.",
+      "make": {
+        "label": "Make / n8n (אוטומציה)",
+        "description": "חיבור לספק הסליקה שלך דרך תרחיש ב-Make או n8n, בלי לשלם על גישת API ישירה",
+        "setupHint": "ב-Make: תרחיש שמתחיל ב-Custom webhook, ממשיך למודול של ספק הסליקה, ומסתיים ב-Webhook response שמחזיר JSON עם שדה url ובו קישור התשלום. את הכתובת של ה-Custom webhook יש להדביק כאן. לסגירת החיוב אחרי שההורה משלם, תרחיש שני קורא ל-POST /api/v1/charges/:id/payments עם מפתח API מתוך הגדרות ← אינטגרציות.",
+        "fields": {
+          "webhookUrl": {
+            "label": "כתובת ה-Webhook",
+            "placeholder": "https://hook.eu2.make.com/xxxxxxxxxxxx",
+            "hint": "התרחיש חייב להחזיר את קישור התשלום מיד באותה קריאה — לא בהמשך"
+          }
+        }
+      }
     },
     "emailActions": {
       "errors": {
@@ -2085,7 +2101,58 @@
       "customHint": "לשיעור מותאם אישית אין ברירת מחדל — המחיר נקבע בכל שיעור בנפרד.",
       "saved": "מחירי השיעורים נשמרו"
     },
-    "subtitle": "כל ההגדרות של העסק במקום אחד"
+    "subtitle": "כל ההגדרות של העסק במקום אחד",
+    "integrations": {
+      "pageTitle": "אינטגרציות",
+      "pageSubtitle": "חברו את Lessio ל-Make, ל-n8n או לקלוד באמצעות מפתח API",
+      "keysTitle": "מפתחות API",
+      "keysEmpty": "עדיין לא נוצרו מפתחות. צרו מפתח כדי לחבר כלי אוטומציה.",
+      "revoke": "ביטול",
+      "revokeConfirm": "לבטל את המפתח \"{name}\"? כל אוטומציה שמשתמשת בו תפסיק לעבוד מיד. אי אפשר לשחזר.",
+      "form": {
+        "nameLabel": "שם המפתח",
+        "namePlaceholder": "לדוגמה: תרחיש הסליקה ב-Make",
+        "nameHint": "לזיהוי בלבד. שם שיזכיר לכם מי משתמש במפתח הזה.",
+        "scopesLabel": "הרשאות",
+        "submit": "יצירת מפתח"
+      },
+      "scopes": {
+        "read": "קריאת תלמידים, שיעורים, הורים וחיובים",
+        "write": "יצירת ועדכון רשומות, כולל סימון חיוב כשולם",
+        "messagesSend": "שליחת הודעות WhatsApp מהמספר של העסק"
+      },
+      "reveal": {
+        "title": "המפתח \"{name}\" נוצר",
+        "warning": "זו הפעם היחידה שהמפתח מוצג. העתיקו אותו עכשיו — אי אפשר לשחזר אותו אחר כך.",
+        "copy": "העתקה",
+        "copied": "הועתק"
+      },
+      "table": {
+        "name": "שם",
+        "key": "מפתח",
+        "scopes": "הרשאות",
+        "lastUsed": "שימוש אחרון",
+        "never": "טרם היה בשימוש"
+      },
+      "docs": {
+        "title": "איך מתחברים",
+        "baseUrlLabel": "כתובת בסיס",
+        "authLabel": "כותרת אימות",
+        "testLabel": "בדיקה מהירה",
+        "rateLimit": "מגבלה: 120 בקשות לדקה לכל מפתח.",
+        "paymentLink": "הגדרת סליקה דרך Make או n8n"
+      },
+      "activityTitle": "פעילות אחרונה",
+      "activitySubtitle": "20 הקריאות האחרונות ל-API. שימושי לאיתור תקלות בתרחיש.",
+      "activityEmpty": "עדיין לא התקבלו קריאות.",
+      "errors": {
+        "nameRequired": "יש להזין שם למפתח",
+        "nameTooLong": "שם המפתח ארוך מדי",
+        "scopeRequired": "יש לבחור לפחות הרשאה אחת",
+        "createFailed": "יצירת המפתח נכשלה. נסו שוב.",
+        "revokeFailed": "ביטול המפתח נכשל. נסו שוב."
+      }
+    }
   },
   "quota": {
     "exceeded": "הגעת למכסה של החבילה",
@@ -4205,7 +4272,8 @@
     "duplicateStudents": "אותו תלמיד נבחר יותר מפעם אחת",
     "customPriceRequired": "שיעור מותאם אישית דורש מחיר לתלמיד",
     "noLessonPrice": "לא הוגדר מחיר לשיעור",
-    "invalidPhone": "מספר טלפון חייב להיות בפורמט בינלאומי, למשל ‎+972501234567"
+    "invalidPhone": "מספר טלפון חייב להיות בפורמט בינלאומי, למשל ‎+972501234567",
+    "webhookUrlInvalid": "כתובת webhook לא תקינה"
   },
   "receipts": {
     "customer": "לקוח",

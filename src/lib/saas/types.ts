@@ -15,6 +15,8 @@ export type SaasFeatures = {
   leads: boolean
   homework: boolean
   parent_portal: boolean
+  /** Sprint 33: API keys, outbound webhooks, and the `make` payment provider. */
+  integrations: boolean
 }
 
 export const DEFAULT_SAAS_FEATURES: SaasFeatures = {
@@ -24,6 +26,7 @@ export const DEFAULT_SAAS_FEATURES: SaasFeatures = {
   leads: true,
   homework: true,
   parent_portal: true,
+  integrations: true,
 }
 
 /** Summary shown before redirecting to hosted checkout (or mock payment page). */
@@ -45,5 +48,6 @@ export function parseSaasFeatures(raw: unknown): SaasFeatures {
     leads: Boolean(o.leads),
     homework: Boolean(o.homework),
     parent_portal: Boolean(o.parent_portal),
+    integrations: Boolean(o.integrations),
   }
 }

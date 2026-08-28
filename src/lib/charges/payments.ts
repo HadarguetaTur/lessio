@@ -31,7 +31,12 @@ interface RecordChargePaymentInput {
   amount: number
   method?: PaymentMethod
   notes?: string | null
-  actorProfileId: string
+  /**
+   * NULL when no person recorded this — a payment webhook, or an /api/v1 call
+   * from the org's own automation. charge_payments.recorded_by_profile_id is
+   * nullable for exactly this case.
+   */
+  actorProfileId: string | null
   paidAt?: string
 }
 

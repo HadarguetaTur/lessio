@@ -90,6 +90,19 @@ export const PROVIDERS_UI: ProviderUIDef[] = [
       { name: 'apiKey', type: 'password', hasHint: true },
     ],
   },
+  // Appended, not inserted: PROVIDERS_UI[0] is the form's default selection, so
+  // the order here is user-visible.
+  //
+  // One field on purpose. PaymentProviderForm marks every field `required`, so a
+  // provider that needs an optional field would force a change there; keeping
+  // this to a single mandatory URL keeps the "registry + catalog only" promise
+  // intact. The callback is authenticated by the org's API key, not by a secret
+  // stored here.
+  {
+    id: 'make',
+    docsUrl: 'https://www.make.com/en/help/tools/webhooks',
+    fields: [{ name: 'webhookUrl', type: 'text', hasPlaceholder: true, hasHint: true }],
+  },
 ]
 
 /**

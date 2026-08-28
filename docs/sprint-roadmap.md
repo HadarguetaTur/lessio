@@ -1,6 +1,6 @@
 
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprints 1–28 complete — Sprint 29 in progress*
+*Updated: Sprints 1–28 complete — Sprint 29 in progress · Sprint 33 M1 shipped*
 
 ---
 
@@ -344,3 +344,29 @@ These do not change across any sprint:
 - Dates: stored UTC, displayed in org timezone (Luxon)
 - RLS: enabled on all tables; service role used only where explicitly required
 - Feature gates: enforced server-side (Sprint 27+), not UI-only
+
+---
+
+## Sprint 33 — Integration Hub
+
+**M1 ✅ Shipped** · M2 📝 Planned · M3 📝 Planned
+
+Implements decisions #28 (Integration Hub Shape) and #30 (Tenant-Owned Credentials).
+Full scope: `docs/sprint-33-scope.md`. Setup guide: `docs/integrations-make-setup.md`.
+
+| Milestone | Contents | Status |
+|---|---|---|
+| M1 | Org API keys (`organization_api_keys`, sha256), `/api/v1` with per-key rate limiting, `GET /v1/me`, `POST /v1/charges/:id/payments`, the `make` payment provider, Settings → Integrations | ✅ Done |
+| M2 | Outbound webhooks (`org_webhook_endpoints` + `webhook_deliveries` outbox, `emitOrgEvent`, Stripe-style HMAC signing, cron retry) and the rest of the REST surface | 📝 Planned |
+| M3 | MCP server, so an owner can connect Lessio to Claude Desktop | 📝 Planned |
+
+**Why:** Grow charge ₪500 + VAT/month for API access and confirmed the Make route is not
+covered by it. Paying for Make (~$9/month) instead needs exactly the two directions a
+general automation integration needs — so the payment workaround and the integration
+platform are one feature, not two.
+
+**Also fixed here:** plan quotas were never enforced. `quota.ts` read `students_quota` and
+`lessons_monthly_quota` from an object whose `select` in `plans.ts` never fetched them, so
+both read back `undefined`, and `undefined == null` short-circuited every check. An
+`as Record<string, unknown>` cast hid it from the compiler. Fixed before opening the API,
+since M2 will allow bulk record creation.

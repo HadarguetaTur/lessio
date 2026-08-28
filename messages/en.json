@@ -326,7 +326,8 @@
     "settingsPricing": "Pricing",
     "settingsPrivacy": "Privacy & data",
     "settingsCalendar": "Google Calendar",
-    "support": "Support"
+    "support": "Support",
+    "settingsIntegrations": "Integrations"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1388,6 +1389,9 @@
       "pricing": {
         "title": "Lesson Pricing",
         "description": "Hourly rate, pair and group prices"
+      },
+      "integrations": {
+        "description": "API keys for connecting Make, n8n and Claude"
       }
     },
     "businessProfile": {
@@ -1852,7 +1856,19 @@
           }
         }
       },
-      "setupHint": "You will find these credentials in your payment provider's dashboard."
+      "setupHint": "You will find these credentials in your payment provider's dashboard.",
+      "make": {
+        "label": "Make / n8n (automation)",
+        "description": "Reach your payment processor through a Make or n8n scenario, without paying for direct API access",
+        "setupHint": "In Make: a scenario starting with a Custom webhook, then your processor module, ending with a Webhook response that returns JSON with a url field carrying the payment link. Paste the Custom webhook address here. To close the charge after the parent pays, a second scenario calls POST /api/v1/charges/:id/payments with an API key from Settings → Integrations.",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL",
+            "placeholder": "https://hook.eu2.make.com/xxxxxxxxxxxx",
+            "hint": "The scenario must return the payment link in that same call — not later"
+          }
+        }
+      }
     },
     "emailActions": {
       "errors": {
@@ -2085,7 +2101,58 @@
       "customHint": "Custom lessons have no default — the price is set on each lesson.",
       "saved": "Lesson pricing saved"
     },
-    "subtitle": "All your business settings in one place"
+    "subtitle": "All your business settings in one place",
+    "integrations": {
+      "pageTitle": "Integrations",
+      "pageSubtitle": "Connect Lessio to Make, n8n or Claude with an API key",
+      "keysTitle": "API keys",
+      "keysEmpty": "No keys yet. Create one to connect an automation tool.",
+      "revoke": "Revoke",
+      "revokeConfirm": "Revoke the key \"{name}\"? Any automation using it stops working immediately. This cannot be undone.",
+      "form": {
+        "nameLabel": "Key name",
+        "namePlaceholder": "e.g. Make payment scenario",
+        "nameHint": "For your reference only. Name it after whatever will use it.",
+        "scopesLabel": "Permissions",
+        "submit": "Create key"
+      },
+      "scopes": {
+        "read": "Read students, lessons, parents and charges",
+        "write": "Create and update records, including marking a charge paid",
+        "messagesSend": "Send WhatsApp messages from your business number"
+      },
+      "reveal": {
+        "title": "Key \"{name}\" created",
+        "warning": "This is the only time the key is shown. Copy it now — it cannot be recovered later.",
+        "copy": "Copy",
+        "copied": "Copied"
+      },
+      "table": {
+        "name": "Name",
+        "key": "Key",
+        "scopes": "Permissions",
+        "lastUsed": "Last used",
+        "never": "Never used"
+      },
+      "docs": {
+        "title": "How to connect",
+        "baseUrlLabel": "Base URL",
+        "authLabel": "Auth header",
+        "testLabel": "Quick test",
+        "rateLimit": "Limit: 120 requests per minute per key.",
+        "paymentLink": "Set up payments through Make or n8n"
+      },
+      "activityTitle": "Recent activity",
+      "activitySubtitle": "The last 20 API calls. Useful for debugging a scenario.",
+      "activityEmpty": "No calls received yet.",
+      "errors": {
+        "nameRequired": "Enter a name for the key",
+        "nameTooLong": "That key name is too long",
+        "scopeRequired": "Select at least one permission",
+        "createFailed": "Could not create the key. Try again.",
+        "revokeFailed": "Could not revoke the key. Try again."
+      }
+    }
   },
   "quota": {
     "exceeded": "Plan Quota Reached",
@@ -4205,7 +4272,8 @@
     "duplicateStudents": "The same student was picked more than once",
     "customPriceRequired": "A custom lesson needs a price per student",
     "noLessonPrice": "No price is set for this lesson",
-    "invalidPhone": "The phone number must be in international format, e.g. +972501234567"
+    "invalidPhone": "The phone number must be in international format, e.g. +972501234567",
+    "webhookUrlInvalid": "Enter a valid webhook URL"
   },
   "receipts": {
     "customer": "Customer",

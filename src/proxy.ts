@@ -89,6 +89,12 @@ export async function proxy(request: NextRequest) {
     // entry (HMAC, or a reference only the provider could mint). No Supabase
     // session exists on these calls, so the auth round-trip is pure latency.
     request.nextUrl.pathname.startsWith('/api/payments/') ||
+    // Sprint 33: the public API for Make / n8n / MCP. Authenticated per request
+    // by an org API key (src/lib/api/auth.ts) — there is never a Supabase cookie
+    // on these calls, so the auth round-trip is pure latency. Leaving it out
+    // would not expose anything (the routes authenticate themselves), it would
+    // just make every automation call slower.
+    request.nextUrl.pathname.startsWith('/api/v1/') ||
     // /pay/<chargeId> — the redirect a WhatsApp template's pay button points at.
     // Anyone holding the link is the parent who was sent it; it only ever
     // forwards to the provider's own checkout, which does its own auth.

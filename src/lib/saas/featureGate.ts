@@ -33,3 +33,31 @@ export async function requireFeature(
     redirect(`/account/billing?upgrade=${feature}`)
   }
 }
+
+/** Thrown by {@link assertFeature}. Carries the feature so callers can name it. */
+export class FeatureNotAvailableError extends Error {
+  constructor(public readonly feature: keyof SaasFeatures) {
+    super(`FEATURE_NOT_AVAILABLE:${feature}`)
+    this.name = 'FeatureNotAvailableError'
+  }
+}
+
+/**
+ * The throwing twin of requireFeature, for callers that must not redirect.
+ *
+ * A redirect is the right answer for a person in a browser and the wrong one for
+ * a machine: requireFeature would answer an API client with a 307 pointing at
+ * the billing page, which a Make or n8n scenario reports as a confusing success.
+ * Route handlers under /api/v1 use this and surface a 403 instead.
+ *
+ * Unlike requireFeature, this one IS safe inside a try/catch.
+ */
+export async function assertFeature(
+  orgId: string,
+  feature: keyof SaasFeatures
+): Promise<void> {
+  const features = await getEffectiveSaasFeatures(orgId)
+  if (!features[feature]) {
+    throw new FeatureNotAvailableError(feature)
+  }
+}

@@ -28,6 +28,7 @@ import {
   parseGrowInvoiceWebhookBody,
   growWebhookTransactionIds,
 } from './grow'
+import { MakeProvider, parseMakeWebhookBody } from './make'
 import type { PaymentProvider } from './index'
 import { verifyWebhookHmacSha256Base64 } from './webhook-verify'
 
@@ -362,9 +363,38 @@ const growEntry: RegistryEntry = {
   parseInvoiceWebhookBody: parseGrowInvoiceWebhookBody,
 }
 
+// ── Make / n8n automation webhook ─────────────────────────────────────────────
+
+const makeEntry: RegistryEntry = {
+  id: 'make',
+
+  validateConfig(data) {
+    const schema = z.object({
+      webhookUrl: z.url('validation.webhookUrlInvalid'),
+    })
+    const result = schema.safeParse(data)
+    if (!result.success) {
+      return { success: false, errorKey: result.error.issues[0]?.message }
+    }
+    return { success: true, config: result.data }
+  },
+
+  createAdapter(config) {
+    return new MakeProvider({ webhookUrl: config.webhookUrl! })
+  },
+
+  // No verifyWebhookRequest, for the same reason Grow has none: this hook is
+  // synchronous and so cannot decrypt the org's config to reach a per-org
+  // secret. The supported settlement path avoids the problem entirely — the
+  // scenario calls POST /api/v1/charges/{id}/payments with an API key. This
+  // parser only serves orgs that prefer a plain webhook, where the minted
+  // reference is the shared secret.
+  parseWebhookBody: parseMakeWebhookBody,
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
-const PROVIDER_REGISTRY: RegistryEntry[] = [cardcomEntry, payPlusEntry, bitEntry, payboxEntry, stripeEntry, growEntry]
+const PROVIDER_REGISTRY: RegistryEntry[] = [cardcomEntry, payPlusEntry, bitEntry, payboxEntry, stripeEntry, growEntry, makeEntry]
 
 /**
  * Returns the registry entry for a given provider ID.

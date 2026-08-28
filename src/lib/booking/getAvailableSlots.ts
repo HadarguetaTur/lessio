@@ -12,6 +12,7 @@
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getWeeklyQuotaStatus } from './weeklyQuota'
 
 export interface AvailableSlot {
   startAt: string // UTC ISO string
@@ -23,6 +24,8 @@ export interface GetAvailableSlotsParams {
   date: string         // YYYY-MM-DD in org timezone
   durationMinutes: number
   organizationId: string
+  /** When given, days in a week the student has already filled come back empty. */
+  studentId?: string
 }
 
 export async function getAvailableSlots({
@@ -30,6 +33,7 @@ export async function getAvailableSlots({
   date,
   durationMinutes,
   organizationId,
+  studentId,
 }: GetAvailableSlotsParams): Promise<AvailableSlot[]> {
   const db = createServiceRoleClient()
 
@@ -48,6 +52,17 @@ export async function getAvailableSlots({
   const localDate = DateTime.fromISO(date, { zone: timezone })
   if (!localDate.isValid) throw new Error(`Invalid date: ${date}`)
   const dayOfWeek = localDate.weekday % 7 // luxon: 1=Mon…7=Sun → 0=Sun, 1=Mon…6=Sat
+
+  // 2b. Weekly quota — a filled week offers nothing on any of its days.
+  if (studentId) {
+    const { atQuota } = await getWeeklyQuotaStatus({
+      studentId,
+      organizationId,
+      slotStartUtc: localDate.startOf('day').toUTC().toISO()!,
+      timezone,
+    })
+    if (atQuota) return []
+  }
 
   // 3. Check if requested date is an org-wide holiday — if so, no slots
   const { data: holiday, error: holidayError } = await db

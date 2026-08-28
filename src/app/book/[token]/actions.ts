@@ -23,7 +23,9 @@ import {
   LockExpiredError,
   InactiveParticipantError,
   NoPrimaryParentError,
+  WeeklyQuotaExceededError,
 } from '@/lib/booking'
+import { LessonConflictError } from '@/lib/lessons/createLesson'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
@@ -89,8 +91,8 @@ export async function getAvailableSlotsAction(
   durationMinutes: number
 ): Promise<BookingDataResult<AvailableSlot[]>> {
   try {
-    const { organizationId } = await verifyBookingToken(token)
-    const slots = await getAvailableSlots({ teacherId, date, durationMinutes, organizationId })
+    const { organizationId, studentId } = await verifyBookingToken(token)
+    const slots = await getAvailableSlots({ teacherId, date, durationMinutes, organizationId, studentId })
     return { success: true, data: slots }
   } catch (err) {
     if (isExpiredTokenError(err)) return { success: false, error: 'token_expired' }
@@ -106,8 +108,8 @@ export async function getAvailabilitySummaryAction(
   weekStart?: string
 ): Promise<BookingDataResult<AvailabilitySummary>> {
   try {
-    const { organizationId } = await verifyBookingToken(token)
-    const summary = await getAvailabilitySummary({ teacherId, organizationId, durationMinutes, weekStart })
+    const { organizationId, studentId } = await verifyBookingToken(token)
+    const summary = await getAvailabilitySummary({ teacherId, organizationId, durationMinutes, weekStart, studentId })
     return { success: true, data: summary }
   } catch (err) {
     if (isExpiredTokenError(err)) return { success: false, error: 'token_expired' }
@@ -120,7 +122,7 @@ export async function getAvailabilitySummaryAction(
 
 export type LockSlotResult =
   | { success: true; lock: SlotLock }
-  | { success: false; error: 'unavailable' | 'token_expired' | 'unknown' }
+  | { success: false; error: 'unavailable' | 'quota_exceeded' | 'token_expired' | 'unknown' }
 
 export async function lockSlotAction(
   token: string,
@@ -134,6 +136,7 @@ export async function lockSlotAction(
     return { success: true, lock }
   } catch (err) {
     if (err instanceof SlotUnavailableError) return { success: false, error: 'unavailable' }
+    if (err instanceof WeeklyQuotaExceededError) return { success: false, error: 'quota_exceeded' }
     if (err instanceof BookingTokenError) {
       // An invalid token is just as dead as an expired one for this flow
       return { success: false, error: 'token_expired' }
@@ -147,7 +150,18 @@ export async function lockSlotAction(
 
 export type ConfirmBookingActionResult =
   | { success: true; result: ConfirmBookingResult }
-  | { success: false; error: 'lock_expired' | 'inactive_participant' | 'no_primary_parent' | 'token_expired' | 'unknown' }
+  | {
+      success: false
+      error:
+        | 'lock_expired'
+        | 'inactive_participant'
+        | 'no_primary_parent'
+        | 'quota_exceeded'
+        | 'slot_taken'
+        | 'student_conflict'
+        | 'token_expired'
+        | 'unknown'
+    }
 
 export async function confirmBookingAction(
   token: string,
@@ -187,6 +201,10 @@ export async function confirmBookingAction(
     if (err instanceof LockExpiredError) return { success: false, error: 'lock_expired' }
     if (err instanceof InactiveParticipantError) return { success: false, error: 'inactive_participant' }
     if (err instanceof NoPrimaryParentError) return { success: false, error: 'no_primary_parent' }
+    if (err instanceof WeeklyQuotaExceededError) return { success: false, error: 'quota_exceeded' }
+    if (err instanceof LessonConflictError) {
+      return { success: false, error: err.reason === 'student_conflict' ? 'student_conflict' : 'slot_taken' }
+    }
     if (err instanceof BookingTokenError) return { success: false, error: 'token_expired' }
     console.error('[confirmBookingAction]', err)
     return { success: false, error: 'unknown' }

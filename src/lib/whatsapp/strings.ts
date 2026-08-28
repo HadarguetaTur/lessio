@@ -33,6 +33,8 @@ export type BotStringKey =
   | 'homework_already_done'
   | 'booking_no_student'
   | 'booking_multiple_students'
+  | 'booking_quota_reached'
+  | 'booking_quota_cancel_button'
   | 'no_open_homework'
   | 'homework_marked_done'
   | 'homework_done_teacher_alert'
@@ -210,6 +212,9 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'עדיין אין תלמיד מקושר לחשבון, ולכן אי אפשר ליצור קישור לקביעת שיעור.\nאפשר לפנות לצוות ונסדר את זה 😊',
     booking_multiple_students:
       'לחשבון מקושרים כמה תלמידים, ולכן אי אפשר לקבוע שיעור אוטומטית מכאן.\nאפשר לפנות לצוות ונשמח לעזור 😊',
+    booking_quota_reached:
+      'ל{{student_name}} כבר יש שיעור השבוע, ולכן אי אפשר לקבוע שיעור נוסף לשבוע הזה.\nאפשר לבטל את השיעור הקיים ולקבוע מחדש, או לקבוע לשבוע הבא דרך הקישור 👇',
+    booking_quota_cancel_button: 'ביטול שיעור',
     no_open_homework: 'לא מצאתי שיעורי בית פתוחים לסימון 🙂',
     homework_marked_done: 'מעולה! שיעורי הבית של {{student_name}} סומנו כהושלמו 🎉',
     homework_done_teacher_alert:
@@ -405,6 +410,9 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'There is no student linked to this account yet, so I cannot create a booking link.\nReach out to the team and we will sort it out 😊',
     booking_multiple_students:
       'This account has several students linked, so I cannot book automatically from here.\nReach out to the team and we will be happy to help 😊',
+    booking_quota_reached:
+      '{{student_name}} already has a lesson this week, so another one cannot be booked for this week.\nYou can cancel the existing lesson and book again, or book next week through the link 👇',
+    booking_quota_cancel_button: 'Cancel a lesson',
     no_open_homework: 'I could not find any open homework to mark 🙂',
     homework_marked_done: "Great! {{student_name}}'s homework is marked as done 🎉",
     homework_done_teacher_alert:

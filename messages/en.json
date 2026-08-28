@@ -51,7 +51,9 @@
       "lockTaken": "That time was taken while you were choosing. Please pick another time from the list.",
       "lockedSlot": "We're holding this time for you: {time}",
       "lockedCountdown": "You have {countdown} left to complete the booking",
-      "continue": "Continue to confirmation"
+      "continue": "Continue to confirmation",
+      "quotaReached": "There is already a lesson this week, so another one cannot be booked. You can cancel the existing lesson and book again, or pick a different week.",
+      "quotaReachedWeek": "This week is already fully used under the weekly quota. Move to the next week, or cancel an existing lesson and book again."
     },
     "confirm": {
       "title": "One moment before you confirm",
@@ -111,6 +113,18 @@
       "lock_student_mismatch": {
         "title": "That time is held for another student",
         "body": "The time you held belongs to a different student. Please pick a new time."
+      },
+      "quota_exceeded": {
+        "title": "Weekly quota reached",
+        "body": "There is already a lesson this week, so another one cannot be booked. You can cancel the existing lesson and book again, or pick a different week."
+      },
+      "slot_taken": {
+        "title": "That time was just taken",
+        "body": "Someone else booked this time a moment ago. Please pick another time to continue."
+      },
+      "student_conflict": {
+        "title": "There is already a lesson at that time",
+        "body": "The student already has a lesson at the same time. Please pick another time."
       }
     },
     "student": {
@@ -1413,7 +1427,9 @@
       "currency": "Currency",
       "defaultVatRate": "Default VAT Rate",
       "vatHint": "Applied to new invoices (0–25%)",
-      "saved": "Business profile saved"
+      "saved": "Business profile saved",
+      "enforceWeeklyQuota": "Enforce weekly lesson quota",
+      "enforceWeeklyQuotaHint": "When on, a student cannot book more lessons in a week than the quota set on their card. When off, the quota field is hidden on the student card and no check runs during booking."
     },
     "whatsapp": {
       "title": "WhatsApp",

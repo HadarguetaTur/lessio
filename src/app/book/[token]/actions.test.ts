@@ -51,7 +51,9 @@ import {
   LockExpiredError,
   NoPrimaryParentError,
   InactiveParticipantError,
+  WeeklyQuotaExceededError,
 } from '@/lib/booking'
+import { LessonConflictError } from '@/lib/lessons/createLesson'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { confirmBookingAction, getAvailabilitySummaryAction } from './actions'
@@ -233,6 +235,24 @@ describe('confirmBookingAction', () => {
     if (!result.success) expect(result.error).toBe('no_primary_parent')
   })
 
+  it('returns quota_exceeded when the student has used up the week', async () => {
+    mockConfirmBooking.mockRejectedValue(new WeeklyQuotaExceededError(1, 1))
+    const result = await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('quota_exceeded')
+  })
+
+  it('tells a lost slot race apart from a student double-booking', async () => {
+    // Both arrive as LessonConflictError; the parent needs different advice.
+    mockConfirmBooking.mockRejectedValueOnce(new LessonConflictError('teacher_conflict'))
+    const taken = await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
+    expect(taken).toMatchObject({ success: false, error: 'slot_taken' })
+
+    mockConfirmBooking.mockRejectedValueOnce(new LessonConflictError('student_conflict'))
+    const clash = await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
+    expect(clash).toMatchObject({ success: false, error: 'student_conflict' })
+  })
+
   it('does not send WhatsApp confirmation when booking fails', async () => {
     mockConfirmBooking.mockRejectedValue(new LockExpiredError('expired'))
     await confirmBookingAction(TOKEN, LOCK_ID, TEACHER_ID)
@@ -267,6 +287,8 @@ describe('getAvailabilitySummaryAction', () => {
       organizationId: ORG_ID,
       durationMinutes: 60,
       weekStart: '2026-03-24',
+      // Carried from the token so weeks the student has filled are hidden.
+      studentId: STUDENT_ID,
     })
   })
 

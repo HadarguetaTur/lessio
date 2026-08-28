@@ -16,6 +16,7 @@ interface InitialData {
   currency: string
   defaultVatRate: number
   logoUrl: string | null
+  enforceWeeklyQuota: boolean
 }
 
 const CURRENCY_OPTIONS = [
@@ -190,6 +191,21 @@ export default function BusinessProfileForm({
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">{t('vatHint')}</p>
+            </div>
+
+            {/* Weekly quota enforcement */}
+            <div className="space-y-1.5 border-t border-border pt-4">
+              <label className="flex cursor-pointer select-none items-center gap-3">
+                <input
+                  id="enforce_weekly_quota"
+                  type="checkbox"
+                  name="enforce_weekly_quota"
+                  defaultChecked={initialData.enforceWeeklyQuota}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium">{t('enforceWeeklyQuota')}</span>
+              </label>
+              <p className="text-xs text-muted-foreground">{t('enforceWeeklyQuotaHint')}</p>
             </div>
 
             {/* Submit */}

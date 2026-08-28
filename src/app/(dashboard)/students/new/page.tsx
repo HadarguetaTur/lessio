@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { StudentForm } from '@/components/dashboard/students/StudentForm'
+import { orgEnforcesWeeklyQuota } from '@/lib/booking'
 import { createStudent } from '../actions'
 import { getTranslations } from 'next-intl/server'
 
@@ -24,11 +25,14 @@ export default async function NewStudentPage() {
       full_name: r.profile?.full_name ?? '—',
     })) ?? []
 
-  const t = await getTranslations('students')
+  const [t, showWeeklyQuota] = await Promise.all([
+    getTranslations('students'),
+    orgEnforcesWeeklyQuota(orgId),
+  ])
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('newStudent')}</h1>
-      <StudentForm action={createStudent} teachers={teachers} />
+      <StudentForm action={createStudent} teachers={teachers} showWeeklyQuota={showWeeklyQuota} />
     </div>
   )
 }

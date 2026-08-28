@@ -8,6 +8,9 @@ const KNOWN_ERROR_CODES = [
   'lock_expired',
   'inactive_participant',
   'no_primary_parent',
+  'quota_exceeded',
+  'slot_taken',
+  'student_conflict',
   'token_expired',
   'unknown',
 ] as const

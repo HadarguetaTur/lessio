@@ -21,13 +21,21 @@ vi.mock('@/lib/portal/session', () => ({ getPortalSession: mockGetPortalSession 
 vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: mockCreateServiceRoleClient,
 }))
-vi.mock('@/lib/booking', () => ({
+// The error classes stay real — the action matches on them with instanceof.
+vi.mock('@/lib/booking', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/booking')>()),
   getAvailableSlots: vi.fn(),
   getAvailabilitySummary: vi.fn(),
   createSlotLock: mockCreateSlotLock,
   confirmBooking: mockConfirmBooking,
 }))
 
+import {
+  LockExpiredError,
+  SlotUnavailableError,
+  WeeklyQuotaExceededError,
+} from '@/lib/booking'
+import { LessonConflictError } from '@/lib/lessons/createLesson'
 import { portalLockSlotAction, portalConfirmBookingAction } from './actions'
 
 const ORG = 'org-1'
@@ -79,11 +87,28 @@ beforeEach(() => {
 
 describe('portalLockSlotAction', () => {
   it('holds the slot for the child the parent picked', async () => {
-    await portalLockSlotAction(ORG, 'teacher-1', 'start', 'end', YUVAL)
+    const result = await portalLockSlotAction(ORG, 'teacher-1', 'start', 'end', YUVAL)
 
     expect(mockCreateSlotLock).toHaveBeenCalledWith(
       expect.objectContaining({ studentId: YUVAL, organizationId: ORG })
     )
+    expect(result).toEqual({ success: true, lock: { id: 'lock-1' } })
+  })
+
+  it('reports a filled weekly quota as its own outcome', async () => {
+    mockCreateSlotLock.mockRejectedValue(new WeeklyQuotaExceededError(1, 1))
+
+    const result = await portalLockSlotAction(ORG, 'teacher-1', 'start', 'end', YUVAL)
+
+    expect(result).toEqual({ success: false, error: 'quota_exceeded' })
+  })
+
+  it('reports a slot someone else just took', async () => {
+    mockCreateSlotLock.mockRejectedValue(new SlotUnavailableError())
+
+    const result = await portalLockSlotAction(ORG, 'teacher-1', 'start', 'end', YUVAL)
+
+    expect(result).toEqual({ success: false, error: 'unavailable' })
   })
 
   it('refuses a student who is not this parent’s child', async () => {
@@ -103,7 +128,24 @@ describe('portalConfirmBookingAction', () => {
     expect(mockConfirmBooking).toHaveBeenCalledWith(
       expect.objectContaining({ studentId: YUVAL, lockId: 'lock-1', organizationId: ORG })
     )
-    expect(result.studentId).toBe(YUVAL)
+    expect(result.success && result.result.studentId).toBe(YUVAL)
+  })
+
+  it('names the reason a confirm failed instead of throwing', async () => {
+    // Server Action error messages are masked in production, so every failure
+    // the parent should see has to come back as a tagged result.
+    const cases = [
+      [new WeeklyQuotaExceededError(1, 1), 'quota_exceeded'],
+      [new LessonConflictError('teacher_conflict'), 'slot_taken'],
+      [new LessonConflictError('student_conflict'), 'student_conflict'],
+      [new LockExpiredError('expired'), 'lock_expired'],
+    ] as const
+
+    for (const [thrown, expected] of cases) {
+      mockConfirmBooking.mockRejectedValueOnce(thrown)
+      const result = await portalConfirmBookingAction(ORG, 'lock-1', 'teacher-1', YUVAL)
+      expect(result).toEqual({ success: false, error: expected })
+    }
   })
 
   it('refuses a student who is not this parent’s child', async () => {

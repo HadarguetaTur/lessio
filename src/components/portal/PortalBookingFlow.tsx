@@ -323,7 +323,7 @@ function TeacherStep({
 
 // Message keys under booking.availability — translated at render so a
 // language switch mid-flow updates them too.
-type SlotsErrorKey = 'summaryError' | 'slotsError' | 'lockTaken'
+type SlotsErrorKey = 'summaryError' | 'slotsError' | 'lockTaken' | 'quotaReached'
 
 function SlotsStep({
   orgId,
@@ -366,7 +366,7 @@ function SlotsStep({
   useEffect(() => {
     setSummaryLoading(true)
     setError(null)
-    getPortalAvailabilitySummaryAction(orgId, teacherId, duration, weekStart)
+    getPortalAvailabilitySummaryAction(orgId, teacherId, duration, weekStart, studentId)
       .then((s) => {
         setSummary(s)
         // If selected date is outside new week, pick first available day or week start
@@ -387,18 +387,22 @@ function SlotsStep({
     setSlotsLoading(true)
     setSlots([])
     setError(null)
-    getPortalSlotsAction(orgId, teacherId, selectedDate, duration)
+    getPortalSlotsAction(orgId, teacherId, selectedDate, duration, studentId)
       .then(setSlots)
       .catch(() => setError('slotsError'))
       .finally(() => setSlotsLoading(false))
-  }, [orgId, teacherId, selectedDate, duration])
+  }, [orgId, teacherId, selectedDate, duration, studentId])
 
   async function lockSlot(slot: AvailableSlot) {
     setLocking(slot.startAt)
     setError(null)
     try {
-      const lock = await portalLockSlotAction(orgId, teacherId, slot.startAt, slot.endAt, studentId)
-      onSlotLocked(slot, lock, selectedDate, duration)
+      const result = await portalLockSlotAction(orgId, teacherId, slot.startAt, slot.endAt, studentId)
+      if (!result.success) {
+        setError(result.error === 'quota_exceeded' ? 'quotaReached' : 'lockTaken')
+        return
+      }
+      onSlotLocked(slot, result.lock, selectedDate, duration)
     } catch {
       setError('lockTaken')
     } finally {
@@ -547,6 +551,12 @@ function SlotsStep({
           <p className="text-sm text-red-600 text-center py-4">{t(error)}</p>
         )}
 
+        {summary?.quotaExceeded && !error && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+            {t('quotaReachedWeek')}
+          </p>
+        )}
+
         {slotsLoading && (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -555,7 +565,7 @@ function SlotsStep({
           </div>
         )}
 
-        {!slotsLoading && !error && slots.length === 0 && (
+        {!slotsLoading && !error && !summary?.quotaExceeded && slots.length === 0 && (
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">{t('noSlotsThisDay')}</p>
             <p className="text-xs text-gray-300 mt-1">{t('tryAnotherDay')}</p>
@@ -640,14 +650,14 @@ function ConfirmStep({
     setConfirming(true)
     try {
       const result = await portalConfirmBookingAction(orgId, lock.id, teacherId, studentId)
-      onConfirmed(result)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'unknown'
-      if (msg.includes('lock') || msg.includes('expired')) {
-        onLockExpired()
-      } else {
-        onError(msg)
+      if (!result.success) {
+        if (result.error === 'lock_expired') onLockExpired()
+        else onError(result.error)
+        return
       }
+      onConfirmed(result.result)
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'unknown')
     } finally {
       setConfirming(false)
     }

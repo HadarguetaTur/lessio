@@ -13,7 +13,13 @@ import {
   type AvailabilitySummary,
   type SlotLock,
   type ConfirmBookingResult,
+  SlotUnavailableError,
+  LockExpiredError,
+  InactiveParticipantError,
+  NoPrimaryParentError,
+  WeeklyQuotaExceededError,
 } from '@/lib/booking'
+import { LessonConflictError } from '@/lib/lessons/createLesson'
 
 async function requirePortalSession(orgId: string) {
   const session = await getPortalSession()
@@ -90,21 +96,34 @@ export async function getPortalSlotsAction(
   orgId: string,
   teacherId: string,
   date: string,
-  durationMinutes: number
+  durationMinutes: number,
+  studentId?: string
 ): Promise<AvailableSlot[]> {
-  await requirePortalSession(orgId)
-  return getAvailableSlots({ teacherId, date, durationMinutes, organizationId: orgId })
+  const session = await requirePortalSession(orgId)
+  if (studentId) await assertOwnsStudent(orgId, session.parentId, studentId)
+  return getAvailableSlots({ teacherId, date, durationMinutes, organizationId: orgId, studentId })
 }
 
 export async function getPortalAvailabilitySummaryAction(
   orgId: string,
   teacherId: string,
   durationMinutes: number,
-  weekStart?: string
+  weekStart?: string,
+  studentId?: string
 ): Promise<AvailabilitySummary> {
-  await requirePortalSession(orgId)
-  return getAvailabilitySummary({ teacherId, organizationId: orgId, durationMinutes, weekStart })
+  const session = await requirePortalSession(orgId)
+  if (studentId) await assertOwnsStudent(orgId, session.parentId, studentId)
+  return getAvailabilitySummary({ teacherId, organizationId: orgId, durationMinutes, weekStart, studentId })
 }
+
+/**
+ * Booking failures reach the client through these tagged results rather than as
+ * thrown errors: Next.js masks Server Action error messages in production, so a
+ * quota block and a network blip arrived at the portal indistinguishable.
+ */
+export type PortalLockSlotResult =
+  | { success: true; lock: SlotLock }
+  | { success: false; error: 'unavailable' | 'quota_exceeded' | 'unknown' }
 
 export async function portalLockSlotAction(
   orgId: string,
@@ -112,39 +131,76 @@ export async function portalLockSlotAction(
   startAt: string,
   endAt: string,
   studentId: string
-): Promise<SlotLock> {
+): Promise<PortalLockSlotResult> {
   const session = await requirePortalSession(orgId)
+  // Deliberately outside the catch: booking for someone else's child is not a
+  // booking outcome to render, it is a request that should never have arrived.
   await assertOwnsStudent(orgId, session.parentId, studentId)
 
-  return createSlotLock({
-    teacherId,
-    startAt,
-    endAt,
-    studentId,
-    organizationId: orgId,
-  })
+  try {
+    const lock = await createSlotLock({
+      teacherId,
+      startAt,
+      endAt,
+      studentId,
+      organizationId: orgId,
+    })
+    return { success: true, lock }
+  } catch (err) {
+    if (err instanceof SlotUnavailableError) return { success: false, error: 'unavailable' }
+    if (err instanceof WeeklyQuotaExceededError) return { success: false, error: 'quota_exceeded' }
+    console.error('[portalLockSlotAction]', err)
+    return { success: false, error: 'unknown' }
+  }
 }
+
+export type PortalConfirmBookingResult =
+  | { success: true; result: ConfirmBookingResult }
+  | {
+      success: false
+      error:
+        | 'lock_expired'
+        | 'inactive_participant'
+        | 'no_primary_parent'
+        | 'quota_exceeded'
+        | 'slot_taken'
+        | 'student_conflict'
+        | 'unknown'
+    }
 
 export async function portalConfirmBookingAction(
   orgId: string,
   lockId: string,
   teacherId: string,
   studentId: string
-): Promise<ConfirmBookingResult> {
+): Promise<PortalConfirmBookingResult> {
   const session = await requirePortalSession(orgId)
   await assertOwnsStudent(orgId, session.parentId, studentId)
 
-  const result = await confirmBooking({
-    lockId,
-    studentId,
-    teacherId,
-    organizationId: orgId,
-  })
+  let result: ConfirmBookingResult
+  try {
+    result = await confirmBooking({
+      lockId,
+      studentId,
+      teacherId,
+      organizationId: orgId,
+    })
+  } catch (err) {
+    if (err instanceof LockExpiredError) return { success: false, error: 'lock_expired' }
+    if (err instanceof InactiveParticipantError) return { success: false, error: 'inactive_participant' }
+    if (err instanceof NoPrimaryParentError) return { success: false, error: 'no_primary_parent' }
+    if (err instanceof WeeklyQuotaExceededError) return { success: false, error: 'quota_exceeded' }
+    if (err instanceof LessonConflictError) {
+      return { success: false, error: err.reason === 'student_conflict' ? 'student_conflict' : 'slot_taken' }
+    }
+    console.error('[portalConfirmBookingAction]', err)
+    return { success: false, error: 'unknown' }
+  }
 
   // A lesson now exists; the schedule and the home page both list it.
   revalidatePath(`/portal/${orgId}/schedule`)
   revalidatePath(`/portal/${orgId}/home`)
-  return result
+  return { success: true, result }
 }
 
 /**

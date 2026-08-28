@@ -26,6 +26,7 @@ import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
 import { isActionAllowedForRole, type MenuAction } from '@/lib/whatsapp/menu'
 import { signBookingToken } from '@/lib/jwt'
+import { notifyIfWeeklyQuotaReached } from '../bookingQuotaNotice'
 import {
   deleteCancellationSession,
   getActiveCancellationSession,
@@ -150,6 +151,17 @@ async function sendBookingLink(ctx: HandlerContext): Promise<void> {
 
   const parent = await requireBillingParent(ctx)
   if (!parent) return
+
+  // Warn when this week is already used up, then still send the link — the
+  // calendar hides only the full week, so later weeks stay bookable.
+  await notifyIfWeeklyQuotaReached({
+    orgId: ctx.org.id,
+    studentId: ctx.sender.studentId,
+    senderPhone: ctx.senderPhone,
+    accessToken: ctx.accessToken,
+    phoneNumberId: ctx.phoneNumberId,
+    locale: ctx.locale,
+  })
 
   const token = await signBookingToken({
     organizationId: ctx.org.id,

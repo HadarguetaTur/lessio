@@ -42,6 +42,7 @@ import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
 import { resolvePaymentLine, sumOpenCharges } from '@/lib/whatsapp/balance'
 import { botString } from '@/lib/whatsapp/strings'
+import { notifyIfWeeklyQuotaReached } from './bookingQuotaNotice'
 import {
   decodeMenuPayload,
   decodeRolePayload,
@@ -843,6 +844,17 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
     }))
 
   if (!studentId) return
+
+  // 10b. Warn when this week is already used up, then still send the link —
+  // the calendar hides only the full week, so later weeks stay bookable.
+  await notifyIfWeeklyQuotaReached({
+    orgId: org.id,
+    studentId,
+    senderPhone,
+    accessToken,
+    phoneNumberId,
+    locale,
+  })
 
   // 9. Generate signed booking JWT (15-min expiry)
   const token = await signBookingToken({

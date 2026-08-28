@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth/session'
 import { getStudentById, getStudents } from '@/lib/students'
 import { getTeacherByProfileId, getTeachers } from '@/lib/teachers'
 import { getGroups } from '@/lib/groups'
+import { orgEnforcesWeeklyQuota } from '@/lib/booking'
 import { StudentSearch } from '@/components/dashboard/students/StudentSearch'
 import { createStudent } from './actions'
 import { createGroup } from './group-actions'
@@ -34,6 +35,7 @@ export default async function StudentsPage(props: {
   const isTeacher = role === 'teacher'
   const t = await getTranslations('students')
   const tCommon = await getTranslations('common')
+  const showWeeklyQuota = await orgEnforcesWeeklyQuota(orgId)
 
   if (isTeacher && tab === 'groups') {
     redirect('/students')
@@ -92,7 +94,7 @@ export default async function StudentsPage(props: {
                         {tCommon('actions.import')}
                       </Button>
                     </Link>
-                    <NewStudentSheet action={createStudent} teachers={activeTeachers} />
+                    <NewStudentSheet action={createStudent} teachers={activeTeachers} showWeeklyQuota={showWeeklyQuota} />
                   </div>
                 )
         }
@@ -154,7 +156,7 @@ export default async function StudentsPage(props: {
                         <Link href="/students">{tCommon('actions.clear')}</Link>
                       </Button>
                     ) : !isTeacher ? (
-                      <NewStudentSheet action={createStudent} teachers={activeTeachers} />
+                      <NewStudentSheet action={createStudent} teachers={activeTeachers} showWeeklyQuota={showWeeklyQuota} />
                     ) : undefined
                   }
                 />
@@ -170,6 +172,7 @@ export default async function StudentsPage(props: {
                 canManage={role === 'owner' || role === 'admin'}
                 sheetVariant={isTeacher ? 'teacher' : 'admin'}
                 showArchiveActions={!isTeacher}
+                showWeeklyQuota={showWeeklyQuota}
               />
             )}
           </>

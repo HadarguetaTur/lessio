@@ -34,6 +34,8 @@ interface StudentsTableProps {
   canManage?: boolean
   sheetVariant?: 'admin' | 'teacher'
   showArchiveActions?: boolean
+  /** Hidden when the org does not enforce the weekly quota. */
+  showWeeklyQuota?: boolean
 }
 
 export function StudentsTable({
@@ -46,6 +48,7 @@ export function StudentsTable({
   canManage,
   sheetVariant = 'admin',
   showArchiveActions = true,
+  showWeeklyQuota = true,
 }: StudentsTableProps) {
   const t = useTranslations('students')
   const tHeaderCommon = useTranslations('common')
@@ -146,6 +149,7 @@ export function StudentsTable({
         onOpenChange={setSheetOpen}
         canManage={canManage}
         variant={sheetVariant}
+        showWeeklyQuota={showWeeklyQuota}
       />
     </>
   )

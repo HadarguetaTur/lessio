@@ -19,9 +19,11 @@ type FormAction = (prevState: ActionState, formData: FormData) => Promise<Action
 interface NewStudentSheetProps {
   action: FormAction
   teachers: { id: string; full_name: string }[]
+  /** Hidden when the org does not enforce the weekly quota. */
+  showWeeklyQuota?: boolean
 }
 
-export function NewStudentSheet({ action, teachers }: NewStudentSheetProps) {
+export function NewStudentSheet({ action, teachers, showWeeklyQuota = true }: NewStudentSheetProps) {
   const t = useTranslations('students')
   const [open, setOpen] = useState(false)
 
@@ -41,6 +43,7 @@ export function NewStudentSheet({ action, teachers }: NewStudentSheetProps) {
           <StudentForm
             action={action}
             teachers={teachers}
+            showWeeklyQuota={showWeeklyQuota}
             onSuccess={() => setOpen(false)}
             onCancel={() => setOpen(false)}
           />

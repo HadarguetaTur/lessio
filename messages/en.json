@@ -1424,6 +1424,8 @@
       "disconnectConfirm": "Disconnect WhatsApp?",
       "portalUrl": "Parent Portal Link",
       "copyPortalUrl": "Copy Link",
+      "tabSettings": "Settings",
+      "tabUsage": "Usage & cost",
       "templates": {
         "title": "Message templates",
         "description": "Lessio registers its message templates on your own WhatsApp Business Account so they can be sent outside the 24-hour window. This runs automatically when you connect — use this to register them again.",
@@ -1642,6 +1644,39 @@
       "saved": "Settings saved successfully.",
       "onButNotAnswering": "On, but not answering — add an API key",
       "testHint": "Tests the saved configuration — save before testing."
+    },
+    "whatsappUsage": {
+      "title": "Bot usage & operating cost",
+      "subtitle": "Figures come straight from Meta and match the billing shown in WhatsApp Manager.",
+      "period30": "30 days",
+      "period60": "60 days",
+      "period90": "90 days",
+      "totalMessages": "Total messages",
+      "billableMessages": "Billable messages",
+      "freeMessages": "Free messages",
+      "totalCost": "Operating cost",
+      "costHint": "Cost is shown in US dollars, exactly as Meta bills it. Service messages inside the 24-hour window are free.",
+      "byCategory": "Breakdown by pricing category",
+      "categories": {
+        "marketing": "Marketing",
+        "utility": "Utility",
+        "service": "Service",
+        "authentication": "Authentication",
+        "unknown": "Other"
+      },
+      "categoryHints": {
+        "marketing": "Promotions and proactive updates",
+        "utility": "Reminders, payment requests and confirmations",
+        "service": "Replies to a parent inside the 24-hour window — free",
+        "authentication": "Parent portal login codes",
+        "unknown": "A category Lessio does not recognise"
+      },
+      "messagesUnit": "messages",
+      "dailyVolume": "Daily volume",
+      "noData": "No messages were sent in this period",
+      "notConnected": "Connect a WhatsApp number to see usage data.",
+      "stale": "Meta is unavailable right now — showing the last saved figures.",
+      "lastUpdated": "Last updated: {time}"
     },
     "aiUsage": {
       "title": "AI Usage",

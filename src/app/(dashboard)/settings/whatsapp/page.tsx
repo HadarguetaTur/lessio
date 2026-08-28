@@ -8,6 +8,8 @@ import { RegisterTemplatesButton } from './RegisterTemplatesButton'
 import { PortalUrlCopy } from '@/components/dashboard/settings/PortalUrlCopy'
 import { AutomationsSettings } from './AutomationsSettings'
 import { WhatsAppRequirements } from '@/components/dashboard/settings/WhatsAppRequirements'
+import { WhatsAppUsageTab } from '@/components/dashboard/settings/WhatsAppUsageTab'
+import { getWhatsAppUsage, parseUsageDays } from '@/lib/whatsapp/usageAnalytics'
 import { getTranslations } from 'next-intl/server'
 
 /**
@@ -16,14 +18,25 @@ import { getTranslations } from 'next-intl/server'
  *
  * Connected state:   shows the connected phone_number_id + Disconnect button.
  * Disconnected state: shows the Meta Embedded Signup button to connect a number.
+ *
+ * The Usage tab reports bot volume and operating cost from Meta's analytics.
+ * Its fetch runs only on that tab, so the settings tab pays no Graph latency.
  */
-export default async function WhatsAppSettingsPage() {
+export default async function WhatsAppSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; days?: string }>
+}) {
   const tp = await getTranslations('settings')
   const { orgId, role } = await getSession()
 
   if (role !== 'owner') {
     forbidden()
   }
+
+  const params = await searchParams
+  const activeTab = params.tab === 'usage' ? 'usage' : 'settings'
+  const usageDays = parseUsageDays(params.days)
 
   const db = createServiceRoleClient()
   const { data: org } = await db
@@ -50,11 +63,51 @@ export default async function WhatsAppSettingsPage() {
 
   const t = await getTranslations('settings')
 
-  return (
-    <div className="max-w-xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('whatsapp.title')}</h1>
-      <p className="text-sm text-muted-foreground mb-8">{tp('whatsappPage.subtitle')}</p>
+  const usageSummary =
+    activeTab === 'usage' && isConnected ? await getWhatsAppUsage(orgId, usageDays) : null
 
+  return (
+    <div className={activeTab === 'usage' ? 'max-w-2xl' : 'max-w-xl'}>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('whatsapp.title')}</h1>
+      <p className="text-sm text-muted-foreground mb-6">{tp('whatsappPage.subtitle')}</p>
+
+      {/* Tab navigation — the usage tab only makes sense once a number is
+          connected, so it appears alongside the connected state. */}
+      {isConnected && (
+        <div className="flex gap-4 border-b border-gray-200 mb-8">
+          <a
+            href="?tab=settings"
+            className={`pb-2 text-sm font-medium border-b-2 ${
+              activeTab === 'settings'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-muted-foreground hover:text-gray-700'
+            }`}
+          >
+            {t('whatsapp.tabSettings')}
+          </a>
+          <a
+            href="?tab=usage"
+            className={`pb-2 text-sm font-medium border-b-2 ${
+              activeTab === 'usage'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-muted-foreground hover:text-gray-700'
+            }`}
+          >
+            {t('whatsapp.tabUsage')}
+          </a>
+        </div>
+      )}
+
+      {activeTab === 'usage' && isConnected ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          {usageSummary ? (
+            <WhatsAppUsageTab summary={usageSummary} days={usageDays} />
+          ) : (
+            <p className="text-sm text-muted-foreground">{t('whatsappUsage.notConnected')}</p>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Prerequisites come before the button, not after it: two of the three
           take days to obtain, and the third quietly disables the number in the
           WhatsApp app. Reading them after clicking Connect is too late. */}
@@ -99,6 +152,8 @@ export default async function WhatsAppSettingsPage() {
             }}
           />
         </div>
+      )}
+      </>
       )}
 
     </div>

@@ -1424,6 +1424,8 @@
       "disconnectConfirm": "לנתק את WhatsApp?",
       "portalUrl": "קישור פורטל הורים",
       "copyPortalUrl": "העתק קישור",
+      "tabSettings": "הגדרות",
+      "tabUsage": "שימוש ועלות",
       "templates": {
         "title": "תבניות הודעה",
         "description": "Lessio רושמת את תבניות ההודעה בחשבון ה-WhatsApp Business שלך, כדי שאפשר יהיה לשלוח אותן גם מחוץ לחלון 24 השעות. הרישום מתבצע אוטומטית בעת החיבור — כאן אפשר להריץ אותו שוב.",
@@ -1642,6 +1644,39 @@
       "saved": "ההגדרות נשמרו בהצלחה.",
       "onButNotAnswering": "מופעל, אבל לא עונה — חסר מפתח API",
       "testHint": "בודק את ההגדרות השמורות — שמרו לפני הבדיקה."
+    },
+    "whatsappUsage": {
+      "title": "שימוש בבוט ועלות תפעולית",
+      "subtitle": "הנתונים מגיעים ישירות מ-Meta, ותואמים לחיוב שמופיע ב-WhatsApp Manager.",
+      "period30": "30 ימים",
+      "period60": "60 ימים",
+      "period90": "90 ימים",
+      "totalMessages": "סה\"כ הודעות",
+      "billableMessages": "הודעות בתשלום",
+      "freeMessages": "הודעות ללא עלות",
+      "totalCost": "עלות תפעולית",
+      "costHint": "העלות מוצגת בדולר ארה\"ב, כפי ש-Meta מחייבת. הודעות שירות בתוך חלון 24 השעות אינן כרוכות בתשלום.",
+      "byCategory": "פילוח לפי קטגוריית תמחור",
+      "categories": {
+        "marketing": "שיווק",
+        "utility": "תפעול",
+        "service": "שירות",
+        "authentication": "אימות",
+        "unknown": "אחר"
+      },
+      "categoryHints": {
+        "marketing": "מבצעים ועדכונים יזומים",
+        "utility": "תזכורות, בקשות תשלום ואישורים",
+        "service": "מענה להורה בתוך חלון 24 השעות — ללא עלות",
+        "authentication": "קודי התחברות לפורטל ההורים",
+        "unknown": "קטגוריה שאינה מוכרת ל-Lessio"
+      },
+      "messagesUnit": "הודעות",
+      "dailyVolume": "נפח יומי",
+      "noData": "לא נשלחו הודעות בתקופה זו",
+      "notConnected": "יש לחבר מספר WhatsApp כדי לראות נתוני שימוש.",
+      "stale": "Meta לא זמינה כרגע — מוצגים הנתונים האחרונים שנשמרו.",
+      "lastUpdated": "עודכן לאחרונה: {time}"
     },
     "aiUsage": {
       "title": "שימוש ב-AI",

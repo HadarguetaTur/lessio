@@ -1903,6 +1903,18 @@
             "hint": "The scenario must return the payment link in that same call — not later"
           }
         }
+      },
+      "manual_link": {
+        "label": "Fixed payment link",
+        "description": "No payment processor — one static link (Bit, PayBox, a payment page) sent to parents as-is in every payment request",
+        "setupHint": "Note: with a fixed link Lessio cannot tell when a parent has paid, so charges do not close automatically. After a payment arrives, mark the charge as paid on the charges screen.",
+        "fields": {
+          "paymentUrl": {
+            "label": "Payment link",
+            "placeholder": "https://www.bitpay.co.il/app/me/XXXXXXXX",
+            "hint": "Any link works — a personal Bit page, PayBox, a hosted payment page, or any URL parents can pay through"
+          }
+        }
       }
     },
     "emailActions": {
@@ -4308,7 +4320,8 @@
     "customPriceRequired": "A custom lesson needs a price per student",
     "noLessonPrice": "No price is set for this lesson",
     "invalidPhone": "The phone number must be in international format, e.g. +972501234567",
-    "webhookUrlInvalid": "Enter a valid webhook URL"
+    "webhookUrlInvalid": "Enter a valid webhook URL",
+    "paymentUrlInvalid": "Enter a valid payment link URL"
   },
   "receipts": {
     "customer": "Customer",

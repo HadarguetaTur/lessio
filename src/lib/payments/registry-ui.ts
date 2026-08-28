@@ -103,6 +103,13 @@ export const PROVIDERS_UI: ProviderUIDef[] = [
     docsUrl: 'https://www.make.com/en/help/tools/webhooks',
     fields: [{ name: 'webhookUrl', type: 'text', hasPlaceholder: true, hasHint: true }],
   },
+  // No processor at all: one static URL (a personal Bit page, PayBox link,
+  // hosted payment page) sent as-is in every payment request. Nothing calls
+  // back, so charges close manually — the setupHint copy carries that warning.
+  {
+    id: 'manual_link',
+    fields: [{ name: 'paymentUrl', type: 'text', hasPlaceholder: true, hasHint: true }],
+  },
 ]
 
 /**

@@ -46,6 +46,8 @@ export type SupportedProvider =
   | 'grow'
   /** Automation webhook (Make / n8n) standing in for a processor. */
   | 'make'
+  /** One static payment link sent as-is; no processor, no webhook. */
+  | 'manual_link'
 
 export class PaymentProviderNotConfiguredError extends Error {
   constructor(orgId: string) {

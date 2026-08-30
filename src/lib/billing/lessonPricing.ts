@@ -92,9 +92,26 @@ export function resolveLessonBaseAmount(
   }
 }
 
-/** Lesson types priced per student, whose amount an active subscription covers. */
-export const PER_STUDENT_LESSON_TYPES: readonly LessonType[] = ['pair', 'group', 'custom']
+/**
+ * Fallback coverage set, matching the DB default of
+ * organizations.subscription_covered_lesson_types. Orgs override it at
+ * /settings/billing-policy; this only applies to rows written before that column existed.
+ */
+export const DEFAULT_SUBSCRIPTION_COVERED_LESSON_TYPES: readonly LessonType[] = [
+  'pair',
+  'group',
+  'custom',
+]
 
-export function isPerStudentPriced(lessonType: LessonType): boolean {
-  return PER_STUDENT_LESSON_TYPES.includes(lessonType)
+/**
+ * Is this lesson's attendance already paid for by the student's subscription?
+ * Covered means no per-lesson charge at all — the monthly engine bills 0 and the
+ * real-time path writes no charge row.
+ */
+export function isLessonCoveredBySubscription(
+  lessonType: LessonType,
+  coveredTypes: readonly LessonType[],
+  hasActiveSubscription: boolean
+): boolean {
+  return hasActiveSubscription && coveredTypes.includes(lessonType)
 }

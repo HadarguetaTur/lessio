@@ -24,6 +24,7 @@ const PRICING: OrgPricing = {
   individualHourlyRate: 200,
   pairPricePerStudent: 112.5,
   groupPricePerStudent: 120,
+  subscriptionCoveredLessonTypes: ['pair', 'group', 'custom'],
 }
 
 const NOW = new Date('2026-08-27T10:00:00.000Z')

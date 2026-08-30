@@ -10,9 +10,29 @@ import { checkActiveSubscriptionForLesson } from './subscriptions'
 import {
   resolveLessonBaseAmount,
   isMissingPrice,
-  isPerStudentPriced,
+  isLessonCoveredBySubscription,
 } from '@/lib/billing/lessonPricing'
 import type { OrgPricing } from '@/lib/organizations/pricing'
+
+/**
+ * Is this lesson covered by the student's subscription under the org's policy?
+ * Shared by the amount calculation and the contribution loop so a covered lesson
+ * is zeroed and excluded from the count by the same rule.
+ */
+function isCoveredForStudent(
+  lesson: LessonRow,
+  studentId: string,
+  subscriptions: SubscriptionRow[],
+  timezone: string,
+  pricing: OrgPricing
+): boolean {
+  const lessonDate = DateTime.fromISO(lesson.start_at, { zone: timezone }).toISODate()!
+  return isLessonCoveredBySubscription(
+    lesson.lesson_type,
+    pricing.subscriptionCoveredLessonTypes,
+    checkActiveSubscriptionForLesson(studentId, lessonDate, subscriptions)
+  )
+}
 
 /**
  * Calculate the billing amount for a single lesson for a given student (spec §2).
@@ -26,8 +46,6 @@ export function calculateLessonAmount(
   studentCountForLesson: number,
   pricing: OrgPricing
 ): number | MissingFieldsError {
-  const lessonDate = DateTime.fromISO(lesson.start_at, { zone: timezone }).toISODate()!
-
   const durationMinutes =
     (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / (1000 * 60)
 
@@ -46,15 +64,8 @@ export function calculateLessonAmount(
     }
   }
 
-  // Per-student priced types are covered by an active subscription.
-  if (isPerStudentPriced(lesson.lesson_type)) {
-    const hasSubscription = checkActiveSubscriptionForLesson(
-      studentId,
-      lessonDate,
-      subscriptions
-    )
-    if (hasSubscription) return 0
-  }
+  // Lesson types the org's policy says a subscription covers are already paid for.
+  if (isCoveredForStudent(lesson, studentId, subscriptions, timezone, pricing)) return 0
 
   const amount = resolveLessonBaseAmount(
     {
@@ -111,8 +122,8 @@ export function calculateLessonsContribution(
 
     if (typeof amount === 'object') return amount // MissingFieldsError
 
-    // pair/group/custom with subscription coverage → amount is 0 → skip from count
-    if (lesson.lesson_type !== 'individual' && amount === 0) continue
+    // Covered by the subscription → contributes nothing, so it is not a billed lesson.
+    if (isCoveredForStudent(lesson, studentId, subscriptions, timezone, pricing)) continue
 
     lessonsTotal += amount
     lessonsCount++

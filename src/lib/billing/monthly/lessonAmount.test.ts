@@ -10,6 +10,7 @@ const PRICING: OrgPricing = {
   individualHourlyRate: null,
   pairPricePerStudent: 112.5,
   groupPricePerStudent: 120,
+  subscriptionCoveredLessonTypes: ['pair', 'group', 'custom'],
 }
 
 function lesson(overrides: Partial<LessonRow> = {}): LessonRow {
@@ -121,6 +122,26 @@ describe('calculateLessonAmount', () => {
     const result = calculateLessonAmount(lesson(), 'student-1', [APRIL_SUB], TZ, 1, PRICING)
     expect(amountOf(result)).toBe(200)
   })
+
+  it('zeroes an individual lesson when the org policy covers it', () => {
+    const result = calculateLessonAmount(lesson(), 'student-1', [APRIL_SUB], TZ, 1, {
+      ...PRICING,
+      subscriptionCoveredLessonTypes: ['individual', 'pair', 'group', 'custom'],
+    })
+    expect(amountOf(result)).toBe(0)
+  })
+
+  it('bills a group lesson when the org policy excludes group from coverage', () => {
+    const result = calculateLessonAmount(
+      lesson({ lesson_type: 'group' }),
+      'student-1',
+      [APRIL_SUB],
+      TZ,
+      4,
+      { ...PRICING, subscriptionCoveredLessonTypes: ['pair', 'custom'] }
+    )
+    expect(amountOf(result)).toBe(120)
+  })
 })
 
 describe('calculateLessonsContribution', () => {
@@ -156,6 +177,38 @@ describe('calculateLessonsContribution', () => {
     if (isMissingFieldsError(result)) throw new Error('unexpected MissingFieldsError')
     expect(result.lessonsTotal).toBe(0)
     expect(result.lessonsCount).toBe(0)
+  })
+
+  it('leaves an individual lesson out of the count when the policy covers it', () => {
+    const result = calculateLessonsContribution(
+      [lesson()],
+      '2026-04',
+      'student-1',
+      [APRIL_SUB],
+      TZ,
+      new Set(),
+      new Map([['lesson-1', 1]]),
+      { ...PRICING, subscriptionCoveredLessonTypes: ['individual', 'pair', 'group', 'custom'] }
+    )
+    if (isMissingFieldsError(result)) throw new Error('unexpected MissingFieldsError')
+    expect(result.lessonsTotal).toBe(0)
+    expect(result.lessonsCount).toBe(0)
+  })
+
+  it('counts a group lesson the policy no longer covers, despite the subscription', () => {
+    const result = calculateLessonsContribution(
+      [lesson({ lesson_type: 'group' })],
+      '2026-04',
+      'student-1',
+      [APRIL_SUB],
+      TZ,
+      new Set(),
+      counts,
+      { ...PRICING, subscriptionCoveredLessonTypes: ['pair', 'custom'] }
+    )
+    if (isMissingFieldsError(result)) throw new Error('unexpected MissingFieldsError')
+    expect(result.lessonsTotal).toBe(120)
+    expect(result.lessonsCount).toBe(1)
   })
 
   it('propagates the missing price of one custom lesson to the whole month', () => {

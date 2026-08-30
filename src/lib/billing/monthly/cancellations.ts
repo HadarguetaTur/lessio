@@ -11,7 +11,7 @@ import { checkActiveSubscriptionForLesson } from './subscriptions'
 import {
   resolveLessonBaseAmount,
   isMissingPrice,
-  isPerStudentPriced,
+  isLessonCoveredBySubscription,
 } from '@/lib/billing/lessonPricing'
 import type { OrgPricing } from '@/lib/organizations/pricing'
 
@@ -46,14 +46,13 @@ function calculateCancellationEventAmount(
 
   const lessonDate = DateTime.fromISO(lesson.start_at, { zone: timezone }).toISODate()!
 
-  if (isPerStudentPriced(lesson.lesson_type)) {
-    const hasSubscription = checkActiveSubscriptionForLesson(
-      event.student_id,
-      lessonDate,
-      subscriptions
-    )
-    if (hasSubscription) return 0
-  }
+  // A covered lesson costs nothing when attended, so cancelling it costs nothing either.
+  const covered = isLessonCoveredBySubscription(
+    lesson.lesson_type,
+    pricing.subscriptionCoveredLessonTypes,
+    checkActiveSubscriptionForLesson(event.student_id, lessonDate, subscriptions)
+  )
+  if (covered) return 0
 
   const amount = resolveLessonBaseAmount(
     {

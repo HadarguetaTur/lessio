@@ -339,6 +339,7 @@
     "drawerDescription": "Main navigation",
     "openNavigation": "Open navigation",
     "settingsPricing": "Pricing",
+    "settingsBillingPolicy": "Billing Policy",
     "settingsPrivacy": "Privacy & data",
     "settingsCalendar": "Google Calendar",
     "support": "Support",
@@ -1248,6 +1249,7 @@
       "colType": "Type",
       "colStatus": "Status",
       "colPricePerStudent": "Price per Student",
+      "coveredBySubscription": "Covered by subscription",
       "colMonthlyAmount": "Monthly Amount",
       "colStartDate": "Start Date",
       "colEndDate": "End Date",
@@ -1411,6 +1413,10 @@
         "title": "Pricing",
         "description": "Hourly rate, pair and group prices"
       },
+      "billingPolicy": {
+        "title": "Billing Policy",
+        "description": "Which lesson types a monthly subscription covers"
+      },
       "integrations": {
         "description": "API keys for connecting Make, n8n and Claude"
       }
@@ -1527,7 +1533,8 @@
         "endDate": "End Date (optional)"
       },
       "deleteConfirm": "Delete this holiday?",
-      "noHolidays": "No holidays defined"
+      "noHolidays": "No holidays defined",
+      "autoBadge": "Automatic"
     },
     "exams": {
       "title": "Exam Policy",
@@ -1546,6 +1553,30 @@
       "bumpHint": "How many lessons to add to the student's weekly quota during the exam week (1–5)",
       "boosterLabel": "Offer the parent a booster lesson",
       "boosterHint": "On every exam report, the parent gets a WhatsApp booking link for a booster lesson",
+      "saved": "Settings saved",
+      "errors": {
+        "saveFailed": "Saving failed. Please try again."
+      }
+    },
+    "billingPolicy": {
+      "title": "Billing Policy",
+      "subtitle": "The rules that decide what a student is actually charged for",
+      "coverageLabel": "What a monthly subscription covers",
+      "coverageHint": "A checked lesson type is not billed separately to a student with an active subscription — the subscription already pays for it. An unchecked type is billed on top of the subscription fee.",
+      "lessonTypes": {
+        "individual": "Individual lessons",
+        "pair": "Pair lessons",
+        "group": "Group lessons",
+        "custom": "Custom lessons"
+      },
+      "lessonTypeHints": {
+        "individual": "Usually not covered — billed by hourly rate on top of the subscription",
+        "pair": "Per-student price for a pair lesson",
+        "group": "Per-student price for a group lesson",
+        "custom": "Lessons with a price set manually per lesson"
+      },
+      "noneCoveredHint": "With nothing checked, the subscription becomes a flat fee and every lesson is billed separately.",
+      "retroactiveHint": "This applies to billing calculations from now on. Recalculating an earlier unpaid month will also use the new policy.",
       "saved": "Settings saved",
       "errors": {
         "saveFailed": "Saving failed. Please try again."

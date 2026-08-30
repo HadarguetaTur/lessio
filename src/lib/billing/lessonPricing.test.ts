@@ -1,11 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { resolveLessonBaseAmount, isMissingPrice, isPerStudentPriced } from './lessonPricing'
+import {
+  resolveLessonBaseAmount,
+  isMissingPrice,
+  isLessonCoveredBySubscription,
+  DEFAULT_SUBSCRIPTION_COVERED_LESSON_TYPES,
+} from './lessonPricing'
 import type { OrgPricing } from '@/lib/organizations/pricing'
 
 const PRICING: OrgPricing = {
   individualHourlyRate: 180,
   pairPricePerStudent: 112.5,
   groupPricePerStudent: 120,
+  subscriptionCoveredLessonTypes: DEFAULT_SUBSCRIPTION_COVERED_LESSON_TYPES,
 }
 
 const NO_ORG_RATE: OrgPricing = { ...PRICING, individualHourlyRate: null }
@@ -126,11 +132,29 @@ describe('resolveLessonBaseAmount', () => {
   })
 })
 
-describe('isPerStudentPriced', () => {
-  it('covers the types a subscription pays for, and not individual', () => {
-    expect(isPerStudentPriced('pair')).toBe(true)
-    expect(isPerStudentPriced('group')).toBe(true)
-    expect(isPerStudentPriced('custom')).toBe(true)
-    expect(isPerStudentPriced('individual')).toBe(false)
+describe('isLessonCoveredBySubscription', () => {
+  const DEFAULT = DEFAULT_SUBSCRIPTION_COVERED_LESSON_TYPES
+
+  it('covers the default types, and not individual', () => {
+    expect(isLessonCoveredBySubscription('pair', DEFAULT, true)).toBe(true)
+    expect(isLessonCoveredBySubscription('group', DEFAULT, true)).toBe(true)
+    expect(isLessonCoveredBySubscription('custom', DEFAULT, true)).toBe(true)
+    expect(isLessonCoveredBySubscription('individual', DEFAULT, true)).toBe(false)
+  })
+
+  it('covers nothing without an active subscription', () => {
+    for (const type of DEFAULT) {
+      expect(isLessonCoveredBySubscription(type, DEFAULT, false)).toBe(false)
+    }
+  })
+
+  it('honours an org policy that covers individual lessons too', () => {
+    const policy = ['individual', 'group'] as const
+    expect(isLessonCoveredBySubscription('individual', policy, true)).toBe(true)
+    expect(isLessonCoveredBySubscription('pair', policy, true)).toBe(false)
+  })
+
+  it('covers nothing when the policy is empty', () => {
+    expect(isLessonCoveredBySubscription('group', [], true)).toBe(false)
   })
 })

@@ -15,7 +15,8 @@ declare
     {"name": "saas-subscription-checker","cron": "0 0 * * *", "fn": "saas-subscription-checker"},
     {"name": "saas-renewal-reminder",    "cron": "0 8 * * *", "fn": "saas-renewal-reminder"},
     {"name": "data-retention",           "cron": "0 3 * * *", "fn": "data-retention"},
-    {"name": "notification-cleanup",     "cron": "0 4 * * *", "fn": "notification-cleanup"}
+    {"name": "notification-cleanup",     "cron": "0 4 * * *", "fn": "notification-cleanup"},
+    {"name": "holiday-sync",             "cron": "0 2 1 * *", "fn": "holiday-sync"}
   ]'::jsonb;
   job jsonb;
   job_name text;

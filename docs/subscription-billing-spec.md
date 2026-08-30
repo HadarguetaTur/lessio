@@ -466,7 +466,16 @@ If a `student_cancellation_events` record's `lesson_id` cannot be resolved (reco
 
 ### 9.5 `subscription_type` Is Informational Only
 
-The value of `subscription_type` does **not** restrict which lessons are covered. Any non-paused subscription within its date range covers any `pair`/`group` lesson for that student.
+The value of `subscription_type` does **not** restrict which lessons are covered. Any non-paused subscription within its date range covers a lesson of a covered type for that student.
+
+Which types those are is an org setting: `organizations.subscription_covered_lesson_types` (default `{pair,group,custom}`, edited at `/settings/billing-policy`). It is read through `getOrgPricing` as `OrgPricing.subscriptionCoveredLessonTypes` and applied by `isLessonCoveredBySubscription` in `src/lib/billing/lessonPricing.ts`.
+
+Coverage is applied in three places, and they must agree:
+- `calculateLessonAmount` — a covered lesson bills 0 and is excluded from `lessons_count`.
+- `calculateCancellationEventAmount` — a covered lesson costs nothing when attended, so a late cancellation of it costs nothing either. Dropping a type from coverage therefore makes late cancellations of that type chargeable for subscribed students too.
+- `createLessonCharge` (real-time, on lesson completion) — a covered student gets **no** `charge_type='lesson'` row at all. Before this was honoured here, a subscribed student in a group lesson was charged twice: once by this path, and once via the subscription while the monthly engine zeroed the lesson.
+
+An empty coverage set is legal: the subscription becomes a flat fee and every lesson is billed on top of it.
 
 ### 9.6 Cancellation Double-Counting
 

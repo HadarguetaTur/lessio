@@ -35,6 +35,10 @@ const HEBREW_ALLOWED = [
   "src/lib/whatsapp/**",
   "supabase/functions/_shared/templates.ts",
   "supabase/functions/_shared/botStrings.ts",
+  // Holiday names are he/en data pairs persisted to organization_holidays by
+  // the org's default_locale — not UI strings. Deno mirror alongside.
+  "src/lib/holidays/hebrewHolidays.ts",
+  "supabase/functions/_shared/hebrewHolidays.ts",
   // Deno mirror of src/lib/whatsapp/submitTemplate.ts — VAR_FALLBACKS carries a
   // full he/en pair, same as the Node original.
   "supabase/functions/_shared/whatsapp.ts",

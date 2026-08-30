@@ -406,6 +406,10 @@ deno_version = 2
 #   notification-cleanup: "0 4 * * *"  (daily at 04:00 UTC)
 [functions.notification-cleanup]
 
+# Holiday sync — keeps auto-populated Jewish holidays topped up ~18 months ahead
+#   holiday-sync: "0 2 1 * *"  (monthly, 1st at 02:00 UTC)
+[functions.holiday-sync]
+
 # Sprint 32: Error monitor — groups the last 24h of error_events by fingerprint,
 # promotes anything past the threshold into a dev_issue (+ GitHub issue + a
 # throttled superadmin alert), then sweeps events older than 30 days.

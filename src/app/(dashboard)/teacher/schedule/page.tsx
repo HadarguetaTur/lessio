@@ -11,7 +11,7 @@ import {
 } from '@/lib/lessons'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { getStudents } from '@/lib/students'
-import { getOrgHolidays } from '@/lib/organizations/holidays'
+import { getOrgHolidays, calendarHolidaysFrom } from '@/lib/organizations/holidays'
 import { WeekNav } from '@/components/dashboard/lessons/WeekNav'
 import { DayNav } from '@/components/dashboard/lessons/DayNav'
 import { MonthNav } from '@/components/dashboard/lessons/MonthNav'
@@ -77,7 +77,7 @@ export default async function TeacherSchedulePage(props: {
 
   const [students, holidays] = await Promise.all([
     getStudents(orgId, { teacherId: teacher.id }),
-    getOrgHolidays(orgId),
+    getOrgHolidays(orgId, { from: calendarHolidaysFrom() }),
   ])
 
   const roster = students.filter((s) => s.is_active)

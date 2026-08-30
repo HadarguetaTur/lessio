@@ -13,6 +13,7 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { syncOrgHolidays } from '@/lib/holidays/syncOrgHolidays'
 import { z } from 'zod'
 
 export type SignupInput = {
@@ -135,6 +136,13 @@ export async function createOrgWithOwner(
     partial_charge_percent: 50,
   })
 
+  // Step 4b — seed upcoming Jewish holidays (non-fatal: signup must not fail on this)
+  try {
+    await syncOrgHolidays(db, orgId)
+  } catch (e) {
+    console.error('[createOrgWithOwner] holiday seed failed', { orgId, error: e })
+  }
+
   // Step 5 — insert profile
   const { error: profileError } = await db.from('profiles').insert({
     id: userId,
@@ -199,6 +207,13 @@ export async function createOrgForExistingUser(
     notice_hours_partial: 2,
     partial_charge_percent: 50,
   })
+
+  // Seed upcoming Jewish holidays (non-fatal: signup must not fail on this)
+  try {
+    await syncOrgHolidays(db, orgId)
+  } catch (e) {
+    console.error('[createOrgForExistingUser] holiday seed failed', { orgId, error: e })
+  }
 
   const { error: profileError } = await db.from('profiles').insert({
     id: userId,

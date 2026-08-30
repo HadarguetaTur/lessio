@@ -107,6 +107,24 @@ vi.mock('@/lib/notifications', () => ({
   hasRecentUnreadSuperadminNotification: vi.fn().mockResolvedValue(false),
 }))
 
+const mockClassifyOwnerCopilotIntent = vi.hoisted(() => vi.fn())
+const mockGetDebtorsOverview = vi.hoisted(() => vi.fn())
+const mockSendDebtReminderForParent = vi.hoisted(() => vi.fn())
+
+vi.mock('@/lib/ai-assistant/copilot', () => ({
+  classifyOwnerCopilotIntent: mockClassifyOwnerCopilotIntent,
+  buildOwnerCopilotSystemPrompt: vi.fn().mockResolvedValue('owner-copilot-prompt'),
+  askOwnerCopilot: vi.fn().mockResolvedValue('שאלה על החוב נענתה, יש 4,000 שקלים בחובות'),
+}))
+
+vi.mock('@/lib/charges/debtors', () => ({
+  getDebtorsOverview: mockGetDebtorsOverview,
+}))
+
+vi.mock('@/lib/payment-request/sendManualReminder', () => ({
+  sendDebtReminderForParent: mockSendDebtReminderForParent,
+}))
+
 const mockUpsertLead = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/lib/leads', () => ({
   upsertLead: (...args: unknown[]) => mockUpsertLead(...args),
@@ -1678,6 +1696,46 @@ describe('WhatsApp sender roles', () => {
 
     expect(mockSetSupportDraft).not.toHaveBeenCalled()
     expect(mockCreateTicket).not.toHaveBeenCalled()
+  })
+
+  it('answers an owner’s free-text business question with the owner AI prompt', async () => {
+    mockIdentity({ profiles: OWNER_ROW })
+    mockClassifyOwnerCopilotIntent.mockResolvedValue({ action: 'ask' })
+
+    const res = await POST(makeRequest(makeWebhookPayload('כמה חייבים לי?')))
+
+    expect(res.status).toBe(200)
+    expect(mockClassifyOwnerCopilotIntent).toHaveBeenCalledWith(ORG_ID, 'כמה חייבים לי?')
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'שאלה על החוב נענתה, יש 4,000 שקלים בחובות',
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('asks for confirmation before a debt reminder action and only executes after the button tap', async () => {
+    mockIdentity({ profiles: OWNER_ROW })
+    mockClassifyOwnerCopilotIntent.mockResolvedValue({ action: 'send_debt_reminder_all' })
+    mockGetDebtorsOverview.mockResolvedValue({
+      rows: [
+        { parentId: 'p-1', parentName: 'דנה', phone: '+972500000000', optedOut: false, totalDebt: 1200, oldestAgeDays: 5, chargeCount: 1 },
+        { parentId: 'p-2', parentName: 'אייל', phone: '+972500000001', optedOut: false, totalDebt: 2800, oldestAgeDays: 10, chargeCount: 2 },
+      ],
+      totalDebt: 4000,
+      debtorCount: 2,
+    })
+
+    const first = await POST(makeRequest(makeWebhookPayload('תשלחי תזכורת לכל החייבים')))
+    expect(first.status).toBe(200)
+    expect(mockSendReplyButtons).toHaveBeenCalledTimes(1)
+    expect(mockSendDebtReminderForParent).not.toHaveBeenCalled()
+
+    const second = await POST(makeRequest(makeInteractivePayload('cp:confirm:send_debt_reminder_all')))
+    expect(second.status).toBe(200)
+    expect(mockSendDebtReminderForParent).toHaveBeenCalledTimes(2)
+    expect(mockSendDebtReminderForParent).toHaveBeenNthCalledWith(1, ORG_ID, 'p-1', PROFILE_ID)
+    expect(mockSendDebtReminderForParent).toHaveBeenNthCalledWith(2, ORG_ID, 'p-2', PROFILE_ID)
   })
 
   it('still files a genuinely unknown number as a lead', async () => {

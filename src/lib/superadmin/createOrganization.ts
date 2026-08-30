@@ -19,6 +19,7 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { syncOrgHolidays } from '@/lib/holidays/syncOrgHolidays'
 import { z } from 'zod'
 import { getTranslations } from 'next-intl/server'
 
@@ -98,6 +99,13 @@ export async function createOrganization(
     notice_hours_partial: 2,
     partial_charge_percent: 50,
   })
+
+  // Step 4b — seed upcoming Jewish holidays (non-fatal)
+  try {
+    await syncOrgHolidays(db, orgId)
+  } catch (e) {
+    console.error('[createOrganization] holiday seed failed', { orgId, error: e })
+  }
 
   // Step 5 — invite owner via Auth Admin API
   const { data: inviteData, error: inviteError } =

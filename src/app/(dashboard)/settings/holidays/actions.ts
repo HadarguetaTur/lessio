@@ -131,6 +131,32 @@ export async function deleteHoliday(id: string): Promise<void> {
   if (role !== 'owner' && role !== 'admin') return
 
   const supabase = await createClient()
+
+  const { data: holiday } = await supabase
+    .from('organization_holidays')
+    .select('source, date')
+    .eq('id', id)
+    .eq('organization_id', orgId)
+    .maybeSingle()
+  if (!holiday) return
+
+  // Deleting an auto-populated holiday dismisses its date so future syncs
+  // never resurrect it. Recorded before the delete: if the delete fails the
+  // row stays visible and the user retries; the reverse order risks the
+  // holiday reappearing on the next sync.
+  if (holiday.source === 'auto') {
+    const { error: dismissError } = await supabase
+      .from('organization_holiday_dismissals')
+      .upsert(
+        { organization_id: orgId, date: holiday.date },
+        { onConflict: 'organization_id,date', ignoreDuplicates: true }
+      )
+    if (dismissError) {
+      console.error('[deleteHoliday] dismissal upsert failed', { orgId, id, error: dismissError })
+      return
+    }
+  }
+
   await supabase
     .from('organization_holidays')
     .delete()

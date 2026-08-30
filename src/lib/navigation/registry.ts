@@ -34,6 +34,7 @@ import {
   BookOpen,
   ClipboardList,
   Receipt,
+  ReceiptText,
   Settings,
   UserPlus,
   MessageCircle,
@@ -76,7 +77,7 @@ export interface NavEntry {
   synonyms?: string[]
 }
 
-/** /account/billing plus all fourteen /settings/* pages. */
+/** /account/billing plus all seventeen /settings/* pages. */
 export const SETTINGS_NAV: NavEntry[] = [
   {
     href: '/account/billing',
@@ -118,6 +119,14 @@ export const SETTINGS_NAV: NavEntry[] = [
     icon: Banknote,
     roles: ['owner'],
     synonyms: ['pricing', 'price', 'rate', 'tariff', 'מחיר', 'מחירים', 'תמחור', 'תעריף'],
+  },
+  {
+    href: '/settings/billing-policy',
+    navKey: 'settingsBillingPolicy',
+    cardKey: 'billingPolicy',
+    icon: ReceiptText,
+    roles: ['owner'],
+    synonyms: ['billing', 'policy', 'subscription', 'coverage', 'covered', 'מדיניות', 'חיוב', 'מנוי', 'מנויים', 'כיסוי'],
   },
   {
     href: '/settings/payment',

@@ -5,7 +5,7 @@ import { getTeachers } from '@/lib/teachers'
 import { getStudents } from '@/lib/students'
 import { getLessonSeriesList } from '@/lib/lessons/getSeries'
 import { getOrgTimezone } from '@/lib/organizations'
-import { getOrgHolidays } from '@/lib/organizations/holidays'
+import { getOrgHolidays, calendarHolidaysFrom } from '@/lib/organizations/holidays'
 import { getOrgPricing } from '@/lib/organizations/pricing'
 import { NewSeriesForm } from '@/components/dashboard/lessons/NewSeriesForm'
 import { SeriesRowActions } from '@/components/dashboard/lessons/SeriesRowActions'
@@ -28,7 +28,7 @@ export default async function NewSeriesPage() {
     getStudents(orgId),
     getLessonSeriesList(orgId),
     getOrgTimezone(orgId),
-    getOrgHolidays(orgId),
+    getOrgHolidays(orgId, { from: calendarHolidaysFrom() }),
     getOrgPricing(orgId),
   ])
 

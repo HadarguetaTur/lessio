@@ -3,13 +3,23 @@ import type { SubscriptionRow, SubscriptionsContribution, MissingFieldsError } f
 import { round2 } from './types'
 
 /**
+ * The subset of a subscription this check needs. Kept structural so callers
+ * outside the monthly engine (the real-time charge path, the billing detail
+ * page) can select four columns instead of a whole SubscriptionRow.
+ */
+export type CoverageSubscription = Pick<
+  SubscriptionRow,
+  'student_id' | 'start_date' | 'end_date' | 'is_paused'
+>
+
+/**
  * Per-lesson check (spec §3.1): does this student have an active subscription
  * covering the given lesson date?
  */
 export function checkActiveSubscriptionForLesson(
   studentId: string,
   lessonDate: string, // YYYY-MM-DD in org timezone
-  subscriptions: SubscriptionRow[]
+  subscriptions: CoverageSubscription[]
 ): boolean {
   for (const sub of subscriptions) {
     if (sub.student_id !== studentId) continue

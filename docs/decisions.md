@@ -355,6 +355,27 @@ Rules:
 * a teacher's or owner's phone lives on `profiles.phone` and must be normalized to E.164 on write
   like every other phone (decision #8) — an un-normalized number simply never matches
 
+### Amendment 2026-08-30 — owner/admin WhatsApp copilot, whitelisted confirmed writes
+
+This subsection amends the earlier read-only statement for staff. Staff are still read-only by default,
+but the org owner and admin may use a whitelisted, two-phase confirmation flow over WhatsApp for
+business operations that are explicitly safe to run, without ever allowing teachers to do the same.
+
+Rules:
+
+* the owner/admin WhatsApp copilot is staff-only and never available to teachers
+* the AI only classifies the request; it never executes a write itself
+* each write action runs through a deterministic registry and requires an explicit confirm/cancel tap
+* the first whitelist is debt reminders: one parent or all debtors, both gated by the same confirm step
+* the support flow already established the real two-phase pattern (`sup:send` / `sup:cancel` in
+  `src/app/api/whatsapp/webhook/handlers/staff.ts`), so the earlier claim that "WhatsApp has no
+  confirmation step" no longer holds for this bounded staff workflow
+* per #26, AI assistance is allowed for classification as long as rule-based execution remains the
+  source of truth; the classifier + registry design implements that rule directly
+
+This does not reopen the broader teacher-write policy. Teachers remain read-only in WhatsApp unless a
+separate, explicitly scoped feature is added with the same two-phase confirm model and role gating.
+
 ---
 
 ## 27. Teacher Google Calendar Sync
@@ -413,6 +434,19 @@ Rules:
 * WhatsApp, payment, calendar, and webhook credentials are always scoped to one `organization_id`
 * credentials remain server-side only and must never be exposed to client bundles
 * operational logs and integration deliveries must include tenant context for diagnosis and recovery
+
+---
+
+## 31. Subscription Coverage Is an Org Setting
+
+✅ DECIDED (Aug 2026): what a subscription covers is per-organization configuration, not a constant in the pricing module.
+
+Rules:
+
+* the covered set lives in one array column, `organizations.subscription_covered_lesson_types` (default `{pair,group,custom}`, so existing orgs keep the previous behaviour), not one boolean per lesson type — a new lesson type must not require a schema migration
+* it is read through the existing `getOrgPricing` / `OrgPricing` struct, which is already threaded to every billing call site, rather than a second getter that would add a query per site
+* every path that prices attendance applies it through `isLessonCoveredBySubscription`: the monthly engine, the cancellation contribution, and the real-time `createLessonCharge`. A path that prices a lesson without consulting coverage is a double-charge bug
+* honouring coverage in the real-time path is forward-only. Charge rows already written for covered lessons are money records and are not deleted by the code change; correcting them is a separate, human-reviewed decision
 
 ---
 

@@ -10,6 +10,7 @@ const PRICING: OrgPricing = {
   individualHourlyRate: null,
   pairPricePerStudent: 112.5,
   groupPricePerStudent: 120,
+  subscriptionCoveredLessonTypes: ['pair', 'group', 'custom'],
 }
 
 function lesson(overrides: Partial<LessonRow> = {}): LessonRow {
@@ -103,6 +104,20 @@ describe('calculateCancellationsContribution', () => {
     if (isMissingFieldsError(result)) throw new Error('unexpected MissingFieldsError')
     expect(result.cancellationsTotal).toBe(0)
     expect(result.cancellationsCount).toBe(0)
+  })
+
+  it('charges a covered-type cancellation once the org policy drops that type', () => {
+    const lookup = new Map([['lesson-1', lesson({ lesson_type: 'group' })]])
+    const result = calculateCancellationsContribution(
+      [event()],
+      lookup,
+      [APRIL_SUB],
+      TZ,
+      { ...PRICING, subscriptionCoveredLessonTypes: ['pair', 'custom'] }
+    )
+    if (isMissingFieldsError(result)) throw new Error('unexpected MissingFieldsError')
+    expect(result.cancellationsTotal).toBe(120)
+    expect(result.cancellationsCount).toBe(1)
   })
 
   it('fails loudly for a custom cancellation with no price', () => {

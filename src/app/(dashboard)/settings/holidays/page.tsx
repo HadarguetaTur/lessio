@@ -54,7 +54,14 @@ export default async function HolidaysPage() {
                       <td className="px-4 py-3 font-mono text-sm text-gray-900" dir="ltr">
                         {fmtDate(h.date)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{h.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {h.name}
+                        {h.source === 'auto' && (
+                          <span className="ms-2 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                            {t('autoBadge')}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-left">
                         <form action={delAction}>
                           <button

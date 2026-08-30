@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
+import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -11,7 +12,12 @@ import {
 } from '@/lib/billing/monthly/month'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
-import { resolveLessonBaseAmount, isMissingPrice } from '@/lib/billing/lessonPricing'
+import {
+  resolveLessonBaseAmount,
+  isMissingPrice,
+  isLessonCoveredBySubscription,
+} from '@/lib/billing/lessonPricing'
+import { checkActiveSubscriptionForLesson } from '@/lib/billing/monthly/subscriptions'
 import { getOrgPricing } from '@/lib/organizations/pricing'
 import type { LessonType } from '@/lib/lessons/types'
 import { getLocale } from 'next-intl/server'
@@ -119,22 +125,42 @@ export default async function BillingDetailPage(props: {
     .eq('organization_id', orgId)
     .eq('student_id', studentId)
 
+  // Every row here belongs to this student, so the coverage check can assume it.
+  const coverageSubs = (subsData ?? []).map(
+    (s: { start_date: string; end_date: string | null; is_paused: boolean }) => ({
+      student_id: studentId,
+      start_date: s.start_date,
+      end_date: s.end_date,
+      is_paused: s.is_paused,
+    })
+  )
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lessons = (lessonsData ?? []).map((l: any) => {
     const durationMinutes = Math.max(
       0,
       (new Date(l.end_at as string).getTime() - new Date(l.start_at as string).getTime()) / 60000
     )
-    // Same resolution the billing engine uses, so the per-lesson price column
-    // always sums up to the amount on the summary card.
+    const lessonType = (l.lesson_type ?? 'individual') as LessonType
+    // Same resolution the billing engine uses — including subscription coverage —
+    // so the per-lesson price column always sums up to the amount on the summary card.
     const resolved = resolveLessonBaseAmount(
       {
-        lessonType: (l.lesson_type ?? 'individual') as LessonType,
+        lessonType,
         pricePerStudent: (l.price_per_student as number | null) ?? null,
         durationMinutes,
         teacherHourlyRate: (l.teachers as { hourly_rate: number | null })?.hourly_rate ?? null,
       },
       orgPricing
+    )
+    const covered = isLessonCoveredBySubscription(
+      lessonType,
+      orgPricing.subscriptionCoveredLessonTypes,
+      checkActiveSubscriptionForLesson(
+        studentId,
+        DateTime.fromISO(l.start_at as string, { zone: timezone }).toISODate()!,
+        coverageSubs
+      )
     )
     return {
       id: l.id as string,
@@ -143,7 +169,8 @@ export default async function BillingDetailPage(props: {
       status: l.status as string,
       lesson_type: l.lesson_type as string,
       teacher_name: (l.teachers as { profiles: { full_name: string } })?.profiles?.full_name ?? '—',
-      price_per_student: isMissingPrice(resolved) ? null : resolved,
+      price_per_student: covered ? 0 : isMissingPrice(resolved) ? null : resolved,
+      covered_by_subscription: covered,
     }
   })
 
@@ -283,6 +310,9 @@ export default async function BillingDetailPage(props: {
                       {lesson.price_per_student != null ? money(lesson.price_per_student) : '—'}
                     </span>
                   </div>
+                  {lesson.covered_by_subscription && (
+                    <p className="mt-1 text-xs text-muted-foreground">{t('coveredBySubscription')}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -311,6 +341,11 @@ export default async function BillingDetailPage(props: {
                         <td className="px-4 py-2.5"><StatusBadge status={lesson.status} /></td>
                         <td className="px-4 py-2.5 text-sm text-foreground tabular-nums">
                           {lesson.price_per_student != null ? money(lesson.price_per_student) : '—'}
+                          {lesson.covered_by_subscription && (
+                            <span className="ms-2 text-xs text-muted-foreground">
+                              {t('coveredBySubscription')}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

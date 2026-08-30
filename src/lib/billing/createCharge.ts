@@ -1,10 +1,15 @@
+import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { logChargeAudit } from '@/lib/charges/audit'
 import { resolveBillingParent, MissingPrimaryParentError } from './resolveBillingParent'
 import type { CancellationChargeResult } from './calculateCancellationCharge'
 import { getOrgPricing } from '@/lib/organizations/pricing'
 import { getOrgTimezone } from '@/lib/organizations'
-import { resolveLessonBaseAmount, isMissingPrice } from './lessonPricing'
+import { resolveLessonBaseAmount, isMissingPrice, isLessonCoveredBySubscription } from './lessonPricing'
+import {
+  checkActiveSubscriptionForLesson,
+  type CoverageSubscription,
+} from './monthly/subscriptions'
 import { resolveChargeDueDate } from './chargeDueDate'
 import type { LessonType } from '@/lib/lessons/types'
 
@@ -24,6 +29,11 @@ function isDuplicateInsertError(error: { code?: string } | null): boolean {
  * a pair/group/custom lesson bills every family, not just the first one.
  * Amounts come from the shared pricing resolver, so a lesson costs the same
  * here as it does in the monthly engine.
+ *
+ * Students whose subscription covers this lesson type (org policy, see
+ * organizations.subscription_covered_lesson_types) are skipped entirely — the
+ * monthly engine zeroes the same lesson, so charging here was a double charge.
+ * Note this path still does not branch on organizations.billing_mode.
  *
  * Idempotent: the unique index on charges(lesson_id, parent_id) WHERE
  * charge_type='lesson' makes a repeated call a no-op.
@@ -92,12 +102,46 @@ export async function createLessonCharge(
 
   let firstAlert: ChargeAlert | null = null
   let chargedCount = 0
+  let coveredCount = 0
 
   // Hoisted: one query for the whole lesson, not one per student.
   const timezone = await getOrgTimezone(organizationId)
   const dueDate = resolveChargeDueDate({ chargeType: 'lesson', issuedAt: new Date(), timezone })
+  const lessonDate = DateTime.fromISO(lesson.start_at as string, { zone: timezone }).toISODate()!
+
+  // Only worth a query when the org's policy can actually cover this lesson type.
+  let subscriptions: CoverageSubscription[] = []
+  if (pricing.subscriptionCoveredLessonTypes.includes(lessonType)) {
+    const { data: subsData, error: subsError } = await supabase
+      .from('subscriptions')
+      .select('student_id, start_date, end_date, is_paused')
+      .eq('organization_id', organizationId)
+      .in(
+        'student_id',
+        lessonStudents.map((s) => s.student_id)
+      )
+
+    // Fail loud: charging because the coverage lookup broke is the bug being fixed.
+    if (subsError) {
+      console.error('[createLessonCharge] subscription lookup failed', { lessonId, orgId: organizationId, error: subsError.message })
+      return { type: 'error', message: 'validation.createChargeFailed' }
+    }
+    subscriptions = (subsData as CoverageSubscription[] | null) ?? []
+  }
 
   for (const { student_id: studentId } of lessonStudents) {
+    // Covered by an active subscription → the monthly engine bills 0, so no charge row.
+    if (
+      isLessonCoveredBySubscription(
+        lessonType,
+        pricing.subscriptionCoveredLessonTypes,
+        checkActiveSubscriptionForLesson(studentId, lessonDate, subscriptions)
+      )
+    ) {
+      coveredCount++
+      continue
+    }
+
     let parentId: string
     try {
       parentId = await resolveBillingParent(studentId, organizationId)
@@ -149,8 +193,11 @@ export async function createLessonCharge(
   }
 
   // Nothing charged at all → surface the problem; a partial success is reported too
-  // so the admin can fix the one student that fell through.
-  return chargedCount === 0 ? (firstAlert ?? { type: 'error', message: 'validation.createChargeFailed' }) : firstAlert
+  // so the admin can fix the one student that fell through. A lesson whose whole
+  // roster is subscription-covered charged nothing on purpose — not a failure.
+  return chargedCount === 0 && coveredCount === 0
+    ? (firstAlert ?? { type: 'error', message: 'validation.createChargeFailed' })
+    : firstAlert
 }
 
 /**

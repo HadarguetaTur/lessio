@@ -11,10 +11,18 @@
  * until someone with authority here taps approve.
  */
 
-import { hasScheduleIntent } from '@/lib/whatsapp'
+import { hasScheduleIntent, sendTextMessage } from '@/lib/whatsapp'
 import { isActionAllowedForRole, type MenuAction } from '@/lib/whatsapp/menu'
 import { sendListMessage, sendReplyButtons } from '@/lib/whatsapp/interactive'
 import { botString } from '@/lib/whatsapp/strings'
+import {
+  askOwnerCopilot,
+  classifyOwnerCopilotIntent,
+  isOwnerCopilotWriteAction,
+} from '@/lib/ai-assistant/copilot'
+import { decodeCopilotPayload, encodeCopilotPayload } from '@/lib/whatsapp/copilotPayloads'
+import { getDebtorsOverview } from '@/lib/charges/debtors'
+import { sendDebtReminderForParent } from '@/lib/payment-request/sendManualReminder'
 import {
   decodeStaffRequestPayload,
   encodeStaffRequestPayload,
@@ -68,6 +76,12 @@ export async function handleStaffMessage(
     return true
   }
 
+  const copilotDecision = decodeCopilotPayload(ctx.msg.replyId)
+  if (copilotDecision) {
+    await handleOwnerCopilotDecision(ctx, copilotDecision)
+    return true
+  }
+
   // Support: the confirmation buttons first, then the menu tap, then free text
   // that belongs to an open session. Order matters — a tap on any menu row must
   // abandon an in-flight support request rather than be read as its description.
@@ -87,6 +101,8 @@ export async function handleStaffMessage(
     // cancellation session.
     await deleteSupportSession(ctx.org.id, ctx.senderPhone)
   } else if (await handleSupportFreeText(ctx)) {
+    return true
+  } else if (await handleOwnerCopilotFreeText(ctx)) {
     return true
   }
 
@@ -216,6 +232,125 @@ async function handleSupportDecision(ctx: HandlerContext, send: boolean): Promis
   )
 
   await replyWith(ctx, 'support_created')
+}
+
+async function handleOwnerCopilotFreeText(ctx: HandlerContext): Promise<boolean> {
+  if (ctx.msg.text == null || !ctx.msg.text.trim()) return false
+
+  const intent = await classifyOwnerCopilotIntent(ctx.org.id, ctx.msg.text)
+
+  if (!intent || intent.action === 'unknown') {
+    return false
+  }
+
+  if (intent.action === 'ask') {
+    const answer = await askOwnerCopilot(ctx.org.id, ctx.msg.text, ctx.locale)
+    await sendTextMessage(ctx.senderPhone, answer, ctx.accessToken, ctx.phoneNumberId)
+    return true
+  }
+
+  if (isOwnerCopilotWriteAction(intent.action)) {
+    const ownerCopilotRegistry = {
+      send_debt_reminder_all: async () => {
+        const overview = await getDebtorsOverview(ctx.org.id)
+        const eligible = overview.rows.filter((row) => !row.optedOut)
+
+        if (eligible.length === 0) {
+          await sendTextMessage(
+            ctx.senderPhone,
+            botString('balance_none', ctx.locale),
+            ctx.accessToken,
+            ctx.phoneNumberId
+          )
+          return true
+        }
+
+        await sendReplyButtons(
+          ctx.senderPhone,
+          {
+            body: `שלח תזכורת ל-${eligible.length} חייבים?`,
+            buttons: [
+              {
+                id: encodeCopilotPayload('confirm', 'send_debt_reminder_all'),
+                title: botString('support_send_button', ctx.locale),
+              },
+              {
+                id: encodeCopilotPayload('cancel'),
+                title: botString('support_cancel_button', ctx.locale),
+              },
+            ],
+          },
+          ctx.accessToken,
+          ctx.phoneNumberId
+        )
+        return true
+      },
+      send_debt_reminder_parent: async () => {
+        if (!intent.parentId) {
+          const answer = await askOwnerCopilot(ctx.org.id, ctx.msg.text, ctx.locale)
+          await sendTextMessage(ctx.senderPhone, answer, ctx.accessToken, ctx.phoneNumberId)
+          return true
+        }
+
+        const overview = await getDebtorsOverview(ctx.org.id)
+        const parent = overview.rows.find((row) => row.parentId === intent.parentId)
+
+        if (!parent || parent.optedOut) {
+          const answer = await askOwnerCopilot(ctx.org.id, ctx.msg.text, ctx.locale)
+          await sendTextMessage(ctx.senderPhone, answer, ctx.accessToken, ctx.phoneNumberId)
+          return true
+        }
+
+        await sendReplyButtons(
+          ctx.senderPhone,
+          {
+            body: `לשלוח תזכורת ל-${parent.parentName || 'ההורה'}?`,
+            buttons: [
+              {
+                id: encodeCopilotPayload('confirm', 'send_debt_reminder_parent', intent.parentId),
+                title: botString('support_send_button', ctx.locale),
+              },
+              {
+                id: encodeCopilotPayload('cancel'),
+                title: botString('support_cancel_button', ctx.locale),
+              },
+            ],
+          },
+          ctx.accessToken,
+          ctx.phoneNumberId
+        )
+        return true
+      },
+    } as const
+
+    return await ownerCopilotRegistry[intent.action]()
+  }
+
+  return false
+}
+
+async function handleOwnerCopilotDecision(
+  ctx: HandlerContext,
+  decision: { action: 'confirm' | 'cancel'; kind?: 'send_debt_reminder_all' | 'send_debt_reminder_parent'; parentId?: string }
+): Promise<void> {
+  if (decision.action === 'cancel') {
+    await replyWith(ctx, 'support_cancelled')
+    return
+  }
+
+  if (decision.kind === 'send_debt_reminder_all') {
+    const overview = await getDebtorsOverview(ctx.org.id)
+    const eligible = overview.rows.filter((row) => !row.optedOut)
+
+    await Promise.all(
+      eligible.map((row) => sendDebtReminderForParent(ctx.org.id, row.parentId, ctx.sender.profileId))
+    )
+    return
+  }
+
+  if (decision.kind === 'send_debt_reminder_parent' && decision.parentId) {
+    await sendDebtReminderForParent(ctx.org.id, decision.parentId, ctx.sender.profileId)
+  }
 }
 
 // ── Day-off requests ──────────────────────────────────────────────────────────

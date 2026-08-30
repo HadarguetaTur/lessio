@@ -36,6 +36,7 @@ export type MessageTemplateType =
   | 'ai_satisfaction_prompt'
   | 'unknown_intent_fallback'
   | 'lesson_cancelled_by_teacher'
+  | 'lesson_rescheduled'
   | 'day_off_decision'
   | 'welcome_notice'
 
@@ -82,6 +83,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'היי 👋 לא הצלחתי להבין את הבקשה.\nהנה מה שאפשר לכתוב לי:\n\n• "הזמנה" לקביעת שיעור\n• "ביטול" לביטול שיעור\n• "חוב" לבירור יתרה ותשלום\n• "שיעורים" ללוח השיעורים הקרובים\n• "פורטל" לכניסה לאזור האישי',
     lesson_cancelled_by_teacher:
       'עדכון חשוב 🗓️\nהמורה {{teacher_name}} לא זמין/ה בתאריכים {{date_range}}, ולכן השיעורים שנקבעו בתקופה הזו בוטלו.\nלא יבוצע חיוב על השיעורים האלה.\n\nלקביעת מועד חלופי אפשר לכתוב "הזמנה" 😊',
+    lesson_rescheduled:
+      'עדכון מועד שיעור 🗓️\nהשיעור של {{student_name}} עם {{teacher_name}} הועבר למועד חדש.\nבמקום {{old_date}} בשעה {{old_time}} — {{date}} בשעה {{time}}.\n\nנתראה!',
     day_off_decision:
       'עדכון לגבי בקשת החופש שלך לתאריכים {{date_range}}:\nהבקשה {{decision}}.',
     welcome_notice:
@@ -124,6 +127,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'Hi 👋 I did not quite catch that.\nHere is what you can write me:\n\n• "book" to schedule a lesson\n• "cancel" to cancel a lesson\n• "balance" to check what is owed and pay\n• "schedule" for your upcoming lessons\n• "portal" to reach your personal area',
     lesson_cancelled_by_teacher:
       'An important update 🗓️\n{{teacher_name}} is unavailable on {{date_range}}, so the lessons scheduled in that period have been cancelled.\nYou will not be charged for them.\n\nTo book a new time, just write "book" 😊',
+    lesson_rescheduled:
+      'Lesson time updated 🗓️\n{{student_name}}\'s lesson with {{teacher_name}} has been moved.\nInstead of {{old_date}} at {{old_time}} — {{date}} at {{time}}.\n\nSee you there!',
     day_off_decision:
       'An update on your time-off request for {{date_range}}:\nthe request was {{decision}}.',
     welcome_notice:

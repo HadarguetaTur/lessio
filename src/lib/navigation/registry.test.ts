@@ -19,9 +19,9 @@ describe('registry shape', () => {
     expect(new Set(hrefs).size).toBe(hrefs.length)
   })
 
-  it('covers /account/billing plus the sixteen settings pages', () => {
-    expect(SETTINGS_NAV).toHaveLength(17)
-    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(16)
+  it('covers /account/billing plus the seventeen settings pages', () => {
+    expect(SETTINGS_NAV).toHaveLength(18)
+    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(17)
   })
 
   it('keeps every settings page reachable from the sidebar and the hub', () => {
@@ -58,7 +58,7 @@ describe('filterNav', () => {
   })
 
   it('shows everything to an owner when no plan is resolved', () => {
-    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(17)
+    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(18)
   })
 
   it('drops plan-gated entries when the feature is off', () => {

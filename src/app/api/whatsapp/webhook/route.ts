@@ -311,6 +311,7 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
     .from('organizations')
     .select(`
       id,
+      name,
       whatsapp_access_token,
       timezone,
       ai_assistant_enabled,

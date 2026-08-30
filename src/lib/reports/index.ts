@@ -1,6 +1,0 @@
-export * from './revenue'
-export * from './lessons'
-export * from './debt'
-export * from './teachers'
-export * from './students'
-export * from './params'

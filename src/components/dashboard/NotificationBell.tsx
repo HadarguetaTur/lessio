@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation'
 import { useLiveRefreshEvent } from '@/lib/realtime/useLiveRefresh'
 import { useTranslations } from 'next-intl'
 import { Bell } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -59,6 +60,7 @@ export function NotificationBell({
   markAllRead,
 }: Props) {
   const t = useTranslations('notifications')
+  const tErrors = useTranslations('errors')
   const router = useRouter()
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
   const [notifications, setNotifications] = useState<InAppNotification[]>([])
@@ -100,7 +102,16 @@ export function NotificationBell({
   const handleClick = (n: InAppNotification) => {
     if (!n.read_at) {
       startTransition(async () => {
-        await markAsRead(n.id)
+        // A throw inside a transition is not caught by the caller — React hands
+        // it to the nearest error boundary, so a failed "mark as read" used to
+        // replace the whole dashboard with the error page. The reads above
+        // already swallow their failures; these two mutations did not.
+        try {
+          await markAsRead(n.id)
+        } catch {
+          toast.error(tErrors('generic.description'))
+          return
+        }
         setNotifications((prev) =>
           prev.map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x))
         )
@@ -115,7 +126,12 @@ export function NotificationBell({
 
   const handleMarkAllRead = () => {
     startTransition(async () => {
-      await markAllRead()
+      try {
+        await markAllRead()
+      } catch {
+        toast.error(tErrors('generic.description'))
+        return
+      }
       setNotifications((prev) =>
         prev.map((x) => (x.read_at ? x : { ...x, read_at: new Date().toISOString() }))
       )

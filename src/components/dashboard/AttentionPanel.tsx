@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/ui/status-badge'
 import type { AttentionActionResult } from '@/app/(dashboard)/dashboard/actions'
 import { AttentionCard, AttentionRow, AttentionSubHeader } from './AttentionCard'
-import { AttentionRowCheckbox } from './AttentionRowCheckbox'
 
 interface AttentionPanelProps {
   data: AttentionData
@@ -140,13 +139,12 @@ export async function AttentionPanel({
               primary={<bdi>{lesson.studentName}</bdi>}
               badge={<StatusBadge status="scheduled" className="shrink-0 px-1.5 text-[10px]" />}
               trailing={formatDayTime(lesson.startAt)}
-              leading={
-                <AttentionRowCheckbox
-                  id={lesson.lessonId}
-                  action={completeLessonAction}
-                  label={t('attention.markLessonDone')}
-                />
-              }
+              check={{
+                id: lesson.lessonId,
+                action: completeLessonAction,
+                label: t('attention.markLessonDone'),
+                failureLabel: t('attention.markDoneFailed'),
+              }}
             />
           ))}
         </AttentionCard>
@@ -238,13 +236,12 @@ export async function AttentionPanel({
               secondary={row.title}
               badge={<StatusBadge status="overdue" className="shrink-0 px-1.5 text-[10px]" />}
               trailing={row.dueDate ? formatShortDate(`${row.dueDate}T12:00:00Z`) : undefined}
-              leading={
-                <AttentionRowCheckbox
-                  id={row.assignmentId}
-                  action={markHomeworkDoneAction}
-                  label={t('attention.markHomeworkDone')}
-                />
-              }
+              check={{
+                id: row.assignmentId,
+                action: markHomeworkDoneAction,
+                label: t('attention.markHomeworkDone'),
+                failureLabel: t('attention.markDoneFailed'),
+              }}
             />
           ))}
         </AttentionCard>

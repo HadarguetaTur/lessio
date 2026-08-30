@@ -2,6 +2,7 @@ import React from 'react'
 import Link from 'next/link'
 import { CheckCircle2, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AttentionCheckRow, type AttentionRowCheck } from './AttentionRowCheckbox'
 
 export type AttentionTone = 'neutral' | 'amber' | 'rose' | 'blue' | 'violet'
 
@@ -103,11 +104,12 @@ interface AttentionRowProps {
   trailing?: React.ReactNode
   trailingStrong?: boolean
   /**
-   * Interactive control at the logical start of the row (e.g. a "done"
-   * checkbox). Rendered as a sibling of the link, not inside it — nesting an
-   * interactive element in an anchor breaks both semantics and the click.
+   * When set, the row is wrapped in the client check-row shell: a "done"
+   * tick at the logical start, sibling of the link rather than nested in it —
+   * nesting an interactive element in an anchor breaks both semantics and
+   * the click.
    */
-  leading?: React.ReactNode
+  check?: AttentionRowCheck
 }
 
 /** Compact, divider-free row. Hover background does the separating. */
@@ -118,7 +120,7 @@ export function AttentionRow({
   badge,
   trailing,
   trailingStrong,
-  leading,
+  check,
 }: AttentionRowProps) {
   const content = (
     <>
@@ -142,14 +144,11 @@ export function AttentionRow({
     </>
   )
 
-  if (leading) {
+  if (check) {
     return (
-      <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/50">
-        {leading}
-        <Link href={href} className="flex min-w-0 flex-1 items-center gap-2">
-          {content}
-        </Link>
-      </div>
+      <AttentionCheckRow {...check} href={href}>
+        {content}
+      </AttentionCheckRow>
     )
   }
 

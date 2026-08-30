@@ -12,7 +12,7 @@ const PRICE_TABLE: Record<string, [number, number]> = {
   'gpt-4o':        [2.50, 10.00],
   // Anthropic
   'claude-haiku-4-5-20251001':   [0.80, 4.00],
-  'claude-sonnet-4-6-20250514':  [3.00, 15.00],
+  'claude-sonnet-4-6':           [3.00, 15.00],
   // Google
   'gemini-2.0-flash':  [0.10, 0.40],
   'gemini-2.5-flash':  [0.15, 0.60],

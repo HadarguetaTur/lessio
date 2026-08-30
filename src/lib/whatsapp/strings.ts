@@ -178,6 +178,15 @@ export type BotStringKey =
   | 'support_created'
   | 'support_cancelled'
   | 'support_empty_text'
+  // Owner copilot (staff free text answered or acted on by the AI)
+  | 'copilot_confirm_all'
+  | 'copilot_confirm_parent'
+  | 'copilot_no_debtors'
+  | 'copilot_cancelled'
+  | 'copilot_summary'
+  | 'copilot_reminder_sent'
+  | 'copilot_reminder_not_sent'
+  | 'copilot_error'
   // Cross-role
   | 'action_not_for_role'
   | 'role_switch_body'
@@ -188,6 +197,7 @@ export type BotStringKey =
   | 'role_label_staff'
   // Generic fallback nouns
   | 'the_teacher'
+  | 'the_parent'
   | 'lesson_list_line'
   | 'student_line_with_homework'
   | 'ics_lesson_summary'
@@ -390,6 +400,15 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     support_empty_text:
       'לא הצלחתי לקרוא את ההודעה. אפשר לכתוב לי במילים מה קרה?',
 
+    copilot_confirm_all: 'לשלוח תזכורת תשלום ל-{{count}} חייבים?',
+    copilot_confirm_parent: 'לשלוח תזכורת תשלום ל{{parent_name}}?',
+    copilot_no_debtors: 'אין כרגע חובות פתוחים 🎉',
+    copilot_cancelled: 'בוטל — לא נשלחו תזכורות 🙂',
+    copilot_summary: 'סיימתי ✅ נשלחו: {{sent}} · דולגו: {{skipped}} · נכשלו: {{failed}}',
+    copilot_reminder_sent: 'התזכורת נשלחה ✅',
+    copilot_reminder_not_sent: 'התזכורת לא נשלחה 🙁 אפשר לנסות שוב מהדשבורד.',
+    copilot_error: 'לא הצלחתי לטפל בזה כרגע 🙂 אפשר לנסות שוב או לכתוב "תפריט".',
+
     action_not_for_role: 'הפעולה הזו לא זמינה מהתפריט שלך 🙂 הנה מה שאפשר לעשות:',
     role_switch_body: 'באיזה תפקיד להמשיך?',
     role_switched: 'מעולה, ממשיכים בתפקיד {{role_label}}. הנה התפריט:',
@@ -399,6 +418,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     role_label_staff: 'צוות',
 
     the_teacher: 'המורה',
+    the_parent: 'ההורה',
     lesson_list_line: '{n}. {date} בשעה {time} עם {teacher}',
     student_line_with_homework: '{name} — {open} שיעורי בית פתוחים',
     ics_lesson_summary: 'שיעור — {students}',
@@ -610,6 +630,15 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     support_cancelled: 'Request cancelled — nothing was sent 🙂',
     support_empty_text: 'I could not read that message. Could you describe what happened in words?',
 
+    copilot_confirm_all: 'Send a payment reminder to {{count}} debtors?',
+    copilot_confirm_parent: 'Send a payment reminder to {{parent_name}}?',
+    copilot_no_debtors: 'No open debts right now 🎉',
+    copilot_cancelled: 'Cancelled — no reminders were sent 🙂',
+    copilot_summary: 'Done ✅ Sent: {{sent}} · Skipped: {{skipped}} · Failed: {{failed}}',
+    copilot_reminder_sent: 'Reminder sent ✅',
+    copilot_reminder_not_sent: 'The reminder was not sent 🙁 You can retry from the dashboard.',
+    copilot_error: 'I could not handle that right now 🙂 Try again or type "menu".',
+
     action_not_for_role: 'That action is not available from your menu 🙂 Here is what you can do:',
     role_switch_body: 'Which role would you like to continue as?',
     role_switched: 'Great, continuing as {{role_label}}. Here is your menu:',
@@ -619,6 +648,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     role_label_staff: 'staff',
 
     the_teacher: 'the teacher',
+    the_parent: 'the parent',
     lesson_list_line: '{n}. {date} at {time} with {teacher}',
     student_line_with_homework: '{name} — {open} open homework',
     ics_lesson_summary: 'Lesson — {students}',

@@ -17,9 +17,22 @@ export type CopilotConfirmPayload =
   | { action: 'confirm'; kind: CopilotAction; parentId?: string }
   | { action: 'cancel' }
 
-export function encodeCopilotPayload(action: 'confirm' | 'cancel', kind?: CopilotAction, parentId?: string): string {
-  if (action === 'cancel') return `${PREFIX}:cancel`
-  if (!kind) return `${PREFIX}:confirm:send_debt_reminder_all`
+/**
+ * A confirm payload must name its action explicitly — defaulting it would make
+ * a forgotten argument silently send every debtor a reminder.
+ */
+export function encodeCopilotPayload(action: 'cancel'): string
+export function encodeCopilotPayload(
+  action: 'confirm',
+  kind: CopilotAction,
+  parentId?: string
+): string
+export function encodeCopilotPayload(
+  action: 'confirm' | 'cancel',
+  kind?: CopilotAction,
+  parentId?: string
+): string {
+  if (action === 'cancel' || !kind) return `${PREFIX}:cancel`
   return parentId ? `${PREFIX}:confirm:${kind}:${parentId}` : `${PREFIX}:confirm:${kind}`
 }
 

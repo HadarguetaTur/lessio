@@ -1,6 +1,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizePhone } from '@/lib/phone'
 import type { EntityType, ValidatedRow } from './validators'
+import { markMissingLessonDependencies } from './lessonDependencies'
 
 /**
  * Detect duplicate rows against existing DB records.
@@ -18,7 +19,11 @@ export async function detectDuplicates(
    * Appended to `existingRecordWarning` to say which record matched. Hardcoding
    * these produced a half-Hebrew warning on an otherwise translated string.
    */
-  roleSuffix?: { parent: string; parent2: string; student: string }
+  roleSuffix?: { parent: string; parent2: string; student: string },
+  lessonDependencyMessages?: {
+    teacherNotFound: (name: string) => string
+    studentNotFound: (name: string) => string
+  }
 ): Promise<ValidatedRow[]> {
   switch (entityType) {
     case 'parents':
@@ -29,9 +34,43 @@ export async function detectDuplicates(
       return detectStudentDuplicates(orgId, rows, existingRecordWarning)
     case 'family-list':
       return detectFamilyListDuplicates(orgId, rows, existingRecordWarning, roleSuffix)
+    case 'lessons-schedule':
+    case 'lessons-history':
+      return detectLessonDependencies(orgId, rows, lessonDependencyMessages)
     default:
       return rows
   }
+}
+
+async function detectLessonDependencies(
+  orgId: string,
+  rows: ValidatedRow[],
+  messages?: {
+    teacherNotFound: (name: string) => string
+    studentNotFound: (name: string) => string
+  }
+): Promise<ValidatedRow[]> {
+  if (!messages) return rows
+
+  const db = createServiceRoleClient()
+  const [{ data: teachers }, { data: students }] = await Promise.all([
+    db
+      .from('teachers')
+      .select('id, profile:profiles(full_name)')
+      .eq('organization_id', orgId)
+      .eq('is_active', true),
+    db.from('students').select('id, full_name').eq('organization_id', orgId),
+  ])
+
+  return markMissingLessonDependencies(
+    rows,
+    (teachers ?? []).map((teacher) => ({
+      id: teacher.id,
+      name: (teacher.profile as unknown as { full_name: string } | null)?.full_name ?? '',
+    })),
+    (students ?? []).map((student) => ({ id: student.id, name: student.full_name })),
+    messages
+  )
 }
 
 async function detectParentDuplicates(

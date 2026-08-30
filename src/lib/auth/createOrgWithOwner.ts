@@ -49,6 +49,52 @@ export type SignupResult =
   | { success: true; orgId: string; userId: string }
   | { success: false; error: string }
 
+const TRIAL_DAYS = 30
+
+export async function provisionProgressiveSetup(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string,
+  userId: string
+): Promise<boolean> {
+  const { data: plan } = await db
+    .from('saas_plans')
+    .select('id')
+    .eq('name', 'free')
+    .eq('is_active', true)
+    .maybeSingle()
+  if (!plan) return false
+
+  const now = new Date()
+  const trialEnds = new Date(now)
+  trialEnds.setDate(trialEnds.getDate() + TRIAL_DAYS)
+
+  const [{ error: teacherError }, { error: subscriptionError }] = await Promise.all([
+    db.from('teachers').insert({ organization_id: orgId, profile_id: userId, is_active: true }),
+    db.from('organization_subscriptions').upsert(
+      {
+        organization_id: orgId,
+        plan_id: plan.id,
+        status: 'trial',
+        billing_interval: 'monthly',
+        trial_ends_at: trialEnds.toISOString(),
+        current_period_start: now.toISOString(),
+        current_period_end: trialEnds.toISOString(),
+      },
+      { onConflict: 'organization_id' }
+    ),
+  ])
+
+  if (teacherError || subscriptionError) {
+    console.error('[createOrgWithOwner] initial product setup failed', {
+      orgId,
+      teacherError,
+      subscriptionError,
+    })
+    return false
+  }
+  return true
+}
+
 function toSlug(name: string): string {
   return name
     .toLowerCase()
@@ -115,7 +161,7 @@ export async function createOrgWithOwner(
       break_duration_minutes: 0,
       min_booking_notice_hours: 0,
       billing_mode: 'monthly',
-      onboarding_completed: false,
+      onboarding_completed: true,
     })
     .select('id')
     .single()
@@ -163,6 +209,12 @@ export async function createOrgWithOwner(
     return { success: false, error: errors.profileFailed }
   }
 
+  if (!(await provisionProgressiveSetup(db, orgId, userId))) {
+    await db.auth.admin.deleteUser(userId)
+    await db.from('organizations').delete().eq('id', orgId)
+    return { success: false, error: errors.orgFailed }
+  }
+
   console.info('[createOrgWithOwner] success', { orgId, userId, email: input.email })
   return { success: true, orgId, userId }
 }
@@ -189,7 +241,7 @@ export async function createOrgForExistingUser(
       break_duration_minutes: 0,
       min_booking_notice_hours: 0,
       billing_mode: 'monthly',
-      onboarding_completed: false,
+      onboarding_completed: true,
     })
     .select('id')
     .single()
@@ -227,6 +279,11 @@ export async function createOrgForExistingUser(
     console.error('[createOrgForExistingUser] profile insert failed', { orgId, userId, error: profileError })
     await db.from('organizations').delete().eq('id', orgId)
     return { success: false, error: errors.profileFailed }
+  }
+
+  if (!(await provisionProgressiveSetup(db, orgId, userId))) {
+    await db.from('organizations').delete().eq('id', orgId)
+    return { success: false, error: errors.orgFailed }
   }
 
   console.info('[createOrgForExistingUser] success', { orgId, userId })

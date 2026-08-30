@@ -1,120 +1,80 @@
 'use client'
 
-/**
- * The one place the dashboard says "you are not live yet".
- *
- * Dismissable, but only for a week: an org that is still missing its WhatsApp
- * number a month later has not decided against it, it has forgotten.
- */
-
-import { useState, useSyncExternalStore } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { X, AlertCircle, ArrowLeft, ArrowRight } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, Circle, Rocket } from 'lucide-react'
 
-export type SetupGap = 'whatsapp' | 'ai' | 'payment'
+export type SetupGap = 'teacher' | 'students' | 'lesson' | 'whatsapp' | 'payment'
 
 const HREFS: Record<SetupGap, string> = {
+  teacher: '/teachers',
+  students: '/students/import',
+  lesson: '/lessons/new',
   whatsapp: '/settings/whatsapp',
-  ai: '/settings/ai-assistant',
   payment: '/settings/payment',
 }
 
-const DISMISS_DAYS = 7
-const DISMISS_MS = DISMISS_DAYS * 24 * 60 * 60 * 1000
-
-/** Org-scoped: a superadmin in support mode hops between tenants. */
-function storageKey(orgId: string): string {
-  return `lessio.setup-strip.${orgId}`
-}
-
-function dismissedRecently(orgId: string): boolean {
-  try {
-    const raw = window.localStorage.getItem(storageKey(orgId))
-    if (!raw) return false
-    const at = Number(raw)
-    if (!Number.isFinite(at)) return false
-    return Date.now() - at < DISMISS_MS
-  } catch {
-    // Private mode, blocked site data — treat as "never dismissed".
-    return false
-  }
-}
-
-/** Nothing outside React mutates the dismissal, so there is nothing to watch. */
-const noSubscribe = () => () => {}
+const ORDER: SetupGap[] = ['teacher', 'students', 'lesson', 'whatsapp', 'payment']
 
 interface Props {
   orgId: string
   missing: SetupGap[]
-  /** Chevron direction follows the reading direction. */
+  completed: number
+  total: number
   isRtl?: boolean
 }
 
-export function SetupStrip({ orgId, missing, isRtl }: Props) {
+export function SetupStrip({ missing, completed, total }: Props) {
   const t = useTranslations('dashboard.setup')
-  // The dismissal lives in localStorage, which the server cannot see. The
-  // server snapshot is "hidden", so the markup matches on hydration and the
-  // strip appears on the client pass if it has not been dismissed.
-  const hiddenByStorage = useSyncExternalStore(
-    noSubscribe,
-    () => dismissedRecently(orgId),
-    () => true
-  )
-  const [dismissedNow, setDismissedNow] = useState(false)
-
-  if (hiddenByStorage || dismissedNow || missing.length === 0) return null
-
-  const dismiss = () => {
-    try {
-      window.localStorage.setItem(storageKey(orgId), String(Date.now()))
-    } catch {
-      // Nothing to do — it will simply reappear next visit.
-    }
-    setDismissedNow(true)
-  }
-
-  const Chevron = isRtl ? ArrowLeft : ArrowRight
-  const hoverTranslate = isRtl ? 'group-hover:-translate-x-0.5' : 'group-hover:translate-x-0.5'
+  const [expanded, setExpanded] = useState(true)
+  const missingSet = new Set(missing)
+  const percent = Math.round((completed / total) * 100)
 
   return (
-    <div className="animate-in fade-in-0 mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <p className="flex items-center gap-2 text-sm font-semibold text-amber-900">
-          <AlertCircle size={16} className="shrink-0" aria-hidden />
-          {t('title')}
-        </p>
-        <button
-          type="button"
-          onClick={dismiss}
-          aria-label={t('dismiss')}
-          className="-me-1 -mt-1 rounded-md p-1 text-amber-700 transition-colors hover:bg-amber-100 hover:text-amber-900"
-        >
-          <X size={15} />
-        </button>
+    <section className="rounded-2xl border border-violet-200 bg-gradient-to-l from-violet-50 via-card to-teal-50 p-5 shadow-sm">
+      <button type="button" onClick={() => setExpanded((value) => !value)} className="flex w-full items-start justify-between gap-4 text-start">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
+            <Rocket size={19} aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-semibold text-foreground">{t('title')}</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">{t('progress', { completed, total })}</p>
+          </div>
+        </div>
+        {expanded ? <ChevronUp size={18} className="mt-2 text-muted-foreground" /> : <ChevronDown size={18} className="mt-2 text-muted-foreground" />}
+      </button>
+
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-border/50">
+        <div className="h-full rounded-full bg-gradient-to-l from-teal-500 to-violet-600 transition-[width]" style={{ width: `${percent}%` }} />
       </div>
 
-      <ul className="mt-3 space-y-1.5">
-        {missing.map((gap) => (
-          <li key={gap}>
-            <Link
-              href={HREFS[gap]}
-              className="group flex items-start gap-2 text-sm text-amber-800 underline decoration-from-font underline-offset-4 hover:text-amber-900 hover:underline"
-            >
-              <Chevron
-                size={14}
-                className={`mt-0.5 shrink-0 transition-transform ${hoverTranslate}`}
-                aria-hidden
-              />
-              <span>
-                {t(`items.${gap}` as 'items.whatsapp')}
-                {' '}
-                <span className="font-medium">{t('connectNow')}</span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+      {expanded && (
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {ORDER.map((item) => {
+            const isMissing = missingSet.has(item)
+            return (
+              <li key={item}>
+                {isMissing ? (
+                  <Link href={HREFS[item]} className="flex h-full items-start gap-2.5 rounded-xl border border-border bg-card px-3 py-3 text-sm transition-colors hover:border-violet-300 hover:bg-violet-50/60">
+                    <Circle size={16} className="mt-0.5 shrink-0 text-violet-500" />
+                    <span>
+                      <span className="block font-medium text-foreground">{t(`items.${item}.title`)}</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">{t(`items.${item}.description`)}</span>
+                    </span>
+                  </Link>
+                ) : (
+                  <div className="flex h-full items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-3 text-sm">
+                    <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+                    <span className="font-medium text-emerald-800">{t(`items.${item}.title`)}</span>
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
   )
 }

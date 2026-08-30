@@ -18,6 +18,7 @@ import { createOrganization } from './createOrganization'
 function makeChainFor(returnValue: unknown) {
   const chain: Record<string, unknown> = {}
   chain.insert    = vi.fn(() => chain)
+  chain.upsert    = vi.fn().mockResolvedValue({ error: null })
   chain.select    = vi.fn(() => chain)
   chain.eq        = vi.fn(() => chain)
   chain.single    = vi.fn().mockResolvedValue(returnValue)
@@ -40,6 +41,14 @@ describe('createOrganization', () => {
       if (table === 'organizations') return orgChain
       if (table === 'cancellation_policies') return policyChain
       if (table === 'profiles') return makeChainFor({ data: null, error: null })
+      if (table === 'saas_plans') {
+        const chain = makeChainFor({ data: null, error: null })
+        chain.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'plan-free' } })
+        return chain
+      }
+      if (table === 'teachers' || table === 'organization_subscriptions') {
+        return makeChainFor({ data: null, error: null })
+      }
       return makeChainFor({ data: null, error: null })
     })
 

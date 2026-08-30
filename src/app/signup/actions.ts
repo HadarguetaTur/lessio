@@ -60,7 +60,7 @@ export async function signUp(
   await supabase.auth.resend({
     type: 'signup',
     email: parsed.data.email,
-    options: { emailRedirectTo: `${appUrl}/auth/callback?next=/onboarding` },
+    options: { emailRedirectTo: `${appUrl}/auth/callback?next=/dashboard` },
   })
 
   // Persist locale so the verify page and onboarding render in the correct language.

@@ -25,13 +25,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: await commonError('invalidData') }, { status: 400 })
   }
 
-  const buffer = await generateTemplate(entityType as EntityType, await getAppLocale())
-  const filename = getTemplateFilename(entityType as EntityType)
+  const locale = await getAppLocale()
+  const buffer = await generateTemplate(entityType as EntityType, locale)
+  const filename = getTemplateFilename(entityType as EntityType, locale)
+  const asciiFilename = getTemplateFilename(entityType as EntityType, 'en')
 
   return new NextResponse(buffer, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
     },
   })
 }

@@ -39,5 +39,5 @@ export async function completeGoogleSignup(
     return { error: result.error }
   }
 
-  redirect('/onboarding')
+  redirect('/dashboard')
 }

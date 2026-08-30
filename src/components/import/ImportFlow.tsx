@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
-import { Download, Loader2, Upload } from 'lucide-react'
+import { AlertTriangle, Download, ExternalLink, GraduationCap, Loader2, Upload, UserPlus } from 'lucide-react'
 import { FileUploadZone } from './FileUploadZone'
 import { ImportPreviewTable } from './ImportPreviewTable'
 import { ImportResultsSummary } from './ImportResultsSummary'
@@ -28,6 +28,10 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
   const [error, setError] = useState<string | null>(null)
   const [parsing, setParsing] = useState(false)
   const [attestConsent, setAttestConsent] = useState(false)
+  const [missingDependencies, setMissingDependencies] = useState<{
+    teachers: string[]
+    students: string[]
+  }>({ teachers: [], students: [] })
 
   /** Only these imports create parent rows, so only they ask about consent. */
   const createsParents = entityType === 'parents' || entityType === 'family-list'
@@ -81,6 +85,7 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
         }
 
         setRows(data.rows)
+        setMissingDependencies(data.missingDependencies ?? { teachers: [], students: [] })
         const autoExclude = new Set<number>()
         for (const row of data.rows as ValidatedRow[]) {
           if (row.status === 'error' || row.existingId) {
@@ -135,7 +140,7 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
 
       setImportResult(data as ImportResult)
       setStep('results')
-      onComplete?.(data.inserted)
+      if (data.inserted > 0) onComplete?.(data.inserted)
     } catch {
       setError(t('flowErrors.executeFailedRetry'))
       setStep('preview')
@@ -149,6 +154,7 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
     setImportResult(null)
     setError(null)
     setAttestConsent(false)
+    setMissingDependencies({ teachers: [], students: [] })
   }
 
   const validCount = rows.filter(
@@ -200,6 +206,50 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
               {t('uploadFile')}
             </Button>
           </div>
+
+          {(missingDependencies.teachers.length > 0 || missingDependencies.students.length > 0) && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold">{t('dependencies.title')}</h3>
+                  <p className="mt-1 text-sm text-amber-900">{t('dependencies.description')}</p>
+
+                  {missingDependencies.teachers.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-sm font-medium">
+                        {t('dependencies.missingTeachers', { names: missingDependencies.teachers.join(', ') })}
+                      </p>
+                      <Button asChild variant="outline" size="sm" className="mt-2 border-amber-400 bg-white">
+                        <a href="/teachers" target="_blank" rel="noreferrer">
+                          <UserPlus size={14} className="ms-1.5" />
+                          {t('dependencies.addTeachers')}
+                          <ExternalLink size={12} className="me-1.5" />
+                        </a>
+                      </Button>
+                    </div>
+                  )}
+
+                  {missingDependencies.students.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-sm font-medium">
+                        {t('dependencies.missingStudents', { names: missingDependencies.students.join(', ') })}
+                      </p>
+                      <Button asChild variant="outline" size="sm" className="mt-2 border-amber-400 bg-white">
+                        <a href="/students" target="_blank" rel="noreferrer">
+                          <GraduationCap size={14} className="ms-1.5" />
+                          {t('dependencies.addStudents')}
+                          <ExternalLink size={12} className="me-1.5" />
+                        </a>
+                      </Button>
+                    </div>
+                  )}
+
+                  <p className="mt-3 text-xs text-amber-800">{t('dependencies.returnHint')}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-4 rounded-lg bg-muted/50 px-4 py-2.5 text-sm flex-wrap">
             <span className="text-emerald-700 font-medium">

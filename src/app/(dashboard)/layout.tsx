@@ -137,26 +137,8 @@ export default async function DashboardLayout({
     redirect('/admin/dashboard')
   }
 
-  // Onboarding check: owners of orgs that haven't completed onboarding
-  if (profile?.role === 'owner' && profile.organization_id) {
-    const db = createServiceRoleClient()
-    const { data: org } = await db
-      .from('organizations')
-      .select('onboarding_completed')
-      .eq('id', profile.organization_id)
-      .single()
-
-    if (org && !org.onboarding_completed) {
-      redirect('/onboarding')
-    }
-
-    // NOTE: do not bounce `pending_payment` orgs to /onboarding here. A fresh
-    // signup can never be both onboarding_completed AND pending_payment (see
-    // completeOnboarding), so this only fires for an existing org mid-upgrade —
-    // and /onboarding sends completed orgs straight back to /dashboard, which
-    // produced an infinite redirect loop. The billing page renders the pending
-    // state, and the mock-payment / payment-callback pages handle completion.
-  }
+  // Setup is progressive inside the product. Owners always reach the dashboard;
+  // its setup centre reflects the real records and integrations still missing.
 
   // Teachers may only access /teacher/* and /homework/* (sidebar links שיעורי בית).
   // src/proxy.ts forwards the current pathname on every request.

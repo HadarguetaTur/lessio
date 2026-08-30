@@ -415,14 +415,26 @@
       "atRisk": "At risk"
     },
     "setup": {
-      "title": "Finish setting up Lessio",
-      "connectNow": "Connect now",
+      "title": "Let's get your business ready",
+      "progress": "{completed} of {total} tasks completed",
       "items": {
-        "whatsapp": "No WhatsApp number connected — automatic messages are not being sent.",
-        "ai": "The AI assistant isn't configured — parent messages aren't answered automatically.",
-        "payment": "No payment provider configured — payment links can't be sent."
+        "teacher": { "title": "Add your first teacher", "description": "Invite a teacher or teach as the owner" },
+        "students": { "title": "Add students and families", "description": "Add one manually or import a file" },
+        "lesson": { "title": "Create your first lesson", "description": "See real data in your calendar" },
+        "whatsapp": { "title": "Connect WhatsApp", "description": "Automated reminders and messages" },
+        "payment": { "title": "Set up payments", "description": "Send payment links and track collection" }
+      }
+    },
+    "firstRun": {
+      "title": "Welcome to Lessio",
+      "description": "Your workspace is ready. Start working now and finish setup at your own pace.",
+      "items": {
+        "people": { "title": "Students and families", "description": "All student and parent details in one place" },
+        "calendar": { "title": "Calendar and lessons", "description": "Plan, record attendance, and track activity" },
+        "attention": { "title": "Needs attention", "description": "Lessons, billing, and open tasks" }
       },
-      "dismiss": "Dismiss"
+      "start": "Let's start",
+      "skip": "I'll explore on my own"
     }
   },
   "students": {
@@ -649,7 +661,10 @@
     "importTabs": {
       "familyList": "Students + parents",
       "students": "Students only",
-      "parents": "Parents only"
+      "parents": "Parents only",
+      "recommendedTitle": "Recommended: one family file",
+      "recommendedDescription": "Each row automatically creates a student, parent, and their relationship.",
+      "advancedToggle": "Advanced import from separate files"
     },
     "importPage": {
       "title": "Import students and parents",
@@ -2208,6 +2223,7 @@
       "sumitSuffix": " under Settings → API."
     },
     "whatsappPage": {
+      "connectedSuccess": "WhatsApp connected successfully. Refreshing the number details...",
       "subtitle": "Connect your organization WhatsApp number to send and receive messages. Each organization is connected to its own number.",
       "portalUrlHint": "Share this link with parents so they can reach their personal portal.",
       "requirementsTitle": "Before you start — about 2–3 days",
@@ -3553,6 +3569,9 @@
       "title": "Import Students & Parents",
       "subtitle": "Upload an Excel or CSV file with your existing data",
       "hint": "Download the template to see the required format.",
+      "recommendedTitle": "Recommended: one family file",
+      "recommendedDescription": "Each row creates a student, parent, and their relationship. You do not need three separate imports.",
+      "advancedToggle": "Advanced import from separate files",
       "familyListTab": "Students + Parents",
       "studentsTab": "Students only",
       "parentsTab": "Parents only"
@@ -3782,10 +3801,21 @@
       "import": "Import {count} rows",
       "duplicateHint": "Check the box next to duplicate rows to overwrite the existing record."
     },
+    "dependencies": {
+      "title": "Some lessons cannot be imported yet",
+      "description": "Every lesson must be linked to a teacher and student who already exist. The affected rows were excluded until the missing records are added.",
+      "missingTeachers": "Teachers not found: {names}",
+      "missingStudents": "Students not found: {names}",
+      "addTeachers": "Add teachers",
+      "addStudents": "Add students",
+      "returnHint": "The add screen opens in a new tab. After saving, return here and upload the file again so it can be checked against the updated data."
+    },
     "importing": "Importing data...",
     "processing": "Processing file...",
     "results": {
       "title": "Import Results",
+      "nothingImported": "No records were imported",
+      "nothingImportedHint": "Fix the errors below and try again. No data was saved to the system.",
       "inserted": "Successfully imported",
       "updated": "Updated",
       "skipped": "Skipped",

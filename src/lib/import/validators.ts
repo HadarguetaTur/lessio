@@ -13,6 +13,11 @@ export interface ValidatedRow {
   existingStudentId?: string | null
   /** family-list only: existing parent matched by phone */
   existingParentId?: string | null
+  /** Blocking references that must exist before this row can be imported. */
+  missingDependencies?: Array<{
+    type: 'teacher' | 'student'
+    name: string
+  }>
 }
 
 /** Translator for keys under `import` namespace, e.g. `validation.fullNameRequired`. */

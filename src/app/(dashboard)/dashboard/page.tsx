@@ -12,6 +12,9 @@ import { getEffectiveSaasFeatures } from '@/lib/saas/subscriptions'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
+import { FirstRunWelcome } from '@/components/dashboard/FirstRunWelcome'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { markSetupWelcomeSeen } from './actions'
 import {
   AttentionSection,
   MoneySection,
@@ -53,6 +56,9 @@ export default async function DashboardPage() {
     : dt.setLocale('en').toFormat('cccc, LLLL d')
 
   const sectionProps = { orgId, timezone, appLocale, locale }
+  const { data: setupOrg } = role === 'owner'
+    ? await createServiceRoleClient().from('organizations').select('setup_welcome_seen_at').eq('id', orgId).maybeSingle()
+    : { data: null }
 
   return (
     // Command-centre order: today → what needs a decision → how the business is
@@ -62,6 +68,9 @@ export default async function DashboardPage() {
     // Each band streams on its own: today's lessons paint as soon as that one
     // query lands instead of waiting for twelve months of revenue aggregation.
     <div className="flex w-full flex-col gap-6">
+      {role === 'owner' && (
+        <FirstRunWelcome initialSeen={Boolean(setupOrg?.setup_welcome_seen_at)} markSeen={markSetupWelcomeSeen} />
+      )}
       <LiveRefresh tables={['lessons', 'charges', 'leads']} />
       <PageHeader
         className="mb-0 gap-3 sm:mb-0"

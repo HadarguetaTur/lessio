@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, GraduationCap, Users, UsersRound } from 'lucide-react'
+import { ArrowRight, ChevronDown, ChevronUp, GraduationCap, Users, UsersRound } from 'lucide-react'
 import { ImportFlow } from '@/components/import/ImportFlow'
 import {
   onboardingAccentTabActive,
@@ -35,6 +35,7 @@ export function ImportStudentsStep({
   const [familyListDone, setFamilyListDone] = useState(false)
   const [studentsDone, setStudentsDone] = useState(false)
   const [parentsDone, setParentsDone] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const studentRef = useRef(initialStudents)
   const parentRef = useRef(initialParents)
@@ -65,23 +66,35 @@ export function ImportStudentsStep({
         <p className="text-muted-foreground mt-1 text-sm">{t('hint')}</p>
       </div>
 
+      <div className="mb-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+        <div className="flex items-start gap-3">
+          <UsersRound className="mt-0.5 size-5 shrink-0 text-violet-700" />
+          <div><p className="font-semibold text-foreground">{t('recommendedTitle')}</p><p className="mt-1 text-sm text-muted-foreground">{t('recommendedDescription')}</p></div>
+        </div>
+      </div>
+
       <div className="mb-6 flex gap-1 border-b border-border/70">
         <button type="button" onClick={() => setTab('family-list')} className={tabClass(tab === 'family-list')}>
           <UsersRound size={15} />
           {t('familyListTab')}
           {familyListDone && <span className="text-emerald-700 text-xs me-1">✓</span>}
         </button>
-        <button type="button" onClick={() => setTab('students')} className={tabClass(tab === 'students')}>
+        {showAdvanced && <button type="button" onClick={() => setTab('students')} className={tabClass(tab === 'students')}>
           <GraduationCap size={15} />
           {t('studentsTab')}
           {studentsDone && <span className="text-emerald-700 text-xs me-1">✓</span>}
-        </button>
-        <button type="button" onClick={() => setTab('parents')} className={tabClass(tab === 'parents')}>
+        </button>}
+        {showAdvanced && <button type="button" onClick={() => setTab('parents')} className={tabClass(tab === 'parents')}>
           <Users size={15} />
           {t('parentsTab')}
           {parentsDone && <span className="text-emerald-700 text-xs me-1">✓</span>}
-        </button>
+        </button>}
       </div>
+
+      <button type="button" onClick={() => { setShowAdvanced((value) => !value); setTab('family-list') }} className="mb-5 flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+        {showAdvanced ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        {t('advancedToggle')}
+      </button>
 
       {tab === 'family-list' && (
         <ImportFlow

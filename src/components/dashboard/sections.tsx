@@ -15,7 +15,7 @@ import { AttentionPanel } from '@/components/dashboard/AttentionPanel'
 import { ForecastCard } from '@/components/dashboard/ForecastCard'
 import { MiniRevenueChart } from '@/components/dashboard/MiniRevenueChart'
 import { SetupStrip, type SetupGap } from '@/components/dashboard/SetupStrip'
-import { getOrgReadiness } from '@/lib/organizations/readiness'
+import { getOrgSetupProgress } from '@/lib/organizations/readiness'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 /**
@@ -150,13 +150,18 @@ export async function OutlookSection({ orgId, timezone, appLocale, locale }: Sec
  * with a null fallback, so this extra query never delays the LCP.
  */
 export async function SetupSection({ orgId, appLocale }: { orgId: string; appLocale: AppLocale }) {
-  const readiness = await getOrgReadiness(orgId)
-  if (readiness.isReady) return null
+  const readiness = await getOrgSetupProgress(orgId)
 
   const missing: SetupGap[] = []
+  if (!readiness.hasTeacher) missing.push('teacher')
+  if (!readiness.hasStudent) missing.push('students')
+  if (!readiness.hasLesson) missing.push('lesson')
   if (!readiness.hasWhatsApp) missing.push('whatsapp')
-  if (!readiness.hasAi) missing.push('ai')
   if (!readiness.hasPayment) missing.push('payment')
 
-  return <SetupStrip orgId={orgId} missing={missing} isRtl={appLocale === 'he'} />
+  const total = 5
+  const completed = total - missing.length
+  if (completed === total) return null
+
+  return <SetupStrip orgId={orgId} missing={missing} completed={completed} total={total} isRtl={appLocale === 'he'} />
 }

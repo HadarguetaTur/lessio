@@ -17,7 +17,7 @@ export async function resendVerificationEmail(
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email,
-    options: { emailRedirectTo: `${appUrl}/auth/callback?next=/onboarding` },
+    options: { emailRedirectTo: `${appUrl}/auth/callback?next=/dashboard` },
   })
 
   if (error) {

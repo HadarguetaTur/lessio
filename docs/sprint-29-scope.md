@@ -97,3 +97,24 @@ GOOGLE_CALENDAR_ENCRYPTION_KEY=   # 64-char hex, generate with: openssl rand -he
 - Two-way Calendar sync (write events back to Google)
 - Real-time calendar polling / webhooks
 - Google Calendar for parent portal
+
+---
+
+## Follow-up — Progressive first-run setup (2026-08-30)
+
+Manual onboarding exposed that the blocking wizard delayed first value and lost
+its client-only position on refresh or after an external OAuth flow. New owners
+now enter the dashboard immediately after email verification or Google signup.
+
+- New organizations start a 30-day full-feature trial automatically.
+- The owner is created as the first active teacher.
+- Product setup is a dashboard checklist derived from real teachers, students,
+  lessons, WhatsApp, and payment configuration rather than completed clicks.
+- A three-point first-run introduction replaces the long mandatory tour.
+- Family import is the recommended path; separate student/parent files are an
+  advanced option and every template has a distinct localized filename.
+- Lesson imports resolve teacher and student dependencies during preview and
+  block rows that could only be skipped during execution.
+- WhatsApp Embedded Signup refreshes the connected state after the server save.
+- Existing unfinished organizations are migrated into the same progressive
+  setup model with a trial and owner-teacher fallback.

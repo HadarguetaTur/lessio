@@ -29,6 +29,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback, useActionState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { META_API_VERSION } from '@/lib/whatsapp/graphVersion'
 import { saveWhatsAppConnection, type WhatsAppActionResult } from './actions'
@@ -60,6 +61,7 @@ function readableStep(step: string): string {
 }
 
 export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
+  const router = useRouter()
   const tp = useTranslations('settings')
   const t = useTranslations('settings.whatsapp')
   const tCommon = useTranslations('common')
@@ -75,6 +77,15 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
 
   const [sdkReady, setSdkReady] = useState(false)
   const [clientError, setClientError] = useState<string | null>(null)
+  const submittedToServerRef = useRef(false)
+
+  useEffect(() => {
+    if (isPending) submittedToServerRef.current = true
+    if (!isPending && submittedToServerRef.current && !state.error) {
+      submittedToServerRef.current = false
+      router.refresh()
+    }
+  }, [isPending, state.error, router])
 
   const submitIfComplete = useCallback(() => {
     if (submittedRef.current) return

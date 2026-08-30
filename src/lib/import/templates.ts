@@ -125,6 +125,18 @@ export async function generateTemplate(
   return buf as ArrayBuffer
 }
 
-export function getTemplateFilename(entityType: EntityType): string {
-  return `lessio-template-${entityType}.xlsx`
+export function getTemplateFilename(entityType: EntityType, locale: AppLocale = 'he'): string {
+  const names: Record<AppLocale, Record<EntityType, string>> = {
+    he: {
+      students: 'תלמידים', parents: 'הורים', teachers: 'מורים',
+      'lessons-schedule': 'מערכת-שיעורים', 'lessons-history': 'היסטוריית-שיעורים',
+      'family-list': 'תלמידים-והורים',
+    },
+    en: {
+      students: 'students', parents: 'parents', teachers: 'teachers',
+      'lessons-schedule': 'lesson-schedule', 'lessons-history': 'lesson-history',
+      'family-list': 'students-and-parents',
+    },
+  }
+  return `lessio-${names[locale][entityType]}.xlsx`
 }

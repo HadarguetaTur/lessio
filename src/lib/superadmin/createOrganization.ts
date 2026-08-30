@@ -22,6 +22,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { syncOrgHolidays } from '@/lib/holidays/syncOrgHolidays'
 import { z } from 'zod'
 import { getTranslations } from 'next-intl/server'
+import { provisionProgressiveSetup } from '@/lib/auth/createOrgWithOwner'
 
 export const CreateOrganizationSchema = z.object({
   name: z.string().min(2, 'validation.nameMin2'),
@@ -80,7 +81,7 @@ export async function createOrganization(
       break_duration_minutes: 0,
       min_booking_notice_hours: 0,
       billing_mode: 'monthly',
-      onboarding_completed: false,
+      onboarding_completed: true,
     })
     .select('id')
     .single()
@@ -137,6 +138,12 @@ export async function createOrganization(
     await db.auth.admin.deleteUser(ownerId)
     await db.from('organizations').delete().eq('id', orgId)
     return { success: false, error: t('admin.errors.createProfileFailed') }
+  }
+
+  if (!(await provisionProgressiveSetup(db, orgId, ownerId))) {
+    await db.auth.admin.deleteUser(ownerId)
+    await db.from('organizations').delete().eq('id', orgId)
+    return { success: false, error: t('admin.errors.createOrgFailed') }
   }
 
   console.info('[createOrganization] success', { orgId, ownerId, ownerEmail: input.owner_email })

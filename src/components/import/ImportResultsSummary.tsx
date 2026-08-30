@@ -13,12 +13,19 @@ export function ImportResultsSummary({ result }: ImportResultsSummaryProps) {
   const hasUpdated = result.updated > 0
   const hasLinked = (result.linkedRelationships ?? 0) > 0
   const hasFailedLinks = (result.failedLinks?.length ?? 0) > 0
+  const importedAnything = result.inserted > 0 || result.updated > 0
 
   const colCount = [true, hasUpdated, hasLinked, true, true].filter(Boolean).length
 
   return (
     <div className="rounded-xl border border-border p-6 space-y-4">
-      <h2 className="text-lg font-semibold text-foreground">{t('results.title')}</h2>
+      <h2 className={`text-lg font-semibold ${importedAnything ? 'text-foreground' : 'text-destructive'}`}>
+        {importedAnything ? t('results.title') : t('results.nothingImported')}
+      </h2>
+
+      {!importedAnything && (
+        <p className="text-sm text-destructive">{t('results.nothingImportedHint')}</p>
+      )}
 
       <div className={`grid gap-3 grid-cols-${colCount}`} style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}>
         <div className="flex items-center gap-3 rounded-lg bg-emerald-50 p-3">

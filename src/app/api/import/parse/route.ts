@@ -72,8 +72,25 @@ export async function POST(request: NextRequest) {
         parent: t('warnings.roleParent'),
         parent2: t('warnings.roleParent2'),
         student: t('warnings.roleStudent'),
+      },
+      {
+        teacherNotFound: (name: string) => t('executeErrors.teacherNotFound', { name }),
+        studentNotFound: (name: string) => t('executeErrors.studentNotFound', { name }),
       }
     )
+
+    const missingDependencies = {
+      teachers: Array.from(new Set(enrichedRows.flatMap((row) =>
+        (row.missingDependencies ?? [])
+          .filter((dependency) => dependency.type === 'teacher')
+          .map((dependency) => dependency.name)
+      ))),
+      students: Array.from(new Set(enrichedRows.flatMap((row) =>
+        (row.missingDependencies ?? [])
+          .filter((dependency) => dependency.type === 'student')
+          .map((dependency) => dependency.name)
+      ))),
+    }
 
     const summary = {
       total: enrichedRows.length,
@@ -86,6 +103,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       rows: enrichedRows,
       summary,
+      missingDependencies,
       mappedHeaders,
     })
   } catch {

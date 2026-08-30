@@ -26,6 +26,12 @@ export type OrgReadiness = {
   isReady: boolean
 }
 
+export type OrgSetupProgress = OrgReadiness & {
+  hasTeacher: boolean
+  hasStudent: boolean
+  hasLesson: boolean
+}
+
 /**
  * Pure half, so the rules can be tested without a database.
  *
@@ -71,4 +77,22 @@ export async function getOrgReadiness(orgId: string): Promise<OrgReadiness> {
   return computeOrgReadiness((data as OrgReadinessRow | null) ?? null, {
     platformOpenAiKey: Boolean(process.env.OPENAI_API_KEY),
   })
+}
+
+/** Setup facts derived from real product data, never browser state. */
+export async function getOrgSetupProgress(orgId: string): Promise<OrgSetupProgress> {
+  const db = createServiceRoleClient()
+  const [readiness, teachers, students, lessons] = await Promise.all([
+    getOrgReadiness(orgId),
+    db.from('teachers').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).eq('is_active', true),
+    db.from('students').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).eq('status', 'active'),
+    db.from('lessons').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
+  ])
+
+  return {
+    ...readiness,
+    hasTeacher: (teachers.count ?? 0) > 0,
+    hasStudent: (students.count ?? 0) > 0,
+    hasLesson: (lessons.count ?? 0) > 0,
+  }
 }

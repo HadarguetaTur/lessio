@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { parseWebhookPayload, parseTemplateStatusUpdates, hasBookingIntent } from './parsePayload'
 import type { MetaWebhookPayload } from './parsePayload'
+import { hasScheduleIntent } from './index'
+import { botString } from './strings'
 
 // ── parseWebhookPayload ───────────────────────────────────────────────────────
 
@@ -322,5 +324,74 @@ describe('hasBookingIntent', () => {
     expect(hasBookingIntent('אפשר לקבוע שיעור מחר?')).toBe(true)
     expect(hasBookingIntent('אשמח להזמנה לשיעור ניסיון')).toBe(true)
     expect(hasBookingIntent('לא רוצה כלום')).toBe(false)
+  })
+})
+
+// ── hasScheduleIntent ─────────────────────────────────────────────────────────
+
+describe('hasScheduleIntent', () => {
+  it('matches explicit "when" questions', () => {
+    expect(hasScheduleIntent('מתי השיעורים')).toBe(true)
+    expect(hasScheduleIntent('מתי שיעור')).toBe(true)
+    expect(hasScheduleIntent('מתי יש לי שיעור')).toBe(true)
+    expect(hasScheduleIntent('מתי יש לנו שיעורים')).toBe(true)
+    expect(hasScheduleIntent('מתי השיעור הבא')).toBe(true)
+  })
+
+  it('matches the calendar nouns', () => {
+    expect(hasScheduleIntent('לוז')).toBe(true)
+    expect(hasScheduleIntent('לו״ז')).toBe(true)
+    expect(hasScheduleIntent('לו"ז')).toBe(true)
+    expect(hasScheduleIntent('לוח זמנים')).toBe(true)
+    expect(hasScheduleIntent('הלוז שלי')).toBe(true)
+  })
+
+  it('matches a lesson noun carrying a schedule qualifier', () => {
+    expect(hasScheduleIntent('שיעורים קרובים')).toBe(true)
+    expect(hasScheduleIntent('השיעורים הקרובים')).toBe(true)
+    expect(hasScheduleIntent('מה השיעורים שלי')).toBe(true)
+    expect(hasScheduleIntent('אילו שיעורים יש לי השבוע')).toBe(true)
+    expect(hasScheduleIntent('שיעורים היום')).toBe(true)
+    expect(hasScheduleIntent('השיעור הבא שלי')).toBe(true)
+  })
+
+  it('matches the menu labels a user retypes when the list falls back to text', () => {
+    expect(hasScheduleIntent(botString('menu_schedule', 'he'))).toBe(true)
+    expect(hasScheduleIntent(botString('menu_my_schedule', 'he'))).toBe(true)
+  })
+
+  // Regression: a bare שיעורים used to match, so these were answered with the
+  // upcoming-lesson template and never reached the AI assistant at all.
+  it('does not match count or history questions', () => {
+    expect(hasScheduleIntent('כמה שיעורים עשינו השנה סה״כ לכל אחד מהילדים שלי')).toBe(false)
+    expect(hasScheduleIntent('כמה שיעורים היו לנו השנה')).toBe(false)
+    expect(hasScheduleIntent('כמה שיעורים נשארו לי בחבילה?')).toBe(false)
+    expect(hasScheduleIntent('האם השיעורים כוללים שיעורי בית?')).toBe(false)
+    expect(hasScheduleIntent('ביטלתי שיעורים בחודש שעבר')).toBe(false)
+  })
+
+  // The schedule half of sprint-31 story 6a: a booking request used to be
+  // swallowed here, because this detector runs before hasBookingIntent.
+  it('does not swallow a booking request', () => {
+    expect(hasScheduleIntent('אני רוצה לקבוע שיעורים')).toBe(false)
+    expect(hasBookingIntent('אני רוצה לקבוע שיעורים')).toBe(true)
+    expect(hasScheduleIntent('אפשר לקבוע שיעור מחר?')).toBe(false)
+    expect(hasBookingIntent('אפשר לקבוע שיעור מחר?')).toBe(true)
+    expect(hasScheduleIntent('מתי אפשר לקבוע שיעור?')).toBe(false)
+  })
+
+  it('leaves the English arm unchanged', () => {
+    expect(hasScheduleIntent('my schedule please')).toBe(true)
+    expect(hasScheduleIntent('when is my next lesson')).toBe(true)
+    expect(hasScheduleIntent('upcoming lessons')).toBe(true)
+    expect(hasScheduleIntent('my lessons')).toBe(true)
+    expect(hasScheduleIntent('how many lessons did we do this year')).toBe(false)
+    expect(hasScheduleIntent('book a lesson')).toBe(false)
+  })
+
+  it('ignores unrelated messages', () => {
+    expect(hasScheduleIntent('שלום, מה שלומך?')).toBe(false)
+    expect(hasScheduleIntent('סיימתי את שיעורי הבית')).toBe(false)
+    expect(hasScheduleIntent('stop')).toBe(false)
   })
 })

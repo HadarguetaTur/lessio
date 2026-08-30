@@ -577,6 +577,69 @@ describe('POST /api/whatsapp/webhook', () => {
     )
   })
 
+  // Regression: the schedule detector matched a bare שיעורים, so this question
+  // was answered with the upcoming-lesson template and never reached the AI.
+  it('routes a question about past lessons to the AI, not the schedule template', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const question = 'כמה שיעורים עשינו השנה סה״כ לכל אחד מהילדים שלי'
+    const res = await POST(makeRequest(makeWebhookPayload(question)))
+
+    expect(res.status).toBe(200)
+    expect(mockAiAssistant).toHaveBeenCalledWith(
+      ORG_ID,
+      SENDER_PHONE_E164,
+      PARENT_ID,
+      question,
+      'he'
+    )
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      'ai-reply',
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('still answers a real schedule question deterministically', async () => {
+    mockGetActiveCancellationSession.mockResolvedValueOnce(null)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeWebhookPayload('מתי השיעורים שלי?')))
+
+    expect(res.status).toBe(200)
+    expect(mockAiAssistant).not.toHaveBeenCalled()
+  })
+
   it('falls back to the generic template when the AI assistant throws', async () => {
     mockGetActiveCancellationSession.mockResolvedValueOnce(null)
     mockAiAssistant.mockRejectedValueOnce(new Error('openai down'))

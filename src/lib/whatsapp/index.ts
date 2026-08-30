@@ -223,13 +223,30 @@ export function hasBalanceIntent(text: string): boolean {
 
 /**
  * Returns true if the message contains a schedule query intent.
- * Matches: שיעורים, מתי שיעור, לוז, לו״ז, לוח זמנים
+ * Matches: מתי השיעור, שיעורים קרובים, מה השיעורים שלי, לוז, לו״ז, לוח זמנים
  *
- * English side deliberately omits a bare "lessons": this detector runs BEFORE
- * hasBookingIntent in the webhook, so "book a lesson" must not be swallowed here.
+ * The Hebrew side requires a schedule-shaped qualifier ADJACENT to the lesson
+ * noun. A bare שיעורים matched almost any Hebrew sentence about lessons, and
+ * this detector is an early return before the AI assistant is ever reached
+ * (route.ts § 9c) — so "כמה שיעורים עשינו השנה" was answered with the upcoming
+ * lesson template instead of being answered at all.
+ *
+ * היום|מחר|השבוע is allowed only after the PLURAL שיעורים: booking phrases are
+ * singular ("לקבוע שיעור מחר") and this detector runs BEFORE hasBookingIntent.
+ * The English side omits a bare "lessons" for that same reason and is unchanged.
+ *
+ * JS \b is defined over [A-Za-z0-9_] and never fires next to a Hebrew letter,
+ * so \s+ adjacency is the only reliable boundary on the Hebrew side.
  */
 export function hasScheduleIntent(text: string): boolean {
-  return /שיעורים|מתי שיעור|לוז|לו״ז|לוח זמנים|\b(schedule|when is my|my lessons|upcoming lessons)\b/i.test(text)
+  return (
+    /מתי\s+(?:יש\s+(?:לי|לנו)\s+)?ה?שיעור/.test(text) ||
+    /(?:אילו|איזה)\s+שיעורים/.test(text) ||
+    /ה?שיעור(?:ים)?\s+(?:ה?קרוב(?:ים|ה)?|ה?בא(?:ים)?|שלי|שלנו|שלו|שלה)/.test(text) ||
+    /שיעורים\s+(?:היום|מחר|השבוע)/.test(text) ||
+    /לו[״"']?ז|לוח\s*זמנים/.test(text) ||
+    /\b(schedule|when is my|my lessons|upcoming lessons)\b/i.test(text)
+  )
 }
 
 /**

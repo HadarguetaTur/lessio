@@ -39,16 +39,20 @@ export default async function NewLessonPage(props: {
 
   const now = DateTime.now().setZone(timezone)
   const todayStr = now.toFormat('yyyy-MM-dd')
-  // Next round half hour in the org's timezone, e.g. 14:12 → 14:30.
-  const nextHalfHour = now
-    .plus({ minutes: 30 - (now.minute % 30) })
-    .toFormat('HH:mm')
+  // Next round half hour, clamped to teaching hours: nobody schedules a lesson
+  // for 23:30 just because that is when she opened the form. Before 08:00 the
+  // default is 08:00 today; after 21:00 it is 08:00 tomorrow (date included).
+  let slot = now.plus({ minutes: 30 - (now.minute % 30) })
+  if (slot.hour < 8) slot = slot.set({ hour: 8, minute: 0 })
+  if (slot.hour >= 21) slot = slot.plus({ days: 1 }).set({ hour: 8, minute: 0 })
+  const nextHalfHour = slot.toFormat('HH:mm')
+  const defaultDateStr = slot.toFormat('yyyy-MM-dd')
 
   const dateParsed = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(dateParam)
   const initialDate =
     dateParsed.success && dateParsed.data >= LESSON_FORM_MIN_DATE_STR
       ? dateParsed.data
-      : todayStr
+      : defaultDateStr
 
   return (
     <div className="max-w-lg">

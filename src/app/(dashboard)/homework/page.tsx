@@ -206,7 +206,7 @@ export default async function HomeworkPage({
                 <Link
                   key={a.id}
                   href={`/homework/${a.id}`}
-                  className="rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/20"
+                  className="rounded-xl border border-border bg-card p-3 text-start shadow-sm transition-colors hover:bg-muted/20"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">

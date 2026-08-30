@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, RotateCcw, MoreHorizontal } from 'lucide-react'
+import { Archive, RotateCcw, MoreHorizontal, Pencil } from 'lucide-react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import {
@@ -121,7 +122,16 @@ export function StudentsTable({
                     <TableCell className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <UserAvatar name={student.full_name} />
-                        <span className="text-sm font-medium text-foreground">{student.full_name}</span>
+                        {/* A real link: keyboard users get a path to the student
+                            (the row's onClick is mouse-only), and the name reads
+                            as clickable. Clicking elsewhere still opens the sheet. */}
+                        <Link
+                          href={`/students/${student.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                        >
+                          {student.full_name}
+                        </Link>
                       </div>
                     </TableCell>
                     <TableCell className="px-5 py-3.5 text-sm text-muted-foreground">
@@ -238,13 +248,19 @@ function RowActions({ student }: { student: Student }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          className="flex items-center justify-center p-1.5 max-lg:min-h-11 max-lg:min-w-11 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
           aria-label={tCommon('table.actions')}
         >
           <MoreHorizontal size={15} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
+        <DropdownMenuItem asChild>
+          <Link href={`/students/${student.id}/edit`}>
+            <Pencil size={13} className="ml-2" />
+            {tCommon('actions.edit')}
+          </Link>
+        </DropdownMenuItem>
         {student.status !== 'inactive' ? (
           <DropdownMenuItem
             onSelect={handleArchive}

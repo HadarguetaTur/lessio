@@ -84,7 +84,7 @@
   | `lessio_homework_reminder_he` | תזכורת שיעורי בית |
   | `lessio_homework_assignment_he` | שיעורי בית חדשים |
   | `lessio_homework_graded_he` | שיעורי בית נבדקו |
-- [ ] לארגונים שחוברו לפני Sprint 31: הריצי `npx tsx scripts/backfill-waba-subscriptions.ts` (רושם subscribed_apps + תבניות)
+- [ ] לארגונים שחוברו לפני Sprint 31: הריצי `npx tsx scripts/archive/backfill-waba-subscriptions.ts` (רושם subscribed_apps + תבניות). ארגונים שמתחברים היום עושים זאת לבד ב-Embedded Signup
 
 ---
 

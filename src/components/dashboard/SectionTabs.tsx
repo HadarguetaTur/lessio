@@ -20,7 +20,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { categoryFor, filterNav } from '@/lib/navigation/registry'
+import {
+  categoryFor,
+  filterNav,
+  SETTINGS_GROUPS,
+  settingsGroupFor,
+} from '@/lib/navigation/registry'
 import type { SaasFeatures } from '@/lib/saas/types'
 import { cn } from '@/lib/utils'
 
@@ -36,6 +41,44 @@ export function SectionTabs({ userRole, saasFeatures, teacherCount }: SectionTab
   const t = useTranslations('nav')
 
   if (userRole === 'teacher') return null
+
+  if (pathname.startsWith('/settings')) {
+    const groups = SETTINGS_GROUPS.filter(
+      (group) => filterNav(group.items, userRole, saasFeatures).length > 0
+    )
+    const activeGroup = settingsGroupFor(pathname)
+
+    return (
+      <div className="shrink-0 border-b border-border bg-background">
+        <nav
+          aria-label={t('sections.settings')}
+          className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8"
+        >
+          <div className="flex gap-1 overflow-x-auto">
+            {groups.map(({ id, landing, navKey, icon: Icon }) => {
+              const active = activeGroup?.id === id
+              return (
+                <Link
+                  key={id}
+                  href={landing}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
+                    active
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Icon size={15} aria-hidden />
+                  {t(navKey as Parameters<typeof t>[0])}
+                </Link>
+              )
+            })}
+          </div>
+        </nav>
+      </div>
+    )
+  }
 
   const category = categoryFor(pathname)
   if (!category) return null

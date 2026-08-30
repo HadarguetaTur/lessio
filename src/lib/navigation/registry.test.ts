@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   SETTINGS_NAV,
+  ACCOUNT_NAV,
+  SETTINGS_GROUPS,
   REPORTS_NAV,
   MAIN_NAV,
   SEARCHABLE_PAGES,
@@ -19,9 +21,11 @@ describe('registry shape', () => {
     expect(new Set(hrefs).size).toBe(hrefs.length)
   })
 
-  it('covers /account/billing plus the seventeen settings pages', () => {
-    expect(SETTINGS_NAV).toHaveLength(18)
+  it('keeps platform billing separate from the seventeen business settings pages', () => {
+    expect(ACCOUNT_NAV.map((entry) => entry.href)).toEqual(['/account/billing'])
+    expect(SETTINGS_NAV).toHaveLength(17)
     expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(17)
+    expect(SETTINGS_NAV.map((entry) => entry.href)).not.toContain('/account/billing')
   })
 
   it('keeps every settings page reachable from the sidebar and the hub', () => {
@@ -58,7 +62,7 @@ describe('filterNav', () => {
   })
 
   it('shows everything to an owner when no plan is resolved', () => {
-    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(18)
+    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(17)
   })
 
   it('drops plan-gated entries when the feature is off', () => {
@@ -309,5 +313,26 @@ describe('categories', () => {
       expect(labels.every((l) => typeof l === 'string'), category.id).toBe(true)
       expect(new Set(labels).size, `${category.id}: ${labels.join(' | ')}`).toBe(labels.length)
     }
+  })
+})
+
+describe('settings groups', () => {
+  it('places every business setting in exactly one group', () => {
+    const grouped = SETTINGS_GROUPS.flatMap((group) => group.items.map((item) => item.href))
+    expect(new Set(grouped).size).toBe(grouped.length)
+    expect(new Set(grouped)).toEqual(new Set(SETTINGS_NAV.map((entry) => entry.href)))
+  })
+
+  it('does not place the Lessio plan inside a business settings group', () => {
+    const grouped = SETTINGS_GROUPS.flatMap((group) => group.items.map((item) => item.href))
+    expect(grouped).not.toContain('/account/billing')
+  })
+
+  it('gives each settings hub a useful breadcrumb', () => {
+    expect(resolveBreadcrumb('/settings/billing')).toEqual({
+      sectionKey: 'sections.settings',
+      sectionHref: '/settings',
+      pageKey: 'settingsGroups.billing',
+    })
   })
 })

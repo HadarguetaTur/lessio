@@ -18,6 +18,7 @@ import {
   Plus,
   BarChart2,
   ChevronDown,
+  Wallet,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
 import { CATEGORIES, categoryFor, filterNav, isNavActive } from '@/lib/navigation/registry'
@@ -309,10 +310,23 @@ export function Sidebar({
               icon={Settings}
               active={
                 pathname === '/settings' ||
-                pathname.startsWith('/settings/') ||
-                pathname === '/account/billing'
+                pathname.startsWith('/settings/')
               }
             />
+
+            {userRole === 'owner' ? (
+              <div className="mt-3 border-t border-sidebar-border pt-3">
+                <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/60">
+                  {t('sections.account')}
+                </p>
+                <NavLink
+                  href="/account/billing"
+                  label={t('accountBilling')}
+                  icon={Wallet}
+                  active={pathname === '/account/billing' || pathname.startsWith('/account/billing/')}
+                />
+              </div>
+            ) : null}
           </div>
         )}
 

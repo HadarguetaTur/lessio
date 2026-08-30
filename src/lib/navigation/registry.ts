@@ -77,15 +77,19 @@ export interface NavEntry {
   synonyms?: string[]
 }
 
-/** /account/billing plus all seventeen /settings/* pages. */
-export const SETTINGS_NAV: NavEntry[] = [
+/** Platform account pages. These are deliberately separate from business settings. */
+export const ACCOUNT_NAV: NavEntry[] = [
   {
     href: '/account/billing',
     navKey: 'accountBilling',
     icon: Wallet,
     roles: ['owner'],
-    synonyms: ['account', 'billing', 'plan', 'subscription', 'invoice', 'חשבון', 'חיוב', 'מנוי', 'תוכנית', 'חשבונית'],
+    synonyms: ['account', 'billing', 'plan', 'subscription', 'invoice', 'חשבון', 'חיוב', 'מנוי', 'תוכנית', 'חשבונית', 'lessio'],
   },
+]
+
+/** The business configuration pages. Platform billing never belongs here. */
+export const SETTINGS_NAV: NavEntry[] = [
   {
     href: '/settings/business-profile',
     navKey: 'settingsBusinessProfile',
@@ -411,12 +415,14 @@ export const TEACHER_NAV: NavEntry[] = [
 export const SECTION_HUBS: Record<string, { navKey: string; href: string }> = {
   '/reports': { navKey: 'sections.reports', href: '/reports' },
   '/settings': { navKey: 'sections.settings', href: '/settings' },
+  '/account': { navKey: 'sections.account', href: '/account/billing' },
   '/teacher': { navKey: 'sections.teacher', href: '/teacher' },
 }
 
 /** Every page the global search can land on. */
 export const SEARCHABLE_PAGES: NavEntry[] = [
   ...MAIN_NAV,
+  ...ACCOUNT_NAV,
   ...SETTINGS_NAV,
   ...REPORTS_NAV,
   ...TEACHER_NAV,
@@ -456,7 +462,7 @@ export function isNavActive(
   return deeperMatch.length <= href.length
 }
 
-const ALL_ROUTES: NavEntry[] = [...MAIN_NAV, ...SETTINGS_NAV, ...REPORTS_NAV, ...TEACHER_NAV]
+const ALL_ROUTES: NavEntry[] = [...MAIN_NAV, ...ACCOUNT_NAV, ...SETTINGS_NAV, ...REPORTS_NAV, ...TEACHER_NAV]
 
 const ROUTE_BY_HREF = new Map(ALL_ROUTES.map((e) => [e.href, e]))
 
@@ -485,6 +491,76 @@ function entryOf(href: string): NavEntry {
   const entry = ROUTE_BY_HREF.get(href)
   if (!entry) throw new Error(`[navigation] category references unknown route: ${href}`)
   return entry
+}
+
+export type SettingsGroupId = 'business' | 'billing' | 'communications' | 'connections'
+
+export interface SettingsGroup {
+  id: SettingsGroupId
+  navKey: string
+  descriptionKey: string
+  landing: string
+  icon: LucideIcon
+  items: NavEntry[]
+}
+
+/**
+ * Settings use the same two-level language as the main shell: a short tab row
+ * selects a coherent area, then cards lead to the existing focused pages.
+ */
+export const SETTINGS_GROUPS: SettingsGroup[] = [
+  {
+    id: 'business',
+    navKey: 'settingsGroups.business',
+    descriptionKey: 'groups.business.description',
+    landing: '/settings/business',
+    icon: Building2,
+    items: ['/settings/business-profile', '/settings/locale', '/settings/holidays', '/settings/exams'].map(entryOf),
+  },
+  {
+    id: 'billing',
+    navKey: 'settingsGroups.billing',
+    descriptionKey: 'groups.billing.description',
+    landing: '/settings/billing',
+    icon: Banknote,
+    items: [
+      '/settings/pricing',
+      '/settings/billing-policy',
+      '/settings/cancellation-policy',
+      '/settings/payment',
+      '/settings/receipts',
+    ].map(entryOf),
+  },
+  {
+    id: 'communications',
+    navKey: 'settingsGroups.communications',
+    descriptionKey: 'groups.communications.description',
+    landing: '/settings/communications',
+    icon: MessageCircle,
+    items: [
+      '/settings/whatsapp',
+      '/settings/message-templates',
+      '/settings/reminders',
+      '/settings/email',
+      '/settings/ai-assistant',
+    ].map(entryOf),
+  },
+  {
+    id: 'connections',
+    navKey: 'settingsGroups.connections',
+    descriptionKey: 'groups.connections.description',
+    landing: '/settings/connections',
+    icon: Plug,
+    items: ['/settings/calendar', '/settings/integrations', '/settings/privacy'].map(entryOf),
+  },
+]
+
+export function settingsGroupFor(pathname: string): SettingsGroup | undefined {
+  return SETTINGS_GROUPS.find(
+    (group) =>
+      pathname === group.landing ||
+      group.items.some((item) => pathname === item.href || pathname.startsWith(item.href + '/'))
+  )
 }
 
 export const CATEGORIES: NavCategory[] = [
@@ -560,6 +636,15 @@ export function resolveBreadcrumb(pathname: string): Breadcrumb {
   const hubEntry = SECTION_HUBS[pathname]
   if (hubEntry) {
     return { sectionKey: null, sectionHref: null, pageKey: hubEntry.navKey }
+  }
+
+  const settingsGroup = settingsGroupFor(pathname)
+  if (settingsGroup?.landing === pathname) {
+    return {
+      sectionKey: 'sections.settings',
+      sectionHref: '/settings',
+      pageKey: settingsGroup.navKey,
+    }
   }
 
   const section = sectionFor(pathname)

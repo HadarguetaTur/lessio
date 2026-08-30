@@ -268,7 +268,14 @@
       "students": "תלמידים",
       "lessons": "שיעורים",
       "money": "כסף",
-      "teachers": "מורים"
+      "teachers": "מורים",
+      "account": "החשבון שלי"
+    },
+    "settingsGroups": {
+      "business": "העסק",
+      "billing": "שיעורים וחיוב",
+      "communications": "תקשורת",
+      "connections": "חיבורים ופרטיות"
     },
     "dashboard": "לוח הבקרה",
     "students": "תלמידים",
@@ -287,7 +294,7 @@
     "reportsStudents": "דוח תלמידים",
     "settingsWhatsApp": "WhatsApp",
     "settingsMessages": "תבניות WhatsApp",
-    "settingsPayment": "תשלומים",
+    "settingsPayment": "סליקה מלקוחות",
     "settingsReceipts": "קבלות",
     "settingsBusinessProfile": "פרופיל העסק",
     "settingsCancellation": "מדיניות ביטולים",
@@ -297,7 +304,7 @@
     "settingsAiAssistant": "עוזר AI",
     "settingsEmail": "מייל",
     "settingsLocale": "שפה ותצוגה",
-    "accountBilling": "חשבון וחיובים",
+    "accountBilling": "החבילה שלי ב-Lessio",
     "teacherSection": "סביבת העבודה שלי",
     "teacherDashboard": "דאשבורד",
     "teacherStudents": "התלמידים שלי",
@@ -313,7 +320,7 @@
     "teacherCalendarConnect": "יומן Google",
     "billing": "חיוב חודשי",
     "debts": "גבייה",
-    "subscriptions": "מנויים",
+    "subscriptions": "מנויי תלמידים",
     "globalSearch": {
       "placeholder": "חיפוש תלמידים, הורים, שיעורים, הגדרות…",
       "ariaLabel": "חיפוש כללי",
@@ -339,7 +346,7 @@
     "drawerDescription": "תפריט ניווט ראשי",
     "openNavigation": "פתיחת תפריט הניווט",
     "settingsPricing": "תמחור",
-    "settingsBillingPolicy": "מדיניות חיוב",
+    "settingsBillingPolicy": "כללי חיוב ומנויים",
     "settingsPrivacy": "פרטיות ונתונים",
     "settingsCalendar": "יומן Google",
     "support": "תמיכה",
@@ -1351,6 +1358,20 @@
   },
   "settings": {
     "title": "הגדרות",
+    "groups": {
+      "business": {
+        "description": "הפרטים הבסיסיים של העסק וכללי הפעילות השוטפת"
+      },
+      "billing": {
+        "description": "מה הלקוחות משלמים, איך מחייבים אותם ואילו מסמכים הם מקבלים"
+      },
+      "communications": {
+        "description": "הודעות, תזכורות ואוטומציות מול תלמידים והורים"
+      },
+      "connections": {
+        "description": "שירותים חיצוניים, הרשאות ושמירת נתוני העסק"
+      }
+    },
     "cardHint": "פתחו את ההגדרה כדי לעדכן את התצורה הרלוונטית.",
     "cards": {
       "whatsapp": {
@@ -1362,8 +1383,8 @@
         "description": "התאמה אישית של הודעות אוטומטיות"
       },
       "payment": {
-        "title": "תשלומים",
-        "description": "ספק תשלומים ובקשות תשלום"
+        "title": "סליקה מלקוחות",
+        "description": "חיבור ספק סליקה ושליחת בקשות תשלום להורים"
       },
       "receipts": {
         "title": "קבלות",
@@ -3383,8 +3404,8 @@
     "readOnlyBanner": "המנוי במצב צפייה בלבד. שדרגו כדי להמשיך לערוך.",
     "manageBilling": "ניהול חיוב",
     "accountBilling": {
-      "title": "חשבון וחיובים",
-      "subtitle": "מנוי LESSIO, חשבוניות ותשלומים",
+      "title": "החבילה שלי ב-Lessio",
+      "subtitle": "התוכנית, אמצעי התשלום והחשבוניות שלך מול Lessio",
       "currentPlan": "תוכנית נוכחית",
       "status": "סטטוס",
       "statusTrial": "ניסיון",

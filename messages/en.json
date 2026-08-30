@@ -268,7 +268,14 @@
       "students": "Students",
       "lessons": "Lessons",
       "money": "Money",
-      "teachers": "Teachers"
+      "teachers": "Teachers",
+      "account": "My account"
+    },
+    "settingsGroups": {
+      "business": "Business",
+      "billing": "Lessons & billing",
+      "communications": "Communications",
+      "connections": "Connections & privacy"
     },
     "dashboard": "Dashboard",
     "students": "Students",
@@ -287,7 +294,7 @@
     "reportsStudents": "Student report",
     "settingsWhatsApp": "WhatsApp",
     "settingsMessages": "WhatsApp templates",
-    "settingsPayment": "Payments",
+    "settingsPayment": "Customer payments",
     "settingsReceipts": "Receipts",
     "settingsBusinessProfile": "Business Profile",
     "settingsCancellation": "Cancellation Policy",
@@ -297,7 +304,7 @@
     "settingsAiAssistant": "AI Assistant",
     "settingsEmail": "Email",
     "settingsLocale": "Language & Display",
-    "accountBilling": "Account & billing",
+    "accountBilling": "My Lessio plan",
     "teacherSection": "My Workspace",
     "teacherDashboard": "Dashboard",
     "teacherStudents": "My Students",
@@ -313,7 +320,7 @@
     "teacherCalendarConnect": "Google Calendar",
     "billing": "Monthly Billing",
     "debts": "Collection",
-    "subscriptions": "Subscriptions",
+    "subscriptions": "Student subscriptions",
     "globalSearch": {
       "placeholder": "Search students, parents, lessons, settings…",
       "ariaLabel": "Global search",
@@ -339,7 +346,7 @@
     "drawerDescription": "Main navigation",
     "openNavigation": "Open navigation",
     "settingsPricing": "Pricing",
-    "settingsBillingPolicy": "Billing Policy",
+    "settingsBillingPolicy": "Billing & subscription rules",
     "settingsPrivacy": "Privacy & data",
     "settingsCalendar": "Google Calendar",
     "support": "Support",
@@ -1351,6 +1358,20 @@
   },
   "settings": {
     "title": "Settings",
+    "groups": {
+      "business": {
+        "description": "Core business details and day-to-day operating rules"
+      },
+      "billing": {
+        "description": "What customers pay, how they are charged, and which documents they receive"
+      },
+      "communications": {
+        "description": "Messages, reminders, and automations for students and parents"
+      },
+      "connections": {
+        "description": "External services, permissions, and business data retention"
+      }
+    },
     "cardHint": "Open the setting to update the relevant configuration.",
     "cards": {
       "whatsapp": {
@@ -1362,8 +1383,8 @@
         "description": "Customize automated messages"
       },
       "payment": {
-        "title": "Payments",
-        "description": "Payment provider and payment requests"
+        "title": "Customer payments",
+        "description": "Connect a payment provider and send payment requests to parents"
       },
       "receipts": {
         "title": "Receipts",
@@ -3383,8 +3404,8 @@
     "readOnlyBanner": "Your plan is view-only. Upgrade to keep editing.",
     "manageBilling": "Manage billing",
     "accountBilling": {
-      "title": "Account & billing",
-      "subtitle": "LESSIO subscription, invoices, and payments",
+      "title": "My Lessio plan",
+      "subtitle": "Your plan, payment method, and invoices from Lessio",
       "currentPlan": "Current plan",
       "status": "Status",
       "statusTrial": "Trial",

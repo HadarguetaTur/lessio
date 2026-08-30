@@ -1,24 +1,11 @@
-import { getTranslations } from 'next-intl/server'
-import { AdminHeader } from '@/components/admin/AdminHeader'
-import { BillingReadinessTable } from '@/components/admin/BillingReadinessTable'
-import { getBillingReadiness } from '@/lib/superadmin/billing'
+import { redirect } from 'next/navigation'
 
 /**
- * Billing readiness page — superadmin only.
- * Shows per-org payment/receipt setup and revenue totals.
- * Does NOT implement subscriptions, plans, or Stripe.
- * Per /docs/sprint-18-scope.md § Story 7.
+ * /admin/billing summed `charges` — money a teacher billed a parent — and
+ * called it the platform's billing screen. The platform's own income now lives
+ * at /admin/revenue; per-org payment readiness moved onto the org detail page
+ * and the overview's attention queue.
  */
-export default async function AdminBillingPage() {
-  const t = await getTranslations('admin')
-  const rows = await getBillingReadiness()
-
-  return (
-    <div className="max-w-5xl mx-auto">
-      <AdminHeader
-        title={t('billing.title')}
-      />
-      <BillingReadinessTable rows={rows} />
-    </div>
-  )
+export default function AdminBillingRedirect() {
+  redirect('/admin/revenue')
 }

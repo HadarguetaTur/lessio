@@ -32,7 +32,7 @@ export default async function AdminOrgsPage({ searchParams }: Props) {
   })
 
   return (
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col overflow-hidden">
+    <div className="mx-auto w-full max-w-6xl">
       <div className="flex items-start justify-between mb-6">
         <AdminHeader
           title={t('orgs.title')}
@@ -40,7 +40,7 @@ export default async function AdminOrgsPage({ searchParams }: Props) {
         />
         <Link
           href="/admin/orgs/new"
-          className="flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
         >
           <Plus size={15} />
           {t('orgs.newOrg')}

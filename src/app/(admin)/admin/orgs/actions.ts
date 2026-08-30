@@ -7,6 +7,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { z } from 'zod'
 import { getTranslations } from 'next-intl/server'
 import { zodError } from '@/lib/i18n/actionErrors'
+import { recordAdminAction } from '@/lib/superadmin/audit'
 
 export type ActionState = { error: string | null; success?: boolean } | null
 
@@ -14,7 +15,7 @@ export async function createOrganizationAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  await requireSuperAdminSession()
+  const session = await requireSuperAdminSession()
 
   const raw = {
     name: formData.get('name'),
@@ -32,6 +33,16 @@ export async function createOrganizationAction(
   const result = await createOrganization(parsed.data)
   if (!result.success) return { error: result.error }
 
+  await recordAdminAction({
+    actorProfileId: session.profileId,
+    action: 'org.create',
+    targetType: 'organizations',
+    targetId: result.orgId,
+    organizationId: result.orgId,
+    metadata: { name: parsed.data.name, ownerEmail: parsed.data.owner_email },
+  })
+
+  // redirect() throws — it must stay outside anything that could swallow it.
   redirect(`/admin/orgs/${result.orgId}`)
 }
 
@@ -50,7 +61,7 @@ export async function updateOrganizationAction(
   formData: FormData
 ): Promise<ActionState> {
   const t = await getTranslations()
-  await requireSuperAdminSession()
+  const session = await requireSuperAdminSession()
 
   const raw = {
     id: formData.get('id'),
@@ -80,6 +91,15 @@ export async function updateOrganizationAction(
     console.error('[updateOrganizationAction] failed', { id, error })
     return { error: t('admin.errors.updateOrgFailed') }
   }
+
+  await recordAdminAction({
+    actorProfileId: session.profileId,
+    action: 'org.update',
+    targetType: 'organizations',
+    targetId: id,
+    organizationId: id,
+    metadata: { fields },
+  })
 
   return { error: null, success: true }
 }

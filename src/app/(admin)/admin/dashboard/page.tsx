@@ -1,32 +1,10 @@
-import { getTranslations } from 'next-intl/server'
-import { AdminHeader } from '@/components/admin/AdminHeader'
-import { PlatformKpiGrid } from '@/components/admin/PlatformKpiGrid'
-import { NeedsSetupList } from '@/components/admin/NeedsSetupList'
-import { RecentOrgsList } from '@/components/admin/RecentOrgsList'
-import { PlatformNotificationsList } from '@/components/admin/PlatformNotificationsList'
-import { getPlatformDashboard } from '@/lib/superadmin/dashboard'
-import { requireSuperAdminSession } from '@/lib/auth/session'
+import { redirect } from 'next/navigation'
 
 /**
- * Platform dashboard — superadmin only.
- * Guard is in (admin)/admin/layout.tsx via requireSuperAdminSession().
- *
- * Per /docs/sprint-18-scope.md § Story 2.
+ * Sprint 18 shipped the platform dashboard at /admin/dashboard and left /admin
+ * itself a 404. Sprint 34 moved the overview to /admin; this keeps every
+ * existing bookmark, notification link and muscle-memory URL working.
  */
-export default async function AdminDashboardPage() {
-  const t = await getTranslations('admin')
-  const { profileId } = await requireSuperAdminSession()
-  const { stats, needsSetup, recentOrgs } = await getPlatformDashboard()
-
-  return (
-    <div className="max-w-5xl mx-auto">
-      <AdminHeader title={t('dashboard.title')} />
-      <PlatformNotificationsList profileId={profileId} />
-      <PlatformKpiGrid stats={stats} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <NeedsSetupList orgs={needsSetup} />
-        <RecentOrgsList orgs={recentOrgs} />
-      </div>
-    </div>
-  )
+export default function AdminDashboardRedirect() {
+  redirect('/admin')
 }

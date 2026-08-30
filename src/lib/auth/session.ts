@@ -136,3 +136,31 @@ export async function requireSuperAdminSession(): Promise<SuperAdminSession> {
     fullName: profile.full_name,
   }
 }
+
+/**
+ * Resolves the superadmin session without redirecting, or null.
+ *
+ * Route handlers must not call {@link requireSuperAdminSession}: it answers
+ * failure with `redirect()`, which a `fetch` follows to the login page and then
+ * reports as a 200 with an HTML body. Same trap that `assertFeature` exists to
+ * avoid under /api/v1 — see /docs/sprint-33-scope.md.
+ */
+export async function getSuperAdminSessionOrNull(): Promise<SuperAdminSession | null> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return null
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, full_name')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile || profile.role !== 'superadmin') return null
+
+  return { userId: user.id, profileId: user.id, fullName: profile.full_name }
+}

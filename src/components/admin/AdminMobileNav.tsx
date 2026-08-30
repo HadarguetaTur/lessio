@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { AdminSidebar } from '@/components/admin/AdminSidebar'
+import { AdminSidebar, type AdminNavCounts } from '@/components/admin/AdminSidebar'
 import {
   Sheet,
   SheetContent,
@@ -13,7 +13,15 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 
-export function AdminMobileNav({ userName, dir }: { userName: string; dir: 'rtl' | 'ltr' }) {
+export function AdminMobileNav({
+  userName,
+  dir,
+  counts,
+}: {
+  userName: string
+  dir: 'rtl' | 'ltr'
+  counts?: AdminNavCounts
+}) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
@@ -38,7 +46,7 @@ export function AdminMobileNav({ userName, dir }: { userName: string; dir: 'rtl'
           <SheetTitle>Admin navigation</SheetTitle>
           <SheetDescription>Platform administration pages</SheetDescription>
         </SheetHeader>
-        <AdminSidebar userName={userName} mobile />
+        <AdminSidebar userName={userName} counts={counts} mobile />
       </SheetContent>
     </Sheet>
   )

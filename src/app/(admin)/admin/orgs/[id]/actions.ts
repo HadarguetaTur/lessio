@@ -3,9 +3,14 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { requireSuperAdminSession } from '@/lib/superadmin/session'
-import { setSupportSessionCookie, clearSupportSessionCookie } from '@/lib/support-session'
+import {
+  setSupportSessionCookie,
+  clearSupportSessionCookie,
+  getSupportSession,
+} from '@/lib/support-session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { processDeletionRequest } from '@/lib/superadmin/dataDeletion'
+import { recordAdminAction } from '@/lib/superadmin/audit'
 import { getTranslations } from 'next-intl/server'
 
 export async function startSupportModeAction(orgId: string): Promise<never> {
@@ -27,19 +32,34 @@ export async function startSupportModeAction(orgId: string): Promise<never> {
     expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   })
 
-  console.info('[support-mode] started', {
-    superAdminId: session.userId,
-    targetOrgId: orgId,
-    orgName: org.name,
+  await recordAdminAction({
+    actorProfileId: session.profileId,
+    action: 'support_mode.start',
+    targetType: 'organizations',
+    targetId: orgId,
+    organizationId: orgId,
+    metadata: { orgName: org.name },
   })
 
   redirect('/dashboard')
 }
 
 export async function exitSupportModeAction(): Promise<never> {
+  // Read the session before clearing the cookie: this is the one admin action
+  // reachable from the dashboard shell (SupportModeBanner imports it), and it
+  // previously ran for any authenticated caller with no check at all.
+  const support = await getSupportSession()
   await clearSupportSessionCookie()
 
-  console.info('[support-mode] exited')
+  if (support) {
+    await recordAdminAction({
+      actorProfileId: support.superAdminId,
+      action: 'support_mode.exit',
+      targetType: 'organizations',
+      targetId: support.targetOrgId,
+      organizationId: support.targetOrgId,
+    })
+  }
 
   redirect('/admin/orgs')
 }
@@ -56,6 +76,14 @@ export async function processDeletionRequestAction(
 
   try {
     await processDeletionRequest(requestId, action, session.profileId)
+    await recordAdminAction({
+      actorProfileId: session.profileId,
+      action: 'org.deletion_request',
+      targetType: 'data_deletion_requests',
+      targetId: requestId,
+      organizationId: orgId,
+      metadata: { decision: action },
+    })
     revalidatePath(`/admin/orgs/${orgId}`)
     return { error: null }
   } catch (err) {
@@ -67,7 +95,7 @@ export async function processDeletionRequestAction(
 // ── Story 1b (Sprint 23): Data export ────────────────────────────────────────
 
 export async function exportOrgDataAction(orgId: string): Promise<{ json: string }> {
-  await requireSuperAdminSession()
+  const session = await requireSuperAdminSession()
 
   const db = createServiceRoleClient()
 
@@ -87,7 +115,19 @@ export async function exportOrgDataAction(orgId: string): Promise<{ json: string
     charges: charges.data ?? [],
   }
 
-  console.info('[admin/export] Org data exported', { orgId, superAdmin: true })
+  await recordAdminAction({
+    actorProfileId: session.profileId,
+    action: 'org.export',
+    targetType: 'organizations',
+    targetId: orgId,
+    organizationId: orgId,
+    metadata: {
+      parents: payload.parents.length,
+      students: payload.students.length,
+      lessons: payload.lessons.length,
+      charges: payload.charges.length,
+    },
+  })
 
   return { json: JSON.stringify(payload, null, 2) }
 }

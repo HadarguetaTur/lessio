@@ -125,7 +125,14 @@ async function uniqueSlug(
 
 export async function createOrgWithOwner(
   input: SignupInput,
-  errors: SignupFlowServerErrors
+  errors: SignupFlowServerErrors,
+  /**
+   * First/last marketing touch captured by the proxy, if any.
+   * Per /docs/sprint-34-scope.md § מנוע המדידה, step 4 — this is the moment a
+   * click stops being anonymous, and the only chance to record where it came
+   * from. Optional so every existing caller and test keeps working.
+   */
+  attribution?: { attribution: Record<string, unknown> | null; visitorId: string | null }
 ): Promise<SignupResult> {
   const db = createServiceRoleClient()
 
@@ -162,6 +169,8 @@ export async function createOrgWithOwner(
       min_booking_notice_hours: 0,
       billing_mode: 'monthly',
       onboarding_completed: true,
+      attribution: attribution?.attribution ?? null,
+      attribution_visitor_id: attribution?.visitorId ?? null,
     })
     .select('id')
     .single()

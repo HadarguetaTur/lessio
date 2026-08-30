@@ -9,6 +9,13 @@ import {
 } from '@/lib/auth/createOrgWithOwner'
 import { createClient } from '@/lib/supabase/server'
 import { setLocaleCookie } from '@/lib/i18n/localeCookie'
+import {
+  FIRST_TOUCH_COOKIE,
+  LAST_TOUCH_COOKIE,
+  VISITOR_COOKIE,
+  buildOrgAttribution,
+  decodeTouch,
+} from '@/lib/attribution'
 import type { AppLocale } from '@/lib/i18n/serverTranslator'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -45,7 +52,18 @@ export async function signUp(
     profileFailed: tSrv('profileFailed'),
   }
 
-  const result = await createOrgWithOwner(parsed.data, flowErrors)
+  // Freeze where this signup came from onto the org. Read before the org is
+  // created, because after it the cookies are no longer the only record.
+  const jar = await cookies()
+  const visitorId = jar.get(VISITOR_COOKIE)?.value ?? null
+  const result = await createOrgWithOwner(parsed.data, flowErrors, {
+    attribution: buildOrgAttribution({
+      firstTouch: decodeTouch(jar.get(FIRST_TOUCH_COOKIE)?.value),
+      lastTouch: decodeTouch(jar.get(LAST_TOUCH_COOKIE)?.value),
+      visitorId,
+    }),
+    visitorId,
+  })
 
   if (!result.success) {
     return { error: result.error }

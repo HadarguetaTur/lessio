@@ -2731,12 +2731,30 @@
   "admin": {
     "nav": {
       "title": "LESSIO Admin",
-      "dashboard": "לוח בקרה",
+      "overview": "סקירה",
       "orgs": "ארגונים",
-      "billing": "בילינג",
-      "saasInquiries": "פניות מנוי",
-      "support": "פניות תמיכה",
-      "devIssues": "באגים חוזרים"
+      "subscriptions": "מנויים",
+      "revenue": "הכנסות",
+      "leads": "לידים",
+      "campaigns": "קמפיינים",
+      "attribution": "ייחוס ומשפך",
+      "tracking": "מדידה וטרקינג",
+      "support": "תמיכה",
+      "devIssues": "באגים חוזרים",
+      "errors": "שגיאות",
+      "cost": "עלות תפעול",
+      "plans": "תוכניות ופיצ׳רים",
+      "audit": "יומן פעולות",
+      "soon": "בקרוב",
+      "searchPlaceholder": "חיפוש עמודים וארגונים…",
+      "noResults": "לא נמצאה התאמה",
+      "groups": {
+        "pages": "עמודים",
+        "growth": "צמיחה",
+        "customers": "לקוחות",
+        "operations": "תפעול",
+        "platform": "פלטפורמה"
+      }
     },
     "saasInquiries": {
       "title": "פניות תוכנית מותאמת",
@@ -2807,7 +2825,13 @@
         "actions": "פעולות",
         "empty": "לא נמצאו ארגונים",
         "yes": "כן",
-        "no": "לא"
+        "no": "לא",
+        "plan": "תוכנית",
+        "noPlan": "ללא תוכנית",
+        "mrr": "MRR",
+        "students": "תלמידים",
+        "lessons": "שיעורים",
+        "connections": "מחובר"
       },
       "detail": {
         "orgDetails": "פרטי ארגון",
@@ -2837,7 +2861,27 @@
         "saving": "שומר..."
       },
       "startSupport": "כנס למצב תמיכה",
-      "exitSupport": "צא ממצב תמיכה"
+      "exitSupport": "צא ממצב תמיכה",
+      "tabs": {
+        "overview": "סקירה",
+        "subscription": "מנוי",
+        "usage": "שימוש ומכסות",
+        "settings": "הגדרות",
+        "danger": "אזור מסוכן"
+      },
+      "usage": {
+        "title": "שימוש מול התוכנית",
+        "attribution": "מאיפה הארגון הזה הגיע",
+        "noAttribution": "לא נלכד ייחוס — הארגון נרשם לפני שהמדידה עלתה, או הגיע ישירות.",
+        "field": {
+          "source": "מקור",
+          "medium": "מדיום",
+          "campaign": "קמפיין",
+          "content": "מודעה / תוכן",
+          "referrer": "הפניה",
+          "landingPath": "דף נחיתה"
+        }
+      }
     },
     "billing": {
       "title": "בילינג",
@@ -2951,6 +2995,163 @@
         "fingerprint": "טביעת אצבע",
         "github": "GitHub"
       }
+    },
+    "overview": {
+      "title": "סקירת הפלטפורמה",
+      "description": "המספרים של Lessio עצמה — לא של הלקוחות שלה",
+      "mrr": "MRR",
+      "arr": "ARR",
+      "netThisMonth": "נטו החודש",
+      "payingOrgs": "{count} משלמים",
+      "arpaSuffix": "לכל אחד",
+      "activeTrials": "ניסיונות פעילים",
+      "endingSoon": "{count} נגמרים תוך 7 ימים",
+      "trialConversion": "ניסיון ← תשלום",
+      "ofTrials": "מתוך {count} ניסיונות",
+      "churn": "נטישה",
+      "activity": {
+        "title": "פעילות בפלטפורמה",
+        "totalOrgs": "ארגונים",
+        "activeOrgs": "פעילים (30 יום)",
+        "newOrgs": "חדשים החודש",
+        "lessons": "שיעורים החודש"
+      },
+      "funnel": {
+        "title": "משפך ההפעלה",
+        "subtitle": "ארגונים שנרשמו ב-30 הימים האחרונים",
+        "signup": "נרשמו",
+        "onboarded": "סיימו אונבורדינג",
+        "firstLesson": "שיעור ראשון",
+        "firstCharge": "חיוב ראשון",
+        "firstPayment": "תשלום ראשון התקבל"
+      },
+      "attention": {
+        "title": "דורש טיפול עכשיו",
+        "subtitle": "ממוין לפי מה שעולה להתעלם",
+        "clear": "אין מה לטפל",
+        "more": "ועוד {count}",
+        "past_due": "החידוש נכשל — {amount} בסיכון",
+        "trial_ending": "הניסיון נגמר בעוד {days} ימים",
+        "quota_pressure": "{metric} ב-{percent}% מהמכסה ({used}/{limit})",
+        "stale_ticket": "טיקט ללא מענה {hours} שעות — {subject}",
+        "missing_setup": "לא סיים הגדרה ({missing})"
+      }
+    },
+    "table": {
+      "empty": "אין כאן כלום",
+      "sortBy": "מיין לפי",
+      "showing": "מציג {from}–{to} מתוך {total}",
+      "exportCsv": "ייצוא CSV",
+      "previous": "הקודם",
+      "next": "הבא"
+    },
+    "subscriptions": {
+      "title": "מנויים",
+      "description": "מי בכל תוכנית, ומה דורש החלטה",
+      "changePlan": "החלפת תוכנית",
+      "changePlanHint": "מעביר את הארגון לתוכנית הזו מיד ומתחיל תקופת חיוב חדשה.",
+      "extendTrial": "הארכת ניסיון",
+      "extendTrialHint": "מוסיף ימים לתאריך סיום הניסיון, או מהיום אם הוא כבר פג.",
+      "setStatus": "שינוי סטטוס",
+      "cancelAtPeriodEnd": "ביטול בסוף התקופה",
+      "moreActions": "פעולות נוספות",
+      "plan": "תוכנית",
+      "interval": "מחזור חיוב",
+      "monthly": "חודשי",
+      "yearly": "שנתי",
+      "monthlyShort": "/חודש",
+      "yearlyShort": "/שנה",
+      "days": "ימים",
+      "apply": "החל",
+      "queue": {
+        "all": "הכל",
+        "past_due": "חידוש נכשל",
+        "trial": "בניסיון",
+        "cancelling": "בביטול"
+      },
+      "columns": {
+        "org": "ארגון",
+        "plan": "תוכנית",
+        "status": "סטטוס",
+        "mrr": "MRR",
+        "renews": "מתחדש / נגמר",
+        "card": "כרטיס"
+      },
+      "status": {
+        "active": "פעיל",
+        "trial": "ניסיון",
+        "past_due": "חידוש נכשל",
+        "pending_payment": "ממתין לתשלום",
+        "cancelled": "בוטל",
+        "read_only": "קריאה בלבד",
+        "endingBadge": "מסתיים"
+      },
+      "noSubscription": "אין מנוי — ארגון מלפני חיוב הפלטפורמה"
+    },
+    "revenue": {
+      "title": "הכנסות",
+      "description": "ההכנסות של Lessio עצמה — MRR, חשבוניות, ומה שלא נגבה",
+      "mrr": "MRR",
+      "collectedThisMonth": "נגבה החודש",
+      "pending": "ממתין",
+      "failed": "נכשל",
+      "failedCount": "{count} חשבוניות",
+      "collectedHistory": "גבייה לפי חודש",
+      "collectedHistoryHint": "חשבוניות SaaS ששולמו ב-12 החודשים האחרונים",
+      "noHistory": "אין עדיין חשבוניות ששולמו",
+      "invoices": "חשבוניות",
+      "viewDocument": "מסמך",
+      "columns": {
+        "org": "ארגון",
+        "amount": "סכום",
+        "status": "סטטוס",
+        "period": "תקופה",
+        "issued": "הופק"
+      },
+      "status": {
+        "paid": "שולם",
+        "pending": "ממתין",
+        "failed": "נכשל"
+      }
+    },
+    "plans": {
+      "title": "תוכניות ופיצ׳רים",
+      "description": "מחירים, מכסות, ומה כל תוכנית פותחת",
+      "priceChangeNote": "שינוי מחיר לא נוגע במנויים קיימים — הם נשארים עם המחיר שנלכד בעת ההרשמה.",
+      "subscribers": "{count} ארגונים",
+      "priceMonthly": "חודשי",
+      "priceYearly": "שנתי",
+      "studentsQuota": "תלמידים",
+      "lessonsQuota": "שיעורים בחודש",
+      "unlimited": "ללא הגבלה",
+      "none": "אין",
+      "features": "פיצ׳רים",
+      "isActive": "זמין להרשמות חדשות",
+      "save": "שמירה",
+      "saved": "נשמר",
+      "feature": {
+        "whatsapp_automation": "אוטומציות WhatsApp",
+        "ai_assistant": "עוזר AI",
+        "full_reports": "דוחות מלאים",
+        "leads": "לידים",
+        "homework": "שיעורי בית",
+        "parent_portal": "פורטל הורים",
+        "integrations": "אינטגרציות"
+      }
+    },
+    "audit": {
+      "title": "יומן פעולות",
+      "description": "כל פעולת סופר-אדמין, ובאיזה ארגון היא נגעה",
+      "unknownActor": "לא ידוע",
+      "platformWide": "רמת פלטפורמה",
+      "columns": {
+        "when": "מתי",
+        "actor": "מי",
+        "action": "פעולה",
+        "org": "ארגון",
+        "details": "פרטים"
+      },
+      "empty": "לא נרשמו פעולות אדמין בארגון הזה"
     }
   },
   "auth": {

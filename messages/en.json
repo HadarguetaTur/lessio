@@ -2731,12 +2731,30 @@
   "admin": {
     "nav": {
       "title": "LESSIO Admin",
-      "dashboard": "Dashboard",
+      "overview": "Overview",
       "orgs": "Organizations",
-      "billing": "Billing",
-      "saasInquiries": "Plan inquiries",
+      "subscriptions": "Subscriptions",
+      "revenue": "Revenue",
+      "leads": "Leads",
+      "campaigns": "Campaigns",
+      "attribution": "Attribution",
+      "tracking": "Tracking",
       "support": "Support",
-      "devIssues": "Recurring bugs"
+      "devIssues": "Recurring bugs",
+      "errors": "Errors",
+      "cost": "Cost to serve",
+      "plans": "Plans & features",
+      "audit": "Audit log",
+      "soon": "Soon",
+      "searchPlaceholder": "Search pages and organizations…",
+      "noResults": "Nothing matches that",
+      "groups": {
+        "pages": "Pages",
+        "growth": "Growth",
+        "customers": "Customers",
+        "operations": "Operations",
+        "platform": "Platform"
+      }
     },
     "saasInquiries": {
       "title": "Custom plan inquiries",
@@ -2807,7 +2825,13 @@
         "actions": "Actions",
         "empty": "No organizations found",
         "yes": "Yes",
-        "no": "No"
+        "no": "No",
+        "plan": "Plan",
+        "noPlan": "No plan",
+        "mrr": "MRR",
+        "students": "Students",
+        "lessons": "Lessons",
+        "connections": "Connected"
       },
       "detail": {
         "orgDetails": "Organization Details",
@@ -2837,7 +2861,27 @@
         "saving": "Saving..."
       },
       "startSupport": "Enter Support Mode",
-      "exitSupport": "Exit Support Mode"
+      "exitSupport": "Exit Support Mode",
+      "tabs": {
+        "overview": "Overview",
+        "subscription": "Subscription",
+        "usage": "Usage & quotas",
+        "settings": "Settings",
+        "danger": "Danger zone"
+      },
+      "usage": {
+        "title": "Plan usage",
+        "attribution": "Where this org came from",
+        "noAttribution": "No attribution captured — this org signed up before tracking, or arrived directly.",
+        "field": {
+          "source": "Source",
+          "medium": "Medium",
+          "campaign": "Campaign",
+          "content": "Ad / content",
+          "referrer": "Referrer",
+          "landingPath": "Landing page"
+        }
+      }
     },
     "billing": {
       "title": "Billing",
@@ -2951,6 +2995,163 @@
         "fingerprint": "Fingerprint",
         "github": "GitHub"
       }
+    },
+    "overview": {
+      "title": "Platform Overview",
+      "description": "Lessio's own numbers — not its tenants'",
+      "mrr": "MRR",
+      "arr": "ARR",
+      "netThisMonth": "net this month",
+      "payingOrgs": "{count} paying",
+      "arpaSuffix": "each",
+      "activeTrials": "Active trials",
+      "endingSoon": "{count} ending within 7 days",
+      "trialConversion": "Trial → paid",
+      "ofTrials": "of {count} trials",
+      "churn": "churn",
+      "activity": {
+        "title": "Platform activity",
+        "totalOrgs": "Organizations",
+        "activeOrgs": "Active (30 days)",
+        "newOrgs": "New this month",
+        "lessons": "Lessons this month"
+      },
+      "funnel": {
+        "title": "Activation funnel",
+        "subtitle": "Organizations that signed up in the last 30 days",
+        "signup": "Signed up",
+        "onboarded": "Finished onboarding",
+        "firstLesson": "First lesson",
+        "firstCharge": "First charge",
+        "firstPayment": "First payment received"
+      },
+      "attention": {
+        "title": "Needs attention now",
+        "subtitle": "Ordered by what it costs to ignore",
+        "clear": "Nothing needs attention",
+        "more": "and {count} more",
+        "past_due": "Renewal failed — {amount} at risk",
+        "trial_ending": "Trial ends in {days} days",
+        "quota_pressure": "{metric} at {percent}% of quota ({used}/{limit})",
+        "stale_ticket": "Ticket untouched for {hours}h — {subject}",
+        "missing_setup": "Never finished setup ({missing})"
+      }
+    },
+    "table": {
+      "empty": "Nothing here",
+      "sortBy": "Sort by",
+      "showing": "Showing {from}–{to} of {total}",
+      "exportCsv": "Export CSV",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "subscriptions": {
+      "title": "Subscriptions",
+      "description": "Who is on which plan, and what needs a decision",
+      "changePlan": "Change plan",
+      "changePlanHint": "Moves the org onto this plan immediately and starts a new billing period.",
+      "extendTrial": "Extend trial",
+      "extendTrialHint": "Adds days to the current trial end date, or to today if it already lapsed.",
+      "setStatus": "Set status",
+      "cancelAtPeriodEnd": "Cancel at period end",
+      "moreActions": "More actions",
+      "plan": "Plan",
+      "interval": "Billing interval",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "monthlyShort": "/mo",
+      "yearlyShort": "/yr",
+      "days": "Days",
+      "apply": "Apply",
+      "queue": {
+        "all": "All",
+        "past_due": "Past due",
+        "trial": "On trial",
+        "cancelling": "Cancelling"
+      },
+      "columns": {
+        "org": "Organization",
+        "plan": "Plan",
+        "status": "Status",
+        "mrr": "MRR",
+        "renews": "Renews / ends",
+        "card": "Card"
+      },
+      "status": {
+        "active": "Active",
+        "trial": "Trial",
+        "past_due": "Past due",
+        "pending_payment": "Pending payment",
+        "cancelled": "Cancelled",
+        "read_only": "Read only",
+        "endingBadge": "ending"
+      },
+      "noSubscription": "No subscription — grandfathered org"
+    },
+    "revenue": {
+      "title": "Revenue",
+      "description": "Lessio's own income — MRR, invoices and what failed to collect",
+      "mrr": "MRR",
+      "collectedThisMonth": "Collected this month",
+      "pending": "Pending",
+      "failed": "Failed",
+      "failedCount": "{count} invoices",
+      "collectedHistory": "Collected per month",
+      "collectedHistoryHint": "Paid SaaS invoices over the last 12 months",
+      "noHistory": "No paid invoices yet",
+      "invoices": "Invoices",
+      "viewDocument": "Document",
+      "columns": {
+        "org": "Organization",
+        "amount": "Amount",
+        "status": "Status",
+        "period": "Period",
+        "issued": "Issued"
+      },
+      "status": {
+        "paid": "Paid",
+        "pending": "Pending",
+        "failed": "Failed"
+      }
+    },
+    "plans": {
+      "title": "Plans & features",
+      "description": "Prices, quotas and what each plan unlocks",
+      "priceChangeNote": "Changing a price does not touch existing subscriptions — they keep the price captured when they signed up.",
+      "subscribers": "{count} orgs",
+      "priceMonthly": "Monthly",
+      "priceYearly": "Yearly",
+      "studentsQuota": "Students",
+      "lessonsQuota": "Lessons / month",
+      "unlimited": "Unlimited",
+      "none": "None",
+      "features": "Features",
+      "isActive": "Available to new signups",
+      "save": "Save",
+      "saved": "Saved",
+      "feature": {
+        "whatsapp_automation": "WhatsApp automation",
+        "ai_assistant": "AI assistant",
+        "full_reports": "Full reports",
+        "leads": "Leads",
+        "homework": "Homework",
+        "parent_portal": "Parent portal",
+        "integrations": "Integrations"
+      }
+    },
+    "audit": {
+      "title": "Audit log",
+      "description": "Every superadmin action, and which tenant it touched",
+      "unknownActor": "Unknown",
+      "platformWide": "Platform-wide",
+      "columns": {
+        "when": "When",
+        "actor": "Who",
+        "action": "Action",
+        "org": "Organization",
+        "details": "Details"
+      },
+      "empty": "No admin actions recorded for this organization"
     }
   },
   "auth": {

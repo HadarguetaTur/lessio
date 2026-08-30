@@ -1,6 +1,16 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+import {
+  FIRST_TOUCH_COOKIE,
+  LAST_TOUCH_COOKIE,
+  TOUCH_MAX_AGE,
+  VISITOR_COOKIE,
+  VISITOR_MAX_AGE,
+  encodeTouch,
+  readTouch,
+} from '@/lib/attribution'
+
 // All routes under (dashboard)/ that require Supabase session protection.
 // Missing a prefix here does NOT break auth (layout.tsx also protects via getSession),
 // but it means the proxy won't redirect unauthenticated users to /login
@@ -29,6 +39,50 @@ function isDashboardRoute(pathname: string): boolean {
   return DASHBOARD_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
   )
+}
+
+/**
+ * Stamps the visitor id and marketing touch cookies onto a response.
+ *
+ * Per /docs/sprint-34-scope.md § מנוע המדידה, step 1. Cookies only — this runs
+ * on every request, so it must not touch the database. The touch is persisted
+ * once, at signup, onto the organization it produced.
+ *
+ * Only top-level document navigations are considered: an asset or a fetch
+ * carries the page's own query string and would otherwise re-record the same
+ * touch several times per pageview.
+ */
+function captureAttribution(request: NextRequest, response: NextResponse): void {
+  if (request.method !== 'GET') return
+  if (request.nextUrl.pathname.startsWith('/api/')) return
+  if (request.headers.get('sec-fetch-dest') === 'empty') return
+  if (!request.headers.get('accept')?.includes('text/html')) return
+
+  const secure = request.nextUrl.protocol === 'https:'
+  const base = { httpOnly: true, sameSite: 'lax' as const, secure, path: '/' }
+
+  if (!request.cookies.get(VISITOR_COOKIE)) {
+    response.cookies.set(VISITOR_COOKIE, crypto.randomUUID(), {
+      ...base,
+      maxAge: VISITOR_MAX_AGE,
+    })
+  }
+
+  const touch = readTouch(
+    request.nextUrl,
+    request.headers.get('referer'),
+    request.nextUrl.host
+  )
+  if (!touch) return
+
+  const encoded = encodeTouch(touch)
+
+  // First touch is written once and never again. Overwriting it would mean the
+  // last ad someone clicked erases the channel that actually found them.
+  if (!request.cookies.get(FIRST_TOUCH_COOKIE)) {
+    response.cookies.set(FIRST_TOUCH_COOKIE, encoded, { ...base, maxAge: TOUCH_MAX_AGE })
+  }
+  response.cookies.set(LAST_TOUCH_COOKIE, encoded, { ...base, maxAge: TOUCH_MAX_AGE })
 }
 
 export const PATHNAME_HEADER = 'x-pathname'
@@ -105,7 +159,11 @@ export async function proxy(request: NextRequest) {
     // those reports. The route is bounded and rate-limited instead.
     request.nextUrl.pathname.startsWith('/api/telemetry/')
   ) {
-    return NextResponse.next()
+    // Bypassed routes are still real landing surfaces for a campaign, so they
+    // get the attribution cookie too — just not the Supabase session round-trip.
+    const bypassResponse = NextResponse.next()
+    captureAttribution(request, bypassResponse)
+    return bypassResponse
   }
 
   // Forward pathname as x-pathname so server components (e.g. dashboard layout)
@@ -193,6 +251,8 @@ export async function proxy(request: NextRequest) {
     url.pathname = '/dashboard'
     return redirectWithSession(url, supabaseResponse)
   }
+
+  captureAttribution(request, supabaseResponse)
 
   return supabaseResponse
 }

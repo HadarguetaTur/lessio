@@ -1,6 +1,6 @@
 
 # LESSIO — Full Sprint Roadmap
-*Sprints 1–28 complete · Sprint 29 in progress · Sprint 32 M1–M3 shipped · Sprint 33 M1 shipped*
+*Sprints 1–28 complete · Sprint 29 in progress · Sprint 32 M1–M3 shipped · Sprint 33 M1 shipped · Sprint 34 specced*
 
 **This file is the source of truth for sprint status.** Find the current sprint in the
 table below, then read its `docs/sprint-<n>-scope.md`. Scopes for finished sprints live
@@ -45,6 +45,7 @@ in `docs/archive/sprint-scopes/`.
 | 31 | WhatsApp Production Launch | 📝 Planned — stories 5, 7, 9 already done |
 | 32 | Customer Support System (tickets, AI triage, recurring-bug detection) | ✅ M1–M3 done |
 | 33 | Integration Hub (API keys, `/api/v1`, Make payment provider, webhooks) | ✅ M1 shipped |
+| 34 | Platform Admin & Growth Console (SaaS metrics, lead CRM, pixels, attribution) | 🚧 M1 built |
 
 ---
 
@@ -323,6 +324,41 @@ platform are one feature, not two.
 both read back `undefined`, and `undefined == null` short-circuited every check. An
 `as Record<string, unknown>` cast hid it from the compiler. Fixed before opening the API,
 since M2 will allow bulk record creation.
+
+---
+
+## Sprint 34 — Platform Admin & Growth Console
+
+**Status:** 🚧 M1 built (migration not yet applied) · M2–M4 planned
+**Depends on:** none (independent of the Sprint 33 M2/M3 track)
+**Scope:** See `docs/sprint-34-scope.md`
+**Source:** Full `/admin` review (2026-08-30)
+
+**Goal:** `/admin` was built in Sprint 18 as an ops tool for a pre-revenue product and still
+has that shape. It measures the wrong thing (tenant revenue from `charges`, not Lessio's own
+MRR), it has no growth layer at all (zero tracking code, no cold-lead path, no attribution),
+and it cannot manage a plan or a subscription without SQL.
+
+| Milestone | Contents | Status |
+|---|---|---|
+| M1 | Grouped nav + `/admin` index + ⌘K palette + shared `AdminTable`; real SaaS metrics (MRR, churn, trial→paid, activation funnel); `organization_activity` / `organization_usage` views replace the O(all-rows) queries; `/admin/subscriptions`, `/admin/revenue`, `/admin/plans`, `/admin/audit`, tabbed org detail, `admin_audit_log` | ✅ Built |
+| M2 | Measurement. **Attribution capture shipped early with M1** (`ls_vid` / `ls_attr` cookies in `proxy.ts`, `attribution_touches`, frozen onto the org at signup). Remaining: `tracking_destinations` + screen, `<TrackingScripts />` + consent banner, Meta CAPI + GA4 Measurement Protocol, the four conversion events | 🚧 Capture done |
+| M3 | CRM: `platform_leads`, `POST /api/public/leads/:formKey` for external landing pages, inbox + pipeline, lead form and pricing section on the landing page, `saas_plan_inquiries` merged in, campaigns + spend, CAC / LTV | 📝 Planned |
+| M4 | Ops depth: `/admin/errors` feed, `/admin/cost` (WhatsApp + AI vs MRR), `org_feature_overrides`, sidebar count badges | 📝 Planned |
+
+
+**Ops outstanding for M1:** apply `supabase/migrations/20260830210000_platform_admin_console.sql`
+(`npx supabase db reset` locally, `npx supabase db push` for production). Until it runs,
+`/admin` and `/admin/orgs` fail to read `organization_activity`, `organization_usage`,
+`admin_audit_log` and `attribution_touches`, and signup cannot write `organizations.attribution`.
+
+**Ordering note:** M2 must ship before M3 — attribution that starts late leaves a data hole
+that cannot be backfilled. The cookie-capture half of M2 has no dependencies and is worth
+shipping alongside M1 so it starts accumulating immediately.
+
+**Compliance note:** `src/app/privacy/PrivacyHe.tsx` already names Meta Pixel, GA4, PostHog
+and Hotjar as third parties, while `src/` contains no tracking code and no consent banner.
+M2 closes that gap in the correct direction.
 
 ---
 

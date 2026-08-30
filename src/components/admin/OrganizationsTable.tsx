@@ -1,110 +1,159 @@
 import Link from 'next/link'
 import { DateTime } from 'luxon'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
+
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import type { OrgListItem } from '@/lib/superadmin/organizations'
+import { AdminTable, type AdminTableRow } from './AdminTable'
 import { OrganizationStatusBadge } from './OrganizationStatusBadge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { cn } from '@/lib/utils'
+
+/**
+ * The tenant list.
+ *
+ * Per /docs/sprint-34-scope.md § /admin/orgs. Rebuilt on AdminTable, which
+ * brings sorting, paging and CSV export. Three things changed beyond that:
+ * plan, MRR and quota pressure are now columns — an operator's first questions
+ * about a tenant, previously answerable only by opening the record; relative
+ * dates use the request's locale instead of a hardcoded 'he'; and connection
+ * state collapsed from three yes/no columns into one, since "which of the three
+ * is missing" is a detail-page question.
+ */
 
 interface Props {
   orgs: OrgListItem[]
 }
 
-function Yn({ value, yesLabel, noLabel }: { value: boolean; yesLabel: string; noLabel: string }) {
-  return (
-    <span className={value ? 'text-green-700 font-medium' : 'text-muted-foreground'}>
-      {value ? yesLabel : noLabel}
-    </span>
-  )
+/** Quota usage reads as a colour before it reads as a number. */
+function quotaTone(ratio: number | null): string {
+  if (ratio == null) return 'text-muted-foreground'
+  if (ratio >= 1) return 'text-destructive font-medium'
+  if (ratio >= 0.8) return 'text-amber-600 font-medium'
+  return ''
 }
 
 export async function OrganizationsTable({ orgs }: Props) {
   const t = await getTranslations('admin')
+  const tTable = await getTranslations('admin.table')
+  const locale = await getLocale()
 
-  if (orgs.length === 0) {
-    return <p className="text-muted-foreground text-sm py-8 text-center">{t('orgs.table.empty')}</p>
-  }
+  const rows: AdminTableRow[] = orgs.map((o) => {
+    const connected = [o.whatsAppConnected, o.paymentConnected, o.receiptConnected].filter(
+      Boolean
+    ).length
 
-  const yesLabel = t('orgs.table.yes')
-  const noLabel = t('orgs.table.no')
+    return {
+      id: o.id,
+      cells: {
+        name: (
+          <Link href={`/admin/orgs/${o.id}`} className="font-medium hover:underline">
+            {o.name}
+            <span className="ms-2 font-mono text-xs font-normal text-muted-foreground" dir="ltr">
+              {o.slug}
+            </span>
+          </Link>
+        ),
+        plan: o.planLabelHe ? (
+          <span>{locale === 'he' ? o.planLabelHe : o.planLabelEn}</span>
+        ) : (
+          <span className="text-muted-foreground">{t('orgs.table.noPlan')}</span>
+        ),
+        status: <OrganizationStatusBadge status={o.status} />,
+        mrr: o.monthlyValue > 0 ? formatMoney(Math.round(o.monthlyValue), locale) : null,
+        students: (
+          <span className={quotaTone(o.quota.worstRatio)}>
+            {o.quota.studentsUsed}
+            {o.quota.studentsLimit != null && (
+              <span className="opacity-60">{` / ${o.quota.studentsLimit}`}</span>
+            )}
+          </span>
+        ),
+        lessons: o.quota.lessonsUsed,
+        connections: (
+          <span className={cn(connected === 3 ? 'text-emerald-600' : 'text-muted-foreground')}>
+            {connected}/3
+          </span>
+        ),
+        lastActivity: o.lastActivity
+          ? DateTime.fromISO(o.lastActivity).setLocale(locale).toRelative()
+          : null,
+        created: DateTime.fromISO(o.createdAt).setLocale(locale).toFormat('dd LLL yy'),
+      },
+      sortValues: {
+        name: o.name,
+        plan: o.planName,
+        status: o.status,
+        mrr: o.monthlyValue,
+        students: o.quota.studentsUsed,
+        lessons: o.quota.lessonsUsed,
+        connections: connected,
+        lastActivity: o.lastActivity,
+        created: o.createdAt,
+      },
+      csv: {
+        name: o.name,
+        slug: o.slug,
+        plan: o.planName ?? '',
+        subscriptionStatus: o.subscriptionStatus ?? '',
+        status: o.status,
+        mrr: Math.round(o.monthlyValue),
+        students: o.quota.studentsUsed,
+        studentsLimit: o.quota.studentsLimit ?? '',
+        lessons: o.quota.lessonsUsed,
+        connections: `${connected}/3`,
+        lastActivity: o.lastActivity ?? '',
+        created: o.createdAt,
+      },
+    }
+  })
 
   return (
-    <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="hidden h-full overflow-auto md:block" tabIndex={0} aria-label={t('orgs.title')}>
-        <Table className="min-w-[900px] text-sm">
-          <TableHeader>
-            <TableRow className="bg-gray-50 hover:bg-gray-50">
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">{t('orgs.table.name')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">Slug</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">{t('orgs.table.status')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">{t('orgs.table.lastActivity')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-center font-medium text-muted-foreground">WhatsApp</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-center font-medium text-muted-foreground">{t('orgs.table.payments')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-center font-medium text-muted-foreground">{t('orgs.table.receipts')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">{t('orgs.table.created')}</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-gray-50 px-4 text-start font-medium text-muted-foreground">{t('orgs.table.actions')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orgs.map((o) => (
-              <TableRow key={o.id} className="hover:bg-gray-50">
-                <TableCell className="px-4 py-3 font-medium text-gray-900">{o.name}</TableCell>
-                <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.slug}</TableCell>
-                <TableCell className="px-4 py-3"><OrganizationStatusBadge status={o.status} /></TableCell>
-                <TableCell className="px-4 py-3 text-muted-foreground">
-                  {o.lastActivity
-                    ? DateTime.fromISO(o.lastActivity).toRelative({ locale: 'he' })
-                    : '—'}
-                </TableCell>
-                <TableCell className="px-4 py-3 text-center"><Yn value={o.whatsAppConnected} yesLabel={yesLabel} noLabel={noLabel} /></TableCell>
-                <TableCell className="px-4 py-3 text-center"><Yn value={o.paymentConnected} yesLabel={yesLabel} noLabel={noLabel} /></TableCell>
-                <TableCell className="px-4 py-3 text-center"><Yn value={o.receiptConnected} yesLabel={yesLabel} noLabel={noLabel} /></TableCell>
-                <TableCell className="px-4 py-3 text-muted-foreground">
-                  {DateTime.fromISO(o.createdAt).toFormat('dd/MM/yy')}
-                </TableCell>
-                <TableCell className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/admin/orgs/${o.id}`}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
-                    >
-                      {t('orgs.details')}
-                    </Link>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="space-y-3 overflow-y-auto p-3 md:hidden">
-        {orgs.map((o) => (
-          <article key={o.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold text-gray-900">{o.name}</h2>
-                <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground" dir="ltr">{o.slug}</p>
-              </div>
-              <OrganizationStatusBadge status={o.status} />
-            </div>
-            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
-              <div><dt className="text-muted-foreground">{t('orgs.table.lastActivity')}</dt><dd className="mt-0.5 text-gray-800">{o.lastActivity ? DateTime.fromISO(o.lastActivity).toRelative({ locale: 'he' }) : '—'}</dd></div>
-              <div><dt className="text-muted-foreground">{t('orgs.table.created')}</dt><dd className="mt-0.5 text-gray-800">{DateTime.fromISO(o.createdAt).toFormat('dd/MM/yy')}</dd></div>
-              <div><dt className="text-muted-foreground">WhatsApp</dt><dd className="mt-0.5"><Yn value={o.whatsAppConnected} yesLabel={yesLabel} noLabel={noLabel} /></dd></div>
-              <div><dt className="text-muted-foreground">{t('orgs.table.payments')}</dt><dd className="mt-0.5"><Yn value={o.paymentConnected} yesLabel={yesLabel} noLabel={noLabel} /></dd></div>
-            </dl>
-            <Link href={`/admin/orgs/${o.id}`} className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-indigo-700 hover:text-indigo-900">
-              {t('orgs.details')}
-            </Link>
-          </article>
-        ))}
-      </div>
-    </div>
+    <AdminTable
+      exportName="lessio-organizations"
+      emptyLabel={tTable('empty')}
+      columns={[
+        { key: 'name', label: t('orgs.table.name'), sortable: true },
+        { key: 'plan', label: t('orgs.table.plan'), sortable: true },
+        { key: 'status', label: t('orgs.table.status'), sortable: true },
+        { key: 'mrr', label: t('orgs.table.mrr'), numeric: true, align: 'end', sortable: true },
+        {
+          key: 'students',
+          label: t('orgs.table.students'),
+          numeric: true,
+          align: 'end',
+          sortable: true,
+        },
+        {
+          key: 'lessons',
+          label: t('orgs.table.lessons'),
+          numeric: true,
+          align: 'end',
+          sortable: true,
+          secondary: true,
+        },
+        {
+          key: 'connections',
+          label: t('orgs.table.connections'),
+          numeric: true,
+          align: 'end',
+          sortable: true,
+          secondary: true,
+        },
+        {
+          key: 'lastActivity',
+          label: t('orgs.table.lastActivity'),
+          numeric: true,
+          sortable: true,
+        },
+        {
+          key: 'created',
+          label: t('orgs.table.created'),
+          numeric: true,
+          sortable: true,
+          secondary: true,
+        },
+      ]}
+      rows={rows}
+    />
   )
 }

@@ -229,6 +229,6 @@ Before handing credentials to the customer:
 - [ ] Owner has read the Known Limits section
 - [ ] Data Recovery Playbook reviewed
 - [ ] Release checklist complete (`/docs/release-checklist.md`)
-- [ ] Backup verified on production Supabase project (`/docs/backup-restore.md`)
+- [ ] Backup verified on production Supabase project (`/docs/data-recovery-playbook.md`)
 
 **Go-live approved by:** _______________  **Date:** _______________

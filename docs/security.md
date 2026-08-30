@@ -16,7 +16,7 @@
 * Required env vars are validated at startup; missing required values fail fast with named errors.
 * WhatsApp webhook requests without valid `X-Hub-Signature-256` must return `401` before trusted processing begins.
 * Critical operational flows must emit structured logs with `org_id` and relevant entity IDs when available.
-* Sprint 6 does not expand any approved role permissions from Sprint 5.
+* Role permissions are expanded only by an explicit decision in `docs/decisions.md`, never as a side effect of other work.
 
 ---
 
@@ -52,7 +52,7 @@ Notes:
 
 ---
 
-## Production Readiness Requirements (Sprint 6)
+## Production Readiness Requirements
 
 ### Secrets and bundle exposure
 
@@ -165,9 +165,9 @@ Teacher access explicitly excludes:
 * cancellation logic
 * arbitrary lesson field mutation
 
-Sprint 6 rule:
+Standing rule:
 
-* production-readiness work must preserve this access surface and must not expand it
+* this access surface must be preserved and must not be expanded as a side effect of other work
 
 ### Route guards and resource loading
 

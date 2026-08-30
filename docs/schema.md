@@ -1,5 +1,6 @@
-# LESSIO — Database Schema (v5)
-*Updated: Sprint 13 planning — reflects live schema after Sprint 12*
+# LESSIO — Database Schema
+*Covers the live schema through Sprint 33 (Integration Hub).*
+*The migrations in `supabase/migrations/` are authoritative; this is the readable map of them.*
 
 All tables use `uuid` primary keys (`gen_random_uuid()`).
 All tables include `created_at timestamptz default now()`.

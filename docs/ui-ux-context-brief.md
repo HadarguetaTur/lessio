@@ -327,17 +327,13 @@ UI/UX צריך להתייחס אליו כחלק מהשירות, גם אם הממ
 
 יש פערים בין חלק מהמסמכים ההיסטוריים לבין המצב הנוכחי בפועל.
 
-### `docs/status.md`
+### `docs/status.md` — נמחק
 
-הקובץ מציג כותרת של Sprint 17 ומכיל section של "What's Missing" שכבר אינו נכון במלואו. למשל:
+הקובץ הציג כותרת של Sprint 17 ורשימת "What's Missing" שכבר לא הייתה נכונה (parent portal,
+`/settings` landing ו-single lesson creation כולם קיימים מזמן). הוא נמחק בניקיון התיעוד;
+`docs/sprint-roadmap.md` הוא המקור היחיד לסטטוס.
 
-- parent portal כבר קיים
-- `/settings` landing page כבר קיים
-- single lesson creation כבר קיים
-
-יש להשתמש בו בעיקר להבנת יכולות, לא להבנת current sprint או gaps נוכחיים.
-
-### `docs/first-customer.md`
+### `docs/archive/ops/first-customer.md`
 
 החלקים המאוחרים בקובץ מתארים limits של pilot phase ישן, למשל:
 
@@ -372,10 +368,10 @@ UI/UX צריך להתייחס אליו כחלק מהשירות, גם אם הממ
 
 ### מסמכי מוצר
 
+- `docs/README.md` — אינדקס כל המסמכים
 - `docs/plan.md`
 - `docs/sprint-roadmap.md`
-- `docs/status.md`
-- `docs/first-customer.md`
+- `docs/archive/ops/first-customer.md` — היסטורי, ראו סעיף 9
 
 ### קבצי UI ו-routing
 

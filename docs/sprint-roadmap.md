@@ -1,10 +1,14 @@
 
 # LESSIO — Full Sprint Roadmap
-*Updated: Sprints 1–28 complete — Sprint 29 in progress · Sprint 33 M1 shipped*
+*Sprints 1–28 complete · Sprint 29 in progress · Sprint 32 M1–M3 shipped · Sprint 33 M1 shipped*
+
+**This file is the source of truth for sprint status.** Find the current sprint in the
+table below, then read its `docs/sprint-<n>-scope.md`. Scopes for finished sprints live
+in `docs/archive/sprint-scopes/`.
 
 ---
 
-## Completed Sprints (1–25)
+## Sprint status
 
 | Sprint | Theme | Status |
 |--------|-------|--------|
@@ -38,78 +42,9 @@
 | 28 | Analytics Pro (KPI deltas, revenue forecasting, teacher performance, student LTV) | ✅ Done |
 | 29 | Google Login + Google Calendar Integration | 🚧 In Progress |
 | 30 | Revenue Integrity & Reliability | 📝 Planned |
-| 31 | WhatsApp Production Launch | 📝 Planned |
+| 31 | WhatsApp Production Launch | 📝 Planned — stories 5, 7, 9 already done |
 | 32 | Customer Support System (tickets, AI triage, recurring-bug detection) | ✅ M1–M3 done |
-
----
-
-## Sprint 29 — Google Login + Google Calendar Integration
-**Status:** 🚧 In Progress  
-**Depends on:** Sprint 28 complete  
-**Scope:** See `docs/sprint-29-scope.md`
-
-### Stories
-- Story 1: Google OAuth login/signup (Supabase Google provider + `/signup/complete` onboarding)
-- Story 2: Per-org Google Calendar connection (OAuth, encrypt refresh token, settings UI)
-- Story 3: Per-teacher Google Calendar connection (teacher sub-shell settings)
-- Story 4: Calendar conflict check in lesson creation (soft warning, override-able)
-
----
-
-## Sprint 30 — Revenue Integrity & Reliability
-**Status:** 📝 Planned
-**Depends on:** Sprint 29 complete
-**Scope:** See `docs/sprint-30-scope.md`
-**Source:** Full product review (2026-06-11)
-
-### Stories
-- Story 1: Payment webhook security (Stripe signature verification, Cardcom/PayPlus server-side confirmation, receipt idempotency fix, payments test coverage)
-- Story 2: SaaS renewal engine (token-charge cron, past_due enforcement, cancel-subscription flow, Sumit E2E cutover — carried since Sprint 23)
-- Story 3: Ship WhatsApp automations WIP (Edge template sync, toggle E2E, WABA ID signup)
-- Story 4: Reliability hardening (Sentry in Edge Functions, cron send/mark atomicity, webhook rate limiting)
-- Story 5 (stretch): Dashboard CRUD completions (edit teacher/goal/note, teacher lesson cancel, subscriptions page links)
-
-> **Note:** Story 3 and the WhatsApp parts of Story 4 (4c webhook rate limit, 4d unknown `phone_number_id`) are absorbed into Sprint 31 — see `docs/sprint-31-scope.md`.
-
----
-
-## Sprint 31 — WhatsApp Production Launch
-**Status:** 📝 Planned
-**Depends on:** none (runs in parallel with Sprint 30 Stories 1–2; absorbs Sprint 30 Story 3 + WhatsApp parts of Story 4)
-**Scope:** See `docs/sprint-31-scope.md`
-**Source:** Full WhatsApp end-to-end audit (2026-08-14)
-
-### Stories
-- Story 0: Critical correctness fixes (`from_phone` session-window/PII bug, Node↔Deno template sync, 16-type templates UI)
-- Story 1: Connection lifecycle (`waba_id` required, disconnect unsubscribe/cleanup, Embedded Signup `config_id`)
-- Story 2: Automation toggle enforcement in Edge Functions + autoSend
-- Story 3: Portal OTP via Meta AUTHENTICATION template (cold-start login fix)
-- Story 4: Webhook hardening (rate limit 30/phone/5min, unknown `phone_number_id` → Sentry + superadmin notification)
-- Story 5: Template approval status tracking (webhook field + status chips in settings) — may slip
-- Story 6: Bot improvements (intent collisions, non-greedy cancellation session, group-lesson guard, non-text replies, outbound message log)
-- Story 7: Sender role awareness — the bot resolves parent/student/teacher/staff instead of "parent or lead", with a per-role menu (`resolveSender`, `ROLE_MENUS`); teachers and owners stop being filed as leads in their own CRM, and a student can answer the homework reminder sent to their own phone
-- Story 8: WhatsApp opt-out — `stop`/`הסר` sets `parents.opted_out_at` and blocks every business-initiated send (Node `sendSmartMessage` + payment-request actions + the Deno cron path); `start`/`התחל` restores. "Opted out" badge on `/parents`. Required by Meta's messaging policy — the App Review screencast previously had no implementation behind it
-- Story 9: Parent messaging consent (opt-in) — the first business-initiated message to any parent is preceded by a one-time `welcome_notice` template naming the business and the stop word (`parents.welcome_sent_at`, claimed atomically). Consent evidence recorded per source (`attested`/`import`/`portal`/`booking`/`whatsapp_reply`) on `parents.consent_source`; captured on the parent + student + lead-conversion forms, the import screen, the portal login and the booking confirm. Closes three opt-out leaks Story 8 left open (auto payment request, receipt notice, day-off cancellation notice). Nothing is blocked for a parent without consent — Meta's policy wants the notice, not silence
-- Ops: Meta Business App + Business Verification + App Review + Embedded Signup Configuration, cron registration, migrations, WABA backfill
-- Ops: English demo tenant for App Review (`scripts/seed-review-demo.ts` / `cleanup-review-demo.ts`) — see `docs/meta-app-review-submission.md`
-
----
-
-## Sprint 32 — Customer Support System
-**Status:** ✅ M1–M3 shipped (migrations live in production), M4 optional
-**Depends on:** none (independent of the WhatsApp launch track)
-**Scope:** See `docs/sprint-32-scope.md`
-**Source:** Support architecture session (2026-08-26)
-
-**Goal:** Support that scales past answering WhatsApp messages by hand — customers reach us in-product, tickets triage themselves, and repeating production errors become dev issues before anyone notices them.
-
-### Milestones
-- M1 ✅: Ticket core — `support_tickets` + `support_ticket_messages`, floating help widget for owners/admins, `/support` thread pages, `/admin/support` operator queue with replies and status, in-app notifications both directions, 10-tickets-per-org-per-day limit
-- M2 ✅: WhatsApp intake (staff menu 4th action + `support_sessions` three-step state) and AI triage (category + severity on every ticket, platform OpenAI key). Deferred: screenshot attachments, self-service KB answers
-- M3 ✅: Error telemetry (`error_events`, fingerprinting, all four boundaries instrumented + the previously missing `global-error.tsx`, `onRequestError` feeding the DB alongside Sentry) and the hourly `error-monitor` cron that promotes a fingerprint into a `dev_issue` + GitHub issue + a throttled superadmin alert
-- M4 (optional): SLA/aging badges, admin metrics, canned responses, platform email, CSAT
-
-**Manual ops still outstanding for M3:** register the `error-monitor` schedule in the Supabase Dashboard (`0 * * * *`) — the CLI cannot do it; and optionally `supabase secrets set GITHUB_ISSUES_TOKEN` + `GITHUB_ISSUES_REPO` to enable GitHub filing (without them the internal queue works and filing is skipped).
+| 33 | Integration Hub (API keys, `/api/v1`, Make payment provider, webhooks) | ✅ M1 shipped |
 
 ---
 
@@ -295,6 +230,102 @@ CREATE TABLE in_app_notifications (
 
 ---
 
+## Sprint 29 — Google Login + Google Calendar Integration
+**Status:** 🚧 In Progress  
+**Depends on:** Sprint 28 complete  
+**Scope:** See `docs/sprint-29-scope.md`
+
+### Stories
+- Story 1: Google OAuth login/signup (Supabase Google provider + `/signup/complete` onboarding)
+- Story 2: Per-org Google Calendar connection (OAuth, encrypt refresh token, settings UI)
+- Story 3: Per-teacher Google Calendar connection (teacher sub-shell settings)
+- Story 4: Calendar conflict check in lesson creation (soft warning, override-able)
+
+---
+
+## Sprint 30 — Revenue Integrity & Reliability
+**Status:** 📝 Planned
+**Depends on:** Sprint 29 complete
+**Scope:** See `docs/sprint-30-scope.md`
+**Source:** Full product review (2026-06-11)
+
+### Stories
+- Story 1: Payment webhook security (Stripe signature verification, Cardcom/PayPlus server-side confirmation, receipt idempotency fix, payments test coverage)
+- Story 2: SaaS renewal engine (token-charge cron, past_due enforcement, cancel-subscription flow, Sumit E2E cutover — carried since Sprint 23)
+- Story 3: Ship WhatsApp automations WIP (Edge template sync, toggle E2E, WABA ID signup)
+- Story 4: Reliability hardening (Sentry in Edge Functions, cron send/mark atomicity, webhook rate limiting)
+- Story 5 (stretch): Dashboard CRUD completions (edit teacher/goal/note, teacher lesson cancel, subscriptions page links)
+
+> **Note:** Story 3 and the WhatsApp parts of Story 4 (4c webhook rate limit, 4d unknown `phone_number_id`) are absorbed into Sprint 31 — see `docs/sprint-31-scope.md`.
+
+---
+
+## Sprint 31 — WhatsApp Production Launch
+**Status:** 📝 Planned
+**Depends on:** none (runs in parallel with Sprint 30 Stories 1–2; absorbs Sprint 30 Story 3 + WhatsApp parts of Story 4)
+**Scope:** See `docs/sprint-31-scope.md`
+**Source:** Full WhatsApp end-to-end audit (2026-08-14)
+
+### Stories
+- Story 0: Critical correctness fixes (`from_phone` session-window/PII bug, Node↔Deno template sync, 16-type templates UI)
+- Story 1: Connection lifecycle (`waba_id` required, disconnect unsubscribe/cleanup, Embedded Signup `config_id`)
+- Story 2: Automation toggle enforcement in Edge Functions + autoSend
+- Story 3: Portal OTP via Meta AUTHENTICATION template (cold-start login fix)
+- Story 4: Webhook hardening (rate limit 30/phone/5min, unknown `phone_number_id` → Sentry + superadmin notification)
+- Story 5: Template approval status tracking (webhook field + status chips in settings) — may slip
+- Story 6: Bot improvements (intent collisions, non-greedy cancellation session, group-lesson guard, non-text replies, outbound message log)
+- Story 7: Sender role awareness — the bot resolves parent/student/teacher/staff instead of "parent or lead", with a per-role menu (`resolveSender`, `ROLE_MENUS`); teachers and owners stop being filed as leads in their own CRM, and a student can answer the homework reminder sent to their own phone
+- Story 8: WhatsApp opt-out — `stop`/`הסר` sets `parents.opted_out_at` and blocks every business-initiated send (Node `sendSmartMessage` + payment-request actions + the Deno cron path); `start`/`התחל` restores. "Opted out" badge on `/parents`. Required by Meta's messaging policy — the App Review screencast previously had no implementation behind it
+- Story 9: Parent messaging consent (opt-in) — the first business-initiated message to any parent is preceded by a one-time `welcome_notice` template naming the business and the stop word (`parents.welcome_sent_at`, claimed atomically). Consent evidence recorded per source (`attested`/`import`/`portal`/`booking`/`whatsapp_reply`) on `parents.consent_source`; captured on the parent + student + lead-conversion forms, the import screen, the portal login and the booking confirm. Closes three opt-out leaks Story 8 left open (auto payment request, receipt notice, day-off cancellation notice). Nothing is blocked for a parent without consent — Meta's policy wants the notice, not silence
+- Ops: Meta Business App + Business Verification + App Review + Embedded Signup Configuration, cron registration, migrations, WABA backfill
+- Ops: English demo tenant for App Review (`scripts/seed-review-demo.ts` / `cleanup-review-demo.ts`) — see `docs/meta-app-review-submission.md`
+
+---
+
+## Sprint 32 — Customer Support System
+**Status:** ✅ M1–M3 shipped (migrations live in production), M4 optional
+**Depends on:** none (independent of the WhatsApp launch track)
+**Scope:** See `docs/sprint-32-scope.md`
+**Source:** Support architecture session (2026-08-26)
+
+**Goal:** Support that scales past answering WhatsApp messages by hand — customers reach us in-product, tickets triage themselves, and repeating production errors become dev issues before anyone notices them.
+
+### Milestones
+- M1 ✅: Ticket core — `support_tickets` + `support_ticket_messages`, floating help widget for owners/admins, `/support` thread pages, `/admin/support` operator queue with replies and status, in-app notifications both directions, 10-tickets-per-org-per-day limit
+- M2 ✅: WhatsApp intake (staff menu 4th action + `support_sessions` three-step state) and AI triage (category + severity on every ticket, platform OpenAI key). Deferred: screenshot attachments, self-service KB answers
+- M3 ✅: Error telemetry (`error_events`, fingerprinting, all four boundaries instrumented + the previously missing `global-error.tsx`, `onRequestError` feeding the DB alongside Sentry) and the hourly `error-monitor` cron that promotes a fingerprint into a `dev_issue` + GitHub issue + a throttled superadmin alert
+- M4 (optional): SLA/aging badges, admin metrics, canned responses, platform email, CSAT
+
+**Manual ops still outstanding for M3:** register the `error-monitor` schedule in the Supabase Dashboard (`0 * * * *`) — the CLI cannot do it; and optionally `supabase secrets set GITHUB_ISSUES_TOKEN` + `GITHUB_ISSUES_REPO` to enable GitHub filing (without them the internal queue works and filing is skipped).
+
+---
+
+## Sprint 33 — Integration Hub
+
+**M1 ✅ Shipped** · M2 📝 Planned · M3 📝 Planned
+
+Implements decisions #28 (Integration Hub Shape) and #30 (Tenant-Owned Credentials).
+Full scope: `docs/sprint-33-scope.md`. Setup guide: `docs/integrations-make-setup.md`.
+
+| Milestone | Contents | Status |
+|---|---|---|
+| M1 | Org API keys (`organization_api_keys`, sha256), `/api/v1` with per-key rate limiting, `GET /v1/me`, `POST /v1/charges/:id/payments`, the `make` payment provider, Settings → Integrations | ✅ Done |
+| M2 | Outbound webhooks (`org_webhook_endpoints` + `webhook_deliveries` outbox, `emitOrgEvent`, Stripe-style HMAC signing, cron retry) and the rest of the REST surface | 📝 Planned |
+| M3 | MCP server, so an owner can connect Lessio to Claude Desktop | 📝 Planned |
+
+**Why:** Grow charge ₪500 + VAT/month for API access and confirmed the Make route is not
+covered by it. Paying for Make (~$9/month) instead needs exactly the two directions a
+general automation integration needs — so the payment workaround and the integration
+platform are one feature, not two.
+
+**Also fixed here:** plan quotas were never enforced. `quota.ts` read `students_quota` and
+`lessons_monthly_quota` from an object whose `select` in `plans.ts` never fetched them, so
+both read back `undefined`, and `undefined == null` short-circuited every check. An
+`as Record<string, unknown>` cast hid it from the compiler. Fixed before opening the API,
+since M2 will allow bulk record creation.
+
+---
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |
@@ -316,6 +347,11 @@ CREATE TABLE in_app_notifications (
 | 26 | Parent Portal 2.0 | Full schedule, homework, progress, messaging |
 | 27 | Billing & Accounting Pro | PDF invoices, iCount, server-side enforcement |
 | 28 | Analytics Pro | Trends, forecasting, teacher performance, LTV |
+| 29 | Google Login + Calendar | One-click signup; no double-booking against a teacher's own calendar |
+| 30 | Revenue Integrity | Webhook spoofing closed, SaaS renewals, dunning, rate limiting |
+| 31 | WhatsApp Production Launch | Real customer numbers on the platform, not the test number |
+| 32 | Customer Support System | Tickets + AI triage + recurring-bug detection at platform scale |
+| 33 | Integration Hub | Tenant-owned API keys and `/api/v1` — the product becomes automatable |
 
 ---
 
@@ -347,26 +383,3 @@ These do not change across any sprint:
 
 ---
 
-## Sprint 33 — Integration Hub
-
-**M1 ✅ Shipped** · M2 📝 Planned · M3 📝 Planned
-
-Implements decisions #28 (Integration Hub Shape) and #30 (Tenant-Owned Credentials).
-Full scope: `docs/sprint-33-scope.md`. Setup guide: `docs/integrations-make-setup.md`.
-
-| Milestone | Contents | Status |
-|---|---|---|
-| M1 | Org API keys (`organization_api_keys`, sha256), `/api/v1` with per-key rate limiting, `GET /v1/me`, `POST /v1/charges/:id/payments`, the `make` payment provider, Settings → Integrations | ✅ Done |
-| M2 | Outbound webhooks (`org_webhook_endpoints` + `webhook_deliveries` outbox, `emitOrgEvent`, Stripe-style HMAC signing, cron retry) and the rest of the REST surface | 📝 Planned |
-| M3 | MCP server, so an owner can connect Lessio to Claude Desktop | 📝 Planned |
-
-**Why:** Grow charge ₪500 + VAT/month for API access and confirmed the Make route is not
-covered by it. Paying for Make (~$9/month) instead needs exactly the two directions a
-general automation integration needs — so the payment workaround and the integration
-platform are one feature, not two.
-
-**Also fixed here:** plan quotas were never enforced. `quota.ts` read `students_quota` and
-`lessons_monthly_quota` from an object whose `select` in `plans.ts` never fetched them, so
-both read back `undefined`, and `undefined == null` short-circuited every check. An
-`as Record<string, unknown>` cast hid it from the compiler. Fixed before opening the API,
-since M2 will allow bulk record creation.

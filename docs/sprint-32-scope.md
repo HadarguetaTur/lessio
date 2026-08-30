@@ -86,35 +86,16 @@ Migration `20260827100000_support_sessions.sql`.
 **Deferred from M2:** screenshot attachments (bucket + upload UI) and the
 self-service KB answer. Neither is load-bearing for the intake loop.
 
-## M2 — original plan (retained for the deferred parts)
+---
 
-### Migrations
-1. `support_sessions` — clone `cancellation_sessions` (`UNIQUE(organization_id, phone)`,
-   read-time `expires_at`, deny-all RLS) plus a `step` column
-   (`awaiting_description` | `awaiting_confirm`) and `draft_text`. The cancellation
-   flow needs no step column because it is exactly two turns; this one is three.
-2. `support_ticket_attachments` + a private `support-attachments` storage bucket
-   (precedent: `20260629120000_student_exams_progress_reports.sql`). Path
-   `<orgId>/<ticketId>/<uuid>`, service-role upload, signed URLs for viewing.
+## M2 — design for the deferred parts
 
-### WhatsApp flow
-- `src/lib/whatsapp/menu.ts` — add `'support'` to `MenuAction`, `ALL_ACTIONS`, and
-  `ROLE_MENUS.staff` (list messages cap at 10 rows; staff has 3 today).
-- `src/lib/whatsapp/strings.ts` — `support_prompt`, `support_confirm`,
-  `support_created`, `support_cancelled` (he+en). The whole flow stays inside the
-  24h session window, so no Meta template is involved.
-- `handlers/staff.ts` — menu tap opens a session; free text with an active session
-  becomes `draft_text` and asks for confirmation via reply buttons; confirm calls
-  `createTicket({source: 'whatsapp'})`. The session check must run before any
-  fallthrough, and a menu tap deletes the session (cancellation-flow semantics).
+The rest of the M2 plan shipped as described above; only these two remain.
 
-### AI triage
-- `src/lib/support/classify.ts` — one prompt, Zod-parsed `{category, severity}`
-  enums, `logAiUsage`, stamps `ai_classified_at`. Runs on **every** ticket
-  regardless of source, inline in creation with a short timeout and a try/catch —
-  fire-and-forget after the response is unreliable on serverless.
-- Platform provider helper (`OpenAiProvider` + `OPENAI_API_KEY` directly, no org
-  lookup): support AI is a platform cost, not the tenant's. No-op if unset.
+### Screenshot attachments
+`support_ticket_attachments` + a private `support-attachments` storage bucket
+(precedent: `20260629120000_student_exams_progress_reports.sql`). Path
+`<orgId>/<ticketId>/<uuid>`, service-role upload, signed URLs for viewing.
 
 ### Self-service (widget only in v1)
 - Knowledge base as curated markdown in the repo (`docs/support-kb/{he,en}/*.md`),
@@ -158,56 +139,21 @@ logged `alerted: 2`. Since the run summary is this cron's only visibility, that
 would have hidden a broken alert path indefinitely. `alertSuperadmins` now
 returns the number actually inserted.
 
-## M3 — original plan
+---
 
-### Migration
-`error_events` (fingerprint, name, message, route, digest, source, organization_id,
-url, user_agent, stack, created_at) and `dev_issues` (fingerprint UNIQUE, title,
-status, severity, event_count, org_count, first/last_seen, sample_stack,
-github_issue_number/url), plus
-`ALTER TABLE support_tickets ADD COLUMN dev_issue_id` (many tickets → one issue).
+## M3 — outstanding manual ops
 
-### Instrumentation (this is the prerequisite, not the cron)
-Today Sentry is installed but nearly unused by hand: the four error boundaries only
-`console.error`, there is no `global-error.tsx`, and the `{error: string}` server
-action convention means the most common class of production failure never becomes
-an exception at all.
+The build shipped; what is left is environment configuration, done by hand.
 
-- `src/lib/telemetry/fingerprint.ts` — sha256 of name + normalized message +
-  route|digest, first 16 hex. Normalizer strips uuids, numbers, quoted values.
-- `src/lib/telemetry/reportError.ts` — insert, never throw.
-- `instrumentation.ts` — call it from `onRequestError` (which already sees every
-  server request error) alongside Sentry.
-- `src/app/api/telemetry/error/route.ts` — POST for client boundaries; add its
-  prefix to the `src/proxy.ts` public bypass list; throttle and cap row size.
-- Create `global-error.tsx`; add `Sentry.captureException` + telemetry POST to the
-  four existing boundaries, keeping their current UI (including the
-  `QUOTA_EXCEEDED` upgrade card in the dashboard boundary).
-
-### Detection cron
-`supabase/functions/error-monitor/` (hourly): group last-24h events by fingerprint;
-threshold **≥5 events in 24h OR ≥3 events across ≥2 orgs** (blast radius beats raw
-volume); upsert `dev_issues`; on a new issue file a GitHub issue via REST with
-enough context for Claude Code to act from the issue alone; alert superadmins,
-throttled by fingerprint via the `hasRecentUnreadSuperadminNotification` query
-shape; delete events older than 30 days.
-
-Guard double-filing by only calling GitHub when `github_issue_url IS NULL` and
-setting it in the same update.
-
-### Admin UI
-`/admin/dev-issues` (queue + detail), "link to dev issue" on a ticket, and marking
-an issue `fixed` posts a `system` message on every linked ticket + notifies each
-reporter.
-
-### Manual ops
-- Fine-grained GitHub PAT (issues:write) → `supabase secrets set GITHUB_ISSUES_TOKEN`
-  and Vercel env. `GITHUB_ISSUES_TOKEN` is **optional** in `src/lib/env.ts` — the
-  feature degrades rather than failing the build.
-- Register the `error-monitor` schedule **by hand in the Supabase Dashboard**: the
-  CLI's `schedule` key is unsupported, so `config.toml` documents it in a comment
-  only.
+- Register the `error-monitor` schedule **in the Supabase Dashboard** (`0 * * * *`).
+  The CLI's `schedule` key is unsupported, so `supabase/config.toml` documents it
+  in a comment only, and `scripts/setup-crons.sql` predates this function.
 - `npx supabase functions deploy error-monitor`.
+- Optional, for GitHub filing: a fine-grained PAT (issues:write) via
+  `supabase secrets set GITHUB_ISSUES_TOKEN` plus `GITHUB_ISSUES_REPO`, and the
+  same in Vercel. Both are **optional** in `src/lib/env.ts` — without them the
+  internal `dev_issues` queue works and filing is skipped, rather than the build
+  failing.
 
 ---
 

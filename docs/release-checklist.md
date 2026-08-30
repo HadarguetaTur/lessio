@@ -1,7 +1,4 @@
-# LESSIO — Release Checklist (Sprint 6)
-
-**Ticket:** DEV-107
-**Sprint:** 6 — Production Readiness
+# LESSIO — Release Checklist
 
 This checklist must be completed in full before any production deployment.
 Nothing ships to production without passing staging first (Decision #24).

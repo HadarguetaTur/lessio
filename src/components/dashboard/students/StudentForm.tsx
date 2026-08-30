@@ -32,6 +32,8 @@ interface StudentFormProps {
   }
   onSuccess?: () => void
   onCancel?: () => void
+  /** Hidden when the org does not enforce the weekly quota. */
+  showWeeklyQuota?: boolean
 }
 
 const selectClass =
@@ -44,6 +46,7 @@ export function StudentForm({
   defaultValues,
   onSuccess,
   onCancel,
+  showWeeklyQuota = true,
 }: StudentFormProps) {
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
@@ -163,18 +166,20 @@ export function StudentForm({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="weekly_quota">{t('fields.weeklyQuota')}</Label>
-              <Input
-                id="weekly_quota"
-                name="weekly_quota"
-                type="number"
-                min={1}
-                max={10}
-                placeholder="1–10"
-                defaultValue={defaultValues?.weekly_quota ?? ''}
-              />
-            </div>
+            {showWeeklyQuota && (
+              <div className="space-y-1.5">
+                <Label htmlFor="weekly_quota">{t('fields.weeklyQuota')}</Label>
+                <Input
+                  id="weekly_quota"
+                  name="weekly_quota"
+                  type="number"
+                  min={1}
+                  max={10}
+                  placeholder="1–10"
+                  defaultValue={defaultValues?.weekly_quota ?? ''}
+                />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="status">{t('fields.status')}</Label>
               <select

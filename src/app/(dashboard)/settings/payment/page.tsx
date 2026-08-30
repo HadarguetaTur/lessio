@@ -1,5 +1,5 @@
 import { forbidden } from 'next/navigation'
-import { CheckCircle, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getProviderUI } from '@/lib/payments/registry-ui'
@@ -25,12 +25,13 @@ export default async function PaymentSettingsPage() {
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('payment_provider, auto_send_payment_request')
+    .select('payment_provider, auto_send_payment_request, whatsapp_phone_number_id')
     .eq('id', orgId)
     .single()
 
   const paymentProvider = org?.payment_provider ?? null
   const autoSend = org?.auto_send_payment_request ?? false
+  const hasWhatsApp = Boolean(org?.whatsapp_phone_number_id)
   const isConnected = Boolean(paymentProvider)
   const providerUI = paymentProvider ? getProviderUI(paymentProvider) : null
   const t = await getTranslations('settings.payment')
@@ -54,7 +55,11 @@ export default async function PaymentSettingsPage() {
 
       <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
         <h2 className="text-sm font-medium text-gray-900 mb-3">{t('automationTitle')}</h2>
-        <AutoSendToggle defaultChecked={autoSend} />
+        <AutoSendToggle
+          defaultChecked={autoSend}
+          hasProvider={isConnected}
+          hasWhatsApp={hasWhatsApp}
+        />
       </div>
 
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
@@ -77,13 +82,25 @@ async function ConnectedState({
   providerDescription?: string
 }) {
   const t = await getTranslations('settings.payment')
-  const tG = await getTranslations('settings.googleCommon')
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-green-700">
-        <CheckCircle size={20} />
-        <span className="font-medium text-sm">{tG('connected')}</span>
+      {/*
+       * Deliberately NOT "connected": saving these credentials only proves they
+       * are the right shape — savePaymentProvider runs the registry's Zod
+       * validator and encrypts, it never calls the provider. The audit found an
+       * owner could paste a fabricated API password and get a green
+       * "connected" badge over a provider that would fail on the first real
+       * payment link. Until a per-provider verifyCredentials() exists, the
+       * honest word is "saved".
+       */}
+      <div className="flex items-center gap-2 text-amber-700">
+        <AlertCircle size={20} />
+        <span className="font-medium text-sm">{t('savedNotVerified')}</span>
       </div>
+
+      <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3 leading-relaxed">
+        {t('savedNotVerifiedHint')}
+      </p>
 
       <dl className="text-sm space-y-2">
         <div className="flex justify-between">

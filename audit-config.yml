@@ -1,0 +1,28 @@
+# Allowlist for the ux-audit skill's hard gates.
+#
+# Entries here stay in the Interaction Manifest but do not become findings.
+# Add something only after confirming it is genuinely not a defect — the whole
+# value of the console/network gates is that they are normally absolute.
+
+console:
+  - match: "The width(-1) and height(-1) of chart should be greater than 0"
+    reason: >
+      Recharts 3.x ResponsiveContainer logs this on its first measurement pass,
+      before layout gives it a box. Verified not a defect: the chart renders at
+      its full size (1086×232 desktop, 293×552 mobile) and was confirmed
+      visually. Verified not a dev artifact either — it persists with
+      reactStrictMode disabled, so it is library behaviour, not double-render.
+      The three extra 10×10 `.recharts-surface` nodes on the same page are the
+      legend swatches (iconType="circle" iconSize={10}), not broken charts.
+    surfaces:
+      - /teacher/reports/lessons
+      - /reports/lessons
+      - /reports/revenue
+
+network:
+  - match_status: 404
+    match_url: "/teacher/schedule/"
+    reason: >
+      Transient on the very first request to a route after `.next` is cleared,
+      while the dev server compiles it. Not reproducible against a warm server:
+      five consecutive lesson-detail loads all returned 200. Dev-only.

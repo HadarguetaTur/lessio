@@ -87,5 +87,8 @@ export async function sendMessageAction(
   }
 
   revalidatePath(`/portal/${orgId}/messages/${studentId}`)
+  // The list carries the preview and the unread badge for this thread; without
+  // this it keeps showing the previous message until the poll happens to fire.
+  revalidatePath(`/portal/${orgId}/messages`)
   return { error: null }
 }

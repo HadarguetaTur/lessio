@@ -1,5 +1,6 @@
-# LESSIO — Database Schema (v5)
-*Updated: Sprint 13 planning — reflects live schema after Sprint 12*
+# LESSIO — Database Schema
+*Covers the live schema through Sprint 33 (Integration Hub).*
+*The migrations in `supabase/migrations/` are authoritative; this is the readable map of them.*
 
 All tables use `uuid` primary keys (`gen_random_uuid()`).
 All tables include `created_at timestamptz default now()`.
@@ -27,7 +28,7 @@ min_booking_notice_hours      int not null default 0
 billing_mode                  text check (billing_mode in ('monthly','per_lesson')) default 'monthly'
 group_pricing_mode            text check (group_pricing_mode in ('fixed','per_student')) default 'per_student'
 -- Payments (Sprint 8)
-payment_provider              text check (payment_provider in ('cardcom','payplus','bit','paybox','stripe','grow'))
+payment_provider              text check (payment_provider in ('cardcom','payplus','bit','paybox','stripe','grow','make'))
 payment_config_encrypted      text                     -- AES-256-GCM encrypted JSON with credentials
 -- Auto payment (Sprint 9)
 auto_send_payment_request     boolean not null default false
@@ -314,7 +315,7 @@ sent_by_profile_id  uuid references profiles(id)
 -- Payment provider (Sprint 8)
 payment_link        text                              -- URL for parent to pay online
 payment_reference   text                              -- provider transaction reference
-payment_provider    text                              -- cardcom | payplus | bit | paybox | stripe | grow
+payment_provider    text                              -- cardcom | payplus | bit | paybox | stripe | grow | make
 -- Receipt (planned Sprint 15)
 receipt_url         text
 receipt_issued_at   timestamptz
@@ -678,3 +679,51 @@ Notes:
 - `ON DELETE SET NULL` on `dev_issue_id`: deleting an issue must never take a
   customer's support ticket with it.
 - The fingerprint excludes Next's `digest`, which changes every build.
+
+---
+
+## Sprint 33 — Integration Hub (M1)
+
+```sql
+CREATE TABLE organization_api_keys (
+  id              uuid primary key default gen_random_uuid()
+  organization_id uuid not null references organizations(id) on delete cascade
+  name            text not null                      -- owner-facing label only
+  key_hash        text not null unique               -- sha256 hex of the full key
+  key_prefix      text not null                      -- first 12 chars, for display
+  scopes          text[] not null default '{}'       -- read | write | messages:send
+  created_by      uuid references profiles(id) on delete set null
+  last_used_at    timestamptz
+  revoked_at      timestamptz                        -- set, never deleted
+  created_at      timestamptz not null default now()
+);
+
+index: (organization_id) where revoked_at is null
+
+CREATE TABLE api_request_log (
+  id              bigserial primary key
+  organization_id uuid not null references organizations(id) on delete cascade
+  api_key_id      uuid references organization_api_keys(id) on delete set null
+  method          text not null
+  path            text not null
+  status_code     int  not null
+  created_at      timestamptz not null default now()
+);
+
+index: (api_key_id, created_at desc)      -- the rate-limit window
+index: (organization_id, created_at desc) -- the settings activity list
+```
+
+Notes:
+- Both are service-role only (RLS enabled, no policies), like `charge_audit_log`.
+- `key_hash` is a **digest, not ciphertext**. Unlike `payment_config_encrypted` or a
+  Gmail refresh token — third-party credentials we must be able to replay — an API key
+  is minted by us and only ever needs to be recognised again. A leak of this table
+  hands out no working keys. The plaintext exists for exactly one HTTP response.
+- A revoked key keeps its row: `api_request_log` references it, and an owner
+  investigating what an automation did needs the name to outlive the revoke.
+- `api_request_log` is written for **every** authenticated request, failures included —
+  the sliding-window rate limiter counts these rows, so skipping failures would let a
+  caller retry past the limit for free.
+- `saas_plans.features` gained an `integrations` key. `parseSaasFeatures` reads keys by
+  name and coerces a missing one to `false`, so every plan row needs an explicit value.

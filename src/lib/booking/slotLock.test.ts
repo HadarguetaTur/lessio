@@ -27,7 +27,7 @@ const pastExpiry = new Date(Date.now() - 1000).toISOString()
 function buildChain(result: unknown) {
   const self: Record<string, unknown> = {}
   const pass = () => self
-  ;['select', 'eq', 'gte', 'lte', 'gt', 'lt', 'neq', 'insert'].forEach(m => { self[m] = pass })
+  ;['select', 'eq', 'gte', 'lte', 'gt', 'lt', 'neq', 'insert', 'update'].forEach(m => { self[m] = pass })
   self['single'] = () => Promise.resolve(result)
   self['then'] = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
     Promise.resolve(result).then(res, rej)

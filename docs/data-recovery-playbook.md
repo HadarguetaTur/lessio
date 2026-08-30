@@ -1,27 +1,182 @@
-# LESSIO — Data Recovery Playbook (Sprint 6)
+# LESSIO — Data Recovery Playbook
 
-**Ticket:** DEV-110
-**Sprint:** 6 — Production Readiness
+Everything about getting data back: how backups are taken, how to restore the
+whole database, and how to repair known individual failure modes by hand.
+Its existence is a go-live gate (Decision #24).
 
-This playbook documents manual recovery steps for known failure modes.
-It must exist before go-live sign-off (Decision #24).
+All SQL here must be run against the **correct environment** (staging or prod).
 
-Use this when a production issue requires a direct database fix.
-All SQL in this document must be run against the **correct environment** (staging or prod).
-Always take a Supabase backup before making manual changes.
+## General rules
 
----
-
-## General Rules
-
-1. **Back up first** — use Supabase dashboard → Backups before any manual write
+1. **Back up first** — Supabase dashboard → Backups, before any manual write
 2. **Verify before writing** — run the diagnostic `SELECT` before the corrective `INSERT` or `UPDATE`
 3. **Log the action** — record what you did, when, and why in your incident notes
-4. **Check downstream effects** — most fixes have downstream consequences (e.g. updating a lesson to `completed` may trigger a charge if the application code re-runs)
+4. **Check downstream effects** — most fixes have consequences; updating a lesson to `completed`, for example, may trigger a charge if application code re-runs
+
+### Which half of this document you need
+
+| Situation | Go to |
+| --- | --- |
+| A single bad row, a missing charge, a stuck lesson | [Part 2 — Targeted fixes](#part-2--targeted-fixes) |
+| Bulk corruption (an `UPDATE` with no `WHERE`), a migration that cannot be corrected forward, data deleted beyond application recovery | [Part 1 — Full restore](#restore) |
+| A schema-only mistake | Neither — write a corrective forward migration (`docs/migration-guide.md`) |
 
 ---
 
-## Scenario 1 — Charge Not Created
+# Part 1 — Backups and full restore
+
+## Backup overview
+
+Lessio relies on **Supabase managed backups** for all database data. There is
+no application-level backup mechanism.
+
+| Environment | Backup source | Ownership | Retention |
+|---|---|---|---|
+| Production | Supabase dashboard → Backups (PITR on Pro, daily snapshots on Free/Starter) | Operator (owner) | Per Supabase plan — verify in dashboard |
+| Staging | Supabase dashboard → Backups | Operator | Per Supabase plan |
+| Dev | Not required — dev is disposable | N/A | N/A |
+
+## Backup checklist
+
+Before the first production deploy, and before any manual migration:
+
+- [ ] Verify the production Supabase project has backups enabled (Settings → Backups)
+- [ ] Confirm the retention period meets the pilot's risk tolerance
+- [ ] Take a manual snapshot before each production migration (Backups → Create backup)
+- [ ] Record the snapshot timestamp in your incident notes before applying the migration
+
+## Taking a manual backup
+
+On plans that support on-demand snapshots: Supabase dashboard → project →
+Backups → **Create backup**, then note the backup ID and timestamp.
+
+On plans with automatic daily snapshots only, export the critical tables from
+the SQL editor before any risky operation and save the CSVs with a timestamp in
+the filename:
+
+```sql
+SELECT * FROM organizations;
+SELECT * FROM profiles;
+SELECT * FROM teachers;
+SELECT * FROM parents;
+SELECT * FROM students;
+SELECT * FROM relationships;
+SELECT * FROM lessons;
+SELECT * FROM charges;
+SELECT * FROM slot_locks;
+SELECT * FROM teacher_availability;
+SELECT * FROM availability_overrides;
+SELECT * FROM cancellation_sessions;
+SELECT * FROM leads;
+```
+
+## Restore
+
+Restore is a last resort — it discards every write made since the snapshot. Use
+Part 2 for anything narrower.
+
+### Managed restore
+
+1. **Stop traffic** — in Vercel, pause or roll back the production deployment so no new writes land during the restore
+2. Supabase dashboard → production project → Backups
+3. Select the backup taken just before the problem occurred
+4. **Restore**, and confirm the target project
+5. Wait for completion (minutes, depending on DB size)
+6. **Do not redeploy application code** until the restore is complete and verified
+
+### Manual restore from CSV exports
+
+1. Stop traffic first (roll back the Vercel deployment)
+2. Truncate the affected data, e.g. `TRUNCATE TABLE charges CASCADE;`
+3. Import via Table Editor → Import CSV, or psql:
+   ```bash
+   psql <connection_string> -c "\copy charges FROM 'charges_backup_YYYYMMDD.csv' WITH CSV HEADER"
+   ```
+4. Re-enable constraints and verify row counts match
+
+### Post-restore validation
+
+Run these before re-enabling traffic.
+
+```sql
+-- Core entity counts should look reasonable
+SELECT COUNT(*) AS orgs FROM organizations;
+SELECT COUNT(*) AS profiles FROM profiles;
+SELECT COUNT(*) AS lessons FROM lessons;
+SELECT COUNT(*) AS charges FROM charges;
+SELECT COUNT(*) AS slot_locks FROM slot_locks;
+
+-- No orphaned charges — every charge references a valid parent
+SELECT c.id
+FROM charges c
+LEFT JOIN parents p ON p.id = c.parent_id
+WHERE p.id IS NULL;
+-- Expected: 0 rows
+
+-- No orphaned lessons
+SELECT l.id
+FROM lessons l
+LEFT JOIN teachers t ON t.id = l.teacher_id
+WHERE t.id IS NULL;
+-- Expected: 0 rows
+
+-- No expired locks left in 'active'
+SELECT id, expires_at, status
+FROM slot_locks
+WHERE status = 'active'
+  AND expires_at < now();
+-- Expected: 0 rows
+
+-- At most one primary parent per student per org
+SELECT student_id, organization_id, COUNT(*) AS primary_count
+FROM relationships
+WHERE is_primary = true
+GROUP BY student_id, organization_id
+HAVING COUNT(*) > 1;
+-- Expected: 0 rows
+```
+
+Then the application-level checks:
+
+- [ ] Application starts without errors after restore (check Vercel logs)
+- [ ] Owner can log in
+- [ ] Lesson list loads correctly
+- [ ] Charges list loads correctly
+- [ ] Booking link generation works (no JWT secret errors)
+
+### Incident record
+
+Record this in your incident notes after any restore:
+
+```
+Date/time of incident:
+Date/time of restore:
+Backup used (ID / timestamp):
+Reason for restore:
+Tables affected:
+Data integrity checks passed (Y/N):
+Application smoke tests passed (Y/N):
+Operator:
+Notes:
+```
+
+### Operator responsibilities
+
+For the pilot phase, the **owner**:
+
+- verifies production backups are enabled before go-live
+- takes a manual backup, or confirms the latest automatic snapshot timestamp, before each production migration
+- is the only person authorized to initiate a production restore
+- records every restore in the incident log
+
+---
+
+# Part 2 — Targeted fixes
+
+Manual recovery for known failure modes, where a full restore would be far too
+blunt an instrument.
+
+## Scenario 1 — Charge not created
 
 **Symptom:** Lesson is `completed` but no charge row exists in `charges`.
 
@@ -90,7 +245,7 @@ INSERT INTO charges (
 
 ---
 
-## Scenario 2 — Duplicate Charge
+## Scenario 2 — Duplicate charge
 
 **Symptom:** Two `lesson` charges exist for the same `lesson_id`.
 
@@ -120,7 +275,7 @@ WHERE id = '<newer_duplicate_charge_id>';
 
 ---
 
-## Scenario 3 — Lesson Stuck at `scheduled`
+## Scenario 3 — Lesson stuck at `scheduled`
 
 **Symptom:** A lesson's date and time have passed but its status is still `scheduled`. Charge was not created.
 
@@ -154,7 +309,7 @@ WHERE id = '<lesson_id>'
 
 ---
 
-## Scenario 4 — Slot Lock Expired But Lesson Was Created
+## Scenario 4 — Slot lock expired but lesson was created
 
 **Symptom:** A lesson exists in the DB, but its corresponding `slot_locks` row has `status = 'expired'`.
 
@@ -187,7 +342,7 @@ If no lock row exists at all (the lock expired before the booking write), the le
 
 ---
 
-## Scenario 5 — Student Has No Primary Parent
+## Scenario 5 — Student has no primary parent
 
 **Symptom:** Lesson creation fails with "Student has no primary parent" — or a charge cannot be created for a lesson.
 
@@ -224,7 +379,7 @@ WHERE id = '<relationship_id>';
 
 ---
 
-## Scenario 6 — WhatsApp Message Not Received
+## Scenario 6 — WhatsApp message not received
 
 **Symptom:** Parent sent a WhatsApp message but nothing appears in the database (no lead, no booking intent processed).
 
@@ -251,7 +406,7 @@ WHERE phone = '<normalized_e164_phone>'
 
 ---
 
-## Scenario 7 — Cancellation Charge Not Created After WhatsApp Cancellation
+## Scenario 7 — Cancellation charge not created after WhatsApp cancellation
 
 **Symptom:** Lesson is `cancelled` after a WhatsApp cancellation flow, but no cancellation charge was created despite the policy requiring one.
 
@@ -280,8 +435,8 @@ If the charge is missing and the policy requires one, create it manually (same p
 
 ---
 
-## Playbook Maintenance
+## Playbook maintenance
 
-This playbook covers scenarios identified as of Sprint 6.
-Add new scenarios here when new failure modes are discovered in staging or production.
-Each scenario should include: symptom, diagnostic SQL, fix SQL, and post-fix verification.
+Add new scenarios here when new failure modes are discovered in staging or
+production. Each should carry: symptom, diagnostic SQL, fix SQL, and post-fix
+verification.

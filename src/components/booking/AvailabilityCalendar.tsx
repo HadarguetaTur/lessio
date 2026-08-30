@@ -72,7 +72,7 @@ export function AvailabilityCalendar({
   const [locking, setLocking] = useState<string | null>(null)
   // Message keys under booking.availability — translated at render so a
   // language switch mid-flow updates them too.
-  const [lockError, setLockError] = useState<'lockLost' | 'lockTaken' | null>(null)
+  const [lockError, setLockError] = useState<'lockLost' | 'lockTaken' | 'quotaReached' | null>(null)
   const [activeLock, setActiveLock] = useState<{ lock: SlotLock; slot: AvailableSlot } | null>(null)
   const [secondsLeft, setSecondsLeft] = useState(0)
 
@@ -268,6 +268,16 @@ export function AvailabilityCalendar({
       return
     }
 
+    if (result.error === 'quota_exceeded') {
+      // The week filled up while this page was open — refresh so the week's
+      // slots disappear along with the message.
+      setLockError('quotaReached')
+      if (selectedDate) {
+        await Promise.all([loadSummary(), loadSlotsForDate(selectedDate)])
+      }
+      return
+    }
+
     if (result.error === 'token_expired') {
       onError('token_expired')
       return
@@ -368,9 +378,14 @@ export function AvailabilityCalendar({
                 {t('retry')}
               </button>
             </div>
+          ) : summary?.quotaExceeded ? (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-700">
+              {t('quotaReachedWeek')}
+            </p>
           ) : (
             <div className="md:overflow-x-auto">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-7 md:min-w-[820px]">
+
                 {summary?.days.map((day, index) => {
                   const isSelectedDay = day.date === selectedDate
 

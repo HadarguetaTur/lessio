@@ -72,6 +72,13 @@ export function ReceiptModeChooser({
         <p className="text-sm text-muted-foreground mt-1">{t('intro')}</p>
       </div>
 
+      {/* The question has no default answer, so until it is answered the org is
+          silently in the "nothing is issued" state. Saying so beats leaving the
+          owner to infer it from an unselected radio group. */}
+      <p className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+        {t('currentlyNone')}
+      </p>
+
       <div className="space-y-2">
         {options.map(({ mode, icon: Icon, title, description }) => (
           <label

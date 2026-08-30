@@ -4,12 +4,46 @@ import {
   getOrgSubscriptionState,
   isOrgSaasReadOnly,
   isTrialExpired,
+  pastDueGraceDaysLeft,
 } from '@/lib/saas/subscriptions'
 
 export async function SaasOwnerBanners({ orgId }: { orgId: string }) {
   const t = await getTranslations('saas')
   const state = await getOrgSubscriptionState(orgId)
   if (!state) return null
+
+  // Cancelled reads as read-only, but "you asked to stop" and "your card failed"
+  // are different messages and only one of them asks for an action.
+  if (state.status === 'cancelled') {
+    return (
+      <div
+        role="status"
+        className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
+      >
+        {t('cancelledBanner')}
+        <Link href="/account/billing" className="ms-2 font-medium underline underline-offset-4">
+          {t('manageBilling')}
+        </Link>
+      </div>
+    )
+  }
+
+  // The grace window is the whole point of PAST_DUE_GRACE_DAYS: without a banner
+  // the first sign of a failed renewal would be the account locking mid-week.
+  const graceDaysLeft = pastDueGraceDaysLeft(state)
+  if (graceDaysLeft != null && !isOrgSaasReadOnly(state)) {
+    return (
+      <div
+        role="alert"
+        className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100"
+      >
+        {t('pastDueBanner', { days: graceDaysLeft })}
+        <Link href="/account/billing" className="ms-2 font-medium underline underline-offset-4">
+          {t('manageBilling')}
+        </Link>
+      </div>
+    )
+  }
 
   if (isOrgSaasReadOnly(state)) {
     return (

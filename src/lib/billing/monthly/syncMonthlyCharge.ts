@@ -1,6 +1,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { monthlyChargeNote } from '@/lib/charges/renderNote'
 import { logChargeAudit } from '@/lib/charges/audit'
+import { resolveChargeDueDate } from '../chargeDueDate'
 
 type ChargeStatus = 'pending' | 'invoiced' | 'paid' | 'waived' | 'voided'
 
@@ -118,6 +119,15 @@ export async function syncMonthlyCharge({
     status: chargeStatus,
     notes: monthlyChargeNote(billingMonth),
     paid_at: paidAt,
+    // Derived from the month being billed, so recalculating an old month does
+    // not push its due date forward. Safe to keep in the shared payload for
+    // both the insert and the update precisely because it is idempotent.
+    due_date: resolveChargeDueDate({
+      chargeType: 'monthly',
+      issuedAt: new Date(),
+      billingMonth,
+      timezone: 'UTC',
+    }),
     updated_at: new Date().toISOString(),
   }
 

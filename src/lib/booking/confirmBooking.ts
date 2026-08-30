@@ -15,6 +15,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { LessonConflictError } from '@/lib/lessons/createLesson'
 import { validateSlotLock } from './validateSlotLock'
+import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
 
 export class LockExpiredError extends Error {
   constructor(reason: string) {
@@ -37,6 +38,13 @@ export class NoPrimaryParentError extends Error {
   }
 }
 
+export class LockStudentMismatchError extends Error {
+  constructor() {
+    super('The slot lock was taken for a different student')
+    this.name = 'LockStudentMismatchError'
+  }
+}
+
 export interface ConfirmBookingParams {
   lockId: string
   studentId: string
@@ -54,7 +62,7 @@ export interface ConfirmBookingResult {
 
 export async function confirmBooking({
   lockId,
-  studentId,
+  studentId: requestedStudentId,
   teacherId,
   organizationId,
 }: ConfirmBookingParams): Promise<ConfirmBookingResult> {
@@ -65,6 +73,13 @@ export async function confirmBooking({
   if (!lockResult.valid) throw new LockExpiredError(lockResult.reason)
 
   const { lock } = lockResult
+
+  // The lock already names the student it was taken for. Trusting the caller's
+  // id instead would let a parent with two children hold a slot for one and
+  // have the lesson created for the other — every later check would pass,
+  // because the wrong child is a perfectly valid student.
+  if (requestedStudentId !== lock.student_id) throw new LockStudentMismatchError()
+  const studentId = lock.student_id
 
   // 2. Validate teacher is active in org
   const { data: teacher, error: teacherError } = await db
@@ -89,6 +104,18 @@ export async function confirmBooking({
   if (studentError || !student || !student.is_active) {
     throw new InactiveParticipantError('student')
   }
+
+  // 3b. Weekly quota — measured against the week the *locked slot* falls in,
+  // not the current week, so a lock taken today for a future week is judged
+  // against that week. Read-then-insert: two confirms racing for the same
+  // student on different slots in one week can both pass. Accepted — the quota
+  // is a soft business rule, and a single billing parent holding two 5-minute
+  // locks at once is not a realistic path.
+  await assertWeeklyQuotaNotExceeded({
+    studentId,
+    organizationId,
+    slotStartUtc: lock.start_at,
+  })
 
   // 4. Resolve billing parent (is_primary = true)
   // Per /docs/decisions.md #10 and /docs/schema.md § relationships
@@ -115,6 +142,26 @@ export async function confirmBooking({
     .limit(1)
   if (teacherConflict?.length) throw new LessonConflictError('teacher_conflict')
 
+  // 5a. Student overlap — the slot lock only reserves the teacher, so without
+  // this a parent could book the same child with two different teachers at the
+  // same hour. Mirrors the check in createLesson.
+  const { data: studentLessonIds } = await db
+    .from('lesson_students')
+    .select('lesson_id')
+    .eq('student_id', studentId)
+  if (studentLessonIds?.length) {
+    const { data: studentConflict } = await db
+      .from('lessons')
+      .select('id')
+      .in('id', studentLessonIds.map((r) => r.lesson_id))
+      .eq('organization_id', organizationId)
+      .neq('status', 'cancelled')
+      .lt('start_at', lock.end_at)
+      .gt('end_at', lock.start_at)
+      .limit(1)
+    if (studentConflict?.length) throw new LessonConflictError('student_conflict')
+  }
+
   // 5b. Create lesson (student_id removed — students live in lesson_students)
   const { data: lesson, error: lessonError } = await db
     .from('lessons')
@@ -131,15 +178,23 @@ export async function confirmBooking({
     .single()
 
   if (lessonError || !lesson) {
+    // 23P01 = no_teacher_lesson_overlap. Losing this race is an ordinary
+    // outcome, not a server fault: someone booked the slot in the window
+    // between the overlap re-check above and this insert.
+    if (lessonError?.code === '23P01') throw new LessonConflictError('teacher_conflict')
     throw new Error(`Failed to create lesson: ${lessonError?.message}`)
   }
 
-  // 5c. Link student via lesson_students junction table
+  // 5c. Link student via lesson_students junction table.
+  // These two inserts are not one transaction (PostgREST), so a failure here
+  // has to undo the lesson by hand or it stays behind with no student on it.
+  // True atomicity would need a create_booking RPC.
   const { error: lsError } = await db
     .from('lesson_students')
     .insert({ lesson_id: lesson.id, student_id: studentId, organization_id: organizationId, status: 'enrolled' })
 
   if (lsError) {
+    await db.from('lessons').delete().eq('id', lesson.id)
     throw new Error(`Failed to link student to lesson: ${lsError.message}`)
   }
 

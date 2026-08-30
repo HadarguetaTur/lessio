@@ -208,13 +208,7 @@ Full sprint detail: see `/docs/sprint-roadmap.md`
 
 ---
 
-## Documents Status
+## Where to go next
 
-| Document | Status |
-|---|---|
-| decisions.md | ✅ Up to date through Sprint 22 |
-| schema.md | ✅ Updated through Sprint 22 (tables through Sprint 28 in migrations) |
-| plan.md | ✅ This file — all 28 sprints complete |
-| sprint-roadmap.md | ✅ Full roadmap Sprints 1–28 |
-| AGENTS.md | ✅ Updated Sprint 28 |
-| sprint-1-scope.md → sprint-28-scope.md | ✅ Done |
+`docs/sprint-roadmap.md` owns sprint status — what is done, live, and planned.
+`docs/README.md` indexes every other document in this folder.

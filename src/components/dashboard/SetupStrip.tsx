@@ -98,14 +98,20 @@ export function SetupStrip({ orgId, missing, isRtl }: Props) {
           <li key={gap}>
             <Link
               href={HREFS[gap]}
-              className="group flex items-start gap-2 text-sm text-amber-800 underline-offset-2 hover:text-amber-900 hover:underline"
+              className="group flex items-start gap-2 text-sm text-amber-800 underline decoration-from-font underline-offset-4 hover:text-amber-900 hover:underline"
             >
               <Chevron
                 size={14}
                 className="mt-0.5 shrink-0 transition-transform group-hover:translate-x-0.5"
                 aria-hidden
               />
-              {t(`items.${gap}` as 'items.whatsapp')}
+              <span>
+                {t(`items.${gap}` as 'items.whatsapp')}
+                {' '}
+                <span className="font-medium">{t('connectNow')}</span>
+                {' '}
+                <span aria-hidden="true">←</span>
+              </span>
             </Link>
           </li>
         ))}

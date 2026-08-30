@@ -79,7 +79,7 @@ export function ParentsTableRow({
             <span className="text-sm font-medium text-foreground">{parent.full_name}</span>
           </div>
         </TableCell>
-        <TableCell className="px-5 py-3.5 text-sm text-muted-foreground font-mono" dir="ltr">
+        <TableCell className="px-5 py-3.5 text-right text-sm text-muted-foreground font-mono" dir="ltr">
           {parent.phone}
         </TableCell>
         <TableCell className="px-5 py-3.5">

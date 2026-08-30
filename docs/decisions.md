@@ -381,6 +381,14 @@ Rules:
 * outbound webhooks are the first automation mechanism for `Make` and similar tools
 * an internal visual automation builder is out of scope for the first integration phase
 
+Implementation status (Sprint 33 M1): org-scoped API keys, `/api/v1`, and the `make`
+payment provider are shipped. Outbound webhooks are M2 — see `docs/sprint-33-scope.md`.
+
+Two rules the first phase added:
+
+* an org API key is stored as a sha256 digest, never encrypted — it is minted by us and only ever needs to be recognised again, so a database leak must not hand out working keys
+* nothing under `/api/v1` may call `getSession()` or `requireFeature()`: both answer failure with `redirect()`, which an automation follows and reports as a success. Use `assertFeature()`, which throws
+
 ---
 
 ## 29. Homework Domain Boundary

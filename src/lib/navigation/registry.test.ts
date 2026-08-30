@@ -7,6 +7,7 @@ import {
   filterNav,
   matchPages,
   resolveBreadcrumb,
+  isNavActive,
 } from './registry'
 
 describe('registry shape', () => {
@@ -15,9 +16,9 @@ describe('registry shape', () => {
     expect(new Set(hrefs).size).toBe(hrefs.length)
   })
 
-  it('covers /account/billing plus the fourteen settings pages', () => {
-    expect(SETTINGS_NAV).toHaveLength(15)
-    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(14)
+  it('covers /account/billing plus the sixteen settings pages', () => {
+    expect(SETTINGS_NAV).toHaveLength(17)
+    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(16)
   })
 
   it('keeps every settings page reachable from the sidebar and the hub', () => {
@@ -45,15 +46,16 @@ describe('filterNav', () => {
     leads: true,
     homework: true,
     parent_portal: true,
+    integrations: false,
   }
 
   it('hides owner-only entries from an admin', () => {
     const admin = filterNav(SETTINGS_NAV, 'admin').map((e) => e.href)
-    expect(admin).toEqual(['/settings/holidays', '/settings/locale'])
+    expect(admin).toEqual(['/settings/exams', '/settings/holidays', '/settings/locale'])
   })
 
   it('shows everything to an owner when no plan is resolved', () => {
-    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(15)
+    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(17)
   })
 
   it('drops plan-gated entries when the feature is off', () => {
@@ -61,6 +63,7 @@ describe('filterNav', () => {
     expect(hrefs).not.toContain('/settings/whatsapp')
     expect(hrefs).not.toContain('/settings/message-templates')
     expect(hrefs).not.toContain('/settings/ai-assistant')
+    expect(hrefs).not.toContain('/settings/integrations')
     expect(hrefs).toContain('/settings/payment')
   })
 
@@ -71,6 +74,15 @@ describe('filterNav', () => {
 
   it('treats undefined features as "show everything"', () => {
     expect(filterNav(MAIN_NAV, 'owner')).toHaveLength(MAIN_NAV.length)
+  })
+})
+
+describe('isNavActive', () => {
+  it('does not mark a parent nav item active when a deeper sibling is selected', () => {
+    const hrefs = ['/billing', '/billing/debts', '/reports/revenue', '/reports/debt']
+    expect(isNavActive('/billing/debts', '/billing', hrefs)).toBe(false)
+    expect(isNavActive('/billing/debts', '/billing/debts', hrefs)).toBe(true)
+    expect(isNavActive('/reports/debt', '/reports/revenue', hrefs)).toBe(false)
   })
 })
 

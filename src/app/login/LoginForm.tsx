@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState, useEffect } from 'react'
+import { useActionState, useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 
 import { signIn } from './actions'
@@ -13,6 +13,15 @@ import { AlertCircle } from 'lucide-react'
 export function LoginForm() {
   const [state, action, pending] = useActionState(signIn, null)
   const t = useTranslations('auth.login')
+  const passwordRef = useRef<HTMLInputElement>(null)
+
+  // React resets the form after a server action, so a rejected sign-in used to
+  // drop the user back to two empty fields with focus on <body> — nothing to
+  // announce the failure, and nowhere to start typing. Send them to the field
+  // that is almost always the wrong one.
+  useEffect(() => {
+    if (state?.error) passwordRef.current?.focus()
+  }, [state])
 
   useEffect(() => {
     const handlePageShow = (e: PageTransitionEvent) => {
@@ -25,7 +34,10 @@ export function LoginForm() {
   return (
     <form action={action} className="space-y-6 text-center">
       {state?.error && (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-center text-sm text-destructive lg:flex-row lg:items-start lg:text-start">
+        <div
+          role="alert"
+          className="flex flex-col items-center gap-2 rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-center text-sm text-destructive lg:flex-row lg:items-start lg:text-start"
+        >
           <AlertCircle size={16} className="shrink-0 lg:mt-0.5" aria-hidden />
           <span>{state.error}</span>
         </div>
@@ -40,6 +52,7 @@ export function LoginForm() {
           name="email"
           type="email"
           required
+          defaultValue={state?.email ?? ''}
           autoComplete="email"
           placeholder="you@example.com"
           dir="ltr"
@@ -63,6 +76,7 @@ export function LoginForm() {
           id="password"
           name="password"
           type="password"
+          ref={passwordRef}
           required
           autoComplete="current-password"
           placeholder="••••••••"

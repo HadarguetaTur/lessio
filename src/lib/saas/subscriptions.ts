@@ -60,19 +60,21 @@ export async function getOrgSubscriptionState(orgId: string): Promise<OrgSubscri
 }
 
 /**
- * Effective entitlements for UI (sidebar).
- * - No subscription row: grandfathered orgs → full access.
- * - Active trial: full app (same as Advanced).
- * - Read-only (expired free): full navigation so owners can view all areas; mutations blocked separately.
+ * What the org is actually entitled to. This is the answer `requireFeature` and
+ * `assertFeature` act on, so it must describe the plan that was paid for.
+ *
+ * It used to return the full Advanced set for any read-only org, which meant a
+ * lapsed org passed every feature gate — the gates were decorative for exactly
+ * the orgs they exist to stop. Navigation kept working as a side effect of that
+ * lie; {@link getNavigationSaasFeatures} now provides that separately.
+ *
+ * - No subscription row: grandfathered org → full access.
+ * - Active trial: the whole app, deliberately — that is what the trial is.
+ * - Anything else, read-only included: the plan's real features.
  */
 export async function getEffectiveSaasFeatures(orgId: string): Promise<SaasFeatures> {
   const state = await getOrgSubscriptionState(orgId)
   if (!state) return { ...parseSaasFeatures(null) }
-
-  if (isOrgSaasReadOnly(state)) {
-    const advanced = await getSaasPlanByName('advanced')
-    return advanced?.features ?? { ...parseSaasFeatures(null) }
-  }
 
   const trialActive =
     state.status === 'trial' &&
@@ -87,16 +89,101 @@ export async function getEffectiveSaasFeatures(orgId: string): Promise<SaasFeatu
   return state.features
 }
 
+/**
+ * Features for rendering navigation, which is not the same question as
+ * entitlement.
+ *
+ * `undefined` means "show every entry" ({@link filterNav} in
+ * src/lib/navigation/registry.ts). A read-only org gets that: its owner has to
+ * reach reports, homework and billing to read and export the data before the
+ * account goes dormant, and hiding those screens would make the export we are
+ * about to demand of them impossible to find. Writes stay blocked by
+ * `assertOrgNotSaasReadOnly`, and feature gates by the honest function above.
+ */
+export async function getNavigationSaasFeatures(
+  orgId: string
+): Promise<SaasFeatures | undefined> {
+  const state = await getOrgSubscriptionState(orgId)
+  if (isOrgSaasReadOnly(state)) return undefined
+  return getEffectiveSaasFeatures(orgId)
+}
+
 export function isTrialExpired(state: OrgSubscriptionState | null): boolean {
   if (!state || state.status !== 'trial' || !state.trialEndsAt) return false
   return new Date(state.trialEndsAt).getTime() <= Date.now()
 }
 
+/**
+ * Days a lapsed subscription keeps working before it turns read-only.
+ *
+ * A renewal that failed is usually an expired card, not a decision to leave, and
+ * the person who has to fix it is the same person the lock-out stops from
+ * working. The window is what turns "your card bounced" into something a teacher
+ * can resolve between lessons instead of an outage mid-week.
+ */
+export const PAST_DUE_GRACE_DAYS = 7
+
+/**
+ * True when the org may read its data but not change it.
+ *
+ * `past_due` and `cancelled` used to fall through to false, so the daily checker
+ * (supabase/functions/saas-subscription-checker) moved subscriptions into those
+ * states and nothing anywhere acted on them: a cancelled org kept full access
+ * forever, and a lapsed one was never asked to pay again.
+ */
 export function isOrgSaasReadOnly(state: OrgSubscriptionState | null): boolean {
   if (!state) return false
   if (state.status === 'read_only') return true
+  // The org asked to stop. Its data stays readable and exportable; nothing more.
+  if (state.status === 'cancelled') return true
+  if (state.status === 'past_due') return isPastDueGraceOver(state)
   if (state.planName === 'free' && state.status === 'trial' && isTrialExpired(state)) return true
   return false
+}
+
+export type OrgServiceState = 'active' | 'grace' | 'suspended' | 'dormant'
+
+/**
+ * Writes `organizations.service_state` outside the daily cron.
+ *
+ * The cron (supabase/functions/saas-subscription-checker) owns the downgrade
+ * ladder. This exists for the one transition that must not wait for it:
+ * a payment landing should turn the bot, the crons and the parent portal back
+ * on immediately, not up to 24 hours later.
+ */
+export async function setOrgServiceState(
+  orgId: string,
+  state: OrgServiceState
+): Promise<void> {
+  const db = createServiceRoleClient()
+  const { error } = await db
+    .from('organizations')
+    .update({ service_state: state, service_state_changed_at: new Date().toISOString() })
+    .eq('id', orgId)
+    .neq('service_state', state)
+
+  if (error) {
+    // Never fail an activation over this; the cron reconciles within a day.
+    console.error('[saas] failed to write service_state', { orgId, state, error: error.message })
+  }
+}
+
+/** Whether a `past_due` subscription has used up {@link PAST_DUE_GRACE_DAYS}. */
+export function isPastDueGraceOver(state: OrgSubscriptionState): boolean {
+  // No period end recorded — treat the grace as still running rather than
+  // locking an org out on missing data.
+  if (!state.currentPeriodEnd) return false
+  const graceEnds =
+    new Date(state.currentPeriodEnd).getTime() + PAST_DUE_GRACE_DAYS * 86_400_000
+  return Date.now() > graceEnds
+}
+
+/** Days left in the past-due grace window, or null when it does not apply. */
+export function pastDueGraceDaysLeft(state: OrgSubscriptionState | null): number | null {
+  if (!state || state.status !== 'past_due' || !state.currentPeriodEnd) return null
+  const graceEnds =
+    new Date(state.currentPeriodEnd).getTime() + PAST_DUE_GRACE_DAYS * 86_400_000
+  return Math.max(0, Math.ceil((graceEnds - Date.now()) / 86_400_000))
 }
 
 export async function assertOrgNotSaasReadOnly(orgId: string): Promise<void> {
@@ -134,6 +221,10 @@ export async function upsertTrialSubscription(orgId: string, planId: string): Pr
       current_period_start: new Date().toISOString(),
       current_period_end: trialEnds.toISOString(),
       pending_checkout_reference: null,
+      // Starting a trial ends any checkout that was in flight, so the snapshot
+      // it left behind must not survive to confuse a later revert.
+      previous_status: null,
+      previous_plan_id: null,
     },
     { onConflict: 'organization_id' }
   )
@@ -148,6 +239,24 @@ export async function upsertPendingPaymentSubscription(params: {
   checkoutReference: string
 }): Promise<void> {
   const db = createServiceRoleClient()
+
+  // Snapshot what this checkout is about to overwrite, so abandoning it can put
+  // the org back exactly where it was. Without this the upsert below is lossy:
+  // an active advanced customer who starts an upgrade and cancels has no
+  // recorded plan or status to return to.
+  const { data: existing } = await db
+    .from('organization_subscriptions')
+    .select('status, plan_id, trial_ends_at, previous_status, previous_plan_id')
+    .eq('organization_id', params.orgId)
+    .maybeSingle()
+
+  // Restarting an abandoned checkout must not overwrite the snapshot with
+  // 'pending_payment' — keep the one already held.
+  const previousStatus =
+    existing?.status === 'pending_payment' ? existing.previous_status : (existing?.status ?? null)
+  const previousPlanId =
+    existing?.status === 'pending_payment' ? existing.previous_plan_id : (existing?.plan_id ?? null)
+
   const { error } = await db.from('organization_subscriptions').upsert(
     {
       organization_id: params.orgId,
@@ -155,7 +264,11 @@ export async function upsertPendingPaymentSubscription(params: {
       status: 'pending_payment',
       billing_interval: params.billingInterval,
       pending_checkout_reference: params.checkoutReference,
-      trial_ends_at: null,
+      // An unfinished checkout must not consume a trial that is still running;
+      // revertPendingCheckout restores the trial status from the snapshot.
+      trial_ends_at: existing?.trial_ends_at ?? null,
+      previous_status: previousStatus,
+      previous_plan_id: previousPlanId,
     },
     { onConflict: 'organization_id' }
   )
@@ -163,8 +276,60 @@ export async function upsertPendingPaymentSubscription(params: {
   if (error) throw new Error(error.message)
 }
 
+/** Why an activation attempt did nothing. Callers log it; none of it reaches the browser. */
+export type ActivationRefusal =
+  | 'no_pending_subscription'
+  | 'reference_mismatch'
+  | 'amount_below_plan_price'
+
+export type ActivationResult =
+  | { activated: true }
+  | { activated: false; reason: ActivationRefusal }
+
+/** Underpayment guard tolerance — absorbs VAT/agorot rounding, not a cheaper plan. */
+const AMOUNT_TOLERANCE = 0.02
+
+function addBillingPeriod(from: Date, interval: 'monthly' | 'yearly'): Date {
+  const end = new Date(from)
+  if (interval === 'yearly') {
+    end.setFullYear(end.getFullYear() + 1)
+  } else {
+    end.setMonth(end.getMonth() + 1)
+  }
+  return end
+}
+
+/**
+ * Turns a confirmed Sumit payment into an active subscription.
+ *
+ * The activation is a single conditional UPDATE matched on
+ * (organization_id, status='pending_payment', pending_checkout_reference).
+ * That one predicate is what makes this safe, and it replaced a version that
+ * only checked "a row exists for this org":
+ *
+ *   - Replay. The callback is a GET page. Re-opening its URL used to extend the
+ *     period by another month and insert another "paid" invoice row, every time.
+ *     Now the first activation clears the status and nulls the reference, so
+ *     every later attempt matches nothing.
+ *   - Cross-org. A valid payment id belonging to a different org used to
+ *     activate the caller's own subscription. The reference is a server-side
+ *     crypto.randomUUID() stored per org, so another org's payment cannot match.
+ *   - Underpayment. A ₪1 payment used to activate `advanced`. The confirmed
+ *     amount is now compared against the plan price for the stored interval.
+ *
+ * `checkoutReference` is deliberately allowed to come from the caller (URL
+ * param or webhook body): it is untrusted, but it must equal a value we
+ * generated and stored, so trusting it is unnecessary.
+ *
+ * Returns a refusal rather than throwing — a refused activation is an expected
+ * outcome (duplicate webhook, refreshed tab), not an error.
+ */
 export async function activateSubscriptionFromPayment(params: {
   orgId: string
+  /** Must equal the org's stored pending_checkout_reference. */
+  checkoutReference: string
+  /** Confirmed amount from Sumit. Skipped when Sumit did not report one. */
+  paidAmount?: number | null
   sumitCustomerId?: string | null
   sumitSubscriptionId?: string | null
   sumitPaymentToken?: string | null
@@ -176,22 +341,38 @@ export async function activateSubscriptionFromPayment(params: {
     billingPeriodStart?: string | null
     billingPeriodEnd?: string | null
   }
-}): Promise<boolean> {
+}): Promise<ActivationResult> {
   const db = createServiceRoleClient()
 
   const { data: sub } = await db
     .from('organization_subscriptions')
-    .select('id')
+    .select('id, plan_id, billing_interval, pending_checkout_reference, status')
     .eq('organization_id', params.orgId)
     .maybeSingle()
 
-  if (!sub) return false
+  if (!sub || sub.status !== 'pending_payment') {
+    return { activated: false, reason: 'no_pending_subscription' }
+  }
+  if (!sub.pending_checkout_reference || sub.pending_checkout_reference !== params.checkoutReference) {
+    return { activated: false, reason: 'reference_mismatch' }
+  }
+
+  const interval = (sub.billing_interval as 'monthly' | 'yearly') ?? 'monthly'
+  const plan = await getSaasPlanById(sub.plan_id)
+
+  if (params.paidAmount != null && plan) {
+    const expected =
+      interval === 'yearly' && plan.price_yearly != null ? plan.price_yearly : plan.price_monthly
+    if (params.paidAmount + AMOUNT_TOLERANCE < expected) {
+      return { activated: false, reason: 'amount_below_plan_price' }
+    }
+  }
 
   const periodStart = new Date()
-  const periodEnd = new Date(periodStart)
-  periodEnd.setMonth(periodEnd.getMonth() + 1)
+  // Was always +1 month, so a customer paying the yearly price got 30 days.
+  const periodEnd = addBillingPeriod(periodStart, interval)
 
-  const { error: upErr } = await db
+  const { data: updated, error: upErr } = await db
     .from('organization_subscriptions')
     .update({
       status: 'active',
@@ -201,15 +382,26 @@ export async function activateSubscriptionFromPayment(params: {
       card_last_four: params.cardLastFour ?? null,
       pending_checkout_reference: null,
       trial_ends_at: null,
+      previous_status: null,
+      previous_plan_id: null,
       current_period_start: periodStart.toISOString(),
       current_period_end: periodEnd.toISOString(),
     })
+    // Re-stating the guard inside the UPDATE closes the window between the read
+    // above and the write: the redirect callback and the webhook can land at the
+    // same moment, and without this both would see a pending row and activate.
     .eq('id', sub.id)
+    .eq('status', 'pending_payment')
+    .eq('pending_checkout_reference', params.checkoutReference)
+    .select('id')
 
   if (upErr) throw new Error(upErr.message)
+  if (!updated || updated.length === 0) {
+    return { activated: false, reason: 'no_pending_subscription' }
+  }
 
   if (params.invoice) {
-    await db.from('saas_invoices').insert({
+    const { error: invErr } = await db.from('saas_invoices').insert({
       organization_id: params.orgId,
       subscription_id: sub.id,
       amount: params.invoice.amount,
@@ -221,20 +413,87 @@ export async function activateSubscriptionFromPayment(params: {
       billing_period_end: params.invoice.billingPeriodEnd ?? periodEnd.toISOString(),
       issued_at: new Date().toISOString(),
     })
+    // A duplicate document id means the invoice is already recorded (unique
+    // index, migration 20260829130100). The subscription is active either way —
+    // never fail an activation over the bookkeeping row.
+    if (invErr && invErr.code !== '23505') {
+      console.error('[saas] invoice insert failed after activation', {
+        orgId: params.orgId,
+        error: invErr.message,
+      })
+    }
   }
 
-  return true
+  // Turn the service back on now. A suspended org that just paid should not
+  // watch its bot stay silent until the next cron run.
+  await setOrgServiceState(params.orgId, 'active')
+
+  return { activated: true }
 }
 
 /** Dev-only: mark pending subscription active without Sumit. */
 export async function devMockActivatePendingSubscription(orgId: string): Promise<boolean> {
   if (process.env.SUMIT_CHECKOUT_MOCK !== '1') return false
-  return activateSubscriptionFromPayment({
+
+  const db = createServiceRoleClient()
+  const { data: sub } = await db
+    .from('organization_subscriptions')
+    .select('pending_checkout_reference')
+    .eq('organization_id', orgId)
+    .eq('status', 'pending_payment')
+    .maybeSingle()
+
+  if (!sub?.pending_checkout_reference) return false
+
+  const result = await activateSubscriptionFromPayment({
     orgId,
+    checkoutReference: sub.pending_checkout_reference,
     sumitCustomerId: 'dev-mock',
     sumitSubscriptionId: 'dev-mock',
     invoice: { amount: 0 },
   })
+  return result.activated
+}
+
+/**
+ * Abandons a checkout that was never paid.
+ *
+ * Both cancel actions used to DELETE the row. An org with no subscription row
+ * is treated as grandfathered everywhere — getEffectiveSaasFeatures returns
+ * DEFAULT_SAAS_FEATURES (every flag true), requireQuotaCapacity returns early,
+ * and subscriptionAllowsDashboardAccess returns ok — so "start checkout, then
+ * cancel" handed out the full product, unlimited and permanently. Reverting to
+ * a bounded state keeps the org inside the entitlement system.
+ */
+export async function revertPendingCheckout(orgId: string): Promise<void> {
+  const db = createServiceRoleClient()
+
+  const { data: sub } = await db
+    .from('organization_subscriptions')
+    .select('id, plan_id, previous_status, previous_plan_id')
+    .eq('organization_id', orgId)
+    .eq('status', 'pending_payment')
+    .maybeSingle()
+
+  if (!sub) return
+
+  // Restore exactly what the org had before it started the checkout. Falling
+  // back to free/read_only instead would silently downgrade a paying customer
+  // who clicked upgrade and changed their mind.
+  const freePlan = sub.previous_plan_id ? null : await getSaasPlanByName('free')
+
+  const { error } = await db
+    .from('organization_subscriptions')
+    .update({
+      status: sub.previous_status ?? 'read_only',
+      plan_id: sub.previous_plan_id ?? freePlan?.id ?? sub.plan_id,
+      pending_checkout_reference: null,
+      previous_status: null,
+      previous_plan_id: null,
+    })
+    .eq('id', sub.id)
+
+  if (error) throw new Error(error.message)
 }
 
 export async function markOrganizationOnboardingComplete(orgId: string): Promise<void> {
@@ -260,4 +519,30 @@ export async function subscriptionAllowsDashboardAccess(
   }
 
   return { ok: true }
+}
+
+/**
+ * The org's current service level, straight from the denormalised column.
+ *
+ * Read path only — the ladder is owned by public.derive_service_state and
+ * written by the saas-subscription-checker cron (and by the payment path, via
+ * {@link setOrgServiceState}). Callers must not re-derive it.
+ *
+ * An unknown org reads as 'active': a missing row is not a reason to take a
+ * studio offline.
+ */
+export async function getOrgServiceState(orgId: string): Promise<OrgServiceState> {
+  const db = createServiceRoleClient()
+  const { data } = await db
+    .from('organizations')
+    .select('service_state')
+    .eq('id', orgId)
+    .maybeSingle()
+
+  return (data?.service_state as OrgServiceState | undefined) ?? 'active'
+}
+
+/** True when automations and the parent portal are switched off for this org. */
+export function isServiceSuspended(state: OrgServiceState): boolean {
+  return state === 'suspended' || state === 'dormant'
 }

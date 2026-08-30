@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { getTranslations } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getConversation, markConversationRead } from '@/lib/portal/messages'
@@ -20,6 +21,8 @@ export default async function PortalMessageThreadPage({
   if (!session || session.orgId !== orgId) {
     redirect(`/portal/${orgId}/login`)
   }
+
+  const t = await getTranslations('portal.messages')
 
   // Verify parent owns this student
   const db = createServiceRoleClient()
@@ -46,13 +49,21 @@ export default async function PortalMessageThreadPage({
     <div className="flex flex-col flex-1 pb-20">
       <PollingRefresh intervalMs={15_000} />
       <header className="px-4 py-3.5 border-b border-border bg-card flex items-center gap-3">
-        <Link href={`/portal/${orgId}/messages`} className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft size={18} className="rtl:rotate-180" />
+        <Link
+          href={`/portal/${orgId}/messages`}
+          aria-label={t('backToList')}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft size={18} className="rtl:rotate-180" aria-hidden />
         </Link>
         <h1 className="font-semibold text-foreground text-sm">{studentName}</h1>
       </header>
 
-      <PortalMessageThread messages={messages} sendAction={boundAction} />
+      <PortalMessageThread
+        messages={messages}
+        sendAction={boundAction}
+        draftKey={`portal-draft:${orgId}:${studentId}`}
+      />
 
       <PortalTabBar orgId={orgId} active="messages" />
     </div>

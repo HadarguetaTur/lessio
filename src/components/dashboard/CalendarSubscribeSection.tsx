@@ -48,9 +48,12 @@ export function CalendarSubscribeSection({ icalUrl }: CalendarSubscribeSectionPr
     <div className="space-y-6">
       {/* URL display + copy */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700">{t('subscriptionUrl')}</label>
+        <label htmlFor="ical-url" className="text-sm font-medium text-gray-700">
+          {t('subscriptionUrl')}
+        </label>
         <div className="flex items-center gap-2">
           <input
+            id="ical-url"
             type="text"
             readOnly
             value={icalUrl}

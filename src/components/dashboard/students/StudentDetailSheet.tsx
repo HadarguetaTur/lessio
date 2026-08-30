@@ -168,13 +168,14 @@ function DataRow({ label, children, interactive }: { label: string; children: Re
 
 // ── Edit form ─────────────────────────────────────────────────────────────────
 
-function EditForm({ student, teachers, currentParentId, onDone, onCancel, variant = 'admin' }: {
+function EditForm({ student, teachers, currentParentId, onDone, onCancel, variant = 'admin', showWeeklyQuota = true }: {
   student: Student
   teachers: { id: string; full_name: string }[]
   currentParentId: string | null
   onDone: () => void
   onCancel: () => void
   variant?: 'admin' | 'teacher'
+  showWeeklyQuota?: boolean
 }) {
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
@@ -268,10 +269,12 @@ function EditForm({ student, teachers, currentParentId, onDone, onCancel, varian
             <Label htmlFor="grade">{t('fields.grade')}</Label>
             <Input id="grade" name="grade" defaultValue={student.grade ?? ''} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="weekly_quota">{t('fields.weeklyQuotaShort')}</Label>
-            <Input id="weekly_quota" name="weekly_quota" type="number" min={1} max={10} defaultValue={student.weekly_quota ?? ''} />
-          </div>
+          {showWeeklyQuota && (
+            <div className="space-y-1.5">
+              <Label htmlFor="weekly_quota">{t('fields.weeklyQuotaShort')}</Label>
+              <Input id="weekly_quota" name="weekly_quota" type="number" min={1} max={10} defaultValue={student.weekly_quota ?? ''} />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="level">{t('fields.level')}</Label>
             <Input id="level" name="level" defaultValue={student.level ?? ''} />
@@ -337,10 +340,11 @@ function EditForm({ student, teachers, currentParentId, onDone, onCancel, varian
 
 // ── Tab: Overview ─────────────────────────────────────────────────────────────
 
-function OverviewTab({ student, parent, parentLoading }: {
+function OverviewTab({ student, parent, parentLoading, showWeeklyQuota = true }: {
   student: Student
   parent: StudentPrimaryParent | null | undefined
   parentLoading: boolean
+  showWeeklyQuota?: boolean
 }) {
   const t = useTranslations('students')
   const learningFields = [
@@ -350,7 +354,10 @@ function OverviewTab({ student, parent, parentLoading }: {
     { label: t('fields.grade'), value: student.grade },
     {
       label: t('fields.weeklyQuotaShort'),
-      value: student.weekly_quota != null ? `${student.weekly_quota} ${t('fields.weeklyQuotaSuffix')}` : null,
+      value:
+        showWeeklyQuota && student.weekly_quota != null
+          ? `${student.weekly_quota} ${t('fields.weeklyQuotaSuffix')}`
+          : null,
     },
   ]
   const hasLearningDetails = learningFields.some((f) => f.value)
@@ -767,6 +774,8 @@ interface StudentDetailSheetProps {
   onOpenChange: (open: boolean) => void
   canManage?: boolean
   variant?: 'admin' | 'teacher'
+  /** Hidden when the org does not enforce the weekly quota. */
+  showWeeklyQuota?: boolean
 }
 
 export function StudentDetailSheet({
@@ -776,6 +785,7 @@ export function StudentDetailSheet({
   onOpenChange,
   canManage,
   variant = 'admin',
+  showWeeklyQuota = true,
 }: StudentDetailSheetProps) {
   const tabValues = variant === 'teacher' ? TAB_VALUES_TEACHER : TAB_VALUES_ADMIN
   const t = useTranslations('students')
@@ -950,6 +960,7 @@ export function StudentDetailSheet({
                     student={student}
                     teachers={teachers}
                     variant={variant}
+                    showWeeklyQuota={showWeeklyQuota}
                     currentParentId={parent?.id ?? null}
                     onDone={() => {
                       setIsEditing(false)
@@ -996,7 +1007,7 @@ export function StudentDetailSheet({
                 <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto min-h-0">
                   <div className="px-6 py-5 sm:px-8">
                     <Tabs.Content value="overview" forceMount className="data-[state=inactive]:hidden">
-                      <OverviewTab student={student} parent={parent} parentLoading={parentLoading} />
+                      <OverviewTab student={student} parent={parent} parentLoading={parentLoading} showWeeklyQuota={showWeeklyQuota} />
                     </Tabs.Content>
                     <Tabs.Content value="history" forceMount className="data-[state=inactive]:hidden">
                       <HistoryTab lazy={lessonsLazy} />

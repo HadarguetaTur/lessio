@@ -8,11 +8,18 @@
  */
 
 const CODES: Record<string, string> = {
-  SERIES_CANCELLED: 'lessons.cancelReasons.series',
-  CANCELLED_VIA_WHATSAPP: 'lessons.cancelReasons.whatsapp',
-  TEACHER_DAY_OFF: 'lessons.cancelReasons.teacherDayOff',
+  SERIES_CANCELLED: 'cancelReasons.series',
+  CANCELLED_VIA_WHATSAPP: 'cancelReasons.whatsapp',
+  CANCELLED_VIA_PORTAL: 'cancelReasons.portal',
+  TEACHER_DAY_OFF: 'cancelReasons.teacherDayOff',
 }
 
+/**
+ * `t` must be scoped to the `lessons` namespace — the codes above resolve to
+ * `cancelReasons.*` inside it. A differently-scoped translator renders every
+ * reason as a missing key, which is what both callers did while these values
+ * carried a redundant `lessons.` prefix on top of an already-namespaced `t`.
+ */
 export function renderCancelReason(
   reason: string | null | undefined,
   t: (key: string) => string

@@ -10,7 +10,7 @@ import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { generateOtp, storeOtp, verifyOtp, countRecentOtpRequests } from '@/lib/portal/otp'
 import { setPortalSessionCookie } from '@/lib/portal/session'
 import { recordParentConsent } from '@/lib/whatsapp/consent'
-import { requireFeature } from '@/lib/saas/featureGate'
+import { assertFeature } from '@/lib/saas/featureGate'
 
 const PhoneSchema = z.object({
   phone: z.string().min(9),
@@ -35,6 +35,15 @@ export type LoginState = {
     | 'wrongCode'
     | 'generic'
     | null
+  /**
+   * What the parent typed, echoed back so the form can refill itself. Every
+   * error used to blank the phone field and untick the consent box, which on a
+   * phone keyboard is where people give up. Before normalization succeeds this
+   * is the raw string; after, the canonical one.
+   */
+  phone?: string
+  /** Whether the consent box was ticked, so a valid tick survives an error. */
+  consent?: boolean
 }
 
 /**
@@ -47,21 +56,27 @@ export async function requestOtpAction(
   formData: FormData
 ): Promise<LoginState> {
   // Feature gate first — must not be inside a try/catch (redirect() throws internally).
-  await requireFeature(orgId, 'parent_portal')
+  await assertFeature(orgId, 'parent_portal')
 
-  const parsed = PhoneSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return { error: 'invalidPhone' }
+  const raw = Object.fromEntries(formData)
+  const typedPhone = typeof raw.phone === 'string' ? raw.phone : ''
+  const consented = raw.consent === 'on'
+  /** Everything the parent already gave us, so no error costs them a retype. */
+  const echo = { phone: typedPhone, consent: consented }
+
+  const parsed = PhoneSchema.safeParse(raw)
+  if (!parsed.success) return { error: 'invalidPhone', ...echo }
 
   // The OTP is itself a WhatsApp message, so consent is checked before
   // anything is sent — and checked here, not only via the checkbox's
   // `required`, because a form can be posted without the browser.
-  if (parsed.data.consent !== 'on') return { error: 'consentRequired' }
+  if (!consented) return { error: 'consentRequired', ...echo }
 
   let phone: string
   try {
     phone = normalizePhone(parsed.data.phone)
   } catch {
-    return { error: 'invalidPhone' }
+    return { error: 'invalidPhone', ...echo }
   }
 
   // Server-side rate limiting: max 3 OTP requests per phone per 15 minutes.
@@ -69,7 +84,7 @@ export async function requestOtpAction(
   // Generic error — do not reveal whether the phone is registered.
   const recentCount = await countRecentOtpRequests(phone, orgId)
   if (recentCount >= 3) {
-    return { error: 'tooManyAttempts' }
+    return { error: 'tooManyAttempts', ...echo }
   }
 
   const db = createServiceRoleClient()
@@ -84,7 +99,7 @@ export async function requestOtpAction(
 
   if (!parent) {
     // Security: same message regardless of whether phone exists
-    return { error: 'noAccount' }
+    return { error: 'noAccount', ...echo }
   }
 
   // Get org WhatsApp config
@@ -95,7 +110,7 @@ export async function requestOtpAction(
     .single()
 
   if (!org?.whatsapp_phone_number_id || !org?.whatsapp_access_token) {
-    return { error: 'serviceUnavailable' }
+    return { error: 'serviceUnavailable', ...echo }
   }
 
   const otp = generateOtp()
@@ -112,7 +127,7 @@ export async function requestOtpAction(
     await sendOtp(phone, otp, accessToken, org.whatsapp_phone_number_id as string, locale)
   } catch (err) {
     console.error('[requestOtpAction] Failed to send OTP via WhatsApp', { org_id: orgId, err })
-    return { error: 'sendFailed' }
+    return { error: 'sendFailed', ...echo }
   }
 
   redirect(`/portal/${orgId}/login?step=verify&phone=${encodeURIComponent(phone)}`)
@@ -128,7 +143,7 @@ export async function verifyOtpAction(
   _prev: LoginState,
   formData: FormData
 ): Promise<LoginState> {
-  await requireFeature(orgId, 'parent_portal')
+  await assertFeature(orgId, 'parent_portal')
 
   const parsed = OtpSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return { error: 'invalidCode' }

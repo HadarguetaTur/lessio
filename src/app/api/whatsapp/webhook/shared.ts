@@ -29,7 +29,12 @@ export type HandlerContext = {
   locale: AppLocale
   timezone: string
   origin: string
-  msg: { text: string; replyId?: string; messageId: string }
+  msg: {
+    text: string
+    replyId?: string
+    messageId: string
+    media?: { id: string; mimeType: string; fileName?: string; kind: 'image' | 'document' }
+  }
 }
 
 // ── Lessons ───────────────────────────────────────────────────────────────────

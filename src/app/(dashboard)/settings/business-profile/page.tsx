@@ -15,7 +15,7 @@ export default async function BusinessProfilePage() {
   const { data: org } = await db
     .from('organizations')
     .select(
-      'business_legal_name, tax_id, business_address, currency, default_vat_rate, logo_url'
+      'business_legal_name, tax_id, business_address, currency, default_vat_rate, logo_url, enforce_weekly_quota'
     )
     .eq('id', session.orgId)
     .single()
@@ -27,6 +27,7 @@ export default async function BusinessProfilePage() {
     currency: ((org as Record<string, unknown>)?.currency as string) ?? 'ILS',
     defaultVatRate: Number((org as Record<string, unknown>)?.default_vat_rate ?? 0),
     logoUrl: (org as Record<string, unknown>)?.logo_url as string | null ?? null,
+    enforceWeeklyQuota: ((org as Record<string, unknown>)?.enforce_weekly_quota as boolean | null) ?? true,
   }
 
   return (

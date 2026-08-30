@@ -37,6 +37,12 @@ export function CompleteStep({ counts, destination = 'dashboard', onBack }: Comp
     })
   }
 
+  // "Everything is ready" over 0 teachers and 0 students was the single most
+  // misleading sentence the audit found: one click later the dashboard listed
+  // three unfinished setup items. The counts to tell the difference were
+  // already being passed in.
+  const hasNobody = counts.teachers === 0 && counts.students === 0
+
   const stats = [
     {
       label: t('stats.teachers'),
@@ -70,8 +76,12 @@ export function CompleteStep({ counts, destination = 'dashboard', onBack }: Comp
         <CheckCircle2 size={40} className="text-emerald-700 dark:text-emerald-400" aria-hidden />
       </div>
 
-      <h2 className={`${onboardingStepTitle} mb-2`}>{t('title')}</h2>
-      <p className="text-muted-foreground mb-8">{t('subtitle')}</p>
+      <h2 className={`${onboardingStepTitle} mb-2`}>
+        {hasNobody ? t('titlePartial') : t('title')}
+      </h2>
+      <p className="text-muted-foreground mb-8">
+        {hasNobody ? t('subtitlePartial') : t('subtitle')}
+      </p>
 
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((stat) => (

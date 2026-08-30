@@ -33,6 +33,8 @@ export type BotStringKey =
   | 'homework_already_done'
   | 'booking_no_student'
   | 'booking_multiple_students'
+  | 'booking_quota_reached'
+  | 'booking_quota_cancel_button'
   | 'no_open_homework'
   | 'homework_marked_done'
   | 'homework_done_teacher_alert'
@@ -115,6 +117,17 @@ export type BotStringKey =
   | 'homework_done_student_alert'
   | 'student_no_parent_linked'
   | 'cancelled_by_student_note'
+  // Student exam-report flow
+  | 'menu_report_exam'
+  | 'menu_report_exam_desc'
+  | 'exam_report_ask_subject'
+  | 'exam_report_ask_title'
+  | 'exam_report_ask_date'
+  | 'exam_report_ask_file'
+  | 'exam_report_confirmed'
+  | 'exam_report_file_too_large'
+  | 'exam_report_invalid_date'
+  | 'teacher_exam_reported_alert'
   // Teacher replies
   | 'teacher_schedule_body'
   | 'teacher_no_lessons'
@@ -186,6 +199,7 @@ export type BotStringKey =
   | 'ai_lesson_datetime_format'
   | 'the_student'
   | 'unsupported_media'
+  | 'org_suspended'
 
 const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
   he: {
@@ -210,6 +224,9 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'עדיין אין תלמיד מקושר לחשבון, ולכן אי אפשר ליצור קישור לקביעת שיעור.\nאפשר לפנות לצוות ונסדר את זה 😊',
     booking_multiple_students:
       'לחשבון מקושרים כמה תלמידים, ולכן אי אפשר לקבוע שיעור אוטומטית מכאן.\nאפשר לפנות לצוות ונשמח לעזור 😊',
+    booking_quota_reached:
+      'ל{{student_name}} כבר יש שיעור השבוע, ולכן אי אפשר לקבוע שיעור נוסף לשבוע הזה.\nאפשר לבטל את השיעור הקיים ולקבוע מחדש, או לקבוע לשבוע הבא דרך הקישור 👇',
+    booking_quota_cancel_button: 'ביטול שיעור',
     no_open_homework: 'לא מצאתי שיעורי בית פתוחים לסימון 🙂',
     homework_marked_done: 'מעולה! שיעורי הבית של {{student_name}} סומנו כהושלמו 🎉',
     homework_done_teacher_alert:
@@ -294,6 +311,20 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     student_no_parent_linked:
       'לא מצאתי הורה מקושר לחשבון שלך, ולכן אי אפשר לקבוע או לבטל שיעור מכאן.\nאפשר לפנות לצוות ונסדר את זה 😊',
     cancelled_by_student_note: '❗ {{student_name}} ביטל/ה את השיעור דרך וואטסאפ.',
+
+    menu_report_exam: 'דיווח על מבחן',
+    menu_report_exam_desc: 'מבחן מתקרב? ספרו לנו',
+    exam_report_ask_subject: 'באיזה מקצוע המבחן? (למשל: מתמטיקה)',
+    exam_report_ask_title: 'על מה המבחן? אפשר לכתוב נושא או תיאור קצר.',
+    exam_report_ask_date: 'מתי המבחן? כתבו תאריך, למשל 15/09',
+    exam_report_ask_file:
+      'אם יש חומר למבחן (צילום או קובץ) — שלחו אותו עכשיו.\nאין קובץ? כתבו "דלג" וזהו 🙂',
+    exam_report_confirmed:
+      'מעולה! דיווח על מבחן {{subject}} ב-{{exam_date}} נשמר, והמורה קיבל עדכון 💪',
+    exam_report_file_too_large: 'הקובץ גדול מדי (עד 10MB). אפשר לשלוח קובץ קטן יותר או לכתוב "דלג".',
+    exam_report_invalid_date: 'לא הצלחתי להבין את התאריך 🙂 כתבו למשל 15/09 (יום/חודש).',
+    teacher_exam_reported_alert:
+      '📄 {{student_name}} דיווח/ה על מבחן ב{{subject}}: "{{title}}" בתאריך {{exam_date}}.\nהפרטים המלאים בכרטיס התלמיד במערכת.',
 
     teacher_schedule_body: 'הלוז שלך לשבוע הקרוב:{{lesson_lines}}',
     teacher_no_lessons: 'אין לך שיעורים מתוכננים בשבוע הקרוב 🙂',
@@ -380,6 +411,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     the_student: 'התלמיד',
     unsupported_media:
       'קיבלתי 🙂 כאן אפשר לעזור רק בהודעות טקסט — תמונות, הקלטות וקבצים לא נקראים.\nאפשר לכתוב "תפריט" כדי לראות מה אפשר לעשות, או לפנות ישירות לצוות.',
+    // Deliberately silent about billing: the parent is not a party to the
+    // teacher's subscription, and "they did not pay" is not ours to disclose.
+    org_suspended:
+      'המענה האוטומטי אינו זמין כרגע. לתיאום, ביטול או כל שאלה — אנא פנו ישירות למורה.',
   },
   en: {
     unknown_parent:
@@ -405,6 +440,9 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'There is no student linked to this account yet, so I cannot create a booking link.\nReach out to the team and we will sort it out 😊',
     booking_multiple_students:
       'This account has several students linked, so I cannot book automatically from here.\nReach out to the team and we will be happy to help 😊',
+    booking_quota_reached:
+      '{{student_name}} already has a lesson this week, so another one cannot be booked for this week.\nYou can cancel the existing lesson and book again, or book next week through the link 👇',
+    booking_quota_cancel_button: 'Cancel a lesson',
     no_open_homework: 'I could not find any open homework to mark 🙂',
     homework_marked_done: "Great! {{student_name}}'s homework is marked as done 🎉",
     homework_done_teacher_alert:
@@ -495,6 +533,20 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'I could not find a parent linked to your account, so I cannot book or cancel a lesson from here.\nReach out to the team and we will sort it out 😊',
     cancelled_by_student_note: '❗ {{student_name}} cancelled this lesson over WhatsApp.',
 
+    menu_report_exam: 'Report an exam',
+    menu_report_exam_desc: 'Exam coming up? Let us know',
+    exam_report_ask_subject: 'Which subject is the exam in? (e.g. Math)',
+    exam_report_ask_title: 'What is the exam about? A topic or short description works.',
+    exam_report_ask_date: 'When is the exam? Type a date, e.g. 15/09',
+    exam_report_ask_file:
+      'If you have exam material (a photo or file) — send it now.\nNo file? Just type "skip" 🙂',
+    exam_report_confirmed:
+      'Great! Your {{subject}} exam on {{exam_date}} was recorded and the teacher has been notified 💪',
+    exam_report_file_too_large: 'That file is too large (10MB max). Send a smaller one or type "skip".',
+    exam_report_invalid_date: 'I could not read that date 🙂 Try something like 15/09 (day/month).',
+    teacher_exam_reported_alert:
+      '📄 {{student_name}} reported a {{subject}} exam: "{{title}}" on {{exam_date}}.\nFull details are on the student card in the dashboard.',
+
     teacher_schedule_body: 'Your schedule for the coming week:{{lesson_lines}}',
     teacher_no_lessons: 'You have no lessons scheduled in the coming week 🙂',
     teacher_students_body: 'Your students:{{student_lines}}',
@@ -579,6 +631,8 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     the_student: 'the student',
     unsupported_media:
       'Got it 🙂 I can only help with text messages here — photos, voice notes and files are not read.\nType "menu" to see what I can do, or reach out to the team directly.',
+    org_suspended:
+      'Automated replies are not available right now. For scheduling, cancellations or any question, please contact your teacher directly.',
   },
 }
 

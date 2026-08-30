@@ -2,13 +2,15 @@ import Link from 'next/link'
 import { forbidden, notFound, redirect } from 'next/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
-import { ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getLessonAccessScope, getLessonById, formatTime, formatDate, LessonStatus } from '@/lib/lessons'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { TeacherLessonOutcomeForm } from '@/components/dashboard/lessons/TeacherLessonOutcomeForm'
+import { CancelLessonForm } from '@/components/dashboard/lessons/CancelLessonForm'
 import { updateTeacherLessonOutcome } from './actions'
+import { cancelLesson } from '@/app/(dashboard)/lessons/[id]/actions'
 import { renderCancelReason } from '@/lib/lessons/renderCancelReason'
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
@@ -32,6 +34,8 @@ export default async function TeacherLessonDetailPage(props: {
     getLocale(),
   ])
   const appLocale = parseAppLocale(locale)
+  // "Back" points against the reading direction, so the glyph flips with it.
+  const BackIcon = appLocale === 'he' ? ArrowRight : ArrowLeft
 
   const STATUS_LABELS: Record<LessonStatus, string> = {
     scheduled: tCommon('status.scheduled'),
@@ -74,14 +78,14 @@ export default async function TeacherLessonDetailPage(props: {
         <Link href={backHref} className="hover:text-gray-700">
           {t('title')}
         </Link>
-        <ArrowRight size={14} className="rotate-180" />
-        <span className="text-gray-900 font-medium">{tLessons('newLessonTitle')}</span>
+        <ArrowRight size={14} className="rtl:rotate-180" aria-hidden />
+        <span className="text-gray-900 font-medium">{tLessons('detailTitle')}</span>
       </div>
 
       {/* Lesson details */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">{tLessons('newLessonTitle')}</h1>
+          <h1 className="text-xl font-bold text-gray-900">{tLessons('detailTitle')}</h1>
           <span
             className={`inline-flex items-center px-2.5 py-1 rounded text-sm font-medium ${STATUS_STYLES[lesson.status]}`}
           >
@@ -109,7 +113,7 @@ export default async function TeacherLessonDetailPage(props: {
           {lesson.cancel_reason && (
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{tLessons('cancel.reason')}</dt>
-              <dd className="text-gray-900">{renderCancelReason(lesson.cancel_reason, t)}</dd>
+              <dd className="text-gray-900">{renderCancelReason(lesson.cancel_reason, tLessons)}</dd>
             </div>
           )}
         </dl>
@@ -124,9 +128,22 @@ export default async function TeacherLessonDetailPage(props: {
         />
       </div>
 
+      {/* A teacher who falls ill had no way to cancel — only an admin did. The
+          fee still follows the org's cancellation policy; waiving it does not
+          belong to the teacher, so that control is hidden. */}
+      {lesson.status === 'scheduled' && (
+        <div className="mt-4">
+          <CancelLessonForm action={cancelLesson.bind(null, lesson.id)} showWaive={false} />
+        </div>
+      )}
+
       <div className="mt-4">
-        <Link href={backHref} className="text-sm text-muted-foreground hover:text-gray-700">
-          ← {tCommon('actions.back')}
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gray-700"
+        >
+          <BackIcon size={14} aria-hidden />
+          {tCommon('actions.back')}
         </Link>
       </div>
     </div>

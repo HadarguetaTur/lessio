@@ -28,6 +28,19 @@ function interpolate(message: string, values?: Record<string, unknown>): string 
   )
 }
 
+/**
+ * Same reasoning as above, for the cache API: `revalidatePath` outside a
+ * request scope throws "static generation store missing", so any test of a
+ * Server Action that revalidates would fail on the harness rather than on the
+ * behaviour. A per-file `vi.mock('next/cache', …)` still overrides this, which
+ * is what the tests that assert on revalidation calls rely on.
+ */
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  unstable_cache: (fn: unknown) => fn,
+}))
+
 vi.mock('next-intl/server', () => ({
   getTranslations: async (namespace?: string) => {
     const t = (key: string, values?: Record<string, unknown>) =>

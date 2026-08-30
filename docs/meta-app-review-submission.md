@@ -268,7 +268,7 @@ For Video B step 2 specifically:
   them outside the window — and a Hebrew fallback mid-English-video is worse than no shot:
   `GET https://graph.facebook.com/v26.0/1066332709132512/message_templates?fields=name,status,language`
   → `lessio_lesson_reminder_en_v2`, `lessio_menu_en_v3` and `lessio_payment_request_en_v2` must
-  all be `APPROVED`. If any is missing, run `npx tsx scripts/register-templates-v2.ts` and wait —
+  all be `APPROVED`. If any is missing, run `npx tsx scripts/archive/register-templates-v2.ts` and wait —
   approval can take hours.
 
 Retakes are safe: the `notification_log` row is an upsert that records the send for cron dedup
@@ -401,7 +401,7 @@ dispatch block in the webhook, and move the webhook callback from the apex domai
 
 There is no `d1000000-` cleanup left to do: the earlier Hebrew demo lived in the
 `hadart20@gmail.com` organization, and that organization and account were deleted on 2026-08-17
-when the demo moved to Brightpath. `scripts/seed-demo-data.ts` targeted that org and is now
-obsolete — it fails with "No auth user found".
+when the demo moved to Brightpath. `scripts/seed-demo-data.ts` targeted that org, became obsolete
+(it failed with "No auth user found") and has since been deleted — recoverable from git history.
 
 The opt-out work is **not** demo scaffolding — it stays.

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { confirmBooking, LockExpiredError, InactiveParticipantError, NoPrimaryParentError } from './confirmBooking'
+import { LessonConflictError } from '@/lib/lessons/createLesson'
+import { WeeklyQuotaExceededError } from './weeklyQuota'
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
@@ -14,8 +16,16 @@ vi.mock('./validateSlotLock', () => ({
   validateSlotLock: vi.fn(),
 }))
 
+// The quota rule has its own suite; here it only needs to be steerable.
+vi.mock('./weeklyQuota', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./weeklyQuota')>()),
+  assertWeeklyQuotaNotExceeded: vi.fn(),
+}))
+
 import { validateSlotLock } from './validateSlotLock'
+import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
 const mockValidateLock = vi.mocked(validateSlotLock)
+const mockAssertQuota = vi.mocked(assertWeeklyQuotaNotExceeded)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -38,7 +48,7 @@ const validLock = {
 function buildChain(result: unknown) {
   const self: Record<string, unknown> = {}
   const pass = () => self
-  ;['select', 'eq', 'maybeSingle', 'update', 'insert', 'neq', 'lt', 'gt', 'limit'].forEach(m => { self[m] = pass })
+  ;['select', 'eq', 'maybeSingle', 'update', 'insert', 'neq', 'lt', 'gt', 'limit', 'in'].forEach(m => { self[m] = pass })
   self['single']      = () => Promise.resolve(result)
   self['maybeSingle'] = () => Promise.resolve(result)
   self['then'] = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
@@ -157,5 +167,106 @@ describe('confirmBooking', () => {
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toThrow(NoPrimaryParentError)
+  })
+
+  it('refuses the booking when the student has used up the week', async () => {
+    mockValidateLock.mockResolvedValue({ valid: true, lock: validLock })
+    mockAssertQuota.mockRejectedValueOnce(new WeeklyQuotaExceededError(1, 1))
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
+      if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    await expect(confirmBooking(PARAMS)).rejects.toThrow(WeeklyQuotaExceededError)
+    // The quota is judged on the locked slot's week, not on today.
+    expect(mockAssertQuota).toHaveBeenCalledWith(
+      expect.objectContaining({ studentId: STUDENT_ID, slotStartUtc: START })
+    )
+  })
+
+  it('refuses a second lesson for the same student at the same hour', async () => {
+    mockValidateLock.mockResolvedValue({ valid: true, lock: validLock })
+    let lessonQueries = 0
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
+      if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
+      if (table === 'relationships') return buildChain({ data: { parent_id: PARENT_ID }, error: null })
+      if (table === 'lesson_students') return buildChain({ data: [{ lesson_id: 'other-lesson' }], error: null })
+      if (table === 'lessons') {
+        // Teacher overlap query runs first and finds nothing; the student
+        // overlap query then finds the lesson booked with another teacher.
+        const isStudentOverlapQuery = lessonQueries++ > 0
+        return buildChain({
+          data: isStudentOverlapQuery ? [{ id: 'other-lesson' }] : [],
+          error: null,
+        })
+      }
+      return buildChain({ data: null, error: null })
+    })
+
+    await expect(confirmBooking(PARAMS)).rejects.toMatchObject({
+      name: 'LessonConflictError',
+      reason: 'student_conflict',
+    })
+  })
+
+  it('reports a lost race on the exclusion constraint as a conflict, not a server error', async () => {
+    mockValidateLock.mockResolvedValue({ valid: true, lock: validLock })
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
+      if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
+      if (table === 'relationships') return buildChain({ data: { parent_id: PARENT_ID }, error: null })
+      if (table === 'lessons') {
+        const chain = buildChain({ data: [], error: null }) as Record<string, unknown>
+        chain['insert'] = () => ({
+          select: () =>
+            buildChain({ data: null, error: { code: '23P01', message: 'conflicting key value' } }),
+        })
+        return chain
+      }
+      return buildChain({ data: null, error: null })
+    })
+
+    await expect(confirmBooking(PARAMS)).rejects.toThrow(LessonConflictError)
+  })
+
+  it('deletes the lesson when the student cannot be linked to it', async () => {
+    mockValidateLock.mockResolvedValue({ valid: true, lock: validLock })
+
+    const deleteEq = vi.fn(() => Promise.resolve({ error: null }))
+    const lessonDelete = vi.fn(() => ({ eq: deleteEq }))
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
+      if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
+      if (table === 'relationships') return buildChain({ data: { parent_id: PARENT_ID }, error: null })
+      if (table === 'lesson_students') {
+        const chain = buildChain({ data: null, error: null }) as Record<string, unknown>
+        chain['insert'] = () => Promise.resolve({ error: { message: 'link failed' } })
+        return chain
+      }
+      if (table === 'lessons') {
+        const chain = buildChain({ data: [], error: null }) as Record<string, unknown>
+        chain['insert'] = () => ({
+          select: () =>
+            buildChain({
+              data: { id: 'lesson-1', teacher_id: TEACHER_ID, start_at: START, end_at: END },
+              error: null,
+            }),
+        })
+        chain['delete'] = lessonDelete
+        return chain
+      }
+      return buildChain({ data: null, error: null })
+    })
+
+    await expect(confirmBooking(PARAMS)).rejects.toThrow('Failed to link student to lesson')
+    // Otherwise the calendar keeps a lesson nobody is enrolled in.
+    expect(lessonDelete).toHaveBeenCalled()
+    expect(deleteEq).toHaveBeenCalledWith('id', 'lesson-1')
   })
 })

@@ -285,3 +285,46 @@ export async function getStudentFinancial(
 
   return { balance, primary_parent_id: parentId, primary_parent_name: parentName, recent_charges, monthly_billings }
 }
+
+/**
+ * Whether a teacher may open a specific student.
+ *
+ * The students LIST is scoped by teacherId, but every by-id read went through
+ * the service-role client filtered on organization_id alone — so pasting or
+ * guessing an id opened any student in the org: name, phone, the parents' names
+ * and emails, lesson history, notes, goals and the billing tab. RLS actually
+ * models this correctly (students_teacher_read_assigned +
+ * students_teacher_read_linked); the service-role client is what discards that
+ * protection, so the same rule has to be restated here.
+ *
+ * "Theirs" matches the RLS definition: assigned via students.teacher_id, or
+ * sharing a lesson — which is how a group or a covered lesson reaches a student
+ * assigned to someone else.
+ */
+export async function canTeacherAccessStudent(
+  organizationId: string,
+  teacherId: string,
+  studentId: string
+): Promise<boolean> {
+  const supabase = createServiceRoleClient()
+
+  const { data: assigned } = await supabase
+    .from('students')
+    .select('id')
+    .eq('id', studentId)
+    .eq('organization_id', organizationId)
+    .eq('teacher_id', teacherId)
+    .maybeSingle()
+
+  if (assigned) return true
+
+  const { data: viaLesson } = await supabase
+    .from('lesson_students')
+    .select('student_id, lessons!inner(teacher_id, organization_id)')
+    .eq('student_id', studentId)
+    .eq('lessons.teacher_id', teacherId)
+    .eq('lessons.organization_id', organizationId)
+    .limit(1)
+
+  return (viaLesson?.length ?? 0) > 0
+}

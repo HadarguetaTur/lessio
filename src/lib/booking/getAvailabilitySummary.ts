@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getAvailableSlots, type AvailableSlot } from './getAvailableSlots'
+import { getWeeklyQuotaStatus } from './weeklyQuota'
 
 export interface AvailabilityBand {
   startAt: string
@@ -18,6 +19,8 @@ export interface AvailabilitySummary {
   timezone: string
   durationMinutes: number
   days: AvailabilityDaySummary[]
+  /** True when the student has used up their weekly quota for this week. */
+  quotaExceeded?: boolean
 }
 
 export interface GetAvailabilitySummaryParams {
@@ -25,6 +28,8 @@ export interface GetAvailabilitySummaryParams {
   organizationId: string
   durationMinutes: number
   weekStart?: string
+  /** When given, weeks the student has already filled come back empty. */
+  studentId?: string
 }
 
 export async function getAvailabilitySummary({
@@ -32,6 +37,7 @@ export async function getAvailabilitySummary({
   organizationId,
   durationMinutes,
   weekStart,
+  studentId,
 }: GetAvailabilitySummaryParams): Promise<AvailabilitySummary> {
   const db = createServiceRoleClient()
   const { data: org, error } = await db
@@ -52,6 +58,27 @@ export async function getAvailabilitySummary({
       .plus({ days: index })
       .toISODate()!
   )
+
+  // normalizeWeekStart already lands on Sunday in org time, so this summary week
+  // is exactly one quota week — one check covers all seven days, and skipping
+  // the fan-out saves seven availability queries.
+  if (studentId) {
+    const { atQuota } = await getWeeklyQuotaStatus({
+      studentId,
+      organizationId,
+      slotStartUtc: DateTime.fromISO(normalizedWeekStart, { zone: timezone }).toUTC().toISO()!,
+      timezone,
+    })
+    if (atQuota) {
+      return {
+        weekStart: normalizedWeekStart,
+        timezone,
+        durationMinutes,
+        quotaExceeded: true,
+        days: dates.map((date) => ({ date, hasAvailability: false, freeIntervals: [] })),
+      }
+    }
+  }
 
   const slotsByDay = await Promise.all(
     dates.map((date) =>

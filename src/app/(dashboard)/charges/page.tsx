@@ -125,34 +125,38 @@ export default async function ChargesPage(props: {
       )}
 
       {/* Filters */}
-      <form method="GET" className="mb-5 grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-2 xl:grid-cols-5">
-        <select
-          name="status"
-          aria-label={t('allStatuses')}
-          defaultValue={searchParams.status ?? ''}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="">{t('allStatuses')}</option>
-          <option value="pending">{tCommon('chargeStatus.pending')}</option>
-          <option value="invoiced">{tCommon('chargeStatus.invoiced')}</option>
-          <option value="paid">{tCommon('chargeStatus.paid')}</option>
-          <option value="waived">{tCommon('chargeStatus.waived')}</option>
-          <option value="voided">{tCommon('chargeStatus.voided')}</option>
-        </select>
+      <form method="GET" className="mb-5 grid items-end gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-2 xl:grid-cols-5">
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {tCommon('table.status')}
+          <select
+            name="status"
+            defaultValue={searchParams.status ?? ''}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">{t('allStatuses')}</option>
+            <option value="pending">{tCommon('chargeStatus.pending')}</option>
+            <option value="invoiced">{tCommon('chargeStatus.invoiced')}</option>
+            <option value="paid">{tCommon('chargeStatus.paid')}</option>
+            <option value="waived">{tCommon('chargeStatus.waived')}</option>
+            <option value="voided">{tCommon('chargeStatus.voided')}</option>
+          </select>
+        </label>
 
-        <select
-          name="parent"
-          aria-label={t('allParents')}
-          defaultValue={searchParams.parent ?? ''}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="">{t('allParents')}</option>
-          {parents.map((parent) => (
-            <option key={parent.id} value={parent.id}>
-              {parent.full_name}
-            </option>
-          ))}
-        </select>
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {t('fields.parent')}
+          <select
+            name="parent"
+            defaultValue={searchParams.parent ?? ''}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">{t('allParents')}</option>
+            {parents.map((parent) => (
+              <option key={parent.id} value={parent.id}>
+                {parent.full_name}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           {t('filterFrom')}
@@ -174,8 +178,8 @@ export default async function ChargesPage(props: {
         </label>
 
         <div className="flex items-center gap-2 xl:justify-end">
-          <Button type="submit">{t('filter')}</Button>
-          <Button asChild variant="outline">
+          <Button type="submit" className="h-10">{t('filter')}</Button>
+          <Button asChild variant="outline" className="h-10">
             <Link href="/charges">{t('reset')}</Link>
           </Button>
         </div>
@@ -256,13 +260,20 @@ export default async function ChargesPage(props: {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="px-5 py-3.5 text-sm font-semibold text-foreground font-mono" dir="ltr">
-                      ₪{remainingOf(charge).toFixed(2)}
+                    <TableCell className="px-5 py-3.5 text-right text-sm font-semibold text-foreground font-mono" dir="ltr">
+                      ₪{charge.amount.toFixed(2)}
                       {charge.amount_paid > 0 && charge.status !== 'paid' && (
                         <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
                           {t('partiallyPaid', {
                             paid: charge.amount_paid.toFixed(2),
                             total: charge.amount.toFixed(2),
+                          })}
+                        </div>
+                      )}
+                      {OPEN_STATUSES.includes(charge.status) && (
+                        <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                          {t('payments.remaining', {
+                            amount: remainingOf(charge).toFixed(2),
                           })}
                         </div>
                       )}

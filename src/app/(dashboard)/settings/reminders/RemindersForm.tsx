@@ -1,9 +1,11 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertTriangle } from 'lucide-react'
 import { saveReminderSettings, type ReminderActionState } from './actions'
+import { resolveRemindersToggleState } from './toggleState'
 
 interface RemindersFormProps {
   defaultEnabled: boolean
@@ -11,6 +13,8 @@ interface RemindersFormProps {
   defaultPaymentDays: number
   defaultEmailNotifications: Record<string, boolean>
   parentsWithEmail: number
+  /** No connected number means nothing on this page can actually be delivered. */
+  hasWhatsApp: boolean
 }
 
 const LESSON_HOUR_OPTIONS = [2, 4, 12, 24, 48]
@@ -32,6 +36,7 @@ export function RemindersForm({
   defaultPaymentDays,
   defaultEmailNotifications,
   parentsWithEmail,
+  hasWhatsApp,
 }: RemindersFormProps) {
   const tp = useTranslations('settings')
   const t = useTranslations('settings.reminders')
@@ -55,6 +60,14 @@ export function RemindersForm({
   )
   const dependentsOff = !remindersEnabled
 
+  // The switch reflects intent; this reflects reality. They are not the same
+  // thing while the org has no WhatsApp number, and the page used to show only
+  // the first one.
+  const { onButNotSending } = resolveRemindersToggleState({
+    hasWhatsApp,
+    currentlyEnabled: remindersEnabled,
+  })
+
   return (
     <form action={formAction} className="space-y-6">
       {/* Master switch */}
@@ -68,9 +81,23 @@ export function RemindersForm({
           name="reminders_enabled"
           checked={remindersEnabled}
           onChange={(e) => setRemindersEnabled(e.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className={`mt-0.5 h-4 w-4 rounded border-gray-300 focus:ring-blue-500 ${
+            onButNotSending ? 'text-amber-500' : 'text-blue-600'
+          }`}
         />
       </label>
+
+      {onButNotSending && (
+        <p className="-mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />
+          <span>
+            {t('onButNotSending')}{' '}
+            <Link href="/settings/whatsapp" className="font-medium underline underline-offset-2">
+              {t('connectWhatsAppLink')}
+            </Link>
+          </span>
+        </p>
+      )}
 
       <hr className="border-gray-100" />
 

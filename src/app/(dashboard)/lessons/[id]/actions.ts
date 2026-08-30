@@ -40,7 +40,13 @@ export async function setLessonStatus(
   formData: FormData
 ): Promise<SetLessonStatusResult> {
   const t = await getTranslations()
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  try {
+    requireMutation(session)
+  } catch {
+    return { error: await commonError('supportModeReadOnly') }
+  }
+  const { orgId, role } = session
 
   if (role !== 'owner' && role !== 'admin') {
     return { error: await commonError('noPermission') }
@@ -94,16 +100,27 @@ export async function cancelLesson(
   formData: FormData
 ): Promise<CancelLessonResult> {
   const t = await getTranslations()
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  try {
+    requireMutation(session)
+  } catch {
+    return { error: await commonError('supportModeReadOnly') }
+  }
+  const { userId, orgId, role } = session
 
-  if (role !== 'owner' && role !== 'admin') {
+  // A teacher may cancel too, but only her own lesson. Ownership is enforced
+  // below, once the lesson row has been read.
+  const isStaff = role === 'owner' || role === 'admin'
+  if (!isStaff && role !== 'teacher') {
     return { error: t('lessons.errors.noCancelPermission') }
   }
 
   const reason = (formData.get('cancel_reason') as string).trim()
   if (!reason) return { error: t('lessons.errors.reasonRequired') }
 
-  const waive = formData.get('waive') === 'true'
+  // Waiving the fee is a money decision, so it stays with owner/admin. A
+  // teacher's cancellation always runs through the org's cancellation policy.
+  const waive = isStaff && formData.get('waive') === 'true'
 
   const supabase = createServiceRoleClient()
 
@@ -117,6 +134,14 @@ export async function cancelLesson(
 
   if (lessonError || !lesson) return { error: 'validation.lessonNotFound' }
   if (lesson.status === 'cancelled') return { error: t('lessons.errors.alreadyCancelled') }
+
+  if (!isStaff) {
+    const teacherRecord = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
+    const lessonTeacher = lesson.teachers as unknown as { id: string } | null
+    if (!teacherRecord || lessonTeacher?.id !== teacherRecord.id) {
+      return { error: t('lessons.errors.noCancelPermission') }
+    }
+  }
 
   const lessonStudents = (lesson.lesson_students as Array<{ student_id: string }>)
   const primaryStudentId = lessonStudents[0]?.student_id
@@ -260,7 +285,13 @@ export async function cancelSeriesAction(
   formData: FormData
 ): Promise<CancelSeriesActionResult> {
   const t = await getTranslations()
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  try {
+    requireMutation(session)
+  } catch {
+    return { error: await commonError('supportModeReadOnly') }
+  }
+  const { orgId, role } = session
 
   if (role !== 'owner' && role !== 'admin') {
     return { error: await commonError('noPermission') }

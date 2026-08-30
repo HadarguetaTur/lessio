@@ -37,7 +37,7 @@ export interface DebtorRow {
   optedOut: boolean
   childrenNames: string[]
   totalDebt: number
-  /** Creation date of the oldest open charge — `due_date` is never populated. */
+  /** Creation date of the oldest open charge. This screen ages by creation, not by `due_date`. */
   oldestChargeAt: string
   /** Days since that oldest charge. */
   oldestAgeDays: number

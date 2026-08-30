@@ -4,7 +4,6 @@ import { z } from 'zod'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getSaasPlanById, getSaasPlanByName } from '@/lib/saas/plans'
 import type { BeginPaidCheckoutSummary, SaasPlanName } from '@/lib/saas/types'
@@ -13,6 +12,7 @@ import {
   devMockActivatePendingSubscription,
   getOrgSubscriptionState,
   markOrganizationOnboardingComplete,
+  revertPendingCheckout,
   upsertPendingPaymentSubscription,
   type OrgSubscriptionState,
 } from '@/lib/saas/subscriptions'
@@ -221,16 +221,10 @@ export async function cancelPendingUpgradeCheckoutAction(): Promise<void> {
   }
   if (session.role !== 'owner') redirect('/account/billing')
 
-  const db = createServiceRoleClient()
-  const { data: row } = await db
-    .from('organization_subscriptions')
-    .select('status')
-    .eq('organization_id', session.orgId)
-    .maybeSingle()
-
-  if (row?.status === 'pending_payment') {
-    await db.from('organization_subscriptions').delete().eq('organization_id', session.orgId)
-  }
+  // Reverts to the pre-checkout plan and status. Deleting the row instead — as
+  // this used to — made the org look grandfathered and handed it the full
+  // product for free. See revertPendingCheckout.
+  await revertPendingCheckout(session.orgId)
 
   revalidatePath('/account/billing')
   redirect('/account/billing')
@@ -265,9 +259,16 @@ export async function applyAccountBillingPaymentCallbackQuery(params: {
       transactionId: params.id ?? null,
       reference: params.identifier ?? null,
     })
-    if (confirmation.valid) {
-      await activateSubscriptionFromPayment({
+    // Prefer the reference Sumit echoes back over the one in the URL: the URL
+    // param is only a hint about which payment to look up, while
+    // externalReference belongs to the payment Sumit actually confirmed.
+    const checkoutReference = confirmation.externalReference ?? params.identifier ?? null
+
+    if (confirmation.valid && checkoutReference) {
+      const result = await activateSubscriptionFromPayment({
         orgId: session.orgId,
+        checkoutReference,
+        paidAmount: confirmation.amount,
         sumitCustomerId: confirmation.customerId,
         sumitPaymentToken: confirmation.paymentToken,
         cardLastFour: confirmation.cardLastFour,
@@ -280,9 +281,20 @@ export async function applyAccountBillingPaymentCallbackQuery(params: {
               }
             : undefined,
       })
-      await markOrganizationOnboardingComplete(session.orgId)
-      revalidatePath('/account/billing')
-      return 'billing'
+
+      if (result.activated) {
+        await markOrganizationOnboardingComplete(session.orgId)
+        revalidatePath('/account/billing')
+        return 'billing'
+      }
+
+      // A refusal is normal here — a refreshed callback tab, or the webhook
+      // having already activated. Fall through to the status check below, which
+      // reports 'billing' when the subscription is active by any route.
+      console.info('[saas/callback] activation refused', {
+        orgId: session.orgId,
+        reason: result.reason,
+      })
     }
   }
 

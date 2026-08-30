@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 
@@ -25,14 +25,47 @@ export function CancellationPolicyForm({
   const t = useTranslations('settings.cancellationPolicy')
   const [state, formAction, pending] = useActionState(action, null)
 
+  // The server already rejects an out-of-range percentage, but the browser's
+  // own `max="100"` bubble fired first and silently swallowed the submit — and
+  // that bubble is written in the *browser's* language, so a Hebrew RTL screen
+  // showed "Value must be less than or equal to 100." or nothing at all.
+  // noValidate hands the checks to us so every message is in the app's language
+  // and lands in the same red box as the server's.
+  const [clientError, setClientError] = useState<string | null>(null)
+
+  function validate(form: HTMLFormElement): string | null {
+    const num = (name: string) =>
+      Number((form.elements.namedItem(name) as HTMLInputElement).value)
+    const full = num('notice_hours_full')
+    const partial = num('notice_hours_partial')
+    const percent = num('partial_charge_percent')
+
+    if (!Number.isFinite(full) || full < 1) return t('errors.fullHoursPositive')
+    if (!Number.isFinite(partial) || partial < 0) return t('errors.partialHoursPositive')
+    if (partial >= full) return t('errors.partialLessThanFull')
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) return t('errors.percentRange')
+    return null
+  }
+
+  const shownError = clientError ?? ('error' in (state ?? {}) ? (state as { error: string }).error : null)
+
   return (
-    <form action={formAction} className="space-y-6 max-w-lg">
-      {'error' in (state ?? {}) && (
-        <div className="text-sm text-red-700 bg-red-50 border border-red-200 p-3 rounded-md">
-          {(state as { error: string }).error}
+    <form
+      action={formAction}
+      noValidate
+      onSubmit={(e) => {
+        const problem = validate(e.currentTarget)
+        setClientError(problem)
+        if (problem) e.preventDefault()
+      }}
+      className="space-y-6 max-w-lg"
+    >
+      {shownError && (
+        <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 p-3 rounded-md">
+          {shownError}
         </div>
       )}
-      {'success' in (state ?? {}) && (
+      {!clientError && 'success' in (state ?? {}) && (
         <div className="text-sm text-green-700 bg-green-50 border border-green-200 p-3 rounded-md">
           {t('saved')}
         </div>

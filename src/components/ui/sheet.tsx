@@ -59,6 +59,11 @@ function SheetContent({
   closeAriaLabel?: string
   closeButtonClassName?: string
 }) {
+  const hasDescription = React.Children.toArray(children).some((child) => {
+    if (!React.isValidElement(child)) return false
+    return child.type === SheetDescription
+  })
+
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -72,6 +77,11 @@ function SheetContent({
         {...props}
       >
         {children}
+        {!hasDescription && (
+          <SheetDescription className="sr-only">
+            Sheet content
+          </SheetDescription>
+        )}
         {showCloseButton && (
           <SheetPrimitive.Close data-slot="sheet-close" asChild>
             <Button

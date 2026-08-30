@@ -75,7 +75,10 @@
   --muted-foreground: oklch(0.45 0 0);
   --accent: oklch(0.93 0.015 255);
   --accent-foreground: oklch(0.35 0.12 255);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* L lowered from 0.577: destructive text on its own 5% tint measured 4.35:1,
+     under the 4.5 AA floor, on the login error — the first thing a locked-out
+     user reads. 0.55 measures 4.70:1 there and improves white-on-fill to 5.15. */
+  --destructive: oklch(0.55 0.245 27.325);
   --border: oklch(0.89 0.005 255);
   --input: oklch(0.89 0.005 255);
   --ring: oklch(0.52 0.19 255);

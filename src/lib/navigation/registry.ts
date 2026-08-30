@@ -41,6 +41,7 @@ import {
   CreditCard,
   CalendarOff,
   CalendarDays,
+  Plug,
   Bell,
   FileText,
   BarChart2,
@@ -143,6 +144,14 @@ export const SETTINGS_NAV: NavEntry[] = [
     synonyms: ['cancellation', 'cancel', 'policy', 'charge', 'ביטול', 'ביטולים', 'מדיניות', 'חיוב'],
   },
   {
+    href: '/settings/exams',
+    navKey: 'settingsExams',
+    cardKey: 'exams',
+    icon: ClipboardList,
+    roles: ['owner', 'admin'],
+    synonyms: ['exam', 'exams', 'test', 'quota', 'מבחן', 'מבחנים', 'בוחן', 'מכסה', 'תגבור'],
+  },
+  {
     href: '/settings/holidays',
     navKey: 'settingsHolidays',
     cardKey: 'holidays',
@@ -182,6 +191,15 @@ export const SETTINGS_NAV: NavEntry[] = [
     icon: CalendarDays,
     roles: ['owner'],
     synonyms: ['calendar', 'google', 'sync', 'יומן', 'סנכרון', 'גוגל'],
+  },
+  {
+    href: '/settings/integrations',
+    navKey: 'settingsIntegrations',
+    cardKey: 'integrations',
+    icon: Plug,
+    roles: ['owner'],
+    saasFeature: 'integrations',
+    synonyms: ['integration', 'integrations', 'api', 'webhook', 'make', 'n8n', 'zapier', 'automation', 'mcp', 'claude', 'אינטגרציה', 'אינטגרציות', 'אוטומציה', 'מפתח', 'חיבור'],
   },
   {
     href: '/settings/privacy',
@@ -392,6 +410,23 @@ export function filterNav(
     if (entry.saasFeature && features && !features[entry.saasFeature]) return false
     return true
   })
+}
+
+export function isNavActive(
+  pathname: string,
+  href: string,
+  siblingHrefs: string[] = []
+): boolean {
+  if (pathname === href) return true
+
+  if (!pathname.startsWith(href + '/')) return false
+
+  const deeperMatch = siblingHrefs
+    .filter((candidate) => candidate !== href)
+    .find((candidate) => pathname === candidate || pathname.startsWith(candidate + '/'))
+
+  if (!deeperMatch) return true
+  return deeperMatch.length <= href.length
 }
 
 const ALL_ROUTES: NavEntry[] = [...MAIN_NAV, ...SETTINGS_NAV, ...REPORTS_NAV]

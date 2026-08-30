@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth/session'
 import { getStudentById } from '@/lib/students'
 import { getTeachers } from '@/lib/teachers'
 import { StudentForm } from '@/components/dashboard/students/StudentForm'
+import { orgEnforcesWeeklyQuota } from '@/lib/booking'
 import { updateStudent } from '../../actions'
 import { getTranslations } from 'next-intl/server'
 
@@ -12,9 +13,10 @@ export default async function EditStudentPage(props: {
   const { id } = await props.params
   const { orgId } = await getSession()
 
-  const [student, teachers] = await Promise.all([
+  const [student, teachers, showWeeklyQuota] = await Promise.all([
     getStudentById(id, orgId),
     getTeachers(orgId),
+    orgEnforcesWeeklyQuota(orgId),
   ])
   if (!student) notFound()
 
@@ -33,6 +35,7 @@ export default async function EditStudentPage(props: {
         variant="edit"
         action={boundUpdateStudent}
         teachers={teacherOptions}
+        showWeeklyQuota={showWeeklyQuota}
         defaultValues={{
           full_name: student.full_name,
           grade: student.grade,

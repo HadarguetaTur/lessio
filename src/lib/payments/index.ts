@@ -37,7 +37,17 @@ export interface PaymentProvider {
   acknowledgeWebhook?(body: Record<string, string>): Promise<void>
 }
 
-export type SupportedProvider = 'cardcom' | 'payplus' | 'bit' | 'paybox' | 'stripe' | 'grow'
+export type SupportedProvider =
+  | 'cardcom'
+  | 'payplus'
+  | 'bit'
+  | 'paybox'
+  | 'stripe'
+  | 'grow'
+  /** Automation webhook (Make / n8n) standing in for a processor. */
+  | 'make'
+  /** One static payment link sent as-is; no processor, no webhook. */
+  | 'manual_link'
 
 export class PaymentProviderNotConfiguredError extends Error {
   constructor(orgId: string) {

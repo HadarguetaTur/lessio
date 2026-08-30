@@ -16,6 +16,7 @@ const BusinessProfileSchema = z.object({
     .number()
     .min(0)
     .max(25),
+  enforce_weekly_quota: z.boolean(),
 })
 
 export async function saveBusinessProfileAction(
@@ -39,6 +40,8 @@ export async function saveBusinessProfileAction(
     business_address: (formData.get('business_address') as string) || '',
     currency: formData.get('currency') as string,
     default_vat_rate: parseFloat(formData.get('default_vat_rate') as string),
+    // An unchecked switch submits nothing at all, which is the "off" case.
+    enforce_weekly_quota: formData.get('enforce_weekly_quota') === 'on',
   }
 
   const parsed = BusinessProfileSchema.safeParse(raw)
@@ -55,6 +58,7 @@ export async function saveBusinessProfileAction(
       business_address: parsed.data.business_address || null,
       currency: parsed.data.currency,
       default_vat_rate: parsed.data.default_vat_rate,
+      enforce_weekly_quota: parsed.data.enforce_weekly_quota,
     })
     .eq('id', session.orgId)
 
@@ -68,6 +72,8 @@ export async function saveBusinessProfileAction(
 
   revalidatePath('/settings/business-profile')
   revalidatePath('/billing')
+  // The quota switch decides whether the student card shows the quota field.
+  revalidatePath('/students')
   return { error: null }
 }
 

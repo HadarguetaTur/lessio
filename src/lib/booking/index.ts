@@ -15,5 +15,15 @@ export type { CreateSlotLockParams, SlotLock } from './createSlotLock'
 export { validateSlotLock } from './validateSlotLock'
 export type { SlotLockValidationResult } from './validateSlotLock'
 
-export { confirmBooking, LockExpiredError, InactiveParticipantError, NoPrimaryParentError } from './confirmBooking'
+export { confirmBooking, LockExpiredError, InactiveParticipantError, NoPrimaryParentError, LockStudentMismatchError } from './confirmBooking'
 export type { ConfirmBookingParams, ConfirmBookingResult } from './confirmBooking'
+
+export {
+  weekBoundsFor,
+  weekStartLocalDate,
+  getWeeklyQuotaStatus,
+  assertWeeklyQuotaNotExceeded,
+  orgEnforcesWeeklyQuota,
+  WeeklyQuotaExceededError,
+} from './weeklyQuota'
+export type { WeekBounds, WeeklyQuotaStatus, WeeklyQuotaParams } from './weeklyQuota'

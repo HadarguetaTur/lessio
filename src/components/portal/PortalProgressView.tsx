@@ -11,7 +11,7 @@ type StudentProgress = {
   homework: { completed: number; total: number; rate: number; avgScore: number | null }
   goals: Array<{ id: string; subject: string; description: string; status: string; targetDate: string | null }>
   notes: Array<{ id: string; body: string; teacherName: string; lessonDate: string }>
-  monthlySummary: { lessons: number; homeworkDone: number }
+  periodSummary: { lessons: number; homeworkDone: number }
 }
 
 interface Props {
@@ -73,12 +73,14 @@ export function PortalProgressView({ progress30, progress90 }: Props) {
             </p>
           )}
 
-          {/* Monthly summary */}
+          {/* Period summary — names its own window, and counts the same rows
+              as the cards below it. */}
           <div className="bg-primary/5 border border-primary/15 rounded-xl p-4">
             <p className="text-sm text-foreground">
               {t('monthSummary', {
-                lessons: student.monthlySummary.lessons,
-                homework: student.monthlySummary.homeworkDone,
+                days: period,
+                lessons: student.periodSummary.lessons,
+                homework: student.periodSummary.homeworkDone,
               })}
             </p>
           </div>

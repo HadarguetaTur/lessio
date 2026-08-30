@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { DateTime } from 'luxon'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { canAccessStudent } from '@/lib/auth/studentAccess'
 import { createGoal, updateGoal, deleteGoal } from '@/lib/goals'
 import type { GoalStatus } from '@/lib/goals'
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
@@ -17,9 +18,11 @@ import {
   createExam,
   updateExam,
   deleteExam,
+  getExam,
   ExamCreateSchema,
   ExamUpdateSchema,
 } from '@/lib/students/exams'
+import { examWeekStart, getExamPolicy, upsertQuotaOverride } from '@/lib/exams/policy'
 import {
   generateAndStoreProgressReport,
   renderProgressReportPdfBufferFromData,
@@ -247,6 +250,10 @@ export async function createExamAction(
     return { error: await zodError(parsed.error.issues[0]) }
   }
 
+  if (!(await canAccessStudent(session, parsed.data.studentId))) {
+    return { error: await commonError('noPermission') }
+  }
+
   try {
     await createExam({
       orgId: session.orgId,
@@ -298,8 +305,15 @@ export async function updateExamAction(
 
   const { examId, studentId, ...rest } = parsed.data
   try {
+    const exam = await getExam(session.orgId, examId)
+    if (!exam || exam.studentId !== studentId) {
+      return { error: await commonError('invalidData') }
+    }
+    if (!(await canAccessStudent(session, exam.studentId))) {
+      return { error: await commonError('noPermission') }
+    }
     await updateExam({ orgId: session.orgId, examId, input: rest })
-    revalidatePath(`/students/${studentId}`)
+    revalidatePath(`/students/${exam.studentId}`)
     return { error: null, success: true }
   } catch (e) {
     return { error: t('students.examErrors.updateFailed') }
@@ -330,11 +344,69 @@ export async function deleteExamAction(
   if (!parsed.success) return { error: await commonError('invalidData') }
 
   try {
+    const exam = await getExam(session.orgId, parsed.data.examId)
+    if (!exam || exam.studentId !== parsed.data.studentId) {
+      return { error: await commonError('invalidData') }
+    }
+    if (!(await canAccessStudent(session, exam.studentId))) {
+      return { error: await commonError('noPermission') }
+    }
     await deleteExam(session.orgId, parsed.data.examId)
-    revalidatePath(`/students/${parsed.data.studentId}`)
+    revalidatePath(`/students/${exam.studentId}`)
     return { error: null, success: true }
   } catch (e) {
     return { error: t('students.examErrors.deleteFailed') }
+  }
+}
+
+/**
+ * One-click approval of the weekly-quota bump for a reported exam
+ * (exam_policy_mode = 'approve'). Idempotent — approving twice never stacks.
+ */
+export async function approveExamQuotaBumpAction(
+  _prev: ExamActionState,
+  formData: FormData
+): Promise<ExamActionState> {
+  const t = await getTranslations()
+  const session = await getSession()
+  if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {
+    return { error: await commonError('noPermission') }
+  }
+  try {
+    requireMutation(session)
+  } catch {
+    return { error: await commonError('supportModeReadOnly') }
+  }
+
+  const parsed = z
+    .object({ examId: z.string().uuid(), studentId: z.string().uuid() })
+    .safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return { error: await commonError('invalidData') }
+
+  try {
+    const exam = await getExam(session.orgId, parsed.data.examId)
+    if (!exam || exam.studentId !== parsed.data.studentId) {
+      return { error: await commonError('invalidData') }
+    }
+    if (!(await canAccessStudent(session, exam.studentId))) {
+      return { error: await commonError('noPermission') }
+    }
+    const [policy, timezone] = await Promise.all([
+      getExamPolicy(session.orgId),
+      getOrgTimezone(session.orgId),
+    ])
+    await upsertQuotaOverride({
+      orgId: session.orgId,
+      studentId: exam.studentId,
+      weekStart: examWeekStart(exam.examDate, timezone),
+      extraLessons: policy.quotaBump,
+      examId: exam.id,
+      createdBy: session.profileId,
+    })
+    revalidatePath(`/students/${exam.studentId}`)
+    return { error: null, success: true }
+  } catch (e) {
+    return { error: t('students.examErrors.updateFailed') }
   }
 }
 

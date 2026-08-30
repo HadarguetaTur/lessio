@@ -32,7 +32,7 @@ export async function requireQuotaCapacity(
   const add = additionalCount ?? 1
 
   if (kind === 'students') {
-    const limit = (plan as Record<string, unknown>).students_quota as number | null
+    const limit = plan.students_quota
     if (limit == null) return
 
     const { count, error } = await db
@@ -47,7 +47,7 @@ export async function requireQuotaCapacity(
     }
   } else {
     // lessons_monthly
-    const limit = (plan as Record<string, unknown>).lessons_monthly_quota as number | null
+    const limit = plan.lessons_monthly_quota
     if (limit == null) return
 
     const { count, error } = await db
@@ -82,8 +82,8 @@ export async function getOrgQuotaUsage(orgId: string): Promise<{
   if (state) {
     const plan = await getSaasPlanById(state.planId)
     if (plan) {
-      studentsLimit = (plan as Record<string, unknown>).students_quota as number | null
-      lessonsLimit = (plan as Record<string, unknown>).lessons_monthly_quota as number | null
+      studentsLimit = plan.students_quota
+      lessonsLimit = plan.lessons_monthly_quota
     }
   }
 

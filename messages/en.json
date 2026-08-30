@@ -12,14 +12,17 @@
         "teacher": "Teacher",
         "availability": "Date & time",
         "confirm": "Confirm"
-      }
+      },
+      "back": "Back to the schedule"
     },
     "teacher": {
       "title": "Which teacher would you like to book with?",
       "subtitle": "After you choose, we'll show the open availability for the coming week.",
       "empty": "No teachers are currently available for booking.",
       "loading": "Loading teachers...",
-      "loadError": "We couldn't load the teachers. Please try again."
+      "loadError": "We couldn't load the teachers. Please try again.",
+      "back": "Back",
+      "forStudent": "For {name}"
     },
     "availability": {
       "back": "Back",
@@ -48,7 +51,9 @@
       "lockTaken": "That time was taken while you were choosing. Please pick another time from the list.",
       "lockedSlot": "We're holding this time for you: {time}",
       "lockedCountdown": "You have {countdown} left to complete the booking",
-      "continue": "Continue to confirmation"
+      "continue": "Continue to confirmation",
+      "quotaReached": "There is already a lesson this week, so another one cannot be booked. You can cancel the existing lesson and book again, or pick a different week.",
+      "quotaReachedWeek": "This week is already fully used under the weekly quota. Move to the next week, or cancel an existing lesson and book again."
     },
     "confirm": {
       "title": "One moment before you confirm",
@@ -66,11 +71,14 @@
         "and": " and ",
         "privacy": "Privacy Policy",
         "suffix": ", and agree to receive WhatsApp messages about this lesson. Reply \"stop\" at any time to opt out."
-      }
+      },
+      "student": "Student",
+      "changeSlot": "Change the time"
     },
     "success": {
       "title": "Your lesson is booked",
-      "whatsappNote": "A confirmation will be sent to you on WhatsApp shortly."
+      "whatsappNote": "A confirmation will be sent to you on WhatsApp shortly.",
+      "viewSchedule": "View the schedule"
     },
     "errors": {
       "lock_expired": {
@@ -93,7 +101,35 @@
         "title": "Something went wrong",
         "body": "We couldn't complete the action right now. Please try again, or contact the center if needed."
       },
-      "restart": "Start over"
+      "restart": "Start over",
+      "no_students": {
+        "title": "No student found",
+        "body": "We could not find an active student linked to you. Please contact the school."
+      },
+      "student_not_owned": {
+        "title": "Something went wrong",
+        "body": "We could not verify who the lesson was for. Please start again."
+      },
+      "lock_student_mismatch": {
+        "title": "That time is held for another student",
+        "body": "The time you held belongs to a different student. Please pick a new time."
+      },
+      "quota_exceeded": {
+        "title": "Weekly quota reached",
+        "body": "There is already a lesson this week, so another one cannot be booked. You can cancel the existing lesson and book again, or pick a different week."
+      },
+      "slot_taken": {
+        "title": "That time was just taken",
+        "body": "Someone else booked this time a moment ago. Please pick another time to continue."
+      },
+      "student_conflict": {
+        "title": "There is already a lesson at that time",
+        "body": "The student already has a lesson at the same time. Please pick another time."
+      }
+    },
+    "student": {
+      "title": "Which child is this lesson for?",
+      "back": "Back"
     }
   },
   "common": {
@@ -257,6 +293,7 @@
     "settingsCancellation": "Cancellation Policy",
     "settingsHolidays": "Holidays",
     "settingsReminders": "Reminders",
+    "settingsExams": "Exam Policy",
     "settingsAiAssistant": "AI Assistant",
     "settingsEmail": "Email",
     "settingsLocale": "Language & Display",
@@ -304,7 +341,8 @@
     "settingsPricing": "Pricing",
     "settingsPrivacy": "Privacy & data",
     "settingsCalendar": "Google Calendar",
-    "support": "Support"
+    "support": "Support",
+    "settingsIntegrations": "Integrations"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -325,6 +363,7 @@
       "lastLesson": "Last lesson: {date}",
       "noLesson": "No lessons yet",
       "allClear": "All clear — nothing needs attention",
+      "nothingYet": "No students yet — once you add students and lessons, anything needing action shows up here",
       "unloggedLessons": "Lessons not logged yet ({count})",
       "pendingBilling": "Billing awaiting approval ({count})",
       "overdueHomework": "Overdue homework ({count})",
@@ -369,6 +408,7 @@
     },
     "setup": {
       "title": "Finish setting up Lessio",
+      "connectNow": "Connect now",
       "items": {
         "whatsapp": "No WhatsApp number connected — automatic messages are not being sent.",
         "ai": "The AI assistant isn't configured — parent messages aren't answered automatically.",
@@ -989,6 +1029,7 @@
     "cancelReasons": {
       "series": "Series cancelled",
       "whatsapp": "Cancelled over WhatsApp",
+      "portal": "Cancelled in the parent portal",
       "teacherDayOff": "Teacher day off"
     },
     "noStudentsFound": "No students found",
@@ -1330,6 +1371,10 @@
         "title": "Cancellation Policy",
         "description": "Cancellation charge rules"
       },
+      "exams": {
+        "title": "Exam Policy",
+        "description": "What happens when a parent or student reports an exam"
+      },
       "holidays": {
         "title": "Holidays",
         "description": "Days with no lessons"
@@ -1363,8 +1408,11 @@
         "description": "Logo, legal name, tax ID and currency"
       },
       "pricing": {
-        "title": "Lesson Pricing",
+        "title": "Pricing",
         "description": "Hourly rate, pair and group prices"
+      },
+      "integrations": {
+        "description": "API keys for connecting Make, n8n and Claude"
       }
     },
     "businessProfile": {
@@ -1386,7 +1434,9 @@
       "currency": "Currency",
       "defaultVatRate": "Default VAT Rate",
       "vatHint": "Applied to new invoices (0–25%)",
-      "saved": "Business profile saved"
+      "saved": "Business profile saved",
+      "enforceWeeklyQuota": "Enforce weekly lesson quota",
+      "enforceWeeklyQuotaHint": "When on, a student cannot book more lessons in a week than the quota set on their card. When off, the quota field is hidden on the student card and no check runs during booking."
     },
     "whatsapp": {
       "title": "WhatsApp",
@@ -1397,6 +1447,8 @@
       "disconnectConfirm": "Disconnect WhatsApp?",
       "portalUrl": "Parent Portal Link",
       "copyPortalUrl": "Copy Link",
+      "tabSettings": "Settings",
+      "tabUsage": "Usage & cost",
       "templates": {
         "title": "Message templates",
         "description": "Lessio registers its message templates on your own WhatsApp Business Account so they can be sent outside the 24-hour window. This runs automatically when you connect — use this to register them again.",
@@ -1430,7 +1482,9 @@
       "apiDetailsLabel": "API credentials",
       "apiDetailsValue": "Encrypted and stored securely",
       "disconnectHint": "Disconnecting stops payment links being created until you reconnect.",
-      "disconnectedHint": "Choose a payment provider and enter its API credentials. They are encrypted before being saved."
+      "disconnectedHint": "Choose a payment provider and enter its API credentials. They are encrypted before being saved.",
+      "savedNotVerified": "Saved — not yet checked",
+      "savedNotVerifiedHint": "Lessio has saved these credentials but has not checked them against the provider yet. The first check happens on your next payment request — if anything is wrong, the parent sees an error."
     },
     "receipts": {
       "title": "Receipt Settings",
@@ -1475,6 +1529,28 @@
       "deleteConfirm": "Delete this holiday?",
       "noHolidays": "No holidays defined"
     },
+    "exams": {
+      "title": "Exam Policy",
+      "subtitle": "What happens when a parent (portal) or student (WhatsApp) reports an upcoming exam",
+      "modeLabel": "Response to an exam report",
+      "modes": {
+        "notify": "Notification only",
+        "notifyHint": "The teacher is notified and decides manually what to do",
+        "approve": "Notification + one-click approval",
+        "approveHint": "The teacher gets a notification with a button to approve extra lessons for the exam week",
+        "auto": "Automatic quota raise",
+        "autoHint": "The weekly quota is raised automatically for the exam week, no manual approval"
+      },
+      "quotaDisabledWarning": "Note: weekly quota enforcement is off for this organization, so the quota bump will have no effect.",
+      "bumpLabel": "Extra lessons for the exam week",
+      "bumpHint": "How many lessons to add to the student's weekly quota during the exam week (1–5)",
+      "boosterLabel": "Offer the parent a booster lesson",
+      "boosterHint": "On every exam report, the parent gets a WhatsApp booking link for a booster lesson",
+      "saved": "Settings saved",
+      "errors": {
+        "saveFailed": "Saving failed. Please try again."
+      }
+    },
     "reminders": {
       "title": "Reminders",
       "lessonReminder": "Lesson reminder",
@@ -1499,7 +1575,9 @@
         "homework_graded": "Homework graded",
         "progress_report": "Progress report (sent from dashboard)"
       },
-      "masterLabel": "Automatic reminders"
+      "masterLabel": "Automatic reminders",
+      "onButNotSending": "On, but nothing is being sent — no WhatsApp number is connected.",
+      "connectWhatsAppLink": "Connect a WhatsApp number"
     },
     "messageTemplates": {
       "title": "WhatsApp templates",
@@ -1616,6 +1694,39 @@
       "onButNotAnswering": "On, but not answering — add an API key",
       "testHint": "Tests the saved configuration — save before testing."
     },
+    "whatsappUsage": {
+      "title": "Bot usage & operating cost",
+      "subtitle": "Figures come straight from Meta and match the billing shown in WhatsApp Manager.",
+      "period30": "30 days",
+      "period60": "60 days",
+      "period90": "90 days",
+      "totalMessages": "Total messages",
+      "billableMessages": "Billable messages",
+      "freeMessages": "Free messages",
+      "totalCost": "Operating cost",
+      "costHint": "Cost is shown in US dollars, exactly as Meta bills it. Service messages inside the 24-hour window are free.",
+      "byCategory": "Breakdown by pricing category",
+      "categories": {
+        "marketing": "Marketing",
+        "utility": "Utility",
+        "service": "Service",
+        "authentication": "Authentication",
+        "unknown": "Other"
+      },
+      "categoryHints": {
+        "marketing": "Promotions and proactive updates",
+        "utility": "Reminders, payment requests and confirmations",
+        "service": "Replies to a parent inside the 24-hour window — free",
+        "authentication": "Parent portal login codes",
+        "unknown": "A category Lessio does not recognise"
+      },
+      "messagesUnit": "messages",
+      "dailyVolume": "Daily volume",
+      "noData": "No messages were sent in this period",
+      "notConnected": "Connect a WhatsApp number to see usage data.",
+      "stale": "Meta is unavailable right now — showing the last saved figures.",
+      "lastUpdated": "Last updated: {time}"
+    },
     "aiUsage": {
       "title": "AI Usage",
       "totalRequests": "Total Requests",
@@ -1727,10 +1838,10 @@
             "placeholder": "e.g. 1000"
           },
           "apiName": {
-            "label": "API Name"
+            "label": "API name"
           },
           "apiPassword": {
-            "label": "API Password"
+            "label": "API password"
           }
         }
       },
@@ -1829,7 +1940,31 @@
           }
         }
       },
-      "setupHint": "You will find these credentials in your payment provider's dashboard."
+      "setupHint": "You will find these credentials in your payment provider's dashboard.",
+      "make": {
+        "label": "Make / n8n (automation)",
+        "description": "Reach your payment processor through a Make or n8n scenario, without paying for direct API access",
+        "setupHint": "In Make: a scenario starting with a Custom webhook, then your processor module, ending with a Webhook response that returns JSON with a url field carrying the payment link. Paste the Custom webhook address here. To close the charge after the parent pays, a second scenario calls POST /api/v1/charges/:id/payments with an API key from Settings → Integrations.",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL",
+            "placeholder": "https://hook.eu2.make.com/xxxxxxxxxxxx",
+            "hint": "The scenario must return the payment link in that same call — not later"
+          }
+        }
+      },
+      "manual_link": {
+        "label": "Fixed payment link",
+        "description": "No payment processor — one static link (Bit, PayBox, a payment page) sent to parents as-is in every payment request",
+        "setupHint": "Note: with a fixed link Lessio cannot tell when a parent has paid, so charges do not close automatically. After a payment arrives, mark the charge as paid on the charges screen.",
+        "fields": {
+          "paymentUrl": {
+            "label": "Payment link",
+            "placeholder": "https://www.bitpay.co.il/app/me/XXXXXXXX",
+            "hint": "Any link works — a personal Bit page, PayBox, a hosted payment page, or any URL parents can pay through"
+          }
+        }
+      }
     },
     "emailActions": {
       "errors": {
@@ -1927,7 +2062,12 @@
       "dateTo": "To"
     },
     "autoSendToggle": {
-      "hint": "Requires a connected payment provider and an active WhatsApp connection."
+      "hint": "Requires a connected payment provider and an active WhatsApp connection.",
+      "blockedTitle": "Cannot be turned on yet — missing:",
+      "missingProvider": "A payment provider.",
+      "missingProviderHere": "Set one up in the form above.",
+      "missingWhatsApp": "A connected WhatsApp number.",
+      "missingWhatsAppLink": "Connect a WhatsApp number"
     },
     "dataRetention": {
       "label": "Activity data retention period",
@@ -1961,6 +2101,7 @@
     "receiptMode": {
       "question": "Who issues your invoices?",
       "intro": "This decides whether Lessio issues a document itself. Getting it wrong means two invoices for the same payment.",
+      "currentlyNone": "Right now: no receipts are issued through Lessio. Until you choose, no document is sent to parents.",
       "external": {
         "title": "An invoicing service",
         "description": "Green Invoice, iCount or Sumit. Lessio issues the document and sends it to the parent."
@@ -2062,7 +2203,58 @@
       "customHint": "Custom lessons have no default — the price is set on each lesson.",
       "saved": "Lesson pricing saved"
     },
-    "subtitle": "All your business settings in one place"
+    "subtitle": "All your business settings in one place",
+    "integrations": {
+      "pageTitle": "Integrations",
+      "pageSubtitle": "Connect Lessio to Make, n8n or Claude with an API key",
+      "keysTitle": "API keys",
+      "keysEmpty": "No keys yet. Create one to connect an automation tool.",
+      "revoke": "Revoke",
+      "revokeConfirm": "Revoke the key \"{name}\"? Any automation using it stops working immediately. This cannot be undone.",
+      "form": {
+        "nameLabel": "Key name",
+        "namePlaceholder": "e.g. Make payment scenario",
+        "nameHint": "For your reference only. Name it after whatever will use it.",
+        "scopesLabel": "Permissions",
+        "submit": "Create key"
+      },
+      "scopes": {
+        "read": "Read students, lessons, parents and charges",
+        "write": "Create and update records, including marking a charge paid",
+        "messagesSend": "Send WhatsApp messages from your business number"
+      },
+      "reveal": {
+        "title": "Key \"{name}\" created",
+        "warning": "This is the only time the key is shown. Copy it now — it cannot be recovered later.",
+        "copy": "Copy",
+        "copied": "Copied"
+      },
+      "table": {
+        "name": "Name",
+        "key": "Key",
+        "scopes": "Permissions",
+        "lastUsed": "Last used",
+        "never": "Never used"
+      },
+      "docs": {
+        "title": "How to connect",
+        "baseUrlLabel": "Base URL",
+        "authLabel": "Auth header",
+        "testLabel": "Quick test",
+        "rateLimit": "Limit: 120 requests per minute per key.",
+        "paymentLink": "Set up payments through Make or n8n"
+      },
+      "activityTitle": "Recent activity",
+      "activitySubtitle": "The last 20 API calls. Useful for debugging a scenario.",
+      "activityEmpty": "No calls received yet.",
+      "errors": {
+        "nameRequired": "Enter a name for the key",
+        "nameTooLong": "That key name is too long",
+        "scopeRequired": "Select at least one permission",
+        "createFailed": "Could not create the key. Try again.",
+        "revokeFailed": "Could not revoke the key. Try again."
+      }
+    }
   },
   "quota": {
     "exceeded": "Plan Quota Reached",
@@ -2929,7 +3121,9 @@
       "title": "Something went wrong",
       "body": "We couldn't load this page. Please try again — if it keeps happening, contact the school.",
       "retry": "Try again",
-      "backToLogin": "Back to sign-in"
+      "backToLogin": "Back to sign-in",
+      "offlineTitle": "No internet connection",
+      "offlineBody": "The connection dropped. Anything you typed was saved — try again once you are back online."
     },
     "gdpr": {
       "requestDeletion": "Request data deletion (GDPR)",
@@ -2946,8 +3140,34 @@
       "home": "Home",
       "schedule": "Schedule",
       "homework": "Homework",
+      "exams": "Exams",
       "progress": "Progress",
       "messages": "Messages"
+    },
+    "exams": {
+      "title": "Exams",
+      "listTitle": "Reported exams",
+      "empty": "No exams yet",
+      "statusReported": "Awaiting score",
+      "form": {
+        "title": "Report an exam",
+        "subjectPlaceholder": "Subject (Math, English...)",
+        "titlePlaceholder": "Exam topic",
+        "descriptionPlaceholder": "Description / extra details (optional)",
+        "examDate": "Exam date",
+        "upload": "Attach a file (up to {maxMb}MB, optional)",
+        "submit": "Send report",
+        "submitting": "Sending...",
+        "success": "Report sent! The teacher has been notified."
+      },
+      "errors": {
+        "unauthorized": "Not authorized. Try logging in again.",
+        "notAllowedForStudent": "You are not allowed to report for this student.",
+        "invalidInput": "Some details are missing or invalid.",
+        "fileTooLarge": "The file is too large (10MB max).",
+        "unsupportedFileType": "Unsupported file type.",
+        "submitFailed": "Failed to send the report. Please try again."
+      }
     },
     "login": {
       "title": "Portal sign-in",
@@ -2971,14 +3191,16 @@
       "errors": {
         "invalidPhone": "Invalid phone number",
         "tooManyAttempts": "Too many attempts. Please try again later.",
-        "noAccount": "No account is linked to this number. Please contact the school.",
-        "serviceUnavailable": "Sign-in is unavailable right now. Please contact the school.",
+        "noAccount": "No account is linked to this number at {org}. Contact them and ask to be added.",
+        "serviceUnavailable": "Signing in to {org}'s portal is unavailable right now. Please contact them directly.",
         "sendFailed": "Failed to send the code. Please try again.",
         "invalidCode": "Invalid code — must be 6 digits",
         "wrongCode": "Wrong or expired code. Go back and request a new one.",
         "generic": "Something went wrong — please try again",
-        "consentRequired": "Please accept the terms and messaging consent to receive a code."
-      }
+        "consentRequired": "Please accept the terms and messaging consent to receive a code.",
+        "unauthorized": "Your session has expired. Please sign in again."
+      },
+      "resendCode": "Did not get a code? Send it again"
     },
     "home": {
       "greeting": "Hello, {name}",
@@ -2988,7 +3210,8 @@
       "viewAll": "All",
       "noUpcoming": "No scheduled lessons",
       "goalsTitle": "Learning goals",
-      "paymentHistory": "Payment history"
+      "paymentHistory": "Payment history",
+      "goalTarget": "Target: {date}"
     },
     "schedule": {
       "title": "Lesson schedule",
@@ -3007,15 +3230,18 @@
       "cancel": {
         "trigger": "Cancel",
         "title": "Cancel lesson",
-        "confirmBody": "Cancel <b>{name}</b>'s lesson on {date}?",
-        "warning": "Cancelling may incur a charge according to the cancellation policy.",
+        "confirmBody": "Cancel <b>{name}</b>'s lesson on {date} at <b>{time}</b>?",
+        "noCharge": "Cancelling now is free of charge.",
+        "chargeAmount": "Cancelling now will be charged {amount} under the cancellation policy.",
+        "chargeUnknown": "Cancelling now incurs a charge. The school will confirm the amount.",
         "close": "Close",
         "back": "Back",
         "cancelling": "Cancelling...",
-        "confirm": "Confirm cancellation"
+        "confirm": "Confirm cancellation",
+        "signIn": "Sign in"
       },
       "errors": {
-        "unauthorized": "Not authorised",
+        "unauthorized": "Your session has expired. Sign in again to continue.",
         "already_cancelled": "This lesson is already cancelled",
         "not_eligible": "This lesson can't be cancelled",
         "not_found": "Lesson not found",
@@ -3034,12 +3260,19 @@
       "paid": "Paid",
       "partiallyPaid": "Paid {paid} of {total}",
       "receipt": "Receipt",
+      "noPaymentLink": "No payment link has been sent yet. Contact {org} to settle it.",
       "chargeType": {
         "lesson": "Lesson",
         "cancellation": "Cancellation",
         "manual": "Manual",
         "monthly": "Monthly"
-      }
+      },
+      "back": "Back to home",
+      "overdueBy": "{days} days overdue",
+      "dueOn": "Due {date}",
+      "forMonth": "Monthly bill — {month}",
+      "waived": "Written off",
+      "voided": "Voided"
     },
     "homework": {
       "title": "Homework",
@@ -3077,18 +3310,22 @@
       "emptyBody": "Send the teacher a message to start a conversation",
       "threadEmpty": "No messages yet. Send the teacher a message.",
       "inputPlaceholder": "Write a message...",
+      "send": "Send message",
+      "backToList": "Back to messages",
+      "charCount": "{count} of {max} characters",
       "errors": {
         "empty": "Message is empty",
         "tooLong": "Message is too long (up to {max} characters)",
         "unauthorized": "Not authorized",
         "sendFailed": "Failed to send the message"
-      }
+      },
+      "noMessagesYet": "No messages yet — start a conversation"
     },
     "progress": {
       "title": "Progress",
       "noStudents": "No linked students",
       "periodDays": "{days} days",
-      "monthSummary": "This month: {lessons} lessons, {homework} assignments completed",
+      "monthSummary": "Last {days} days: {lessons} lessons, {homework} tasks completed",
       "attendance": "Attendance",
       "attendanceOf": "{attended} of {total} lessons",
       "homeworkTitle": "Homework",
@@ -3101,6 +3338,10 @@
         "achieved": "Achieved",
         "abandoned": "Abandoned"
       }
+    },
+    "serviceUnavailable": {
+      "unavailableTitle": "This portal is not available right now",
+      "unavailableBody": "The parent portal is inactive at the moment. For scheduling, cancellations or any question, please contact your teacher directly."
     }
   },
   "saas": {
@@ -3200,7 +3441,9 @@
       },
       "ownerOnly": "Only the business owner can view this page.",
       "legacyNoSubscription": "No platform subscription record (org created before SaaS plans). You can keep using the product as usual."
-    }
+    },
+    "pastDueBanner": "The last payment did not go through. You have {days} days to update your payment method before the account becomes read-only.",
+    "cancelledBanner": "The subscription is cancelled. Your data is kept and can be viewed and exported, but not edited."
   },
   "onboarding": {
     "errors": {
@@ -3280,6 +3523,8 @@
     "complete": {
       "title": "All Set!",
       "subtitle": "Your system is ready to use. Here's a summary of what you've set up:",
+      "titlePartial": "The basics are in place",
+      "subtitlePartial": "Your account is open. To start working you still need teachers, students and pricing — the dashboard will show you what is missing.",
       "goToDashboard": "Go to Dashboard",
       "loading": "Loading dashboard...",
       "stats": {
@@ -3961,6 +4206,11 @@
         "subject": "Subject",
         "score": "Score"
       },
+      "reportedByParent": "Reported by parent",
+      "reportedByStudent": "Reported by student",
+      "attachment": "Attachment",
+      "approveBump": "Approve exam-week quota bump",
+      "bumpApproved": "✓ Quota bump approved",
       "form": {
         "createTitle": "New exam",
         "editTitle": "Edit exam",
@@ -4058,6 +4308,8 @@
     "daysAgo": "{n}d ago",
     "dayOffRequested": "🏖️ Day-off request — {teacher}",
     "dayOffRequestedBody": "{range} · {count} lessons scheduled",
+    "examReported": "📄 Exam reported — {student}",
+    "examReportedBody": "{subject} · {title} · {date}",
     "dayOffApproved": "Your day-off request was approved ✅",
     "dayOffRejected": "Your day-off request was declined",
     "supportTicketReply": "Support replied to your request",
@@ -4163,7 +4415,9 @@
     "duplicateStudents": "The same student was picked more than once",
     "customPriceRequired": "A custom lesson needs a price per student",
     "noLessonPrice": "No price is set for this lesson",
-    "invalidPhone": "The phone number must be in international format, e.g. +972501234567"
+    "invalidPhone": "The phone number must be in international format, e.g. +972501234567",
+    "webhookUrlInvalid": "Enter a valid webhook URL",
+    "paymentUrlInvalid": "Enter a valid payment link URL"
   },
   "receipts": {
     "customer": "Customer",

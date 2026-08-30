@@ -229,7 +229,10 @@ export async function getParentConversationSummaries(
     })
   }
 
-  return summaries
+  // Most recent conversation first, threads with no messages last — otherwise
+  // the order is whatever `relationships` happened to return, which changes
+  // under the parent between visits.
+  return summaries.sort((a, b) => (b.lastMessageAt || '').localeCompare(a.lastMessageAt || ''))
 }
 
 /**

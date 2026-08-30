@@ -52,13 +52,15 @@ export default async function PortalMessagesPage({
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">{summary.studentName}</p>
-                  {summary.lastMessage && (
-                    <p className="text-xs text-muted-foreground mt-1 truncate">
-                      {summary.lastMessage.length > 60
+                  {/* A row that is only a name says nothing about whether there
+                      is anything behind it. */}
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    {summary.lastMessage
+                      ? summary.lastMessage.length > 60
                         ? summary.lastMessage.slice(0, 60) + '…'
-                        : summary.lastMessage}
-                    </p>
-                  )}
+                        : summary.lastMessage
+                      : t('noMessagesYet')}
+                  </p>
                 </div>
                 <div className="shrink-0 flex items-center gap-2">
                   {summary.unreadCount > 0 && (

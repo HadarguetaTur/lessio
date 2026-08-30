@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Plus } from 'lucide-react'
 import { PortalCancelDialog } from './PortalCancelDialog'
+import type { CancelPreview } from './PortalCancelDialog'
 import type { CancelLessonResult } from '@/app/portal/[orgId]/schedule/actions'
 
 type ScheduleLesson = {
@@ -17,6 +18,9 @@ type ScheduleLesson = {
   dateLabel: string
   timeLabel: string
   dayKey: string
+  /** Future, and inside the self-service cancellation window. */
+  cancellable: boolean
+  cancelPreview: CancelPreview | null
 }
 
 interface Props {
@@ -37,6 +41,7 @@ const STATUS_CLASS: Record<string, string> = {
 export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: Props) {
   const t = useTranslations('portal.schedule')
   const [view, setView] = useState<'upcoming' | 'history'>('upcoming')
+  const [cancelTarget, setCancelTarget] = useState<ScheduleLesson | null>(null)
   const lessons = view === 'upcoming' ? upcoming : history
 
   // Group by day
@@ -68,6 +73,18 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
           {t('history')}
         </button>
       </div>
+
+      {/* Book CTA. Above the list, not below it: at the bottom it sat under
+          eight lesson cards, and /book has no other entry point. */}
+      {view === 'upcoming' && (
+        <Link
+          href={`/portal/${orgId}/book`}
+          className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
+        >
+          <Plus size={16} aria-hidden />
+          {t('bookNew')}
+        </Link>
+      )}
 
       {/* Lesson list */}
       {lessons.length === 0 ? (
@@ -103,13 +120,13 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
                         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border ${STATUS_CLASS[statusKey]}`}>
                           {t(`status.${statusKey}`)}
                         </span>
-                        {view === 'upcoming' && lesson.status === 'scheduled' && (
-                          <PortalCancelDialog
-                            lessonId={lesson.id}
-                            studentName={lesson.studentName}
-                            lessonDate={lesson.dateLabel}
-                            cancelAction={cancelAction}
-                          />
+                        {view === 'upcoming' && lesson.cancellable && (
+                          <button
+                            onClick={() => setCancelTarget(lesson)}
+                            className="min-h-11 px-3 -my-2 text-xs font-semibold text-red-600 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+                          >
+                            {t('cancel.trigger')}
+                          </button>
                         )}
                       </div>
                     </div>
@@ -121,16 +138,14 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
         </div>
       )}
 
-      {/* Book CTA */}
-      {view === 'upcoming' && (
-        <Link
-          href={`/portal/${orgId}/book`}
-          className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
-        >
-          <Plus size={16} />
-          {t('bookNew')}
-        </Link>
-      )}
+      {/* One dialog for the whole list — see PortalCancelDialog for why. */}
+      <PortalCancelDialog
+        target={cancelTarget}
+        orgId={orgId}
+        onClose={() => setCancelTarget(null)}
+        cancelAction={cancelAction}
+      />
+
     </div>
   )
 }

@@ -18,6 +18,13 @@ vi.mock('@/lib/organizations/pricing', () => ({
   getOrgPricing: vi.fn(),
 }))
 
+// Charge creation resolves a due date, which needs the org's timezone. Mocked
+// rather than added to every `from()` fixture below — the tests here are about
+// amounts and idempotency, not about which zone the org keeps.
+vi.mock('@/lib/organizations', () => ({
+  getOrgTimezone: vi.fn().mockResolvedValue('Asia/Jerusalem'),
+}))
+
 import { createCancellationCharge, createLessonCharge } from './createCharge'
 import { resolveBillingParent, MissingPrimaryParentError } from './resolveBillingParent'
 import { getOrgPricing } from '@/lib/organizations/pricing'

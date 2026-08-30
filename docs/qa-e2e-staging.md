@@ -1,7 +1,4 @@
-# LESSIO — E2E Scenario QA on Staging (Sprint 6)
-
-**Tickets:** DEV-109, DEV-110
-**Sprint:** 6 — Production Readiness
+# LESSIO — E2E Scenario QA on Staging
 
 All 6 scenarios must be executed on the **staging** environment, not locally.
 Local verification is insufficient for release approval (Decision #24).

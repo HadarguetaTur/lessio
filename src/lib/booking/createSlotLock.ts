@@ -12,6 +12,7 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
 
 export class SlotUnavailableError extends Error {
   constructor() {
@@ -46,6 +47,29 @@ export async function createSlotLock({
   studentId,
 }: CreateSlotLockParams): Promise<SlotLock> {
   const db = createServiceRoleClient()
+
+  // Fail fast when the student has already used up the week — no point holding
+  // a slot they cannot confirm.
+  if (studentId) {
+    await assertWeeklyQuotaNotExceeded({
+      studentId,
+      organizationId,
+      slotStartUtc: startAt,
+    })
+  }
+
+  // Retire this teacher's expired locks first. The unique partial index keys on
+  // (teacher_id, start_at) WHERE status = 'active' and ignores expires_at, so an
+  // abandoned lock — nothing marks a lock expired unless the parent explicitly
+  // backs out — would otherwise block that exact slot forever: the calendar
+  // keeps offering it (its filter does respect expires_at) while every attempt
+  // to lock it fails.
+  await db
+    .from('slot_locks')
+    .update({ status: 'expired' })
+    .eq('teacher_id', teacherId)
+    .eq('status', 'active')
+    .lte('expires_at', new Date().toISOString())
 
   // Re-validate availability immediately before inserting the lock
   const isAvailable = await checkSlotAvailable(db, teacherId, startAt, endAt)

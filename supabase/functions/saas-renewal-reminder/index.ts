@@ -61,7 +61,7 @@ Deno.serve(async (_req) => {
         .from('notification_log')
         .select('id')
         .eq('organization_id', orgId)
-        .eq('notification_type', 'saas_renewal_reminder')
+        .eq('type', 'saas_renewal_reminder')
         .eq('entity_id', dedupKey)
         .maybeSingle()
 
@@ -133,7 +133,7 @@ Deno.serve(async (_req) => {
       // ── 7. Log notification (dedup) ────────────────────────────────────────
       await db.from('notification_log').insert({
         organization_id: orgId,
-        notification_type: 'saas_renewal_reminder',
+        type: 'saas_renewal_reminder',
         entity_id: dedupKey,
         status: 'sent',
       })
@@ -147,7 +147,7 @@ Deno.serve(async (_req) => {
       // Log failure for observability (non-fatal)
       await db.from('notification_log').insert({
         organization_id: orgId,
-        notification_type: 'saas_renewal_reminder',
+        type: 'saas_renewal_reminder',
         entity_id: `saas_renewal_reminder:${sub.id}:${sub.current_period_end?.slice(0, 10)}`,
         status: 'failed',
         error_message: msg.slice(0, 500),

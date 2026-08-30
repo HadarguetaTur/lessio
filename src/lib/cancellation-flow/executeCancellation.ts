@@ -9,14 +9,21 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { calculateCancellationCharge } from '@/lib/billing/calculateCancellationCharge'
 import { createCancellationCharge } from '@/lib/billing/createCharge'
 import type { CancellationChargeResult } from '@/lib/billing/calculateCancellationCharge'
 import { getOrgPricing } from '@/lib/organizations/pricing'
-import { resolveLessonBaseAmount, isMissingPrice } from '@/lib/billing/lessonPricing'
-import type { LessonType } from '@/lib/lessons/types'
+import { getCancellationPolicyServiceRole } from '@/lib/cancellation-policy/service'
+import { previewCancellationCharge, isCancellableByParent } from './previewCancellationCharge'
 
 export type CancellationError = 'already_cancelled' | 'not_eligible' | 'not_found'
+
+/** Where the cancellation came from — recorded on the lesson. */
+export type CancellationSource = 'whatsapp' | 'portal'
+
+const CANCEL_REASON: Record<CancellationSource, string> = {
+  whatsapp: 'CANCELLED_VIA_WHATSAPP',
+  portal: 'CANCELLED_VIA_PORTAL',
+}
 
 export interface ExecuteCancellationResult {
   success: true
@@ -40,7 +47,8 @@ export type ExecuteCancellationOutcome = ExecuteCancellationResult | ExecuteCanc
 export async function executeCancellation(
   lessonId: string,
   parentId: string,
-  orgId: string
+  orgId: string,
+  source: CancellationSource = 'whatsapp'
 ): Promise<ExecuteCancellationOutcome> {
   const db = createServiceRoleClient()
   const now = new Date()
@@ -80,17 +88,46 @@ export async function executeCancellation(
 
   if (!rel) return { success: false, error: 'not_eligible' }
 
-  // 5. Revalidate: still within 7-day window and in the future
-  const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-  const lessonStart = new Date(lesson.start_at)
-  if (lessonStart <= now || lessonStart > sevenDaysLater) {
+  // 5. Revalidate: still within the self-service window and in the future
+  if (!isCancellableByParent(lesson.start_at, now)) {
     return { success: false, error: 'not_eligible' }
   }
 
-  // 6. Cancel the lesson
+  // 6. Price the cancellation BEFORE cancelling.
+  // These reads can fail — a missing pricing row, a network blip. If they ran
+  // after the update, a throw here would leave the lesson cancelled with no
+  // charge, and the parent's retry would get `already_cancelled`: the lesson is
+  // gone and nobody is billed for it.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const teacher = (lesson.teachers as any) as { id: string; hourly_rate: number | null; profiles: { full_name: string } }
+  const studentName = lessonStudents[0]?.students.full_name ?? '—'
+
+  const [pricing, policy] = await Promise.all([
+    getOrgPricing(orgId),
+    getCancellationPolicyServiceRole(orgId),
+  ])
+
+  const chargeResult = previewCancellationCharge(
+    {
+      start_at: lesson.start_at,
+      end_at: lesson.end_at,
+      lesson_type: lesson.lesson_type as string | null,
+      price_per_student: (lesson.price_per_student as number | null) ?? null,
+      teacherHourlyRate: teacher?.hourly_rate ?? null,
+    },
+    now,
+    pricing,
+    policy
+  )
+
+  // 7. Cancel the lesson
   const { error: cancelError } = await db
     .from('lessons')
-    .update({ status: 'cancelled', cancel_reason: 'CANCELLED_VIA_WHATSAPP', updated_at: now.toISOString() })
+    .update({
+      status: 'cancelled',
+      cancel_reason: CANCEL_REASON[source],
+      updated_at: now.toISOString(),
+    })
     .eq('id', lessonId)
     .eq('organization_id', orgId)
 
@@ -98,41 +135,7 @@ export async function executeCancellation(
     throw new Error(`[executeCancellation] Failed to cancel lesson: ${cancelError.message}`)
   }
 
-  // 7. Fetch cancellation policy (service-role, not auth client)
-  const { data: policy } = await db
-    .from('cancellation_policies')
-    .select('id, notice_hours_full, notice_hours_partial, partial_charge_percent')
-    .eq('organization_id', orgId)
-    .maybeSingle()
-
-  // 8. Calculate charge — reuse Sprint 3 function, never reimplement
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const teacher = (lesson.teachers as any) as { id: string; hourly_rate: number | null; profiles: { full_name: string } }
-  const studentName = lessonStudents[0]?.students.full_name ?? '—'
-
-  const pricing = await getOrgPricing(orgId)
-  const baseAmount = resolveLessonBaseAmount(
-    {
-      lessonType: ((lesson.lesson_type as LessonType) ?? 'individual'),
-      pricePerStudent: (lesson.price_per_student as number | null) ?? null,
-      durationMinutes:
-        (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / (1000 * 60),
-      teacherHourlyRate: teacher?.hourly_rate ?? null,
-    },
-    pricing
-  )
-
-  const chargeResult = calculateCancellationCharge(
-    {
-      start_at: lesson.start_at,
-      end_at: lesson.end_at,
-      baseAmount: isMissingPrice(baseAmount) ? null : baseAmount,
-    },
-    now,
-    policy ?? null
-  )
-
-  // 9. Create charge record if applicable
+  // 8. Create charge record if applicable
   if (chargeResult.shouldCharge && chargeResult.amount > 0) {
     await createCancellationCharge(lessonId, orgId, parentId, chargeResult)
   }

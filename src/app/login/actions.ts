@@ -18,10 +18,12 @@ function detectLocale(acceptLanguage: string | null): 'he' | 'en' {
   return 'en'
 }
 
+export type SignInState = { error: string; email: string }
+
 export async function signIn(
-  _prevState: { error: string } | null,
+  _prevState: SignInState | null,
   formData: FormData
-): Promise<{ error: string }> {
+): Promise<SignInState> {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
@@ -30,7 +32,9 @@ export async function signIn(
 
   if (error) {
     const t = await getTranslations('auth.errors')
-    return { error: t('invalidCredentials') }
+    // The email comes back so the form can restore it. Wiping both fields on a
+    // typo in one of them makes every retry start from scratch.
+    return { error: t('invalidCredentials'), email }
   }
 
   // Sync locale: use saved preference if present, otherwise detect from Accept-Language

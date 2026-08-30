@@ -22,11 +22,22 @@ export interface WhatsAppMessage {
    */
   replyId?: string
   /**
-   * Set when the sender sent something we cannot act on (image, audio,
-   * document, sticker, location, contacts…). `text` is empty in that case. The
-   * webhook answers with a short "text only" notice instead of silence.
+   * Set when the sender sent something we cannot act on (audio, sticker,
+   * location, contacts…). `text` is empty in that case. The webhook answers
+   * with a short "text only" notice instead of silence.
    */
   unsupportedType?: string
+  /**
+   * Set for an inbound image or document. `text` carries the caption (may be
+   * empty). Only the exam-report flow consumes media today; everywhere else a
+   * media message still gets the unsupported-media notice from the webhook.
+   */
+  media?: {
+    id: string
+    mimeType: string
+    fileName?: string
+    kind: 'image' | 'document'
+  }
   /** Display phone number of the receiving business WhatsApp line */
   businessPhoneNumber: string
   /** Meta phone_number_id of the receiving business line */
@@ -48,6 +59,18 @@ const MetaMessageSchema = z.object({
     .optional(),
   // Reply to a quick-reply button on an approved template.
   button: z.object({ payload: z.string().optional(), text: z.string().optional() }).optional(),
+  // Inbound media — only image/document are consumed (exam-report flow).
+  image: z
+    .object({ id: z.string().min(1), mime_type: z.string().min(1), caption: z.string().optional() })
+    .optional(),
+  document: z
+    .object({
+      id: z.string().min(1),
+      mime_type: z.string().min(1),
+      filename: z.string().optional(),
+      caption: z.string().optional(),
+    })
+    .optional(),
 })
 
 /** The `value` of a `messages` change. Validated per-change, not payload-wide. */
@@ -201,9 +224,28 @@ export function parseTemplateStatusUpdates(body: unknown): TemplateStatusUpdate[
  */
 function extractContent(
   msg: z.infer<typeof MetaMessageSchema>
-): { text: string; replyId?: string } | null {
+): { text: string; replyId?: string; media?: WhatsAppMessage['media'] } | null {
   if (msg.type === 'text' && msg.text) {
     return { text: msg.text.body }
+  }
+
+  if (msg.type === 'image' && msg.image) {
+    return {
+      text: msg.image.caption ?? '',
+      media: { id: msg.image.id, mimeType: msg.image.mime_type, kind: 'image' },
+    }
+  }
+
+  if (msg.type === 'document' && msg.document) {
+    return {
+      text: msg.document.caption ?? '',
+      media: {
+        id: msg.document.id,
+        mimeType: msg.document.mime_type,
+        fileName: msg.document.filename,
+        kind: 'document',
+      },
+    }
   }
 
   if (msg.type === 'interactive' && msg.interactive) {

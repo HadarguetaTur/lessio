@@ -73,12 +73,22 @@ Deno.serve(async (_req) => {
     // Fetch org WhatsApp config
     const { data: org } = await db
       .from('organizations')
-      .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale, reminders_enabled')
+      .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale, reminders_enabled, service_state')
       .eq('id', orgId)
       .single()
 
     if (!org?.whatsapp_access_token || !org?.whatsapp_phone_number_id) {
       console.warn('[homework-sender] No WhatsApp config for org', { org_id: orgId })
+      continue
+    }
+
+    // Platform billing: a lapsed studio stops sending. See
+    // organizations.service_state (migration 20260829140100).
+    if (org.service_state !== 'active') {
+      console.info('[homework-sender] Org not in service — skipping', {
+        org_id: orgId,
+        service_state: org.service_state,
+      })
       continue
     }
 
@@ -191,11 +201,17 @@ function resolveParentLocale(assignment: any): string | null {
   return null
 }
 
+/**
+ * Both columns, always. `sent` gates the parent portal's homework list and
+ * `sent_at` is the timestamp shown to the teacher; writing one without the
+ * other leaves the two halves of the same fact disagreeing. The mirror of this
+ * write lives in src/lib/homework/sendHomework.ts.
+ */
 // deno-lint-ignore no-explicit-any
 async function markSent(db: any, assignmentId: string): Promise<void> {
   const { error } = await db
     .from('homework_assignments')
-    .update({ sent: true })
+    .update({ sent: true, sent_at: new Date().toISOString() })
     .eq('id', assignmentId)
 
   if (error) {

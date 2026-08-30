@@ -6,6 +6,13 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { formatTime, formatDate } from '@/lib/lessons'
 import { parseAppLocale } from '@/lib/i18n/locale'
+import { formatCurrency } from '@/lib/i18n/formatCurrency'
+import { getOrgPricing } from '@/lib/organizations/pricing'
+import { getCancellationPolicyServiceRole } from '@/lib/cancellation-policy/service'
+import {
+  previewCancellationCharge,
+  isCancellableByParent,
+} from '@/lib/cancellation-flow/previewCancellationCharge'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
 import { PortalScheduleView } from '@/components/portal/PortalScheduleView'
 import { cancelLessonAction } from './actions'
@@ -29,7 +36,8 @@ export default async function PortalSchedulePage({
     getTranslations('portal.schedule'),
   ])
   const appLocale = parseAppLocale(locale)
-  const now = new Date().toISOString()
+  const nowDate = new Date()
+  const now = nowDate.toISOString()
 
   // Get parent's students
   const { data: relationships } = await db
@@ -62,16 +70,19 @@ export default async function PortalSchedulePage({
     start_at: string
     end_at: string
     status: string
-    teachers: { profiles: { full_name: string } }
+    lesson_type?: string | null
+    price_per_student?: number | null
+    teachers: { hourly_rate?: number | null; profiles: { full_name: string } }
     lesson_students: Array<{ student_id: string; students: { full_name: string } }>
   }
 
-  // Fetch upcoming lessons (scheduled, from now)
+  // Upcoming carries the pricing inputs so the cancel dialog can quote a real
+  // amount before the parent commits. History does not need them.
   const { data: upcomingRaw } = await db
     .from('lessons')
     .select(`
-      id, start_at, end_at, status,
-      teachers ( profiles ( full_name ) ),
+      id, start_at, end_at, status, lesson_type, price_per_student,
+      teachers ( hourly_rate, profiles ( full_name ) ),
       lesson_students!inner ( student_id, students ( full_name ) )
     `)
     .eq('organization_id', orgId)
@@ -80,6 +91,14 @@ export default async function PortalSchedulePage({
     .in('lesson_students.student_id', studentIds)
     .order('start_at', { ascending: true })
     .limit(50)
+
+  // Both reads are org-level, so one fetch covers every lesson on the page.
+  // They sit after the no-students early return so an empty portal pays for
+  // neither.
+  const [pricing, policy] = await Promise.all([
+    getOrgPricing(orgId),
+    getCancellationPolicyServiceRole(orgId),
+  ])
 
   // Fetch history (completed/cancelled/no_show, past)
   const { data: historyRaw } = await db
@@ -96,24 +115,59 @@ export default async function PortalSchedulePage({
     .order('start_at', { ascending: false })
     .limit(50)
 
-  function mapLesson(raw: unknown) {
+  function mapLesson(raw: unknown, withCancelPreview = false) {
     const row = raw as unknown as LessonRow
     const dateStr = new Date(row.start_at).toLocaleDateString('sv-SE', { timeZone: timezone })
+    const cancellable = withCancelPreview && isCancellableByParent(row.start_at, nowDate)
+
+    // The preview is resolved here, in the server component, and only its
+    // outcome crosses to the client. PortalScheduleView is a client component,
+    // so anything on `row` would land in the RSC payload — including the
+    // teacher's hourly_rate, which the parent must never see.
+    let cancelPreview = null
+    if (cancellable) {
+      const result = previewCancellationCharge(
+        {
+          start_at: row.start_at,
+          end_at: row.end_at,
+          lesson_type: row.lesson_type ?? null,
+          price_per_student: row.price_per_student ?? null,
+          teacherHourlyRate: row.teachers?.hourly_rate ?? null,
+        },
+        nowDate,
+        pricing,
+        policy
+      )
+      // `missing_rate` means "chargeable but unpriceable" — showing it as ₪0
+      // would promise a free cancellation the school still has to bill for.
+      const unknownAmount = result.shouldCharge && result.amount <= 0
+      cancelPreview = {
+        willCharge: result.shouldCharge,
+        unknownAmount,
+        amountLabel:
+          result.shouldCharge && !unknownAmount
+            ? formatCurrency(result.amount, appLocale, 2)
+            : null,
+      }
+    }
+
     return {
       id: row.id,
       startAt: row.start_at,
       endAt: row.end_at,
       status: row.status,
       studentName: row.lesson_students?.[0]?.students?.full_name ?? '',
-      teacherName: (row.teachers as unknown as { profiles: { full_name: string } })?.profiles?.full_name ?? '',
+      teacherName: row.teachers?.profiles?.full_name ?? '',
       dateLabel: formatDate(row.start_at, timezone, appLocale),
       timeLabel: `${formatTime(row.start_at, timezone, appLocale)}–${formatTime(row.end_at, timezone, appLocale)}`,
       dayKey: dateStr,
+      cancellable,
+      cancelPreview,
     }
   }
 
-  const upcoming = (upcomingRaw ?? []).map(mapLesson)
-  const history = (historyRaw ?? []).map(mapLesson)
+  const upcoming = (upcomingRaw ?? []).map((r) => mapLesson(r, true))
+  const history = (historyRaw ?? []).map((r) => mapLesson(r))
 
   const boundCancel = cancelLessonAction.bind(null, orgId)
 

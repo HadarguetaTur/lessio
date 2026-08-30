@@ -3,7 +3,9 @@ import { logChargeAudit } from '@/lib/charges/audit'
 import { resolveBillingParent, MissingPrimaryParentError } from './resolveBillingParent'
 import type { CancellationChargeResult } from './calculateCancellationCharge'
 import { getOrgPricing } from '@/lib/organizations/pricing'
+import { getOrgTimezone } from '@/lib/organizations'
 import { resolveLessonBaseAmount, isMissingPrice } from './lessonPricing'
+import { resolveChargeDueDate } from './chargeDueDate'
 import type { LessonType } from '@/lib/lessons/types'
 
 export type ChargeAlert = {
@@ -91,6 +93,10 @@ export async function createLessonCharge(
   let firstAlert: ChargeAlert | null = null
   let chargedCount = 0
 
+  // Hoisted: one query for the whole lesson, not one per student.
+  const timezone = await getOrgTimezone(organizationId)
+  const dueDate = resolveChargeDueDate({ chargeType: 'lesson', issuedAt: new Date(), timezone })
+
   for (const { student_id: studentId } of lessonStudents) {
     let parentId: string
     try {
@@ -113,6 +119,7 @@ export async function createLessonCharge(
         amount,
         charge_type: 'lesson',
         status: 'pending',
+        due_date: dueDate,
       })
       .select('id')
       .single()
@@ -161,6 +168,7 @@ export async function createCancellationCharge(
   if (!chargeResult.shouldCharge || chargeResult.amount === 0) return null
 
   const supabase = createServiceRoleClient()
+  const timezone = await getOrgTimezone(organizationId)
 
   const { data: inserted, error } = await supabase
     .from('charges')
@@ -171,6 +179,11 @@ export async function createCancellationCharge(
       amount: chargeResult.amount,
       charge_type: 'cancellation',
       status: 'pending',
+      due_date: resolveChargeDueDate({
+        chargeType: 'cancellation',
+        issuedAt: new Date(),
+        timezone,
+      }),
     })
     .select('id')
     .single()

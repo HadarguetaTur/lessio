@@ -14,6 +14,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { reportError } from '@/lib/telemetry/reportError'
+import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getSupportSession } from '@/lib/support-session'
 
 export const runtime = 'nodejs'
 
@@ -53,6 +56,43 @@ function isRateLimited(key: string): boolean {
   return recent.length > RATE_LIMIT_MAX
 }
 
+/**
+ * Which org was looking at the broken page — best effort, never blocking.
+ *
+ * The route stays unauthenticated (see the contract above), but a report that
+ * cannot name an org is a report nobody can act on: every client-side row
+ * landed with `organization_id = null`, so the admin feed showed "0 orgs" for
+ * real customer-facing failures, and the blast-radius rule in
+ * src/lib/telemetry/threshold.ts — 3 events across 2 orgs — could never fire
+ * for a browser error. An anonymous visitor still reports as null.
+ */
+async function resolveOrganizationId(): Promise<string | null> {
+  try {
+    // Support mode first, exactly like getSession(): a superadmin inspecting an
+    // org is seeing that org's page, not their own (they have no org at all).
+    const support = await getSupportSession()
+    if (support) return support.targetOrgId
+
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const { data } = await createServiceRoleClient()
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    return (data?.organization_id as string | null) ?? null
+  } catch {
+    // Same contract as the rest of this route: a failure to attribute must
+    // never cost us the report itself.
+    return null
+  }
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
@@ -71,6 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await reportError({
       ...parsed.data,
       source: 'client',
+      organizationId: await resolveOrganizationId(),
       userAgent: request.headers.get('user-agent'),
     })
   } catch {

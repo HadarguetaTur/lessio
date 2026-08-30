@@ -4,6 +4,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import { TopBar } from '@/components/dashboard/TopBar'
+import { SectionTabs } from '@/components/dashboard/SectionTabs'
 import { MobileAdminQuickSheet } from '@/components/dashboard/MobileAdminQuickSheet'
 import { SupportPanelProvider } from '@/components/dashboard/support/SupportPanelProvider'
 import { SupportLauncher } from '@/components/dashboard/support/SupportLauncher'
@@ -45,7 +46,10 @@ export default async function DashboardLayout({
   const supportSession = await getSupportSession()
 
   if (supportSession) {
-    const saasFeaturesSupport = await getNavigationSaasFeatures(supportSession.targetOrgId)
+    const [saasFeaturesSupport, teacherCountSupport] = await Promise.all([
+      getNavigationSaasFeatures(supportSession.targetOrgId),
+      getActiveTeacherCount(supportSession.targetOrgId),
+    ])
     const db = createServiceRoleClient()
     const { data: org } = await db
       .from('organizations')
@@ -90,6 +94,11 @@ export default async function DashboardLayout({
                   saasFeatures={saasFeaturesSupport}
                 />
               }
+            />
+            <SectionTabs
+              userRole="owner"
+              saasFeatures={saasFeaturesSupport}
+              teacherCount={teacherCountSupport}
             />
             <div
               dir={dir}
@@ -226,6 +235,11 @@ export default async function DashboardLayout({
               teacherCount={teacherCount}
             />
           }
+        />
+        <SectionTabs
+          userRole={profile?.role ?? 'owner'}
+          saasFeatures={saasFeatures}
+          teacherCount={teacherCount}
         />
         <div
           dir={dir}

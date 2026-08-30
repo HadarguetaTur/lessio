@@ -152,11 +152,21 @@ export function StudentsTable({
           {students.map((student) => {
             const badge = getStudentStatusBadge(student.status, t)
             return (
-              <button
+              // A div with button semantics, not a <button>: the ⋯ actions menu
+              // renders inside the card, and a button may not contain a button
+              // (React 19 warns and it breaks hydration).
+              <div
                 key={student.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => handleRowClick(student)}
-                className="rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/20"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleRowClick(student)
+                  }
+                }}
+                className="cursor-pointer rounded-xl border border-border bg-card p-3 text-start shadow-sm transition-colors hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -194,7 +204,7 @@ export function StudentsTable({
                     ) : null}
                   </div>
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>

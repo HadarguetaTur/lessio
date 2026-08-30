@@ -8,26 +8,19 @@ import {
   LayoutDashboard,
   GraduationCap,
   Users,
-  UserRound,
-  BookOpen,
   ClipboardList,
-  Receipt,
   Settings,
   LogOut,
-  UserPlus,
   CalendarDays,
   MessageSquare,
-  CreditCard,
   Clock,
   CalendarX,
   Plus,
   BarChart2,
   ChevronDown,
-  Banknote,
-  Wallet,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
-import { SETTINGS_NAV, filterNav, isNavActive } from '@/lib/navigation/registry'
+import { CATEGORIES, categoryFor, filterNav, isNavActive } from '@/lib/navigation/registry'
 import type { SaasFeatures } from '@/lib/saas/types'
 import {
   DropdownMenu,
@@ -194,11 +187,6 @@ function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathnam
   )
 }
 
-function hasSaasNav(features: SaasFeatures | undefined, key: keyof SaasFeatures): boolean {
-  if (!features) return true
-  return features[key]
-}
-
 interface SidebarProps {
   userName: string
   userRole: string
@@ -223,46 +211,15 @@ export function Sidebar({
   const isTeacher = userRole === 'teacher'
   const soloTeacher = teacherCount !== undefined && teacherCount <= 1
 
-  // Six things a tutor navigates between, not twenty-nine. Reports are filed
-  // under the subject they report on — she thinks "how are my students doing",
-  // not "let me open the reports folder". Teachers only exists once there is
-  // more than one, so a solo tutor never sees a section about staff.
-  const studentsGroup: NavItem[] = [
-    { href: '/students',         label: t('students'),        icon: GraduationCap, roles: ['owner', 'admin', 'teacher'] },
-    { href: '/parents',          label: t('parents'),         icon: Users,         roles: ['owner', 'admin', 'teacher'] },
-    { href: '/leads',            label: t('leads'),           icon: UserPlus,      roles: ['owner', 'admin'] },
-    { href: '/reports/students', label: t('reportsStudents'), icon: BarChart2,     roles: ['owner', 'admin'] },
-  ]
-
-  const lessonsGroup: NavItem[] = [
-    { href: '/lessons',         label: t('lessons'),        icon: BookOpen,      roles: ['owner', 'admin'] },
-    { href: '/homework',        label: t('homework'),       icon: ClipboardList, roles: ['owner', 'admin', 'teacher'] },
-    { href: '/reports/lessons', label: t('reportsLessons'), icon: BarChart2,     roles: ['owner', 'admin'] },
-  ]
-
-  const moneyGroup: NavItem[] = [
-    { href: '/charges',         label: t('charges'),        icon: Receipt,    roles: ['owner', 'admin'] },
-    { href: '/billing',         label: t('billing'),        icon: Banknote,   roles: ['owner', 'admin'] },
-    { href: '/billing/debts',   label: t('debts'),          icon: Wallet,     roles: ['owner', 'admin'] },
-    { href: '/subscriptions',   label: t('subscriptions'),  icon: CreditCard, roles: ['owner', 'admin'] },
-    { href: '/reports/revenue', label: t('reportsRevenue'), icon: BarChart2,  roles: ['owner', 'admin'] },
-    { href: '/reports/debt',    label: t('reportsDebt'),    icon: BarChart2,  roles: ['owner', 'admin'] },
-  ]
-
-  const teachersGroup: NavItem[] = [
-    { href: '/teachers',                    label: t('teachers'),                  icon: UserRound, roles: ['owner', 'admin'] },
-    { href: '/reports/teachers',            label: t('reportsTeachers'),           icon: BarChart2, roles: ['owner', 'admin'] },
-    { href: '/reports/teacher-performance', label: t('reportsTeacherPerformance'), icon: BarChart2, roles: ['owner', 'admin'] },
-  ]
-
-  // Settings comes from the shared registry — the sidebar used to keep its own
-  // copy and had silently fallen three pages behind the /settings hub.
-  const settingsItems: NavItem[] = filterNav(SETTINGS_NAV, userRole, saasFeatures).map(
-    ({ href, navKey, icon }) => ({
-      href,
-      label: t(navKey as Parameters<typeof t>[0]),
-      icon,
-    })
+  // Eight flat rows, not four folders: the category rows land on their main
+  // page, and once there the tab strip (SectionTabs) shows the siblings — so
+  // the sidebar never needs sub-items. Teachers only exists once there is more
+  // than one, so a solo tutor never sees a row about staff.
+  const activeCategory = isTeacher ? null : categoryFor(pathname)
+  const categories = CATEGORIES.filter(
+    (c) =>
+      !(c.id === 'teachers' && soloTeacher) &&
+      filterNav(c.items, userRole, saasFeatures).length > 0
   )
 
   const teacherItems: NavItem[] = [
@@ -277,26 +234,6 @@ export function Sidebar({
     { href: '/teacher/overrides',        label: t('teacherOverrides'),        icon: CalendarX,    roles: ['teacher'] },
     { href: '/teacher/calendar-connect', label: t('teacherCalendarConnect'),  icon: CalendarDays, roles: ['teacher'] },
   ]
-
-  /** Role, plan gate and solo-tutor mode, applied in one place per group. */
-  const visible = (items: NavItem[]) =>
-    items
-      .filter(({ roles }) => !roles || roles.includes(userRole))
-      .filter(({ href }) => {
-        if (href === '/leads') return hasSaasNav(saasFeatures, 'leads')
-        if (href === '/homework') return hasSaasNav(saasFeatures, 'homework')
-        if (href === '/reports/revenue') return true
-        if (href.startsWith('/reports/')) return hasSaasNav(saasFeatures, 'full_reports')
-        return true
-      })
-
-  const visibleStudents = visible(studentsGroup)
-  const visibleLessons = visible(lessonsGroup)
-  const visibleMoney = visible(moneyGroup)
-  // One teacher means every "which teacher?" has a single answer, so the whole
-  // section — and the reports that compare teachers — is noise.
-  const visibleTeachers = soloTeacher ? [] : visible(teachersGroup)
-
 
   return (
     <aside
@@ -333,7 +270,8 @@ export function Sidebar({
           </div>
         )}
 
-        {/* Owner/admin: six sections, each a place rather than a page. */}
+        {/* Owner/admin: eight flat rows — each category row lands on its main
+            page, where the tab strip takes over. */}
         {!isTeacher && (
           <div className="space-y-0.5">
             <NavLink
@@ -343,42 +281,37 @@ export function Sidebar({
               active={pathname === '/dashboard'}
             />
 
-            <CollapsibleSection
-              label={t('sections.students')}
-              icon={GraduationCap}
-              items={visibleStudents}
-              userRole={userRole}
-              pathname={pathname}
-            />
-            <CollapsibleSection
-              label={t('sections.lessons')}
-              icon={BookOpen}
-              items={visibleLessons}
-              userRole={userRole}
-              pathname={pathname}
-            />
-            <CollapsibleSection
-              label={t('sections.money')}
-              icon={Banknote}
-              items={visibleMoney}
-              userRole={userRole}
-              pathname={pathname}
-            />
-            {visibleTeachers.length > 0 && (
-              <CollapsibleSection
-                label={t('sections.teachers')}
-                icon={UserRound}
-                items={visibleTeachers}
-                userRole={userRole}
-                pathname={pathname}
+            {categories.map((category) => (
+              <NavLink
+                key={category.id}
+                href={category.landing}
+                label={t(category.sectionKey as Parameters<typeof t>[0])}
+                icon={category.icon}
+                active={activeCategory?.id === category.id}
               />
-            )}
+            ))}
 
+            <NavLink
+              href="/reports"
+              label={t('sections.reports')}
+              icon={BarChart2}
+              active={pathname === '/reports'}
+            />
             <NavLink
               href="/messages"
               label={t('messages')}
               icon={MessageSquare}
               active={pathname === '/messages' || pathname.startsWith('/messages/')}
+            />
+            <NavLink
+              href="/settings"
+              label={t('sections.settings')}
+              icon={Settings}
+              active={
+                pathname === '/settings' ||
+                pathname.startsWith('/settings/') ||
+                pathname === '/account/billing'
+              }
             />
           </div>
         )}
@@ -400,20 +333,6 @@ export function Sidebar({
           </div>
         )}
 
-        {/* Collapsible: Settings */}
-        {!isTeacher && (
-          <div className="pt-1">
-            <CollapsibleSection
-              label={t('sections.settings')}
-              icon={Settings}
-              href="/settings"
-              items={settingsItems}
-              userRole={userRole}
-              pathname={pathname}
-              defaultOpen={false}
-            />
-          </div>
-        )}
       </nav>
 
       {/* User area */}

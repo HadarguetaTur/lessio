@@ -19,10 +19,10 @@
  * Translation stays with the consumer: entries carry keys, never strings, so a
  * server component can use getTranslations() and a client one useTranslations().
  *
- * Not here on purpose: the sidebar's own six top-level groups (students,
- * lessons, money, teachers) and the whole teacher sub-shell. Their labels are
- * role-dependent ("My students" vs "Students"), so a flat href→key registry
- * would lose information. See src/components/dashboard/Sidebar.tsx.
+ * The owner sidebar's four categories live here too (CATEGORIES, below): the
+ * flat sidebar rows and each page's tab strip render from the same list. The
+ * teacher sub-shell stays out — its labels are role-worded ("My students") and
+ * it keeps its own flat list in src/components/dashboard/Sidebar.tsx.
  */
 
 import type { LucideIcon } from 'lucide-react'
@@ -451,6 +451,84 @@ const ALL_ROUTES: NavEntry[] = [...MAIN_NAV, ...SETTINGS_NAV, ...REPORTS_NAV, ..
 
 const ROUTE_BY_HREF = new Map(ALL_ROUTES.map((e) => [e.href, e]))
 
+/**
+ * The owner sidebar's four categories, and the tab strip inside each one.
+ *
+ * A category is a *view* over existing entries — items are references into
+ * MAIN_NAV / REPORTS_NAV by href, so roles and plan gating stay defined in
+ * exactly one place. The strip renders these as plain links: no URL changes,
+ * and "tab in a strip" always means "a distinct pathname" (which is why the
+ * students page's internal קבוצות tab is not listed here).
+ */
+export type CategoryId = 'students' | 'lessons' | 'money' | 'teachers'
+
+export interface NavCategory {
+  id: CategoryId
+  /** Key under `nav`, e.g. 'sections.students' — sidebar label, strip aria-label, breadcrumb section. */
+  sectionKey: string
+  icon: LucideIcon
+  /** Where the sidebar row lands, and the breadcrumb section href. Always ungated. */
+  landing: string
+  items: NavEntry[]
+}
+
+function entryOf(href: string): NavEntry {
+  const entry = ROUTE_BY_HREF.get(href)
+  if (!entry) throw new Error(`[navigation] category references unknown route: ${href}`)
+  return entry
+}
+
+export const CATEGORIES: NavCategory[] = [
+  {
+    id: 'students',
+    sectionKey: 'sections.students',
+    icon: GraduationCap,
+    landing: '/students',
+    items: ['/students', '/parents', '/leads', '/reports/students'].map(entryOf),
+  },
+  {
+    id: 'lessons',
+    sectionKey: 'sections.lessons',
+    icon: BookOpen,
+    landing: '/lessons',
+    items: ['/lessons', '/homework', '/reports/lessons'].map(entryOf),
+  },
+  {
+    id: 'money',
+    sectionKey: 'sections.money',
+    icon: Banknote,
+    landing: '/charges',
+    items: ['/charges', '/billing', '/billing/debts', '/subscriptions', '/reports/revenue', '/reports/debt'].map(entryOf),
+  },
+  {
+    id: 'teachers',
+    sectionKey: 'sections.teachers',
+    icon: UserRound,
+    landing: '/teachers',
+    items: ['/teachers', '/reports/teachers', '/reports/teacher-performance'].map(entryOf),
+  },
+]
+
+/**
+ * Which category a pathname belongs to. An exact item match wins; otherwise
+ * the longest item prefix (so /billing/debts is money via its own entry, and
+ * /students/<id> is students via the /students prefix). Null for /dashboard,
+ * /messages, /settings/*, the /reports hub, teacher routes, and anything
+ * unknown.
+ */
+export function categoryFor(pathname: string): NavCategory | null {
+  let best: { category: NavCategory; length: number } | null = null
+  for (const category of CATEGORIES) {
+    for (const item of category.items) {
+      if (pathname === item.href) return category
+      if (pathname.startsWith(item.href + '/') && (!best || item.href.length > best.length)) {
+        best = { category, length: item.href.length }
+      }
+    }
+  }
+  return best?.category ?? null
+}
+
 export interface Breadcrumb {
   sectionKey: string | null
   sectionHref: string | null
@@ -479,9 +557,20 @@ export function resolveBreadcrumb(pathname: string): Breadcrumb {
 
   const exact = ROUTE_BY_HREF.get(pathname)
   if (exact) {
+    // A category beats a path-prefix hub: /reports/students reads
+    // "תלמידים ‹ דוח תלמידים", not "דוחות ‹ דוח תלמידים". A category's own
+    // landing page shows no section — "תלמידים ‹ תלמידים" says nothing.
+    const category = categoryFor(pathname)
+    if (category && category.landing !== pathname) {
+      return {
+        sectionKey: category.sectionKey,
+        sectionHref: category.landing,
+        pageKey: exact.navKey,
+      }
+    }
     return {
-      sectionKey: section?.navKey ?? null,
-      sectionHref: section?.href ?? null,
+      sectionKey: category ? null : (section?.navKey ?? null),
+      sectionHref: category ? null : (section?.href ?? null),
       pageKey: exact.navKey,
     }
   }

@@ -4,11 +4,14 @@ import {
   REPORTS_NAV,
   MAIN_NAV,
   SEARCHABLE_PAGES,
+  CATEGORIES,
+  categoryFor,
   filterNav,
   matchPages,
   resolveBreadcrumb,
   isNavActive,
 } from './registry'
+import heMessages from '../../../messages/he.json'
 
 describe('registry shape', () => {
   it('has no duplicate hrefs across the whole registry', () => {
@@ -230,5 +233,81 @@ describe('matchPages', () => {
 
   it('returns nothing for a query that matches no page', () => {
     expect(matchPages('zzzqqq', SEARCHABLE_PAGES, heTitle)).toEqual([])
+  })
+})
+
+describe('categories', () => {
+  it('covers every working page exactly once (dashboard, messages and support stay out)', () => {
+    const inCategories = CATEGORIES.flatMap((c) => c.items.map((i) => i.href))
+    expect(new Set(inCategories).size).toBe(inCategories.length)
+
+    const expected = [
+      ...MAIN_NAV.map((e) => e.href).filter(
+        (h) => !['/dashboard', '/messages', '/support'].includes(h)
+      ),
+      ...REPORTS_NAV.map((e) => e.href),
+    ]
+    expect(new Set(inCategories)).toEqual(new Set(expected))
+  })
+
+  it('lands every category on an ungated owner+admin page', () => {
+    for (const category of CATEGORIES) {
+      const landing = category.items.find((i) => i.href === category.landing)
+      expect(landing, category.id).toBeDefined()
+      expect(landing?.saasFeature, category.id).toBeUndefined()
+      for (const role of ['owner', 'admin'] as const) {
+        expect(filterNav([landing!], role).length, `${category.id}/${role}`).toBe(1)
+      }
+    }
+  })
+
+  it('maps each item href back to its own category', () => {
+    for (const category of CATEGORIES) {
+      for (const item of category.items) {
+        expect(categoryFor(item.href)?.id, item.href).toBe(category.id)
+      }
+    }
+  })
+
+  it('resolves nested and ambiguous paths by the longest match', () => {
+    expect(categoryFor('/parents')?.id).toBe('students')
+    // /billing/debts has its own entry — it must not fall into /billing's prefix.
+    expect(categoryFor('/billing/debts')?.id).toBe('money')
+    expect(categoryFor('/students/abc-123')?.id).toBe('students')
+    expect(categoryFor('/reports/teacher-performance')?.id).toBe('teachers')
+  })
+
+  it('claims nothing outside the four categories', () => {
+    for (const path of ['/dashboard', '/messages', '/settings', '/settings/whatsapp', '/reports', '/teacher/schedule', '/support']) {
+      expect(categoryFor(path), path).toBeNull()
+    }
+  })
+
+  it('gives sibling pages a category breadcrumb, and the landing page none', () => {
+    expect(resolveBreadcrumb('/parents')).toEqual({
+      sectionKey: 'sections.students',
+      sectionHref: '/students',
+      pageKey: 'parents',
+    })
+    // A category beats the /reports hub for report pages.
+    expect(resolveBreadcrumb('/reports/students')).toEqual({
+      sectionKey: 'sections.students',
+      sectionHref: '/students',
+      pageKey: 'reportsStudents',
+    })
+    expect(resolveBreadcrumb('/billing/debts').sectionKey).toBe('sections.money')
+    // "תלמידים ‹ תלמידים" says nothing — landings carry no section.
+    expect(resolveBreadcrumb('/students').sectionKey).toBeNull()
+    // Settings pages keep their hub breadcrumb exactly as before.
+    expect(resolveBreadcrumb('/settings/reminders').sectionKey).toBe('sections.settings')
+  })
+
+  it('shows no two identical Hebrew labels inside one tab strip', () => {
+    const nav = heMessages.nav as Record<string, unknown>
+    for (const category of CATEGORIES) {
+      const labels = category.items.map((i) => nav[i.navKey])
+      expect(labels.every((l) => typeof l === 'string'), category.id).toBe(true)
+      expect(new Set(labels).size, `${category.id}: ${labels.join(' | ')}`).toBe(labels.length)
+    }
   })
 })

@@ -27,7 +27,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth/actions'
-import { SETTINGS_NAV, filterNav } from '@/lib/navigation/registry'
+import { SETTINGS_NAV, filterNav, isNavActive } from '@/lib/navigation/registry'
 import type { SaasFeatures } from '@/lib/saas/types'
 import {
   DropdownMenu,
@@ -104,11 +104,10 @@ function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathnam
   // The section's own index page counts as active too, so landing on /settings
   // from the label link (or a breadcrumb) leaves the group open rather than
   // collapsing under you.
+  const sectionHrefs = visibleItems.map(({ href: itemHref }) => itemHref)
   const isAnyActive =
-    (href ? pathname === href || pathname.startsWith(href + '/') : false) ||
-    visibleItems.some(
-      ({ href: itemHref }) => pathname === itemHref || pathname.startsWith(itemHref + '/')
-    )
+    (href ? isNavActive(pathname, href, sectionHrefs) : false) ||
+    visibleItems.some(({ href: itemHref }) => isNavActive(pathname, itemHref, sectionHrefs))
   // Open follows the active route unless the user has said otherwise for this
   // route. Without the reset, opening /charges from a link elsewhere left the
   // section collapsed and you could not see where you were.
@@ -184,7 +183,7 @@ function CollapsibleSection({ label, icon: SectionIcon, items, userRole, pathnam
       >
         <div className="overflow-hidden pt-0.5 space-y-0.5 pe-2">
           {visibleItems.map(({ href, label: itemLabel, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(href + '/')
+            const active = isNavActive(pathname, href, visibleItems.map(({ href: itemHref }) => itemHref))
             return (
               <NavLink key={href} href={href} label={itemLabel} icon={Icon} active={active} indent />
             )
@@ -328,7 +327,7 @@ export function Sidebar({
               {t('teacherSection')}
             </p>
             {teacherItems.filter(({ roles }) => !roles || roles.includes(userRole)).map(({ href, label, icon: Icon }) => {
-              const active = pathname === href || pathname.startsWith(href + '/')
+              const active = isNavActive(pathname, href, teacherItems.map(({ href: itemHref }) => itemHref))
               return <NavLink key={href} href={href} label={label} icon={Icon} active={active} />
             })}
           </div>

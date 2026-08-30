@@ -412,6 +412,23 @@ export function filterNav(
   })
 }
 
+export function isNavActive(
+  pathname: string,
+  href: string,
+  siblingHrefs: string[] = []
+): boolean {
+  if (pathname === href) return true
+
+  if (!pathname.startsWith(href + '/')) return false
+
+  const deeperMatch = siblingHrefs
+    .filter((candidate) => candidate !== href)
+    .find((candidate) => pathname === candidate || pathname.startsWith(candidate + '/'))
+
+  if (!deeperMatch) return true
+  return deeperMatch.length <= href.length
+}
+
 const ALL_ROUTES: NavEntry[] = [...MAIN_NAV, ...SETTINGS_NAV, ...REPORTS_NAV]
 
 const ROUTE_BY_HREF = new Map(ALL_ROUTES.map((e) => [e.href, e]))

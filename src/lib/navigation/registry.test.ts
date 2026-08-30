@@ -7,6 +7,7 @@ import {
   filterNav,
   matchPages,
   resolveBreadcrumb,
+  isNavActive,
 } from './registry'
 
 describe('registry shape', () => {
@@ -73,6 +74,15 @@ describe('filterNav', () => {
 
   it('treats undefined features as "show everything"', () => {
     expect(filterNav(MAIN_NAV, 'owner')).toHaveLength(MAIN_NAV.length)
+  })
+})
+
+describe('isNavActive', () => {
+  it('does not mark a parent nav item active when a deeper sibling is selected', () => {
+    const hrefs = ['/billing', '/billing/debts', '/reports/revenue', '/reports/debt']
+    expect(isNavActive('/billing/debts', '/billing', hrefs)).toBe(false)
+    expect(isNavActive('/billing/debts', '/billing/debts', hrefs)).toBe(true)
+    expect(isNavActive('/reports/debt', '/reports/revenue', hrefs)).toBe(false)
   })
 })
 

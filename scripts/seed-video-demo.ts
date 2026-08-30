@@ -32,25 +32,37 @@ import { resolve } from 'path'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { DateTime } from 'luxon'
 import { buildStudentMonth } from '../src/lib/billing/monthly/buildStudentMonth'
+import { ROSTER, activeLocale } from './video-demo-roster'
 import { isMissingFieldsError } from '../src/lib/billing/monthly/types'
 
 loadEnvLocal()
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 
-const OWNER_EMAIL = 'video-owner@demo.getlessio.com'
-const OWNER_NAME = 'רונית כהן'
-const ORG_NAME = 'סטודיו מיכל למוזיקה'
-const ORG_SLUG = 'studio-michal-video-demo'
+/**
+ * VIDEO_DEMO_LOCALE=en builds the English twin instead: same structure, same
+ * counts, same dates, same amounts — only the strings differ. The marketing
+ * video is shot twice against these two tenants, and the capture pipeline
+ * relies on them being isomorphic.
+ */
+const LANG = activeLocale()
+const R = ROSTER[LANG]
+
+const OWNER_EMAIL =
+  LANG === 'en' ? 'video-owner-en@demo.getlessio.com' : 'video-owner@demo.getlessio.com'
+const OWNER_NAME = R.ownerName
+const ORG_NAME = R.orgName
+const ORG_SLUG = R.orgSlug
 const TIMEZONE = 'Asia/Jerusalem'
 
 const WEEKS_BACK = 12
 const WEEKS_FORWARD = 3
 const BILLING_MONTHS = 4
 
-// ── Fixed UUIDs (valid v4 shape, recognizable d3000000 prefix) ────────────────
+// ── Fixed UUIDs (d3000000 = Hebrew tenant, d4000000 = its English twin) ───────
 
-const uid = (suffix: string): string => `d3000000-0000-4000-8000-${suffix}`
+const UID_PREFIX = LANG === 'en' ? 'd4000000' : 'd3000000'
+const uid = (suffix: string): string => `${UID_PREFIX}-0000-4000-8000-${suffix}`
 
 const ORG_ID = uid('000000000000')
 const SHOWCASE_LESSON_ID = uid('000000000003')
@@ -66,69 +78,19 @@ const lessonId = (student: number, week: number): string =>
 
 // ── Roster ────────────────────────────────────────────────────────────────────
 
-type TeacherSeed = { email: string; name: string; subject: string; rate: number }
-
 /**
- * Teacher 0 is מיכל — the name that appears in the WhatsApp mockups under
- * video-assets, so the chat and the dashboard agree.
- */
-const TEACHERS: TeacherSeed[] = [
-  { email: 'michal@demo.getlessio.com', name: 'מיכל אברמוב', subject: 'פסנתר', rate: 240 },
-  { email: 'yonatan@demo.getlessio.com', name: 'יונתן שגב', subject: 'גיטרה', rate: 200 },
-  { email: 'dana@demo.getlessio.com', name: 'דנה אלמוג', subject: 'כינור', rate: 220 },
-]
-
-type ParentSeed = { name: string; phone: string; email: string }
-type StudentSeed = { name: string; grade: string; parent: number; subject: string; level: string }
-
-/**
+ * The roster lives in scripts/video-demo-roster.ts so the Hebrew tenant and its
+ * English twin stay isomorphic — same counts, same parent->student mapping,
+ * same order. Teacher 0 and student 0 are the pair the WhatsApp mockups follow,
+ * so the chat and the dashboard always agree.
+ *
  * Phone numbers are deliberately unallocated (05X-000-01NN). Nothing here ever
- * sends — the org has no WhatsApp connection and every parent seeds opted out —
- * but these numbers also appear on screen in the screenshots, so they must not
- * belong to a real person.
+ * sends, but the numbers appear on screen, so they must not belong to a real
+ * person.
  */
-const PARENTS: ParentSeed[] = [
-  { name: 'יעל לוי', phone: '+972500000101', email: 'yael.levi@example.com' },
-  { name: 'אבי מזרחי', phone: '+972500000102', email: 'avi.mizrahi@example.com' },
-  { name: 'שירה פרידמן', phone: '+972500000103', email: 'shira.friedman@example.com' },
-  { name: 'תומר גולן', phone: '+972500000104', email: 'tomer.golan@example.com' },
-  { name: 'נטלי ברקוביץ', phone: '+972500000105', email: 'natali.b@example.com' },
-  { name: 'עומר שרון', phone: '+972500000106', email: 'omer.sharon@example.com' },
-  { name: 'הילה נחום', phone: '+972500000107', email: 'hila.nahum@example.com' },
-  { name: 'דניאל אשכנזי', phone: '+972500000108', email: 'daniel.a@example.com' },
-  { name: 'מאיה רוזן', phone: '+972500000109', email: 'maya.rozen@example.com' },
-  { name: 'אלון כרמי', phone: '+972500000110', email: 'alon.carmi@example.com' },
-  { name: 'רותם ביטון', phone: '+972500000111', email: 'rotem.biton@example.com' },
-  { name: 'ליאור דגן', phone: '+972500000112', email: 'lior.dagan@example.com' },
-  { name: 'סיון אלבז', phone: '+972500000113', email: 'sivan.elbaz@example.com' },
-  { name: 'גיא הרשקוביץ', phone: '+972500000114', email: 'guy.h@example.com' },
-]
-
-/**
- * Student order matters: index 0 is נועה לוי, the student cancelled in the
- * video-1 WhatsApp mockup. `floor(index / 6)` picks the teacher and `index % 6`
- * the weekday, which is what keeps the schedule free of teacher overlaps.
- */
-const STUDENTS: StudentSeed[] = [
-  { name: 'נועה לוי', grade: 'כיתה ז', parent: 0, subject: 'פסנתר', level: 'מתקדם' },
-  { name: 'איתי מזרחי', grade: 'כיתה ה', parent: 1, subject: 'פסנתר', level: 'מתחילים' },
-  { name: 'רוני פרידמן', grade: 'כיתה ט', parent: 2, subject: 'פסנתר', level: 'מתקדם' },
-  { name: 'עדי גולן', grade: 'כיתה ו', parent: 3, subject: 'פסנתר', level: 'ביניים' },
-  { name: 'יהלי ברקוביץ', grade: 'כיתה ד', parent: 4, subject: 'פסנתר', level: 'מתחילים' },
-  { name: 'שקד שרון', grade: 'כיתה ח', parent: 5, subject: 'פסנתר', level: 'ביניים' },
-  { name: 'אורי נחום', grade: 'כיתה י', parent: 6, subject: 'גיטרה', level: 'מתקדם' },
-  { name: 'טל אשכנזי', grade: 'כיתה ז', parent: 7, subject: 'גיטרה', level: 'ביניים' },
-  { name: 'ליבי רוזן', grade: 'כיתה ה', parent: 8, subject: 'גיטרה', level: 'מתחילים' },
-  { name: 'אורין כרמי', grade: 'כיתה יא', parent: 9, subject: 'גיטרה', level: 'מתקדם' },
-  { name: 'עמית ביטון', grade: 'כיתה ו', parent: 10, subject: 'גיטרה', level: 'ביניים' },
-  { name: 'יובל לוי', grade: 'כיתה ד', parent: 0, subject: 'גיטרה', level: 'מתחילים' },
-  { name: 'מיכאלה דגן', grade: 'כיתה ט', parent: 11, subject: 'כינור', level: 'מתקדם' },
-  { name: 'נועם אלבז', grade: 'כיתה ח', parent: 12, subject: 'כינור', level: 'ביניים' },
-  { name: 'אלה הרשקוביץ', grade: 'כיתה ז', parent: 13, subject: 'כינור', level: 'ביניים' },
-  { name: 'רותם מזרחי', grade: 'כיתה יב', parent: 1, subject: 'כינור', level: 'מתקדם' },
-  { name: 'שירה כרמי', grade: 'כיתה ה', parent: 9, subject: 'כינור', level: 'מתחילים' },
-  { name: 'איה נחום', grade: 'כיתה ו', parent: 6, subject: 'כינור', level: 'מתחילים' },
-]
+const TEACHERS = R.teachers
+const PARENTS = R.parents
+const STUDENTS = R.students
 
 /** Students on a flat monthly plan; the rest are billed per lesson. */
 const SUBSCRIBED_STUDENTS = [0, 3, 6, 9, 12, 15]
@@ -263,7 +225,7 @@ async function main(): Promise<void> {
         slug: ORG_SLUG,
         timezone: TIMEZONE,
         currency: 'ILS',
-        default_locale: 'he',
+        default_locale: R.defaultLocale,
         billing_mode: 'monthly',
         group_pricing_mode: 'per_student',
         break_duration_minutes: 0,
@@ -613,18 +575,7 @@ async function main(): Promise<void> {
 
   // ── 11. Homework, lesson notes, learning goals ─────────────────────────────
   console.log('\n▸ פדגוגיה')
-  const HOMEWORK = [
-    { title: 'סולם דו מז\'ור — שתי ידיים', body: 'לתרגל את הסולם עולה ויורד, שתי אוקטבות, בקצב איטי עם מטרונום על 60.', status: 'done', due: -6 },
-    { title: 'אטיוד מס\' 4 — צ\'רני', body: 'תיבות 1–16. לשים לב לאצבוע ביד שמאל בתיבה 9.', status: 'done', due: -3 },
-    { title: 'שיר חופשי לבחירה', body: 'לבחור שיר אהוב ולנסות למצוא את המנגינה באוזן. נעבוד עליו יחד בשיעור.', status: 'pending', due: 2 },
-    { title: 'אקורדים בסיסיים — Am, C, G', body: 'מעברים בין שלושת האקורדים, 5 דקות ביום. לצלם סרטון קצר אם אפשר.', status: 'overdue', due: -2 },
-    { title: 'קצב 4/4 — תרגילי פריטה', body: 'תבנית פריטה למטה-למטה-למעלה, לחזור 20 פעם בלי לעצור.', status: 'pending', due: 3 },
-    { title: 'תיאוריה: מרווחים', body: 'דף העבודה על מרווחים — שאלות 1 עד 12.', status: 'done', due: -5 },
-    { title: 'ויברטו — תרגול יומי', body: 'חמש דקות ויברטו על מיתר לה, יד רפויה. בלי קשת בהתחלה.', status: 'pending', due: 4 },
-    { title: 'קטע לנשף — חזרה', body: 'לנגן את הקטע מתחילתו ועד סופו שלוש פעמים ביום ללא עצירות.', status: 'done', due: -8 },
-    { title: 'האזנה: קונצ\'רטו לכינור', body: 'להאזין לפרק הראשון ולכתוב שתי שורות על מה שאהבתם.', status: 'pending', due: 5 },
-    { title: 'קריאת תווים — דף 12', body: 'קריאה ראשונה (prima vista) של שני הקטעים בדף.', status: 'overdue', due: -1 },
-  ]
+  const HOMEWORK = R.homework
   for (const [i, hw] of HOMEWORK.entries()) {
     const student = i % STUDENTS.length
     await expectOk(
@@ -658,9 +609,7 @@ async function main(): Promise<void> {
           note: n === 0 ? 'תרגלתי כל יום, היד השמאלית עדיין קצת תקועה' : 'סיימתי את הדף, שאלה 9 הייתה קשה',
           score: n === 0 ? 94 : 81,
           feedback:
-            n === 0
-              ? 'עבודה יפה מאוד! הקצב יציב. בשבוע הבא נעלה את המטרונום ל-72.'
-              : 'יפה. כדאי לחזור על ההגדרה של מרווח שלישית לפני השיעור הבא.',
+            n === 0 ? R.feedback[0] : R.feedback[1],
           graded_at: now.minus({ days: 2 }).toUTC().toISO(),
           graded_by: ownerUserId,
         },
@@ -670,14 +619,7 @@ async function main(): Promise<void> {
   }
   console.log(`  ✓ ${HOMEWORK.length} שיעורי בית, 2 הגשות מדורגות`)
 
-  const NOTES = [
-    'עבדנו על הסולם בשתי ידיים. הקצב יציב, עדיין נוטה למהר בסוף הסולם.',
-    'התקדמות יפה באטיוד. האצבוע בתיבה 9 סוף סוף נכנס.',
-    'חזרנו על האקורדים — המעבר מ-Am ל-C כבר חלק. נוסיף אקורד רביעי בשבוע הבא.',
-    'שיעור נעים. עבדנו על קריאת תווים, יש שיפור ברור לעומת החודש שעבר.',
-    'הוויברטו מתחיל להישמע טבעי. להמשיך חמש דקות ביום.',
-    'הכנה לנשף — הקטע מנוגן מתחילתו לסופו בלי עצירות. מוכנה.',
-  ]
+  const NOTES = R.notes
   const { data: recentCompleted } = await db
     .from('lessons')
     .select('id, teacher_id')
@@ -699,14 +641,7 @@ async function main(): Promise<void> {
   }
   console.log(`  ✓ ${recentCompleted?.length ?? 0} הערות שיעור`)
 
-  const GOALS = [
-    { student: 0, subject: 'פסנתר', description: 'לנגן את "לאלייז" מתחילתו לסופו בלי עצירות', status: 'active', months: 3 },
-    { student: 0, subject: 'פסנתר', description: 'לשלוט בסולם דו מז\'ור בשתי ידיים', status: 'achieved', months: -1 },
-    { student: 3, subject: 'פסנתר', description: 'לקרוא תווים בשני מפתחות ברצף', status: 'active', months: 2 },
-    { student: 6, subject: 'גיטרה', description: 'לנגן שיר שלם עם שירה במקביל', status: 'active', months: 4 },
-    { student: 12, subject: 'כינור', description: 'להופיע בנשף הסטודיו בסוף השנה', status: 'active', months: 5 },
-    { student: 15, subject: 'כינור', description: 'לשלוט בוויברטו על כל המיתרים', status: 'achieved', months: -2 },
-  ]
+  const GOALS = R.goals
   for (const [i, g] of GOALS.entries()) {
     await expectOk(
       'insert student goal',

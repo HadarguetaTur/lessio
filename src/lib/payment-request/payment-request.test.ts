@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { buildPaymentRequestMessage, logPaymentRequestSent, getPendingChargesForParent } from './index'
-import type { PaymentRequestCharge } from './index'
+import { logPaymentRequestSent, getPendingChargesForParent } from './index'
 
 // ── Mock clients for logPaymentRequestSent ────────────────────────────────────
 
@@ -44,79 +43,6 @@ vi.mock('@/lib/supabase/service-role', () => ({
     }),
   }),
 }))
-
-describe('buildPaymentRequestMessage', () => {
-  const charges: PaymentRequestCharge[] = [
-    {
-      id: 'charge-1',
-      amount: 100,
-      charge_type: 'lesson',
-      lesson_start_at: '2026-01-05T14:00:00.000Z',
-      student_name: 'ישראל ישראלי',
-    },
-    {
-      id: 'charge-2',
-      amount: 50,
-      charge_type: 'cancellation',
-      lesson_start_at: null,
-      student_name: 'רבקה לוי',
-    },
-  ]
-
-  it('includes parent greeting', () => {
-    const msg = buildPaymentRequestMessage('שרה כהן', charges, 'Asia/Jerusalem')
-    expect(msg).toContain('היי שרה כהן')
-  })
-
-  it('includes all charge lines with amount', () => {
-    const msg = buildPaymentRequestMessage('שרה כהן', charges, 'Asia/Jerusalem')
-    expect(msg).toContain('₪100.00')
-    expect(msg).toContain('₪50.00')
-  })
-
-  it('includes student names in charge lines', () => {
-    const msg = buildPaymentRequestMessage('שרה כהן', charges, 'Asia/Jerusalem')
-    expect(msg).toContain('ישראל ישראלי')
-    expect(msg).toContain('רבקה לוי')
-  })
-
-  it('includes total amount', () => {
-    const msg = buildPaymentRequestMessage('שרה כהן', charges, 'Asia/Jerusalem')
-    expect(msg).toContain('₪150.00')
-  })
-
-  it('uses Hebrew charge type labels', () => {
-    const msg = buildPaymentRequestMessage('שרה כהן', charges, 'Asia/Jerusalem')
-    expect(msg).toContain('שיעור')
-    expect(msg).toContain('חיוב ביטול')
-  })
-
-  it('handles charges without lesson (manual)', () => {
-    const manualCharge: PaymentRequestCharge[] = [{
-      id: 'charge-3',
-      amount: 200,
-      charge_type: 'manual',
-      lesson_start_at: null,
-      student_name: null,
-    }]
-    const msg = buildPaymentRequestMessage('אבי לוי', manualCharge, 'Asia/Jerusalem')
-    expect(msg).toContain('חיוב ידני')
-    expect(msg).toContain('₪200.00')
-  })
-
-  it('labels monthly charges correctly', () => {
-    const monthlyCharge: PaymentRequestCharge[] = [{
-      id: 'charge-4',
-      amount: 320,
-      charge_type: 'monthly',
-      lesson_start_at: null,
-      student_name: null,
-    }]
-    const msg = buildPaymentRequestMessage('אבי לוי', monthlyCharge, 'Asia/Jerusalem')
-    expect(msg).toContain('חיוב חודשי')
-    expect(msg).toContain('₪320.00')
-  })
-})
 
 // ── getPendingChargesForParent ────────────────────────────────────────────────
 

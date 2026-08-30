@@ -17,12 +17,21 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { AppLocale } from '@/lib/i18n/locale'
 import {
   resolveTemplate,
+  loadRawTemplate,
+  substituteVars,
   stripStandaloneVarLine,
+  withDeclaredDefaults,
   type MessageTemplateType,
 } from './templates'
-import { sendTextMessage, sendTemplateMessage, sendCtaUrlMessage } from './index'
-import { getApprovedTemplate, param, URL_BUTTON_TEMPLATES } from './approvedTemplates'
-import { getApprovedCustomTemplate } from './templateStatus'
+import { sendTextMessage, sendTemplateMessage, sendCtaUrlMessage, CTA_BODY_MAX } from './index'
+import {
+  getApprovedTemplate,
+  param,
+  metaAmountParam,
+  URL_BUTTON_TEMPLATES,
+  URL_BUTTON_TEMPLATES_V4,
+} from './approvedTemplates'
+import { getApprovedCustomTemplate, isTemplateApproved } from './templateStatus'
 import { buildCustomComponents } from './submitTemplate'
 import { prepareBusinessSend } from './consent'
 import { botString } from './strings'
@@ -135,14 +144,8 @@ export async function sendPaymentWithButton(params: {
   accessToken: string
   phoneNumberId: string
   templateType: Extract<MessageTemplateType, 'payment_request' | 'payment_reminder'>
-  /** Everything the v2 body needs, including `payment_link` for the fallback. */
+  /** Everything the body needs, including `payment_link` for the text fallback. */
   vars: Record<string, string>
-  /**
-   * The in-window body, when the caller composes its own — the consolidated
-   * payment request lists every charge and is not a template lookup. Omitted,
-   * the org's template for this type is resolved as usual.
-   */
-  body?: string
   /** The charge the button resolves through. */
   chargeId: string
   /** The provider checkout URL, used directly inside the window. */
@@ -169,33 +172,56 @@ export async function sendPaymentWithButton(params: {
 
   try {
     if (await isInSessionWindow(orgId, phone)) {
-      // The body minus the line that held the raw link — that line is what the
-      // button replaces. A caller-supplied body already has the URL substituted
-      // in, so it is matched literally; a resolved template still has the
-      // placeholder.
-      const body = params.body
-        ? stripUrlLine(params.body, paymentUrl)
-        : await resolveTemplate(orgId, templateType, vars, locale).then(
-            (full) => stripStandaloneVarLine(full, 'payment_link') ?? full
-          )
+      // The RAW body — stripping matches on `{{payment_link}}`, which no longer
+      // exists once resolveTemplate has substituted the URL in. Getting this
+      // order wrong is why parents received the link twice: once as text and
+      // once as the button.
+      const raw = await loadRawTemplate(orgId, templateType, locale)
+      const stripped = stripStandaloneVarLine(raw, 'payment_link')
+      const body =
+        stripped === null ? null : substituteVars(stripped, withDeclaredDefaults(templateType, vars))
 
-      await sendCtaUrlMessage(
+      // null means the org wrote the link mid-sentence, so the line cannot be
+      // lifted without mangling their copy — same contract sendLinkReply
+      // honours. Falling through to sendSmartMessage keeps the link inline and
+      // drops the button, rather than sending both.
+      if (body !== null && body.length > 0 && body.length <= CTA_BODY_MAX) {
+        await sendCtaUrlMessage(
+          phone,
+          body,
+          botString('cta_pay_now', locale),
+          paymentUrl,
+          accessToken,
+          phoneNumberId
+        )
+        return { sent: true }
+      }
+
+      return sendSmartMessage({
+        orgId,
         phone,
-        body,
-        botString('cta_pay_now', locale),
-        paymentUrl,
         accessToken,
-        phoneNumberId
-      )
-      return { sent: true }
+        phoneNumberId,
+        templateType,
+        vars,
+        locale,
+      })
     }
 
     // An org that authored and got its own copy approved keeps that copy — a
     // body-only submission cannot carry a button, and their wording wins.
     const custom = await getApprovedCustomTemplate(orgId, templateType, locale)
     if (!custom) {
-      const tmpl = URL_BUTTON_TEMPLATES[templateType]?.[locale]
-      const bodyParams = buildPayBodyParams(templateType, locale, vars)
+      // v4 carries no '₪' of its own and therefore takes the formatted amount;
+      // v3's approved copy prints the symbol and takes the bare figure. The
+      // template and its parameters must be chosen together or the parent reads
+      // '₪₪250.00'. v4 is used only once Meta has approved it for this org, so
+      // this is a no-op until then.
+      const v4 = URL_BUTTON_TEMPLATES_V4[templateType]?.[locale]
+      const useV4 = v4 ? await isTemplateApproved(orgId, v4.name, v4.languageCode) : false
+
+      const tmpl = useV4 ? v4 : URL_BUTTON_TEMPLATES[templateType]?.[locale]
+      const bodyParams = buildPayBodyParams(templateType, locale, vars, useV4)
 
       if (tmpl && bodyParams) {
         await sendTemplateMessage(phone, accessToken, phoneNumberId, tmpl.name, tmpl.languageCode, [
@@ -230,22 +256,6 @@ export async function sendPaymentWithButton(params: {
 }
 
 /**
- * Drops the line holding nothing but `url` from an already-composed body.
- *
- * The button carries the link now, and leaving it in the text as well reads as
- * a duplicate. Only a line that is exactly the URL is removed: a link written
- * mid-sentence is part of the copy, and cutting the sentence around it would be
- * worse than the duplication.
- */
-function stripUrlLine(body: string, url: string): string {
-  const lines = body.split('\n')
-  const kept = lines.filter((line) => line.trim() !== url.trim())
-  if (kept.length === lines.length) return body
-  // Collapse the blank gap the removed line may have left behind.
-  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
-}
-
-/**
  * Body parameters for the v3 payment templates.
  *
  * These do NOT match the v2 parameter order: dropping the link line from the
@@ -255,15 +265,18 @@ function stripUrlLine(body: string, url: string): string {
 function buildPayBodyParams(
   templateType: 'payment_request' | 'payment_reminder',
   locale: AppLocale,
-  vars: Record<string, string>
+  vars: Record<string, string>,
+  /** v4 prints no currency symbol, so it takes the formatted amount instead. */
+  formattedAmount = false
 ): string[] | null {
+  const amount = formattedAmount
+    ? param(vars.amount, '0').text
+    : metaAmountParam(vars).text
+
   if (templateType === 'payment_request') {
-    return [param(vars.amount, '0').text]
+    return [amount]
   }
-  return [
-    param(vars.parent_name, locale === 'en' ? 'there' : 'הורים יקרים').text,
-    param(vars.amount, '0').text,
-  ]
+  return [param(vars.parent_name, locale === 'en' ? 'there' : 'הורים יקרים').text, amount]
 }
 
 /**

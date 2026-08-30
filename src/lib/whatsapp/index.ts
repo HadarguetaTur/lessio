@@ -9,6 +9,7 @@
 import type { AppLocale } from '@/lib/i18n/locale'
 import { botString } from './strings'
 import { META_API_VERSION } from './graphVersion'
+import { clipButtonLabel } from './templateButtons'
 
 // ── Meta approved template message component types ────────────────────────────
 
@@ -155,7 +156,7 @@ export async function sendCtaUrlMessage(
         action: {
           name: 'cta_url',
           parameters: {
-            display_text: buttonText.slice(0, CTA_BUTTON_TEXT_MAX),
+            display_text: clipButtonLabel(buttonText, 'url'),
             url: linkUrl,
           },
         },

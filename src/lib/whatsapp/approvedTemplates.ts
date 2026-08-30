@@ -47,6 +47,23 @@ export function param(
 }
 
 /**
+ * The amount as a Meta template parameter: a bare number, not formatted money.
+ *
+ * The approved v2/v3 payment bodies carry a literal '₪' in front of their
+ * placeholder — that copy is what Meta reviewed and cannot be edited without
+ * resetting the template to PENDING. The free-text template bodies dropped
+ * their symbol so a non-ILS org is not sent a shekel sign, and their `amount`
+ * is now a formatted string. Feeding that string to these parameters would
+ * render '₪₪250.00', so callers pass the raw figure alongside as
+ * `amount_value` and every approved-template builder reads it through here.
+ *
+ * When the v4 set (no literal symbol) is approved, this becomes `vars.amount`.
+ */
+export function metaAmountParam(vars: Record<string, string>) {
+  return param(vars.amount_value ?? vars.amount, '0')
+}
+
+/**
  * Meta caps a rendered template body (fixed copy + substituted parameters) at
  * 1024 characters and rejects the whole send otherwise. Free-text fields that a
  * teacher types (homework title/body, grading feedback) are the only inputs
@@ -90,7 +107,7 @@ const HE_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = {
         type: 'body',
         parameters: [
           param(vars.parent_name, 'הורים יקרים'),
-          param(vars.amount, '0'),
+          metaAmountParam(vars),
         ],
       },
     ],
@@ -104,7 +121,7 @@ const HE_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = {
       {
         type: 'body',
         parameters: [
-          param(vars.amount, '0'),
+          metaAmountParam(vars),
           param(vars.payment_link, ''),
         ],
       },
@@ -307,6 +324,31 @@ export const URL_BUTTON_TEMPLATES: Partial<
   payment_reminder: {
     he: { name: 'lessio_payment_reminder_he_v3', languageCode: 'he' },
     en: { name: 'lessio_payment_reminder_en_v3', languageCode: 'en' },
+  },
+}
+
+/**
+ * The same templates without a hardcoded '₪', for orgs whose v4 set Meta has
+ * already approved.
+ *
+ * v3 and v4 differ ONLY in who prints the currency symbol, so they need
+ * different parameters for the same amount: v3's copy says "₪{{1}}" and takes
+ * the bare figure, v4 says "{{1}}" and takes the formatted money. Picking the
+ * template and building its parameters therefore has to happen together — see
+ * sendPaymentWithButton.
+ *
+ * Until Meta approves these, the senders stay on v3 and nothing changes.
+ */
+export const URL_BUTTON_TEMPLATES_V4: Partial<
+  Record<MessageTemplateType, Record<AppLocale, ButtonTemplate>>
+> = {
+  payment_request: {
+    he: { name: 'lessio_payment_request_he_v4', languageCode: 'he' },
+    en: { name: 'lessio_payment_request_en_v4', languageCode: 'en' },
+  },
+  payment_reminder: {
+    he: { name: 'lessio_payment_reminder_he_v4', languageCode: 'he' },
+    en: { name: 'lessio_payment_reminder_en_v4', languageCode: 'en' },
   },
 }
 

@@ -259,3 +259,48 @@ describe('normalizeTemplateBody', () => {
     expect(normalizeTemplateBody(posted)).toBe(normalizeTemplateBody(typed))
   })
 })
+
+describe('the sample values sent to Meta follow the template language', () => {
+  it('an English submission carries English examples, not Hebrew ones', () => {
+    // TEMPLATE_PREVIEW_VARS used to be a single shared table, so an English org
+    // submitted 'אהרון כהן' as the sample a Meta reviewer would read.
+    const result = buildMetaSubmission(
+      'lesson_reminder',
+      'en',
+      'Reminder: your lesson with {{teacher_name}} is on {{date}} at {{time}}. See you!'
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    for (const value of result.example[0]) {
+      expect(value).not.toMatch(/[\u0590-\u05FF]/)
+    }
+    expect(result.example[0]).toContain('Aaron Cohen')
+  })
+
+  it('a Hebrew submission still carries Hebrew examples', () => {
+    const result = buildMetaSubmission(
+      'lesson_reminder',
+      'he',
+      'תזכורת: שיעור עם {{teacher_name}} ב{{date}} בשעה {{time}}.'
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.example[0]).toContain('אהרון כהן')
+  })
+
+  it('every submittable default builds an example for each of its variables', () => {
+    for (const type of SUBMITTABLE_TYPES) {
+      for (const locale of ['he', 'en'] as AppLocale[]) {
+        const result = buildMetaSubmission(type, locale, DEFAULT_TEMPLATES[locale][type])
+        expect(result.ok, `${locale}/${type} is not submittable as written`).toBe(true)
+        if (!result.ok) continue
+        if (result.varOrder.length === 0) continue
+        expect(result.example[0].length, `${locale}/${type}`).toBe(result.varOrder.length)
+        // An empty example row is rejected by Meta.
+        for (const value of result.example[0]) expect(value.length).toBeGreaterThan(0)
+      }
+    }
+  })
+})

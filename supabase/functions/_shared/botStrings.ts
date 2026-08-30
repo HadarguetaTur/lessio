@@ -66,7 +66,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     no_due_date: 'No due date',
     the_teacher: 'the teacher',
     the_student: 'the student',
-    dear_parents: 'Dear parents',
+    // Fills {{1}} of 'Hi {{1}}, a small reminder…' when the parent has no name
+    // on file — "Hi Dear parents," did not read as English. Must stay identical
+    // to src/lib/whatsapp/strings.ts.
+    dear_parents: 'there',
     tomorrow: 'tomorrow',
     soon: 'soon',
     homework_email_subject: 'Homework reminder — {title}',

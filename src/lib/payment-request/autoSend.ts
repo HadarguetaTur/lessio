@@ -16,7 +16,7 @@ import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
-import { buildPaymentRequestMessage } from './index'
+import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 
 export async function autoSendPaymentRequest(lessonId: string, orgId: string): Promise<void> {
   const db = createServiceRoleClient()
@@ -25,7 +25,7 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
     // 1. Load org settings — single query covers all needed fields
     const { data: org } = await db
       .from('organizations')
-      .select('auto_send_payment_request, automation_payment_request_enabled, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone, default_locale')
+      .select('auto_send_payment_request, automation_payment_request_enabled, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, default_locale, currency')
       .eq('id', orgId)
       .single()
 
@@ -40,7 +40,6 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
 
     const encryptedToken = org.whatsapp_access_token as string | null
     const phoneNumberId = org.whatsapp_phone_number_id as string | null
-    const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
 
     if (!encryptedToken || !phoneNumberId) {
       console.warn('[autoSendPaymentRequest] WhatsApp not configured', { orgId, lessonId })
@@ -50,7 +49,7 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
     // 2. Find the lesson charge (created by createLessonCharge moments before)
     const { data: charge } = await db
       .from('charges')
-      .select('id, amount, charge_type, parent_id, lessons(start_at)')
+      .select('id, amount, parent_id')
       .eq('organization_id', orgId)
       .eq('lesson_id', lessonId)
       .eq('charge_type', 'lesson')
@@ -112,26 +111,8 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
     // 6. Decrypt WhatsApp token and send message
     const accessToken = decryptToken(encryptedToken)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const lessonStartAt = (charge.lessons as any)?.start_at ?? null
-
-    const chargesForMessage = [
-      {
-        id: charge.id,
-        amount: Number(charge.amount),
-        charge_type: charge.charge_type as 'lesson',
-        lesson_start_at: lessonStartAt,
-        student_name: null,
-      },
-    ]
-
-    const message = buildPaymentRequestMessage(
-      parent.full_name,
-      chargesForMessage,
-      timezone,
-      paymentResult.url,
-      recipientLocale
-    )
+    const currency = (org.currency as string | null) ?? undefined
+    const tr = await getT('receipts', recipientLocale)
 
     // sendPaymentWithButton applies the opt-out / welcome-notice gate itself,
     // and picks the mechanics that actually work for the current window: a
@@ -144,8 +125,18 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
         accessToken,
         phoneNumberId,
         templateType: 'payment_request',
-        vars: { amount: Number(charge.amount).toFixed(2), payment_link: paymentResult.url },
-        body: message,
+        vars: {
+          parent_name: parent.full_name as string,
+          amount: formatBotMoney(Number(charge.amount), recipientLocale, currency),
+          // Bare figure for the Meta v2/v3 params, whose approved copy already
+          // prints the currency symbol. See metaAmountParam.
+          amount_value: Number(charge.amount).toFixed(2),
+          // A single lesson needs no itemisation, so charge_lines stays empty
+          // and the description carries the whole story.
+          description: tr('waLessonCharge'),
+          charge_lines: '',
+          payment_link: paymentResult.url,
+        },
         chargeId: charge.id,
         paymentUrl: paymentResult.url,
         locale: recipientLocale,

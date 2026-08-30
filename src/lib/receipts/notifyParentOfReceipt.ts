@@ -16,6 +16,7 @@ import { sendTextMessage } from '@/lib/whatsapp'
 import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
+import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 
 export async function notifyParentOfReceipt(params: {
   orgId: string
@@ -27,6 +28,8 @@ export async function notifyParentOfReceipt(params: {
   orgDefaultLocale: string | null | undefined
   phoneNumberId: string | null | undefined
   encryptedToken: string | null | undefined
+  /** ISO 4217 from organizations.currency; omitted falls back to ILS. */
+  currency?: string
 }): Promise<void> {
   const {
     orgId,
@@ -38,6 +41,7 @@ export async function notifyParentOfReceipt(params: {
     orgDefaultLocale,
     phoneNumberId,
     encryptedToken,
+    currency,
   } = params
 
   if (!parentPhone || !phoneNumberId || !encryptedToken) return
@@ -65,7 +69,7 @@ export async function notifyParentOfReceipt(params: {
     const body = await resolveTemplate(
       orgId,
       'receipt_notification',
-      { amount: amount.toFixed(2), receipt_url: receiptUrl },
+      { amount: formatBotMoney(amount, locale, currency), receipt_url: receiptUrl },
       locale
     )
     await sendTextMessage(parentPhone, body, accessToken, phoneNumberId)

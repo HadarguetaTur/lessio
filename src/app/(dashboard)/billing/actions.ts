@@ -23,7 +23,8 @@ import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { formatBillingMonth } from '@/lib/i18n/formatBillingMonth'
 import { getT } from '@/lib/i18n/serverTranslator'
-import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
+import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
+import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { getTranslations } from 'next-intl/server'
@@ -545,7 +546,7 @@ async function sendBillingPaymentRequestCore(
   // Load org settings
   const { data: org } = await db
     .from('organizations')
-    .select('auto_send_payment_request, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone, default_locale')
+    .select('auto_send_payment_request, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone, default_locale, currency')
     .eq('id', orgId)
     .single()
 
@@ -557,6 +558,7 @@ async function sendBillingPaymentRequestCore(
   const encryptedToken = org.whatsapp_access_token as string | null
   const phoneNumberId = org.whatsapp_phone_number_id as string | null
   const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
+  const currency = (org.currency as string | null) ?? undefined
 
   if (!encryptedToken || !phoneNumberId) {
     throw new Error(t('common.errors.whatsappNotConnected'))
@@ -598,7 +600,7 @@ async function sendBillingPaymentRequestCore(
     orgDefault: org.default_locale as string | null,
   })
 
-  // Business-initiated. sendSmartMessage runs this gate too, but it is checked
+  // Business-initiated. sendPaymentWithButton runs this gate too, but it is checked
   // here first, before the payment link is created — creating one nobody will
   // be sent is waste. The second pass is a no-op (welcome already claimed).
   const accessToken = decryptToken(encryptedToken)
@@ -656,18 +658,24 @@ async function sendBillingPaymentRequestCore(
   // Session-window aware: the org's own template copy inside the 24h window,
   // the Meta-approved lessio_payment_request_* template outside it. A plain
   // text send here failed with error 131047 for every parent who had not
-  // written to the business in the last day.
-  await sendSmartMessage({
+  // written to the business in the last day. The monthly bill is one charge,
+  // so there is nothing to itemise.
+  await sendPaymentWithButton({
     orgId,
     phone: parent.phone as string,
     accessToken,
     phoneNumberId,
     templateType: 'payment_request',
     vars: {
-      amount: Number(charge.amount).toFixed(2),
+      parent_name: parent.full_name as string,
+      amount: formatBotMoney(Number(charge.amount), locale, currency),
+      amount_value: Number(charge.amount).toFixed(2),
       description: tr('paymentDescriptionShort', { month: monthLabel }),
+      charge_lines: '',
       payment_link: paymentResult.url,
     },
+    chargeId: charge.id,
+    paymentUrl: paymentResult.url,
     locale,
   })
 

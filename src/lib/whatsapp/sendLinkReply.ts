@@ -22,13 +22,13 @@ import { type BotStringKey } from './strings'
 import { getOrgBotStrings, resolveBotString } from './orgStrings'
 import {
   resolveTemplate,
+  loadRawTemplate,
   substituteVars,
   stripStandaloneVarLine,
-  DEFAULT_TEMPLATES,
+  withDeclaredDefaults,
   type MessageTemplateType,
 } from './templates'
 import { sendCtaUrlMessage, sendTextMessage, CTA_BODY_MAX } from './index'
-import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export interface SendLinkReplyParams {
   orgId: string
@@ -46,44 +46,6 @@ export interface SendLinkReplyParams {
   vars?: Record<string, string>
 }
 
-/**
- * Loads the raw template string (custom row, else system default) using the same
- * fallback chain as resolveTemplate, but WITHOUT substituting — the caller needs
- * the unsubstituted form to locate the URL placeholder line.
- */
-async function loadRawTemplate(
-  orgId: string,
-  type: MessageTemplateType,
-  locale: AppLocale
-): Promise<string> {
-  const fallback = DEFAULT_TEMPLATES[locale]?.[type] ?? DEFAULT_TEMPLATES.he[type]
-
-  try {
-    const db = createServiceRoleClient()
-    const { data } = await db
-      .from('message_templates')
-      .select('body_template, locale')
-      .eq('organization_id', orgId)
-      .eq('type', type)
-      .in('locale', locale === 'he' ? ['he'] : [locale, 'he'])
-
-    const rows = (data ?? []) as Array<{ body_template: string; locale: string }>
-    const custom =
-      rows.find((r) => r.locale === locale) ?? rows.find((r) => r.locale === 'he')
-
-    if (custom?.body_template) return custom.body_template
-  } catch (err) {
-    console.error('[whatsapp/sendLinkReply] template load failed — using default', {
-      orgId,
-      type,
-      locale,
-      err,
-    })
-  }
-
-  return fallback
-}
-
 export async function sendLinkReply(params: SendLinkReplyParams): Promise<void> {
   const {
     orgId,
@@ -98,7 +60,7 @@ export async function sendLinkReply(params: SendLinkReplyParams): Promise<void> 
     vars = {},
   } = params
 
-  const allVars = { ...vars, [urlVar]: url }
+  const allVars = withDeclaredDefaults(templateType, { ...vars, [urlVar]: url })
 
   const raw = await loadRawTemplate(orgId, templateType, locale)
   const bodyWithoutUrl = stripStandaloneVarLine(raw, urlVar)

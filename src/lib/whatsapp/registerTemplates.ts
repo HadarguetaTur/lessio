@@ -433,7 +433,98 @@ function paymentButtonTemplates(): TemplateDefinition[] {
         urlButton('Pay securely'),
       ],
     },
+
+    // v4 — identical to v3 except the '₪' is gone from the copy. The amount
+    // parameter arrives already formatted for the org's own currency and the
+    // recipient's locale (formatBotMoney), which is the only way an org billing
+    // in euros stops being sent a shekel sign.
+    //
+    // Registered alongside v3 rather than replacing it: editing an approved
+    // template resets it to PENDING at Meta and blocks every out-of-window send
+    // until re-approval. The senders keep using v3 (and its bare-number
+    // parameter) until whatsapp_template_statuses reports v4 APPROVED for that
+    // org, so nothing changes for anyone while these sit in review.
+    {
+      name: 'lessio_payment_request_he_v4',
+      language: 'he',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'היי! התקבלה בקשת תשלום בסך {{1}}.\nאפשר לשלם בבטחה בכפתור שלמטה. תודה רבה!',
+          example: { body_text: [['₪350.00']] },
+        },
+        urlButton('לתשלום מאובטח'),
+      ],
+    },
+    {
+      name: 'lessio_payment_request_en_v4',
+      language: 'en',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'Hi! A payment request for {{1}} is ready.\nYou can pay securely using the button below. Thank you very much!',
+          example: { body_text: [['₪350.00']] },
+        },
+        urlButton('Pay securely'),
+      ],
+    },
+    {
+      name: 'lessio_payment_reminder_he_v4',
+      language: 'he',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'היי {{1}}, תזכורת קטנה: יש יתרה פתוחה של {{2}}. אפשר לשלם בכפתור שלמטה. תודה!',
+          example: { body_text: [['משה לוי', '₪350.00']] },
+        },
+        urlButton('לתשלום מאובטח'),
+      ],
+    },
+    {
+      name: 'lessio_payment_reminder_en_v4',
+      language: 'en',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'Hi {{1}}, a small reminder: you have an open balance of {{2}}. You can pay using the button below. Thank you!',
+          example: { body_text: [['Moshe Levi', '₪350.00']] },
+        },
+        urlButton('Pay securely'),
+      ],
+    },
   ]
+}
+
+/**
+ * The registered body and buttons of one Meta template, by name.
+ *
+ * The settings page renders what a parent receives OUTSIDE the 24h window, and
+ * that is this copy — not the editable body. Reading it back out of `TEMPLATES`
+ * rather than restating it in the UI is the point: a second copy of the wording
+ * would be a second thing to keep in sync with what Meta actually approved.
+ *
+ * Positional `{{1}}`, `{{2}}` … are left as they are; the caller substitutes
+ * them through the template's own variable order.
+ */
+export function metaTemplateBody(
+  name: string
+): { text: string; buttons: Array<{ kind: 'quick_reply' | 'url'; label: string }> } | null {
+  const def = TEMPLATES.find((t) => t.name === name)
+  if (!def) return null
+
+  const components = (def.rawComponents ?? []) as Array<Record<string, unknown>>
+  const bodyComponent = components.find((c) => c.type === 'BODY')
+  const text = def.bodyText ?? (bodyComponent?.text as string | undefined)
+  if (!text) return null
+
+  const buttonsComponent = components.find((c) => c.type === 'BUTTONS')
+  const raw = (buttonsComponent?.buttons ?? []) as Array<{ type: string; text: string }>
+  const buttons = raw.map((b) => ({
+    kind: b.type === 'URL' ? ('url' as const) : ('quick_reply' as const),
+    label: b.text,
+  }))
+
+  return { text, buttons }
 }
 
 /**

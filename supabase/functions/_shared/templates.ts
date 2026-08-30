@@ -54,6 +54,7 @@ export type MessageTemplateType =
   | 'ai_satisfaction_prompt'
   | 'unknown_intent_fallback'
   | 'lesson_cancelled_by_teacher'
+  | 'lesson_rescheduled'
   | 'day_off_decision'
   | 'welcome_notice'
 
@@ -64,33 +65,33 @@ export type MessageTemplateType =
 export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, string>> = {
   he: {
     booking_link:
-      'הנה הקישור לקביעת שיעור 👇\n{{booking_url}}\n\nשימו לב: הקישור בתוקף ל-15 דקות, ואחרי בחירת מועד הוא שמור עבורכם ל-5 דקות עד לאישור.',
+      'אפשר לקבוע שיעור כאן.\n{{booking_url}}\n\nשימו לב: הקישור בתוקף ל-15 דקות, ואחרי בחירת מועד הוא שמור עבורכם ל-5 דקות עד לאישור.',
     booking_confirmation:
       '✅ השיעור נקבע!\n\nמורה: {{teacher_name}}\nתאריך: {{date}}\nשעה: {{time}}\n\nנתראה בשיעור 😊',
     lesson_reminder:
       '📅 תזכורת: שיעור עם {{teacher_name}} מתקיים {{date}} בשעה {{time}}.\nנתראה!',
     payment_reminder:
-      'היי, תזכורת קטנה 💛\nיש יתרה פתוחה של ₪{{amount}}.\nלתשלום:\n{{payment_link}}\nתודה!',
+      'היי, תזכורת קטנה 💛\nיש יתרה פתוחה של {{amount}}.\nהתשלום מאובטח ולוקח פחות מדקה.\n{{payment_link}}\nתודה!',
     payment_request:
-      'היי! בקשת תשלום על ₪{{amount}} עבור {{description}}.\nלתשלום מאובטח:\n{{payment_link}}\nתודה 🙏',
+      'היי {{parent_name}} 👋\nבקשת תשלום על סך {{amount}} עבור {{description}}.{{charge_lines}}\nהתשלום מאובטח ולוקח פחות מדקה.\n{{payment_link}}\nתודה 🙏',
     cancellation_confirmation:
       'השיעור בוטל ✅\n\n{{student_name}} עם {{teacher_name}}\n{{date}} בשעה {{time}}{{charge_line}}\n\nלקביעת שיעור חדש אפשר לכתוב "הזמנה".',
     cancellation_admin_alert:
       '🔔 בוטל שיעור דרך וואטסאפ\n\nתלמיד: {{student_name}}\nמורה: {{teacher_name}}\nמועד: {{date}} בשעה {{time}}{{charge_line}}\nמי ביטל: {{parent_phone}}',
     receipt_notification:
-      'תודה על התשלום! 🙏\nהקבלה על ₪{{amount}} זמינה כאן:\n{{receipt_url}}',
+      'תודה על התשלום! 🙏\nהקבלה על {{amount}} זמינה כאן:\n{{receipt_url}}',
     homework_assignment:
       '📚 שיעורי בית חדשים: {{title}}\n\n{{body}}{{due_line}}\n\nבהצלחה! 💪',
     homework_reminder:
       '📚 תזכורת: שיעורי הבית "{{title}}" צריכים להיות מוכנים מחר{{due_date_suffix}}.\nבהצלחה!',
     balance_reply:
-      'יתרתך לתשלום היא ₪{{total}}.\n\nלצפייה בפירוט החיוב אפשר להיכנס לאזור האישי.\n{{portal_url}}\n\n{{payment_line}}',
+      'יתרתך לתשלום היא {{total}}.\n\nלצפייה בפירוט החיוב אפשר להיכנס לאזור האישי.\n{{portal_url}}\n\n{{payment_line}}',
     payment_history_reply:
       'התשלומים האחרונים שלך:{{charge_lines}}',
     schedule_reply:
       '📅 השיעורים הקרובים שלך:\n{{lesson_lines}}',
     portal_link_reply:
-      'הקישור לאזור האישי שלך:\n{{portal_url}}\n\nהכניסה עם מספר הטלפון, בלי סיסמה 😊',
+      'זה האזור האישי שלך.\n{{portal_url}}\n\nהכניסה עם מספר הטלפון, בלי סיסמה 😊',
     homework_graded:
       'שיעורי הבית "{{title}}" נבדקו! ✅\nציון: {{score}}/100\n{{feedback_line}}\nכל הכבוד על ההשקעה!',
     ai_satisfaction_prompt:
@@ -99,6 +100,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'היי 👋 לא הצלחתי להבין את הבקשה.\nהנה מה שאפשר לכתוב לי:\n\n• "הזמנה" לקביעת שיעור\n• "ביטול" לביטול שיעור\n• "חוב" לבירור יתרה ותשלום\n• "שיעורים" ללוח השיעורים הקרובים\n• "פורטל" לכניסה לאזור האישי',
     lesson_cancelled_by_teacher:
       'עדכון חשוב 🗓️\nהמורה {{teacher_name}} לא זמין/ה בתאריכים {{date_range}}, ולכן השיעורים שנקבעו בתקופה הזו בוטלו.\nלא יבוצע חיוב על השיעורים האלה.\n\nלקביעת מועד חלופי אפשר לכתוב "הזמנה" 😊',
+    lesson_rescheduled:
+      'עדכון מועד שיעור 🗓️\nהשיעור של {{student_name}} עם {{teacher_name}} הועבר למועד חדש.\nבמקום {{old_date}} בשעה {{old_time}} — {{date}} בשעה {{time}}.\n\nנתראה!',
     day_off_decision:
       'עדכון לגבי בקשת החופש שלך לתאריכים {{date_range}}:\nהבקשה {{decision}}.',
     welcome_notice:
@@ -106,33 +109,33 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
   },
   en: {
     booking_link:
-      'Here is your link to book a lesson 👇\n{{booking_url}}\n\nHeads up: the link is valid for 15 minutes, and once you pick a time it is held for you for 5 minutes while you confirm.',
+      'You can book a lesson here.\n{{booking_url}}\n\nHeads up: the link is valid for 15 minutes, and once you pick a time it is held for you for 5 minutes while you confirm.',
     booking_confirmation:
       '✅ Your lesson is booked!\n\nTeacher: {{teacher_name}}\nDate: {{date}}\nTime: {{time}}\n\nSee you there 😊',
     lesson_reminder:
       '📅 Reminder: your lesson with {{teacher_name}} is on {{date}} at {{time}}.\nSee you there!',
     payment_reminder:
-      'Hi, a small reminder 💛\nYou have an open balance of ₪{{amount}}.\nTo pay:\n{{payment_link}}\nThank you!',
+      'Hi, a small reminder 💛\nYou have an open balance of {{amount}}.\nPaying is secure and takes under a minute.\n{{payment_link}}\nThank you!',
     payment_request:
-      'Hi! A payment request for ₪{{amount}} for {{description}}.\nSecure payment:\n{{payment_link}}\nThank you 🙏',
+      'Hi {{parent_name}} 👋\nHere is a payment request for {{amount}}, for {{description}}.{{charge_lines}}\nPaying is secure and takes under a minute.\n{{payment_link}}\nThank you 🙏',
     cancellation_confirmation:
       'Your lesson is cancelled ✅\n\n{{student_name}} with {{teacher_name}}\n{{date}} at {{time}}{{charge_line}}\n\nTo book a new lesson, just write "book".',
     cancellation_admin_alert:
       '🔔 Lesson cancelled via WhatsApp\n\nStudent: {{student_name}}\nTeacher: {{teacher_name}}\nWhen: {{date}} at {{time}}{{charge_line}}\nCancelled by: {{parent_phone}}',
     receipt_notification:
-      'Thank you for your payment! 🙏\nYour receipt for ₪{{amount}} is here:\n{{receipt_url}}',
+      'Thank you for your payment! 🙏\nYour receipt for {{amount}} is here:\n{{receipt_url}}',
     homework_assignment:
       '📚 New homework: {{title}}\n\n{{body}}{{due_line}}\n\nGood luck! 💪',
     homework_reminder:
       '📚 Reminder: the homework "{{title}}" is due tomorrow{{due_date_suffix}}.\nGood luck!',
     balance_reply:
-      'Your outstanding balance is ₪{{total}}.\n\nTo see the full breakdown, open your personal area.\n{{portal_url}}\n\n{{payment_line}}',
+      'Your outstanding balance is {{total}}.\n\nTo see the full breakdown, open your personal area.\n{{portal_url}}\n\n{{payment_line}}',
     payment_history_reply:
       'Your recent payments:{{charge_lines}}',
     schedule_reply:
       '📅 Your upcoming lessons:\n{{lesson_lines}}',
     portal_link_reply:
-      'Here is your personal area:\n{{portal_url}}\n\nSign in with your phone number, no password needed 😊',
+      'This is your personal area.\n{{portal_url}}\n\nSign in with your phone number, no password needed 😊',
     homework_graded:
       'The homework "{{title}}" has been graded! ✅\nScore: {{score}}/100\n{{feedback_line}}\nGreat work, keep it up!',
     ai_satisfaction_prompt:
@@ -141,6 +144,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'Hi 👋 I did not quite catch that.\nHere is what you can write me:\n\n• "book" to schedule a lesson\n• "cancel" to cancel a lesson\n• "balance" to check what is owed and pay\n• "schedule" for your upcoming lessons\n• "portal" to reach your personal area',
     lesson_cancelled_by_teacher:
       'An important update 🗓️\n{{teacher_name}} is unavailable on {{date_range}}, so the lessons scheduled in that period have been cancelled.\nYou will not be charged for them.\n\nTo book a new time, just write "book" 😊',
+    lesson_rescheduled:
+      'Lesson time updated 🗓️\n{{student_name}}\'s lesson with {{teacher_name}} has been moved.\nInstead of {{old_date}} at {{old_time}} — {{date}} at {{time}}.\n\nSee you there!',
     day_off_decision:
       'An update on your time-off request for {{date_range}}:\nthe request was {{decision}}.',
     welcome_notice:

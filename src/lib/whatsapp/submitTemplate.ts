@@ -123,7 +123,9 @@ export function buildMetaSubmission(
 
   if (bodyText.length > MAX_BODY_LENGTH) return { ok: false, code: 'tooLong' }
 
-  const previewVars = TEMPLATE_PREVIEW_VARS[type] ?? {}
+  // The reviewer at Meta reads these sample values, so they must be in the
+  // language of the template being submitted.
+  const previewVars = TEMPLATE_PREVIEW_VARS[locale]?.[type] ?? {}
   const example = varOrder.map((name) => param(previewVars[name], fallbackFor(name, locale)).text)
 
   // Meta wants one row of sample values; templates with no parameters send none.
@@ -176,6 +178,9 @@ const VAR_FALLBACKS: Record<AppLocale, Record<string, string>> = {
     feedback_line: 'אין משוב נוסף.',
     decision: 'עודכנה',
     description: 'שיעור',
+    // A single-charge request carries no breakdown, and Meta rejects an empty
+    // parameter — so the itemisation degrades to a pointer at the portal.
+    charge_lines: 'פירוט מלא באזור האישי',
   },
   en: {
     teacher_name: 'your teacher',
@@ -192,6 +197,7 @@ const VAR_FALLBACKS: Record<AppLocale, Record<string, string>> = {
     feedback_line: 'No additional feedback.',
     decision: 'updated',
     description: 'a lesson',
+    charge_lines: 'full breakdown in your personal area',
   },
 }
 

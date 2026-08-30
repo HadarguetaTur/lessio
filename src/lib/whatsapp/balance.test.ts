@@ -3,6 +3,7 @@ import { resolvePaymentLine, sumOpenCharges, type OpenCharge } from './balance'
 import { DEFAULT_TEMPLATES, substituteVars } from './templates'
 import { botString } from './strings'
 import type { AppLocale } from '@/lib/i18n/locale'
+import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 
 describe('sumOpenCharges', () => {
   it('sums amounts', () => {
@@ -81,7 +82,8 @@ const BRANCHES: Record<string, OpenCharge[]> = {
 
 function renderBalanceReply(charges: OpenCharge[], locale: AppLocale): string {
   return substituteVars(DEFAULT_TEMPLATES[locale].balance_reply, {
-    total: sumOpenCharges(charges).toFixed(2),
+    // The body carries no currency symbol any more — the caller formats.
+    total: formatBotMoney(sumOpenCharges(charges), locale),
     portal_url: 'https://www.getlessio.com/portal/org-id/payments',
     payment_line: resolvePaymentLine(charges, locale),
   })
@@ -93,7 +95,7 @@ describe('balance reply — bilingual', () => {
       const body = renderBalanceReply(charges, 'he')
       expect(body).not.toMatch(/\{\{/)
       expect(body).toMatch(HEBREW)
-      expect(body).toContain(`₪${sumOpenCharges(charges).toFixed(2)}`)
+      expect(body).toContain(formatBotMoney(sumOpenCharges(charges), 'he'))
     })
 
     it(`renders fully in English, no Hebrew leaking in — ${name}`, () => {

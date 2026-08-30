@@ -182,3 +182,35 @@ describe('sendTestTemplateAction', () => {
     expect(mockSendSmartMessage).toHaveBeenCalledTimes(5)
   })
 })
+
+describe('the test message uses the sample values of the language being tested', () => {
+  // A different org: the rate-limit suite above deliberately exhausts org-1's
+  // hourly budget, and the limiter's state is module-level.
+  beforeEach(() => {
+    mockGetSession.mockResolvedValue({ ...OWNER, orgId: 'org-locale' })
+  })
+
+  // The preview table used to be shared across languages, so an owner testing
+  // the English copy really received English wording wrapped around 'אהרון כהן'.
+  it('English test send carries English samples', async () => {
+    const result = await sendTestTemplateAction(
+      IDLE,
+      form({ ...VALID, locale: 'en', templateType: 'lesson_reminder' })
+    )
+
+    expect(result.error).toBeNull()
+    const { vars, locale } = mockSendSmartMessage.mock.calls[0][0]
+    expect(locale).toBe('en')
+    expect(vars.teacher_name).toBe('Aaron Cohen')
+    for (const value of Object.values(vars as Record<string, string>)) {
+      expect(value).not.toMatch(/[\u0590-\u05FF]/)
+    }
+  })
+
+  it('Hebrew test send still carries Hebrew samples', async () => {
+    await sendTestTemplateAction(IDLE, form({ ...VALID, templateType: 'lesson_reminder' }))
+
+    const { vars } = mockSendSmartMessage.mock.calls[0][0]
+    expect(vars.teacher_name).toBe('אהרון כהן')
+  })
+})

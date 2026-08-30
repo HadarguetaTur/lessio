@@ -13,16 +13,28 @@ vi.mock('./index', () => ({
 
 let customTemplate: string | null = null
 
+/**
+ * The shared loadRawTemplate reads one row, filtered on an exact locale.
+ * customLocale is the locale that row is stored under, so a test can prove an
+ * English send does NOT borrow the org's Hebrew row.
+ */
+let customLocale: 'he' | 'en' = 'he'
+
 vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({
     from: () => ({
       select: () => ({
         eq: () => ({
           eq: () => ({
-            in: () =>
-              Promise.resolve({
-                data: customTemplate ? [{ body_template: customTemplate, locale: 'he' }] : [],
-              }),
+            eq: (_col: string, locale: string) => ({
+              maybeSingle: () =>
+                Promise.resolve({
+                  data:
+                    customTemplate && locale === customLocale
+                      ? { body_template: customTemplate }
+                      : null,
+                }),
+            }),
           }),
         }),
       }),
@@ -55,13 +67,13 @@ const BASE = {
 describe('stripStandaloneVarLine', () => {
   it('lifts the URL line out of the default Hebrew booking template', () => {
     expect(stripStandaloneVarLine(DEFAULT_TEMPLATES.he.booking_link, 'booking_url')).toBe(
-      'הנה הקישור לקביעת שיעור 👇\n\nשימו לב: הקישור בתוקף ל-15 דקות, ואחרי בחירת מועד הוא שמור עבורכם ל-5 דקות עד לאישור.'
+      'אפשר לקבוע שיעור כאן.\n\nשימו לב: הקישור בתוקף ל-15 דקות, ואחרי בחירת מועד הוא שמור עבורכם ל-5 דקות עד לאישור.'
     )
   })
 
   it('lifts the URL line out of the default English portal template', () => {
     expect(stripStandaloneVarLine(DEFAULT_TEMPLATES.en.portal_link_reply, 'portal_url')).toBe(
-      'Here is your personal area:\n\nSign in with your phone number, no password needed 😊'
+      'This is your personal area.\n\nSign in with your phone number, no password needed 😊'
     )
   })
 
@@ -82,6 +94,7 @@ describe('sendLinkReply', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     customTemplate = null
+    customLocale = 'he'
     sendCtaUrlMessage.mockResolvedValue(undefined)
     sendTextMessage.mockResolvedValue(undefined)
     resolveTemplate.mockResolvedValue('text fallback body')
@@ -95,7 +108,7 @@ describe('sendLinkReply', () => {
     const [to, body, buttonText, url] = sendCtaUrlMessage.mock.calls[0]
     expect(to).toBe(BASE.to)
     expect(body).not.toContain(BASE.url)
-    expect(body).toContain('הנה הקישור לקביעת שיעור')
+    expect(body).toContain('אפשר לקבוע שיעור כאן.')
     expect(buttonText).toBe('לקביעת שיעור')
     expect(url).toBe(BASE.url)
   })
@@ -148,6 +161,20 @@ describe('sendLinkReply', () => {
 
     expect(sendCtaUrlMessage).not.toHaveBeenCalled()
     expect(sendTextMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not borrow the org's Hebrew row for an English recipient", async () => {
+    // sendLinkReply used to load templates with .in('locale', [locale, 'he']),
+    // so an org that customised only its Hebrew copy wrapped English content
+    // in a Hebrew body. loadRawTemplate is exact-locale only.
+    customTemplate = 'התבנית העברית המותאמת\n{{booking_url}}'
+    customLocale = 'he'
+
+    await sendLinkReply({ ...BASE, locale: 'en' })
+
+    const body = sendCtaUrlMessage.mock.calls[0][1] as string
+    expect(body).not.toContain('התבנית העברית המותאמת')
+    expect(body).toContain('You can book a lesson here.')
   })
 
   it('substitutes non-URL variables into the CTA body', async () => {

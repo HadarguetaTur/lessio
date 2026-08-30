@@ -12,6 +12,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
+import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { OPEN_CHARGE_STATUSES, sumRemaining } from '@/lib/charges'
 import { logChargeAudit } from '@/lib/charges/audit'
@@ -34,7 +35,7 @@ export async function sendDebtReminderForParent(
 
   const { data: org } = await db
     .from('organizations')
-    .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale')
+    .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale, currency')
     .eq('id', orgId)
     .single()
 
@@ -75,6 +76,7 @@ export async function sendDebtReminderForParent(
     stored: parent.preferred_locale as string | null,
     orgDefault: (org?.default_locale as string | null) ?? null,
   })
+  const currency = (org?.currency as string | null) ?? undefined
 
   // The button resolves through the charge that actually carries the provider
   // link. With none, /pay/<id> falls back to the portal — the same place the
@@ -89,7 +91,10 @@ export async function sendDebtReminderForParent(
     templateType: 'payment_reminder',
     vars: {
       parent_name: (parent.full_name as string | null) ?? '',
-      amount: total.toFixed(2),
+      amount: formatBotMoney(total, locale, currency),
+      // Bare figure for the Meta v2/v3 params, whose approved copy already
+      // prints the currency symbol. See metaAmountParam.
+      amount_value: total.toFixed(2),
       payment_link: paymentLink,
     },
     chargeId: linkedChargeId,

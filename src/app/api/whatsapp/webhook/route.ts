@@ -41,6 +41,7 @@ import { recordParentConsent } from '@/lib/whatsapp/consent'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
 import { resolvePaymentLine, sumOpenCharges } from '@/lib/whatsapp/balance'
+import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import { botString } from '@/lib/whatsapp/strings'
 import { notifyIfWeeklyQuotaReached } from './bookingQuotaNotice'
 import {
@@ -321,6 +322,7 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
       automation_dunning_enabled,
       automation_new_leads_enabled,
       default_locale,
+      currency,
       service_state
     `)
     .eq('whatsapp_phone_number_id', msg.phoneNumberId)
@@ -475,6 +477,7 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
   }
 
   const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
+  const orgCurrency = (org.currency as string | null) ?? undefined
 
   // 6a₀. Stop / resume business-initiated messages.
   //
@@ -772,7 +775,7 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
 
   // 9b. Balance query
   if (hasBalanceIntent(msg.text)) {
-    await handleBalanceQuery(parent.id, org.id, senderPhone, accessToken, phoneNumberId, locale, origin)
+    await handleBalanceQuery(parent.id, org.id, senderPhone, accessToken, phoneNumberId, locale, origin, orgCurrency)
     return
   }
 
@@ -799,7 +802,8 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
       (org.timezone as string | null) ?? 'Asia/Jerusalem',
       accessToken,
       phoneNumberId,
-      locale
+      locale,
+      orgCurrency
     )
     return
   }
@@ -1190,6 +1194,7 @@ async function runMenuAction(params: {
 }): Promise<void> {
   const { action, parentId, org, senderPhone, accessToken, phoneNumberId, locale, origin } = params
   const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
+  const orgCurrency = (org.currency as string | null) ?? undefined
 
   switch (action) {
     case 'cancel':
@@ -1208,7 +1213,7 @@ async function runMenuAction(params: {
       })
       return
     case 'balance':
-      await handleBalanceQuery(parentId, org.id, senderPhone, accessToken, phoneNumberId, locale, origin)
+      await handleBalanceQuery(parentId, org.id, senderPhone, accessToken, phoneNumberId, locale, origin, orgCurrency)
       return
     case 'schedule':
       await handleScheduleQuery(
@@ -1315,7 +1320,8 @@ async function handleBalanceQuery(
   accessToken: string,
   phoneNumberId: string,
   locale: AppLocale,
-  origin: string
+  origin: string,
+  currency?: string
 ): Promise<void> {
   const db = createServiceRoleClient()
 
@@ -1351,7 +1357,7 @@ async function handleBalanceQuery(
   // and a way to pay. charge_lines is still supplied for orgs whose custom
   // template predates this copy — otherwise their body leaks the raw placeholder.
   const chargeLines = chargeRows.slice(0, 3).map(c => {
-    let line = `\n₪${c.amount.toFixed(2)}`
+    let line = `\n${formatBotMoney(c.amount, locale, currency)}`
     if (c.payment_link) line += `, ${botString('pay_here', locale)}: ${c.payment_link}`
     return line
   }).join('')
@@ -1367,7 +1373,7 @@ async function handleBalanceQuery(
     accessToken,
     phoneNumberId,
     vars: {
-      total: total.toFixed(2),
+      total: formatBotMoney(total, locale, currency),
       payment_line: resolvePaymentLine(chargeRows, locale),
       charge_lines: chargeLines,
     },
@@ -1409,7 +1415,8 @@ async function handleReceiptQuery(
   timezone: string,
   accessToken: string,
   phoneNumberId: string,
-  locale: AppLocale
+  locale: AppLocale,
+  currency?: string
 ): Promise<void> {
   const db = createServiceRoleClient()
 
@@ -1439,10 +1446,10 @@ async function handleReceiptQuery(
 
   const receiptLines = formatted.length === 0
     ? '\n' + botString('no_previous_payments', locale)
-    : '\n' + formatted.map(c => `${c.date}: ₪${c.amount.toFixed(2)} ${botString('paid_marker', locale)}`).join('\n')
+    : '\n' + formatted.map(c => `${c.date}: ${formatBotMoney(c.amount, locale, currency)} ${botString('paid_marker', locale)}`).join('\n')
   const receiptTotal = formatted.reduce((sum, c) => sum + c.amount, 0)
   const receiptBody = await resolveTemplate(orgId, 'payment_history_reply', {
-    total: receiptTotal.toFixed(2),
+    total: formatBotMoney(receiptTotal, locale, currency),
     charge_lines: receiptLines,
   }, locale)
   await sendTextMessage(senderPhone, receiptBody, accessToken, phoneNumberId)

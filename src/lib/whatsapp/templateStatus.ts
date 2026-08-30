@@ -299,3 +299,48 @@ export async function refreshTemplateStatusesFromMeta(
   console.info('[templateStatus] Refreshed statuses from Meta', { orgId, count: entries.length })
   return entries.length
 }
+
+/**
+ * Has Meta approved this exact template for this org?
+ *
+ * Used to pick between two registrations of the same message that differ in a
+ * way the parameters must match (v3 prints '₪' and takes a bare figure, v4
+ * prints nothing and takes formatted money). Guessing wrong renders '₪₪250.00'
+ * or a bare '250.00', so the send path asks rather than assumes.
+ *
+ * Never throws, and answers `false` on any failure: false means "use the older
+ * template", which is what every org gets today.
+ */
+export async function isTemplateApproved(
+  orgId: string,
+  templateName: string,
+  language: string
+): Promise<boolean> {
+  try {
+    const db = createServiceRoleClient()
+    const { data, error } = await db
+      .from('whatsapp_template_statuses')
+      .select('status')
+      .eq('organization_id', orgId)
+      .eq('template_name', templateName)
+      .eq('language', language)
+      .maybeSingle()
+
+    if (error) {
+      console.warn('[templateStatus] Approval check failed — staying on the older template', {
+        orgId,
+        templateName,
+        error: error.message,
+      })
+      return false
+    }
+    return (data as { status?: string } | null)?.status === 'APPROVED'
+  } catch (err) {
+    console.warn('[templateStatus] Approval check threw — staying on the older template', {
+      orgId,
+      templateName,
+      err,
+    })
+    return false
+  }
+}

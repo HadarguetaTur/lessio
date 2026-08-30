@@ -24,6 +24,15 @@ export type TemplateButton = {
   editable: boolean
   /** Why it cannot be edited, for the note under the read-only pills. */
   lockedReason?: 'meta_approved'
+  /**
+   * The template variable this button's URL comes from.
+   *
+   * Required on every `url` button, because the senders lift that line out of
+   * the body — the button IS the link, and leaving it in the text as well is
+   * the duplication this map exists to prevent. The settings preview reads it
+   * to run the same strip, so what an owner sees is what a parent receives.
+   */
+  urlVar?: string
 }
 
 export const TEMPLATE_BUTTONS: Partial<Record<MessageTemplateType, TemplateButton[]>> = {
@@ -60,18 +69,49 @@ export const TEMPLATE_BUTTONS: Partial<Record<MessageTemplateType, TemplateButto
     },
   ],
   payment_request: [
-    { kind: 'url', labelKey: 'cta_pay_now', editable: false, lockedReason: 'meta_approved' },
+    {
+      kind: 'url',
+      labelKey: 'cta_pay_now',
+      editable: false,
+      lockedReason: 'meta_approved',
+      urlVar: 'payment_link',
+    },
   ],
   payment_reminder: [
-    { kind: 'url', labelKey: 'cta_pay_now', editable: false, lockedReason: 'meta_approved' },
+    {
+      kind: 'url',
+      labelKey: 'cta_pay_now',
+      editable: false,
+      lockedReason: 'meta_approved',
+      urlVar: 'payment_link',
+    },
+  ],
+  // Registered on lessio_lesson_cancelled_by_teacher_*_v2 and sent through
+  // sendTemplateWithQuickReplies. The label is Meta's approved wording, which
+  // is NOT cta_book_lesson — see registerTemplates.ts.
+  lesson_cancelled_by_teacher: [
+    {
+      kind: 'quick_reply',
+      labelKey: 'btn_book_new_lesson',
+      editable: false,
+      lockedReason: 'meta_approved',
+    },
   ],
 
   // In-window replies. These go out as free-form interactive messages, never
   // through Meta review, so the wording is the org's to choose.
-  booking_link: [{ kind: 'url', labelKey: 'cta_book_lesson', editable: true }],
-  portal_link_reply: [{ kind: 'url', labelKey: 'cta_open_portal', editable: true }],
-  balance_reply: [{ kind: 'url', labelKey: 'cta_open_portal', editable: true }],
-  payment_history_reply: [{ kind: 'url', labelKey: 'cta_open_portal', editable: true }],
+  booking_link: [
+    { kind: 'url', labelKey: 'cta_book_lesson', editable: true, urlVar: 'booking_url' },
+  ],
+  portal_link_reply: [
+    { kind: 'url', labelKey: 'cta_open_portal', editable: true, urlVar: 'portal_url' },
+  ],
+  balance_reply: [
+    { kind: 'url', labelKey: 'cta_open_portal', editable: true, urlVar: 'portal_url' },
+  ],
+  // payment_history_reply deliberately has NO entry: its body carries no URL
+  // variable and handleReceiptQuery sends it as plain text. The preview used to
+  // draw a portal button on it that no parent has ever received.
 }
 
 /** The buttons a type carries, or an empty list. */
@@ -100,3 +140,20 @@ export const CUSTOMIZABLE_BOT_STRINGS: BotStringKey[] = [
  * limit is enforced here, where the owner can still see what they lost.
  */
 export const BUTTON_LABEL_MAX = 20
+
+/**
+ * A button label the way it actually leaves the wire.
+ *
+ * The two kinds genuinely differ and must NOT be unified: a cta_url label is
+ * hard-cut at 20 (src/lib/whatsapp/index.ts), while a quick reply is cut at 19
+ * plus an ellipsis (src/lib/whatsapp/interactive.ts). The settings preview
+ * reproduces both rather than relying on CSS truncation, so an owner who types
+ * a too-long label sees the loss before a parent does.
+ */
+export function clipButtonLabel(label: string, kind: TemplateButton['kind']): string {
+  const value = label.trim()
+  if (kind === 'url') return value.slice(0, BUTTON_LABEL_MAX)
+  return value.length <= BUTTON_LABEL_MAX
+    ? value
+    : value.slice(0, BUTTON_LABEL_MAX - 1).trimEnd() + '…'
+}

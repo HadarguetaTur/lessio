@@ -6,7 +6,6 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { toIntlLocale, type AppLocale } from '@/lib/i18n/locale'
 import { OPEN_CHARGE_STATUSES, sumRemaining } from '@/lib/charges'
 
 export interface PaymentRequestCharge {
@@ -15,42 +14,6 @@ export interface PaymentRequestCharge {
   charge_type: 'lesson' | 'cancellation' | 'manual' | 'monthly'
   lesson_start_at: string | null
   student_name: string | null
-}
-
-const CHARGE_TYPE_LABELS: Record<AppLocale, Record<string, string>> = {
-  he: {
-    lesson: 'שיעור',
-    cancellation: 'חיוב ביטול',
-    manual: 'חיוב ידני',
-    monthly: 'חיוב חודשי',
-  },
-  en: {
-    lesson: 'Lesson',
-    cancellation: 'Cancellation charge',
-    manual: 'Manual charge',
-    monthly: 'Monthly charge',
-  },
-}
-
-const MESSAGE_STRINGS: Record<AppLocale, Record<string, string>> = {
-  he: {
-    greeting: 'היי {{name}} 👋',
-    intro: 'הנה פירוט החיובים הפתוחים:',
-    of: 'של',
-    total: 'סה״כ לתשלום',
-    payHeader: 'לתשלום מאובטח:',
-    thanks: 'תודה 🙏',
-    noLink: 'להסדרת התשלום אפשר לפנות אלינו ישירות. תודה 🙏',
-  },
-  en: {
-    greeting: 'Hi {{name}} 👋',
-    intro: 'Here are your open charges:',
-    of: 'for',
-    total: 'Total due',
-    payHeader: 'Secure payment:',
-    thanks: 'Thank you 🙏',
-    noLink: 'To settle the payment, feel free to reach out to us directly. Thank you 🙏',
-  },
 }
 
 /**
@@ -64,7 +27,7 @@ const MESSAGE_STRINGS: Record<AppLocale, Record<string, string>> = {
  * ones THIS parent is related to. Picking the first enrolment instead would put
  * another family's child's name in a WhatsApp message. When the parent has no
  * enrolled student on the lesson the name stays null and the line degrades to
- * "Lesson, 12 August" — see buildPaymentRequestMessage.
+ * "Lesson, 12 August" — see buildChargeLines.
  */
 export async function getPendingChargesForParent(
   parentId: string,
@@ -108,59 +71,6 @@ export async function getPendingChargesForParent(
       student_name: own?.students?.full_name ?? null,
     }
   })
-}
-
-/**
- * Builds the WhatsApp payment request message.
- * Pure function — no side effects.
- *
- * If paymentUrl is provided (Cardcom link), it is included in the message.
- * If paymentUrl is null, falls back to the legacy "contact the business owner" text.
- */
-export function buildPaymentRequestMessage(
-  parentName: string,
-  charges: PaymentRequestCharge[],
-  timezone: string,
-  paymentUrl?: string | null,
-  locale: AppLocale = 'he'
-): string {
-  const s = MESSAGE_STRINGS[locale] ?? MESSAGE_STRINGS.he
-  const typeLabels = CHARGE_TYPE_LABELS[locale] ?? CHARGE_TYPE_LABELS.he
-
-  const lines = charges.map((charge, index) => {
-    const label = typeLabels[charge.charge_type] ?? charge.charge_type
-    let detail = ''
-    if (charge.student_name) {
-      detail += ` ${s.of} ${charge.student_name}`
-    }
-    if (charge.lesson_start_at) {
-      const date = new Date(charge.lesson_start_at).toLocaleDateString(toIntlLocale(locale), {
-        timeZone: timezone,
-        day: 'numeric',
-        month: 'long',
-      })
-      detail += `, ${date}`
-    }
-    return `${index + 1}. ${label}${detail}: ₪${charge.amount.toFixed(2)}`
-  })
-
-  const total = charges.reduce((sum, c) => sum + c.amount, 0)
-
-  const paymentLine = paymentUrl
-    ? [s.payHeader, paymentUrl, '', s.thanks]
-    : [s.noLink]
-
-  return [
-    s.greeting.replace('{{name}}', parentName),
-    '',
-    s.intro,
-    '',
-    ...lines,
-    '',
-    `${s.total}: ₪${total.toFixed(2)}`,
-    '',
-    ...paymentLine,
-  ].join('\n')
 }
 
 /**

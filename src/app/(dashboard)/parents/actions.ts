@@ -7,7 +7,9 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { getPendingChargesForParent, buildPaymentRequestMessage, logPaymentRequestSent } from '@/lib/payment-request'
+import { getPendingChargesForParent, logPaymentRequestSent } from '@/lib/payment-request'
+import { buildChargeLines } from '@/lib/payment-request/chargeLines'
+import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import { getParentById, type Parent } from '@/lib/parents'
 import { getParentStudents, type ParentStudent } from '@/lib/relationships'
 import { getParentDebt } from '@/lib/charges'
@@ -15,8 +17,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { decryptToken } from '@/lib/crypto'
-import { sendTextMessage } from '@/lib/whatsapp'
-import { sendSmartMessage, isInSessionWindow } from '@/lib/whatsapp/sendSmart'
+import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { prepareBusinessSend, recordParentConsent } from '@/lib/whatsapp/consent'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
@@ -425,13 +426,14 @@ export async function sendPaymentRequestAction(
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('whatsapp_phone_number_id, whatsapp_access_token, timezone, default_locale')
+    .select('whatsapp_phone_number_id, whatsapp_access_token, timezone, default_locale, currency')
     .eq('id', orgId)
     .single()
 
   const encryptedToken = org?.whatsapp_access_token as string | null
   const phoneNumberId = org?.whatsapp_phone_number_id as string | null
   const timezone = (org?.timezone as string | null) ?? 'Asia/Jerusalem'
+  const currency = (org?.currency as string | null) ?? undefined
 
   // The payment description and the WhatsApp body are both read by the parent,
   // so they follow the parent's language rather than the sender's.
@@ -440,6 +442,7 @@ export async function sendPaymentRequestAction(
     orgDefault: org?.default_locale as string | null,
   })
   const tr = await getT('parents', recipientLocale)
+  const trReceipts = await getT('receipts', recipientLocale)
 
   if (!encryptedToken || !phoneNumberId) {
     return { error: t('parents.errors.whatsappNotConnectedHint') }
@@ -454,10 +457,10 @@ export async function sendPaymentRequestAction(
   }
 
   // A payment request is business-initiated: the opt-out applies and a parent
-  // hearing from us for the first time gets the welcome notice first. This send
-  // uses sendTextMessage directly rather than sendSmartMessage, which is where
-  // the gate normally lives — hence the explicit call. Before the payment link,
-  // so no link is minted for a message nobody will be sent.
+  // hearing from us for the first time gets the welcome notice first.
+  // sendPaymentWithButton gates again (the claim is atomic, so a second call is
+  // a no-op); this one runs early so no payment link is minted with the
+  // provider for a message that will never be sent.
   const gate = await prepareBusinessSend({ orgId, phone: parent.phone, accessToken, phoneNumberId, locale: recipientLocale })
   if (!gate.ok) {
     return { error: t('parents.optedOutError') }
@@ -513,38 +516,33 @@ export async function sendPaymentRequestAction(
     // Continue sending the WhatsApp message even if the payment link fails
   }
 
-  // Build and send WhatsApp message
-  const message = buildPaymentRequestMessage(
-    parent.full_name,
-    charges,
-    timezone,
-    paymentUrl,
-    recipientLocale
-  )
+  const totalAmount = charges.reduce((sum, c) => sum + c.amount, 0)
 
   try {
-    // The itemised message is free text, which Meta only accepts inside the
-    // 24h customer-service window. Outside it, fall back to the approved
-    // lessio_payment_request_* template (amount + link) via sendSmartMessage —
-    // a plain text send there fails with error 131047 every time.
-    if (await isInSessionWindow(orgId, parent.phone)) {
-      await sendTextMessage(parent.phone, message, accessToken, phoneNumberId)
-    } else {
-      const totalAmount = charges.reduce((sum, c) => sum + c.amount, 0)
-      await sendSmartMessage({
-        orgId,
-        phone: parent.phone,
-        accessToken,
-        phoneNumberId,
-        templateType: 'payment_request',
-        vars: {
-          amount: totalAmount.toFixed(2),
-          description: tr('chargeDescription', { name: parent.full_name as string }),
-          payment_link: paymentUrl ?? '',
-        },
-        locale: recipientLocale,
-      })
-    }
+    // One path for both halves of the 24h window, and one body: the org's
+    // payment_request template. sendPaymentWithButton picks the mechanics —
+    // a cta_url button inside the window, the URL-button template outside —
+    // and falls back to the inline link if either is unavailable.
+    await sendPaymentWithButton({
+      orgId,
+      phone: parent.phone,
+      accessToken,
+      phoneNumberId,
+      templateType: 'payment_request',
+      vars: {
+        parent_name: parent.full_name as string,
+        amount: formatBotMoney(totalAmount, recipientLocale, currency),
+        amount_value: totalAmount.toFixed(2),
+        description: trReceipts('waConsolidated', { count: String(charges.length) }),
+        charge_lines: buildChargeLines(charges, { timezone, locale: recipientLocale, currency }),
+        payment_link: paymentUrl ?? '',
+      },
+      // Every charge in this request carries the same link, so any of them
+      // resolves the button to the same checkout.
+      chargeId: charges[0].id,
+      paymentUrl: paymentUrl ?? '',
+      locale: recipientLocale,
+    })
   } catch (sendErr) {
     console.error('[sendPaymentRequestAction] WhatsApp API error', { orgId, parentId, error: String(sendErr) })
     return { error: t('parents.errors.whatsappSendFailed') }

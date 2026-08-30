@@ -59,6 +59,17 @@ export type BotStringKey =
   | 'charge_partial'
   | 'charge_line_label'
   | 'charge_none'
+  // Fragments composed into the {{charge_lines}} variable of payment_request.
+  // They used to live in a private table inside payment-request/index.ts, which
+  // is how the automatic payment request ended up ignoring the body an owner
+  // had edited in settings.
+  | 'charge_type_lesson'
+  | 'charge_type_cancellation'
+  | 'charge_type_manual'
+  | 'charge_type_monthly'
+  | 'charge_item_of'
+  | 'charge_item_line'
+  | 'charge_lines_total'
   // CTA button labels (Meta caps display_text at 20 chars — keep them short)
   | 'cta_book_lesson'
   | 'cta_open_portal'
@@ -70,6 +81,7 @@ export type BotStringKey =
   | 'btn_confirm_attendance'
   | 'btn_need_to_cancel'
   | 'btn_homework_done'
+  | 'btn_book_new_lesson'
   // Interactive menu. Row titles are capped at 24 chars and the list button at
   // 20 by Meta, so these are deliberately terse.
   | 'menu_greeting'
@@ -268,6 +280,14 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_line_label: 'חיוב',
     charge_none: 'ללא חיוב ביטול',
 
+    charge_type_lesson: 'שיעור',
+    charge_type_cancellation: 'חיוב ביטול',
+    charge_type_manual: 'חיוב ידני',
+    charge_type_monthly: 'חיוב חודשי',
+    charge_item_of: 'של',
+    charge_item_line: '{{index}}. {{label}}{{detail}}: {{amount}}',
+    charge_lines_total: 'סה״כ לתשלום: {{total}}',
+
     cta_book_lesson: 'לקביעת שיעור',
     cta_open_portal: 'לאזור האישי',
     // Must read the same as the URL button registered on the v3 payment
@@ -276,6 +296,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     btn_confirm_attendance: 'מאשר/ת הגעה',
     btn_need_to_cancel: 'צריך לבטל',
     btn_homework_done: 'סיימתי',
+    btn_book_new_lesson: 'קביעת שיעור חדש',
 
     menu_greeting: 'היי {{first_name}} 👋\nאיך אפשר לעזור?',
     menu_greeting_noname: 'היי 👋\nאיך אפשר לעזור?',
@@ -372,7 +393,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     decision_rejected: 'נדחתה',
 
     staff_summary_body:
-      'סיכום להיום:\n• שיעורים: {{lessons_today}}\n• ביטולים: {{cancellations_today}}\n• יתרה פתוחה: ₪{{open_balance}}',
+      'סיכום להיום:\n• שיעורים: {{lessons_today}}\n• ביטולים: {{cancellations_today}}\n• יתרה פתוחה: {{open_balance}}',
     staff_dashboard_link: 'הכניסה למערכת:\n{{url}}\n\nעם האימייל והסיסמה שלך.',
     staff_day_off_alert:
       '🏖️ בקשת חופש חדשה\n\n{{teacher_name}} מבקש/ת חופש בתאריכים {{date_range}}.\nבטווח הזה מתוכננים {{lessons}} שיעורים — אישור יבטל אותם ויעדכן את ההורים, ללא חיוב.',
@@ -500,12 +521,21 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_line_label: 'Charge',
     charge_none: 'No cancellation charge',
 
+    charge_type_lesson: 'Lesson',
+    charge_type_cancellation: 'Cancellation charge',
+    charge_type_manual: 'Manual charge',
+    charge_type_monthly: 'Monthly charge',
+    charge_item_of: 'for',
+    charge_item_line: '{{index}}. {{label}}{{detail}}: {{amount}}',
+    charge_lines_total: 'Total due: {{total}}',
+
     cta_book_lesson: 'Book a lesson',
     cta_open_portal: 'My personal area',
     cta_pay_now: 'Pay securely',
     btn_confirm_attendance: 'Confirm attendance',
     btn_need_to_cancel: 'Need to cancel',
     btn_homework_done: 'Done',
+    btn_book_new_lesson: 'Book a new lesson',
 
     // Names are stored in Hebrew, so an English greeting deliberately omits
     // them rather than reading "Hi יעל 👋". Transliterating is worse: Hebrew
@@ -606,7 +636,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     decision_rejected: 'declined',
 
     staff_summary_body:
-      "Today's summary:\n• Lessons: {{lessons_today}}\n• Cancellations: {{cancellations_today}}\n• Open balance: ₪{{open_balance}}",
+      "Today's summary:\n• Lessons: {{lessons_today}}\n• Cancellations: {{cancellations_today}}\n• Open balance: {{open_balance}}",
     staff_dashboard_link: 'Sign in here:\n{{url}}\n\nWith your email and password.',
     staff_day_off_alert:
       '🏖️ New time-off request\n\n{{teacher_name}} is asking for time off on {{date_range}}.\n{{lessons}} lessons are scheduled in that period — approving cancels them and tells the parents, with no charge.',

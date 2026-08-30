@@ -43,6 +43,7 @@ import {
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { botString } from '@/lib/whatsapp/strings'
 import { parseAppLocale, toIntlLocale, type AppLocale } from '@/lib/i18n/locale'
+import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import {
   deleteCancellationSession,
   executeCancellation,
@@ -397,7 +398,7 @@ function chargeLineFor(outcome: ExecuteCancellationResult, locale: AppLocale): s
   const { chargeType, amount } = outcome.chargeResult
   if (!chargeType || amount <= 0) return ''
   const label = botString(chargeType === 'full' ? 'charge_full' : 'charge_partial', locale)
-  return `\n${label}: ₪${amount.toFixed(2)}`
+  return `\n${label}: ${formatBotMoney(amount, locale)}`
 }
 
 /**
@@ -484,7 +485,7 @@ async function notifyCancelled(
   const { chargeType, amount } = outcome.chargeResult
   const adminChargeLine =
     chargeType && amount > 0
-      ? `\n${botString('charge_line_label', adminLocale)}: ₪${amount.toFixed(2)} (${botString(
+      ? `\n${botString('charge_line_label', adminLocale)}: ${formatBotMoney(amount, adminLocale)} (${botString(
           chargeType === 'full' ? 'charge_full' : 'charge_partial',
           adminLocale
         )})`

@@ -35,12 +35,18 @@ import { WhatsAppPreview } from '@/components/dashboard/settings/WhatsAppPreview
 import {
   BUTTON_LABEL_MAX,
   buttonsFor,
+  clipButtonLabel,
   type TemplateButton,
 } from '@/lib/whatsapp/templateButtons'
-import { normalizeTemplateBody, substituteVars } from '@/lib/whatsapp/templates'
+import {
+  normalizeTemplateBody,
+  stripStandaloneVarLine,
+  substituteVars,
+} from '@/lib/whatsapp/templates'
 import type { MessageTemplateType } from '@/lib/whatsapp/templates'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { NOT_SUBMITTED, type TemplateApprovalView } from '@/lib/whatsapp/templateApprovalView'
+import type { OutOfWindowPreview } from '@/lib/whatsapp/outOfWindowPreview'
 
 export type TemplateApproval = TemplateApprovalView
 
@@ -63,6 +69,12 @@ interface MessageTemplateCardProps {
    * card does not need the string tables.
    */
   buttonLabels?: Record<string, string>
+  /**
+   * The message as it goes out OUTSIDE the 24h window — a Meta-approved
+   * template with fixed copy, which for most types is not the body above.
+   * Null when this type is only ever sent as a reply.
+   */
+  outOfWindowPreview?: OutOfWindowPreview | null
 }
 
 const initialState: ActionState = { error: null }
@@ -96,6 +108,7 @@ export function MessageTemplateCard({
   needsApproval = false,
   approval = null,
   buttonLabels = {},
+  outOfWindowPreview = null,
 }: MessageTemplateCardProps) {
   const t = useTranslations('settings.messageTemplates')
   const tCommon = useTranslations('common')
@@ -179,11 +192,24 @@ export function MessageTemplateCard({
     })
   }
 
-  const preview = substituteVars(body, previewVars)
-
   // Labels shown in the preview follow the editor live: typing a new label and
   // watching the bubble change is the whole reason the two sit together.
   const labels: Record<string, string> = { ...buttonLabels, ...labelDrafts }
+
+  // The preview runs the SAME pipeline as a real send: the URL line is lifted
+  // out of the body and becomes the button. Substituting first and drawing both
+  // is what made the old preview show a link the parent never sees twice.
+  //
+  // stripStandaloneVarLine returning null means the org wrote the URL
+  // mid-sentence; the senders honour that by keeping the text form and dropping
+  // the button, so the preview must too.
+  const urlButton = buttons.find((b) => b.kind === 'url' && b.urlVar)
+  const strippedBody = urlButton?.urlVar
+    ? stripStandaloneVarLine(body, urlButton.urlVar)
+    : null
+  const buttonSuppressed = Boolean(urlButton) && strippedBody === null
+  const preview = substituteVars(strippedBody ?? body, previewVars)
+  const previewButtons = buttonSuppressed ? [] : buttons
   // The collapsed row has to say something about the message itself; the label
   // alone does not distinguish twenty templates.
   const firstLine = body.split('\n').find((line) => line.trim().length > 0)?.trim() ?? ''
@@ -325,15 +351,68 @@ export function MessageTemplateCard({
 
       <SendTestRow type={type} locale={locale} />
 
-      {/* Live preview — the message as WhatsApp draws it, buttons included. */}
+      {/* Live preview — the message as WhatsApp draws it, buttons included.
+          Two bubbles, because the same message goes out two different ways: the
+          body above inside the 24h window, a Meta-approved template outside it. */}
       {showPreview && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">{t('preview')}:</p>
-          <WhatsAppPreview
-            body={preview}
-            buttons={buttons.map((b) => ({ label: labels[b.labelKey], kind: b.kind }))}
-            locale={locale}
-          />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              {t('previewPane.inWindow')}
+            </p>
+            <WhatsAppPreview
+              body={preview}
+              buttons={previewButtons.map((b) => ({
+                label: clipButtonLabel(labels[b.labelKey] ?? '', b.kind),
+                kind: b.kind,
+              }))}
+              locale={locale}
+            />
+            {buttonSuppressed && (
+              <p className="text-xs text-amber-700">{t('previewPane.buttonSuppressed')}</p>
+            )}
+          </div>
+
+          {needsApproval && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                {t('previewPane.outOfWindow')}
+              </p>
+              {outOfWindowPreview ? (
+                <>
+                  <WhatsAppPreview
+                    body={outOfWindowPreview.body}
+                    buttons={outOfWindowPreview.buttons.map((b) => ({
+                      label: clipButtonLabel(b.label, b.kind),
+                      kind: b.kind,
+                    }))}
+                    locale={locale}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <code className="font-mono text-[11px] text-muted-foreground" dir="ltr">
+                      {outOfWindowPreview.metaName}
+                    </code>
+                    <span
+                      className={`text-xs border rounded px-2 py-0.5 font-medium ${
+                        STATUS_STYLES[outOfWindowPreview.status] ?? NEUTRAL_STYLE
+                      }`}
+                    >
+                      {TRANSLATED_STATUSES.includes(outOfWindowPreview.status)
+                        ? t(`status.${outOfWindowPreview.status}`)
+                        : outOfWindowPreview.status}
+                    </span>
+                  </div>
+                  {outOfWindowPreview.source !== 'custom' && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('previewPane.outOfWindowBuiltIn')}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">{t('previewPane.outOfWindowNone')}</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

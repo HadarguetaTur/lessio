@@ -22,6 +22,7 @@ import {
   type TemplateStatusRow,
 } from '@/lib/whatsapp/templateStatus'
 import { resolveTemplateApproval } from '@/lib/whatsapp/templateApprovalView'
+import { resolveOutOfWindowPreview } from '@/lib/whatsapp/outOfWindowPreview'
 import { TestPhoneProvider, TestPhoneInput } from '@/components/dashboard/settings/TestPhone'
 import { decryptToken } from '@/lib/crypto'
 
@@ -158,6 +159,18 @@ export default async function MessageTemplatesPage({
       ? resolveTemplateApproval(statusRows, type, locale, savedBody, customBody !== null)
       : null
 
+    // The body a parent gets outside the 24h window is a different, Meta-fixed
+    // one — resolved here so the card can draw it instead of only describing it
+    // in prose. No extra query: statusRows is already loaded above.
+    const outOfWindowPreview = OUT_OF_WINDOW_TYPES.includes(type)
+      ? resolveOutOfWindowPreview({
+          type,
+          locale,
+          rows: statusRows,
+          previewVars: TEMPLATE_PREVIEW_VARS[locale][type],
+        })
+      : null
+
     return (
       <MessageTemplateCard
         key={`${locale}:${type}`}
@@ -167,11 +180,12 @@ export default async function MessageTemplatesPage({
         defaultBody={DEFAULT_TEMPLATES[locale][type]}
         customBody={customBody}
         variables={TEMPLATE_VARIABLES[type]}
-        previewVars={TEMPLATE_PREVIEW_VARS[type]}
+        previewVars={TEMPLATE_PREVIEW_VARS[locale][type]}
         submittable={SUBMITTABLE_TYPES.includes(type)}
         needsApproval={OUT_OF_WINDOW_TYPES.includes(type)}
         approval={approval}
         buttonLabels={labelsFor(type)}
+        outOfWindowPreview={outOfWindowPreview}
       />
     )
   }

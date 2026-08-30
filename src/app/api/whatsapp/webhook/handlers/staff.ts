@@ -15,6 +15,7 @@ import { hasScheduleIntent, sendTextMessage } from '@/lib/whatsapp'
 import { isActionAllowedForRole, type MenuAction } from '@/lib/whatsapp/menu'
 import { sendListMessage, sendReplyButtons } from '@/lib/whatsapp/interactive'
 import { botString } from '@/lib/whatsapp/strings'
+import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import {
   askOwnerCopilot,
   classifyOwnerCopilotIntent,
@@ -629,7 +630,7 @@ async function sendTodaySummary(ctx: HandlerContext): Promise<void> {
   await replyWith(ctx, 'staff_summary_body', {
     lessons_today: String(lessonsRes.count ?? 0),
     cancellations_today: String(cancelledRes.count ?? 0),
-    open_balance: openBalance.toFixed(2),
+    open_balance: formatBotMoney(openBalance, ctx.locale, (ctx.org.currency as string | null) ?? undefined),
   })
 
   console.info('[whatsapp/webhook] Staff summary replied', { orgId: ctx.org.id })

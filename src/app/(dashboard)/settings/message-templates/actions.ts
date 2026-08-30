@@ -507,7 +507,9 @@ export async function sendTestTemplateAction(
   }
 
   const templateType = parsed.data.templateType as MessageTemplateType
-  const previewVars = TEMPLATE_PREVIEW_VARS[templateType]
+  // The test message is really sent, so it must carry the sample values of the
+  // language being tested — not Hebrew ones wrapped in English copy.
+  const previewVars = TEMPLATE_PREVIEW_VARS[parsed.data.locale as AppLocale]?.[templateType]
   if (!previewVars) {
     return { error: t('settings.messageTemplates.test.unknownType') }
   }

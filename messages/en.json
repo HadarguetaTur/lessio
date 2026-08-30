@@ -1699,6 +1699,13 @@
         "sendFailed": "Sending failed. Check the number and that the WhatsApp connection is live.",
         "unknownType": "Unknown template type.",
         "missingPhone": "Enter a test number at the top of the page."
+      },
+      "previewPane": {
+        "inWindow": "How it looks when the parent wrote to you in the last day (inside the 24-hour window)",
+        "outOfWindow": "How it looks when the parent has not written recently (outside the 24-hour window)",
+        "outOfWindowBuiltIn": "This is Lessio's wording, not yours. Submit your own to Meta for approval to have it sent here too.",
+        "outOfWindowNone": "This message is never sent outside the 24-hour window.",
+        "buttonSuppressed": "The link sits mid-sentence, so this goes out as plain text with no button. Put the variable on its own line to get one."
       }
     },
     "aiAssistant": {
@@ -4695,7 +4702,9 @@
     "lessonPayment": "Lesson payment — {name}",
     "creditNoteLine": "Credit — {reason}",
     "chargeFallback": "Charge {month}",
-    "consolidatedPayment": "Payment for {count} open charges"
+    "consolidatedPayment": "Payment for {count} open charges",
+    "waConsolidated": "{count} open charges",
+    "waLessonCharge": "your most recent lesson"
   },
   "support": {
     "list": {

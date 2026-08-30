@@ -163,9 +163,25 @@ describe('autoSendPaymentRequest', () => {
         // it points at while the 24h window is open.
         chargeId: 'charge-1',
         paymentUrl: 'https://pay.example.com/1',
-        body: expect.any(String),
       })
     )
+
+    // No `body`: this path used to compose its own message from a private
+    // string table, so an owner's edit in settings never reached it. The
+    // template is now the only source of the wording.
+    const call = mockSendPaymentWithButton.mock.calls[0][0]
+    expect(call.body).toBeUndefined()
+
+    // `description` was missing entirely, so a fallback to sendSmartMessage
+    // rendered the literal '{{description}}' to the parent.
+    expect(call.vars.description).toBeTruthy()
+    expect(call.vars.parent_name).toBe('דנה כהן')
+    expect(call.vars.charge_lines).toBe('')
+    // The body carries no currency symbol, so `amount` is formatted money while
+    // the Meta v2/v3 parameters take the bare figure.
+    expect(call.vars.amount).toContain('250')
+    expect(call.vars.amount_value).toBe('250.00')
+
     expect(db.updates.some((u) => 'sent_at' in u)).toBe(true)
   })
 

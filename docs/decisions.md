@@ -450,6 +450,42 @@ Rules:
 
 ---
 
+## 32. One Template Body per (Type, Language), and the Symbol Is Not in It
+
+✅ DECIDED (Aug 2026): a WhatsApp message type has exactly one editable body per
+language, and every send path resolves it. The trigger was `payment_request`, which had
+grown four different bodies — the settings template, a private string table in
+`payment-request/index.ts`, and the Meta `_v2` and `_v3` registrations — so an owner's
+edit reached one of four paths and the settings preview could not be truthful about any
+of them.
+
+Rules:
+
+* no send path composes its own message body. Anything dynamic becomes a template
+  variable built from `botString` fragments (`{{charge_lines}}`, `{{lesson_lines}}`),
+  never a second copy of the surrounding words
+* `{{amount}}` and `{{total}}` arrive **already formatted** for the org's currency and
+  the recipient's locale (`formatBotMoney`). No template body contains a literal `₪`
+* a body whose URL line can be lifted into a CTA button must still read correctly with
+  that line removed — introduce the link with a full sentence, never a label ending in
+  `:` or `👇`. Otherwise the parent sees an orphan label directly above a button saying
+  the same words. Enforced by `templateCopy.test.ts`
+* strip the URL line from the **raw** template, then substitute. Substituting first
+  removes the `{{placeholder}}` the stripper matches on, which is how parents came to
+  receive the link twice — once as text and once as the button
+* Meta-approved copy is never edited in place; an edit resets the template to PENDING at
+  Meta and blocks every out-of-window send. New copy ships under a new name. `_v4`
+  therefore exists alongside `_v3` purely to drop the hardcoded `₪`, and the senders
+  switch to it per-org only once `whatsapp_template_statuses` reports it APPROVED — the
+  two take differently-shaped amount parameters, so the template and its parameters are
+  always chosen together
+* the settings preview runs the same pipeline as the send (same strip, same label
+  truncation) and renders the out-of-window body as a second bubble. A preview that
+  *cannot* disagree with the send is the point; prose explaining the difference is not a
+  substitute
+
+---
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

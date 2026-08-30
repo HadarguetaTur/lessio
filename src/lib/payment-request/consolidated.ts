@@ -17,7 +17,9 @@ import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { logChargeAudit } from '@/lib/charges/audit'
+import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import { getPendingChargesForParent, logPaymentRequestSent } from './index'
+import { buildChargeLines } from './chargeLines'
 
 export type ConsolidatedOutcome =
   | 'sent'
@@ -37,7 +39,7 @@ export async function sendConsolidatedPaymentRequest(
 
   const { data: org } = await db
     .from('organizations')
-    .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale')
+    .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale, timezone, currency')
     .eq('id', orgId)
     .single()
 
@@ -92,6 +94,8 @@ export async function sendConsolidatedPaymentRequest(
 
   const requestId = request.id as string
   const tr = await getT('receipts', locale)
+  const timezone = (org?.timezone as string | null) ?? 'Asia/Jerusalem'
+  const currency = (org?.currency as string | null) ?? undefined
 
   let paymentUrl: string
   let paymentReference: string
@@ -160,10 +164,14 @@ export async function sendConsolidatedPaymentRequest(
     phoneNumberId,
     templateType: 'payment_request',
     vars: {
-      amount: total.toFixed(2),
-      // Meta rejects newlines in template parameters, so this stays a single
-      // short line rather than an itemised breakdown.
-      description: tr('consolidatedPayment', { count: String(chargeIds.length) }),
+      parent_name: parent.full_name as string,
+      amount: formatBotMoney(total, locale, currency),
+      amount_value: total.toFixed(2),
+      // A bare noun phrase — the template supplies the preposition around it.
+      description: tr('waConsolidated', { count: String(chargeIds.length) }),
+      // Only the free-form in-window send can carry the breakdown; Meta rejects
+      // newlines in a template parameter, so out of window `param()` flattens it.
+      charge_lines: buildChargeLines(charges, { timezone, locale, currency }),
       payment_link: paymentUrl,
     },
     // Every charge in the request now carries the same link, so any of them

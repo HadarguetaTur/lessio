@@ -23,6 +23,7 @@ import { decryptToken } from '../_shared/crypto.ts'
 import { sendSmartPayButton } from '../_shared/whatsapp.ts'
 import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
 import { botString } from '../_shared/botStrings.ts'
+import { formatBotMoney } from '../_shared/money.ts'
 import { sendEmail } from '../_shared/email.ts'
 
 Deno.serve(async (_req) => {
@@ -35,7 +36,7 @@ Deno.serve(async (_req) => {
   // nagging only runs for orgs that explicitly enabled it in /settings/whatsapp.
   const { data: orgs, error: orgsError } = await db
     .from('organizations')
-    .select('id, payment_reminder_days, whatsapp_phone_number_id, whatsapp_access_token, email_notifications, default_locale')
+    .select('id, payment_reminder_days, whatsapp_phone_number_id, whatsapp_access_token, email_notifications, default_locale, currency')
     .eq('reminders_enabled', true)
     // Platform billing: a lapsed studio stops sending. See organizations.service_state
     // (migration 20260829140100) — the ladder is owned by saas-subscription-checker.
@@ -131,16 +132,20 @@ async function processOrg(db: any, org: any, now: Date) {
     }
 
     // Chase what is still owed: a charge can carry a partial payment.
-    const amount = Math.max(
-      0,
-      Number(charge.amount) - Number(charge.amount_paid ?? 0)
-    ).toFixed(2)
+    const owed = Math.max(0, Number(charge.amount) - Number(charge.amount_paid ?? 0))
     const locale = resolveRecipientLocale({
       stored: charge.parent?.preferred_locale,
       orgDefault: org.default_locale,
     })
+    // Two shapes of the same number, deliberately. The free-form body carries
+    // no currency symbol of its own, so it needs the formatted string; the
+    // Meta-approved v2/v3 templates still have a literal '₪' in their approved
+    // copy, so their parameters must stay a bare number or the parent reads
+    // '₪₪250.00'.
+    const amountMoney = formatBotMoney(owed, locale, org.currency ?? undefined)
+    const amount = owed.toFixed(2)
     const message = await resolveTemplate(db, org.id, 'payment_reminder', {
-      amount,
+      amount: amountMoney,
       payment_link: charge.payment_link ?? '',
     }, locale)
 
@@ -161,7 +166,9 @@ async function processOrg(db: any, org: any, now: Date) {
         ],
         templateVars: [charge.parent?.full_name || botString('dear_parents', locale), amount],
         locale,
-        namedVars: { amount, payment_link: charge.payment_link ?? '' },
+        // The org's own approved template was authored in the settings editor,
+        // whose body carries no currency symbol — so it takes the formatted one.
+        namedVars: { amount: amountMoney, payment_link: charge.payment_link ?? '' },
         chargeId: charge.id,
         paymentUrl: charge.payment_link ?? '',
         buttonLabel: botString('cta_pay_now', locale),

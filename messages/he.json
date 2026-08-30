@@ -1699,6 +1699,13 @@
         "sendFailed": "השליחה נכשלה. בדקו שהמספר תקין ושהחיבור ל-WhatsApp פעיל.",
         "unknownType": "סוג תבנית לא מוכר.",
         "missingPhone": "הזינו מספר לבדיקה בראש העמוד."
+      },
+      "previewPane": {
+        "inWindow": "כך זה נראה כשההורה כתב לנו ביום האחרון (בתוך חלון 24 השעות)",
+        "outOfWindow": "כך זה נראה כשההורה לא כתב לנו לאחרונה (מחוץ לחלון 24 השעות)",
+        "outOfWindowBuiltIn": "זה הנוסח של Lessio, לא הנוסח שלך. כדי שהנוסח שלך יישלח גם כאן, שלחי אותו לאישור Meta.",
+        "outOfWindowNone": "הודעה זו לא נשלחת מחוץ לחלון 24 השעות.",
+        "buttonSuppressed": "הקישור נמצא באמצע משפט, אז הוא יישלח כטקסט ובלי כפתור. כדי לקבל כפתור, שימי את המשתנה בשורה משלו."
       }
     },
     "aiAssistant": {
@@ -4695,7 +4702,9 @@
     "lessonPayment": "תשלום שיעור — {name}",
     "creditNoteLine": "זיכוי — {reason}",
     "chargeFallback": "חיוב {month}",
-    "consolidatedPayment": "תשלום עבור {count} חיובים פתוחים"
+    "consolidatedPayment": "תשלום עבור {count} חיובים פתוחים",
+    "waConsolidated": "{count} חיובים פתוחים",
+    "waLessonCharge": "השיעור האחרון"
   },
   "support": {
     "list": {

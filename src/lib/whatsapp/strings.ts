@@ -207,6 +207,8 @@ export type BotStringKey =
   | 'ai_the_customer'
   | 'ai_no_upcoming_lessons'
   | 'ai_lesson_datetime_format'
+  | 'ai_lesson_history_header'
+  | 'ai_lesson_history_line'
   | 'the_student'
   | 'unsupported_media'
   | 'org_suspended'
@@ -419,15 +421,18 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
 
     the_teacher: 'המורה',
     the_parent: 'ההורה',
-    lesson_list_line: '{n}. {date} בשעה {time} עם {teacher}',
-    student_line_with_homework: '{name} — {open} שיעורי בית פתוחים',
-    ics_lesson_summary: 'שיעור — {students}',
-    ics_teacher_line: 'מורה: {teacher}',
+    lesson_list_line: '{{n}}. {{date}} בשעה {{time}} עם {{teacher}}',
+    student_line_with_homework: '{{name}} — {{open}} שיעורי בית פתוחים',
+    ics_lesson_summary: 'שיעור — {{students}}',
+    ics_teacher_line: 'מורה: {{teacher}}',
     lesson_date_format: "EEEE, d 'ב'MMMM",
     ai_the_school: 'בית הספר',
     ai_the_customer: 'הלקוח',
     ai_no_upcoming_lessons: 'אין שיעורים מתוכננים',
     ai_lesson_datetime_format: "EEEE d/M 'בשעה' HH:mm",
+    ai_lesson_history_header: 'היסטוריית שיעורים ({{from}} עד {{to}}):',
+    ai_lesson_history_line:
+      '- {{name}}: {{completed}} שיעורים שהתקיימו, {{no_show}} אי-הגעה, {{cancelled}} בוטלו',
     the_student: 'התלמיד',
     unsupported_media:
       'קיבלתי 🙂 כאן אפשר לעזור רק בהודעות טקסט — תמונות, הקלטות וקבצים לא נקראים.\nאפשר לכתוב "תפריט" כדי לראות מה אפשר לעשות, או לפנות ישירות לצוות.',
@@ -649,15 +654,18 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
 
     the_teacher: 'the teacher',
     the_parent: 'the parent',
-    lesson_list_line: '{n}. {date} at {time} with {teacher}',
-    student_line_with_homework: '{name} — {open} open homework',
-    ics_lesson_summary: 'Lesson — {students}',
-    ics_teacher_line: 'Teacher: {teacher}',
+    lesson_list_line: '{{n}}. {{date}} at {{time}} with {{teacher}}',
+    student_line_with_homework: '{{name}} — {{open}} open homework',
+    ics_lesson_summary: 'Lesson — {{students}}',
+    ics_teacher_line: 'Teacher: {{teacher}}',
     lesson_date_format: 'EEEE, MMMM d',
     ai_the_school: 'the school',
     ai_the_customer: 'the customer',
     ai_no_upcoming_lessons: 'No upcoming lessons',
     ai_lesson_datetime_format: "EEEE d/M 'at' HH:mm",
+    ai_lesson_history_header: 'Lesson history ({{from}} to {{to}}):',
+    ai_lesson_history_line:
+      '- {{name}}: {{completed}} lessons held, {{no_show}} no-shows, {{cancelled}} cancelled',
     the_student: 'the student',
     unsupported_media:
       'Got it 🙂 I can only help with text messages here — photos, voice notes and files are not read.\nType "menu" to see what I can do, or reach out to the team directly.',
@@ -665,6 +673,9 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'Automated replies are not available right now. For scheduling, cancellations or any question, please contact your teacher directly.',
   },
 }
+
+/** Every key at runtime, so tests can sweep the whole table. */
+export const BOT_STRING_KEYS = Object.keys(STRINGS.he) as BotStringKey[]
 
 /**
  * Returns a bot string in the given language, substituting {{vars}}.

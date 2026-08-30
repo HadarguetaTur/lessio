@@ -313,20 +313,6 @@ export function Sidebar({
                 pathname.startsWith('/settings/')
               }
             />
-
-            {userRole === 'owner' ? (
-              <div className="mt-3 border-t border-sidebar-border pt-3">
-                <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/60">
-                  {t('sections.account')}
-                </p>
-                <NavLink
-                  href="/account/billing"
-                  label={t('accountBilling')}
-                  icon={Wallet}
-                  active={pathname === '/account/billing' || pathname.startsWith('/account/billing/')}
-                />
-              </div>
-            ) : null}
           </div>
         )}
 
@@ -379,6 +365,17 @@ export function Sidebar({
               <p className="text-xs text-muted-foreground">{tc(`roles.${userRole}`) ?? userRole}</p>
             </div>
             <DropdownMenuSeparator />
+            {userRole === 'owner' ? (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link href="/account/billing" className="flex items-center gap-2 w-full text-sm">
+                    <Wallet size={13} />
+                    {t('accountBilling')}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            ) : null}
             <DropdownMenuItem asChild>
               <form action={signOut} className="w-full">
                 <button

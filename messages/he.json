@@ -386,7 +386,10 @@
       "debtorsLabel": "גבייה",
       "viewAll": "הצג הכל",
       "sectionClear": "אין פריטים פתוחים",
-      "openItems": "{count} פריטים פתוחים"
+      "openItems": "{count} פריטים פתוחים",
+      "markLessonDone": "סימון השיעור כהתקיים",
+      "markHomeworkDone": "סימון שיעורי הבית כהושלמו",
+      "markDoneFailed": "העדכון נכשל, נסו שוב"
     },
     "business": {
       "title": "החודש",

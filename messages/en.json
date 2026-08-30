@@ -386,7 +386,10 @@
       "debtorsLabel": "Collection",
       "viewAll": "View all",
       "sectionClear": "Nothing open",
-      "openItems": "{count} open items"
+      "openItems": "{count} open items",
+      "markLessonDone": "Mark lesson as completed",
+      "markHomeworkDone": "Mark homework as done",
+      "markDoneFailed": "Update failed, please try again"
     },
     "business": {
       "title": "This month",

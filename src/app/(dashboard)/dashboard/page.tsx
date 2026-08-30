@@ -14,7 +14,11 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { FirstRunWelcome } from '@/components/dashboard/FirstRunWelcome'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { markSetupWelcomeSeen } from './actions'
+import {
+  completeLessonFromDashboard,
+  markHomeworkDoneFromDashboard,
+  markSetupWelcomeSeen,
+} from './actions'
 import {
   AttentionSection,
   MoneySection,
@@ -101,7 +105,12 @@ export default async function DashboardPage() {
 
       {/* 2 — Needs attention, as a row of equal-height cards. */}
       <Suspense fallback={<BandSkeleton />}>
-        <AttentionSection {...sectionProps} leadsEnabled={saasFeatures.leads} />
+        <AttentionSection
+          {...sectionProps}
+          leadsEnabled={saasFeatures.leads}
+          completeLessonAction={completeLessonFromDashboard}
+          markHomeworkDoneAction={markHomeworkDoneFromDashboard}
+        />
       </Suspense>
 
       {/* 3 — Business performance. */}

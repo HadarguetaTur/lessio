@@ -7,6 +7,7 @@ import type { AppLocale } from '@/lib/i18n/locale'
 import { getTodayLessons } from '@/lib/lessons'
 import { getDashboardSummary } from '@/lib/dashboard/stats'
 import { getAttentionData } from '@/lib/dashboard/attention'
+import type { AttentionActionResult } from '@/app/(dashboard)/dashboard/actions'
 import { getMonthlyRevenueTrend } from '@/lib/reports/revenue'
 import { getMonthForecast } from '@/lib/reports/forecast'
 import { KpiCard } from '@/components/dashboard/KpiCard'
@@ -43,7 +44,13 @@ export async function AttentionSection({
   timezone,
   appLocale,
   leadsEnabled,
-}: SectionProps & { leadsEnabled: boolean }) {
+  completeLessonAction,
+  markHomeworkDoneAction,
+}: SectionProps & {
+  leadsEnabled: boolean
+  completeLessonAction: (id: string) => Promise<AttentionActionResult>
+  markHomeworkDoneAction: (id: string) => Promise<AttentionActionResult>
+}) {
   // A brand-new org has nothing needing attention because it has nothing at
   // all. "Everything is handled" is true of the queue and false of the
   // business, and the audit caught it saying so one click after the onboarding
@@ -61,6 +68,8 @@ export async function AttentionSection({
       timezone={timezone}
       appLocale={appLocale}
       hasStudents={(studentCount ?? 0) > 0}
+      completeLessonAction={completeLessonAction}
+      markHomeworkDoneAction={markHomeworkDoneAction}
     />
   )
 }

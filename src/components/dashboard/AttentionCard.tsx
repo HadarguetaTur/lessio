@@ -102,6 +102,12 @@ interface AttentionRowProps {
   /** Right-most (logical end) value — an amount or a date. */
   trailing?: React.ReactNode
   trailingStrong?: boolean
+  /**
+   * Interactive control at the logical start of the row (e.g. a "done"
+   * checkbox). Rendered as a sibling of the link, not inside it — nesting an
+   * interactive element in an anchor breaks both semantics and the click.
+   */
+  leading?: React.ReactNode
 }
 
 /** Compact, divider-free row. Hover background does the separating. */
@@ -112,12 +118,10 @@ export function AttentionRow({
   badge,
   trailing,
   trailingStrong,
+  leading,
 }: AttentionRowProps) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/50"
-    >
+  const content = (
+    <>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm text-foreground">{primary}</span>
         {secondary && (
@@ -135,6 +139,26 @@ export function AttentionRow({
           {trailing}
         </span>
       )}
+    </>
+  )
+
+  if (leading) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/50">
+        {leading}
+        <Link href={href} className="flex min-w-0 flex-1 items-center gap-2">
+          {content}
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/50"
+    >
+      {content}
     </Link>
   )
 }

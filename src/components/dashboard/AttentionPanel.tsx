@@ -13,12 +13,17 @@ import type { AttentionData } from '@/lib/dashboard/attention'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { toIntlLocale } from '@/lib/i18n/locale'
 import { cn } from '@/lib/utils'
+import { StatusBadge } from '@/components/ui/status-badge'
+import type { AttentionActionResult } from '@/app/(dashboard)/dashboard/actions'
 import { AttentionCard, AttentionRow, AttentionSubHeader } from './AttentionCard'
+import { AttentionRowCheckbox } from './AttentionRowCheckbox'
 
 interface AttentionPanelProps {
   data: AttentionData
   timezone: string
   appLocale: AppLocale
+  completeLessonAction: (id: string) => Promise<AttentionActionResult>
+  markHomeworkDoneAction: (id: string) => Promise<AttentionActionResult>
 }
 
 /** Rows rendered inside a card before the view-all link takes over. */
@@ -41,6 +46,8 @@ export async function AttentionPanel({
   timezone,
   appLocale,
   hasStudents = true,
+  completeLessonAction,
+  markHomeworkDoneAction,
 }: AttentionPanelProps & { hasStudents?: boolean }) {
   const t = await getTranslations('dashboard')
   const intlLocale = toIntlLocale(appLocale)
@@ -131,7 +138,15 @@ export async function AttentionPanel({
               key={lesson.lessonId}
               href={`/lessons/${lesson.lessonId}`}
               primary={<bdi>{lesson.studentName}</bdi>}
+              badge={<StatusBadge status="scheduled" className="shrink-0 px-1.5 text-[10px]" />}
               trailing={formatDayTime(lesson.startAt)}
+              leading={
+                <AttentionRowCheckbox
+                  id={lesson.lessonId}
+                  action={completeLessonAction}
+                  label={t('attention.markLessonDone')}
+                />
+              }
             />
           ))}
         </AttentionCard>
@@ -163,6 +178,7 @@ export async function AttentionPanel({
                   key={row.billingId}
                   href="/billing"
                   primary={<bdi>{row.studentName}</bdi>}
+                  badge={<StatusBadge status="pending_approval" className="shrink-0 px-1.5 text-[10px]" />}
                   trailing={formatCurrency(row.amount, appLocale)}
                   trailingStrong
                 />
@@ -220,7 +236,15 @@ export async function AttentionPanel({
               href={`/homework/${row.assignmentId}`}
               primary={<bdi>{row.studentName}</bdi>}
               secondary={row.title}
+              badge={<StatusBadge status="overdue" className="shrink-0 px-1.5 text-[10px]" />}
               trailing={row.dueDate ? formatShortDate(`${row.dueDate}T12:00:00Z`) : undefined}
+              leading={
+                <AttentionRowCheckbox
+                  id={row.assignmentId}
+                  action={markHomeworkDoneAction}
+                  label={t('attention.markHomeworkDone')}
+                />
+              }
             />
           ))}
         </AttentionCard>

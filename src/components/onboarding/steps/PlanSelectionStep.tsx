@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { cn } from '@/lib/utils'
 import type { SaasPlanRow } from '@/lib/saas/plans'
 import type { SaasPlanName } from '@/lib/saas/types'
@@ -87,12 +88,7 @@ export function PlanSelectionStep({
 
   const planByName = (name: SaasPlanName) => plans.find((p) => p.name === name)
 
-  const formatMoney = (n: number) =>
-    new Intl.NumberFormat(locale === 'he' ? 'he-IL' : 'en-US', {
-      style: 'currency',
-      currency: 'ILS',
-      maximumFractionDigits: 0,
-    }).format(n)
+  const formatMoney = (n: number) => formatCurrency(n, locale)
 
   const onFree = () => {
     setError(null)
@@ -130,12 +126,7 @@ export function PlanSelectionStep({
   const planLabelForSummary = (s: BeginPaidCheckoutSummary) =>
     locale === 'he' ? s.planLabelHe : s.planLabelEn
 
-  const formatSummaryAmount = (s: BeginPaidCheckoutSummary) =>
-    new Intl.NumberFormat(locale === 'he' ? 'he-IL' : 'en-US', {
-      style: 'currency',
-      currency: 'ILS',
-      maximumFractionDigits: 0,
-    }).format(s.amount)
+  const formatSummaryAmount = (s: BeginPaidCheckoutSummary) => formatCurrency(s.amount, locale)
 
   const onCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault()

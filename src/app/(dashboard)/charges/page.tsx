@@ -3,7 +3,7 @@ import { Receipt } from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
-import { getCharges, ChargeStatus } from '@/lib/charges'
+import { getCharges, ChargeStatus, getChargeRemaining } from '@/lib/charges'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getOrgProviderStatus } from '@/lib/organizations/providerStatus'
 import { getParents } from '@/lib/parents'
@@ -33,7 +33,7 @@ const OPEN_STATUSES: ChargeStatus[] = ['pending', 'invoiced']
 
 /** What is still owed on a charge, after any partial payment. */
 function remainingOf(charge: { amount: number; amount_paid: number }): number {
-  return Math.max(0, charge.amount - charge.amount_paid)
+  return getChargeRemaining(charge.amount, charge.amount_paid)
 }
 
 export default async function ChargesPage(props: {
@@ -52,13 +52,14 @@ export default async function ChargesPage(props: {
   const hasPaymentProvider = providers.hasPayment
   const hasReceiptProvider = providers.hasReceipt
 
-  const [charges, parents, timezone] = await Promise.all([
+  const [charges, allCharges, parents, timezone] = await Promise.all([
     getCharges(orgId, {
       status: statusFilter,
       parentId: searchParams.parent || undefined,
       dateFrom: searchParams.from || undefined,
       dateTo: searchParams.to || undefined,
     }),
+    getCharges(orgId),
     getParents(orgId),
     getOrgTimezone(orgId),
   ])
@@ -81,13 +82,13 @@ export default async function ChargesPage(props: {
 
   const monthStart = DateTime.now().setZone(timezone).startOf('month')
   // Open buckets show what is still owed; a partially-paid charge counts for its remainder.
-  const pendingTotal = charges
+  const pendingTotal = allCharges
     .filter((c) => c.status === 'pending')
     .reduce((sum, c) => sum + remainingOf(c), 0)
-  const invoicedTotal = charges
+  const invoicedTotal = allCharges
     .filter((c) => c.status === 'invoiced')
     .reduce((sum, c) => sum + remainingOf(c), 0)
-  const paidThisMonth = charges
+  const paidThisMonth = allCharges
     .filter((c) =>
       c.status === 'paid' &&
       c.paid_at &&
@@ -125,7 +126,76 @@ export default async function ChargesPage(props: {
       )}
 
       {/* Filters */}
-      <form method="GET" className="mb-5 grid items-end gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="mb-5 md:hidden">
+        <details className="rounded-xl border border-border bg-card p-3">
+          <summary className="cursor-pointer list-none text-sm font-medium text-foreground">
+            {t('filter')} / {tCommon('table.status')}
+          </summary>
+          <div className="pt-3">
+            <form method="GET" className="grid items-end gap-3">
+              <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                {tCommon('table.status')}
+                <select
+                  name="status"
+                  defaultValue={searchParams.status ?? ''}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">{t('allStatuses')}</option>
+                  <option value="pending">{tCommon('chargeStatus.pending')}</option>
+                  <option value="invoiced">{tCommon('chargeStatus.invoiced')}</option>
+                  <option value="paid">{tCommon('chargeStatus.paid')}</option>
+                  <option value="waived">{tCommon('chargeStatus.waived')}</option>
+                  <option value="voided">{tCommon('chargeStatus.voided')}</option>
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                {t('fields.parent')}
+                <select
+                  name="parent"
+                  defaultValue={searchParams.parent ?? ''}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">{t('allParents')}</option>
+                  {parents.map((parent) => (
+                    <option key={parent.id} value={parent.id}>
+                      {parent.full_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                {t('filterFrom')}
+                <input
+                  name="from"
+                  type="date"
+                  defaultValue={searchParams.from ?? ''}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                {t('filterTo')}
+                <input
+                  name="to"
+                  type="date"
+                  defaultValue={searchParams.to ?? ''}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </label>
+
+              <div className="flex items-center gap-2">
+                <Button type="submit" className="h-10">{t('filter')}</Button>
+                <Button asChild variant="outline" className="h-10">
+                  <Link href="/charges">{t('reset')}</Link>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </details>
+      </div>
+
+      <form method="GET" className="mb-5 hidden items-end gap-3 rounded-xl border border-border bg-card p-4 md:grid md:grid-cols-2 xl:grid-cols-5">
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           {tCommon('table.status')}
           <select

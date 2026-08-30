@@ -36,7 +36,7 @@ export async function OrganizationsTable({ orgs }: Props) {
 
   return (
     <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="h-full overflow-auto">
+      <div className="hidden h-full overflow-auto md:block" tabIndex={0} aria-label={t('orgs.title')}>
         <Table className="min-w-[900px] text-sm">
           <TableHeader>
             <TableRow className="bg-gray-50 hover:bg-gray-50">
@@ -82,6 +82,28 @@ export async function OrganizationsTable({ orgs }: Props) {
             ))}
           </TableBody>
         </Table>
+      </div>
+      <div className="space-y-3 overflow-y-auto p-3 md:hidden">
+        {orgs.map((o) => (
+          <article key={o.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-semibold text-gray-900">{o.name}</h2>
+                <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground" dir="ltr">{o.slug}</p>
+              </div>
+              <OrganizationStatusBadge status={o.status} />
+            </div>
+            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+              <div><dt className="text-muted-foreground">{t('orgs.table.lastActivity')}</dt><dd className="mt-0.5 text-gray-800">{o.lastActivity ? DateTime.fromISO(o.lastActivity).toRelative({ locale: 'he' }) : '—'}</dd></div>
+              <div><dt className="text-muted-foreground">{t('orgs.table.created')}</dt><dd className="mt-0.5 text-gray-800">{DateTime.fromISO(o.createdAt).toFormat('dd/MM/yy')}</dd></div>
+              <div><dt className="text-muted-foreground">WhatsApp</dt><dd className="mt-0.5"><Yn value={o.whatsAppConnected} yesLabel={yesLabel} noLabel={noLabel} /></dd></div>
+              <div><dt className="text-muted-foreground">{t('orgs.table.payments')}</dt><dd className="mt-0.5"><Yn value={o.paymentConnected} yesLabel={yesLabel} noLabel={noLabel} /></dd></div>
+            </dl>
+            <Link href={`/admin/orgs/${o.id}`} className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-indigo-700 hover:text-indigo-900">
+              {t('orgs.details')}
+            </Link>
+          </article>
+        ))}
       </div>
     </div>
   )

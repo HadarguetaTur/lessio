@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSaasPlanById } from '@/lib/saas/plans'
 import { getOrgSubscriptionState } from '@/lib/saas/subscriptions'
 import { Button } from '@/components/ui/button'
+import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import {
   cancelPendingSaasCheckoutAction,
   completeMockSaasCheckoutAction,
@@ -49,11 +50,7 @@ export default async function MockPaymentPage() {
   ])
 
   const planLabel = locale === 'he' ? plan.display_name_he : plan.display_name_en
-  const formatted = new Intl.NumberFormat(locale === 'he' ? 'he-IL' : 'en-US', {
-    style: 'currency',
-    currency: 'ILS',
-    maximumFractionDigits: 0,
-  }).format(amount)
+  const formatted = formatCurrency(amount, locale)
 
   const intervalLabel =
     state.billingInterval === 'yearly' ? t('intervalYearly') : t('intervalMonthly')

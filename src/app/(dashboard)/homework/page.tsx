@@ -147,7 +147,7 @@ export default async function HomeworkPage({
         />
       ) : (
         <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <div className="h-full overflow-auto">
+          <div className="hidden h-full overflow-auto md:block">
             <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -196,6 +196,51 @@ export default async function HomeworkPage({
                 })}
               </TableBody>
             </Table>
+          </div>
+
+          <div className="flex flex-col gap-3 p-3 md:hidden">
+            {assignments.map((a) => {
+              const counts = submissionCounts.get(a.id)
+              const completionLabel = counts ? `${counts.graded}/${counts.total}` : '—'
+              return (
+                <Link
+                  key={a.id}
+                  href={`/homework/${a.id}`}
+                  className="rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/20"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{a.studentName}</p>
+                      <p className="mt-1 text-sm text-primary">{a.title}</p>
+                    </div>
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_CLASSES[a.status]}`}>
+                      {STATUS_LABELS[a.status]}
+                    </span>
+                  </div>
+
+                  <dl className="mt-3 space-y-2 text-xs">
+                    <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-2">
+                      <dt className="col-start-2 text-end text-muted-foreground">{t('fields.dueDate')}</dt>
+                      <dd className="col-start-1 font-medium text-foreground" dir="ltr">
+                        {formatDay(a.dueDate)}
+                      </dd>
+                    </div>
+                    <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-2">
+                      <dt className="col-start-2 text-end text-muted-foreground">{t('columnSent')}</dt>
+                      <dd className="col-start-1 text-muted-foreground" dir="ltr">
+                        {formatStamp(a.sentAt)}
+                      </dd>
+                    </div>
+                    <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-2">
+                      <dt className="col-start-2 text-end text-muted-foreground">{t('completionRate')}</dt>
+                      <dd className="col-start-1 text-muted-foreground" dir="ltr">
+                        {completionLabel}
+                      </dd>
+                    </div>
+                  </dl>
+                </Link>
+              )
+            })}
           </div>
         </div>
       )}

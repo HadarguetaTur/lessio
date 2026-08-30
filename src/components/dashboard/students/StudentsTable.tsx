@@ -11,6 +11,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { StudentDetailSheet } from './StudentDetailSheet'
+
+export function getStudentStatusBadge(
+  status: Student['status'],
+  t: (key: string) => string,
+): { label: string; className: string } {
+  const STATUS_BADGE: Record<Student['status'], { label: string; className: string }> = {
+    active:   { label: t('status.active'),    className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    on_hold:  { label: t('status.on_hold'),   className: 'bg-amber-50 text-amber-700 border-amber-200' },
+    inactive: { label: t('status.inactive'),  className: 'bg-slate-100 text-slate-500 border-slate-200' },
+  }
+
+  return STATUS_BADGE[status] ?? STATUS_BADGE.inactive
+}
 import { archiveStudent, restoreStudent } from '@/app/(dashboard)/students/actions'
 import { cn } from '@/lib/utils'
 import type { Student } from '@/lib/students'
@@ -55,12 +68,6 @@ export function StudentsTable({
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
 
-  const STATUS_BADGE: Record<Student['status'], { label: string; className: string }> = {
-    active:   { label: t('status.active'),    className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    on_hold:  { label: t('status.on_hold'),   className: 'bg-amber-50 text-amber-700 border-amber-200' },
-    inactive: { label: t('status.inactive'),  className: 'bg-slate-100 text-slate-500 border-slate-200' },
-  }
-
   useEffect(() => {
     if (initialSheetStudent?.id) {
       setSelectedStudentId(initialSheetStudent.id)
@@ -84,7 +91,7 @@ export function StudentsTable({
   return (
     <>
       <div className="mt-4 min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="h-full overflow-auto">
+        <div className="hidden h-full overflow-auto md:block">
           <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -104,7 +111,7 @@ export function StudentsTable({
             </TableHeader>
             <TableBody>
               {students.map((student) => {
-                const badge = STATUS_BADGE[student.status] ?? STATUS_BADGE.inactive
+                const badge = getStudentStatusBadge(student.status, t)
                 return (
                   <TableRow
                     key={student.id}
@@ -139,6 +146,57 @@ export function StudentsTable({
               })}
             </TableBody>
           </Table>
+        </div>
+
+        <div className="flex flex-col gap-3 p-3 md:hidden">
+          {students.map((student) => {
+            const badge = getStudentStatusBadge(student.status, t)
+            return (
+              <button
+                key={student.id}
+                type="button"
+                onClick={() => handleRowClick(student)}
+                className="rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/20"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                    <UserAvatar name={student.full_name} />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {student.full_name}
+                      </p>
+                      {student.grade ? (
+                        <p className="text-xs text-muted-foreground">{student.grade}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <span className={cn(
+                    'inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium',
+                    badge.className
+                  )}>
+                    {badge.label}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
+                  <span>{tStatus}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-foreground">{badge.label}</span>
+                    {showArchiveActions ? (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation()
+                        }}
+                        className="inline-flex"
+                      >
+                        <RowActions student={student} />
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
         </div>
       </div>
 

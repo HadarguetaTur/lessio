@@ -75,6 +75,7 @@ export function SetupStrip({ orgId, missing, isRtl }: Props) {
   }
 
   const Chevron = isRtl ? ArrowLeft : ArrowRight
+  const hoverTranslate = isRtl ? 'group-hover:-translate-x-0.5' : 'group-hover:translate-x-0.5'
 
   return (
     <div className="animate-in fade-in-0 mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -102,15 +103,13 @@ export function SetupStrip({ orgId, missing, isRtl }: Props) {
             >
               <Chevron
                 size={14}
-                className="mt-0.5 shrink-0 transition-transform group-hover:translate-x-0.5"
+                className={`mt-0.5 shrink-0 transition-transform ${hoverTranslate}`}
                 aria-hidden
               />
               <span>
                 {t(`items.${gap}` as 'items.whatsapp')}
                 {' '}
                 <span className="font-medium">{t('connectNow')}</span>
-                {' '}
-                <span aria-hidden="true">←</span>
               </span>
             </Link>
           </li>

@@ -111,11 +111,18 @@ export async function getParentDebt(
  * Use this anywhere charges are summed, so a partially-paid charge counts only
  * for its remainder.
  */
+export function getChargeRemaining(
+  amount: number | string,
+  amountPaid: number | string | null | undefined
+): number {
+  return Math.max(0, Number(amount) - Number(amountPaid ?? 0))
+}
+
 export function sumRemaining(
   rows: Array<{ amount: number | string; amount_paid?: number | string | null }>
 ): number {
   const total = rows.reduce(
-    (sum, row) => sum + Math.max(0, Number(row.amount) - Number(row.amount_paid ?? 0)),
+    (sum, row) => sum + getChargeRemaining(row.amount, row.amount_paid ?? 0),
     0
   )
   return Math.round(total * 100) / 100

@@ -27,22 +27,19 @@ export function PortalExamReportForm({ action, students }: Props) {
       <p className="text-xs font-semibold text-muted-foreground">{t('title')}</p>
 
       {students.length > 1 ? (
-        <select
-          name="studentId"
-          required
-          className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        <div>
+          <label htmlFor="exam-student" className="sr-only">{t('studentLabel')}</label>
+          <select id="exam-student" name="studentId" required className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary">
+            {students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
       ) : (
         <input type="hidden" name="studentId" value={students[0]?.id ?? ''} />
       )}
 
+      <label htmlFor="exam-subject" className="sr-only">{t('subjectPlaceholder')}</label>
       <input
+        id="exam-subject"
         name="subject"
         required
         maxLength={100}
@@ -50,7 +47,9 @@ export function PortalExamReportForm({ action, students }: Props) {
         className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
       />
 
+      <label htmlFor="exam-title" className="sr-only">{t('titlePlaceholder')}</label>
       <input
+        id="exam-title"
         name="title"
         required
         maxLength={200}
@@ -58,7 +57,9 @@ export function PortalExamReportForm({ action, students }: Props) {
         className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
       />
 
+      <label htmlFor="exam-description" className="sr-only">{t('descriptionPlaceholder')}</label>
       <textarea
+        id="exam-description"
         name="description"
         rows={3}
         maxLength={2000}
@@ -67,8 +68,9 @@ export function PortalExamReportForm({ action, students }: Props) {
       />
 
       <div>
-        <label className="text-xs text-muted-foreground">{t('examDate')}</label>
+        <label htmlFor="exam-date" className="text-xs text-muted-foreground">{t('examDate')}</label>
         <input
+          id="exam-date"
           name="examDate"
           type="date"
           required

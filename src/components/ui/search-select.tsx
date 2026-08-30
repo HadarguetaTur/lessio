@@ -145,6 +145,7 @@ export function SearchSelect({
           <input
             id={inputId}
             type="text"
+            required={required && !value}
             role="combobox"
             aria-expanded={open}
             aria-controls={listboxId}

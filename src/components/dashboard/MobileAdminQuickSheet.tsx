@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 
 const LESSONS_DAY = '/lessons?view=day'
 const LESSONS_NEW = '/lessons?view=day&openNewLesson=1'
-const DEBT = '/reports/debt'
+const DEBT = '/billing/debts'
 
 export function MobileAdminQuickSheet() {
   const [open, setOpen] = useState(false)

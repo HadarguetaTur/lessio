@@ -1,8 +1,19 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { DeletionRequestState } from '@/app/portal/[orgId]/home/actions'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 
 interface Props {
   action: (prev: DeletionRequestState) => Promise<DeletionRequestState>
@@ -10,7 +21,6 @@ interface Props {
 
 export function DeletionRequestButton({ action }: Props) {
   const t = useTranslations('portal.gdpr')
-  const [showConfirm, setShowConfirm] = useState(false)
   const [state, formAction, isPending] = useActionState(action, { error: null })
 
   if (state.success) {
@@ -21,43 +31,32 @@ export function DeletionRequestButton({ action }: Props) {
     )
   }
 
-  if (!showConfirm) {
-    return (
-      <button
-        type="button"
-        onClick={() => setShowConfirm(true)}
-        className="text-xs text-muted-foreground hover:text-red-600 transition-colors underline underline-offset-2"
-      >
-        {t('requestDeletion')}
-      </button>
-    )
-  }
-
   return (
-    <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
-      <p className="text-sm font-medium text-red-800">{t('confirmTitle')}</p>
-      <p className="text-xs text-red-700">{t('confirmBody')}</p>
-      {state.error && (
-        <p className="text-xs text-red-600">{t(state.error)}</p>
-      )}
-      <div className="flex gap-2">
-        <form action={formAction} className="flex-1">
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full py-2 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-          >
-            {isPending ? t('submitting') : t('confirm')}
-          </button>
-        </form>
-        <button
-          type="button"
-          onClick={() => setShowConfirm(false)}
-          className="flex-1 py-2 text-xs font-medium border border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-        >
-          {t('cancel')}
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <button type="button" className="min-h-11 text-sm text-muted-foreground underline underline-offset-2 transition-colors hover:text-red-700">
+          {t('requestDeletion')}
         </button>
-      </div>
-    </div>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('confirmTitle')}</AlertDialogTitle>
+          <AlertDialogDescription>{t('confirmBody')}</AlertDialogDescription>
+        </AlertDialogHeader>
+        {state.error && <p role="alert" className="text-sm text-red-700">{t(state.error)}</p>}
+        <AlertDialogFooter>
+          <AlertDialogCancel asChild>
+            <button type="button" className="min-h-11 rounded-lg border border-border px-4 text-sm font-medium">{t('cancel')}</button>
+          </AlertDialogCancel>
+          <form action={formAction}>
+            <AlertDialogAction asChild>
+              <button type="submit" disabled={isPending} className="min-h-11 w-full rounded-lg bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">
+                {isPending ? t('submitting') : t('confirm')}
+              </button>
+            </AlertDialogAction>
+          </form>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

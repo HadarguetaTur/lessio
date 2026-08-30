@@ -67,7 +67,7 @@ export function AdminSidebar({ userName, mobile = false }: AdminSidebarProps) {
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                 active
                   ? 'bg-indigo-600 text-white font-semibold'
-                  : 'text-muted-foreground hover:bg-gray-800 hover:text-gray-100'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               }`}
             >
               <Icon size={16} />
@@ -91,7 +91,7 @@ export function AdminSidebar({ userName, mobile = false }: AdminSidebarProps) {
         <form action={signOut}>
           <button
             type="submit"
-            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-gray-300 w-full px-2 py-1.5 rounded-lg hover:bg-gray-800 transition-colors"
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-800 hover:text-white"
           >
             <LogOut size={13} />
             {tCommon('logout')}

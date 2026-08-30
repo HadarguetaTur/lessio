@@ -31,7 +31,7 @@ export default async function PortalBookPage({
   const timezone = org?.timezone ?? 'Asia/Jerusalem'
 
   return (
-    <div className="flex flex-col flex-1 pb-16">
+    <main className="flex flex-col flex-1 pb-16">
       {/* No tab of its own, so it carries its own way back to the schedule. */}
       <header className="px-4 py-3 border-b border-gray-200 flex items-center gap-3">
         <Link
@@ -45,6 +45,6 @@ export default async function PortalBookPage({
       </header>
       <PortalBookingFlow orgId={orgId} timezone={timezone} />
       <PortalTabBar orgId={orgId} active="book" />
-    </div>
+    </main>
   )
 }

@@ -33,17 +33,13 @@ export function OrganizationSettingsForm({ org, action }: Props) {
           {state.error}
         </div>
       )}
-      {state === null && isPending === false && (
-        /* Show success only after a round-trip that cleared the error */
-        null
-      )}
-
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="id" value={org.id} />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.table.name')}</label>
+          <label htmlFor="org-name" className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.table.name')}</label>
           <input
+            id="org-name"
             name="name"
             defaultValue={org.name}
             required
@@ -52,8 +48,9 @@ export function OrganizationSettingsForm({ org, action }: Props) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
+          <label htmlFor="org-slug" className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
           <input
+            id="org-slug"
             name="slug"
             defaultValue={org.slug}
             required
@@ -64,8 +61,9 @@ export function OrganizationSettingsForm({ org, action }: Props) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.fields.timezone')}</label>
+          <label htmlFor="org-timezone" className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.fields.timezone')}</label>
           <select
+            id="org-timezone"
             name="timezone"
             defaultValue={org.timezone}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
@@ -78,8 +76,9 @@ export function OrganizationSettingsForm({ org, action }: Props) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.settings.breakDuration')}</label>
+            <label htmlFor="org-break-duration" className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.settings.breakDuration')}</label>
             <input
+              id="org-break-duration"
               name="break_duration_minutes"
               type="number"
               min={0}
@@ -88,8 +87,9 @@ export function OrganizationSettingsForm({ org, action }: Props) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.settings.minBookingNotice')}</label>
+            <label htmlFor="org-min-booking-notice" className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.settings.minBookingNotice')}</label>
             <input
+              id="org-min-booking-notice"
               name="min_booking_notice_hours"
               type="number"
               min={0}
@@ -100,8 +100,9 @@ export function OrganizationSettingsForm({ org, action }: Props) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.settings.billingMode')}</label>
+          <label htmlFor="org-billing-mode" className="block text-sm font-medium text-gray-700 mb-1">{t('orgs.settings.billingMode')}</label>
           <select
+            id="org-billing-mode"
             name="billing_mode"
             defaultValue={org.billingMode}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
@@ -119,7 +120,7 @@ export function OrganizationSettingsForm({ org, action }: Props) {
           >
             {isPending ? t('orgs.settings.saving') : t('orgs.settings.save')}
           </button>
-          {state === null && !isPending && (
+          {state?.success && !isPending && (
             <span className="text-xs text-green-700">{t('orgs.settings.saved')}</span>
           )}
         </div>

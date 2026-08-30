@@ -381,6 +381,19 @@ export const MAIN_NAV: NavEntry[] = [
   },
 ]
 
+/** Teacher workspace routes need names in the shared top bar as well. */
+export const TEACHER_NAV: NavEntry[] = [
+  { href: '/teacher/dashboard', navKey: 'teacherDashboard', icon: LayoutDashboard, roles: ['teacher'] },
+  { href: '/teacher/schedule', navKey: 'teacherSchedule', icon: CalendarDays, roles: ['teacher'] },
+  { href: '/teacher/calendar', navKey: 'teacherCalendar', icon: CalendarDays, roles: ['teacher'] },
+  { href: '/teacher/new-lesson', navKey: 'teacherNewLesson', icon: BookOpen, roles: ['teacher'] },
+  { href: '/teacher/availability', navKey: 'teacherAvailability', icon: CalendarDays, roles: ['teacher'] },
+  { href: '/teacher/overrides', navKey: 'teacherOverrides', icon: CalendarOff, roles: ['teacher'] },
+  { href: '/teacher/calendar-connect', navKey: 'teacherCalendarConnect', icon: Plug, roles: ['teacher'] },
+  { href: '/teacher/reports/lessons', navKey: 'teacherReportsLessons', icon: BarChart2, roles: ['teacher'] },
+  { href: '/teacher/reports/students', navKey: 'teacherReportsStudents', icon: GraduationCap, roles: ['teacher'] },
+]
+
 /** Section index pages, for the ancestor half of a breadcrumb. */
 export const SECTION_HUBS: Record<string, { navKey: string; href: string }> = {
   '/reports': { navKey: 'sections.reports', href: '/reports' },
@@ -393,6 +406,7 @@ export const SEARCHABLE_PAGES: NavEntry[] = [
   ...MAIN_NAV,
   ...SETTINGS_NAV,
   ...REPORTS_NAV,
+  ...TEACHER_NAV,
 ]
 
 /**
@@ -429,7 +443,7 @@ export function isNavActive(
   return deeperMatch.length <= href.length
 }
 
-const ALL_ROUTES: NavEntry[] = [...MAIN_NAV, ...SETTINGS_NAV, ...REPORTS_NAV]
+const ALL_ROUTES: NavEntry[] = [...MAIN_NAV, ...SETTINGS_NAV, ...REPORTS_NAV, ...TEACHER_NAV]
 
 const ROUTE_BY_HREF = new Map(ALL_ROUTES.map((e) => [e.href, e]))
 

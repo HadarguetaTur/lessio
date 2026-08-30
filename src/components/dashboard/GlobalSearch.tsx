@@ -10,6 +10,7 @@ import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { SEARCHABLE_PAGES, filterNav, matchPages } from '@/lib/navigation/registry'
 import type { SaasFeatures } from '@/lib/saas/types'
 import type { GlobalSearchResponse } from '@/lib/search/types'
+import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { cn } from '@/lib/utils'
 
 function buildStudentHref(role: string, studentId: string): string {
@@ -152,8 +153,7 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
       hour12: false,
     }).format(new Date(iso))
 
-  const formatMoney = (n: number) =>
-    new Intl.NumberFormat(intlLocale, { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n)
+  const formatMoney = (n: number) => formatCurrency(n, locale)
 
   function navigateTo(href: string) {
     setOpen(false)

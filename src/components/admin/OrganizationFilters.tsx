@@ -57,6 +57,7 @@ export function OrganizationFilters() {
     <div className="flex flex-wrap gap-3 mb-4">
       <input
         type="search"
+        aria-label={t('orgs.filters.searchPlaceholder')}
         placeholder={t('orgs.filters.searchPlaceholder')}
         value={searchDraft}
         onChange={(e) => setSearchDraft(e.target.value)}
@@ -64,6 +65,7 @@ export function OrganizationFilters() {
         className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 w-56"
       />
       <select
+        aria-label={t('orgs.filters.allStatuses')}
         defaultValue={searchParams.get('status') ?? ''}
         onChange={(e) => update('status', e.target.value)}
         className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"

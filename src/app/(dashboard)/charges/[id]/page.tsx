@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
-import { getChargeById, ChargeStatus } from '@/lib/charges'
+import { getChargeById, ChargeStatus, getChargeRemaining } from '@/lib/charges'
 import { getChargeAuditLog } from '@/lib/charges/audit'
 import { getChargePayments } from '@/lib/charges/payments'
 import { ChargePaymentsList } from '@/components/dashboard/charges/ChargePaymentsList'
@@ -10,9 +10,13 @@ import { renderChargeNote } from '@/lib/charges/renderNote'
 import { RecordPaymentDialog } from '@/components/dashboard/charges/RecordPaymentDialog'
 import { ResolveChargeDialog } from '@/components/dashboard/charges/ResolveChargeDialog'
 import { ChargeAuditTimeline } from '@/components/dashboard/charges/ChargeAuditTimeline'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { waiveChargeAction, voidChargeAction, recordChargePaymentAction } from '../actions'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { formatBillingMonth } from '@/lib/i18n/formatBillingMonth'
+import { formatCurrency } from '@/lib/i18n/formatCurrency'
+import { DateTime } from 'luxon'
 
 const STATUS_STYLES: Record<ChargeStatus, string> = {
   pending: 'bg-yellow-50 text-yellow-700',
@@ -41,7 +45,7 @@ export default async function ChargeDetailPage({
     getChargeAuditLog(orgId, charge.id),
     getChargePayments(orgId, charge.id),
   ])
-  const remaining = Math.max(0, charge.amount - charge.amount_paid)
+  const remaining = getChargeRemaining(charge.amount, charge.amount_paid)
   const canMarkPaid = role === 'owner' || role === 'admin'
   const isOwner = role === 'owner'
   const isOpen = OPEN_STATUSES.includes(charge.status)
@@ -49,7 +53,12 @@ export default async function ChargeDetailPage({
   const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
   const tRoot = await getTranslations()
-  const intlLocale = toIntlLocale(parseAppLocale(await getLocale()))
+  const appLocale = parseAppLocale(await getLocale())
+  const intlLocale = toIntlLocale(appLocale)
+  const chargeTitle = `${formatBillingMonth(DateTime.fromISO(charge.created_at).toFormat('yyyy-MM'), appLocale)} — ${charge.parent.full_name}`
+  const amountLabel = charge.status === 'paid'
+    ? formatCurrency(charge.amount, appLocale, 2)
+    : formatCurrency(remaining, appLocale, 2)
 
   const STATUS_LABELS: Record<ChargeStatus, string> = {
     pending: tCommon('chargeStatus.pending'),
@@ -77,9 +86,14 @@ export default async function ChargeDetailPage({
         </Link>
       </div>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-muted-foreground mb-6 font-mono" dir="ltr">
-        {charge.id}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <h1 className="text-2xl font-bold text-foreground">
+          {chargeTitle}
+        </h1>
+        <StatusBadge status={charge.status} />
+      </div>
+      <p className="mb-6 text-sm text-muted-foreground">
+        {CHARGE_TYPE_LABELS[charge.charge_type] ?? charge.charge_type} · {new Date(charge.created_at).toLocaleDateString(intlLocale)}
       </p>
 
       <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
@@ -97,7 +111,7 @@ export default async function ChargeDetailPage({
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">{t('fields.amount')}</dt>
             <dd className="font-mono text-gray-900" dir="ltr">
-              ₪{charge.amount.toFixed(2)}
+              {amountLabel}
             </dd>
           </div>
           <div className="flex justify-between gap-4 items-center">

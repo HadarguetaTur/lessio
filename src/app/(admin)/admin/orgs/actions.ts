@@ -8,7 +8,7 @@ import { z } from 'zod'
 import { getTranslations } from 'next-intl/server'
 import { zodError } from '@/lib/i18n/actionErrors'
 
-export type ActionState = { error: string } | null
+export type ActionState = { error: string | null; success?: boolean } | null
 
 export async function createOrganizationAction(
   _prev: ActionState,
@@ -81,5 +81,5 @@ export async function updateOrganizationAction(
     return { error: t('admin.errors.updateOrgFailed') }
   }
 
-  return null
+  return { error: null, success: true }
 }

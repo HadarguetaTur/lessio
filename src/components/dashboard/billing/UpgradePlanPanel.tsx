@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { cn } from '@/lib/utils'
 import type { SaasPlanRow } from '@/lib/saas/plans'
 import type { BeginPaidCheckoutSummary } from '@/lib/saas/types'
@@ -36,22 +37,12 @@ export function UpgradePlanPanel({
     summary: BeginPaidCheckoutSummary
   } | null>(null)
 
-  const formatMoney = (n: number) =>
-    new Intl.NumberFormat(locale === 'he' ? 'he-IL' : 'en-US', {
-      style: 'currency',
-      currency: 'ILS',
-      maximumFractionDigits: 0,
-    }).format(n)
+  const formatMoney = (n: number) => formatCurrency(n, locale)
 
   const planLabelForSummary = (s: BeginPaidCheckoutSummary) =>
     locale === 'he' ? s.planLabelHe : s.planLabelEn
 
-  const formatSummaryAmount = (s: BeginPaidCheckoutSummary) =>
-    new Intl.NumberFormat(locale === 'he' ? 'he-IL' : 'en-US', {
-      style: 'currency',
-      currency: 'ILS',
-      maximumFractionDigits: 0,
-    }).format(s.amount)
+  const formatSummaryAmount = (s: BeginPaidCheckoutSummary) => formatCurrency(s.amount, locale)
 
   const resolveErrorMessage = (code: string | undefined, raw?: string): string => {
     switch (code) {

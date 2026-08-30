@@ -416,28 +416,6 @@
       "projected": "Projected remaining",
       "total": "Total projected",
       "atRisk": "At risk"
-    },
-    "setup": {
-      "title": "Let's get your business ready",
-      "progress": "{completed} of {total} tasks completed",
-      "items": {
-        "teacher": { "title": "Add your first teacher", "description": "Invite a teacher or teach as the owner" },
-        "students": { "title": "Add students and families", "description": "Add one manually or import a file" },
-        "lesson": { "title": "Create your first lesson", "description": "See real data in your calendar" },
-        "whatsapp": { "title": "Connect WhatsApp", "description": "Automated reminders and messages" },
-        "payment": { "title": "Set up payments", "description": "Send payment links and track collection" }
-      }
-    },
-    "firstRun": {
-      "title": "Welcome to Lessio",
-      "description": "Your workspace is ready. Start working now and finish setup at your own pace.",
-      "items": {
-        "people": { "title": "Students and families", "description": "All student and parent details in one place" },
-        "calendar": { "title": "Calendar and lessons", "description": "Plan, record attendance, and track activity" },
-        "attention": { "title": "Needs attention", "description": "Lessons, billing, and open tasks" }
-      },
-      "start": "Let's start",
-      "skip": "I'll explore on my own"
     }
   },
   "students": {

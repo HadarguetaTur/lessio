@@ -2,23 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTranslations } from 'next-intl/server'
-import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { commonError } from '@/lib/i18n/actionErrors'
 import { markAssignmentDone } from '@/lib/homework'
 import { setLessonStatus } from '@/app/(dashboard)/lessons/[id]/actions'
-
-export async function markSetupWelcomeSeen(): Promise<void> {
-  const session = await getSession()
-  requireMutation(session)
-  if (session.role !== 'owner') return
-
-  await createServiceRoleClient()
-    .from('organizations')
-    .update({ setup_welcome_seen_at: new Date().toISOString() })
-    .eq('id', session.orgId)
-    .is('setup_welcome_seen_at', null)
-}
 
 export type AttentionActionResult = { error: string | null; chargeAlert?: string }
 

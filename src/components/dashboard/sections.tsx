@@ -15,8 +15,6 @@ import { TodayLessonsList } from '@/components/dashboard/TodayLessonsList'
 import { AttentionPanel } from '@/components/dashboard/AttentionPanel'
 import { ForecastCard } from '@/components/dashboard/ForecastCard'
 import { MiniRevenueChart } from '@/components/dashboard/MiniRevenueChart'
-import { SetupStrip, type SetupGap } from '@/components/dashboard/SetupStrip'
-import { getOrgSetupProgress } from '@/lib/organizations/readiness'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 /**
@@ -150,27 +148,4 @@ export async function OutlookSection({ orgId, timezone, appLocale, locale }: Sec
       </div>
     </section>
   )
-}
-
-/**
- * "You are not live yet", or nothing at all.
- *
- * Kept out of the dashboard's Promise.all and given its own Suspense boundary
- * with a null fallback, so this extra query never delays the LCP.
- */
-export async function SetupSection({ orgId, appLocale }: { orgId: string; appLocale: AppLocale }) {
-  const readiness = await getOrgSetupProgress(orgId)
-
-  const missing: SetupGap[] = []
-  if (!readiness.hasTeacher) missing.push('teacher')
-  if (!readiness.hasStudent) missing.push('students')
-  if (!readiness.hasLesson) missing.push('lesson')
-  if (!readiness.hasWhatsApp) missing.push('whatsapp')
-  if (!readiness.hasPayment) missing.push('payment')
-
-  const total = 5
-  const completed = total - missing.length
-  if (completed === total) return null
-
-  return <SetupStrip orgId={orgId} missing={missing} completed={completed} total={total} isRtl={appLocale === 'he'} />
 }

@@ -419,9 +419,9 @@ export default async function ChargesPage(props: {
                             voidAction={voidChargeAction}
                           />
                         ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {tCommon(`chargeStatus.${charge.status}` as Parameters<typeof tCommon>[0])}
-                          </span>
+                          // A closed charge has no actions; the status column
+                          // two cells over already names its state.
+                          <span className="text-xs text-muted-foreground/30">—</span>
                         )}
                       </TableCell>
                     )}

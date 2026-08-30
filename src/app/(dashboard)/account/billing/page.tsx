@@ -175,7 +175,7 @@ export default async function AccountBillingPage({
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">{t('invoices')}</h2>
         {invoices.length === 0 ? (
-          <p className="text-sm text-muted-foreground">—</p>
+          <p className="text-sm text-muted-foreground">{t('invoicesEmpty')}</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">

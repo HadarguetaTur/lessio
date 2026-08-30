@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { DateTime } from 'luxon'
 import { CreditCard } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getSubscriptions } from '@/lib/subscriptions'
@@ -35,6 +36,7 @@ export default async function SubscriptionsPage(props: {
     getLocale(),
   ])
   const money = (amount: number) => formatMoney(amount, locale)
+  const fmtDate = (iso: string) => DateTime.fromISO(iso).toFormat('d.M.yyyy')
 
   const statusFilter = searchParams.status as 'active' | 'paused' | 'all' | undefined
   const allSubs = await getSubscriptions(orgId)
@@ -61,7 +63,8 @@ export default async function SubscriptionsPage(props: {
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <PageHeader title={t('title')} />
 
-      {/* Status filter */}
+      {/* Status filter — pointless over an org with zero subscriptions. */}
+      {allSubs.length > 0 && (
       <div className="mb-5 flex items-center gap-2">
         {FILTER_OPTIONS.map((opt) => {
           const active = (statusFilter ?? 'active') === opt.value
@@ -80,9 +83,24 @@ export default async function SubscriptionsPage(props: {
           )
         })}
       </div>
+      )}
 
       {subs.length === 0 ? (
-        <EmptyState icon={CreditCard} title={t('noSubscriptions')} />
+        <EmptyState
+          icon={CreditCard}
+          title={t('noSubscriptions')}
+          subtitle={allSubs.length === 0 ? t('noSubscriptionsHint') : undefined}
+          action={
+            allSubs.length === 0 ? (
+              <Link
+                href="/students"
+                className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {t('noSubscriptionsCta')}
+              </Link>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
           <div className="h-full overflow-auto">
@@ -128,13 +146,15 @@ export default async function SubscriptionsPage(props: {
                         </div>
                       </td>
                       <td className="px-5 py-3.5 text-sm text-muted-foreground">
-                        {sub.subscription_type ?? '—'}
+                        {sub.subscription_type && ['monthly', 'weekly', 'per_lesson'].includes(sub.subscription_type)
+                          ? t(`types.${sub.subscription_type}` as 'types.monthly')
+                          : (sub.subscription_type ?? '—')}
                       </td>
                       <td className="px-5 py-3.5 text-sm font-mono font-semibold text-foreground" dir="ltr">
                         {money(Number(sub.monthly_amount))}
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-foreground">{sub.start_date}</td>
-                      <td className="px-5 py-3.5 text-sm text-foreground">{sub.end_date ?? '—'}</td>
+                      <td className="px-5 py-3.5 text-sm text-foreground">{fmtDate(sub.start_date)}</td>
+                      <td className="px-5 py-3.5 text-sm text-foreground">{sub.end_date ? fmtDate(sub.end_date) : '—'}</td>
                       <td className="px-5 py-3.5">
                         <StatusBadge
                           status={STATUS_BADGE_MAP[status]}

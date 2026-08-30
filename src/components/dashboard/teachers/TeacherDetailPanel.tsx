@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { Pencil, CalendarDays } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { Button } from '@/components/ui/button'
@@ -48,6 +49,9 @@ export function TeacherDetailPanel({
   const [editing, setEditing] = useState(false)
   const router = useRouter()
   const t = useTranslations('teachers')
+
+  const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const tStudents = useTranslations('students')
   const tCommon = useTranslations('common')
 
@@ -58,7 +62,7 @@ export function TeacherDetailPanel({
 
   const rateDisplay =
     teacher.hourly_rate != null && !Number.isNaN(Number(teacher.hourly_rate))
-      ? `₪${Number(teacher.hourly_rate).toFixed(2)}`
+      ? money(Number(teacher.hourly_rate))
       : null
 
   return (

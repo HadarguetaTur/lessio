@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -71,7 +72,9 @@ export default async function ChargesPage(props: {
   const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
   const tRoot = await getTranslations()
-  const intlLocale = toIntlLocale(parseAppLocale(await getLocale()))
+  const appLocale = parseAppLocale(await getLocale())
+  const intlLocale = toIntlLocale(appLocale)
+  const money = (amount: number) => formatMoney(amount, appLocale)
 
   const CHARGE_TYPE_LABELS: Record<string, string> = {
     lesson: t('types.lesson'),
@@ -108,19 +111,19 @@ export default async function ChargesPage(props: {
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
               {t('agingSummary.pending')}
             </p>
-            <p className="text-lg font-bold text-foreground">₪{pendingTotal.toFixed(2)}</p>
+            <p className="text-lg font-bold text-foreground">{money(pendingTotal)}</p>
           </div>
           <div>
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
               {t('agingSummary.invoiced')}
             </p>
-            <p className="text-lg font-bold text-foreground">₪{invoicedTotal.toFixed(2)}</p>
+            <p className="text-lg font-bold text-foreground">{money(invoicedTotal)}</p>
           </div>
           <div>
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
               {t('agingSummary.paidThisMonth')}
             </p>
-            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">₪{paidThisMonth.toFixed(2)}</p>
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{money(paidThisMonth)}</p>
           </div>
         </div>
       )}
@@ -331,19 +334,19 @@ export default async function ChargesPage(props: {
                       )}
                     </TableCell>
                     <TableCell className="px-5 py-3.5 text-right text-sm font-semibold text-foreground font-mono" dir="ltr">
-                      ₪{charge.amount.toFixed(2)}
+                      {money(charge.amount)}
                       {charge.amount_paid > 0 && charge.status !== 'paid' && (
                         <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
                           {t('partiallyPaid', {
-                            paid: charge.amount_paid.toFixed(2),
-                            total: charge.amount.toFixed(2),
+                            paid: money(charge.amount_paid),
+                            total: money(charge.amount),
                           })}
                         </div>
                       )}
                       {OPEN_STATUSES.includes(charge.status) && (
                         <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
                           {t('payments.remaining', {
-                            amount: remainingOf(charge).toFixed(2),
+                            amount: money(remainingOf(charge)),
                           })}
                         </div>
                       )}

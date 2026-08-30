@@ -14,7 +14,8 @@ import { receiptEmail } from '@/lib/email/templates/receipt'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { notifyMultiple, getOwnerAndAdminProfileIds } from '@/lib/notifications'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
-import { getTranslations } from 'next-intl/server'
+import { getTranslations, getLocale } from 'next-intl/server'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 
 function revalidateChargeSurfaces() {
   revalidatePath('/charges')
@@ -189,7 +190,7 @@ export async function recordChargePaymentAction(input: {
       case 'not_open':
         return { error: t('chargeNotOpen') }
       case 'invalid_amount':
-        return { error: t('paymentTooLarge', { max: (result.remaining ?? 0).toFixed(2) }) }
+        return { error: t('paymentTooLarge', { max: formatMoney(result.remaining ?? 0, await getLocale()) }) }
       default:
         return { error: t('updateStatusFailed') }
     }

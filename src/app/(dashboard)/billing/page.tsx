@@ -8,6 +8,7 @@ import {
   getCurrentBillingMonth,
 } from '@/lib/billing/monthly/month'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { getLocale } from 'next-intl/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PageHeader } from '@/components/ui/page-header'
@@ -40,6 +41,7 @@ export default async function BillingPage(props: {
 
   const billingMonth = searchParams.month || getCurrentBillingMonth(timezone)
   const intlLocale = toIntlLocale(parseAppLocale(locale))
+  const money = (amount: number) => formatMoney(amount, locale)
   const billingMonthOptions = getBillingMonthSelectOptionValues(timezone, billingMonth)
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
 
@@ -123,13 +125,13 @@ export default async function BillingPage(props: {
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t('summary.totalBilled')}
             </p>
-            <p className="text-lg font-bold text-foreground">₪{totalBilled.toFixed(2)}</p>
+            <p className="text-lg font-bold text-foreground">{money(totalBilled)}</p>
           </div>
           <div>
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t('summary.totalPaid')}
             </p>
-            <p className="text-lg font-bold text-emerald-700">₪{totalPaid.toFixed(2)}</p>
+            <p className="text-lg font-bold text-emerald-700">{money(totalPaid)}</p>
           </div>
           <div>
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -154,6 +156,7 @@ export default async function BillingPage(props: {
             records={records}
             billingMonth={billingMonth}
             isOwnerOrAdmin={isOwnerOrAdmin}
+            locale={locale}
             labels={{
               lessons: t('table.lessons'),
               subscriptions: t('table.subscriptions'),
@@ -221,16 +224,16 @@ export default async function BillingPage(props: {
                           </div>
                         </td>
                         <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
-                          ₪{Number(record.lessons_amount).toFixed(2)}
+                          {money(Number(record.lessons_amount))}
                           <span className="mr-1 text-xs text-muted-foreground">
                             ({record.lessons_count})
                           </span>
                         </td>
                         <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
-                          ₪{Number(record.subscriptions_amount).toFixed(2)}
+                          {money(Number(record.subscriptions_amount))}
                         </td>
                         <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
-                          ₪{Number(record.cancellations_amount).toFixed(2)}
+                          {money(Number(record.cancellations_amount))}
                         </td>
                         <td className="px-5 py-3.5 font-mono text-sm" dir="ltr">
                           {record.manual_adjustment_amount != null ? (
@@ -241,14 +244,14 @@ export default async function BillingPage(props: {
                                   : 'text-foreground'
                               }
                             >
-                              ₪{Number(record.manual_adjustment_amount).toFixed(2)}
+                              {money(Number(record.manual_adjustment_amount))}
                             </span>
                           ) : (
                             <span className="text-muted-foreground/30">—</span>
                           )}
                         </td>
                         <td className="px-5 py-3.5 font-mono text-sm font-semibold text-foreground" dir="ltr">
-                          ₪{Number(record.total_amount).toFixed(2)}
+                          {money(Number(record.total_amount))}
                         </td>
                         <td className="px-5 py-3.5">
                           <StatusBadge status={status} />

@@ -8,7 +8,7 @@ import { TeachersChart } from '@/components/reports/TeachersChart'
 import { CsvDownloadButton } from '@/components/reports/CsvDownloadButton'
 import { PeriodSelector } from '@/components/reports/PeriodSelector'
 import { getLocale, getTranslations } from 'next-intl/server'
-import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { PageHeader } from '@/components/ui/page-header'
 import {
   Table,
@@ -40,7 +40,7 @@ export default async function TeachersReportPage({ searchParams }: Props) {
   const { rows } = await getTeachersReport(session.orgId, timezone, months)
 
   const [locale, t] = await Promise.all([getLocale(), getTranslations('reports')])
-  const intlLoc = toIntlLocale(parseAppLocale(locale))
+  const money = (amount: number) => formatMoney(amount, locale)
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
@@ -77,7 +77,7 @@ export default async function TeachersReportPage({ searchParams }: Props) {
                   <TableCell className="px-4 py-3 font-medium text-foreground">{r.teacherName}</TableCell>
                   <TableCell className="px-4 py-3 tabular-nums text-foreground text-end">{r.lessonsCount}</TableCell>
                   <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
-                    ₪{r.revenue.toLocaleString(intlLoc)}
+                    {money(r.revenue)}
                   </TableCell>
                 </TableRow>
               ))}

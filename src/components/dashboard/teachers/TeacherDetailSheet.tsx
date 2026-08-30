@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import Link from 'next/link'
 import { CalendarDays, Pencil } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -64,6 +65,9 @@ export function TeacherDetailSheet({
   initialName,
 }: TeacherDetailSheetProps) {
   const t = useTranslations('teachers')
+
+  const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const tStudents = useTranslations('students')
   const tCommon = useTranslations('common')
   const router = useRouter()
@@ -150,7 +154,7 @@ export function TeacherDetailSheet({
                   </span>
                   {state.data.hourly_rate != null ? (
                     <span className="text-sm text-muted-foreground tabular-nums font-mono" dir="ltr">
-                      ₪{Number(state.data.hourly_rate).toFixed(2)}
+                      {money(Number(state.data.hourly_rate))}
                     </span>
                   ) : (
                     <span className="text-xs text-amber-600">{t('noRateWarning')}</span>
@@ -185,7 +189,7 @@ export function TeacherDetailSheet({
                     <DataRow label={t('fields.hourlyRate')}>
                       {teacher.hourly_rate != null ? (
                         <span className="font-mono tabular-nums" dir="ltr">
-                          ₪{Number(teacher.hourly_rate).toFixed(2)}
+                          {money(Number(teacher.hourly_rate))}
                         </span>
                       ) : (
                         <span className="text-amber-600 font-normal text-xs">

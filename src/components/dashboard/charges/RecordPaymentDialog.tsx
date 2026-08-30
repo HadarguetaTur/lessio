@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Coins, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { PAYMENT_METHODS, type PaymentMethod } from '@/lib/charges/paymentMethods'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 
 export interface RecordPaymentInput {
   chargeId: string
@@ -33,6 +34,8 @@ interface RecordPaymentDialogProps {
 export function RecordPaymentDialog({ chargeId, remaining, action }: RecordPaymentDialogProps) {
   const t = useTranslations('charges.recordPayment')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState(String(remaining))
   const [method, setMethod] = useState<PaymentMethod>('manual')
@@ -108,7 +111,7 @@ export function RecordPaymentDialog({ chargeId, remaining, action }: RecordPayme
               />
               {amount !== '' && !isValid && (
                 <p className="text-xs text-red-600">
-                  {t('invalidAmount', { max: remaining.toFixed(2) })}
+                  {t('invalidAmount', { max: money(remaining) })}
                 </p>
               )}
             </div>
@@ -141,7 +144,7 @@ export function RecordPaymentDialog({ chargeId, remaining, action }: RecordPayme
 
             {isPartial && (
               <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {t('partialHint', { balance: (remaining - parsedAmount).toFixed(2) })}
+                {t('partialHint', { balance: money(remaining - parsedAmount) })}
               </p>
             )}
           </div>

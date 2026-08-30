@@ -281,7 +281,7 @@
     "messages": "הודעות פורטל",
     "reportsRevenue": "דוח הכנסות",
     "reportsLessons": "דוח שיעורים",
-    "reportsDebt": "דוח חובות",
+    "reportsDebt": "דוח יתרות",
     "reportsTeachers": "דוח מורים",
     "reportsTeacherPerformance": "דוח ביצועי מורים",
     "reportsStudents": "דוח תלמידים",
@@ -312,7 +312,7 @@
     "teacherOverrides": "חריגים ביומן",
     "teacherCalendarConnect": "יומן Google",
     "billing": "חיוב חודשי",
-    "debts": "חייבים",
+    "debts": "גבייה",
     "subscriptions": "מנויים",
     "globalSearch": {
       "placeholder": "חיפוש תלמידים, הורים, שיעורים, הגדרות…",
@@ -333,7 +333,7 @@
       "triggerAria": "פתיחת תפריט פעולות מהירות",
       "title": "פעולות מהירות",
       "scheduleLesson": "קביעת שיעור",
-      "openDebt": "חובות פתוחים",
+      "openDebt": "גבייה",
       "dailySchedule": "לוח שיעורים יומי"
     },
     "drawerDescription": "תפריט ניווט ראשי",
@@ -375,7 +375,7 @@
         "atRisk": "תלמידים בסיכון"
       },
       "pendingApproval": "ממתין לאישור",
-      "debtorsLabel": "חייבים",
+      "debtorsLabel": "גבייה",
       "viewAll": "הצג הכל",
       "sectionClear": "אין פריטים פתוחים",
       "openItems": "{count} פריטים פתוחים"
@@ -1046,7 +1046,7 @@
     "pricePerStudentRequired": "מחיר לתלמיד (₪) — חובה"
   },
   "debts": {
-    "title": "חייבים",
+    "title": "גבייה",
     "subtitle": "כל ההורים עם חוב פתוח, במקום אחד",
     "empty": "אין חובות פתוחים 🎉",
     "totalDebt": "סה״כ חוב פתוח",
@@ -1062,7 +1062,7 @@
     "chargeCount": "{count} חיובים",
     "oldestAge": "הוותיק ביותר: לפני {days} ימים",
     "toggleCharges": "הצג/הסתר חיובים",
-    "partiallyPaid": "שולם ₪{paid} מתוך ₪{total}",
+    "partiallyPaid": "שולם {paid} מתוך {total}",
     "noPaymentProvider": "לא הוגדר ספק סליקה — אי אפשר ליצור קישור תשלום",
     "sendPaymentRequest": "בקשת תשלום מרוכזת",
     "sendPaymentRequestBulk": "שלח בקשת תשלום ל-{count} הורים",
@@ -1130,7 +1130,7 @@
       "chargeAlreadyPaid": "החיוב כבר שולם. לביטול חיוב ששולם יש להנפיק חשבונית זיכוי",
       "chargeAlreadyResolved": "החיוב כבר אופס או בוטל",
       "chargeNotOpen": "החיוב אינו פתוח לתשלום",
-      "paymentTooLarge": "הסכום גדול מהיתרה הפתוחה (₪{max})"
+      "paymentTooLarge": "הסכום גדול מהיתרה הפתוחה ({max})"
     },
     "resolve": {
       "resolvedAt": "טופל בתאריך",
@@ -1175,12 +1175,12 @@
     "recordPayment": {
       "action": "רישום תשלום",
       "title": "רישום תשלום",
-      "remaining": "נותר לתשלום: ₪{amount}",
+      "remaining": "נותר לתשלום: {amount}",
       "amountLabel": "סכום שהתקבל",
       "methodLabel": "אמצעי תשלום",
       "notesPlaceholder": "הערה (אופציונלי)",
-      "invalidAmount": "יש להזין סכום בין 0.01 ל-₪{max}",
-      "partialHint": "תשלום חלקי — יישארו ₪{balance} כחוב פתוח. קבלה תופק רק בסגירת החיוב.",
+      "invalidAmount": "יש להזין סכום בין 0.01 ל-{max}",
+      "partialHint": "תשלום חלקי — יישארו {balance} כחוב פתוח. קבלה תופק רק בסגירת החיוב.",
       "confirm": "שמור תשלום",
       "successFull": "התשלום נרשם והחיוב נסגר",
       "successPartial": "התשלום החלקי נרשם",
@@ -1194,10 +1194,10 @@
     },
     "payments": {
       "title": "תשלומים שהתקבלו",
-      "summary": "שולם ₪{paid} מתוך ₪{total}",
-      "remaining": "נותר ₪{amount}"
+      "summary": "שולם {paid} מתוך {total}",
+      "remaining": "נותר {amount}"
     },
-    "partiallyPaid": "שולם ₪{paid} מתוך ₪{total}",
+    "partiallyPaid": "שולם {paid} מתוך {total}",
     "filterFrom": "מתאריך",
     "filterTo": "עד תאריך"
   },
@@ -1766,7 +1766,7 @@
           "description": "שליחת לינק תשלום אוטומטי לאחר השיעור"
         },
         "automation_dunning_enabled": {
-          "label": "הודעות גביה",
+          "label": "תזכורות תשלום אוטומטיות",
           "description": "תזכורות חוב אוטומטיות ב-3, 7 ו-14 יום (ברירת מחדל: כבוי)"
         },
         "automation_new_leads_enabled": {
@@ -2446,7 +2446,7 @@
       "chartSeriesCancelled": "ביטולים"
     },
     "debt": {
-      "title": "חובות",
+      "title": "יתרות פתוחות",
       "description": "הורים עם יתרת חוב",
       "parent": "הורה",
       "balance": "יתרת חוב",
@@ -3553,7 +3553,6 @@
       "billingYearly": "שנתי",
       "perMonth": "לחודש",
       "perYear": "לשנה",
-      "freePrice": "₪0",
       "freePriceCaption": "בלי כרטיס אשראי",
       "continueToPay": "המשך לתשלום",
       "contactName": "שם",

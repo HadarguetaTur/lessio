@@ -148,6 +148,9 @@ describe('matchPages', () => {
     settingsWhatsApp: 'WhatsApp',
     settingsPayment: 'תשלומים',
     students: 'תלמידים',
+    debts: 'גבייה',
+    reportsDebt: 'דוח יתרות',
+    billing: 'חיוב חודשי',
   }
   const heTitle = (e: { navKey: string }) => heTitles[e.navKey] ?? e.navKey
 
@@ -175,6 +178,30 @@ describe('matchPages', () => {
       ['ביטול', '/settings/cancellation-policy'],
       ['בוט', '/settings/whatsapp'],
       ['סליקה', '/settings/payment'],
+    ]
+    for (const [query, href] of cases) {
+      const hrefs = matchPages(query, SEARCHABLE_PAGES, heTitle).map((e) => e.href)
+      expect(hrefs, query).toContain(href)
+    }
+  })
+
+  it('ranks a page whose own name matches above one that only lists it as a synonym', () => {
+    // /billing and /settings/reminders both sit earlier in the registry than
+    // /billing/debts, so registry order alone put the page actually called
+    // גבייה below them.
+    const hrefs = matchPages('גבייה', SEARCHABLE_PAGES, heTitle).map((e) => e.href)
+    expect(hrefs[0]).toBe('/billing/debts')
+  })
+
+  it('still finds the two renamed money pages under their old names', () => {
+    // Renaming a page must not make it unfindable for anyone who learned it
+    // as 'חייבים' or 'דוח חובות'.
+    const cases: [string, string][] = [
+      ['חייבים', '/billing/debts'],
+      ['חובות', '/billing/debts'],
+      ['debtors', '/billing/debts'],
+      ['יתרות', '/reports/debt'],
+      ['balances', '/reports/debt'],
     ]
     for (const [query, href] of cases) {
       const hrefs = matchPages(query, SEARCHABLE_PAGES, heTitle).map((e) => e.href)

@@ -1,6 +1,7 @@
 'use client'
 
-import { useFormatter, useTranslations } from 'next-intl'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import type { ChargePayment } from '@/lib/charges/paymentMethods'
 
 interface ChargePaymentsListProps {
@@ -12,13 +13,15 @@ interface ChargePaymentsListProps {
 export function ChargePaymentsList({ payments, total, paid }: ChargePaymentsListProps) {
   const t = useTranslations('charges')
   const format = useFormatter()
+  const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const remaining = Math.max(0, total - paid)
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        {t('payments.summary', { paid: paid.toFixed(2), total: total.toFixed(2) })}
-        {remaining > 0 && ` · ${t('payments.remaining', { amount: remaining.toFixed(2) })}`}
+        {t('payments.summary', { paid: money(paid), total: money(total) })}
+        {remaining > 0 && ` · ${t('payments.remaining', { amount: money(remaining) })}`}
       </p>
 
       <ul className="divide-y divide-border">
@@ -41,7 +44,7 @@ export function ChargePaymentsList({ payments, total, paid }: ChargePaymentsList
               )}
             </div>
             <span className="font-mono text-sm font-medium text-emerald-700" dir="ltr">
-              ₪{payment.amount.toFixed(2)}
+              {money(payment.amount)}
             </span>
           </li>
         ))}

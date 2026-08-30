@@ -24,7 +24,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { cn } from '@/lib/utils'
 import type { Student, StudentLesson, StudentFinancial, StudentPrimaryParent } from '@/lib/students'
 import type { HomeworkAssignment } from '@/lib/homework'
@@ -434,6 +435,8 @@ function OverviewTab({ student, parent, parentLoading, showWeeklyQuota = true }:
 function HistoryTab({ lazy }: { lazy: Lazy<StudentLesson[]> }) {
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   if (lazy.status === 'idle' || lazy.status === 'loading') {
     return (
       <div className="space-y-3">
@@ -507,7 +510,7 @@ function HistoryTab({ lazy }: { lazy: Lazy<StudentLesson[]> }) {
                       </div>
                       <div className="flex items-center gap-2.5 shrink-0">
                         {lesson.amount != null && (
-                          <span className="text-sm text-muted-foreground tabular-nums">₪{lesson.amount}</span>
+                          <span className="text-sm text-muted-foreground tabular-nums">{money(lesson.amount)}</span>
                         )}
                         <InlineBadge className={LESSON_STATUS_CLASS[lesson.status]}>{tCommon(`status.${lesson.status}` as 'status.scheduled')}</InlineBadge>
                       </div>
@@ -548,6 +551,8 @@ function FinancialTab({
   const t = useTranslations('students')
   const tSub = useTranslations('subscriptions')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingSubId, setEditingSubId] = useState<string | null>(null)
 
@@ -574,7 +579,7 @@ function FinancialTab({
       )}>
         <p className="text-xs text-muted-foreground">{t('card.balance')}</p>
         <p className={cn('text-3xl font-bold tabular-nums tracking-tight', isDebt ? 'text-red-600' : 'text-foreground')}>
-          {isDebt ? '-' : ''}₪{Math.abs(fin.balance).toLocaleString('he-IL')}
+          {isDebt ? '-' : ''}{money(Math.abs(fin.balance))}
         </p>
         {fin.primary_parent_name
           ? <p className="text-xs text-muted-foreground pt-0.5">{t('card.parentLabel')} {fin.primary_parent_name}</p>
@@ -612,7 +617,7 @@ function FinancialTab({
                       </p>
                     </div>
                     <div className="flex items-center gap-2.5 shrink-0">
-                      <span className="text-sm font-semibold tabular-nums">₪{Number(sub.monthly_amount).toLocaleString('he-IL')}/{t('card.perMonth')}</span>
+                      <span className="text-sm font-semibold tabular-nums">{money(Number(sub.monthly_amount))}/{t('card.perMonth')}</span>
                       <SubscriptionStatusBadge sub={sub} />
                       {canManage && (
                         <button
@@ -666,7 +671,7 @@ function FinancialTab({
                     </p>
                   </div>
                   <div className="flex items-center gap-2.5 shrink-0">
-                    <span className="text-sm font-semibold tabular-nums">₪{Number(billing.total_amount).toLocaleString('he-IL')}</span>
+                    <span className="text-sm font-semibold tabular-nums">{money(Number(billing.total_amount))}</span>
                     <InlineBadge className={billing.is_paid ? CHARGE_STATUS_CLASS.paid : CHARGE_STATUS_CLASS.pending}>
                       {billing.is_paid ? t('card.billingPaid') : t('card.billingOpen')}
                     </InlineBadge>
@@ -694,7 +699,7 @@ function FinancialTab({
                       <p className="text-xs text-muted-foreground">{formatDate(c.created_at)}</p>
                     </div>
                     <div className="flex items-center gap-2.5 shrink-0">
-                      <span className="text-sm font-semibold tabular-nums">₪{Number(c.amount).toLocaleString('he-IL')}</span>
+                      <span className="text-sm font-semibold tabular-nums">{money(Number(c.amount))}</span>
                       <InlineBadge className={CHARGE_STATUS_CLASS[c.status]}>{tCommon(`chargeStatus.${c.status}` as 'chargeStatus.pending')}</InlineBadge>
                     </div>
                   </div>

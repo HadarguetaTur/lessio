@@ -88,7 +88,7 @@ export function PlanSelectionStep({
 
   const planByName = (name: SaasPlanName) => plans.find((p) => p.name === name)
 
-  const formatMoney = (n: number) => formatCurrency(n, locale)
+  const money = (n: number) => formatCurrency(n, locale)
 
   const onFree = () => {
     setError(null)
@@ -161,7 +161,7 @@ export function PlanSelectionStep({
   const priceBlock = (monthly: number, yearly: number | null) => (
     <div className="shrink-0 text-end tabular-nums" dir="ltr">
       <span className="text-2xl font-bold leading-none tracking-tight text-foreground">
-        {interval === 'yearly' && yearly != null ? formatMoney(yearly) : formatMoney(monthly)}
+        {interval === 'yearly' && yearly != null ? money(yearly) : money(monthly)}
       </span>
       <span className="mt-1 block text-[11px] font-medium text-muted-foreground">
         {interval === 'yearly' ? t('perYear') : t('perMonth')}
@@ -325,7 +325,7 @@ export function PlanSelectionStep({
                   <h3 className="text-xl font-semibold tracking-tight text-foreground">{t('plans.free.title')}</h3>
                   <div className="shrink-0 text-end" dir="ltr">
                     <span className="block text-2xl font-bold tabular-nums tracking-tight text-foreground">
-                      {t('freePrice')}
+                      {money(0)}
                     </span>
                     <span className="mt-0.5 block text-[0.6875rem] font-medium text-muted-foreground">
                       {t('freePriceCaption')}

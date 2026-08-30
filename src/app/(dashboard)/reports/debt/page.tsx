@@ -5,6 +5,7 @@ import { requireFeature } from '@/lib/saas/featureGate'
 import { getDebtReport } from '@/lib/reports/debt'
 import { CsvDownloadButton } from '@/components/reports/CsvDownloadButton'
 import { getLocale, getTranslations } from 'next-intl/server'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -31,7 +32,8 @@ export default async function DebtReportPage() {
   const { rows, totalDebt } = await getDebtReport(session.orgId)
   const [locale, t] = await Promise.all([getLocale(), getTranslations('reports')])
   const intlLoc = toIntlLocale(parseAppLocale(locale))
-  const amountStr = `₪${totalDebt.toLocaleString(intlLoc)}`
+  const money = (amount: number) => formatMoney(amount, locale)
+  const amountStr = money(totalDebt)
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
@@ -65,7 +67,7 @@ export default async function DebtReportPage() {
                     <TableCell className="px-4 py-3 font-medium text-foreground">{r.parentName}</TableCell>
                     <TableCell className="px-4 py-3 tabular-nums text-muted-foreground text-end" dir="ltr">{r.phone}</TableCell>
                     <TableCell className="px-4 py-3 font-semibold tabular-nums text-destructive text-end">
-                      ₪{r.totalDebt.toLocaleString(intlLoc)}
+                      {money(r.totalDebt)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-muted-foreground text-end">
                       {r.oldestDueDate

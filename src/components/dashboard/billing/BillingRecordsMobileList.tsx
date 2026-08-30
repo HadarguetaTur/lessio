@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { ApproveBillingButton } from '@/app/(dashboard)/billing/ApproveBillingButton'
@@ -28,6 +29,7 @@ interface Props {
   records: BillingRecord[]
   billingMonth: string
   isOwnerOrAdmin: boolean
+  locale: string
   labels: {
     lessons: string
     subscriptions: string
@@ -43,8 +45,11 @@ export function BillingRecordsMobileList({
   records,
   billingMonth,
   isOwnerOrAdmin,
+  locale,
   labels,
 }: Props) {
+  const money = (amount: number) => formatMoney(amount, locale)
+
   return (
     <div className="flex flex-col gap-3 md:hidden">
       {records.map((record) => {
@@ -76,7 +81,7 @@ export function BillingRecordsMobileList({
                 dir="ltr"
                 className="text-lg font-semibold tabular-nums text-foreground"
               >
-                ₪{Number(record.total_amount).toFixed(2)}
+                {money(Number(record.total_amount))}
               </span>
               <span className="text-end text-sm text-muted-foreground">{labels.total}</span>
             </div>
@@ -86,7 +91,7 @@ export function BillingRecordsMobileList({
                   {labels.lessons}
                 </dt>
                 <dd className="col-start-1 row-start-1 font-mono text-foreground" dir="ltr">
-                  ₪{Number(record.lessons_amount).toFixed(2)} ({record.lessons_count})
+                  {money(Number(record.lessons_amount))} ({record.lessons_count})
                 </dd>
               </div>
               <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
@@ -94,7 +99,7 @@ export function BillingRecordsMobileList({
                   {labels.subscriptions}
                 </dt>
                 <dd className="col-start-1 row-start-1 font-mono text-foreground" dir="ltr">
-                  ₪{Number(record.subscriptions_amount).toFixed(2)}
+                  {money(Number(record.subscriptions_amount))}
                 </dd>
               </div>
               <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
@@ -102,7 +107,7 @@ export function BillingRecordsMobileList({
                   {labels.cancellations}
                 </dt>
                 <dd className="col-start-1 row-start-1 font-mono text-foreground" dir="ltr">
-                  ₪{Number(record.cancellations_amount).toFixed(2)}
+                  {money(Number(record.cancellations_amount))}
                 </dd>
               </div>
               <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
@@ -118,7 +123,7 @@ export function BillingRecordsMobileList({
                           : 'text-foreground'
                       }
                     >
-                      ₪{Number(record.manual_adjustment_amount).toFixed(2)}
+                      {money(Number(record.manual_adjustment_amount))}
                     </span>
                   ) : (
                     '—'

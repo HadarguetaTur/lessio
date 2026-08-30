@@ -10,7 +10,7 @@ import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { SEARCHABLE_PAGES, filterNav, matchPages } from '@/lib/navigation/registry'
 import type { SaasFeatures } from '@/lib/saas/types'
 import type { GlobalSearchResponse } from '@/lib/search/types'
-import { formatCurrency } from '@/lib/i18n/formatCurrency'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { cn } from '@/lib/utils'
 
 function buildStudentHref(role: string, studentId: string): string {
@@ -153,7 +153,7 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
       hour12: false,
     }).format(new Date(iso))
 
-  const formatMoney = (n: number) => formatCurrency(n, locale)
+  const money = (n: number) => formatMoney(n, locale)
 
   function navigateTo(href: string) {
     setOpen(false)
@@ -221,7 +221,7 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
         key: 'charges',
         items: data.charges.map((c) => ({
           href: `/charges/${c.id}`,
-          label: `${formatMoney(c.amount)} · ${c.parent_name}`,
+          label: `${money(c.amount)} · ${c.parent_name}`,
           onSelect: () => navigateTo(`/charges/${c.id}`),
         })),
       })
@@ -239,7 +239,16 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
     }
 
     return groups
-  }, [canSeeCharges, data, formatMoney, navigateTo, pageHits, tNav, userRole])
+  }, [canSeeCharges, data, money, navigateTo, pageHits, tNav, userRole])
+
+  /**
+   * One flat list behind the keyboard cursor. Every group below marks its rows
+   * from this, so what Enter opens is also what the user sees highlighted —
+   * before, only the students group tracked the cursor and the rest rendered
+   * `aria-selected={false}`, leaving the selection invisible past the first group.
+   */
+  const flatItems = useMemo(() => resultGroups.flatMap((group) => group.items), [resultGroups])
+  const indexOfHref = (href: string) => flatItems.findIndex((item) => item.href === href)
 
   useEffect(() => {
     const keyHandler = (event: KeyboardEvent) => {
@@ -259,8 +268,7 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
       }
 
       if (event.key === 'Enter') {
-        const flat = resultGroups.flatMap((group) => group.items)
-        const item = flat[selectedIndex]
+        const item = flatItems[selectedIndex]
         if (item) {
           event.preventDefault()
           item.onSelect()
@@ -270,7 +278,7 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
 
     document.addEventListener('keydown', keyHandler)
     return () => document.removeEventListener('keydown', keyHandler)
-  }, [data, open, pageHits.length, resultGroups, selectedIndex])
+  }, [data, flatItems, open, pageHits.length, resultGroups, selectedIndex])
 
   return (
     <div ref={rootRef} className={cn('relative min-w-0', className)}>
@@ -347,8 +355,8 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
               <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('sections.students')}
               </div>
-              {data.students.map((s, index) => {
-                const flatIndex = resultGroups.flatMap((group) => group.items).findIndex((item) => item.href === buildStudentHref(userRole, s.id))
+              {data.students.map((s) => {
+                const flatIndex = indexOfHref(buildStudentHref(userRole, s.id))
                 return (
                   <button
                     key={s.id}
@@ -376,13 +384,18 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
               <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('sections.parents')}
               </div>
-              {data.parents.map((p) => (
+              {data.parents.map((p) => {
+                const flatIndex = indexOfHref(`/parents/${p.id}/edit`)
+                return (
                 <button
                   key={p.id}
                   type="button"
                   role="option"
-                  aria-selected={false}
-                  className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80"
+                  aria-selected={selectedIndex === flatIndex}
+                  className={cn(
+                    'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80',
+                    selectedIndex === flatIndex && 'bg-muted/80'
+                  )}
                   onClick={() => navigateTo(`/parents/${p.id}/edit`)}
                 >
                   <span className="font-medium">{p.full_name}</span>
@@ -390,7 +403,8 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
                     <span className="text-xs text-muted-foreground">{p.phone}</span>
                   ) : null}
                 </button>
-              ))}
+                )
+              })}
             </div>
           )}
 
@@ -409,13 +423,18 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
                   userRole === 'teacher' ? undefined : matchedStudent?.id
                 )
 
+                const flatIndex = indexOfHref(lessonHref)
+
                 return (
                   <button
                     key={l.id}
                     type="button"
                     role="option"
-                    aria-selected={false}
-                    className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80"
+                    aria-selected={selectedIndex === flatIndex}
+                    className={cn(
+                      'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80',
+                      selectedIndex === flatIndex && 'bg-muted/80'
+                    )}
                     onClick={() => navigateTo(lessonHref)}
                   >
                     <span className="font-medium">{formatLessonWhen(l.start_at)}</span>
@@ -431,23 +450,29 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
               <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('sections.charges')}
               </div>
-              {data.charges.map((c) => (
+              {data.charges.map((c) => {
+                const flatIndex = indexOfHref(`/charges/${c.id}`)
+                return (
                 <button
                   key={c.id}
                   type="button"
                   role="option"
-                  aria-selected={false}
-                  className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80"
+                  aria-selected={selectedIndex === flatIndex}
+                  className={cn(
+                    'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80',
+                    selectedIndex === flatIndex && 'bg-muted/80'
+                  )}
                   onClick={() =>
                     navigateTo(`/charges/${c.id}`)
                   }
                 >
                   <span className="font-medium">
-                    {formatMoney(c.amount)} · {c.parent_name}
+                    {money(c.amount)} · {c.parent_name}
                   </span>
                   <span className="text-xs text-muted-foreground">{c.status}</span>
                 </button>
-              ))}
+                )
+              })}
             </div>
           )}
 
@@ -458,13 +483,17 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
               </div>
               {pageHits.map((entry) => {
                 const Icon = entry.icon
+                const flatIndex = indexOfHref(entry.href)
                 return (
                   <button
                     key={entry.href}
                     type="button"
                     role="option"
-                    aria-selected={false}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-start text-sm hover:bg-muted/80"
+                    aria-selected={selectedIndex === flatIndex}
+                    className={cn(
+                      'flex w-full items-center gap-2 px-3 py-2 text-start text-sm hover:bg-muted/80',
+                      selectedIndex === flatIndex && 'bg-muted/80'
+                    )}
                     onClick={() => navigateTo(entry.href)}
                   >
                     <Icon size={14} className="shrink-0 text-muted-foreground" aria-hidden />

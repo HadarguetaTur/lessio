@@ -37,7 +37,7 @@ export function UpgradePlanPanel({
     summary: BeginPaidCheckoutSummary
   } | null>(null)
 
-  const formatMoney = (n: number) => formatCurrency(n, locale)
+  const money = (n: number) => formatCurrency(n, locale)
 
   const planLabelForSummary = (s: BeginPaidCheckoutSummary) =>
     locale === 'he' ? s.planLabelHe : s.planLabelEn
@@ -101,7 +101,7 @@ export function UpgradePlanPanel({
   const priceBlock = (monthly: number, yearly: number | null) => (
     <div className="shrink-0 text-end tabular-nums" dir="ltr">
       <span className="text-2xl font-bold leading-none tracking-tight text-foreground">
-        {interval === 'yearly' && yearly != null ? formatMoney(yearly) : formatMoney(monthly)}
+        {interval === 'yearly' && yearly != null ? money(yearly) : money(monthly)}
       </span>
       <span className="mt-1 block text-[11px] font-medium text-muted-foreground">
         {interval === 'yearly' ? t('perYear') : t('perMonth')}

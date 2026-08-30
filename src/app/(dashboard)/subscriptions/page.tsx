@@ -6,7 +6,8 @@ import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { commonError } from '@/lib/i18n/actionErrors'
 
 function getSubscriptionStatus(sub: {
@@ -28,10 +29,12 @@ export default async function SubscriptionsPage(props: {
     return <div className="p-6 text-sm text-muted-foreground">{await commonError('noPermission')}</div>
   }
 
-  const [t, tCommon] = await Promise.all([
+  const [t, tCommon, locale] = await Promise.all([
     getTranslations('subscriptions'),
     getTranslations('common'),
+    getLocale(),
   ])
+  const money = (amount: number) => formatMoney(amount, locale)
 
   const statusFilter = searchParams.status as 'active' | 'paused' | 'all' | undefined
   const allSubs = await getSubscriptions(orgId)
@@ -128,7 +131,7 @@ export default async function SubscriptionsPage(props: {
                         {sub.subscription_type ?? '—'}
                       </td>
                       <td className="px-5 py-3.5 text-sm font-mono font-semibold text-foreground" dir="ltr">
-                        ₪{Number(sub.monthly_amount).toFixed(2)}
+                        {money(Number(sub.monthly_amount))}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-foreground">{sub.start_date}</td>
                       <td className="px-5 py-3.5 text-sm text-foreground">{sub.end_date ?? '—'}</td>

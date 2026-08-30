@@ -9,7 +9,8 @@ import { CsvDownloadButton } from '@/components/reports/CsvDownloadButton'
 import AccountingExportButton from './AccountingExportButton'
 import { PeriodSelector } from '@/components/reports/PeriodSelector'
 import { getLocale, getTranslations } from 'next-intl/server'
-import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
+import { parseAppLocale } from '@/lib/i18n/locale'
 import { PageHeader } from '@/components/ui/page-header'
 import {
   Table,
@@ -40,7 +41,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
   const timezone = await getOrgTimezone(session.orgId)
   const [locale, t] = await Promise.all([getLocale(), getTranslations('reports')])
   const appLocale = parseAppLocale(locale)
-  const intlLoc = toIntlLocale(appLocale)
+  const money = (amount: number) => formatMoney(amount, appLocale)
   const { buckets, total, billingTotal, billingPaid } = await getRevenueReport(
     session.orgId,
     timezone,
@@ -52,7 +53,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <PageHeader
         title={t('revenue.title')}
-        subtitle={`${t('revenue.revenue')}: ₪${total.toLocaleString(intlLoc)} · ${t('revenue.monthlyBilling')}: ₪${billingTotal.toLocaleString(intlLoc)} · ${t('revenue.monthlyBillingPaid')}: ₪${billingPaid.toLocaleString(intlLoc)}`}
+        subtitle={`${t('revenue.revenue')}: ${money(total)} · ${t('revenue.monthlyBilling')}: ${money(billingTotal)} · ${t('revenue.monthlyBillingPaid')}: ${money(billingPaid)}`}
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <PeriodSelector current={months} />
@@ -90,16 +91,16 @@ export default async function RevenueReportPage({ searchParams }: Props) {
                 <TableRow key={b.month} className="hover:bg-muted/20">
                   <TableCell className="px-4 py-3 text-foreground">{b.label}</TableCell>
                   <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
-                    ₪{b.revenue.toLocaleString(intlLoc)}
+                    {money(b.revenue)}
                   </TableCell>
                   <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
-                    ₪{b.billingTotal.toLocaleString(intlLoc)}
+                    {money(b.billingTotal)}
                   </TableCell>
                   <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
-                    ₪{b.billingPaid.toLocaleString(intlLoc)}
+                    {money(b.billingPaid)}
                   </TableCell>
                   <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
-                    ₪{(b.billingTotal - b.billingPaid).toLocaleString(intlLoc)}
+                    {money(b.billingTotal - b.billingPaid)}
                   </TableCell>
                 </TableRow>
               ))}

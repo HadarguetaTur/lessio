@@ -248,7 +248,9 @@ export const REPORTS_NAV: NavEntry[] = [
     icon: Receipt,
     roles: ['owner', 'admin'],
     saasFeature: 'full_reports',
-    synonyms: ['debt', 'debts', 'owed', 'חוב', 'חובות', 'חייבים'],
+    // The old names ('חובות', 'debt') stay searchable: renaming a page must not
+    // make it unfindable for anyone who learned it under the previous label.
+    synonyms: ['balance', 'balances', 'outstanding', 'debt', 'debts', 'owed', 'יתרה', 'יתרות', 'חוב', 'חובות'],
   },
   {
     href: '/reports/teachers',
@@ -336,14 +338,16 @@ export const MAIN_NAV: NavEntry[] = [
     navKey: 'billing',
     icon: Banknote,
     roles: ['owner', 'admin'],
-    synonyms: ['billing', 'monthly', 'invoice', 'חיוב חודשי', 'חשבונית', 'גבייה'],
+    synonyms: ['billing', 'monthly', 'invoice', 'חיוב חודשי', 'חשבונית'],
   },
   {
     href: '/billing/debts',
     navKey: 'debts',
     icon: Wallet,
     roles: ['owner', 'admin'],
-    synonyms: ['debt', 'debts', 'owed', 'חוב', 'חובות', 'חייבים'],
+    // The old names ('חייבים', 'Debtors') stay searchable: renaming a page must
+    // not make it unfindable for anyone who learned the previous label.
+    synonyms: ['collection', 'collect', 'debtor', 'debtors', 'debt', 'debts', 'owed', 'גבייה', 'לגבות', 'חוב', 'חובות', 'חייבים'],
   },
   {
     href: '/subscriptions',
@@ -511,15 +515,15 @@ export function matchPages(
   const q = query.trim().toLowerCase()
   if (q.length < 2) return []
 
-  const hits: NavEntry[] = []
+  // A page whose own name matches outranks one that only lists the word as a
+  // synonym. Without this, typing "גבייה" put /billing first — it carries the
+  // word as a synonym — and the page actually called גבייה came second.
+  const byTitle: NavEntry[] = []
+  const bySynonym: NavEntry[] = []
   for (const entry of entries) {
     const title = getTitle(entry).toLowerCase()
-    const matched =
-      title.includes(q) || (entry.synonyms?.some((s) => s.includes(q)) ?? false)
-    if (matched) {
-      hits.push(entry)
-      if (hits.length >= limit) break
-    }
+    if (title.includes(q)) byTitle.push(entry)
+    else if (entry.synonyms?.some((s) => s.includes(q))) bySynonym.push(entry)
   }
-  return hits
+  return [...byTitle, ...bySynonym].slice(0, limit)
 }

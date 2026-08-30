@@ -1,4 +1,5 @@
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import type { PlatformStats } from '@/lib/superadmin/dashboard'
 
 interface Props {
@@ -7,11 +8,13 @@ interface Props {
 
 export async function PlatformKpiGrid({ stats }: Props) {
   const t = await getTranslations('admin')
+  const locale = await getLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const cards = [
     { label: t('dashboard.kpi.totalOrgs'),       value: stats.totalOrganizations.toLocaleString('he-IL'),            sub: null },
     { label: t('dashboard.kpi.activeOrgs'),       value: stats.activeOrganizationsLast30Days.toLocaleString('he-IL'), sub: null },
     { label: t('dashboard.kpi.lessonsThisMonth'), value: stats.platformLessonsThisMonth.toLocaleString('he-IL'),       sub: null },
-    { label: t('dashboard.kpi.revenueThisMonth'), value: `₪${stats.platformRevenueThisMonth.toLocaleString('he-IL')}`, sub: t('dashboard.kpi.paymentsReceived') },
+    { label: t('dashboard.kpi.revenueThisMonth'), value: money(stats.platformRevenueThisMonth), sub: t('dashboard.kpi.paymentsReceived') },
   ]
 
   return (

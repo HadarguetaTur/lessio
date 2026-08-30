@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { DateTime } from 'luxon'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import type { OrgBillingRow } from '@/lib/superadmin/billing'
 
 interface Props {
@@ -14,6 +15,8 @@ function Fmt({ iso }: { iso: string | null }) {
 
 export async function BillingReadinessTable({ rows }: Props) {
   const t = await getTranslations('admin')
+  const locale = await getLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const yesLabel = t('orgs.table.yes')
   const noLabel = t('orgs.table.no')
 
@@ -50,7 +53,7 @@ export async function BillingReadinessTable({ rows }: Props) {
               <td className="px-4 py-3 text-center"><Yn value={r.receiptConnected} /></td>
               <td className="px-4 py-3 text-gray-700"><Fmt iso={r.firstPaidChargeDate} /></td>
               <td className="px-4 py-3 font-medium text-gray-900 tabular-nums">
-                {r.totalPaidRevenue > 0 ? `₪${r.totalPaidRevenue.toLocaleString('he-IL')}` : <span className="text-muted-foreground">—</span>}
+                {r.totalPaidRevenue > 0 ? money(r.totalPaidRevenue) : <span className="text-muted-foreground">—</span>}
               </td>
               <td className="px-4 py-3 text-gray-700"><Fmt iso={r.lastPaidChargeDate} /></td>
             </tr>

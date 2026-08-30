@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { Pencil, Star, Phone } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { Button } from '@/components/ui/button'
@@ -59,6 +60,8 @@ export function ParentDetailPanel({
   const [editing, setEditing] = useState(false)
   const router = useRouter()
   const t = useTranslations('parents')
+  const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const tCommon = useTranslations('common')
 
   const handleSaved = () => {
@@ -159,7 +162,7 @@ export function ParentDetailPanel({
             className={cn('text-lg font-bold tabular-nums', debt > 0 ? 'text-destructive' : 'text-muted-foreground')}
             dir="ltr"
           >
-            {debt > 0 ? `₪${debt.toFixed(2)}` : t('noDebt')}
+            {debt > 0 ? money(debt) : t('noDebt')}
           </span>
           {debt > 0 ? (
             <Link

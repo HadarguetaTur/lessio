@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { setManualAdjustment } from '../actions'
 
 interface Props {
@@ -16,6 +17,8 @@ export function ManualAdjustmentForm({
   currentReason,
 }: Props) {
   const t = useTranslations('billing.detail')
+  const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const tCommon = useTranslations('common')
   const [isPending, startTransition] = useTransition()
   const [amount, setAmount] = useState(currentAmount?.toString() ?? '')
@@ -82,7 +85,7 @@ export function ManualAdjustmentForm({
       {error && <p className="text-xs text-destructive w-full">{error}</p>}
       {currentAmount != null && (
         <p className="text-xs text-muted-foreground w-full">
-          {tCommon('table.amount')}: ₪{currentAmount} — {currentReason}
+          {tCommon('table.amount')}: {money(currentAmount)} — {currentReason}
         </p>
       )}
     </form>

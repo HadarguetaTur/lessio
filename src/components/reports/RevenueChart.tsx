@@ -2,6 +2,7 @@
 
 import { useLocale, useTranslations } from 'next-intl'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import {
   BarChart,
   Bar,
@@ -23,9 +24,11 @@ interface RevenueChartProps {
 function MobileStackedChart({
   buckets,
   intlLoc,
+  locale,
 }: {
   buckets: MonthlyRevenueBucket[]
   intlLoc: string
+  locale: string
 }) {
   const t = useTranslations('reports.revenue')
   const perRow = 40
@@ -35,8 +38,10 @@ function MobileStackedChart({
 
   const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>()
 
+  // The series names already carry the unit ("הכנסות (₪)"), so the axis stays
+  // a bare compact number — a full ₪ amount per tick does not fit on a phone.
   const formatXTicks = (v: number) =>
-    v >= 1000 ? `₪${Math.round(v / 1000)}k` : `₪${v.toLocaleString(intlLoc)}`
+    new Intl.NumberFormat(intlLoc, { notation: 'compact', maximumFractionDigits: 1 }).format(v)
 
   return (
     <div className="max-h-[75vh] min-w-0 w-full overflow-y-auto overscroll-y-contain rounded-md">
@@ -69,7 +74,7 @@ function MobileStackedChart({
             />
             <Tooltip
               formatter={(value, name) => [
-                `₪${Number(value ?? 0).toLocaleString(intlLoc)}`,
+                formatMoney(Number(value ?? 0), locale),
                 String(name),
               ]}
               contentStyle={{ fontSize: 13, borderRadius: 8, border: '1px solid #e5e7eb' }}
@@ -108,13 +113,14 @@ function MobileStackedChart({
 const DESKTOP_CHART_HEIGHT = 232
 
 export function RevenueChart({ buckets }: RevenueChartProps) {
-  const intlLoc = toIntlLocale(parseAppLocale(useLocale()))
+  const locale = parseAppLocale(useLocale())
+  const intlLoc = toIntlLocale(locale)
   const t = useTranslations('reports.revenue')
   const compact = useMatchMedia('(max-width: 639px)')
   const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>()
 
   if (compact) {
-    return <MobileStackedChart buckets={buckets} intlLoc={intlLoc} />
+    return <MobileStackedChart buckets={buckets} intlLoc={intlLoc} locale={locale} />
   }
 
   return (
@@ -134,7 +140,7 @@ export function RevenueChart({ buckets }: RevenueChartProps) {
             tickLine={false}
           />
           <YAxis
-            tickFormatter={v => `₪${v.toLocaleString(intlLoc)}`}
+            tickFormatter={v => new Intl.NumberFormat(intlLoc, { notation: 'compact', maximumFractionDigits: 1 }).format(v)}
             tick={{ fontSize: 11, fill: '#6b7280' }}
             axisLine={false}
             tickLine={false}
@@ -142,7 +148,7 @@ export function RevenueChart({ buckets }: RevenueChartProps) {
           />
           <Tooltip
             formatter={(value, name) => [
-              `₪${Number(value ?? 0).toLocaleString(intlLoc)}`,
+              formatMoney(Number(value ?? 0), locale),
               String(name),
             ]}
             contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}

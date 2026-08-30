@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import Link from 'next/link'
 import { Star, Phone, BellOff } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -69,6 +70,7 @@ export function ParentDetailSheet({
   const tStudents = useTranslations('students')
   const tCommon = useTranslations('common')
   const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const router = useRouter()
   const [state, setState] = useState<SheetState>({ status: 'idle' })
   const [editing, setEditing] = useState(false)
@@ -290,7 +292,7 @@ export function ParentDetailSheet({
                       className={cn('text-lg font-bold tabular-nums', debt > 0 ? 'text-destructive' : 'text-muted-foreground')}
                       dir="ltr"
                     >
-                      {debt > 0 ? `₪${debt.toFixed(2)}` : t('noDebt')}
+                      {debt > 0 ? money(debt) : t('noDebt')}
                     </span>
                     {debt > 0 && (
                       <Link

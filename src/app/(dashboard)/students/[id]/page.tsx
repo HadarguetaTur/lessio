@@ -30,6 +30,7 @@ import { listExams } from '@/lib/students/exams'
 import { getExamFileSignedUrl } from '@/lib/students/examFiles'
 import { examWeekStart, getExamPolicy } from '@/lib/exams/policy'
 import { getTranslations, getLocale } from 'next-intl/server'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { parseAppLocale } from '@/lib/i18n/locale'
 
 type Tab = 'overview' | 'lessons' | 'homework' | 'billing' | 'notes' | 'exams'
@@ -62,6 +63,7 @@ export default async function StudentProfilePage(props: {
     getLocale(),
   ])
   const appLocale = parseAppLocale(locale)
+  const money = (amount: number) => formatMoney(amount, appLocale)
 
   const db = createServiceRoleClient()
 
@@ -245,7 +247,7 @@ export default async function StudentProfilePage(props: {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <KpiCard label={t('overview.attendance')} value={`${overview.attendanceRate}%`} />
               <KpiCard label={t('overview.homeworkCompletion')} value={`${overview.homeworkCompletionRate}%`} />
-              <KpiCard label={t('overview.balance')} value={`₪${overview.outstandingBalance.toFixed(2)}`} />
+              <KpiCard label={t('overview.balance')} value={money(overview.outstandingBalance)} />
               <KpiCard label={t('overview.totalLessons')} value={String(overview.totalLessons)} />
               <KpiCard label={t('overview.completedLessons')} value={String(overview.completedLessons)} />
               <KpiCard label={t('overview.doneAssignments')} value={`${overview.doneAssignments}/${overview.totalAssignments}`} />
@@ -339,7 +341,7 @@ export default async function StudentProfilePage(props: {
                   return (
                     <div key={charge.id} className="border border-gray-50 rounded-lg p-3 text-sm flex justify-between items-center">
                       <div>
-                        <span className="font-medium">₪{Number(charge.amount).toFixed(2)}</span>
+                        <span className="font-medium">{money(Number(charge.amount))}</span>
                         {charge.description && <span className="text-muted-foreground ms-2 text-xs">{charge.description}</span>}
                       </div>
                       <span className={`text-xs px-1.5 py-0.5 rounded ${

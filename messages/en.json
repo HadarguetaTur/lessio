@@ -281,7 +281,7 @@
     "messages": "Portal messages",
     "reportsRevenue": "Revenue report",
     "reportsLessons": "Lesson report",
-    "reportsDebt": "Debt report",
+    "reportsDebt": "Outstanding balances",
     "reportsTeachers": "Teacher report",
     "reportsTeacherPerformance": "Teacher performance report",
     "reportsStudents": "Student report",
@@ -312,7 +312,7 @@
     "teacherOverrides": "Schedule Exceptions",
     "teacherCalendarConnect": "Google Calendar",
     "billing": "Monthly Billing",
-    "debts": "Debtors",
+    "debts": "Collection",
     "subscriptions": "Subscriptions",
     "globalSearch": {
       "placeholder": "Search students, parents, lessons, settings…",
@@ -333,7 +333,7 @@
       "triggerAria": "Open quick actions",
       "title": "Quick actions",
       "scheduleLesson": "Schedule a lesson",
-      "openDebt": "Open debts",
+      "openDebt": "Collection",
       "dailySchedule": "Daily lesson schedule"
     },
     "drawerDescription": "Main navigation",
@@ -375,7 +375,7 @@
         "atRisk": "At-risk students"
       },
       "pendingApproval": "Awaiting approval",
-      "debtorsLabel": "Debtors",
+      "debtorsLabel": "Collection",
       "viewAll": "View all",
       "sectionClear": "Nothing open",
       "openItems": "{count} open items"
@@ -1046,7 +1046,7 @@
     "pricePerStudentRequired": "Price per student (₪) — required"
   },
   "debts": {
-    "title": "Debtors",
+    "title": "Collection",
     "subtitle": "Every parent with an open balance, in one place",
     "empty": "No open debt 🎉",
     "totalDebt": "Total open debt",
@@ -1062,7 +1062,7 @@
     "chargeCount": "{count} charges",
     "oldestAge": "Oldest: {days} days ago",
     "toggleCharges": "Show/hide charges",
-    "partiallyPaid": "Paid ₪{paid} of ₪{total}",
+    "partiallyPaid": "Paid {paid} of {total}",
     "noPaymentProvider": "No payment provider configured — a payment link cannot be created",
     "sendPaymentRequest": "Consolidated request",
     "sendPaymentRequestBulk": "Request payment from {count} parents",
@@ -1130,7 +1130,7 @@
       "chargeAlreadyPaid": "This charge is already paid. Reverse a paid charge with a credit note instead",
       "chargeAlreadyResolved": "This charge was already waived or voided",
       "chargeNotOpen": "This charge is not open for payment",
-      "paymentTooLarge": "The amount is larger than the open balance (₪{max})"
+      "paymentTooLarge": "The amount is larger than the open balance ({max})"
     },
     "resolve": {
       "resolvedAt": "Resolved on",
@@ -1175,12 +1175,12 @@
     "recordPayment": {
       "action": "Record payment",
       "title": "Record a payment",
-      "remaining": "Remaining: ₪{amount}",
+      "remaining": "Remaining: {amount}",
       "amountLabel": "Amount received",
       "methodLabel": "Payment method",
       "notesPlaceholder": "Note (optional)",
-      "invalidAmount": "Enter an amount between 0.01 and ₪{max}",
-      "partialHint": "Partial payment — ₪{balance} stays open. A receipt is issued only when the charge closes.",
+      "invalidAmount": "Enter an amount between 0.01 and {max}",
+      "partialHint": "Partial payment — {balance} stays open. A receipt is issued only when the charge closes.",
       "confirm": "Save payment",
       "successFull": "Payment recorded and the charge closed",
       "successPartial": "Partial payment recorded",
@@ -1194,10 +1194,10 @@
     },
     "payments": {
       "title": "Payments received",
-      "summary": "Paid ₪{paid} of ₪{total}",
-      "remaining": "₪{amount} remaining"
+      "summary": "Paid {paid} of {total}",
+      "remaining": "{amount} remaining"
     },
-    "partiallyPaid": "Paid ₪{paid} of ₪{total}",
+    "partiallyPaid": "Paid {paid} of {total}",
     "filterFrom": "From date",
     "filterTo": "To date"
   },
@@ -1766,7 +1766,7 @@
           "description": "Automatically send a payment link once the lesson ends"
         },
         "automation_dunning_enabled": {
-          "label": "Debt reminders",
+          "label": "Automatic payment reminders",
           "description": "Automatic overdue reminders at 3, 7 and 14 days (default: off)"
         },
         "automation_new_leads_enabled": {
@@ -2446,7 +2446,7 @@
       "chartSeriesCancelled": "Cancelled"
     },
     "debt": {
-      "title": "Debt",
+      "title": "Outstanding balances",
       "description": "Parents with outstanding balances",
       "parent": "Parent",
       "balance": "Balance",
@@ -3553,7 +3553,6 @@
       "billingYearly": "Yearly",
       "perMonth": "/mo",
       "perYear": "/yr",
-      "freePrice": "₪0",
       "freePriceCaption": "No card required",
       "continueToPay": "Continue to payment",
       "contactName": "Name",

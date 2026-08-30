@@ -1,7 +1,8 @@
 'use client'
 
 import { useTransition } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { confirmCancellationCharge } from '../actions'
 
 interface CancellationEvent {
@@ -22,6 +23,9 @@ interface Props {
 
 export function CancellationEventCard({ event, isOwnerOrAdmin }: Props) {
   const t = useTranslations('billing.detail')
+
+  const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
   const [isPending, startTransition] = useTransition()
 
   function handleConfirm() {
@@ -70,7 +74,7 @@ export function CancellationEventCard({ event, isOwnerOrAdmin }: Props) {
         <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
           <dt className="col-start-2 row-start-1 text-end text-muted-foreground">{t('colManualAmount')}</dt>
           <dd className="col-start-1 row-start-1 font-mono text-foreground" dir="ltr">
-            {event.charge_override != null ? `₪${event.charge_override}` : '—'}
+            {event.charge_override != null ? money(event.charge_override) : '—'}
           </dd>
         </div>
       </dl>

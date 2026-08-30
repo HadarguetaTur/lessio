@@ -1,6 +1,7 @@
 'use client'
 
-import { useFormatter, useTranslations } from 'next-intl'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import type { ChargeAuditRow } from '@/lib/charges/audit'
 
 interface ChargeAuditTimelineProps {
@@ -10,6 +11,8 @@ interface ChargeAuditTimelineProps {
 export function ChargeAuditTimeline({ entries }: ChargeAuditTimelineProps) {
   const t = useTranslations('charges.audit')
   const format = useFormatter()
+  const locale = useLocale()
+  const money = (amount: number) => formatMoney(amount, locale)
 
   if (entries.length === 0) {
     return <p className="text-sm text-muted-foreground">{t('empty')}</p>
@@ -39,7 +42,7 @@ export function ChargeAuditTimeline({ entries }: ChargeAuditTimelineProps) {
               entry.after_amount != null &&
               entry.before_amount !== entry.after_amount && (
                 <p className="mt-1 font-mono text-xs text-muted-foreground" dir="ltr">
-                  ₪{entry.before_amount.toFixed(2)} → ₪{entry.after_amount.toFixed(2)}
+                  {money(entry.before_amount)} → {money(entry.after_amount)}
                 </p>
               )}
           </div>

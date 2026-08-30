@@ -49,7 +49,9 @@ export default async function RemindersSettingsPage() {
   const [{ data: org }, { data: logs }, { count: parentsWithEmail }] = await Promise.all([
     db
       .from('organizations')
-      .select('reminders_enabled, lesson_reminder_hours, payment_reminder_days, email_notifications')
+      .select(
+        'reminders_enabled, lesson_reminder_hours, payment_reminder_days, email_notifications, whatsapp_phone_number_id'
+      )
       .eq('id', orgId)
       .single(),
     db
@@ -78,6 +80,7 @@ export default async function RemindersSettingsPage() {
           defaultPaymentDays={org?.payment_reminder_days ?? 7}
           defaultEmailNotifications={(org?.email_notifications ?? {}) as Record<string, boolean>}
           parentsWithEmail={parentsWithEmail ?? 0}
+          hasWhatsApp={Boolean(org?.whatsapp_phone_number_id)}
         />
       </div>
 

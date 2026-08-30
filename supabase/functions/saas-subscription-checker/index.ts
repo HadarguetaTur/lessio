@@ -10,6 +10,11 @@
  *   3. Find active subscriptions where current_period_end < now
  *      and cancel_at_period_end = false → set status = 'past_due'
  *      (actual renewal is handled by Sumit webhooks; this is a safety net)
+ *   4. Derive organizations.service_state from the subscription — the single
+ *      value the WhatsApp webhook, the sending crons and the parent portal read
+ *      to decide whether an org's service is on. This function is its ONLY
+ *      scheduled writer; the payment path also writes 'active' directly so
+ *      reactivation is instant instead of waiting for tomorrow's run.
  *
  * Failures are logged but do not crash the function.
  */
@@ -22,7 +27,13 @@ Deno.serve(async (_req) => {
   const db = createClient(supabaseUrl, serviceRoleKey)
 
   const now = new Date().toISOString()
-  const results = { trialExpired: 0, cancelledAtPeriodEnd: 0, pastDue: 0, errors: 0 }
+  const results = {
+    trialExpired: 0,
+    cancelledAtPeriodEnd: 0,
+    pastDue: 0,
+    serviceStateChanged: 0,
+    errors: 0,
+  }
 
   // ── 1. Expire free trials ───────────────────────────────────────────────────
   const { data: expiredTrials, error: trialErr } = await db
@@ -106,6 +117,30 @@ Deno.serve(async (_req) => {
         results.pastDue++
       }
     }
+  }
+
+  // ── 4. Derive service_state for every org that has a subscription ──────────
+  // Runs last so it sees the statuses the three passes above just wrote.
+  //
+  // The ladder itself is public.derive_service_state (migration
+  // 20260829140100), not code here: nothing in this repo can unit-test a Deno
+  // Edge Function — vitest only collects src/** — and this decides whether a
+  // studio's bot and parent portal are switched off. In SQL it has one
+  // definition and can be checked with a SELECT against real data.
+  const { data: changes, error: syncErr } = await db.rpc('sync_org_service_states')
+
+  if (syncErr) {
+    console.error('[saas-checker] service_state sync failed', { error: syncErr.message })
+    results.errors++
+  } else {
+    for (const c of changes ?? []) {
+      console.info('[saas-checker] service_state changed', {
+        orgId: c.organization_id,
+        from: c.from_state,
+        to: c.to_state,
+      })
+    }
+    results.serviceStateChanged = changes?.length ?? 0
   }
 
   console.info('[saas-checker] Run complete', results)

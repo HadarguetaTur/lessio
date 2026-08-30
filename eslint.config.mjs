@@ -72,6 +72,9 @@ const HEBREW_ALLOWED = [
   // from real customer spreadsheets — input-side, not output.
   "src/lib/import/parseFile.ts",
   "src/lib/import/validators.ts",
+  // Hebrew skip-words the exam-report bot flow must keep accepting ("דלג") —
+  // input-side, not output; the prompts themselves live in botString().
+  "src/lib/exam-report-flow/parseExamDate.ts",
   // Search synonyms only — never rendered. Each entry deliberately holds the
   // Hebrew *and* English aliases at once, because the title half of the match
   // only ever sees the active UI language: without them, typing "reminder" in

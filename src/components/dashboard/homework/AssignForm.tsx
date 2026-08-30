@@ -34,7 +34,7 @@ const initialState: AssignActionState = { error: null }
 export function AssignForm({ templates, students, action }: AssignFormProps) {
   const t = useTranslations('homework')
   const [state, formAction, isPending] = useActionState(action, initialState)
-  const [mode, setMode] = useState<'template' | 'adhoc'>('template')
+  const [mode, setMode] = useState<'template' | 'adhoc'>(templates.length === 0 ? 'adhoc' : 'template')
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
   const [files, setFiles] = useState<File[]>([])
   const [isScheduled, setIsScheduled] = useState(false)
@@ -121,7 +121,7 @@ export function AssignForm({ templates, students, action }: AssignFormProps) {
             {templates.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {t('noTemplatesList')}{' '}
-                <Link href="/homework/templates/new" className="text-blue-600 hover:underline">
+                <Link href="/homework/templates/new" className="font-medium text-blue-600 underline underline-offset-2 hover:underline">
                   {t('createFirstTemplate')}
                 </Link>
               </p>

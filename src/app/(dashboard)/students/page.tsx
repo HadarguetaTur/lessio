@@ -2,7 +2,7 @@ import { GraduationCap, Users, Upload } from 'lucide-react'
 import { z } from 'zod'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
-import { getStudentById, getStudents } from '@/lib/students'
+import { canTeacherAccessStudent, getStudentById, getStudents } from '@/lib/students'
 import { getTeacherByProfileId, getTeachers } from '@/lib/teachers'
 import { getGroups } from '@/lib/groups'
 import { orgEnforcesWeeklyQuota } from '@/lib/booking'
@@ -61,8 +61,20 @@ export default async function StudentsPage(props: {
     getStudents(orgId, studentQuery),
     isTeacher ? Promise.resolve([]) : getTeachers(orgId),
     tab === 'groups' ? getGroups(orgId) : Promise.resolve([]),
+    // ?openStudent= takes any id, so it needs the same teacher check the detail
+    // page does — otherwise the sheet is a way around the scoped list.
     tab === 'students' && openStudentParsed.success
-      ? getStudentById(openStudentParsed.data, orgId)
+      ? (async () => {
+          if (isTeacher && teacherRecord) {
+            const allowed = await canTeacherAccessStudent(
+              orgId,
+              teacherRecord.id,
+              openStudentParsed.data
+            )
+            if (!allowed) return null
+          }
+          return getStudentById(openStudentParsed.data, orgId)
+        })()
       : Promise.resolve(null),
   ])
 

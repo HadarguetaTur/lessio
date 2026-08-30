@@ -20,6 +20,7 @@ export type { ConfirmBookingParams, ConfirmBookingResult } from './confirmBookin
 
 export {
   weekBoundsFor,
+  weekStartLocalDate,
   getWeeklyQuotaStatus,
   assertWeeklyQuotaNotExceeded,
   orgEnforcesWeeklyQuota,

@@ -72,7 +72,12 @@ export default async function StudentsReportPage() {
       )}
 
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="h-full min-h-0 w-full overflow-x-auto overflow-y-auto overscroll-x-contain">
+        <div
+          className="h-full min-h-0 w-full overflow-x-auto overflow-y-auto overscroll-x-contain"
+          tabIndex={0}
+          role="region"
+          aria-label={t('students.title')}
+        >
           <Table className="min-w-[600px] w-full table-fixed">
             <colgroup>
               <col className="w-1/4" />

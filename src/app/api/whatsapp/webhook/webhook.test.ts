@@ -1527,7 +1527,7 @@ describe('WhatsApp sender roles', () => {
 
     // Booking and cancelling are the student's own lesson; what the family owes
     // is not theirs to see, and the portal has no student login path at all.
-    expect(menuRowIds()).toEqual(['m:book', 'm:cancel', 'm:schedule', 'm:homework'])
+    expect(menuRowIds()).toEqual(['m:book', 'm:cancel', 'm:schedule', 'm:homework', 'm:report_exam'])
     expect(menuRowIds()).not.toContain('m:balance')
     expect(menuRowIds()).not.toContain('m:portal')
   })
@@ -1541,7 +1541,7 @@ describe('WhatsApp sender roles', () => {
     expect(mockSendLinkReply).not.toHaveBeenCalled()
     // Told it is unavailable, then shown what they can actually do.
     expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
-    expect(menuRowIds()).toEqual(['m:book', 'm:cancel', 'm:schedule', 'm:homework'])
+    expect(menuRowIds()).toEqual(['m:book', 'm:cancel', 'm:schedule', 'm:homework', 'm:report_exam'])
   })
 
   it('recognises a teacher instead of filing them as a lead', async () => {

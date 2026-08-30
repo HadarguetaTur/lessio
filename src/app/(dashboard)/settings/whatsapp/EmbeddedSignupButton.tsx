@@ -278,7 +278,7 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
         type="button"
         onClick={launchSignup}
         disabled={isPending || !sdkReady}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-700 text-white text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
       >
         {isPending ? `${tCommon('actions.connect')}…` : t('connect')}
       </button>

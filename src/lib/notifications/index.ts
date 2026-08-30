@@ -19,6 +19,7 @@ export type NotificationType =
   | 'webhook_unroutable'
   | 'day_off_requested'
   | 'day_off_decided'
+  | 'exam_reported'
   // Support (Sprint 32). The first two are platform-level (superadmin,
   // organization_id IS NULL); the last two go to the org that raised the ticket.
   | 'support_ticket_new'

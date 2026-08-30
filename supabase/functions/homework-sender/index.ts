@@ -73,12 +73,22 @@ Deno.serve(async (_req) => {
     // Fetch org WhatsApp config
     const { data: org } = await db
       .from('organizations')
-      .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale, reminders_enabled')
+      .select('whatsapp_phone_number_id, whatsapp_access_token, default_locale, reminders_enabled, service_state')
       .eq('id', orgId)
       .single()
 
     if (!org?.whatsapp_access_token || !org?.whatsapp_phone_number_id) {
       console.warn('[homework-sender] No WhatsApp config for org', { org_id: orgId })
+      continue
+    }
+
+    // Platform billing: a lapsed studio stops sending. See
+    // organizations.service_state (migration 20260829140100).
+    if (org.service_state !== 'active') {
+      console.info('[homework-sender] Org not in service — skipping', {
+        org_id: orgId,
+        service_state: org.service_state,
+      })
       continue
     }
 

@@ -91,3 +91,43 @@ export async function releaseIncomingMessageClaim(
     })
   }
 }
+
+/**
+ * Claims the right to send one "this studio is unavailable" notice to a phone
+ * per 24 hours, for a suspended org.
+ *
+ * The claim is the INSERT itself: notification_log is UNIQUE on
+ * (organization_id, type, entity_id), so two messages arriving together cannot
+ * both win. A parent who sends five messages gets one reply, not five — every
+ * outbound message is billed to the teacher's WhatsApp account, and a suspended
+ * studio is the last one that should be running up a Meta bill.
+ *
+ * The key carries the date, so the notice repeats once the next day.
+ */
+export async function claimSuspendedNotice(
+  organizationId: string,
+  phone: string
+): Promise<boolean> {
+  const db = createServiceRoleClient()
+  const day = new Date().toISOString().slice(0, 10)
+
+  const { error } = await db.from('notification_log').insert({
+    organization_id: organizationId,
+    type: 'org_suspended_notice',
+    entity_id: `${phone}:${day}`,
+    status: 'sent',
+  })
+
+  // 23505 = already claimed today. Anything else: stay quiet rather than risk
+  // messaging the same parent repeatedly on a database hiccup.
+  if (error) {
+    if (error.code !== '23505') {
+      console.error('[whatsapp] suspended-notice claim failed', {
+        organizationId,
+        error: error.message,
+      })
+    }
+    return false
+  }
+  return true
+}

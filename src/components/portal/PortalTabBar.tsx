@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { Home, CalendarDays, FileText, TrendingUp, MessageCircle } from 'lucide-react'
+import { Home, CalendarDays, FileText, ClipboardList, TrendingUp, MessageCircle } from 'lucide-react'
 
 const TABS = [
   { id: 'home',     href: (orgId: string) => `/portal/${orgId}/home`,     icon: Home },
   { id: 'schedule', href: (orgId: string) => `/portal/${orgId}/schedule`, icon: CalendarDays },
   { id: 'homework', href: (orgId: string) => `/portal/${orgId}/homework`, icon: FileText },
+  { id: 'exams',    href: (orgId: string) => `/portal/${orgId}/exams`,    icon: ClipboardList },
   { id: 'progress', href: (orgId: string) => `/portal/${orgId}/progress`, icon: TrendingUp },
   { id: 'messages', href: (orgId: string) => `/portal/${orgId}/messages`, icon: MessageCircle },
 ] as const

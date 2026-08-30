@@ -36,7 +36,12 @@ const SPLIT_LIMIT = 2
  * debt are the same errand. Navigation only: every row links to the page where
  * the item is handled.
  */
-export async function AttentionPanel({ data, timezone, appLocale }: AttentionPanelProps) {
+export async function AttentionPanel({
+  data,
+  timezone,
+  appLocale,
+  hasStudents = true,
+}: AttentionPanelProps & { hasStudents?: boolean }) {
   const t = await getTranslations('dashboard')
   const intlLocale = toIntlLocale(appLocale)
 
@@ -79,8 +84,13 @@ export async function AttentionPanel({ data, timezone, appLocale }: AttentionPan
       <section aria-label={t('attention.title')}>
         <h2 className="mb-3 text-base font-semibold text-foreground">{t('attention.title')}</h2>
         <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-5 shadow-sm">
-          <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />
-          <p className="text-sm text-muted-foreground">{t('attention.allClear')}</p>
+          <CheckCircle2
+            size={18}
+            className={`shrink-0 ${hasStudents ? 'text-emerald-500' : 'text-muted-foreground'}`}
+          />
+          <p className="text-sm text-muted-foreground">
+            {hasStudents ? t('attention.allClear') : t('attention.nothingYet')}
+          </p>
         </div>
       </section>
     )

@@ -65,6 +65,7 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<GlobalSearchResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listboxId = useId()
@@ -121,6 +122,10 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
   }, [debounced, open, runSearch])
 
   useEffect(() => {
+    setSelectedIndex(0)
+  }, [open, debounced, query])
+
+  useEffect(() => {
     function onDocClick(ev: MouseEvent) {
       if (!rootRef.current?.contains(ev.target as Node)) {
         setOpen(false)
@@ -164,6 +169,108 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
       data.parents.length > 0 ||
       data.lessons.length > 0 ||
       (canSeeCharges && data.charges.length > 0))
+
+  const resultGroups = useMemo(() => {
+    const groups: Array<{ key: string; items: Array<{ href: string; label: string; onSelect: () => void }> }> = []
+
+    if (data?.students.length) {
+      groups.push({
+        key: 'students',
+        items: data.students.map((s) => ({
+          href: buildStudentHref(userRole, s.id),
+          label: s.full_name,
+          onSelect: () => navigateTo(buildStudentHref(userRole, s.id)),
+        })),
+      })
+    }
+
+    if (data?.parents.length) {
+      groups.push({
+        key: 'parents',
+        items: data.parents.map((p) => ({
+          href: `/parents/${p.id}/edit`,
+          label: p.full_name,
+          onSelect: () => navigateTo(`/parents/${p.id}/edit`),
+        })),
+      })
+    }
+
+    if (data?.lessons.length) {
+      groups.push({
+        key: 'lessons',
+        items: data.lessons.map((l) => {
+          const names = l.student_names.length ? l.student_names.join(', ') : '—'
+          const matchedStudent = data.students.find((s) => l.student_names.includes(s.full_name))
+          const lessonHref = buildLessonHref(
+            userRole,
+            l.id,
+            l.start_at,
+            userRole === 'teacher' ? undefined : matchedStudent?.id
+          )
+          return {
+            href: lessonHref,
+            label: names,
+            onSelect: () => navigateTo(lessonHref),
+          }
+        }),
+      })
+    }
+
+    if (canSeeCharges && data?.charges.length) {
+      groups.push({
+        key: 'charges',
+        items: data.charges.map((c) => ({
+          href: `/charges/${c.id}`,
+          label: `${formatMoney(c.amount)} · ${c.parent_name}`,
+          onSelect: () => navigateTo(`/charges/${c.id}`),
+        })),
+      })
+    }
+
+    if (pageHits.length > 0) {
+      groups.push({
+        key: 'pages',
+        items: pageHits.map((entry) => ({
+          href: entry.href,
+          label: tNav(entry.navKey as Parameters<typeof tNav>[0]),
+          onSelect: () => navigateTo(entry.href),
+        })),
+      })
+    }
+
+    return groups
+  }, [canSeeCharges, data, formatMoney, navigateTo, pageHits, tNav, userRole])
+
+  useEffect(() => {
+    const keyHandler = (event: KeyboardEvent) => {
+      if (!open || !data && pageHits.length === 0) return
+
+      const total = resultGroups.reduce((sum, group) => sum + group.items.length, 0)
+      if (total === 0) return
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setSelectedIndex((prev) => (prev + 1) % total)
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setSelectedIndex((prev) => (prev - 1 + total) % total)
+      }
+
+      if (event.key === 'Enter') {
+        const flat = resultGroups.flatMap((group) => group.items)
+        const item = flat[selectedIndex]
+        if (item) {
+          event.preventDefault()
+          item.onSelect()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', keyHandler)
+    return () => document.removeEventListener('keydown', keyHandler)
+  }, [data, open, pageHits.length, resultGroups, selectedIndex])
 
   return (
     <div ref={rootRef} className={cn('relative min-w-0', className)}>
@@ -240,21 +347,27 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
               <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('sections.students')}
               </div>
-              {data.students.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  role="option"
-                  aria-selected={false}
-                  className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80"
-                  onClick={() => navigateTo(buildStudentHref(userRole, s.id))}
-                >
-                  <span className="font-medium">{s.full_name}</span>
-                  {s.grade ? (
-                    <span className="text-xs text-muted-foreground">{s.grade}</span>
-                  ) : null}
-                </button>
-              ))}
+              {data.students.map((s, index) => {
+                const flatIndex = resultGroups.flatMap((group) => group.items).findIndex((item) => item.href === buildStudentHref(userRole, s.id))
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    role="option"
+                    aria-selected={selectedIndex === flatIndex}
+                    className={cn(
+                      'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-start text-sm hover:bg-muted/80',
+                      selectedIndex === flatIndex && 'bg-muted/80'
+                    )}
+                    onClick={() => navigateTo(buildStudentHref(userRole, s.id))}
+                  >
+                    <span className="font-medium">{s.full_name}</span>
+                    {s.grade ? (
+                      <span className="text-xs text-muted-foreground">{s.grade}</span>
+                    ) : null}
+                  </button>
+                )
+              })}
             </div>
           )}
 

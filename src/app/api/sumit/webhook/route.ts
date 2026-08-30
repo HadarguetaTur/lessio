@@ -123,8 +123,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return ok()
   }
 
-  const activated = await activateSubscriptionFromPayment({
+  const result = await activateSubscriptionFromPayment({
     orgId: sub.organization_id,
+    // The row was found BY this reference, so it matches by construction. Passing
+    // it keeps the conditional UPDATE inside the helper as the single guard —
+    // which is also what makes the race with the redirect callback safe.
+    checkoutReference: lookupRef,
+    paidAmount: confirmation.amount,
     sumitCustomerId: confirmation.customerId,
     sumitPaymentToken: confirmation.paymentToken,
     cardLastFour: confirmation.cardLastFour,
@@ -138,8 +143,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         : undefined,
   })
 
-  if (!activated) {
-    return fail(`activateSubscriptionFromPayment returned false for org ${sub.organization_id}`)
+  if (!result.activated) {
+    if (result.reason === 'no_pending_subscription') {
+      // The redirect callback won the race. Expected, not a failure.
+      console.info('[sumit/webhook] Already activated by the redirect callback', {
+        orgId: sub.organization_id,
+        reference: lookupRef,
+      })
+      return ok()
+    }
+    return fail(
+      `Activation refused (${result.reason}) for org ${sub.organization_id}, ref ${lookupRef}`
+    )
   }
 
   console.info('[sumit/webhook] Subscription activated (safety net)', {

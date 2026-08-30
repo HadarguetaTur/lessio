@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   mockRedirect,
-  mockRequireFeature,
+  mockAssertFeature,
   mockCreateServiceRoleClient,
   mockVerifyOtp,
   mockSetPortalSessionCookie,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
-  mockRequireFeature: vi.fn(),
+  mockAssertFeature: vi.fn(),
   mockCreateServiceRoleClient: vi.fn(),
   mockVerifyOtp: vi.fn(),
   mockSetPortalSessionCookie: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/lib/saas/featureGate', () => ({
-  requireFeature: mockRequireFeature,
+  assertFeature: mockAssertFeature,
 }))
 
 vi.mock('@/lib/supabase/service-role', () => ({
@@ -69,7 +69,7 @@ const PHONE = '+972500000000'
 describe('requestOtpAction — consent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockRequireFeature.mockResolvedValue(undefined)
+    mockAssertFeature.mockResolvedValue(undefined)
   })
 
   function phoneForm(consent: boolean) {
@@ -119,7 +119,7 @@ describe('requestOtpAction — consent', () => {
 describe('verifyOtpAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockRequireFeature.mockResolvedValue(undefined)
+    mockAssertFeature.mockResolvedValue(undefined)
   })
 
   it('signs the parent in and redirects to the portal home', async () => {

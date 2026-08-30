@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   weekBoundsFor,
+  weekStartLocalDate,
   getWeeklyQuotaStatus,
   assertWeeklyQuotaNotExceeded,
   WeeklyQuotaExceededError,
@@ -27,11 +28,12 @@ function buildChain(result: unknown) {
   return self
 }
 
-/** Wires the three tables getWeeklyQuotaStatus reads. */
+/** Wires the four tables getWeeklyQuotaStatus reads. */
 function mockDb(opts: {
   enforce?: boolean
   quota?: number | null
   lessonsThisWeek?: number
+  overrideExtra?: number
 }) {
   const rows = Array.from({ length: opts.lessonsThisWeek ?? 0 }, (_, i) => ({
     lesson_id: `lesson-${i}`,
@@ -49,6 +51,12 @@ function mockDb(opts: {
       return buildChain({ data: { weekly_quota: opts.quota ?? null }, error: null })
     }
     if (table === 'lesson_students') return buildChain({ data: rows, error: null })
+    if (table === 'student_quota_overrides') {
+      return buildChain({
+        data: opts.overrideExtra != null ? { extra_lessons: opts.overrideExtra } : null,
+        error: null,
+      })
+    }
     return buildChain({ data: null, error: null })
   })
 }
@@ -76,6 +84,18 @@ describe('weekBoundsFor', () => {
     // belongs to the NEXT week even though UTC still calls it Saturday.
     const { startUtc } = weekBoundsFor('2026-08-29T22:30:00.000Z', TZ)
     expect(startUtc).toBe('2026-08-29T21:00:00.000Z')
+  })
+})
+
+describe('weekStartLocalDate', () => {
+  it('returns the org-local Sunday of the same week weekBoundsFor uses', () => {
+    // Wednesday 26 Aug 2026 → week of Sunday 23 Aug.
+    expect(weekStartLocalDate('2026-08-26T09:00:00.000Z', TZ)).toBe('2026-08-23')
+  })
+
+  it('reads the local clock, not the UTC one', () => {
+    // Saturday 22:30 UTC is Sunday 01:30 in Israel — already the next week.
+    expect(weekStartLocalDate('2026-08-29T22:30:00.000Z', TZ)).toBe('2026-08-30')
   })
 })
 
@@ -109,6 +129,19 @@ describe('getWeeklyQuotaStatus', () => {
     expect(await getWeeklyQuotaStatus(PARAMS)).toEqual({ quota: null, count: 0, atQuota: false })
     expect(mockFrom).not.toHaveBeenCalledWith('students')
     expect(mockFrom).not.toHaveBeenCalledWith('lesson_students')
+  })
+
+  it('raises the ceiling by a per-week override (exam prep)', async () => {
+    // Quota 1 with 1 booked lesson would be full — a +1 override keeps room.
+    mockDb({ quota: 1, lessonsThisWeek: 1, overrideExtra: 1 })
+
+    expect(await getWeeklyQuotaStatus(PARAMS)).toEqual({ quota: 2, count: 1, atQuota: false })
+  })
+
+  it('leaves the quota alone when there is no override for the week', async () => {
+    mockDb({ quota: 1, lessonsThisWeek: 1 })
+
+    expect(await getWeeklyQuotaStatus(PARAMS)).toEqual({ quota: 1, count: 1, atQuota: true })
   })
 
   it('counts only lessons that are not cancelled', async () => {

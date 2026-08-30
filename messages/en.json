@@ -293,6 +293,7 @@
     "settingsCancellation": "Cancellation Policy",
     "settingsHolidays": "Holidays",
     "settingsReminders": "Reminders",
+    "settingsExams": "Exam Policy",
     "settingsAiAssistant": "AI Assistant",
     "settingsEmail": "Email",
     "settingsLocale": "Language & Display",
@@ -362,6 +363,7 @@
       "lastLesson": "Last lesson: {date}",
       "noLesson": "No lessons yet",
       "allClear": "All clear — nothing needs attention",
+      "nothingYet": "No students yet — once you add students and lessons, anything needing action shows up here",
       "unloggedLessons": "Lessons not logged yet ({count})",
       "pendingBilling": "Billing awaiting approval ({count})",
       "overdueHomework": "Overdue homework ({count})",
@@ -406,6 +408,7 @@
     },
     "setup": {
       "title": "Finish setting up Lessio",
+      "connectNow": "Connect now",
       "items": {
         "whatsapp": "No WhatsApp number connected — automatic messages are not being sent.",
         "ai": "The AI assistant isn't configured — parent messages aren't answered automatically.",
@@ -1368,6 +1371,10 @@
         "title": "Cancellation Policy",
         "description": "Cancellation charge rules"
       },
+      "exams": {
+        "title": "Exam Policy",
+        "description": "What happens when a parent or student reports an exam"
+      },
       "holidays": {
         "title": "Holidays",
         "description": "Days with no lessons"
@@ -1401,7 +1408,7 @@
         "description": "Logo, legal name, tax ID and currency"
       },
       "pricing": {
-        "title": "Lesson Pricing",
+        "title": "Pricing",
         "description": "Hourly rate, pair and group prices"
       },
       "integrations": {
@@ -1475,7 +1482,9 @@
       "apiDetailsLabel": "API credentials",
       "apiDetailsValue": "Encrypted and stored securely",
       "disconnectHint": "Disconnecting stops payment links being created until you reconnect.",
-      "disconnectedHint": "Choose a payment provider and enter its API credentials. They are encrypted before being saved."
+      "disconnectedHint": "Choose a payment provider and enter its API credentials. They are encrypted before being saved.",
+      "savedNotVerified": "Saved — not yet checked",
+      "savedNotVerifiedHint": "Lessio has saved these credentials but has not checked them against the provider yet. The first check happens on your next payment request — if anything is wrong, the parent sees an error."
     },
     "receipts": {
       "title": "Receipt Settings",
@@ -1520,6 +1529,28 @@
       "deleteConfirm": "Delete this holiday?",
       "noHolidays": "No holidays defined"
     },
+    "exams": {
+      "title": "Exam Policy",
+      "subtitle": "What happens when a parent (portal) or student (WhatsApp) reports an upcoming exam",
+      "modeLabel": "Response to an exam report",
+      "modes": {
+        "notify": "Notification only",
+        "notifyHint": "The teacher is notified and decides manually what to do",
+        "approve": "Notification + one-click approval",
+        "approveHint": "The teacher gets a notification with a button to approve extra lessons for the exam week",
+        "auto": "Automatic quota raise",
+        "autoHint": "The weekly quota is raised automatically for the exam week, no manual approval"
+      },
+      "quotaDisabledWarning": "Note: weekly quota enforcement is off for this organization, so the quota bump will have no effect.",
+      "bumpLabel": "Extra lessons for the exam week",
+      "bumpHint": "How many lessons to add to the student's weekly quota during the exam week (1–5)",
+      "boosterLabel": "Offer the parent a booster lesson",
+      "boosterHint": "On every exam report, the parent gets a WhatsApp booking link for a booster lesson",
+      "saved": "Settings saved",
+      "errors": {
+        "saveFailed": "Saving failed. Please try again."
+      }
+    },
     "reminders": {
       "title": "Reminders",
       "lessonReminder": "Lesson reminder",
@@ -1544,7 +1575,9 @@
         "homework_graded": "Homework graded",
         "progress_report": "Progress report (sent from dashboard)"
       },
-      "masterLabel": "Automatic reminders"
+      "masterLabel": "Automatic reminders",
+      "onButNotSending": "On, but nothing is being sent — no WhatsApp number is connected.",
+      "connectWhatsAppLink": "Connect a WhatsApp number"
     },
     "messageTemplates": {
       "title": "WhatsApp templates",
@@ -1805,10 +1838,10 @@
             "placeholder": "e.g. 1000"
           },
           "apiName": {
-            "label": "API Name"
+            "label": "API name"
           },
           "apiPassword": {
-            "label": "API Password"
+            "label": "API password"
           }
         }
       },
@@ -2029,7 +2062,12 @@
       "dateTo": "To"
     },
     "autoSendToggle": {
-      "hint": "Requires a connected payment provider and an active WhatsApp connection."
+      "hint": "Requires a connected payment provider and an active WhatsApp connection.",
+      "blockedTitle": "Cannot be turned on yet — missing:",
+      "missingProvider": "A payment provider.",
+      "missingProviderHere": "Set one up in the form above.",
+      "missingWhatsApp": "A connected WhatsApp number.",
+      "missingWhatsAppLink": "Connect a WhatsApp number"
     },
     "dataRetention": {
       "label": "Activity data retention period",
@@ -2063,6 +2101,7 @@
     "receiptMode": {
       "question": "Who issues your invoices?",
       "intro": "This decides whether Lessio issues a document itself. Getting it wrong means two invoices for the same payment.",
+      "currentlyNone": "Right now: no receipts are issued through Lessio. Until you choose, no document is sent to parents.",
       "external": {
         "title": "An invoicing service",
         "description": "Green Invoice, iCount or Sumit. Lessio issues the document and sends it to the parent."
@@ -3101,8 +3140,34 @@
       "home": "Home",
       "schedule": "Schedule",
       "homework": "Homework",
+      "exams": "Exams",
       "progress": "Progress",
       "messages": "Messages"
+    },
+    "exams": {
+      "title": "Exams",
+      "listTitle": "Reported exams",
+      "empty": "No exams yet",
+      "statusReported": "Awaiting score",
+      "form": {
+        "title": "Report an exam",
+        "subjectPlaceholder": "Subject (Math, English...)",
+        "titlePlaceholder": "Exam topic",
+        "descriptionPlaceholder": "Description / extra details (optional)",
+        "examDate": "Exam date",
+        "upload": "Attach a file (up to {maxMb}MB, optional)",
+        "submit": "Send report",
+        "submitting": "Sending...",
+        "success": "Report sent! The teacher has been notified."
+      },
+      "errors": {
+        "unauthorized": "Not authorized. Try logging in again.",
+        "notAllowedForStudent": "You are not allowed to report for this student.",
+        "invalidInput": "Some details are missing or invalid.",
+        "fileTooLarge": "The file is too large (10MB max).",
+        "unsupportedFileType": "Unsupported file type.",
+        "submitFailed": "Failed to send the report. Please try again."
+      }
     },
     "login": {
       "title": "Portal sign-in",
@@ -3273,6 +3338,10 @@
         "achieved": "Achieved",
         "abandoned": "Abandoned"
       }
+    },
+    "serviceUnavailable": {
+      "unavailableTitle": "This portal is not available right now",
+      "unavailableBody": "The parent portal is inactive at the moment. For scheduling, cancellations or any question, please contact your teacher directly."
     }
   },
   "saas": {
@@ -3372,7 +3441,9 @@
       },
       "ownerOnly": "Only the business owner can view this page.",
       "legacyNoSubscription": "No platform subscription record (org created before SaaS plans). You can keep using the product as usual."
-    }
+    },
+    "pastDueBanner": "The last payment did not go through. You have {days} days to update your payment method before the account becomes read-only.",
+    "cancelledBanner": "The subscription is cancelled. Your data is kept and can be viewed and exported, but not edited."
   },
   "onboarding": {
     "errors": {
@@ -3452,6 +3523,8 @@
     "complete": {
       "title": "All Set!",
       "subtitle": "Your system is ready to use. Here's a summary of what you've set up:",
+      "titlePartial": "The basics are in place",
+      "subtitlePartial": "Your account is open. To start working you still need teachers, students and pricing — the dashboard will show you what is missing.",
       "goToDashboard": "Go to Dashboard",
       "loading": "Loading dashboard...",
       "stats": {
@@ -4133,6 +4206,11 @@
         "subject": "Subject",
         "score": "Score"
       },
+      "reportedByParent": "Reported by parent",
+      "reportedByStudent": "Reported by student",
+      "attachment": "Attachment",
+      "approveBump": "Approve exam-week quota bump",
+      "bumpApproved": "✓ Quota bump approved",
       "form": {
         "createTitle": "New exam",
         "editTitle": "Edit exam",
@@ -4230,6 +4308,8 @@
     "daysAgo": "{n}d ago",
     "dayOffRequested": "🏖️ Day-off request — {teacher}",
     "dayOffRequestedBody": "{range} · {count} lessons scheduled",
+    "examReported": "📄 Exam reported — {student}",
+    "examReportedBody": "{subject} · {title} · {date}",
     "dayOffApproved": "Your day-off request was approved ✅",
     "dayOffRejected": "Your day-off request was declined",
     "supportTicketReply": "Support replied to your request",

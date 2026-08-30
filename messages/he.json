@@ -169,7 +169,7 @@
       "pending": "ממתין",
       "invoiced": "חויב",
       "paid": "שולם",
-      "waived": "אופס",
+      "waived": "ויתור",
       "voided": "בוטל"
     },
     "homeworkStatus": {
@@ -293,6 +293,7 @@
     "settingsCancellation": "מדיניות ביטולים",
     "settingsHolidays": "חגים וחופשות",
     "settingsReminders": "תזכורות",
+    "settingsExams": "מדיניות מבחנים",
     "settingsAiAssistant": "עוזר AI",
     "settingsEmail": "מייל",
     "settingsLocale": "שפה ותצוגה",
@@ -362,6 +363,7 @@
       "lastLesson": "שיעור אחרון: {date}",
       "noLesson": "ללא שיעורים",
       "allClear": "הכל מטופל — אין מה שדורש תשומת לב",
+      "nothingYet": "אין עדיין תלמידים במערכת — אחרי הוספת תלמידים ושיעורים יופיעו כאן הדברים שדורשים טיפול",
       "unloggedLessons": "שיעורים שעדיין לא עודכנו ({count})",
       "pendingBilling": "חיוב חודשי ממתין לאישור ({count})",
       "overdueHomework": "שיעורי בית באיחור ({count})",
@@ -406,6 +408,7 @@
     },
     "setup": {
       "title": "עוד כמה צעדים להשלמת ההגדרה של Lessio",
+      "connectNow": "חבר עכשיו",
       "items": {
         "whatsapp": "עוד לא מחובר מספר WhatsApp — ההודעות האוטומטיות לא נשלחות.",
         "ai": "עוזר ה-AI לא מוגדר — הודעות מהורים לא נענות אוטומטית.",
@@ -1368,6 +1371,10 @@
         "title": "מדיניות ביטולים",
         "description": "כללי חיוב על ביטול"
       },
+      "exams": {
+        "title": "מדיניות מבחנים",
+        "description": "מה קורה כשהורה או תלמיד מדווחים על מבחן"
+      },
       "holidays": {
         "title": "חגים וחופשות",
         "description": "ימים שאין בהם שיעורים"
@@ -1401,11 +1408,11 @@
         "description": "לוגו, שם עסק, מספר עוסק ומטבע"
       },
       "pricing": {
-        "title": "מחירי שיעורים",
+        "title": "תמחור",
         "description": "תעריף שעתי, מחיר לשיעור זוגי ולשיעור קבוצתי"
       },
       "integrations": {
-        "description": "מפתחות API לחיבור Make, n8n וקלוד"
+        "description": "מפתחות API לחיבור Make, n8n וClaude"
       }
     },
     "businessProfile": {
@@ -1475,7 +1482,9 @@
       "apiDetailsLabel": "פרטי API",
       "apiDetailsValue": "מוצפנים ומאוחסנים בצורה מאובטחת",
       "disconnectHint": "ניתוק יפסיק את יצירת קישורי תשלום עד לחיבור מחדש.",
-      "disconnectedHint": "בחר ספק תשלום והזן את פרטי ה-API. הפרטים יוצפנו לפני השמירה."
+      "disconnectedHint": "בחר ספק תשלום והזן את פרטי ה-API. הפרטים יוצפנו לפני השמירה.",
+      "savedNotVerified": "נשמר — טרם נבדק",
+      "savedNotVerifiedHint": "Lessio שמר את הפרטים אבל עדיין לא בדק אותם מול הספק. הבדיקה הראשונה תתרחש בבקשת התשלום הבאה — אם משהו שגוי, ההורה יקבל שגיאה."
     },
     "receipts": {
       "title": "הגדרות קבלות",
@@ -1520,6 +1529,28 @@
       "deleteConfirm": "למחוק את החג?",
       "noHolidays": "אין חגים מוגדרים"
     },
+    "exams": {
+      "title": "מדיניות מבחנים",
+      "subtitle": "מה קורה כשהורה (מהפורטל) או תלמיד (בוואטסאפ) מדווחים על מבחן מתקרב",
+      "modeLabel": "תגובה לדיווח מבחן",
+      "modes": {
+        "notify": "התראה בלבד",
+        "notifyHint": "המורה מקבל התראה ומחליט ידנית מה לעשות",
+        "approve": "התראה + אישור בקליק",
+        "approveHint": "המורה מקבל התראה עם כפתור לאישור תוספת שיעורים לשבוע המבחן",
+        "auto": "העלאת מכסה אוטומטית",
+        "autoHint": "המכסה השבועית עולה אוטומטית לשבוע המבחן, בלי אישור ידני"
+      },
+      "quotaDisabledWarning": "שימו לב: אכיפת מכסה שבועית כבויה בארגון, ולכן תוספת המכסה לא תשפיע בפועל.",
+      "bumpLabel": "תוספת שיעורים לשבוע המבחן",
+      "bumpHint": "בכמה שיעורים להעלות את המכסה השבועית של התלמיד בשבוע המבחן (1–5)",
+      "boosterLabel": "הצעת שיעור תגבור להורה",
+      "boosterHint": "עם כל דיווח מבחן, ההורה מקבל בוואטסאפ קישור לקביעת שיעור תגבור",
+      "saved": "ההגדרות נשמרו",
+      "errors": {
+        "saveFailed": "שמירת ההגדרות נכשלה. נסו שוב."
+      }
+    },
     "reminders": {
       "title": "תזכורות",
       "lessonReminder": "תזכורת לפני שיעור",
@@ -1544,7 +1575,9 @@
         "homework_graded": "ציון שיעורי בית",
         "progress_report": "דוח התקדמות (שליחה מהדשבורד)"
       },
-      "masterLabel": "תזכורות אוטומטיות"
+      "masterLabel": "תזכורות אוטומטיות",
+      "onButNotSending": "מופעל, אבל לא נשלח — לא מחובר מספר WhatsApp.",
+      "connectWhatsAppLink": "חיבור מספר WhatsApp"
     },
     "messageTemplates": {
       "title": "תבניות WhatsApp",
@@ -1805,10 +1838,10 @@
             "placeholder": "לדוגמה: 1000"
           },
           "apiName": {
-            "label": "API Name"
+            "label": "שם API"
           },
           "apiPassword": {
-            "label": "API Password"
+            "label": "סיסמת API"
           }
         }
       },
@@ -2029,7 +2062,12 @@
       "dateTo": "עד תאריך"
     },
     "autoSendToggle": {
-      "hint": "דורש ספק תשלום מחובר וחיבור WhatsApp פעיל."
+      "hint": "דורש ספק תשלום מחובר וחיבור WhatsApp פעיל.",
+      "blockedTitle": "אי אפשר להפעיל עדיין — חסר:",
+      "missingProvider": "ספק תשלום.",
+      "missingProviderHere": "מגדירים אותו בטופס שלמעלה.",
+      "missingWhatsApp": "מספר WhatsApp מחובר.",
+      "missingWhatsAppLink": "חיבור מספר WhatsApp"
     },
     "dataRetention": {
       "label": "תקופת שמירת נתוני פעילות",
@@ -2063,6 +2101,7 @@
     "receiptMode": {
       "question": "מי מפיק את החשבוניות שלך?",
       "intro": "התשובה קובעת אם Lessio מפיק מסמך בעצמו. טעות כאן פירושה שתי חשבוניות על אותו תשלום.",
+      "currentlyNone": "כרגע: לא מופקות קבלות דרך Lessio. עד שתבחרי, לא יישלח שום מסמך להורים.",
       "external": {
         "title": "שירות חשבוניות",
         "description": "חשבוניות ירוקות, iCount או Sumit. ‏Lessio יפיק את המסמך וישלח אותו להורה."
@@ -2080,7 +2119,7 @@
         "summaryTitle": "החשבוניות מטופלות מחוץ ל-Lessio",
         "summaryBody": "לא מופק ולא נשלח מסמך כשמתקבל תשלום."
       },
-      "continue": "שמירה",
+      "continue": "שמור",
       "change": "שינוי התשובה",
       "wrongChoiceHint": "החשבוניות מופקות במקום אחר? עדיף לשנות את התשובה מאשר לחבר שירות.",
       "paymentLinkPrefix": "את ספק הסליקה מגדירים ב",
@@ -2167,7 +2206,7 @@
     "subtitle": "כל ההגדרות של העסק במקום אחד",
     "integrations": {
       "pageTitle": "אינטגרציות",
-      "pageSubtitle": "חברו את Lessio ל-Make, ל-n8n או לקלוד באמצעות מפתח API",
+      "pageSubtitle": "חברו את Lessio ל-Make, ל-n8n או ל-Claude באמצעות מפתח API",
       "keysTitle": "מפתחות API",
       "keysEmpty": "עדיין לא נוצרו מפתחות. צרו מפתח כדי לחבר כלי אוטומציה.",
       "revoke": "ביטול",
@@ -3101,8 +3140,34 @@
       "home": "בית",
       "schedule": "לוח",
       "homework": "משימות",
+      "exams": "מבחנים",
       "progress": "התקדמות",
       "messages": "הודעות"
+    },
+    "exams": {
+      "title": "מבחנים",
+      "listTitle": "מבחנים שדווחו",
+      "empty": "אין מבחנים עדיין",
+      "statusReported": "ממתין לציון",
+      "form": {
+        "title": "דיווח על מבחן",
+        "subjectPlaceholder": "מקצוע (מתמטיקה, אנגלית...)",
+        "titlePlaceholder": "נושא המבחן",
+        "descriptionPlaceholder": "תיאור / פרטים נוספים (רשות)",
+        "examDate": "תאריך המבחן",
+        "upload": "צירוף קובץ (עד {maxMb}MB, רשות)",
+        "submit": "שליחת דיווח",
+        "submitting": "שולח...",
+        "success": "הדיווח נשלח! המורה קיבל עדכון."
+      },
+      "errors": {
+        "unauthorized": "אין הרשאה. נסו להתחבר מחדש.",
+        "notAllowedForStudent": "אין הרשאה לדווח עבור תלמיד זה.",
+        "invalidInput": "חסרים פרטים או שהוזנו פרטים לא תקינים.",
+        "fileTooLarge": "הקובץ גדול מדי (עד 10MB).",
+        "unsupportedFileType": "סוג הקובץ אינו נתמך.",
+        "submitFailed": "שגיאה בשליחת הדיווח. נסו שוב."
+      }
     },
     "login": {
       "title": "כניסה לפורטל",
@@ -3273,6 +3338,10 @@
         "achieved": "הושג",
         "abandoned": "נזנח"
       }
+    },
+    "serviceUnavailable": {
+      "unavailableTitle": "השירות אינו זמין כרגע",
+      "unavailableBody": "האזור האישי אינו פעיל בשלב זה. לתיאום, ביטול או כל שאלה — אנא פנו ישירות למורה."
     }
   },
   "saas": {
@@ -3302,7 +3371,7 @@
       "openPdf": "פתיחה",
       "cancelAtEnd": "בקשת ביטול מנוי (בסוף התקופה)",
       "cancelPending": "ביטול מתוזמן לסוף התקופה",
-      "upgradeHint": "לשדרוג מותגים אחרים או מנוי מותאם אישית צרו קשר עם התמיכה.",
+      "upgradeHint": "לשדרוג מסלולים אחרים או מנוי מותאם אישית צרו קשר עם התמיכה.",
       "upgradeHintSelfServe": "ניתן לשדרג לתוכנית גבוהה יותר מהמקטע למטה, ללא פנייה לתמיכה.",
       "upgrade": {
         "sectionTitle": "שדרוג תוכנית",
@@ -3372,7 +3441,9 @@
       },
       "ownerOnly": "רק בעל/ת הארגון יכול/ה לצפות בעמוד זה.",
       "legacyNoSubscription": "לא נמצאה רשומת מנוי פלטפורמה (ארגון שנפתח לפני תכונת המנויים). ניתן להמשיך לעבוד כרגיל."
-    }
+    },
+    "pastDueBanner": "החיוב האחרון לא נקלט. נותרו {days} ימים לעדכן אמצעי תשלום לפני שהחשבון יעבור לצפייה בלבד.",
+    "cancelledBanner": "המנוי בוטל. הנתונים נשמרים וניתן לצפות בהם ולייצא אותם, אך לא לערוך."
   },
   "onboarding": {
     "errors": {
@@ -3452,6 +3523,8 @@
     "complete": {
       "title": "הכל מוכן!",
       "subtitle": "המערכת שלך מוכנה לשימוש. הנה סיכום של מה שהגדרת:",
+      "titlePartial": "הבסיס מוכן",
+      "subtitlePartial": "החשבון שלך פתוח. כדי להתחיל לעבוד נשאר להוסיף מורים ותלמידים ולהגדיר תמחור — הדשבורד יראה לך מה חסר.",
       "goToDashboard": "כניסה לדשבורד",
       "loading": "עובר לדשבורד...",
       "stats": {
@@ -4133,6 +4206,11 @@
         "subject": "מקצוע",
         "score": "ציון"
       },
+      "reportedByParent": "דווח ע\"י הורה",
+      "reportedByStudent": "דווח ע\"י תלמיד",
+      "attachment": "קובץ מצורף",
+      "approveBump": "אשר תוספת מכסה לשבוע המבחן",
+      "bumpApproved": "✓ תוספת מכסה אושרה",
       "form": {
         "createTitle": "מבחן חדש",
         "editTitle": "עריכת מבחן",
@@ -4230,6 +4308,8 @@
     "daysAgo": "לפני {n} ימים",
     "dayOffRequested": "🏖️ בקשת חופש — {teacher}",
     "dayOffRequestedBody": "{range} · {count} שיעורים מתוכננים",
+    "examReported": "📄 דווח מבחן — {student}",
+    "examReportedBody": "{subject} · {title} · {date}",
     "dayOffApproved": "בקשת החופש שלך אושרה ✅",
     "dayOffRejected": "בקשת החופש שלך נדחתה",
     "supportTicketReply": "קיבלת תשובה מהתמיכה",

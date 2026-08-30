@@ -144,6 +144,14 @@ export const SETTINGS_NAV: NavEntry[] = [
     synonyms: ['cancellation', 'cancel', 'policy', 'charge', 'ביטול', 'ביטולים', 'מדיניות', 'חיוב'],
   },
   {
+    href: '/settings/exams',
+    navKey: 'settingsExams',
+    cardKey: 'exams',
+    icon: ClipboardList,
+    roles: ['owner', 'admin'],
+    synonyms: ['exam', 'exams', 'test', 'quota', 'מבחן', 'מבחנים', 'בוחן', 'מכסה', 'תגבור'],
+  },
+  {
     href: '/settings/holidays',
     navKey: 'settingsHolidays',
     cardKey: 'holidays',

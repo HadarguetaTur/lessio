@@ -44,6 +44,7 @@ export type MenuAction =
   | 'portal'
   // Student
   | 'homework'
+  | 'report_exam'
   // Teacher
   | 'my_schedule'
   | 'my_students'
@@ -64,6 +65,7 @@ const ALL_ACTIONS: readonly MenuAction[] = [
   'schedule',
   'portal',
   'homework',
+  'report_exam',
   'my_schedule',
   'my_students',
   'day_off',
@@ -98,7 +100,7 @@ const ALL_ACTIONS: readonly MenuAction[] = [
  */
 const ROLE_MENUS: Record<KnownSenderRole, readonly MenuAction[]> = {
   parent: ['book', 'cancel', 'balance', 'schedule', 'portal'],
-  student: ['book', 'cancel', 'schedule', 'homework'],
+  student: ['book', 'cancel', 'schedule', 'homework', 'report_exam'],
   teacher: ['my_schedule', 'my_students', 'day_off', 'dashboard'],
   staff: ['today_summary', 'pending_requests', 'support', 'dashboard'],
 }

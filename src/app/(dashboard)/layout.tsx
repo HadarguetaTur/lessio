@@ -26,7 +26,7 @@ import {
   markAsReadAction,
   markAllReadAction,
 } from './notifications/actions'
-import { getEffectiveSaasFeatures } from '@/lib/saas/subscriptions'
+import { getNavigationSaasFeatures } from '@/lib/saas/subscriptions'
 import { getActiveTeacherCount } from '@/lib/teachers'
 import { LiveRefreshProvider } from '@/lib/realtime/LiveRefreshProvider'
 
@@ -45,7 +45,7 @@ export default async function DashboardLayout({
   const supportSession = await getSupportSession()
 
   if (supportSession) {
-    const saasFeaturesSupport = await getEffectiveSaasFeatures(supportSession.targetOrgId)
+    const saasFeaturesSupport = await getNavigationSaasFeatures(supportSession.targetOrgId)
     const db = createServiceRoleClient()
     const { data: org } = await db
       .from('organizations')
@@ -168,14 +168,17 @@ export default async function DashboardLayout({
   // Teachers get neither — a teacher's support route is their own org's owner.
   const isOrgStaff = profile?.role === 'owner' || profile?.role === 'admin'
 
-  let saasFeatures: Awaited<ReturnType<typeof getEffectiveSaasFeatures>> | undefined
+  // Navigation, not entitlement: a read-only org keeps every menu entry so its
+  // owner can still reach and export their data. Writes and feature gates are
+  // enforced elsewhere against the real plan.
+  let saasFeatures: Awaited<ReturnType<typeof getNavigationSaasFeatures>>
   let teacherCount: number | undefined
   if (
     profile?.organization_id &&
     (profile.role === 'owner' || profile.role === 'admin')
   ) {
     ;[saasFeatures, teacherCount] = await Promise.all([
-      getEffectiveSaasFeatures(profile.organization_id),
+      getNavigationSaasFeatures(profile.organization_id),
       getActiveTeacherCount(profile.organization_id),
     ])
   }

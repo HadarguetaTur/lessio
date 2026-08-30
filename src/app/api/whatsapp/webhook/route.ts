@@ -60,7 +60,7 @@ import {
   type KnownSenderRole,
   type ResolvedSender,
 } from '@/lib/whatsapp/sender'
-import { handleStudentMessage } from './handlers/student'
+import { handleStudentMessage, handleStudentExamMedia } from './handlers/student'
 import { handleTeacherMessage } from './handlers/teacher'
 import { handleStaffMessage } from './handlers/staff'
 import {
@@ -99,7 +99,7 @@ import { isAiConfiguredForOrg } from '@/lib/ai-assistant/providers/factory'
 import { findRecentUsageLog, updateSatisfaction } from '@/lib/ai-assistant/usage'
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { DateTime } from 'luxon'
-import { claimIncomingMessage, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
+import { claimIncomingMessage, claimSuspendedNotice, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
 import {
   notifyMultiple,
   getOwnerAndAdminProfileIds,
@@ -319,7 +319,8 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
       automation_payment_request_enabled,
       automation_dunning_enabled,
       automation_new_leads_enabled,
-      default_locale
+      default_locale,
+      service_state
     `)
     .eq('whatsapp_phone_number_id', msg.phoneNumberId)
     .maybeSingle()
@@ -376,6 +377,39 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
     return
   }
 
+  // Platform billing gate. A studio whose subscription lapsed stops answering,
+  // but silence is the wrong shape of "off": a parent who texts "cancel
+  // tomorrow's lesson" and gets nothing assumes it was cancelled, shows up or
+  // does not, and blames the teacher. One short redirect instead, in the
+  // sender's language, with no hint that this is about money — the parent is
+  // not a party to the teacher's subscription.
+  //
+  // Locale here is deliberately cheap: the message's own script, then the org
+  // default. Resolving the sender would cost queries for an org we are about to
+  // decline to serve.
+  if (org.service_state === "suspended" || org.service_state === "dormant") {
+    if (org.service_state === "suspended" && (await claimSuspendedNotice(org.id, senderPhone))) {
+      const noticeLocale = resolveRecipientLocale({
+        stored: null,
+        detected: detectLocaleFromText(msg.text),
+        orgDefault: org.default_locale as string | null,
+      })
+      await sendTextMessage(
+        senderPhone,
+        botString("org_suspended", noticeLocale),
+        accessToken,
+        phoneNumberId
+      ).catch((err) => {
+        console.error("[whatsapp/webhook] Suspended-notice send failed", { orgId: org.id, err })
+      })
+    }
+    console.info("[whatsapp/webhook] Org not in service — no handler run", {
+      orgId: org.id,
+      serviceState: org.service_state,
+    })
+    return
+  }
+
   try {
 
   // 6. Resolve WHO this is — parent, student, teacher or staff (before the
@@ -392,8 +426,8 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
     orgDefault: org.default_locale as string | null,
   })
 
-  // A photo, voice note or file: nothing to parse, but silence reads as a
-  // broken number. One short notice, in the sender's language, and done — it
+  // A voice note, sticker, location…: nothing to parse, but silence reads as
+  // a broken number. One short notice, in the sender's language, and done — it
   // is a direct reply so neither opt-out nor the 24h window applies.
   if (msg.unsupportedType) {
     await sendTextMessage(senderPhone, botString('unsupported_media', locale), accessToken, phoneNumberId)
@@ -401,6 +435,18 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
       orgId: org.id,
       messageId: msg.messageId,
       type: msg.unsupportedType,
+    })
+    return
+  }
+
+  // An image or document. Only one flow consumes media — a student mid
+  // exam-report — so anyone else gets the same notice unsupported types get.
+  if (msg.media && sender.role !== 'student') {
+    await sendTextMessage(senderPhone, botString('unsupported_media', locale), accessToken, phoneNumberId)
+    console.info('[whatsapp/webhook] Media message answered with notice', {
+      orgId: org.id,
+      messageId: msg.messageId,
+      kind: msg.media.kind,
     })
     return
   }
@@ -550,6 +596,14 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
       timezone,
       origin,
       msg,
+    }
+
+    // A student's image or document belongs to the exam-report flow when one is
+    // waiting for a file; otherwise it gets the standard media notice.
+    if (msg.media) {
+      if (sender.role === 'student' && (await handleStudentExamMedia(ctx))) return
+      await sendTextMessage(senderPhone, botString('unsupported_media', locale), accessToken, phoneNumberId)
+      return
     }
 
     const handled =

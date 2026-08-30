@@ -13,6 +13,7 @@ import {
   upsertPendingPaymentSubscription,
   markOrganizationOnboardingComplete,
   devMockActivatePendingSubscription,
+  revertPendingCheckout,
 } from '@/lib/saas/subscriptions'
 import {
   createSumitHostedCheckoutUrl,
@@ -181,16 +182,9 @@ export async function cancelPendingSaasCheckoutAction(): Promise<void> {
     redirect('/onboarding')
   }
 
-  const db = createServiceRoleClient()
-  const { data: row } = await db
-    .from('organization_subscriptions')
-    .select('status')
-    .eq('organization_id', orgId)
-    .maybeSingle()
-
-  if (row?.status === 'pending_payment') {
-    await db.from('organization_subscriptions').delete().eq('organization_id', orgId)
-  }
+  // Revert, never delete: an org with no subscription row reads as
+  // grandfathered and gets the full product for free. See revertPendingCheckout.
+  await revertPendingCheckout(orgId)
 
   redirect('/onboarding')
 }
@@ -276,9 +270,15 @@ export async function applyPaymentCallbackQuery(params: {
       transactionId: params.id ?? null,
       reference: params.identifier ?? null,
     })
-    if (confirmation.valid) {
-      await activateSubscriptionFromPayment({
+    // See the twin in account/billing/upgrade-actions.ts: the confirmed
+    // payment's own reference wins over the one supplied in the URL.
+    const checkoutReference = confirmation.externalReference ?? params.identifier ?? null
+
+    if (confirmation.valid && checkoutReference) {
+      const result = await activateSubscriptionFromPayment({
         orgId,
+        checkoutReference,
+        paidAmount: confirmation.amount,
         sumitCustomerId: confirmation.customerId,
         sumitPaymentToken: confirmation.paymentToken,
         cardLastFour: confirmation.cardLastFour,
@@ -291,8 +291,13 @@ export async function applyPaymentCallbackQuery(params: {
               }
             : undefined,
       })
-      await markOrganizationOnboardingComplete(orgId)
-      return 'dashboard'
+
+      if (result.activated) {
+        await markOrganizationOnboardingComplete(orgId)
+        return 'dashboard'
+      }
+
+      console.info('[saas/onboarding-callback] activation refused', { orgId, reason: result.reason })
     }
   }
 

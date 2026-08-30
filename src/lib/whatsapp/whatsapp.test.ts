@@ -56,6 +56,42 @@ describe('parseWebhookPayload', () => {
     expect(result[0].unsupportedType).toBe('image')
   })
 
+  it('captures an inbound image as media with its caption', () => {
+    const payload = makePayload({ type: 'image' })
+    const msg = payload.entry[0].changes[0].value as { messages: Record<string, unknown>[] }
+    delete msg.messages[0].text
+    msg.messages[0].image = { id: 'media-9', mime_type: 'image/jpeg', caption: 'דף נוסחאות' }
+
+    const result = parseWebhookPayload(payload)
+    expect(result).toHaveLength(1)
+    expect(result[0].unsupportedType).toBeUndefined()
+    expect(result[0].text).toBe('דף נוסחאות')
+    expect(result[0].media).toEqual({ id: 'media-9', mimeType: 'image/jpeg', kind: 'image' })
+  })
+
+  it('captures an inbound document with its filename', () => {
+    const payload = makePayload({ type: 'document' })
+    const msg = payload.entry[0].changes[0].value as { messages: Record<string, unknown>[] }
+    delete msg.messages[0].text
+    msg.messages[0].document = { id: 'media-7', mime_type: 'application/pdf', filename: 'exam.pdf' }
+
+    const result = parseWebhookPayload(payload)
+    expect(result).toHaveLength(1)
+    expect(result[0].media).toEqual({
+      id: 'media-7',
+      mimeType: 'application/pdf',
+      fileName: 'exam.pdf',
+      kind: 'document',
+    })
+  })
+
+  it('still surfaces audio as unsupported', () => {
+    const result = parseWebhookPayload(makePayload({ type: 'audio' }))
+    expect(result).toHaveLength(1)
+    expect(result[0].unsupportedType).toBe('audio')
+    expect(result[0].media).toBeUndefined()
+  })
+
   it('stays silent on reactions and Meta unsupported markers', () => {
     expect(parseWebhookPayload(makePayload({ type: 'reaction' }))).toHaveLength(0)
     expect(parseWebhookPayload(makePayload({ type: 'unsupported' }))).toHaveLength(0)

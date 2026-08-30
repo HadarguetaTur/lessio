@@ -16,6 +16,7 @@ import { ForecastCard } from '@/components/dashboard/ForecastCard'
 import { MiniRevenueChart } from '@/components/dashboard/MiniRevenueChart'
 import { SetupStrip, type SetupGap } from '@/components/dashboard/SetupStrip'
 import { getOrgReadiness } from '@/lib/organizations/readiness'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 /**
  * Each band fetches its own data so it can stream independently.
@@ -43,8 +44,25 @@ export async function AttentionSection({
   appLocale,
   leadsEnabled,
 }: SectionProps & { leadsEnabled: boolean }) {
-  const attention = await getAttentionData(orgId, timezone, { leadsEnabled })
-  return <AttentionPanel data={attention} timezone={timezone} appLocale={appLocale} />
+  // A brand-new org has nothing needing attention because it has nothing at
+  // all. "Everything is handled" is true of the queue and false of the
+  // business, and the audit caught it saying so one click after the onboarding
+  // wizard had already claimed the org was ready.
+  const [attention, { count: studentCount }] = await Promise.all([
+    getAttentionData(orgId, timezone, { leadsEnabled }),
+    createServiceRoleClient()
+      .from('students')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', orgId),
+  ])
+  return (
+    <AttentionPanel
+      data={attention}
+      timezone={timezone}
+      appLocale={appLocale}
+      hasStudents={(studentCount ?? 0) > 0}
+    />
+  )
 }
 
 export async function MoneySection({ orgId, timezone, locale }: SectionProps) {

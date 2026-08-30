@@ -37,6 +37,9 @@ Deno.serve(async (_req) => {
     .from('organizations')
     .select('id, payment_reminder_days, whatsapp_phone_number_id, whatsapp_access_token, email_notifications, default_locale')
     .eq('reminders_enabled', true)
+    // Platform billing: a lapsed studio stops sending. See organizations.service_state
+    // (migration 20260829140100) — the ladder is owned by saas-subscription-checker.
+    .eq('service_state', 'active')
     .eq('automation_dunning_enabled', true)
     .not('whatsapp_phone_number_id', 'is', null)
     .not('whatsapp_access_token', 'is', null)

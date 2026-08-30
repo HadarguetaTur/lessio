@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { DateTime } from 'luxon'
 import { ArrowRight, User, BookOpen, FileText, Receipt, Target, ClipboardList } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
+import { canTeacherAccessStudent } from '@/lib/students'
+import { getTeacherByProfileId } from '@/lib/teachers'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getStudentOverview } from '@/lib/students/overview'
 import { getAssignments } from '@/lib/homework'
@@ -20,10 +22,13 @@ import {
   createExamAction,
   updateExamAction,
   deleteExamAction,
+  approveExamQuotaBumpAction,
   generateProgressReportAction,
   sendProgressReportEmailAction,
 } from './actions'
 import { listExams } from '@/lib/students/exams'
+import { getExamFileSignedUrl } from '@/lib/students/examFiles'
+import { examWeekStart, getExamPolicy } from '@/lib/exams/policy'
 import { getTranslations, getLocale } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
 
@@ -50,7 +55,7 @@ export default async function StudentProfilePage(props: {
     ? (tabParam as Tab)
     : 'overview'
 
-  const { orgId, role } = await getSession()
+  const { orgId, role, profileId } = await getSession()
   const [t, tCommon, locale] = await Promise.all([
     getTranslations('studentProfile'),
     getTranslations('common'),
@@ -69,6 +74,14 @@ export default async function StudentProfilePage(props: {
     .maybeSingle()
 
   if (studentErr || !student) notFound()
+
+  // The query above scopes to the org only. Without this a teacher could open
+  // any student in the org by id — the list is teacher-scoped, this page was not.
+  if (role === 'teacher') {
+    const teacherRecord = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
+    if (!teacherRecord) notFound()
+    if (!(await canTeacherAccessStudent(orgId, teacherRecord.id, id))) notFound()
+  }
 
   const canEdit = role === 'owner' || role === 'admin' || role === 'teacher'
   const timezone = await getOrgTimezone(orgId)
@@ -94,7 +107,7 @@ export default async function StudentProfilePage(props: {
     .filter((x): x is { email: string; label: string } => x !== null)
 
   // Parallel data fetch based on tab
-  const [overview, assignments, goals, notes, lessonsResult, chargesResult, examsList] = await Promise.all([
+  const [overview, assignments, goals, notes, lessonsResult, chargesResult, examsData] = await Promise.all([
     activeTab === 'overview' ? getStudentOverview(orgId, id) : null,
     activeTab === 'homework' ? getAssignments(orgId, { studentId: id }) : null,
     activeTab === 'notes' ? getGoalsForStudent(orgId, id) : null,
@@ -126,7 +139,32 @@ export default async function StudentProfilePage(props: {
             .limit(50)
         })()
       : { data: [] },
-    activeTab === 'exams' ? listExams(orgId, id) : Promise.resolve([]),
+    activeTab === 'exams'
+      ? (async () => {
+          const [exams, policy, { data: overrideRows }] = await Promise.all([
+            listExams(orgId, id),
+            getExamPolicy(orgId),
+            db
+              .from('student_quota_overrides')
+              .select('week_start')
+              .eq('student_id', id)
+              .eq('organization_id', orgId),
+          ])
+          const overrideWeeks = new Set(
+            (overrideRows ?? []).map((r) => (r as { week_start: string }).week_start)
+          )
+          const withExtras = await Promise.all(
+            exams.map(async (ex) => ({
+              ...ex,
+              fileUrl: ex.storagePath
+                ? await getExamFileSignedUrl(ex.storagePath).catch(() => null)
+                : null,
+              bumpApproved: overrideWeeks.has(examWeekStart(ex.examDate, timezone)),
+            }))
+          )
+          return { policyMode: policy.mode, exams: withExtras }
+        })()
+      : Promise.resolve({ policyMode: 'notify' as const, exams: [] }),
   ])
 
   const TAB_LABELS: Record<Tab, string> = {
@@ -218,10 +256,11 @@ export default async function StudentProfilePage(props: {
         {activeTab === 'exams' && (
           <ExamList
             studentId={id}
-            exams={examsList}
+            exams={examsData.exams}
             createAction={createExamAction}
             updateAction={updateExamAction}
             deleteAction={deleteExamAction}
+            approveBumpAction={examsData.policyMode === 'approve' ? approveExamQuotaBumpAction : undefined}
             canEdit={canEdit}
           />
         )}

@@ -84,7 +84,7 @@ function ProviderFields({ provider }: { provider: ProviderUIDef }) {
               href={provider.docsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-blue-600 hover:underline mr-1"
+              className="inline-flex items-center gap-1 text-blue-600 underline mr-1"
             >
               <ExternalLink size={11} />
               {t('developerDocs')}

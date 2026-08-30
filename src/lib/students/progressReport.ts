@@ -176,8 +176,10 @@ export async function buildProgressReportData(
   const avgScore =
     scores.length > 0 ? Math.round(scores.reduce((x, y) => x + y, 0) / scores.length) : null
 
-  // ── Exams in date range ──────────────────────────────────────────────────
-  const exams = await listExamsInDateRange(orgId, studentId, fromDate, toDate)
+  // ── Exams in date range (unscored reports are excluded) ──────────────────
+  const exams = (await listExamsInDateRange(orgId, studentId, fromDate, toDate)).filter(
+    (e) => e.score != null
+  )
 
   // ── Goals (full snapshot) ─────────────────────────────────────────────────
   const allGoals = await getGoalsForStudent(orgId, studentId)

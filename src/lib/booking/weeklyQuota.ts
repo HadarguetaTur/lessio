@@ -66,6 +66,20 @@ export function weekBoundsFor(instantUtcIso: string, timezone: string): WeekBoun
   }
 }
 
+/**
+ * The org-local Sunday (YYYY-MM-DD) of the week containing `instantUtcIso` —
+ * the key of student_quota_overrides. Derived exactly like weekBoundsFor, but
+ * kept in local date form so the override's writer and reader can never
+ * disagree about which week a date belongs to.
+ */
+export function weekStartLocalDate(instantUtcIso: string, timezone: string): string {
+  const local = DateTime.fromISO(instantUtcIso, { zone: 'utc' }).setZone(timezone)
+  if (!local.isValid) throw new Error(`Invalid instant: ${instantUtcIso}`)
+
+  const daysFromSunday = local.weekday % 7
+  return local.minus({ days: daysFromSunday }).startOf('day').toISODate()!
+}
+
 export async function getWeeklyQuotaStatus({
   studentId,
   organizationId,
@@ -93,10 +107,22 @@ export async function getWeeklyQuotaStatus({
 
   if (studentError || !student) throw new Error(`Student not found: ${studentId}`)
 
-  const quota = student.weekly_quota ?? null
+  let quota = student.weekly_quota ?? null
   if (quota === null) return { quota: null, count: 0, atQuota: false }
 
-  const { startUtc, endUtc } = weekBoundsFor(slotStartUtc, timezone ?? org.timezone ?? 'UTC')
+  const tz = timezone ?? org.timezone ?? 'UTC'
+  const { startUtc, endUtc } = weekBoundsFor(slotStartUtc, tz)
+
+  // A per-week override (exam prep) raises the ceiling for that week only.
+  const { data: override } = await db
+    .from('student_quota_overrides')
+    .select('extra_lessons')
+    .eq('student_id', studentId)
+    .eq('organization_id', organizationId)
+    .eq('week_start', weekStartLocalDate(slotStartUtc, tz))
+    .maybeSingle()
+
+  if (override?.extra_lessons) quota += override.extra_lessons
 
   // Inner join keeps this to a single round trip: rows come back only for
   // lessons that are both the student's and inside the week.

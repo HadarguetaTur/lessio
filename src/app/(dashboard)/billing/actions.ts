@@ -21,6 +21,7 @@ import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
+import { formatBillingMonth } from '@/lib/i18n/formatBillingMonth'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
@@ -608,6 +609,7 @@ async function sendBillingPaymentRequestCore(
   }
   // Everything below is read by the parent, not by whoever clicked Send.
   const tr = await getT('billing', locale)
+  const monthLabel = formatBillingMonth(billing.billing_month as string, locale)
 
   // Create payment link. DEMO_PAYMENT_LINK_ENABLED=1 allows sending without a
   // configured payment provider by linking to the org's parent portal instead
@@ -620,7 +622,7 @@ async function sendBillingPaymentRequestCore(
     paymentResult = await p.provider.createPaymentLink({
       chargeId: charge.id,
       amount: Number(charge.amount),
-      description: tr('paymentDescription', { month: billing.billing_month as string, parent: parent.full_name as string }),
+      description: tr('paymentDescription', { month: monthLabel, parent: parent.full_name as string }),
       orgId,
       payer: { fullName: parent.full_name as string, phone: parent.phone as string },
     })
@@ -663,7 +665,7 @@ async function sendBillingPaymentRequestCore(
     templateType: 'payment_request',
     vars: {
       amount: Number(charge.amount).toFixed(2),
-      description: tr('paymentDescriptionShort', { month: billing.billing_month as string }),
+      description: tr('paymentDescriptionShort', { month: monthLabel }),
       payment_link: paymentResult.url,
     },
     locale,

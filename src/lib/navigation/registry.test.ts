@@ -15,9 +15,9 @@ describe('registry shape', () => {
     expect(new Set(hrefs).size).toBe(hrefs.length)
   })
 
-  it('covers /account/billing plus the fifteen settings pages', () => {
-    expect(SETTINGS_NAV).toHaveLength(16)
-    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(15)
+  it('covers /account/billing plus the sixteen settings pages', () => {
+    expect(SETTINGS_NAV).toHaveLength(17)
+    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(16)
   })
 
   it('keeps every settings page reachable from the sidebar and the hub', () => {
@@ -50,11 +50,11 @@ describe('filterNav', () => {
 
   it('hides owner-only entries from an admin', () => {
     const admin = filterNav(SETTINGS_NAV, 'admin').map((e) => e.href)
-    expect(admin).toEqual(['/settings/holidays', '/settings/locale'])
+    expect(admin).toEqual(['/settings/exams', '/settings/holidays', '/settings/locale'])
   })
 
   it('shows everything to an owner when no plan is resolved', () => {
-    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(16)
+    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(17)
   })
 
   it('drops plan-gated entries when the feature is off', () => {

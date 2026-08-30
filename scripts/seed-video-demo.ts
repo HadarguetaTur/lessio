@@ -785,14 +785,47 @@ async function main(): Promise<void> {
           .update({ is_paid: true, updated_at: new Date().toISOString() })
           .eq('id', billing.id)
       )
-      await expectOk(
-        'mark charges paid',
-        db
-          .from('charges')
-          .update({ status: 'paid', paid_at: paidAt, updated_at: new Date().toISOString() })
-          .eq('organization_id', ORG_ID)
-          .eq('billing_record_id', billing.id)
-      )
+      // Marking a charge paid in the app goes through markChargeAsPaid, which
+      // also sets amount_paid and records a charge_payments row. The dashboard's
+      // "נגבה החודש" reads charge_payments, not charges.paid_at — writing only
+      // the charge leaves the KPI at ₪0 next to a full debtors list, which is
+      // exactly the frame the video must not show.
+      const { data: paidCharges } = await db
+        .from('charges')
+        .select('id, parent_id, amount')
+        .eq('organization_id', ORG_ID)
+        .eq('billing_record_id', billing.id)
+
+      for (const charge of paidCharges ?? []) {
+        await expectOk(
+          'mark charge paid',
+          db
+            .from('charges')
+            .update({
+              status: 'paid',
+              paid_at: paidAt,
+              amount_paid: Number(charge.amount),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', charge.id)
+        )
+      }
+
+      if (paidCharges?.length) {
+        await expectOk(
+          'record charge payments',
+          db.from('charge_payments').insert(
+            paidCharges.map((charge) => ({
+              organization_id: ORG_ID,
+              charge_id: charge.id,
+              parent_id: charge.parent_id,
+              amount: Number(charge.amount),
+              method: 'manual',
+              paid_at: paidAt,
+            }))
+          )
+        )
+      }
     }
     console.log(
       `  ${month}: ₪${monthTotal.toFixed(2)} על פני ${billed} תלמידים` +

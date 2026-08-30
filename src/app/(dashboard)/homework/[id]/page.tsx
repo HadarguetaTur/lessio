@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { DateTime } from 'luxon'
 import { ArrowRight, Paperclip, FileText } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getAssignment } from '@/lib/homework'
@@ -74,7 +75,9 @@ export default async function HomeworkDetailPage(props: {
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">{t('fields.dueDate')}</dt>
-            <dd className="font-medium">{assignment.dueDate ?? '—'}</dd>
+            <dd className="font-medium">
+              {assignment.dueDate ? DateTime.fromISO(assignment.dueDate).toFormat('d.M.yyyy') : '—'}
+            </dd>
           </div>
           {assignment.sendAt && (
             <div className="flex justify-between">

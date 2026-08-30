@@ -35,7 +35,7 @@ export const PROVIDER_MODELS: Record<AiProviderName, ProviderModels> = {
     label: 'Anthropic',
     models: [
       { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
-      { id: 'claude-sonnet-4-6-20250514', label: 'Claude Sonnet 4.6' },
+      { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
     ],
     defaultModel: 'claude-haiku-4-5-20251001',
   },

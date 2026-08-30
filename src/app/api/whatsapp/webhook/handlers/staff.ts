@@ -19,10 +19,16 @@ import {
   askOwnerCopilot,
   classifyOwnerCopilotIntent,
   isOwnerCopilotWriteAction,
+  type OwnerCopilotIntent,
 } from '@/lib/ai-assistant/copilot'
+import { isAiAssistantConfigured } from '@/lib/ai-assistant'
+import { isAiConfiguredForOrg } from '@/lib/ai-assistant/providers/factory'
 import { decodeCopilotPayload, encodeCopilotPayload } from '@/lib/whatsapp/copilotPayloads'
 import { getDebtorsOverview } from '@/lib/charges/debtors'
-import { sendDebtReminderForParent } from '@/lib/payment-request/sendManualReminder'
+import {
+  sendDebtReminderForParent,
+  type ReminderOutcome,
+} from '@/lib/payment-request/sendManualReminder'
 import {
   decodeStaffRequestPayload,
   encodeStaffRequestPayload,
@@ -56,6 +62,9 @@ import { replyWith, type HandlerContext } from '../shared'
 const SUPPORT_SEND = 'sup:send'
 const SUPPORT_CANCEL = 'sup:cancel'
 
+/** Debt reminders go out in batches so a big org does not fan out all at once. */
+const REMINDER_BATCH_SIZE = 5
+
 /** Routes a message from an owner/admin. Returns true when it was handled. */
 export async function handleStaffMessage(
   ctx: HandlerContext,
@@ -78,7 +87,17 @@ export async function handleStaffMessage(
 
   const copilotDecision = decodeCopilotPayload(ctx.msg.replyId)
   if (copilotDecision) {
-    await handleOwnerCopilotDecision(ctx, copilotDecision)
+    try {
+      await handleOwnerCopilotDecision(ctx, copilotDecision)
+    } catch (err) {
+      // They tapped a button and are waiting: an unanswered tap reads as "it
+      // sent", and Meta would redeliver the tap into the same failure.
+      console.error('[whatsapp/staff] Copilot decision failed', {
+        orgId: ctx.org.id,
+        err: String(err),
+      })
+      await replyWith(ctx, 'copilot_error')
+    }
     return true
   }
 
@@ -102,8 +121,6 @@ export async function handleStaffMessage(
     await deleteSupportSession(ctx.org.id, ctx.senderPhone)
   } else if (await handleSupportFreeText(ctx)) {
     return true
-  } else if (await handleOwnerCopilotFreeText(ctx)) {
-    return true
   }
 
   if (menuAction === 'pending_requests') {
@@ -120,6 +137,12 @@ export async function handleStaffMessage(
   // today" wants the numbers, not a lesson list.
   if (menuAction === 'today_summary' || (!menuAction && hasScheduleIntent(ctx.msg.text))) {
     await sendTodaySummary(ctx)
+    return true
+  }
+
+  // The copilot runs last: every rule-based intent above is answered exactly and
+  // for free, and only what the rules do not recognise costs an LLM round-trip.
+  if (!menuAction && (await handleOwnerCopilotFreeText(ctx))) {
     return true
   }
 
@@ -242,11 +265,33 @@ async function handleOwnerCopilotFreeText(ctx: HandlerContext): Promise<boolean>
     return false
   }
 
+  // The same switch the parent path honours: turning the AI assistant off turns
+  // the copilot off too, and an org with no key never reaches the provider.
+  if (!ctx.org.ai_assistant_enabled) return false
+  if (!(isAiAssistantConfigured() || (await isAiConfiguredForOrg(ctx.org.id)))) return false
+
   const intent = await classifyOwnerCopilotIntent(ctx.org.id, ctx.msg.text)
 
   if (!intent || intent.action === 'unknown') {
     return false
   }
+
+  try {
+    return await runOwnerCopilotIntent(ctx, intent)
+  } catch (err) {
+    // Past this point the copilot has taken the message. Throwing would leave
+    // the owner with no reply and Meta redelivering into the same failure.
+    console.error('[whatsapp/staff] Owner copilot failed', { orgId: ctx.org.id, err: String(err) })
+    await replyWith(ctx, 'copilot_error')
+    return true
+  }
+}
+
+async function runOwnerCopilotIntent(
+  ctx: HandlerContext,
+  intent: OwnerCopilotIntent
+): Promise<boolean> {
+  if (ctx.msg.text == null) return false
 
   if (intent.action === 'ask') {
     const answer = await askOwnerCopilot(ctx.org.id, ctx.msg.text, ctx.locale)
@@ -263,7 +308,7 @@ async function handleOwnerCopilotFreeText(ctx: HandlerContext): Promise<boolean>
         if (eligible.length === 0) {
           await sendTextMessage(
             ctx.senderPhone,
-            botString('balance_none', ctx.locale),
+            botString('copilot_no_debtors', ctx.locale),
             ctx.accessToken,
             ctx.phoneNumberId
           )
@@ -273,7 +318,9 @@ async function handleOwnerCopilotFreeText(ctx: HandlerContext): Promise<boolean>
         await sendReplyButtons(
           ctx.senderPhone,
           {
-            body: `שלח תזכורת ל-${eligible.length} חייבים?`,
+            body: botString('copilot_confirm_all', ctx.locale, {
+              count: String(eligible.length),
+            }),
             buttons: [
               {
                 id: encodeCopilotPayload('confirm', 'send_debt_reminder_all'),
@@ -309,7 +356,9 @@ async function handleOwnerCopilotFreeText(ctx: HandlerContext): Promise<boolean>
         await sendReplyButtons(
           ctx.senderPhone,
           {
-            body: `לשלוח תזכורת ל-${parent.parentName || 'ההורה'}?`,
+            body: botString('copilot_confirm_parent', ctx.locale, {
+              parent_name: parent.parentName || botString('the_parent', ctx.locale),
+            }),
             buttons: [
               {
                 id: encodeCopilotPayload('confirm', 'send_debt_reminder_parent', intent.parentId),
@@ -334,6 +383,14 @@ async function handleOwnerCopilotFreeText(ctx: HandlerContext): Promise<boolean>
   return false
 }
 
+/**
+ * Executes what the owner confirmed by tapping a button.
+ *
+ * There is no requireMutation() here on purpose: that guard reads a dashboard
+ * session, and a webhook has none. The authority check on this path is the
+ * staff role resolved from the sender's phone plus the explicit confirmation
+ * tap — see docs/decisions.md, Amendment 2026-08-30.
+ */
 async function handleOwnerCopilotDecision(
   ctx: HandlerContext,
   decision: { action: 'confirm' | 'cancel'; kind?: 'send_debt_reminder_all' | 'send_debt_reminder_parent'; parentId?: string }
@@ -345,7 +402,7 @@ async function handleOwnerCopilotDecision(
   }
 
   if (decision.action === 'cancel') {
-    await replyWith(ctx, 'support_cancelled')
+    await replyWith(ctx, 'copilot_cancelled')
     return
   }
 
@@ -353,14 +410,43 @@ async function handleOwnerCopilotDecision(
     const overview = await getDebtorsOverview(ctx.org.id)
     const eligible = overview.rows.filter((row) => !row.optedOut)
 
-    await Promise.all(
-      eligible.map((row) => sendDebtReminderForParent(ctx.org.id, row.parentId, actorProfileId))
-    )
+    let sent = 0
+    let skipped = 0
+    let failed = 0
+
+    // Batched rather than one Promise.all: a large org would otherwise open a
+    // send per debtor at once, and one rejection would abandon the rest.
+    for (let i = 0; i < eligible.length; i += REMINDER_BATCH_SIZE) {
+      const results = await Promise.allSettled(
+        eligible
+          .slice(i, i + REMINDER_BATCH_SIZE)
+          .map((row) => sendDebtReminderForParent(ctx.org.id, row.parentId, actorProfileId))
+      )
+
+      for (const result of results) {
+        if (result.status === 'rejected' || result.value === 'failed') failed += 1
+        else if (result.value === 'sent') sent += 1
+        else skipped += 1
+      }
+    }
+
+    await replyWith(ctx, 'copilot_summary', {
+      sent: String(sent),
+      skipped: String(skipped),
+      failed: String(failed),
+    })
     return
   }
 
   if (decision.kind === 'send_debt_reminder_parent' && decision.parentId) {
-    await sendDebtReminderForParent(ctx.org.id, decision.parentId, actorProfileId)
+    let outcome: ReminderOutcome = 'failed'
+    try {
+      outcome = await sendDebtReminderForParent(ctx.org.id, decision.parentId, actorProfileId)
+    } catch (err) {
+      console.error('[whatsapp/staff] Debt reminder failed', { orgId: ctx.org.id, err: String(err) })
+    }
+
+    await replyWith(ctx, outcome === 'sent' ? 'copilot_reminder_sent' : 'copilot_reminder_not_sent')
   }
 }
 

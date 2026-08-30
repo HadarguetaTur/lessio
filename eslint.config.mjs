@@ -52,6 +52,7 @@ const HEBREW_ALLOWED = [
   // The system prompt is sent to the model, never shown to a user, and the
   // model is instructed to reply in the customer's language.
   "src/lib/ai-assistant/buildSystemPrompt.ts",
+  "src/lib/ai-assistant/copilot.ts",
   // The Hebrew half of each legal document. Each has an English sibling
   // (TermsEn / PrivacyEn) and page.tsx picks by locale, mirroring how the
   // marketing copy is split.

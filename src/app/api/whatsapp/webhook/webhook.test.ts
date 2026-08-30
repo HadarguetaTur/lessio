@@ -110,11 +110,20 @@ vi.mock('@/lib/notifications', () => ({
 const mockClassifyOwnerCopilotIntent = vi.hoisted(() => vi.fn())
 const mockGetDebtorsOverview = vi.hoisted(() => vi.fn())
 const mockSendDebtReminderForParent = vi.hoisted(() => vi.fn())
+const mockIsAiConfiguredForOrg = vi.hoisted(() => vi.fn())
 
-vi.mock('@/lib/ai-assistant/copilot', () => ({
+// The real module is spread back in so the pure helpers the handler depends on
+// (isOwnerCopilotWriteAction) keep working — stubbing them out silently turned
+// every write action into a crash.
+vi.mock('@/lib/ai-assistant/copilot', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   classifyOwnerCopilotIntent: mockClassifyOwnerCopilotIntent,
   buildOwnerCopilotSystemPrompt: vi.fn().mockResolvedValue('owner-copilot-prompt'),
   askOwnerCopilot: vi.fn().mockResolvedValue('שאלה על החוב נענתה, יש 4,000 שקלים בחובות'),
+}))
+
+vi.mock('@/lib/ai-assistant/providers/factory', () => ({
+  isAiConfiguredForOrg: mockIsAiConfiguredForOrg,
 }))
 
 vi.mock('@/lib/charges/debtors', () => ({
@@ -1520,12 +1529,18 @@ describe('WhatsApp sender roles', () => {
     mockReleaseIncomingMessageClaim.mockResolvedValue(undefined)
     mockIsRateLimited.mockResolvedValue(false)
     mockAiAssistantConfigured.mockReturnValue(false)
+    // The org has a key; ORG_DATA's ai_assistant_enabled: false is what keeps
+    // the copilot out of the way, so a test that wants it opts in explicitly.
+    mockIsAiConfiguredForOrg.mockResolvedValue(true)
     mockGetActiveCancellationSession.mockResolvedValue(null)
     // clearAllMocks resets calls but keeps implementations, so a session set by
     // one support test would otherwise still be open in the next one.
     mockGetActiveSupportSession.mockResolvedValue(null)
     mockCreateTicket.mockResolvedValue('ticket-1')
   })
+
+  /** An org with the copilot switched on and a usable AI key. */
+  const COPILOT_ON = { ai_assistant_enabled: true }
 
   it('recognises a student instead of filing them as a lead', async () => {
     mockIdentity({ students: STUDENT_ROW })
@@ -1699,7 +1714,7 @@ describe('WhatsApp sender roles', () => {
   })
 
   it('answers an owner’s free-text business question with the owner AI prompt', async () => {
-    mockIdentity({ profiles: OWNER_ROW })
+    mockIdentity({ profiles: OWNER_ROW }, COPILOT_ON)
     mockClassifyOwnerCopilotIntent.mockResolvedValue({ action: 'ask' })
 
     const res = await POST(makeRequest(makeWebhookPayload('כמה חייבים לי?')))
@@ -1715,7 +1730,7 @@ describe('WhatsApp sender roles', () => {
   })
 
   it('asks for confirmation before a debt reminder action and only executes after the button tap', async () => {
-    mockIdentity({ profiles: OWNER_ROW })
+    mockIdentity({ profiles: OWNER_ROW }, COPILOT_ON)
     mockClassifyOwnerCopilotIntent.mockResolvedValue({ action: 'send_debt_reminder_all' })
     mockGetDebtorsOverview.mockResolvedValue({
       rows: [
@@ -1725,17 +1740,139 @@ describe('WhatsApp sender roles', () => {
       totalDebt: 4000,
       debtorCount: 2,
     })
+    mockSendDebtReminderForParent
+      .mockResolvedValueOnce('sent')
+      .mockResolvedValueOnce('opted_out')
 
     const first = await POST(makeRequest(makeWebhookPayload('תשלחי תזכורת לכל החייבים')))
     expect(first.status).toBe(200)
     expect(mockSendReplyButtons).toHaveBeenCalledTimes(1)
     expect(mockSendDebtReminderForParent).not.toHaveBeenCalled()
 
-    const second = await POST(makeRequest(makeInteractivePayload('cp:confirm:send_debt_reminder_all')))
+    // The title is what Meta echoes back for a tap — the Hebrew button label.
+    const second = await POST(
+      makeRequest(makeInteractivePayload('cp:confirm:send_debt_reminder_all', 'שליחה'))
+    )
     expect(second.status).toBe(200)
     expect(mockSendDebtReminderForParent).toHaveBeenCalledTimes(2)
     expect(mockSendDebtReminderForParent).toHaveBeenNthCalledWith(1, ORG_ID, 'p-1', PROFILE_ID)
     expect(mockSendDebtReminderForParent).toHaveBeenNthCalledWith(2, ORG_ID, 'p-2', PROFILE_ID)
+
+    // The owner hears what happened — a silent send leaves them guessing, and
+    // the skipped one must not be counted as delivered.
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      botString('copilot_summary', 'he', { sent: '1', skipped: '1', failed: '0' }),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('keeps sending after one reminder fails, and reports the failure', async () => {
+    mockIdentity({ profiles: OWNER_ROW }, COPILOT_ON)
+    mockGetDebtorsOverview.mockResolvedValue({
+      rows: [
+        { parentId: 'p-1', parentName: 'דנה', optedOut: false, totalDebt: 1200, oldestAgeDays: 5 },
+        { parentId: 'p-2', parentName: 'אייל', optedOut: false, totalDebt: 2800, oldestAgeDays: 10 },
+      ],
+      totalDebt: 4000,
+      debtorCount: 2,
+    })
+    mockSendDebtReminderForParent
+      .mockRejectedValueOnce(new Error('whatsapp 500'))
+      .mockResolvedValueOnce('sent')
+
+    const res = await POST(
+      makeRequest(makeInteractivePayload('cp:confirm:send_debt_reminder_all', 'שליחה'))
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockSendDebtReminderForParent).toHaveBeenCalledTimes(2)
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      botString('copilot_summary', 'he', { sent: '1', skipped: '0', failed: '1' }),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('answers the tap even when the debtor lookup behind it fails', async () => {
+    mockIdentity({ profiles: OWNER_ROW }, COPILOT_ON)
+    mockGetDebtorsOverview.mockRejectedValue(new Error('db down'))
+
+    const res = await POST(
+      makeRequest(makeInteractivePayload('cp:confirm:send_debt_reminder_all', 'שליחה'))
+    )
+
+    // Silence after a tap reads as "it sent", and Meta would redeliver it.
+    expect(res.status).toBe(200)
+    expect(mockSendTextMessage).toHaveBeenCalledWith(
+      SENDER_PHONE_E164,
+      botString('copilot_error', 'he'),
+      'test-access-token',
+      'phone-number-id-1'
+    )
+  })
+
+  it('confirms a single-parent reminder against the org’s own debtor rows', async () => {
+    mockIdentity({ profiles: OWNER_ROW }, COPILOT_ON)
+    mockClassifyOwnerCopilotIntent.mockResolvedValue({
+      action: 'send_debt_reminder_parent',
+      parentId: 'p-1',
+    })
+    mockGetDebtorsOverview.mockResolvedValue({
+      rows: [{ parentId: 'p-1', parentName: 'דנה', optedOut: false, totalDebt: 1200, oldestAgeDays: 5 }],
+      totalDebt: 1200,
+      debtorCount: 1,
+    })
+
+    await POST(makeRequest(makeWebhookPayload('תשלחי תזכורת לדנה')))
+
+    const buttons = mockSendReplyButtons.mock.calls[0][1].buttons as Array<{ id: string }>
+    expect(buttons[0].id).toBe('cp:confirm:send_debt_reminder_parent:p-1')
+    expect(mockSendDebtReminderForParent).not.toHaveBeenCalled()
+  })
+
+  it('never reaches the model when the org has the AI assistant switched off', async () => {
+    // ORG_DATA leaves it off, which is also the default for a new org.
+    mockIdentity({ profiles: OWNER_ROW })
+
+    const res = await POST(makeRequest(makeWebhookPayload('כמה חייבים לי?')))
+
+    expect(res.status).toBe(200)
+    expect(mockClassifyOwnerCopilotIntent).not.toHaveBeenCalled()
+  })
+
+  it('never reaches the model when the org has no AI key', async () => {
+    mockIdentity({ profiles: OWNER_ROW }, COPILOT_ON)
+    mockIsAiConfiguredForOrg.mockResolvedValue(false)
+
+    const res = await POST(makeRequest(makeWebhookPayload('כמה חייבים לי?')))
+
+    expect(res.status).toBe(200)
+    expect(mockClassifyOwnerCopilotIntent).not.toHaveBeenCalled()
+  })
+
+  it('answers a schedule question from the rules, without paying for a classification', async () => {
+    mockIdentity({ profiles: OWNER_ROW }, COPILOT_ON)
+
+    const res = await POST(makeRequest(makeWebhookPayload('אילו שיעורים יש היום?')))
+
+    expect(res.status).toBe(200)
+    expect(mockClassifyOwnerCopilotIntent).not.toHaveBeenCalled()
+    expect(mockSendTextMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls back to the deterministic reply when the copilot is unavailable', async () => {
+    mockIdentity({ profiles: OWNER_ROW }, COPILOT_ON)
+    // null is "copilot unavailable" — the owner must still get an answer.
+    mockClassifyOwnerCopilotIntent.mockResolvedValue(null)
+
+    const res = await POST(makeRequest(makeWebhookPayload('משהו שלא מוכר')))
+
+    expect(res.status).toBe(200)
+    expect(mockSendDebtReminderForParent).not.toHaveBeenCalled()
+    expect(mockSendListMessage).toHaveBeenCalledTimes(1)
   })
 
   it('still files a genuinely unknown number as a lead', async () => {

@@ -264,6 +264,7 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   ai_satisfaction_prompt: [],
   unknown_intent_fallback: [],
   lesson_cancelled_by_teacher: ['teacher_name', 'date_range'],
+  lesson_rescheduled: ['student_name', 'teacher_name', 'old_date', 'old_time', 'date', 'time'],
   day_off_decision: ['date_range', 'decision'],
   welcome_notice: ['org_name'],
 }
@@ -294,6 +295,7 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
     ai_satisfaction_prompt: 'בקשת משוב על תשובת AI',
     unknown_intent_fallback: 'הודעת ברירת מחדל (כוונה לא מזוהה)',
     lesson_cancelled_by_teacher: 'ביטול שיעורים בעקבות חופשת מורה (להורה)',
+    lesson_rescheduled: 'עדכון מועד שיעור (להורה/תלמיד)',
     day_off_decision: 'החלטה על בקשת חופש (למורה)',
     welcome_notice: 'הודעת פתיחה (נשלחת פעם אחת לפני ההודעה הראשונה להורה)',
   },
@@ -316,6 +318,7 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
     ai_satisfaction_prompt: 'Feedback prompt after an AI reply',
     unknown_intent_fallback: 'Default reply (intent not recognised)',
     lesson_cancelled_by_teacher: 'Lessons cancelled for teacher time off (to parent)',
+    lesson_rescheduled: 'Lesson time update',
     day_off_decision: 'Time-off request decision (to teacher)',
     welcome_notice: 'Welcome notice (sent once, before the first message to a parent)',
   },
@@ -343,6 +346,7 @@ export const TEMPLATE_PREVIEW_VARS: Record<MessageTemplateType, Record<string, s
   ai_satisfaction_prompt: {},
   unknown_intent_fallback: {},
   lesson_cancelled_by_teacher: { teacher_name: 'אהרון כהן', date_range: '20/08–22/08' },
+  lesson_rescheduled: { student_name: 'דנה', teacher_name: 'אהרון כהן', old_date: 'יום שני, 21.4', old_time: '17:00', date: 'יום שלישי, 22.4', time: '17:30' },
   day_off_decision: { date_range: '20/08–22/08', decision: 'אושרה ✅' },
   welcome_notice: { org_name: 'מרכז הלמידה של אהרון' },
 }

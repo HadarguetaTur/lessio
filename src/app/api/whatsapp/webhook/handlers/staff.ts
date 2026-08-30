@@ -237,6 +237,11 @@ async function handleSupportDecision(ctx: HandlerContext, send: boolean): Promis
 async function handleOwnerCopilotFreeText(ctx: HandlerContext): Promise<boolean> {
   if (ctx.msg.text == null || !ctx.msg.text.trim()) return false
 
+  const actorProfileId = 'profileId' in ctx.sender ? ctx.sender.profileId : null
+  if (!actorProfileId) {
+    return false
+  }
+
   const intent = await classifyOwnerCopilotIntent(ctx.org.id, ctx.msg.text)
 
   if (!intent || intent.action === 'unknown') {
@@ -333,6 +338,12 @@ async function handleOwnerCopilotDecision(
   ctx: HandlerContext,
   decision: { action: 'confirm' | 'cancel'; kind?: 'send_debt_reminder_all' | 'send_debt_reminder_parent'; parentId?: string }
 ): Promise<void> {
+  const actorProfileId = 'profileId' in ctx.sender ? ctx.sender.profileId : null
+  if (!actorProfileId) {
+    await replyWith(ctx, 'action_not_for_role')
+    return
+  }
+
   if (decision.action === 'cancel') {
     await replyWith(ctx, 'support_cancelled')
     return
@@ -343,13 +354,13 @@ async function handleOwnerCopilotDecision(
     const eligible = overview.rows.filter((row) => !row.optedOut)
 
     await Promise.all(
-      eligible.map((row) => sendDebtReminderForParent(ctx.org.id, row.parentId, ctx.sender.profileId))
+      eligible.map((row) => sendDebtReminderForParent(ctx.org.id, row.parentId, actorProfileId))
     )
     return
   }
 
   if (decision.kind === 'send_debt_reminder_parent' && decision.parentId) {
-    await sendDebtReminderForParent(ctx.org.id, decision.parentId, ctx.sender.profileId)
+    await sendDebtReminderForParent(ctx.org.id, decision.parentId, actorProfileId)
   }
 }
 

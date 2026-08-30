@@ -52,7 +52,7 @@ function loadEnvLocal(): void {
 
 loadEnvLocal()
 
-import { normalizePhone } from '../src/lib/phone'
+import { normalizePhone } from '../../src/lib/phone'
 
 // ── Fixed identity ────────────────────────────────────────────────────────────
 

@@ -27,8 +27,8 @@
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
-import { decryptToken } from '../src/lib/crypto'
-import { registerTemplatesForWABA, TEMPLATES } from '../src/lib/whatsapp/registerTemplates'
+import { decryptToken } from '../../src/lib/crypto'
+import { registerTemplatesForWABA, TEMPLATES } from '../../src/lib/whatsapp/registerTemplates'
 
 // ── Minimal .env.local loader (no dotenv dependency) ──────────────────────────
 

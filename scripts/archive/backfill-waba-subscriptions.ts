@@ -20,8 +20,8 @@
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
-import { decryptToken } from '../src/lib/crypto'
-import { subscribeAppToWABA, getSubscribedApps } from '../src/lib/whatsapp/subscribeApp'
+import { decryptToken } from '../../src/lib/crypto'
+import { subscribeAppToWABA, getSubscribedApps } from '../../src/lib/whatsapp/subscribeApp'
 
 // ── Minimal .env.local loader (no dotenv dependency) ──────────────────────────
 

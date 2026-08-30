@@ -48,7 +48,7 @@ function loadEnvLocal(): void {
 
 loadEnvLocal()
 
-import { normalizePhone } from '../src/lib/phone'
+import { normalizePhone } from '../../src/lib/phone'
 
 const ORG_ID = '9c3c2b2a-1640-4f7e-a102-3e130e8660c2'
 const EXPECTED_ORG_NAME = 'רז מזוריק'

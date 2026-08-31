@@ -86,17 +86,19 @@ function StepIndicator({ current }: { current: Step }) {
 interface BookingFlowProps {
   token: string
   payload: BookingTokenPayload
+  initialWeekStart?: string
 }
 
-export function BookingFlow({ token, payload }: BookingFlowProps) {
+export function BookingFlow({ token, payload, initialWeekStart }: BookingFlowProps) {
   const t = useTranslations('booking.flow')
   const [step, setStep] = useState<Step>('teacher')
-  const [state, setState] = useState<FlowState>({})
+  const [state, setState] = useState<FlowState>({ weekStart: initialWeekStart })
 
   function handleTeacherSelect(teacherId: string, teacherName: string) {
     setState({
       teacherId,
       teacherName,
+      weekStart: state.weekStart,
       durationMinutes: state.durationMinutes ?? 60,
     })
     setStep('availability')

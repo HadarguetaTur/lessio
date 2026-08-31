@@ -19,6 +19,7 @@ import type { AppLocale } from '@/lib/i18n/locale'
 
 export type MessageTemplateType =
   | 'booking_link'
+  | 'booking_next_week_link'
   | 'booking_confirmation'
   | 'lesson_reminder'
   | 'payment_reminder'
@@ -61,6 +62,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
   he: {
     booking_link:
       'אפשר לקבוע שיעור כאן.\n{{booking_url}}\n\nשימו לב: הקישור בתוקף ל-15 דקות, ואחרי בחירת מועד הוא שמור עבורכם ל-5 דקות עד לאישור.',
+    booking_next_week_link:
+      'אפשר לקבוע שיעור לשבוע הבא כאן.\n{{booking_url}}\n\nשימו לב: הקישור בתוקף ל-15 דקות, וייפתח ישירות בשבוע הבא.',
     booking_confirmation:
       '✅ השיעור נקבע!\n\nמורה: {{teacher_name}}\nתאריך: {{date}}\nשעה: {{time}}\n\nנתראה בשיעור 😊',
     lesson_reminder:
@@ -105,6 +108,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
   en: {
     booking_link:
       'You can book a lesson here.\n{{booking_url}}\n\nHeads up: the link is valid for 15 minutes, and once you pick a time it is held for you for 5 minutes while you confirm.',
+    booking_next_week_link:
+      'You can book a lesson for next week here.\n{{booking_url}}\n\nHeads up: the link is valid for 15 minutes and opens directly on next week.',
     booking_confirmation:
       '✅ Your lesson is booked!\n\nTeacher: {{teacher_name}}\nDate: {{date}}\nTime: {{time}}\n\nSee you there 😊',
     lesson_reminder:
@@ -295,6 +300,7 @@ export function stripStandaloneVarLine(template: string, varName: string): strin
  */
 export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   booking_link: ['booking_url'],
+  booking_next_week_link: ['booking_url'],
   booking_confirmation: ['teacher_name', 'date', 'time'],
   lesson_reminder: ['teacher_name', 'date', 'time'],
   payment_reminder: ['amount', 'payment_link'],
@@ -331,6 +337,7 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
 export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, string>> = {
   he: {
     booking_link: 'קישור הזמנת שיעור',
+    booking_next_week_link: 'קישור להזמנת שיעור לשבוע הבא',
     booking_confirmation: 'אישור הזמנת שיעור',
     lesson_reminder: 'תזכורת שיעור',
     payment_reminder: 'תזכורת תשלום',
@@ -354,6 +361,7 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
   },
   en: {
     booking_link: 'Booking link',
+    booking_next_week_link: 'Next-week booking link',
     booking_confirmation: 'Booking confirmation',
     lesson_reminder: 'Lesson reminder',
     payment_reminder: 'Payment reminder',
@@ -394,6 +402,7 @@ export const TEMPLATE_PREVIEW_VARS: Record<
 > = {
   he: {
     booking_link: { booking_url: 'https://www.getlessio.com/book/example-token' },
+    booking_next_week_link: { booking_url: 'https://www.getlessio.com/book/example-token?week=2026-09-06' },
     booking_confirmation: { teacher_name: 'אהרון כהן', date: 'יום שני, 21.4', time: '17:00' },
     lesson_reminder: { teacher_name: 'אהרון כהן', date: 'יום שני, 21.4', time: '17:00' },
     payment_reminder: { amount: '₪250.00', payment_link: 'https://pay.example.com/abc' },
@@ -417,6 +426,7 @@ export const TEMPLATE_PREVIEW_VARS: Record<
   },
   en: {
     booking_link: { booking_url: 'https://www.getlessio.com/book/example-token' },
+    booking_next_week_link: { booking_url: 'https://www.getlessio.com/book/example-token?week=2026-09-06' },
     booking_confirmation: { teacher_name: 'Aaron Cohen', date: 'Monday, 21 Apr', time: '17:00' },
     lesson_reminder: { teacher_name: 'Aaron Cohen', date: 'Monday, 21 Apr', time: '17:00' },
     payment_reminder: { amount: '₪250.00', payment_link: 'https://pay.example.com/abc' },

@@ -34,6 +34,7 @@ export type BotStringKey =
   | 'booking_no_student'
   | 'booking_multiple_students'
   | 'booking_quota_reached'
+  | 'booking_quota_reached_no_cancel'
   | 'booking_quota_cancel_button'
   | 'no_open_homework'
   | 'homework_marked_done'
@@ -72,6 +73,7 @@ export type BotStringKey =
   | 'charge_lines_total'
   // CTA button labels (Meta caps display_text at 20 chars — keep them short)
   | 'cta_book_lesson'
+  | 'cta_book_next_week'
   | 'cta_open_portal'
   | 'cta_pay_now'
   // Buttons on proactive messages. Sent from the Edge Functions, which have
@@ -249,7 +251,9 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     booking_multiple_students:
       'לחשבון מקושרים כמה תלמידים, ולכן אי אפשר לקבוע שיעור אוטומטית מכאן.\nאפשר לפנות לצוות ונשמח לעזור 😊',
     booking_quota_reached:
-      'ל{{student_name}} כבר יש שיעור השבוע, ולכן אי אפשר לקבוע שיעור נוסף לשבוע הזה.\nאפשר לבטל את השיעור הקיים ולקבוע מחדש, או לקבוע לשבוע הבא דרך הקישור 👇',
+      'ל{{student_name}} מכסת השיעורים לשבוע הזה כבר מנוצלת.\nאפשר לבטל את השיעור העתידי ולבחור מועד אחר השבוע, או לקבוע שיעור לשבוע הבא דרך הקישור שיישלח מיד.',
+    booking_quota_reached_no_cancel:
+      'ל{{student_name}} מכסת השיעורים לשבוע הזה כבר מנוצלת.\nהשיעור שמילא את המכסה כבר התקיים, ולכן אי אפשר לבטל אותו. אפשר לקבוע שיעור לשבוע הבא דרך הקישור שיישלח מיד.',
     booking_quota_cancel_button: 'ביטול שיעור',
     no_open_homework: 'לא מצאתי שיעורי בית פתוחים לסימון 🙂',
     homework_marked_done: 'מעולה! שיעורי הבית של {{student_name}} סומנו כהושלמו 🎉',
@@ -289,6 +293,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_lines_total: 'סה״כ לתשלום: {{total}}',
 
     cta_book_lesson: 'לקביעת שיעור',
+    cta_book_next_week: 'לשבוע הבא',
     cta_open_portal: 'לאזור האישי',
     // Must read the same as the URL button registered on the v3 payment
     // templates: the same request reaches a parent either way.
@@ -487,7 +492,9 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     booking_multiple_students:
       'This account has several students linked, so I cannot book automatically from here.\nReach out to the team and we will be happy to help 😊',
     booking_quota_reached:
-      '{{student_name}} already has a lesson this week, so another one cannot be booked for this week.\nYou can cancel the existing lesson and book again, or book next week through the link 👇',
+      "{{student_name}}'s lesson allowance for this week is already used.\nYou can cancel the upcoming lesson and choose another time this week, or book for next week using the link I'll send next.",
+    booking_quota_reached_no_cancel:
+      "{{student_name}}'s lesson allowance for this week is already used.\nThe lesson that used the allowance has already taken place, so it can no longer be cancelled. You can book a lesson for next week using the link I'll send next.",
     booking_quota_cancel_button: 'Cancel a lesson',
     no_open_homework: 'I could not find any open homework to mark 🙂',
     homework_marked_done: "Great! {{student_name}}'s homework is marked as done 🎉",
@@ -530,6 +537,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_lines_total: 'Total due: {{total}}',
 
     cta_book_lesson: 'Book a lesson',
+    cta_book_next_week: 'Book next week',
     cta_open_portal: 'My personal area',
     cta_pay_now: 'Pay securely',
     btn_confirm_attendance: 'Confirm attendance',

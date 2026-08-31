@@ -906,8 +906,9 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
 
   // 10b. Warn when this week is already used up, then still send the link —
   // the calendar hides only the full week, so later weeks stay bookable.
-  await notifyIfWeeklyQuotaReached({
+  const quotaNotice = await notifyIfWeeklyQuotaReached({
     orgId: org.id,
+    parentId: parent.id,
     studentId,
     senderPhone,
     accessToken,
@@ -923,17 +924,17 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
   })
 
   // 10. Build booking URL from request origin
-  const bookingUrl = `${origin}/book/${token}`
+  const bookingUrl = `${origin}/book/${token}${quotaNotice.atQuota && quotaNotice.nextWeekStart ? `?week=${quotaNotice.nextWeekStart}` : ''}`
 
   // 11. Send booking link via WhatsApp, as a CTA button — the signed token makes
   //     the raw URL unreadably long in a plain-text body.
   await sendLinkReply({
     orgId: org.id,
     to: senderPhone,
-    templateType: 'booking_link',
+    templateType: quotaNotice.atQuota ? 'booking_next_week_link' : 'booking_link',
     urlVar: 'booking_url',
     url: bookingUrl,
-    buttonKey: 'cta_book_lesson',
+    buttonKey: quotaNotice.atQuota ? 'cta_book_next_week' : 'cta_book_lesson',
     locale,
     accessToken,
     phoneNumberId,

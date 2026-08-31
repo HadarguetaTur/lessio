@@ -185,8 +185,9 @@ async function sendBookingLink(ctx: HandlerContext): Promise<void> {
 
   // Warn when this week is already used up, then still send the link — the
   // calendar hides only the full week, so later weeks stay bookable.
-  await notifyIfWeeklyQuotaReached({
+  const quotaNotice = await notifyIfWeeklyQuotaReached({
     orgId: ctx.org.id,
+    parentId: parent.id,
     studentId: ctx.sender.studentId,
     senderPhone: ctx.senderPhone,
     accessToken: ctx.accessToken,
@@ -203,10 +204,10 @@ async function sendBookingLink(ctx: HandlerContext): Promise<void> {
   await sendLinkReply({
     orgId: ctx.org.id,
     to: ctx.senderPhone,
-    templateType: 'booking_link',
+    templateType: quotaNotice.atQuota ? 'booking_next_week_link' : 'booking_link',
     urlVar: 'booking_url',
-    url: `${ctx.origin}/book/${token}`,
-    buttonKey: 'cta_book_lesson',
+    url: `${ctx.origin}/book/${token}${quotaNotice.atQuota && quotaNotice.nextWeekStart ? `?week=${quotaNotice.nextWeekStart}` : ''}`,
+    buttonKey: quotaNotice.atQuota ? 'cta_book_next_week' : 'cta_book_lesson',
     locale: ctx.locale,
     accessToken: ctx.accessToken,
     phoneNumberId: ctx.phoneNumberId,

@@ -37,6 +37,7 @@ export function resolveRecipientLocale(params: {
 
 export type MessageTemplateType =
   | 'booking_link'
+  | 'booking_next_week_link'
   | 'booking_confirmation'
   | 'lesson_reminder'
   | 'payment_reminder'
@@ -66,6 +67,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
   he: {
     booking_link:
       'אפשר לקבוע שיעור כאן.\n{{booking_url}}\n\nשימו לב: הקישור בתוקף ל-15 דקות, ואחרי בחירת מועד הוא שמור עבורכם ל-5 דקות עד לאישור.',
+    booking_next_week_link:
+      'אפשר לקבוע שיעור לשבוע הבא כאן.\n{{booking_url}}\n\nשימו לב: הקישור בתוקף ל-15 דקות, וייפתח ישירות בשבוע הבא.',
     booking_confirmation:
       '✅ השיעור נקבע!\n\nמורה: {{teacher_name}}\nתאריך: {{date}}\nשעה: {{time}}\n\nנתראה בשיעור 😊',
     lesson_reminder:
@@ -110,6 +113,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
   en: {
     booking_link:
       'You can book a lesson here.\n{{booking_url}}\n\nHeads up: the link is valid for 15 minutes, and once you pick a time it is held for you for 5 minutes while you confirm.',
+    booking_next_week_link:
+      'You can book a lesson for next week here.\n{{booking_url}}\n\nHeads up: the link is valid for 15 minutes and opens directly on next week.',
     booking_confirmation:
       '✅ Your lesson is booked!\n\nTeacher: {{teacher_name}}\nDate: {{date}}\nTime: {{time}}\n\nSee you there 😊',
     lesson_reminder:

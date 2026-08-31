@@ -5,10 +5,13 @@ import { BookingFlow } from '@/components/booking/BookingFlow'
 
 interface BookPageProps {
   params: Promise<{ token: string }>
+  searchParams: Promise<{ week?: string }>
 }
 
-export default async function BookPage({ params }: BookPageProps) {
+export default async function BookPage({ params, searchParams }: BookPageProps) {
   const { token } = await params
+  const { week } = await searchParams
+  const initialWeekStart = week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? week : undefined
   let payload: Awaited<ReturnType<typeof verifyBookingToken>> | null = null
   let isExpired = false
 
@@ -19,7 +22,7 @@ export default async function BookPage({ params }: BookPageProps) {
   }
 
   if (payload) {
-    return <BookingFlow token={token} payload={payload} />
+    return <BookingFlow token={token} payload={payload} initialWeekStart={initialWeekStart} />
   }
 
   const t = await getTranslations('booking.link')

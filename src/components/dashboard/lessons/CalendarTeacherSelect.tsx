@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { preserveCalendarParams } from './calendarParams'
 
 interface CalendarTeacherSelectProps {
   teachers: { id: string; full_name: string }[]
@@ -27,8 +28,7 @@ export function CalendarTeacherSelect({
     if (val) params.set('teacher', val)
     if (view === 'day' && dateStr) params.set('date', dateStr)
     if (view === 'month' && monthStr) params.set('month', monthStr)
-    const student = searchParams.get('student')
-    if (student) params.set('student', student)
+    preserveCalendarParams(searchParams, params)
     router.push(`/lessons?${params.toString()}`)
   }
 

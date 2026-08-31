@@ -8,6 +8,7 @@ import {
   getCurrentDayStr,
   getWeekDays,
   getMonthDays,
+  filterCalendarLessons,
 } from '@/lib/lessons'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { getStudents } from '@/lib/students'
@@ -16,6 +17,8 @@ import { WeekNav } from '@/components/dashboard/lessons/WeekNav'
 import { DayNav } from '@/components/dashboard/lessons/DayNav'
 import { MonthNav } from '@/components/dashboard/lessons/MonthNav'
 import { ViewToggle } from '@/components/dashboard/lessons/ViewToggle'
+import { CancelledToggle } from '@/components/dashboard/lessons/CancelledToggle'
+import { CANCELLED_ON } from '@/components/dashboard/lessons/calendarParams'
 import { buildWeekCalendarPayload } from '@/components/dashboard/lessons/WeekView'
 import { buildMonthCalendarPayload } from '@/components/dashboard/lessons/MonthView'
 import {
@@ -42,11 +45,14 @@ export default async function TeacherSchedulePage(props: {
     date?: string
     month?: string
     student?: string
+    cancelled?: string
   }>
 }) {
   const t = await getTranslations('teacherSelf')
-  const { view: viewParam, week, date, month, student: studentParam } = await props.searchParams
+  const { view: viewParam, week, date, month, student: studentParam, cancelled } =
+    await props.searchParams
   const studentParsed = z.string().uuid().safeParse(studentParam)
+  const includeCancelled = cancelled === CANCELLED_ON
   const view: CalendarView =
     viewParam === 'day' || viewParam === 'month' ? viewParam : 'week'
 
@@ -107,10 +113,11 @@ export default async function TeacherSchedulePage(props: {
     const weekStr = week ?? currentWeekStr
     const weekDays = getWeekDays(weekStr, timezone)
     const lessons = await getLessonsForWeek(orgId, timezone, weekStr, teacher.id, studentFilter)
+    const { visible, hiddenCount } = filterCalendarLessons(lessons, { includeCancelled })
 
     const weekCalendar = await buildWeekCalendarPayload({
       weekDays,
-      lessons,
+      lessons: visible,
       holidays,
       timezone,
       todayStr,
@@ -150,6 +157,9 @@ export default async function TeacherSchedulePage(props: {
                 showTeacherFilter={false}
               />
             </div>
+            <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
+              <CancelledToggle hiddenCount={hiddenCount} active={includeCancelled} />
+            </div>
           </div>
           <LessonsScheduleSection
             variant="week"
@@ -180,6 +190,7 @@ export default async function TeacherSchedulePage(props: {
       teacher.id,
       studentFilter
     )
+    const { visible, hiddenCount } = filterCalendarLessons(lessons, { includeCancelled })
 
     return (
       <LessonScheduleSheetProvider
@@ -211,11 +222,14 @@ export default async function TeacherSchedulePage(props: {
                   todayStr={todayStr}
                 />
               </div>
+              <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
+                <CancelledToggle hiddenCount={hiddenCount} active={includeCancelled} />
+              </div>
             </div>
           </div>
           <DayView
             dateStr={dateStr}
-            lessons={lessons}
+            lessons={visible}
             holidays={holidays}
             timezone={timezone}
             weekStr={weekStr}
@@ -242,6 +256,7 @@ export default async function TeacherSchedulePage(props: {
     teacher.id,
     studentFilter
   )
+  const { visible, hiddenCount } = filterCalendarLessons(lessons, { includeCancelled })
 
   const anchorBase = new Date(`${firstCell.dateStr}T12:00:00Z`)
   const anchorDow = anchorBase.getUTCDay()
@@ -250,7 +265,7 @@ export default async function TeacherSchedulePage(props: {
 
   const monthCalendar = await buildMonthCalendarPayload({
     cells,
-    lessons,
+    lessons: visible,
     holidays,
     timezone,
     todayStr,
@@ -289,6 +304,9 @@ export default async function TeacherSchedulePage(props: {
                 monthStr={monthStr}
                 currentMonthStr={currentMonthStr}
               />
+            </div>
+            <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
+              <CancelledToggle hiddenCount={hiddenCount} active={includeCancelled} />
             </div>
           </div>
         </div>

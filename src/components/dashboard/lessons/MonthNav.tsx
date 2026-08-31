@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { preserveCalendarParams } from './calendarParams'
 
 interface MonthNavProps {
   monthStr: string       // "YYYY-MM"
@@ -31,8 +32,7 @@ export function MonthNav({
     const nextStr = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`
     const params = new URLSearchParams({ view: 'month', month: nextStr })
     if (scheduleBasePath === '/lessons' && teacherId) params.set('teacher', teacherId)
-    const student = searchParams.get('student')
-    if (student) params.set('student', student)
+    preserveCalendarParams(searchParams, params)
     router.push(`${scheduleBasePath}?${params.toString()}`)
   }
 
@@ -51,8 +51,7 @@ export function MonthNav({
           href={(() => {
             const p = new URLSearchParams({ view: 'month', month: currentMonthStr })
             if (scheduleBasePath === '/lessons' && teacherId) p.set('teacher', teacherId)
-            const student = searchParams.get('student')
-            if (student) p.set('student', student)
+            preserveCalendarParams(searchParams, p)
             return `${scheduleBasePath}?${p.toString()}`
           })()}
           className="px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors ml-1"

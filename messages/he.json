@@ -908,6 +908,8 @@
     "prevMonth": "חודש קודם",
     "nextMonth": "חודש הבא",
     "allTeachers": "כל המורים",
+    "showCancelled": "מבוטלים",
+    "showCancelledHint": "הצג שיעורים מבוטלים",
     "viewDay": "יומי",
     "viewWeek": "שבועי",
     "viewMonth": "חודשי",

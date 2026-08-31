@@ -908,6 +908,8 @@
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
     "allTeachers": "All Teachers",
+    "showCancelled": "Cancelled",
+    "showCancelledHint": "Show cancelled lessons",
     "viewDay": "Daily",
     "viewWeek": "Weekly",
     "viewMonth": "Monthly",

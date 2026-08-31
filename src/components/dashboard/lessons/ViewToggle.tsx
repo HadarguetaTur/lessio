@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { preserveCalendarParams } from './calendarParams'
 
 type CalendarView = 'day' | 'week' | 'month'
 
@@ -37,8 +38,7 @@ export function ViewToggle({
     const params = new URLSearchParams()
     params.set('view', view)
     if (scheduleBasePath === '/lessons' && teacherId) params.set('teacher', teacherId)
-    const student = searchParams.get('student')
-    if (student) params.set('student', student)
+    preserveCalendarParams(searchParams, params)
 
     if (view === 'day') {
       // preserve the currently visible date if possible

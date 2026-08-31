@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { preserveCalendarParams } from './calendarParams'
 
 interface DayNavProps {
   dateStr: string       // YYYY-MM-DD
@@ -26,8 +27,7 @@ export function DayNav({ dateStr, todayStr, scheduleBasePath = '/lessons', teach
     const nextStr = next.toISOString().substring(0, 10)
     const params = new URLSearchParams({ view: 'day', date: nextStr })
     if (scheduleBasePath === '/lessons' && teacherId) params.set('teacher', teacherId)
-    const student = searchParams.get('student')
-    if (student) params.set('student', student)
+    preserveCalendarParams(searchParams, params)
     router.push(`${scheduleBasePath}?${params.toString()}`)
   }
 
@@ -47,8 +47,7 @@ export function DayNav({ dateStr, todayStr, scheduleBasePath = '/lessons', teach
           href={(() => {
             const p = new URLSearchParams({ view: 'day', date: todayStr })
             if (scheduleBasePath === '/lessons' && teacherId) p.set('teacher', teacherId)
-            const student = searchParams.get('student')
-            if (student) p.set('student', student)
+            preserveCalendarParams(searchParams, p)
             return `${scheduleBasePath}?${p.toString()}`
           })()}
           className="px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors ml-1"

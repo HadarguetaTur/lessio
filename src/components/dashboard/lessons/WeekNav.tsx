@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { formatWeekRangeLabel, parseAppLocale } from '@/lib/i18n/locale'
+import { preserveCalendarParams } from './calendarParams'
 
 interface TeacherOption {
   id: string
@@ -40,16 +41,14 @@ export function WeekNav({
     const nextStr = next.toISOString().substring(0, 10)
     const params = new URLSearchParams({ week: nextStr })
     if (scheduleBasePath === '/lessons' && teacherId) params.set('teacher', teacherId)
-    const student = searchParams.get('student')
-    if (student) params.set('student', student)
+    preserveCalendarParams(searchParams, params)
     router.push(`${scheduleBasePath}?${params.toString()}`)
   }
 
   function onTeacherChange(val: string) {
     const params = new URLSearchParams({ week: weekStr })
     if (val) params.set('teacher', val)
-    const student = searchParams.get('student')
-    if (student) params.set('student', student)
+    preserveCalendarParams(searchParams, params)
     router.push(`${scheduleBasePath}?${params.toString()}`)
   }
 
@@ -65,8 +64,7 @@ export function WeekNav({
             href={(() => {
               const p = new URLSearchParams()
               if (scheduleBasePath === '/lessons' && teacherId) p.set('teacher', teacherId)
-              const student = searchParams.get('student')
-              if (student) p.set('student', student)
+              preserveCalendarParams(searchParams, p)
               if (scheduleBasePath === '/teacher/schedule' && currentWeekStr) {
                 p.set('week', currentWeekStr)
               }

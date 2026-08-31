@@ -4,6 +4,8 @@ import type { Lesson, LessonAccessScope, LessonStatus, LessonType } from '@/lib/
 
 export type { Lesson, LessonAccessScope, LessonStatus, LessonType } from '@/lib/lessons/types'
 export { formatTime, formatDate } from '@/lib/lessons/format'
+export { filterCalendarLessons } from '@/lib/lessons/filterCalendarLessons'
+export type { CalendarLessonsResult } from '@/lib/lessons/filterCalendarLessons'
 
 /** Parse UTC offset in milliseconds for a given timezone at a given moment */
 function getOffsetMs(timezone: string, at: Date): number {

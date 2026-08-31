@@ -1473,10 +1473,10 @@ describe('WhatsApp interactive menu', () => {
     expect(mockSendLinkReply).not.toHaveBeenCalled()
   })
 
-  it('books for the student named in the tapped payload', async () => {
+  it('keeps the stored Hebrew locale when an English-named student is tapped', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'organizations') return buildChain({ data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' }, error: null })
-      if (table === 'parents') return buildChain({ data: { id: PARENT_ID, full_name: 'יעל לוי' }, error: null })
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID, full_name: 'יעל לוי', preferred_locale: 'he' }, error: null })
       if (table === 'relationships') {
         const chain = buildChain(null) as Record<string, unknown>
         chain['select'] = () => chain
@@ -1485,7 +1485,7 @@ describe('WhatsApp interactive menu', () => {
           Promise.resolve({
             data: [
               { student_id: 'student-1', students: { id: 'student-1', full_name: 'דנה' } },
-              { student_id: 'student-2', students: { id: 'student-2', full_name: 'יובל' } },
+              { student_id: 'student-2', students: { id: 'student-2', full_name: 'Daniel Adams' } },
             ],
             error: null,
           }).then(r)
@@ -1494,14 +1494,14 @@ describe('WhatsApp interactive menu', () => {
       return buildChain({ data: null, error: null })
     })
 
-    const res = await POST(makeRequest(makeInteractivePayload('m:book:student-2')))
+    const res = await POST(makeRequest(makeInteractivePayload('m:book:student-2', 'Daniel Adams')))
     expect(res.status).toBe(200)
 
     expect(mockSignBookingToken).toHaveBeenCalledWith(
       expect.objectContaining({ studentId: 'student-2' })
     )
     expect(mockSendLinkReply).toHaveBeenCalledWith(
-      expect.objectContaining({ templateType: 'booking_link' })
+      expect.objectContaining({ templateType: 'booking_link', locale: 'he' })
     )
   })
 

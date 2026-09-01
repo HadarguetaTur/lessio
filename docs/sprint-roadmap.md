@@ -362,6 +362,42 @@ M2 closes that gap in the correct direction.
 
 ---
 
+## Scheduling edge cases — breaks + leftover time (2026-09-01)
+
+**Status:** ✅ Built (migration `20260901160000` not yet applied to production)
+**Track:** standalone; no sprint dependency
+**Amends:** `docs/decisions.md` #2 and #6
+
+Two gaps in slot generation that had been open since Sprint 1.
+
+**Breaks between lessons.** `break_duration_minutes` was only a slot *stride* — the
+overlap test still offered a slot starting the instant a lesson ended, so the setting
+meant to space lessons out handed out back-to-back pairs. It was also unreachable by
+the owner (superadmin console only), and had no per-teacher value even though a break
+is a property of the person teaching. Now: a real buffer around lessons and locks in
+parent-facing generation and at lock time; `teachers.break_duration_minutes` overrides
+the org, NULL inherits, 0 is an explicit "no break". Teachers and admins creating a
+lesson by hand get a warning and may proceed — the buffer binds parents and the bot,
+not the teacher.
+
+**Leftover time.** The slot loop silently discarded whatever could not fit a whole
+lesson at the end of a day. Now `detectDayTail` catches that remainder after a booking
+and asks the teacher: block it, extend the day one-off, or leave it. One prompt per
+teacher per date, and reads re-derive the remainder so a cancelled lesson retires the
+question on its own.
+
+**Also here:** `/settings/scheduling` (first owner-facing home for the break and
+`min_booking_notice_hours`), a band-merge bug in the week view that made every slot its
+own band whenever a break was set, and `resolveDayWindows` — one implementation of the
+"special hours else weekly grid, minus blocks" rule that `getAvailableSlots` and
+`checkTeacherAvailability` had each written out separately.
+
+**Known gaps:** `createSeries` is not break-aware and does not run tail detection.
+Mid-day gaps are out of scope — only the last window of a day is examined. The
+`min_booking_notice_hours` end-vs-start quirk is documented, not fixed.
+
+---
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

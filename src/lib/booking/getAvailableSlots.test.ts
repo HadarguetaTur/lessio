@@ -263,6 +263,232 @@ describe('getAvailableSlots', () => {
   })
 })
 
+// ── The break as a buffer around lessons ──────────────────────────────────────
+//
+// The stride tested above is only half of what the break means. These lock in
+// the other half: a parent is never offered a slot that leaves the teacher no
+// gap on either side of a lesson they already have.
+
+describe('getAvailableSlots — break buffer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('drops the slot that would start the instant a lesson ends', async () => {
+    // 16:00–19:00, lesson 16:00–17:00, break 15, 60-min slots.
+    // Stride offers 16:00 and 17:15. Before the buffer, 17:00 was the second
+    // candidate whenever the stride landed there; now the buffer runs to 17:15
+    // and only a slot at or after it survives.
+    fromMock = tableRouter({
+      organizations: single(baseOrg({ break_duration_minutes: 15 })),
+      teachers: single({ break_duration_minutes: null }),
+      availability_overrides: array([]),
+      availability: array([{ start_time: '16:00:00', end_time: '19:00:00' }]),
+      lessons: array([
+        { start_at: '2026-03-23T16:00:00.000Z', end_at: '2026-03-23T17:00:00.000Z' },
+      ]),
+      slot_locks: array([]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    // 16:00 is the lesson itself; 17:15 is exactly one break after it ends.
+    expect(slots.map(s => s.startAt)).toEqual(['2026-03-23T17:15:00.000Z'])
+  })
+
+  it('keeps the break clear on both sides of a lesson', async () => {
+    // 15:00–19:00, lesson 17:00–18:00, break 30, 30-min slots.
+    // Stride offers 15:00, 16:00, 17:00, 18:00. The buffered lesson spans
+    // 16:30–18:30, which pins both boundaries exactly:
+    //   16:00–16:30 ends the moment the buffer opens  → still offered
+    //   18:00–18:30 sits inside the trailing buffer   → dropped
+    fromMock = tableRouter({
+      organizations: single(baseOrg({ break_duration_minutes: 30 })),
+      teachers: single({ break_duration_minutes: null }),
+      availability_overrides: array([]),
+      availability: array([{ start_time: '15:00:00', end_time: '19:00:00' }]),
+      lessons: array([
+        { start_at: '2026-03-23T17:00:00.000Z', end_at: '2026-03-23T18:00:00.000Z' },
+      ]),
+      slot_locks: array([]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 30,
+      organizationId: ORG_ID,
+    })
+
+    expect(slots.map(s => s.startAt)).toEqual([
+      '2026-03-23T15:00:00.000Z',
+      '2026-03-23T16:00:00.000Z',
+    ])
+  })
+
+  it('buffers an active slot lock the same way it buffers a lesson', async () => {
+    fromMock = tableRouter({
+      organizations: single(baseOrg({ break_duration_minutes: 30 })),
+      teachers: single({ break_duration_minutes: null }),
+      availability_overrides: array([]),
+      availability: array([{ start_time: '16:00:00', end_time: '20:00:00' }]),
+      lessons: array([]),
+      slot_locks: array([
+        { start_at: '2026-03-23T16:00:00.000Z', end_at: '2026-03-23T17:00:00.000Z' },
+      ]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    // Stride puts candidates at 16:00, 17:30, 19:00. 17:30 clears the lock's
+    // buffer (ends 17:30); 16:00 is the lock itself.
+    expect(slots.map(s => s.startAt)).toEqual([
+      '2026-03-23T17:30:00.000Z',
+      '2026-03-23T19:00:00.000Z',
+    ])
+  })
+
+  it("uses the teacher's break instead of the organization's", async () => {
+    // Org says 0, teacher needs 30 → the 17:00 slot must disappear.
+    fromMock = tableRouter({
+      organizations: single(baseOrg({ break_duration_minutes: 0 })),
+      teachers: single({ break_duration_minutes: 30 }),
+      availability_overrides: array([]),
+      availability: array([{ start_time: '16:00:00', end_time: '20:00:00' }]),
+      lessons: array([
+        { start_at: '2026-03-23T16:00:00.000Z', end_at: '2026-03-23T17:00:00.000Z' },
+      ]),
+      slot_locks: array([]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    expect(slots.map(s => s.startAt)).toEqual([
+      '2026-03-23T17:30:00.000Z',
+      '2026-03-23T19:00:00.000Z',
+    ])
+  })
+
+  it('lets a teacher opt out of the org break with an explicit 0', async () => {
+    // The distinction NULL vs 0 exists for exactly this: the business wants 30,
+    // this teacher teaches back-to-back, and the parent may book 17:00.
+    fromMock = tableRouter({
+      organizations: single(baseOrg({ break_duration_minutes: 30 })),
+      teachers: single({ break_duration_minutes: 0 }),
+      availability_overrides: array([]),
+      availability: array([{ start_time: '16:00:00', end_time: '18:00:00' }]),
+      lessons: array([
+        { start_at: '2026-03-23T16:00:00.000Z', end_at: '2026-03-23T17:00:00.000Z' },
+      ]),
+      slot_locks: array([]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    expect(slots.map(s => s.startAt)).toEqual(['2026-03-23T17:00:00.000Z'])
+  })
+
+  it('inherits the org break when the teacher has no preference', async () => {
+    fromMock = tableRouter({
+      organizations: single(baseOrg({ break_duration_minutes: 30 })),
+      teachers: single({ break_duration_minutes: null }),
+      availability_overrides: array([]),
+      availability: array([{ start_time: '16:00:00', end_time: '18:00:00' }]),
+      lessons: array([
+        { start_at: '2026-03-23T16:00:00.000Z', end_at: '2026-03-23T17:00:00.000Z' },
+      ]),
+      slot_locks: array([]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    expect(slots).toHaveLength(0)
+  })
+
+  // The asymmetry that makes the cadence test above still hold: a blocked range
+  // is the teacher being absent, not busy, so no gap is owed around it.
+  it('does not buffer a blocked range', async () => {
+    fromMock = tableRouter({
+      organizations: single(baseOrg({ break_duration_minutes: 30 })),
+      teachers: single({ break_duration_minutes: null }),
+      availability_overrides: array([
+        { is_available: false, start_time: '17:00:00', end_time: '17:30:00' },
+      ]),
+      availability: array([{ start_time: '16:00:00', end_time: '19:00:00' }]),
+      lessons: array([]),
+      slot_locks: array([]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 30,
+      organizationId: ORG_ID,
+    })
+
+    // Stride 30+30 → 16:00, 17:00, 18:00. 17:00 is the block itself; 18:00 is
+    // offered even though it sits only 30 minutes after the block ends, and
+    // 16:00 stands even though it ends 30 minutes before the block begins.
+    expect(slots.map(s => s.startAt)).toEqual([
+      '2026-03-23T16:00:00.000Z',
+      '2026-03-23T18:00:00.000Z',
+    ])
+  })
+
+  it('behaves exactly as before when no break is configured', async () => {
+    fromMock = tableRouter({
+      organizations: single(baseOrg({ break_duration_minutes: 0 })),
+      teachers: single({ break_duration_minutes: null }),
+      availability_overrides: array([]),
+      availability: array([{ start_time: '16:00:00', end_time: '18:00:00' }]),
+      lessons: array([
+        { start_at: '2026-03-23T16:00:00.000Z', end_at: '2026-03-23T17:00:00.000Z' },
+      ]),
+      slot_locks: array([]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    expect(slots.map(s => s.startAt)).toEqual(['2026-03-23T17:00:00.000Z'])
+  })
+})
+
 // ── Mock helpers ──────────────────────────────────────────────────────────────
 
 /** Routes DB queries to per-table stub data. */

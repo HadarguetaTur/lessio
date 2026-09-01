@@ -302,6 +302,7 @@
     "settingsHolidays": "Holidays",
     "settingsReminders": "Reminders",
     "settingsExams": "Exam Policy",
+    "settingsScheduling": "Scheduling & Breaks",
     "settingsAiAssistant": "AI Assistant",
     "settingsEmail": "Email",
     "settingsLocale": "Language & Display",
@@ -946,6 +947,8 @@
       "noWindowsForDay": "No availability set for {day}",
       "overrideWindowForDate": "The window set for this date:",
       "overrideReason": "Reason: {reason}",
+      "breakBefore": "Lesson before at {start}–{end} — leaves {gap} minutes instead of {required}",
+      "breakAfter": "Lesson after at {start}–{end} — leaves {gap} minutes instead of {required}",
       "editAvailability": "Edit availability",
       "dismissedNotice": "The lesson was not scheduled. Change the time, or edit the availability."
     },
@@ -1024,7 +1027,8 @@
       "googleCalendar": "There is a Google Calendar event at the requested time. Schedule the lesson anyway?",
       "outsideWindows": "The teacher is not available at this time. Schedule the lesson anyway?",
       "markedUnavailable": "The teacher marked this date as unavailable. Schedule the lesson anyway?",
-      "outsideDayWindow": "The requested time is outside the availability window set for this date. Schedule the lesson anyway?"
+      "outsideDayWindow": "The requested time is outside the availability window set for this date. Schedule the lesson anyway?",
+      "breakTooShort": "This lesson does not leave the teacher their {minutes}-minute break. Schedule it anyway?"
     },
     "messagesPage": {
       "title": "Portal messages",
@@ -1411,6 +1415,10 @@
         "title": "Exam Policy",
         "description": "What happens when a parent or student reports an exam"
       },
+      "scheduling": {
+        "title": "Scheduling & Breaks",
+        "description": "Break between lessons, booking notice, and leftover time at the end of a day"
+      },
       "holidays": {
         "title": "Holidays",
         "description": "Days with no lessons"
@@ -1599,6 +1607,23 @@
       "saved": "Settings saved",
       "errors": {
         "saveFailed": "Saving failed. Please try again."
+      }
+    },
+    "scheduling": {
+      "title": "Scheduling & Breaks",
+      "subtitle": "The defaults that decide which times parents are offered when they book",
+      "breakLabel": "Break between lessons",
+      "breakHint": "How long a teacher needs between lessons. The break is kept clear in the times offered to parents and the bot — a teacher or admin can still book back-to-back by hand, with a warning.",
+      "noticeLabel": "Minimum booking notice",
+      "noticeHint": "Times starting sooner than this are not offered to parents. 0 allows same-day booking.",
+      "tailPromptLabel": "Ask about leftover time at the end of a day",
+      "tailPromptHint": "When a lesson leaves less than a full lesson at the end of the day, the teacher is notified and can block the leftover or extend availability for that date.",
+      "overriddenByTeachers": "{count, plural, one {# teacher has set their own break, which overrides this default} other {# teachers have set their own break, which overrides this default}}",
+      "minutes": "minutes",
+      "hours": "hours",
+      "saved": "Settings saved",
+      "errors": {
+        "saveFailed": "Could not save the settings"
       }
     },
     "billingPolicy": {
@@ -2653,6 +2678,32 @@
       "saving": "Saving...",
       "add": "Add"
     },
+    "breakSetting": {
+      "label": "Break between lessons",
+      "hint": "The time you need between lessons. Times offered to parents and the bot keep this break clear; a lesson created by hand can still be scheduled back-to-back.",
+      "inheritPlaceholder": "Business default ({minutes})",
+      "inheriting": "Empty = follow the business default of {minutes} minutes.",
+      "effective": "{minutes} minutes will be kept between lessons.",
+      "noBreak": "No break will be kept — lessons may be scheduled back-to-back.",
+      "minutes": "minutes"
+    },
+    "tail": {
+      "title": "Leftover time at the end of a day",
+      "summary": "{date}: {minutes} minutes left ({start}–{end}) — shorter than the shortest bookable lesson.",
+      "block": "Block the leftover",
+      "blockHint": "Marks this time unavailable on this date only.",
+      "extend": "Extend availability",
+      "extendHint": "A one-off extension for this date, so another lesson fits.",
+      "extendTo": "Until",
+      "dismiss": "Leave it as is",
+      "empty": "No leftover time at the moment",
+      "errors": {
+        "promptNotFound": "The prompt was not found",
+        "extendTooEarly": "The new end time must be later than the current one",
+        "extendPastMidnight": "Availability cannot be extended past midnight",
+        "resolveFailed": "Could not update the availability"
+      }
+    },
     "overrides": {
       "title": "Schedule Exceptions",
       "addOverride": "Add Exception",
@@ -2756,6 +2807,8 @@
       "windowNotFound": "Availability window not found",
       "updateAvailabilityFailed": "Could not update the availability",
       "deleteAvailabilityFailed": "Could not delete the availability",
+      "invalidBreak": "The break must be a whole number between 0 and 120 minutes",
+      "saveBreakFailed": "Could not save the break",
       "pickDate": "Select a date",
       "saveOverrideFailed": "Could not save the override",
       "dayAlreadyBlocked": "That date is already blocked in full",
@@ -4745,6 +4798,8 @@
     "dayOffRequestedBody": "{range} · {count} lessons scheduled",
     "examReported": "📄 Exam reported — {student}",
     "examReportedBody": "{subject} · {title} · {date}",
+    "availabilityTail": "🕒 {minutes} minutes left at the end of the day",
+    "availabilityTailBody": "{date} · {start}–{end} — too short for a lesson. What would you like to do?",
     "dayOffApproved": "Your day-off request was approved ✅",
     "dayOffRejected": "Your day-off request was declined",
     "supportTicketReply": "Support replied to your request",

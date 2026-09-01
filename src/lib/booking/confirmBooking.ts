@@ -14,6 +14,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { LessonConflictError } from '@/lib/lessons/createLesson'
+import { detectDayTail } from '@/lib/scheduling/dayTail'
 import { validateSlotLock } from './validateSlotLock'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
 
@@ -204,6 +205,16 @@ export async function confirmBooking({
     .update({ status: 'consumed' })
     .eq('id', lockId)
     .eq('organization_id', organizationId)
+
+  // 7. This booking may have stranded a few unbookable minutes at the end of
+  // the teacher's day. Awaited rather than fired and forgotten — an unawaited
+  // promise can be cut off when the request closes — but it swallows its own
+  // errors, so it cannot turn a completed booking into a failure.
+  await detectDayTail({
+    organizationId,
+    teacherId,
+    startAtUtc: lesson.start_at,
+  })
 
   return {
     lessonId: lesson.id,

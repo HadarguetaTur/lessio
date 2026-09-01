@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { assertOrgNotSaasReadOnly } from '@/lib/saas/subscriptions'
+import { detectDayTail } from '@/lib/scheduling/dayTail'
 import type { LessonStatus, LessonType } from '@/lib/lessons/types'
 
 export type CreateLessonParams = {
@@ -176,6 +177,13 @@ export async function createLesson(
     student_ids: studentIds,
     created_by: createdByProfileId,
   })
+
+  // A lesson placed late in the day can leave a remainder too short to sell.
+  // Only scheduled lessons occupy the calendar, so only they can strand time.
+  // Swallows its own errors — the lesson is already created.
+  if (status === 'scheduled') {
+    await detectDayTail({ organizationId: orgId, teacherId, startAtUtc: lesson.start_at })
+  }
 
   return { lessonId: lesson.id, startAt: lesson.start_at, endAt: lesson.end_at }
 }

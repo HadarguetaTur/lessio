@@ -7,11 +7,20 @@
  * Slot start/end times are returned as UTC ISO strings.
  *
  * Slot formula (decisions.md #2):
- *   next_slot_start = current_slot_start + lesson_duration + break_duration_minutes
+ *   next_slot_start = current_slot_start + lesson_duration + break
+ *
+ * This function serves the PARENT-FACING booking surfaces only — the WebView at
+ * /book/[token] and the portal, which is also where the WhatsApp bot's link
+ * lands. Nothing on the dashboard calls it; teachers and admins create lessons
+ * through createLesson, which checks conflicts but not availability. That is
+ * what lets the break be enforced here without a flag: a parent may never be
+ * offered a slot that leaves the teacher no gap, while the teacher remains free
+ * to book back-to-back by hand.
  */
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { resolveBreakMinutes } from '@/lib/scheduling/breaks'
 import { getWeeklyQuotaStatus } from './weeklyQuota'
 
 export interface AvailableSlot {
@@ -47,6 +56,20 @@ export async function getAvailableSlots({
   if (orgError || !org) throw new Error(`Organization not found: ${organizationId}`)
 
   const { timezone, break_duration_minutes, min_booking_notice_hours } = org
+
+  // 1b. The teacher may need a different break than the business default.
+  // NULL inherits; an explicit 0 is a teacher who teaches back-to-back.
+  const { data: teacherRow } = await db
+    .from('teachers')
+    .select('break_duration_minutes')
+    .eq('id', teacherId)
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+
+  const breakMinutes = resolveBreakMinutes(
+    break_duration_minutes ?? 0,
+    (teacherRow?.break_duration_minutes as number | null) ?? null
+  )
 
   // 2. Determine day_of_week for the requested date in org timezone (0=Sunday)
   const localDate = DateTime.fromISO(date, { zone: timezone })
@@ -150,10 +173,20 @@ export async function getAvailableSlots({
     .gte('start_at', dayStartUtc)
     .lte('start_at', dayEndUtc)
 
+  // Lessons and locks are widened by the break on both sides, which is what
+  // makes the break a real gap rather than only a slot stride: without this,
+  // the overlap test below (strict inequalities) happily offers a slot starting
+  // the instant a lesson ends.
+  //
+  // Ranged blocks are NOT widened. A block and a window edge say when the
+  // teacher is *not there*, not when they are busy — there is no lesson to
+  // recover from, so demanding a gap before they arrive would just shrink the
+  // day. Keeping them un-widened is also what preserves the cadence property
+  // the "block bisects a window" test locks in.
   const blockedIntervals = [
     ...[...(lessons ?? []), ...(locks ?? [])].map(r => ({
-      start: DateTime.fromISO(r.start_at, { zone: 'utc' }),
-      end: DateTime.fromISO(r.end_at, { zone: 'utc' }),
+      start: DateTime.fromISO(r.start_at, { zone: 'utc' }).minus({ minutes: breakMinutes }),
+      end: DateTime.fromISO(r.end_at, { zone: 'utc' }).plus({ minutes: breakMinutes }),
     })),
     ...rangedBlocks,
   ]
@@ -191,7 +224,7 @@ export async function getAvailableSlots({
         }
       }
 
-      cursor = slotEnd.plus({ minutes: break_duration_minutes })
+      cursor = slotEnd.plus({ minutes: breakMinutes })
     }
   }
 

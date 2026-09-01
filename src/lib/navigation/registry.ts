@@ -42,6 +42,7 @@ import {
   CreditCard,
   CalendarOff,
   CalendarDays,
+  CalendarClock,
   Plug,
   Bell,
   FileText,
@@ -163,6 +164,17 @@ export const SETTINGS_NAV: NavEntry[] = [
     icon: ClipboardList,
     roles: ['owner', 'admin'],
     synonyms: ['exam', 'exams', 'test', 'quota', 'מבחן', 'מבחנים', 'בוחן', 'מכסה', 'תגבור'],
+  },
+  {
+    href: '/settings/scheduling',
+    navKey: 'settingsScheduling',
+    cardKey: 'scheduling',
+    icon: CalendarClock,
+    roles: ['owner', 'admin'],
+    synonyms: [
+      'scheduling', 'break', 'buffer', 'gap', 'notice', 'lead time', 'slot',
+      'שיבוץ', 'זימון', 'הפסקה', 'הפסקות', 'מרווח', 'התראה מראש', 'זמינות',
+    ],
   },
   {
     href: '/settings/holidays',
@@ -515,7 +527,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     descriptionKey: 'groups.business.description',
     landing: '/settings/business',
     icon: Building2,
-    items: ['/settings/business-profile', '/settings/locale', '/settings/holidays', '/settings/exams'].map(entryOf),
+    items: [
+      '/settings/business-profile',
+      '/settings/locale',
+      '/settings/scheduling',
+      '/settings/holidays',
+      '/settings/exams',
+    ].map(entryOf),
   },
   {
     id: 'billing',

@@ -29,6 +29,38 @@ break_duration_minutes int not null default 0
 
 Example: 60-min lesson, 15-min break, window 16:00–20:00 → slots: 16:00, 17:15, 18:30
 
+🔄 AMENDED (2026-09-01): the formula above is unchanged. Two things were added.
+
+**1. The break is now a real gap, not only a stride.** The stride decided how far
+apart *offered* slots sat, but the overlap test used strict inequalities, so a slot
+could still be offered starting the exact instant an existing lesson ended — the
+teacher was handed a back-to-back pair by the system that was supposed to be
+spacing them out. Parent-facing generation (`getAvailableSlots`) and the lock
+re-check (`createSlotLock`) now widen lessons and active locks by the break on
+both sides.
+
+Blocked ranges and window edges are deliberately *not* widened: those say when the
+teacher is absent, not busy, so no recovery gap is owed. This is also what keeps
+the cadence property that a block bisecting a window does not shift the rest of
+the day.
+
+**2. The break is two-level.** `teachers.break_duration_minutes` overrides
+`organizations.break_duration_minutes`; NULL inherits. NULL and 0 are different
+answers — 0 is a teacher who teaches back-to-back and must survive the business
+raising its default.
+
+**Who it binds:** parents and the bot can never be offered a slot that breaks it.
+A teacher or admin creating a lesson by hand gets an advisory warning and may
+proceed — they are the one who will teach it. `confirmBooking` deliberately does
+not re-check the break: once a parent holds a lock, failing the final step over a
+preference the teacher themselves just overrode is the wrong trade. Real overlap
+is still guarded there and by `no_teacher_lesson_overlap`.
+
+`createSeries` is not break-aware. Known gap.
+
+The org default is now editable by the owner at `/settings/scheduling`; before
+this it existed only in the superadmin console.
+
 ---
 
 ## 3. slot_lock — Status After Booking
@@ -80,6 +112,15 @@ min_booking_notice_hours int not null default 0
 
 Rule: Slots starting less than `min_booking_notice_hours` hours from now are not shown.
 Default 0 = same-day booking allowed.
+
+🔄 AMENDED (2026-09-01): editable by the owner at `/settings/scheduling`. It was
+previously reachable only from the superadmin console, so the setting existed but
+no customer could use it.
+
+Known deviation from the rule as written: `getAvailableSlots` compares the slot's
+**end** against the horizon, not its start, so a 60-minute lesson with a 60-hour
+notice is offered from 59 hours out. Left as-is — correcting it changes the slots
+offered by every org that uses notice, which is a separate decision.
 
 ---
 

@@ -4,6 +4,8 @@ export interface Teacher {
   id: string
   bio: string | null
   hourly_rate: number | null
+  /** Minutes needed between lessons. NULL follows the organization default. */
+  break_duration_minutes: number | null
   is_active: boolean
   created_at: string
   profile: {
@@ -18,16 +20,22 @@ type TeacherRow = {
   id: string
   bio: string | null
   hourly_rate: number | null
+  break_duration_minutes: number | null
   is_active: boolean
   created_at: string
   profiles: unknown
 }
+
+/** The column list every teacher read shares. */
+const TEACHER_COLUMNS =
+  'id, bio, hourly_rate, break_duration_minutes, is_active, created_at, profiles(id, full_name, phone)'
 
 function mapTeacher(data: TeacherRow): Teacher {
   return {
     id: data.id,
     bio: data.bio,
     hourly_rate: data.hourly_rate ?? null,
+    break_duration_minutes: data.break_duration_minutes ?? null,
     is_active: data.is_active,
     created_at: data.created_at,
     profile: (data.profiles as unknown) as { id: string; full_name: string; phone: string | null },
@@ -39,7 +47,7 @@ export async function getTeachers(organizationId: string): Promise<Teacher[]> {
 
   const { data, error } = await supabase
     .from('teachers')
-    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name, phone)')
+    .select(TEACHER_COLUMNS)
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: true })
 
@@ -77,7 +85,7 @@ export async function getTeacherByProfileId(
 
   let query = supabase
     .from('teachers')
-    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name, phone)')
+    .select(TEACHER_COLUMNS)
     .eq('profile_id', profileId)
     .eq('organization_id', organizationId)
   if (options?.activeOnly) {
@@ -99,7 +107,7 @@ export async function getTeacherById(
 
   const { data } = await supabase
     .from('teachers')
-    .select('id, bio, hourly_rate, is_active, created_at, profiles(id, full_name, phone)')
+    .select(TEACHER_COLUMNS)
     .eq('id', id)
     .eq('organization_id', organizationId)
     .single()

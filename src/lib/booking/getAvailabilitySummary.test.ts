@@ -26,6 +26,34 @@ describe('mergeSlotsIntoBands', () => {
       { startAt: '2026-03-22T12:00:00.000Z', endAt: '2026-03-22T12:45:00.000Z' },
     ])
   })
+
+  // With a break configured, no two slots ever touch — every band would be a
+  // single slot and the week view would read as confetti.
+  it('merges slots separated by exactly the break', () => {
+    const result = mergeSlotsIntoBands(
+      [
+        { startAt: '2026-03-22T10:00:00.000Z', endAt: '2026-03-22T11:00:00.000Z' },
+        { startAt: '2026-03-22T11:15:00.000Z', endAt: '2026-03-22T12:15:00.000Z' },
+      ],
+      15
+    )
+
+    expect(result).toEqual([
+      { startAt: '2026-03-22T10:00:00.000Z', endAt: '2026-03-22T12:15:00.000Z' },
+    ])
+  })
+
+  it('still splits on a gap wider than the break', () => {
+    const result = mergeSlotsIntoBands(
+      [
+        { startAt: '2026-03-22T10:00:00.000Z', endAt: '2026-03-22T11:00:00.000Z' },
+        { startAt: '2026-03-22T14:00:00.000Z', endAt: '2026-03-22T15:00:00.000Z' },
+      ],
+      15
+    )
+
+    expect(result).toHaveLength(2)
+  })
 })
 
 describe('getAvailabilitySummary', () => {
@@ -76,5 +104,6 @@ function buildChain(result: unknown) {
     self[method] = pass
   })
   self['single'] = () => Promise.resolve(result)
+  self['maybeSingle'] = () => Promise.resolve(result)
   return self
 }

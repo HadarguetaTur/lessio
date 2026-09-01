@@ -45,15 +45,41 @@ function AvailabilityDetails({ info }: { info: AvailabilityNotice }) {
   const tCommon = useTranslations('common')
   const day = info.dayOfWeek === null ? null : tCommon(`days.${DAY_KEYS[info.dayOfWeek]}`)
 
+  // A break conflict on its own says nothing about the weekly windows, so the
+  // "here are your hours" block would be noise beside it.
+  const breakOnly = Boolean(info.breakConflict) && info.windows.length === 0
+
   return (
     <div className="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
-      <p className="text-muted-foreground">
-        {info.source === 'override'
-          ? t('availabilityConfirm.overrideWindowForDate')
-          : info.windows.length > 0 && day
-            ? t('availabilityConfirm.windowsForDay', { day })
-            : t('availabilityConfirm.noWindowsForDay', { day: day ?? '' })}
-      </p>
+      {info.breakConflict && (
+        <ul className="space-y-0.5">
+          {info.breakConflict.lessons.map((l) => (
+            <li key={l.id} className="text-xs text-foreground">
+              {t(
+                l.side === 'before'
+                  ? 'availabilityConfirm.breakBefore'
+                  : 'availabilityConfirm.breakAfter',
+                {
+                  start: l.start,
+                  end: l.end,
+                  gap: l.gapMinutes,
+                  required: info.breakConflict!.requiredMinutes,
+                }
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!breakOnly && (
+        <p className="text-muted-foreground">
+          {info.source === 'override'
+            ? t('availabilityConfirm.overrideWindowForDate')
+            : info.windows.length > 0 && day
+              ? t('availabilityConfirm.windowsForDay', { day })
+              : t('availabilityConfirm.noWindowsForDay', { day: day ?? '' })}
+        </p>
+      )}
 
       {info.windows.length > 0 && (
         <ul className="space-y-0.5">

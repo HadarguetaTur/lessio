@@ -29,9 +29,18 @@ function buildChain(result: unknown) {
   const pass = () => self
   ;['select', 'eq', 'gte', 'lte', 'gt', 'lt', 'neq', 'insert', 'update'].forEach(m => { self[m] = pass })
   self['single'] = () => Promise.resolve(result)
+  self['maybeSingle'] = () => Promise.resolve(result)
   self['then'] = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
     Promise.resolve(result).then(res, rej)
   return self
+}
+
+/** The two rows the effective break is resolved from. */
+function breakRows(orgBreak: number, teacherBreak: number | null) {
+  return {
+    organizations: buildChain({ data: { break_duration_minutes: orgBreak }, error: null }),
+    teachers: buildChain({ data: { break_duration_minutes: teacherBreak }, error: null }),
+  }
 }
 
 // ── createSlotLock tests ──────────────────────────────────────────────────────
@@ -124,6 +133,61 @@ describe('createSlotLock', () => {
     await expect(
       createSlotLock({ teacherId: TEACHER_ID, startAt: START, endAt: END, organizationId: ORG_ID })
     ).rejects.toThrow(SlotUnavailableError)
+  })
+
+  // The lock path must apply the same break the generator did, or two parents
+  // could take adjacent locks the calendar never offered together.
+  it('rejects a slot that merely sits inside a lesson\'s break', async () => {
+    const rows = breakRows(0, 30)
+    let lessonQueryEnd: string | undefined
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return rows.organizations
+      if (table === 'teachers') return rows.teachers
+      if (table === 'lessons') {
+        // Capture the upper bound so we can assert it was widened, then answer
+        // as if a lesson ends right where the buffer begins.
+        const chain = buildChain({ data: [{ id: 'lesson-1' }], error: null }) as Record<string, unknown>
+        chain['lt'] = (_col: string, value: string) => {
+          lessonQueryEnd = value
+          return chain
+        }
+        return chain
+      }
+      return buildChain({ data: [], error: null })
+    })
+
+    await expect(
+      createSlotLock({ teacherId: TEACHER_ID, startAt: START, endAt: END, organizationId: ORG_ID })
+    ).rejects.toThrow(SlotUnavailableError)
+
+    // 17:00 end + 30-minute break
+    expect(lessonQueryEnd).toBe('2026-03-23T17:30:00.000Z')
+  })
+
+  it('does not widen the conflict window when no break is configured', async () => {
+    const rows = breakRows(0, null)
+    let lessonQueryEnd: string | undefined
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return rows.organizations
+      if (table === 'teachers') return rows.teachers
+      if (table === 'lessons') {
+        const chain = buildChain({ data: [{ id: 'lesson-1' }], error: null }) as Record<string, unknown>
+        chain['lt'] = (_col: string, value: string) => {
+          lessonQueryEnd = value
+          return chain
+        }
+        return chain
+      }
+      return buildChain({ data: [], error: null })
+    })
+
+    await expect(
+      createSlotLock({ teacherId: TEACHER_ID, startAt: START, endAt: END, organizationId: ORG_ID })
+    ).rejects.toThrow(SlotUnavailableError)
+
+    expect(lessonQueryEnd).toBe(END)
   })
 })
 

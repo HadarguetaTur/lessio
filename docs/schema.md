@@ -20,10 +20,11 @@ whatsapp_number               text                     -- legacy, deprecated aft
 whatsapp_token                text                     -- legacy, deprecated after Sprint 7
 whatsapp_phone_number_id      text unique              -- Meta internal phone number ID
 whatsapp_access_token         text                     -- AES-256-GCM encrypted Meta access token
--- Scheduling
+-- Scheduling  (owner-editable at /settings/scheduling since 2026-09)
 timezone                      text not null default 'Asia/Jerusalem'
-break_duration_minutes        int not null default 0
+break_duration_minutes        int not null default 0   -- default; teachers may override
 min_booking_notice_hours      int not null default 0
+tail_prompt_enabled           boolean not null default true  -- 2026-09
 -- Billing
 billing_mode                  text check (billing_mode in ('monthly','per_lesson')) default 'monthly'
 group_pricing_mode            text check (group_pricing_mode in ('fixed','per_student')) default 'per_student'
@@ -73,6 +74,7 @@ organization_id uuid not null references organizations(id)
 profile_id      uuid not null unique references profiles(id)
 bio             text
 hourly_rate     numeric(10,2)                       -- Sprint 3
+break_duration_minutes int null                     -- 2026-09; NULL inherits the org
 is_active       boolean default true
 ical_token      text                                -- planned Sprint 16
 created_at      timestamptz default now()
@@ -80,6 +82,11 @@ updated_at      timestamptz default now()
 
 index: (organization_id)
 ```
+
+`break_duration_minutes` overrides `organizations.break_duration_minutes`. NULL and 0
+are different answers: NULL follows the business, 0 is a teacher who teaches
+back-to-back and must not acquire a break when the business raises its default. See
+decisions.md #2.
 
 ---
 
@@ -179,9 +186,58 @@ end_time        time
 reason          text
 created_at      timestamptz default now()
 
-unique: (teacher_id, override_date)
 index: (teacher_id, override_date)
+partial unique: (teacher_id, override_date) where is_available = false and start_time is null
 ```
+
+Several rows per teacher per date are legal since `20260901130000`; the old
+`unique (teacher_id, override_date)` was dropped. Three row kinds share the table:
+
+| is_available | times | meaning |
+|---|---|---|
+| false | null | the whole date is blocked |
+| false | set | just that range is blocked |
+| true | set | special hours **replacing** the weekly grid for that date |
+
+Readers take the base windows (the special-hours rows if any, else the weekly grid)
+and subtract every blocked range — `resolveDayWindows` in `src/lib/availability/`
+is the single implementation of that rule. "Replacing" is why extending a day has to
+materialise *all* of its windows, not just the one being extended.
+
+---
+
+## availability_tail_prompts
+
+Unbookable leftover time at the end of a teacher's day, awaiting their decision.
+Added 2026-09.
+
+```sql
+id              uuid pk
+organization_id uuid not null references organizations(id) on delete cascade
+teacher_id      uuid not null references teachers(id) on delete cascade
+tail_date       date not null
+tail_start      time not null                       -- org-local wall clock
+tail_end        time not null
+tail_minutes    int not null check (tail_minutes > 0)
+status          text not null default 'pending'     -- pending|dismissed|blocked|extended
+resolved_by     uuid references profiles(id) on delete set null
+resolved_at     timestamptz
+created_at      timestamptz default now()
+updated_at      timestamptz default now()
+
+unique: (teacher_id, tail_date)
+index: (organization_id, teacher_id, tail_date) where status = 'pending'
+```
+
+Notes:
+- Service-role only (RLS enabled, deny-all policy), like `in_app_notifications`.
+- The unique key is the dedupe: every booking on a date recomputes the remainder, and
+  without it each one would raise another notification about the same half hour.
+  `detectDayTail` treats 23505 as "already asked" rather than an error.
+- Times are wall clock, matching `availability` and `availability_overrides` — an
+  instant would put a DST transition between the prompt and the window it describes.
+- The row records that the teacher was asked, not what is true now. Reads re-derive the
+  remainder and drop rows whose leftover a cancelled lesson has since freed.
 
 ---
 

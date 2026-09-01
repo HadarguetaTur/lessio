@@ -21,10 +21,10 @@ describe('registry shape', () => {
     expect(new Set(hrefs).size).toBe(hrefs.length)
   })
 
-  it('keeps platform billing separate from the seventeen business settings pages', () => {
+  it('keeps platform billing separate from the eighteen business settings pages', () => {
     expect(ACCOUNT_NAV.map((entry) => entry.href)).toEqual(['/account/billing'])
-    expect(SETTINGS_NAV).toHaveLength(17)
-    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(17)
+    expect(SETTINGS_NAV).toHaveLength(18)
+    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(18)
     expect(SETTINGS_NAV.map((entry) => entry.href)).not.toContain('/account/billing')
   })
 
@@ -58,11 +58,16 @@ describe('filterNav', () => {
 
   it('hides owner-only entries from an admin', () => {
     const admin = filterNav(SETTINGS_NAV, 'admin').map((e) => e.href)
-    expect(admin).toEqual(['/settings/exams', '/settings/holidays', '/settings/locale'])
+    expect(admin).toEqual([
+      '/settings/exams',
+      '/settings/scheduling',
+      '/settings/holidays',
+      '/settings/locale',
+    ])
   })
 
   it('shows everything to an owner when no plan is resolved', () => {
-    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(17)
+    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(18)
   })
 
   it('drops plan-gated entries when the feature is off', () => {

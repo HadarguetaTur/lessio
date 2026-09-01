@@ -11,6 +11,11 @@
  * the availability step during onboarding is never blocked. What changed is
  * that a real conflict now carries the windows it conflicted with, plus the
  * route where the reader can fix them.
+ *
+ * It answers two independent questions: does the slot fall inside the
+ * teacher's hours, and does it leave them the break they asked for. A slot can
+ * pass the first and fail the second, so neither short-circuits the other.
+ * Both stay advisory: a teacher scheduling by hand may book back-to-back.
  */
 
 import { getTranslations } from 'next-intl/server'
@@ -18,6 +23,7 @@ import {
   checkTeacherAvailability,
   type AvailabilityWindowTimes,
 } from './checkTeacherAvailability'
+import { checkBreakConflict, type BreakConflict } from '@/lib/scheduling/checkBreakConflict'
 
 export interface AvailabilityNotice {
   /** 0=Sun…6=Sat in org timezone; null when the date could not be resolved. */
@@ -28,6 +34,12 @@ export interface AvailabilityNotice {
   reason: string | null
   /** Where this reader can edit the windows they just collided with. */
   editHref: string
+  /**
+   * Set when the lesson fits the teacher's hours but not their break. Carried
+   * alongside rather than as a status, because it is an independent question:
+   * a slot can be inside the window and still leave no gap.
+   */
+  breakConflict?: BreakConflict
 }
 
 /**
@@ -48,20 +60,41 @@ export async function buildAvailabilityNotice(params: {
   startTime: string
   durationMinutes: number
   role: string
+  /** Set when editing, so the lesson is not judged against itself. */
+  excludeLessonId?: string
 }): Promise<{ message: string; notice: AvailabilityNotice } | null> {
-  const { orgId, teacherId, date, startTime, durationMinutes, role } = params
+  const { orgId, teacherId, date, startTime, durationMinutes, role, excludeLessonId } = params
   const t = await getTranslations()
 
-  const result = await checkTeacherAvailability({
-    orgId,
-    teacherId,
-    date,
-    startTime,
-    durationMinutes,
-  })
+  const [result, breakConflict] = await Promise.all([
+    checkTeacherAvailability({ orgId, teacherId, date, startTime, durationMinutes }),
+    checkBreakConflict({ orgId, teacherId, date, startTime, durationMinutes, excludeLessonId }),
+  ])
 
-  if (result.status === 'inside') return null
-  if (result.status === 'no_windows') return null
+  const editHref = editHrefFor(role, teacherId)
+
+  // The two checks are independent, so a slot inside the teacher's hours can
+  // still owe them a break. Reporting only the availability result — which is
+  // what returning early here used to do — would have let that pass silently.
+  const availabilityFailed = result.status !== 'inside' && result.status !== 'no_windows'
+
+  if (!availabilityFailed) {
+    if (!breakConflict) return null
+
+    return {
+      message: t('lessons.conflicts.breakTooShort', {
+        minutes: breakConflict.requiredMinutes,
+      }),
+      notice: {
+        dayOfWeek: 'dayOfWeek' in result ? result.dayOfWeek : null,
+        windows: 'windows' in result ? result.windows : [],
+        source: 'source' in result ? result.source : 'weekly',
+        reason: null,
+        editHref,
+        breakConflict,
+      },
+    }
+  }
 
   const messages: Record<'outside_windows' | 'override_unavailable' | 'partial_override', string> = {
     outside_windows: t('lessons.conflicts.outsideWindows'),
@@ -70,13 +103,14 @@ export async function buildAvailabilityNotice(params: {
   }
 
   return {
-    message: messages[result.status],
+    message: messages[result.status as keyof typeof messages],
     notice: {
       dayOfWeek: result.dayOfWeek,
       windows: result.windows,
       source: result.source,
       reason: 'reason' in result ? result.reason : null,
-      editHref: editHrefFor(role, teacherId),
+      editHref,
+      ...(breakConflict ? { breakConflict } : {}),
     },
   }
 }

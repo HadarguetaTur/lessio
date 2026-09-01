@@ -20,6 +20,8 @@ export type NotificationType =
   | 'day_off_requested'
   | 'day_off_decided'
   | 'exam_reported'
+  // Unbookable leftover at the end of a teacher's day, awaiting their decision.
+  | 'availability_tail'
   // Support (Sprint 32). The first two are platform-level (superadmin,
   // organization_id IS NULL); the last two go to the org that raised the ticket.
   | 'support_ticket_new'

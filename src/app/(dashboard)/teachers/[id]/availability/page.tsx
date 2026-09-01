@@ -4,8 +4,20 @@ import { ArrowRight } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getTeacherById } from '@/lib/teachers'
 import { getTeacherAvailability, normalizeTime } from '@/lib/availability'
+import { getEffectiveBreakMinutes } from '@/lib/scheduling/breaks'
+import { getTailPromptsForPage } from '@/lib/scheduling/tailPrompts'
 import { WeeklyAvailabilityEditor } from '@/components/dashboard/availability/WeeklyAvailabilityEditor'
-import { createAvailability, deleteAvailability, updateAvailability } from './actions'
+import { BreakSettingCard } from '@/components/dashboard/availability/BreakSettingCard'
+import { TailPromptCard } from '@/components/dashboard/availability/TailPromptCard'
+import {
+  blockTeacherTail,
+  createAvailability,
+  deleteAvailability,
+  dismissTeacherTail,
+  extendTeacherTail,
+  saveTeacherBreakDuration,
+  updateAvailability,
+} from './actions'
 import { getTranslations } from 'next-intl/server'
 
 export default async function TeacherAvailabilityPage(props: {
@@ -17,7 +29,11 @@ export default async function TeacherAvailabilityPage(props: {
   const teacher = await getTeacherById(id, orgId)
   if (!teacher) notFound()
 
-  const windows = await getTeacherAvailability(id, orgId)
+  const [windows, { orgBreak, teacherBreak }, tailPrompts] = await Promise.all([
+    getTeacherAvailability(id, orgId),
+    getEffectiveBreakMinutes(orgId, id),
+    getTailPromptsForPage({ orgId, teacherId: id }),
+  ])
 
   const t = await getTranslations('teachers')
 
@@ -56,6 +72,25 @@ export default async function TeacherAvailabilityPage(props: {
         >
           {t('overrides')}
         </Link>
+      </div>
+
+      <div className="mb-6">
+        <TailPromptCard
+          prompts={tailPrompts}
+          blockAction={blockTeacherTail.bind(null, id)}
+          extendAction={extendTeacherTail.bind(null, id)}
+          dismissAction={dismissTeacherTail.bind(null, id)}
+          readOnly={isSupportMode}
+        />
+      </div>
+
+      <div className="mb-6">
+        <BreakSettingCard
+          value={teacherBreak}
+          orgDefault={orgBreak}
+          action={saveTeacherBreakDuration.bind(null, id)}
+          readOnly={isSupportMode}
+        />
       </div>
 
       <WeeklyAvailabilityEditor

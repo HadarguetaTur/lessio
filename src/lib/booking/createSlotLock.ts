@@ -11,7 +11,9 @@
  * Uses service role — never called from client components.
  */
 
+import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getEffectiveBreakMinutes } from '@/lib/scheduling/breaks'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
 
 export class SlotUnavailableError extends Error {
@@ -71,8 +73,12 @@ export async function createSlotLock({
     .eq('status', 'active')
     .lte('expires_at', new Date().toISOString())
 
-  // Re-validate availability immediately before inserting the lock
-  const isAvailable = await checkSlotAvailable(db, teacherId, startAt, endAt)
+  // Re-validate availability immediately before inserting the lock, with the
+  // same break the generator applied. Without it the two disagree: two parents
+  // could take adjacent locks that the calendar would never have offered
+  // together, and the teacher ends up with no gap between the lessons.
+  const { breakMinutes } = await getEffectiveBreakMinutes(organizationId, teacherId)
+  const isAvailable = await checkSlotAvailable(db, teacherId, startAt, endAt, breakMinutes)
   if (!isAvailable) throw new SlotUnavailableError()
 
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
@@ -102,13 +108,26 @@ export async function createSlotLock({
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+/**
+ * `breakMinutes` widens the window the queries look at, so a lesson or lock
+ * that merely sits too close counts as a collision — the same rule
+ * getAvailableSlots applies when it decides what to offer.
+ */
 async function checkSlotAvailable(
   db: ReturnType<typeof import('@/lib/supabase/service-role').createServiceRoleClient>,
   teacherId: string,
   startAt: string,
-  endAt: string
+  endAt: string,
+  breakMinutes: number
 ): Promise<boolean> {
   const now = new Date().toISOString()
+
+  const bufferedStart = DateTime.fromISO(startAt, { zone: 'utc' })
+    .minus({ minutes: breakMinutes })
+    .toISO()!
+  const bufferedEnd = DateTime.fromISO(endAt, { zone: 'utc' })
+    .plus({ minutes: breakMinutes })
+    .toISO()!
 
   // Check for overlapping scheduled lessons
   const { data: lessons } = await db
@@ -116,8 +135,8 @@ async function checkSlotAvailable(
     .select('id')
     .eq('teacher_id', teacherId)
     .eq('status', 'scheduled')
-    .lt('start_at', endAt)
-    .gt('end_at', startAt)
+    .lt('start_at', bufferedEnd)
+    .gt('end_at', bufferedStart)
 
   if (lessons && lessons.length > 0) return false
 
@@ -128,8 +147,8 @@ async function checkSlotAvailable(
     .eq('teacher_id', teacherId)
     .eq('status', 'active')
     .gt('expires_at', now)
-    .lt('start_at', endAt)
-    .gt('end_at', startAt)
+    .lt('start_at', bufferedEnd)
+    .gt('end_at', bufferedStart)
 
   if (locks && locks.length > 0) return false
 

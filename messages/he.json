@@ -302,6 +302,7 @@
     "settingsHolidays": "חגים וחופשות",
     "settingsReminders": "תזכורות",
     "settingsExams": "מדיניות מבחנים",
+    "settingsScheduling": "לוח זמנים והפסקות",
     "settingsAiAssistant": "עוזר AI",
     "settingsEmail": "מייל",
     "settingsLocale": "שפה ותצוגה",
@@ -946,6 +947,8 @@
       "noWindowsForDay": "לא הוגדרה זמינות ביום {day}",
       "overrideWindowForDate": "החלון שהוגדר לתאריך זה:",
       "overrideReason": "סיבה: {reason}",
+      "breakBefore": "שיעור קודם {start}–{end} — נשארות {gap} דקות במקום {required}",
+      "breakAfter": "שיעור אחרי {start}–{end} — נשארות {gap} דקות במקום {required}",
       "editAvailability": "עריכת הזמינות",
       "dismissedNotice": "השיעור לא נקבע. שנה את השעה, או ערוך את הזמינות."
     },
@@ -1024,7 +1027,8 @@
       "googleCalendar": "יש אירוע ביומן Google בשעה המבוקשת. האם לקבוע את השיעור בכל זאת?",
       "outsideWindows": "המורה לא זמין בשעה זו. האם לקבוע את השיעור בכל זאת?",
       "markedUnavailable": "המורה סימן את התאריך הזה כלא זמין. האם לקבוע את השיעור בכל זאת?",
-      "outsideDayWindow": "השעה המבוקשת חורגת מחלון הזמינות שהוגדר לתאריך זה. האם לקבוע את השיעור בכל זאת?"
+      "outsideDayWindow": "השעה המבוקשת חורגת מחלון הזמינות שהוגדר לתאריך זה. האם לקבוע את השיעור בכל זאת?",
+      "breakTooShort": "השיעור לא משאיר למורה את ההפסקה של {minutes} דקות. האם לקבוע את השיעור בכל זאת?"
     },
     "messagesPage": {
       "title": "הודעות פורטל",
@@ -1411,6 +1415,10 @@
         "title": "מדיניות מבחנים",
         "description": "מה קורה כשהורה או תלמיד מדווחים על מבחן"
       },
+      "scheduling": {
+        "title": "לוח זמנים והפסקות",
+        "description": "הפסקה בין שיעורים, התראה מראש להזמנה, וזמן שנשאר בסוף היום"
+      },
       "holidays": {
         "title": "חגים וחופשות",
         "description": "ימים שאין בהם שיעורים"
@@ -1599,6 +1607,23 @@
       "saved": "ההגדרות נשמרו",
       "errors": {
         "saveFailed": "שמירת ההגדרות נכשלה. נסו שוב."
+      }
+    },
+    "scheduling": {
+      "title": "לוח זמנים והפסקות",
+      "subtitle": "ברירות המחדל שקובעות אילו זמנים מוצעים להורים בהזמנת שיעור",
+      "breakLabel": "הפסקה בין שיעורים",
+      "breakHint": "כמה זמן המורה צריך בין שיעור לשיעור. ההפסקה נשמרת בזמנים שמוצעים להורים ובבוט — מורה או מנהל עדיין יכולים לקבוע שיעור צמוד ידנית, עם אזהרה.",
+      "noticeLabel": "התראה מראש להזמנה",
+      "noticeHint": "זמנים שמתחילים מוקדם מכך לא יוצעו להורים. 0 מאפשר הזמנה לאותו היום.",
+      "tailPromptLabel": "לשאול על זמן שנשאר בסוף היום",
+      "tailPromptHint": "כששיעור משאיר בסוף היום פחות זמן משיעור שלם, המורה יקבל התראה ויוכל לחסום את השארית או להאריך את הזמינות לאותו יום.",
+      "overriddenByTeachers": "{count, plural, one {מורה אחד הגדיר לעצמו הפסקה אחרת והיא גוברת על ההגדרה הזו} other {# מורים הגדירו לעצמם הפסקה אחרת והיא גוברת על ההגדרה הזו}}",
+      "minutes": "דקות",
+      "hours": "שעות",
+      "saved": "ההגדרות נשמרו",
+      "errors": {
+        "saveFailed": "שמירת ההגדרות נכשלה"
       }
     },
     "billingPolicy": {
@@ -2653,6 +2678,32 @@
       "saving": "שומר...",
       "add": "הוסף"
     },
+    "breakSetting": {
+      "label": "הפסקה בין שיעורים",
+      "hint": "הזמן שאתה צריך בין שיעור לשיעור. זמנים שמוצעים להורים ובבוט ישמרו על ההפסקה הזו; קביעת שיעור ידנית מהמערכת עדיין אפשרית גם בלעדיה.",
+      "inheritPlaceholder": "ברירת מחדל של העסק ({minutes})",
+      "inheriting": "ריק = לפי ברירת המחדל של העסק, {minutes} דקות.",
+      "effective": "יישמרו {minutes} דקות בין שיעור לשיעור.",
+      "noBreak": "לא תישמר הפסקה — שיעורים יוכלו להיקבע ברצף.",
+      "minutes": "דקות"
+    },
+    "tail": {
+      "title": "זמן שנשאר בסוף היום",
+      "summary": "{date}: נשארו {minutes} דקות ({start}–{end}) — קצר מדי לשיעור הכי קצר שאפשר להזמין.",
+      "block": "לחסום את השארית",
+      "blockHint": "הזמן הזה יסומן כלא זמין בתאריך הזה בלבד.",
+      "extend": "להאריך את הזמינות",
+      "extendHint": "הארכה חד-פעמית לתאריך הזה, כדי שייכנס עוד שיעור.",
+      "extendTo": "עד שעה",
+      "dismiss": "להשאיר כמו שזה",
+      "empty": "אין כרגע זמן שנשאר בסוף היום",
+      "errors": {
+        "promptNotFound": "הפנייה לא נמצאה",
+        "extendTooEarly": "שעת הסיום החדשה חייבת להיות מאוחרת מהקיימת",
+        "extendPastMidnight": "לא ניתן להאריך מעבר לחצות",
+        "resolveFailed": "שגיאה בעדכון הזמינות"
+      }
+    },
     "overrides": {
       "title": "חריגים ביומן",
       "addOverride": "הוסף חריג",
@@ -2756,6 +2807,8 @@
       "windowNotFound": "חלון הזמינות לא נמצא",
       "updateAvailabilityFailed": "שגיאה בעדכון הזמינות",
       "deleteAvailabilityFailed": "שגיאה במחיקת הזמינות",
+      "invalidBreak": "ההפסקה חייבת להיות מספר שלם בין 0 ל-120 דקות",
+      "saveBreakFailed": "שגיאה בשמירת ההפסקה",
       "pickDate": "יש לבחור תאריך",
       "saveOverrideFailed": "שגיאה בשמירת החריג",
       "dayAlreadyBlocked": "התאריך הזה כבר חסום במלואו",
@@ -4745,6 +4798,8 @@
     "dayOffRequestedBody": "{range} · {count} שיעורים מתוכננים",
     "examReported": "📄 דווח מבחן — {student}",
     "examReportedBody": "{subject} · {title} · {date}",
+    "availabilityTail": "🕒 נשארו {minutes} דקות בסוף היום",
+    "availabilityTailBody": "{date} · {start}–{end} — קצר מדי לשיעור. מה לעשות?",
     "dayOffApproved": "בקשת החופש שלך אושרה ✅",
     "dayOffRejected": "בקשת החופש שלך נדחתה",
     "supportTicketReply": "קיבלת תשובה מהתמיכה",

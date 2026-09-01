@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getEffectiveBreakMinutes } from '@/lib/scheduling/breaks'
 import { getAvailableSlots, type AvailableSlot } from './getAvailableSlots'
 import { getWeeklyQuotaStatus } from './weeklyQuota'
 
@@ -80,23 +81,28 @@ export async function getAvailabilitySummary({
     }
   }
 
-  const slotsByDay = await Promise.all(
-    dates.map((date) =>
-      getAvailableSlots({
-        teacherId,
-        date,
-        durationMinutes,
-        organizationId,
-      })
-    )
-  )
+  const [slotsByDay, { breakMinutes }] = await Promise.all([
+    Promise.all(
+      dates.map((date) =>
+        getAvailableSlots({
+          teacherId,
+          date,
+          durationMinutes,
+          organizationId,
+        })
+      )
+    ),
+    getEffectiveBreakMinutes(organizationId, teacherId),
+  ])
 
   return {
     weekStart: normalizedWeekStart,
     timezone,
     durationMinutes,
     days: dates.map((date, index) => {
-      const freeIntervals = mergeSlotsIntoBands(slotsByDay[index])
+      // Slots are spaced by the break, so the bands must tolerate exactly that
+      // gap or every slot becomes its own band.
+      const freeIntervals = mergeSlotsIntoBands(slotsByDay[index], breakMinutes)
       return {
         date,
         hasAvailability: freeIntervals.length > 0,
@@ -106,10 +112,23 @@ export async function getAvailabilitySummary({
   }
 }
 
-export function mergeSlotsIntoBands(slots: AvailableSlot[]): AvailabilityBand[] {
+/**
+ * Collapses consecutive slots into the bands the week view draws.
+ *
+ * `gapToleranceMinutes` is the break between slots: with a break configured,
+ * consecutive slots are separated by exactly that much, and testing for
+ * touching ends alone would split a continuous afternoon into one band per
+ * slot. Pass the effective break; the default of 0 keeps the original
+ * touching-ends behaviour for callers that have none.
+ */
+export function mergeSlotsIntoBands(
+  slots: AvailableSlot[],
+  gapToleranceMinutes = 0
+): AvailabilityBand[] {
   if (slots.length === 0) return []
 
   const sortedSlots = [...slots].sort((a, b) => a.startAt.localeCompare(b.startAt))
+  const toleranceMs = gapToleranceMinutes * 60 * 1000
   const bands: AvailabilityBand[] = []
 
   for (const slot of sortedSlots) {
@@ -119,7 +138,8 @@ export function mergeSlotsIntoBands(slots: AvailableSlot[]): AvailabilityBand[] 
       continue
     }
 
-    if (currentBand.endAt === slot.startAt) {
+    const gapMs = Date.parse(slot.startAt) - Date.parse(currentBand.endAt)
+    if (gapMs >= 0 && gapMs <= toleranceMs) {
       currentBand.endAt = slot.endAt
       continue
     }

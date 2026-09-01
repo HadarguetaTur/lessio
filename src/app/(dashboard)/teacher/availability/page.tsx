@@ -3,10 +3,18 @@ import { getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { getTeacherAvailability, normalizeTime } from '@/lib/availability'
+import { getEffectiveBreakMinutes } from '@/lib/scheduling/breaks'
+import { getTailPromptsForPage } from '@/lib/scheduling/tailPrompts'
 import { WeeklyAvailabilityEditor } from '@/components/dashboard/availability/WeeklyAvailabilityEditor'
+import { BreakSettingCard } from '@/components/dashboard/availability/BreakSettingCard'
+import { TailPromptCard } from '@/components/dashboard/availability/TailPromptCard'
 import {
   addTeacherAvailability,
+  blockOwnTail,
   deleteTeacherAvailability,
+  dismissOwnTail,
+  extendOwnTail,
+  saveOwnBreakDuration,
   updateTeacherAvailability,
 } from './actions'
 
@@ -32,12 +40,33 @@ export default async function TeacherAvailabilityPage() {
     )
   }
 
-  const windows = await getTeacherAvailability(teacher.id, orgId)
+  const [windows, { orgBreak, teacherBreak }, tailPrompts] = await Promise.all([
+    getTeacherAvailability(teacher.id, orgId),
+    getEffectiveBreakMinutes(orgId, teacher.id),
+    getTailPromptsForPage({ orgId, teacherId: teacher.id }),
+  ])
 
   return (
-    <div className="max-w-2xl pb-8">
-      <h1 className="text-2xl font-bold text-foreground mb-2">{t('title')}</h1>
-      <p className="text-sm text-muted-foreground mb-6">{tSelf('availabilityHint')}</p>
+    <div className="max-w-2xl pb-8 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground mb-2">{t('title')}</h1>
+        <p className="text-sm text-muted-foreground">{tSelf('availabilityHint')}</p>
+      </div>
+
+      <TailPromptCard
+        prompts={tailPrompts}
+        blockAction={blockOwnTail}
+        extendAction={extendOwnTail}
+        dismissAction={dismissOwnTail}
+        readOnly={isSupportMode}
+      />
+
+      <BreakSettingCard
+        value={teacherBreak}
+        orgDefault={orgBreak}
+        action={saveOwnBreakDuration}
+        readOnly={isSupportMode}
+      />
 
       <WeeklyAvailabilityEditor
         windows={windows.map((w) => ({

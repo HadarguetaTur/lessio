@@ -17,11 +17,14 @@ import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { formatBotMoney } from '@/lib/i18n/formatCurrency'
+import { getOrgBillingPolicy } from '@/lib/billing/orgBillingPolicy'
 
 export async function autoSendPaymentRequest(lessonId: string, orgId: string): Promise<void> {
   const db = createServiceRoleClient()
 
   try {
+    if ((await getOrgBillingPolicy(orgId)).billingMode === 'monthly') return
+
     // 1. Load org settings — single query covers all needed fields
     const { data: org } = await db
       .from('organizations')

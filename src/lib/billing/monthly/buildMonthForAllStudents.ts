@@ -29,13 +29,16 @@ function assertNoQueryError(
 export async function buildMonthForAllStudents(
   organizationId: string,
   billingMonth: string,
-  timezone: string
+  timezone: string,
+  cycleStartDay = 1,
+  dueDays = 7
 ): Promise<BuildMonthResult> {
   const supabase = createServiceRoleClient()
 
   const { monthStartUTC, monthEndUTC } = getBillingMonthRange(
     billingMonth,
-    timezone
+    timezone,
+    cycleStartDay
   )
 
   // ── 5 bulk queries ───────────────────────────────────────────────────────
@@ -158,11 +161,18 @@ export async function buildMonthForAllStudents(
 
   for (const student of students) {
     const sid = student.id
+    const existing = billingByStudent.get(sid) ?? null
+    // Approved/paid financial documents are immutable. Bulk regeneration only
+    // refreshes drafts; corrections go through void/credit workflows.
+    if (existing?.is_approved || existing?.is_paid) {
+      result.skipped.push(sid)
+      continue
+    }
     const prefetched = {
       lessons: lessonsByStudent.get(sid) ?? [],
       cancellations: cancelByStudent.get(sid) ?? [],
       subscriptions: subsByStudent.get(sid) ?? [],
-      existingBilling: billingByStudent.get(sid) ?? null,
+      existingBilling: existing,
       studentCountByLesson,
       pricing,
     }
@@ -173,7 +183,9 @@ export async function buildMonthForAllStudents(
         sid,
         billingMonth,
         timezone,
-        prefetched
+        prefetched,
+        cycleStartDay,
+        dueDays
       )
 
       if (res === 'skipped') {

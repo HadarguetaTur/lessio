@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import {
   formatBillingMonthLabel,
+  formatBillingPeriodLabel,
   getBillingMonthSelectOptionValues,
   getCurrentBillingMonth,
 } from '@/lib/billing/monthly/month'
@@ -20,6 +21,7 @@ import { getTranslations } from 'next-intl/server'
 import { GenerateBillingButton } from './GenerateBillingButton'
 import { MarkPaidButton } from './MarkPaidButton'
 import { ApproveBillingButton } from './ApproveBillingButton'
+import { getOrgBillingPolicy } from '@/lib/billing/orgBillingPolicy'
 
 function getBillingStatus(row: { is_paid: boolean; is_approved: boolean }): string {
   if (row.is_paid) return 'paid'
@@ -32,14 +34,15 @@ export default async function BillingPage(props: {
 }) {
   const searchParams = await props.searchParams
   const { orgId, role } = await getSession()
-  const [timezone, t, tCommon, locale] = await Promise.all([
+  const [timezone, t, tCommon, locale, billingPolicy] = await Promise.all([
     getOrgTimezone(orgId),
     getTranslations('billing'),
     getTranslations('common'),
     getLocale(),
+    getOrgBillingPolicy(orgId),
   ])
 
-  const billingMonth = searchParams.month || getCurrentBillingMonth(timezone)
+  const billingMonth = searchParams.month || getCurrentBillingMonth(timezone, undefined, billingPolicy.cycleStartDay)
   const intlLocale = toIntlLocale(parseAppLocale(locale))
   const money = (amount: number) => formatMoney(amount, locale)
   const billingMonthOptions = getBillingMonthSelectOptionValues(timezone, billingMonth)
@@ -106,7 +109,9 @@ export default async function BillingPage(props: {
           >
             {billingMonthOptions.map((ym) => (
               <option key={ym} value={ym}>
-                {formatBillingMonthLabel(ym, timezone, intlLocale)}
+                {billingPolicy.cycleStartDay === 1
+                  ? formatBillingMonthLabel(ym, timezone, intlLocale)
+                  : formatBillingPeriodLabel(ym, timezone, intlLocale, billingPolicy.cycleStartDay)}
               </option>
             ))}
           </select>
@@ -115,7 +120,7 @@ export default async function BillingPage(props: {
           type="submit"
           className="w-full rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:w-auto"
         >
-          {locale === 'he' ? 'הצג חודש' : 'Show month'}
+          {t('showPeriod')}
         </button>
       </form>
 

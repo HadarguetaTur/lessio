@@ -11,6 +11,10 @@ export interface ChargeDueDateInput {
   issuedAt: Date | string
   /** 'YYYY-MM' — required for monthly charges, ignored otherwise. */
   billingMonth?: string | null
+  /** Inclusive YYYY-MM-DD end of a non-calendar billing period. */
+  periodEnd?: string | null
+  /** Organization-specific net terms after periodEnd. */
+  dueDays?: number | null
   /** IANA zone, e.g. 'Asia/Jerusalem'. */
   timezone: string
 }
@@ -39,8 +43,15 @@ export function resolveChargeDueDate({
   chargeType,
   issuedAt,
   billingMonth,
+  periodEnd,
+  dueDays,
   timezone,
 }: ChargeDueDateInput): string {
+  if (chargeType === 'monthly' && periodEnd && /^\d{4}-\d{2}-\d{2}$/.test(periodEnd)) {
+    const [year, month, day] = periodEnd.split('-').map(Number)
+    const due = new Date(Date.UTC(year, month - 1, day + (dueDays ?? 7)))
+    return due.toISOString().slice(0, 10)
+  }
   if (chargeType === 'monthly' && billingMonth && /^\d{4}-\d{2}$/.test(billingMonth)) {
     const [year, month] = billingMonth.split('-').map(Number)
     // Month is 1-based here and 0-based in Date, so `month` already points at

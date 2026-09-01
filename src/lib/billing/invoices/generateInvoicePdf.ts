@@ -177,7 +177,9 @@ export async function generateAndStoreInvoice(
     currency,
     parentName,
     studentName,
-    billingMonth: billing.billing_month,
+    billingMonth: billing.period_start && billing.period_end
+      ? `${billing.period_start} – ${billing.period_end}`
+      : billing.billing_month,
     lineItems,
     subtotal,
     vatAmount,

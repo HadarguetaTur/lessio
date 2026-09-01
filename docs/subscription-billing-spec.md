@@ -3,6 +3,13 @@
 > Reference document for implementing the subscription + student billing mechanism in **Lessio**.
 > Original source: RAZ-MICHAEL-MAZURIK (Airtable-backed tutoring management app) — adapted for the Lessio data model.
 
+> **Sep 2026 integrity amendment:** `organizations.billing_mode` is an enforced
+> financial boundary. `per_lesson` writes real-time lesson/cancellation charges;
+> `monthly` writes one charge only after monthly approval. Monthly periods use
+> the org's configurable start day (1–28), snapshot `period_start` and
+> `period_end`, and include completed—not merely scheduled—lessons. Approval is
+> blocked if an overlapping individual charge already exists.
+
 ---
 
 ## Table of Contents

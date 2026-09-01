@@ -2,14 +2,17 @@ import { DateTime } from 'luxon'
 
 export function getCurrentBillingMonth(
   timezone: string,
-  now = DateTime.now().setZone(timezone)
+  now = DateTime.now().setZone(timezone),
+  cycleStartDay = 1
 ): string {
-  return now.toFormat('yyyy-MM')
+  const local = now.setZone(timezone)
+  return (local.day < cycleStartDay ? local.minus({ months: 1 }) : local).toFormat('yyyy-MM')
 }
 
 export function getBillingMonthRange(
   billingMonth: string,
-  timezone: string
+  timezone: string,
+  cycleStartDay = 1
 ): {
   monthStart: DateTime
   monthEnd: DateTime
@@ -18,7 +21,7 @@ export function getBillingMonthRange(
 } {
   const monthStart = DateTime.fromFormat(billingMonth, 'yyyy-MM', {
     zone: timezone,
-  }).startOf('month')
+  }).startOf('month').set({ day: cycleStartDay })
   const monthEnd = monthStart.plus({ months: 1 })
 
   return {
@@ -26,6 +29,18 @@ export function getBillingMonthRange(
     monthEnd,
     monthStartUTC: monthStart.toUTC().toISO()!,
     monthEndUTC: monthEnd.toUTC().toISO()!,
+  }
+}
+
+export function getBillingPeriodDates(
+  billingMonth: string,
+  timezone: string,
+  cycleStartDay = 1
+): { periodStart: string; periodEnd: string } {
+  const { monthStart, monthEnd } = getBillingMonthRange(billingMonth, timezone, cycleStartDay)
+  return {
+    periodStart: monthStart.toISODate()!,
+    periodEnd: monthEnd.minus({ days: 1 }).toISODate()!,
   }
 }
 
@@ -46,6 +61,24 @@ export function formatBillingMonthLabel(
     year: 'numeric',
     timeZone,
   }).format(anchor.toJSDate())
+}
+
+export function formatBillingPeriodLabel(
+  billingMonth: string,
+  timeZone: string,
+  intlLocale: string,
+  cycleStartDay = 1
+): string {
+  const { monthStart, monthEnd } = getBillingMonthRange(billingMonth, timeZone, cycleStartDay)
+  const format = new Intl.DateTimeFormat(intlLocale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone,
+  })
+  return `${format.format(monthStart.set({ hour: 12 }).toJSDate())}–${format.format(
+    monthEnd.minus({ days: 1 }).set({ hour: 12 }).toJSDate()
+  )}`
 }
 
 /** YYYY-MM values for a billing month dropdown, merging an out-of-range selection. */

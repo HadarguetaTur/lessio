@@ -21,7 +21,7 @@ export default async function BillingPolicySettingsPage() {
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('subscription_covered_lesson_types')
+    .select('subscription_covered_lesson_types, billing_mode, billing_cycle_start_day, billing_due_days')
     .eq('id', orgId)
     .single()
 
@@ -35,7 +35,12 @@ export default async function BillingPolicySettingsPage() {
       <p className="text-sm text-muted-foreground mb-8">{t('subtitle')}</p>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <BillingPolicyForm defaultCoveredTypes={covered} />
+        <BillingPolicyForm
+          defaultCoveredTypes={covered}
+          defaultBillingMode={org?.billing_mode === 'per_lesson' ? 'per_lesson' : 'monthly'}
+          defaultCycleStartDay={Number(org?.billing_cycle_start_day ?? 1)}
+          defaultDueDays={Number(org?.billing_due_days ?? 7)}
+        />
       </div>
     </div>
   )

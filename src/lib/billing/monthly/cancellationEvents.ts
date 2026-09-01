@@ -1,5 +1,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getOrgBillingPolicy } from '@/lib/billing/orgBillingPolicy'
+import { getCurrentBillingMonth } from './month'
 
 /**
  * Create a student_cancellation_events record when a student's lesson is
@@ -15,6 +17,9 @@ export async function createCancellationEvent(opts: {
   lessonStartAt: string  // ISO UTC
   timezone: string
 }): Promise<void> {
+  const policy = await getOrgBillingPolicy(opts.organizationId)
+  if (policy.billingMode !== 'monthly') return
+
   const supabase = createServiceRoleClient()
   const now = new Date()
 
@@ -23,9 +28,8 @@ export async function createCancellationEvent(opts: {
     (lessonStart.getTime() - now.getTime()) / (1000 * 60 * 60)
   const isLt24h = hoursBefore < 24
 
-  const billingMonth = DateTime.fromISO(opts.lessonStartAt, {
-    zone: opts.timezone,
-  }).toFormat('yyyy-MM')
+  const lessonLocal = DateTime.fromISO(opts.lessonStartAt, { zone: opts.timezone })
+  const billingMonth = getCurrentBillingMonth(opts.timezone, lessonLocal, policy.cycleStartDay)
 
   await supabase.from('student_cancellation_events').insert({
     organization_id: opts.organizationId,

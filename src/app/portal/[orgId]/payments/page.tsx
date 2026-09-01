@@ -48,7 +48,7 @@ export default async function PortalPaymentsPage({
   const { data: charges } = await db
     .from('charges')
     .select(
-      'id, amount, amount_paid, status, charge_type, payment_link, receipt_url, created_at, paid_at, due_date, billing_month'
+      'id, amount, amount_paid, status, charge_type, payment_link, receipt_url, created_at, paid_at, due_date, billing_month, student_monthly_billing(period_start, period_end)'
     )
     .eq('parent_id', session.parentId)
     .eq('organization_id', orgId)
@@ -67,6 +67,7 @@ export default async function PortalPaymentsPage({
     paid_at: string | null
     due_date: string | null
     billing_month: string | null
+    student_monthly_billing?: { period_start: string | null; period_end: string | null } | null
   }
   const rows = (charges ?? []) as unknown as ChargeRow[]
 
@@ -120,6 +121,13 @@ export default async function PortalPaymentsPage({
    * different amounts were impossible to tell apart.
    */
   function describe(c: ChargeRow) {
+    const period = c.student_monthly_billing
+    if (c.charge_type === 'monthly' && period?.period_start && period.period_end) {
+      return t('forPeriod', {
+        start: formatDate(period.period_start),
+        end: formatDate(period.period_end),
+      })
+    }
     if (c.charge_type === 'monthly' && c.billing_month) {
       return t('forMonth', { month: formatBillingMonthLabel(c.billing_month, timezone, intlLocale) })
     }

@@ -13,6 +13,7 @@ import {
   isLessonCoveredBySubscription,
 } from '@/lib/billing/lessonPricing'
 import type { OrgPricing } from '@/lib/organizations/pricing'
+import { getBillingMonthRange } from './month'
 
 /**
  * Is this lesson covered by the student's subscription under the org's policy?
@@ -92,17 +93,16 @@ export function calculateLessonsContribution(
   timezone: string,
   cancelledLessonIds: Set<string>,
   studentCountByLesson: Map<string, number>,
-  pricing: OrgPricing
+  pricing: OrgPricing,
+  cycleStartDay = 1
 ): LessonsContribution | MissingFieldsError {
   let lessonsTotal = 0
   let lessonsCount = 0
 
   for (const lesson of lessons) {
-    // Derive billing month from start_at in org timezone
-    const lessonMonth = DateTime.fromISO(lesson.start_at, { zone: timezone }).toFormat(
-      'yyyy-MM'
-    )
-    if (lessonMonth !== billingMonth) continue
+    const { monthStart, monthEnd } = getBillingMonthRange(billingMonth, timezone, cycleStartDay)
+    const lessonStart = DateTime.fromISO(lesson.start_at, { zone: timezone })
+    if (lessonStart < monthStart || lessonStart >= monthEnd) continue
 
     // Skip non-billable statuses
     if (!(BILLABLE_STATUSES as readonly string[]).includes(lesson.status)) continue

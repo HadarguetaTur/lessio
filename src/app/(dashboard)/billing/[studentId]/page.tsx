@@ -7,6 +7,7 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
   formatBillingMonthLabel,
+  formatBillingPeriodLabel,
   getBillingMonthRange,
   getCurrentBillingMonth,
 } from '@/lib/billing/monthly/month'
@@ -29,6 +30,7 @@ import { BillingDetailHeaderActions } from './BillingDetailHeaderActions'
 import { ManualAdjustmentForm } from './ManualAdjustmentForm'
 import { CancellationEventRow } from './CancellationEventRow'
 import { CancellationEventCard } from './CancellationEventCard'
+import { getOrgBillingPolicy } from '@/lib/billing/orgBillingPolicy'
 
 function getBillingStatus(row: { is_paid: boolean; is_approved: boolean }): string {
   if (row.is_paid) return 'paid'
@@ -43,20 +45,23 @@ export default async function BillingDetailPage(props: {
   const { studentId } = await props.params
   const searchParams = await props.searchParams
   const { orgId, role } = await getSession()
-  const [timezone, t, tBilling, tLessons, tSubs, locale] = await Promise.all([
+  const [timezone, t, tBilling, tLessons, tSubs, locale, billingPolicy] = await Promise.all([
     getOrgTimezone(orgId),
     getTranslations('billing.detail'),
     getTranslations('billing'),
     getTranslations('lessons'),
     getTranslations('subscriptions'),
     getLocale(),
+    getOrgBillingPolicy(orgId),
   ])
 
-  const billingMonth = searchParams.month || getCurrentBillingMonth(timezone)
+  const billingMonth = searchParams.month || getCurrentBillingMonth(timezone, undefined, billingPolicy.cycleStartDay)
   const appLocale = parseAppLocale(locale)
   const intlLocale = toIntlLocale(appLocale)
   const money = (n: number) => formatCurrency(n, appLocale, Number.isInteger(n) ? 0 : 2)
-  const billingMonthLabel = formatBillingMonthLabel(billingMonth, timezone, intlLocale)
+  const billingMonthLabel = billingPolicy.cycleStartDay === 1
+    ? formatBillingMonthLabel(billingMonth, timezone, intlLocale)
+    : formatBillingPeriodLabel(billingMonth, timezone, intlLocale, billingPolicy.cycleStartDay)
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
 
   // The DB enums leaked to screen as "individual" / "monthly".
@@ -96,7 +101,8 @@ export default async function BillingDetailPage(props: {
   // Calculate month boundaries in UTC
   const { monthStartUTC, monthEndUTC } = getBillingMonthRange(
     billingMonth,
-    timezone
+    timezone,
+    billingPolicy.cycleStartDay
   )
 
   const { data: lessonsData } = await supabase

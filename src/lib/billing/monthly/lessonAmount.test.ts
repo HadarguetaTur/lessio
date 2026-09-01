@@ -18,7 +18,7 @@ function lesson(overrides: Partial<LessonRow> = {}): LessonRow {
     id: 'lesson-1',
     start_at: '2026-04-08T07:00:00.000Z',
     end_at: '2026-04-08T08:00:00.000Z',
-    status: 'scheduled',
+    status: 'completed',
     lesson_type: 'individual',
     price_per_student: null,
     teacher: { id: 'teacher-1', hourly_rate: 200 },

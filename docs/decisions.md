@@ -527,6 +527,29 @@ Rules:
 
 ---
 
+## 33. Billing Mode Is a Financial-Integrity Boundary
+
+✅ DECIDED (Sep 2026): an organization's billing mode selects exactly one
+ledger path for a billable activity. It is not display metadata.
+
+Rules:
+
+* `per_lesson` creates lesson/cancellation charges in real time and cannot run
+  the monthly charge generator
+* `monthly` records lessons and cancellation events as source data only; the
+  sole payment demand is the approved `monthly` charge
+* monthly approval must fail when an overlapping lesson or cancellation charge
+  already exists; financial rows are never silently deleted to make approval pass
+* final monthly bills include completed lessons, not scheduled lessons; scheduled
+  lessons belong to forecasting only
+* each org sets `billing_cycle_start_day` (1–28) and `billing_due_days`; monthly
+  records snapshot inclusive `period_start` / `period_end`, so a later settings
+  change cannot reinterpret an existing period
+* changing billing mode is blocked while open charges from the old model remain
+* parent-facing monthly charges show the captured period, not an assumed calendar month
+
+---
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

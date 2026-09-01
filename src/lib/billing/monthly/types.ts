@@ -3,7 +3,9 @@ import type { LessonType } from '@/lib/lessons/types'
 // Per-student price defaults now live on the organization (see
 // src/lib/organizations/pricing.ts) and are edited at /settings/pricing.
 
-export const BILLABLE_STATUSES = ['scheduled', 'completed'] as const
+// Final bills contain delivered service only. Scheduled lessons belong to
+// forecasting and must never become payable debt.
+export const BILLABLE_STATUSES = ['completed'] as const
 export type BillableStatus = (typeof BILLABLE_STATUSES)[number]
 
 // ─── DB row shapes (subset of columns used by the engine) ──────────────────
@@ -48,6 +50,8 @@ export interface MonthlyBillingRow {
   student_id: string
   parent_id: string | null
   billing_month: string
+  period_start: string
+  period_end: string
   is_paid: boolean
   is_approved: boolean
   lessons_amount: number

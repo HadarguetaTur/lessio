@@ -32,6 +32,11 @@ import { generateAndStoreInvoice } from '@/lib/billing/invoices/generateInvoiceP
 import { generateAndStoreCreditNote } from '@/lib/billing/invoices/generateCreditNotePdf'
 import { getInvoiceSignedUrl } from '@/lib/billing/invoices/uploadInvoicePdf'
 import { createNotification } from '@/lib/notifications'
+import { getOrgBillingPolicy } from '@/lib/billing/orgBillingPolicy'
+import {
+  assertMonthlyBillingHasNoIndividualChargeConflicts,
+  MonthlyBillingConflictError,
+} from '@/lib/billing/monthly/conflicts'
 
 function revalidateBillingSurfaces(studentId?: string) {
   revalidatePath('/billing')
@@ -59,6 +64,11 @@ export async function generateMonthlyBilling(billingMonth: string) {
     return { error: t('common.errors.noPermission') }
   }
 
+  const policy = await getOrgBillingPolicy(session.orgId)
+  if (policy.billingMode !== 'monthly') {
+    return { error: t('billing.errors.monthlyModeRequired') }
+  }
+
   const supabase = createServiceRoleClient()
   const { data: org } = await supabase
     .from('organizations')
@@ -72,7 +82,9 @@ export async function generateMonthlyBilling(billingMonth: string) {
     const result = await buildMonthForAllStudents(
       session.orgId,
       billingMonth,
-      timezone
+      timezone,
+      policy.cycleStartDay,
+      policy.dueDays
     )
     revalidateBillingSurfaces()
     return {
@@ -98,7 +110,22 @@ export async function recalculateStudentBilling(
     return { error: t('common.errors.noPermission') }
   }
 
+  const policy = await getOrgBillingPolicy(session.orgId)
+  if (policy.billingMode !== 'monthly') {
+    return { error: t('billing.errors.monthlyModeRequired') }
+  }
+
   const supabase = createServiceRoleClient()
+  const { data: existingBilling } = await supabase
+    .from('student_monthly_billing')
+    .select('is_approved, is_paid')
+    .eq('organization_id', session.orgId)
+    .eq('student_id', studentId)
+    .eq('billing_month', billingMonth)
+    .maybeSingle()
+  if (existingBilling?.is_approved || existingBilling?.is_paid) {
+    return { error: t('billing.errors.approvedRecalculationBlocked') }
+  }
   const { data: org } = await supabase
     .from('organizations')
     .select('timezone')
@@ -108,7 +135,15 @@ export async function recalculateStudentBilling(
   const timezone = org?.timezone ?? 'Asia/Jerusalem'
 
   try {
-    await buildStudentMonth(session.orgId, studentId, billingMonth, timezone)
+    await buildStudentMonth(
+      session.orgId,
+      studentId,
+      billingMonth,
+      timezone,
+      undefined,
+      policy.cycleStartDay,
+      policy.dueDays
+    )
     revalidateBillingSurfaces(studentId)
     return { error: null }
   } catch {
@@ -449,7 +484,7 @@ export async function approveBillingAction(billingId: string) {
 
   const { data: billing } = await supabase
     .from('student_monthly_billing')
-    .select('id, student_id, parent_id, billing_month, total_amount, is_paid, is_approved')
+    .select('id, student_id, parent_id, billing_month, period_end, total_amount, is_paid, is_approved')
     .eq('id', billingId)
     .eq('organization_id', session.orgId)
     .single()
@@ -457,6 +492,19 @@ export async function approveBillingAction(billingId: string) {
   if (!billing) return { error: t('billing.errors.billingNotFound') }
   if (billing.is_paid) return { error: t('billing.errors.alreadyPaid') }
   if (billing.is_approved) return { error: null } // idempotent
+
+  const policy = await getOrgBillingPolicy(session.orgId)
+  if (policy.billingMode !== 'monthly') {
+    return { error: t('billing.errors.monthlyModeRequired') }
+  }
+  try {
+    await assertMonthlyBillingHasNoIndividualChargeConflicts(session.orgId, billingId)
+  } catch (error) {
+    if (error instanceof MonthlyBillingConflictError) {
+      return { error: t('billing.errors.individualChargeConflict') }
+    }
+    return { error: t('billing.errors.approvedLedgerFailed') }
+  }
 
   const { error: updateError } = await supabase
     .from('student_monthly_billing')
@@ -476,9 +524,19 @@ export async function approveBillingAction(billingId: string) {
       amount: Number(billing.total_amount),
       isApproved: true,
       isPaid: false,
+      periodEnd: billing.period_end as string,
+      dueDays: policy.dueDays,
     })
     chargeId = syncResult.chargeId
-  } catch {
+  } catch (error) {
+    await supabase
+      .from('student_monthly_billing')
+      .update({ is_approved: false, updated_at: new Date().toISOString() })
+      .eq('id', billingId)
+      .eq('organization_id', session.orgId)
+    if (error instanceof MonthlyBillingConflictError) {
+      return { error: t('billing.errors.individualChargeConflict') }
+    }
     return { error: t('billing.errors.approvedLedgerFailed') }
   }
 
@@ -546,7 +604,7 @@ async function sendBillingPaymentRequestCore(
   // Load org settings
   const { data: org } = await db
     .from('organizations')
-    .select('auto_send_payment_request, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, timezone, default_locale, currency')
+    .select('auto_send_payment_request, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, default_locale, currency')
     .eq('id', orgId)
     .single()
 
@@ -557,7 +615,6 @@ async function sendBillingPaymentRequestCore(
 
   const encryptedToken = org.whatsapp_access_token as string | null
   const phoneNumberId = org.whatsapp_phone_number_id as string | null
-  const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
   const currency = (org.currency as string | null) ?? undefined
 
   if (!encryptedToken || !phoneNumberId) {
@@ -567,7 +624,7 @@ async function sendBillingPaymentRequestCore(
   // Load billing + linked charge
   const { data: billing } = await db
     .from('student_monthly_billing')
-    .select('id, parent_id, billing_month, total_amount, student_id')
+    .select('id, parent_id, billing_month, period_start, period_end, total_amount, student_id')
     .eq('id', billingId)
     .eq('organization_id', orgId)
     .single()
@@ -611,7 +668,9 @@ async function sendBillingPaymentRequestCore(
   }
   // Everything below is read by the parent, not by whoever clicked Send.
   const tr = await getT('billing', locale)
-  const monthLabel = formatBillingMonth(billing.billing_month as string, locale)
+  const monthLabel = billing.period_start && billing.period_end
+    ? `${billing.period_start}–${billing.period_end}`
+    : formatBillingMonth(billing.billing_month as string, locale)
 
   // Create payment link. DEMO_PAYMENT_LINK_ENABLED=1 allows sending without a
   // configured payment provider by linking to the org's parent portal instead

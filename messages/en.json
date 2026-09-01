@@ -1231,6 +1231,7 @@
     "generateBilling": "Generate Billing",
     "generating": "Calculating...",
     "monthLabel": "Billing Month",
+    "showPeriod": "Show period",
     "summary": {
       "totalBilled": "Total Billed",
       "totalPaid": "Paid",
@@ -1357,6 +1358,9 @@
       "alreadyPaid": "This charge is already marked as paid",
       "approveFailed": "Could not approve the charge",
       "approvedLedgerFailed": "The charge was approved, but syncing it to the ledger failed",
+      "monthlyModeRequired": "Monthly billing is available only when the business uses consolidated monthly billing",
+      "individualChargeConflict": "This bill cannot be approved because lesson or cancellation charges already exist for the same period. Review and void the duplicates first.",
+      "approvedRecalculationBlocked": "An approved or paid bill cannot be recalculated. Void or credit it through the appropriate workflow.",
       "sendPaymentRequestFailed": "Could not send the payment request",
       "noParentLinked": "No parent is linked to this charge",
       "ledgerChargeNotFound": "Ledger charge not found — approve the charge first",
@@ -1629,6 +1633,16 @@
     "billingPolicy": {
       "title": "Billing Policy",
       "subtitle": "The rules that decide what a student is actually charged for",
+      "modeLabel": "Collection model",
+      "modeHint": "The model determines whether each lesson creates a payment demand or activity is consolidated into one demand per cycle. The same activity is never billed through both paths.",
+      "modes": {
+        "monthly": { "label": "Consolidated monthly billing", "hint": "Lessons accumulate in a draft and one payment demand is created after the cycle is approved." },
+        "per_lesson": { "label": "Per-lesson billing", "hint": "Completing a lesson creates a separate payment demand for it." }
+      },
+      "cycleStartDay": "Cycle start day",
+      "cycleStartHint": "Day 1–28 in the business timezone.",
+      "dueDays": "Payment days after cycle end",
+      "dueDaysHint": "The due date is calculated from the end of each billing period.",
       "coverageLabel": "What a monthly subscription covers",
       "coverageHint": "A checked lesson type is not billed separately to a student with an active subscription — the subscription already pays for it. An unchecked type is billed on top of the subscription fee.",
       "lessonTypes": {
@@ -1647,7 +1661,9 @@
       "retroactiveHint": "This applies to billing calculations from now on. Recalculating an earlier unpaid month will also use the new policy.",
       "saved": "Settings saved",
       "errors": {
-        "saveFailed": "Saving failed. Please try again."
+        "saveFailed": "Saving failed. Please try again.",
+        "modeChangeConflict": "The billing model cannot be changed while payment demands from the current model remain open. Settle or void them first.",
+        "cycleChangeConflict": "The cycle start day cannot be changed while monthly drafts are open. Approve or remove those drafts first."
       }
     },
     "reminders": {
@@ -3745,6 +3761,7 @@
       "overdueBy": "{days} days overdue",
       "dueOn": "Due {date}",
       "forMonth": "Monthly bill — {month}",
+      "forPeriod": "Billing period {start}–{end}",
       "waived": "Written off",
       "voided": "Voided"
     },

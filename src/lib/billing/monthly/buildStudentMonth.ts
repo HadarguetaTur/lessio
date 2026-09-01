@@ -12,7 +12,7 @@ import { isMissingFieldsError, round2 } from './types'
 import { calculateLessonsContribution } from './lessonAmount'
 import { calculateCancellationsContribution } from './cancellations'
 import { calculateSubscriptionsContribution } from './subscriptions'
-import { getBillingMonthRange } from './month'
+import { getBillingMonthRange, getBillingPeriodDates } from './month'
 import { syncMonthlyCharge } from './syncMonthlyCharge'
 import { getOrgPricing, type OrgPricing } from '@/lib/organizations/pricing'
 
@@ -48,7 +48,9 @@ export async function buildStudentMonth(
   studentId: string,
   billingMonth: string,
   timezone: string,
-  prefetched?: PrefetchedData
+  prefetched?: PrefetchedData,
+  cycleStartDay = 1,
+  dueDays = 7
 ): Promise<BillingResult | MissingFieldsError | 'skipped'> {
   const supabase = createServiceRoleClient()
 
@@ -73,7 +75,8 @@ export async function buildStudentMonth(
 
     const { monthStartUTC, monthEndUTC } = getBillingMonthRange(
       billingMonth,
-      timezone
+      timezone,
+      cycleStartDay
     )
 
     // Fetch lessons for this student in this month
@@ -165,7 +168,8 @@ export async function buildStudentMonth(
     timezone,
     cancelledLessonIds,
     studentCountByLesson,
-    pricing
+    pricing,
+    cycleStartDay
   )
   if (isMissingFieldsError(lessonsResult)) return lessonsResult
 
@@ -182,9 +186,12 @@ export async function buildStudentMonth(
   )
   if (isMissingFieldsError(cancellationsResult)) return cancellationsResult
 
+  const periodDates = getBillingPeriodDates(billingMonth, timezone, cycleStartDay)
   const subscriptionsResult = calculateSubscriptionsContribution(
     subscriptions,
-    billingMonth
+    billingMonth,
+    periodDates.periodStart,
+    periodDates.periodEnd
   )
   if (isMissingFieldsError(subscriptionsResult)) return subscriptionsResult
 
@@ -208,7 +215,10 @@ export async function buildStudentMonth(
 
   const manualAdjustment = existingBilling?.manual_adjustment_amount ?? 0
   const totalAmount = round2(computedTotal + Number(manualAdjustment))
-  const isApproved = cancellationsResult.pendingCancellationsCount === 0
+  // Generation creates a reviewable draft. Money enters the charge ledger only
+  // through the explicit approval action. Preserve approval on an existing row;
+  // recalculation must not silently demote a bill that was already approved.
+  const isApproved = existingBilling?.is_approved ?? false
 
   // Resolve billing parent
   let parentId: string | null = existingBilling?.parent_id ?? null
@@ -225,6 +235,8 @@ export async function buildStudentMonth(
     student_id: studentId,
     parent_id: parentId,
     billing_month: billingMonth,
+    period_start: periodDates.periodStart,
+    period_end: periodDates.periodEnd,
     is_paid: existingBilling?.is_paid ?? false,
     is_approved: isApproved,
     lessons_amount: lessonsResult.lessonsTotal,
@@ -270,6 +282,8 @@ export async function buildStudentMonth(
     paidAtHint: persistedBilling.is_paid
       ? persistedBilling.updated_at ?? persistedBilling.created_at
       : null,
+    periodEnd: persistedBilling.period_end,
+    dueDays,
   })
 
   if (syncedCharge.isPaid !== persistedBilling.is_paid) {

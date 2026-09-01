@@ -30,6 +30,14 @@ vi.mock('@/lib/whatsapp/sendSmart', () => ({
   sendPaymentWithButton: mockSendPaymentWithButton,
 }))
 
+vi.mock('@/lib/billing/orgBillingPolicy', () => ({
+  getOrgBillingPolicy: vi.fn().mockResolvedValue({
+    billingMode: 'per_lesson',
+    cycleStartDay: 1,
+    dueDays: 7,
+  }),
+}))
+
 import { autoSendPaymentRequest } from './autoSend'
 
 function makeOrgRow(overrides: Record<string, unknown> = {}) {

@@ -12,6 +12,7 @@ import {
 } from './monthly/subscriptions'
 import { resolveChargeDueDate } from './chargeDueDate'
 import type { LessonType } from '@/lib/lessons/types'
+import { getOrgBillingPolicy } from './orgBillingPolicy'
 
 export type ChargeAlert = {
   type: 'missing_rate' | 'missing_price' | 'missing_parent' | 'error'
@@ -46,6 +47,9 @@ export async function createLessonCharge(
   lessonId: string,
   organizationId: string
 ): Promise<ChargeAlert | null> {
+  const policy = await getOrgBillingPolicy(organizationId)
+  if (policy.billingMode === 'monthly') return null
+
   const supabase = createServiceRoleClient()
 
   const { data: lesson, error: lessonError } = await supabase
@@ -213,6 +217,9 @@ export async function createCancellationCharge(
   chargeResult: CancellationChargeResult
 ): Promise<ChargeAlert | null> {
   if (!chargeResult.shouldCharge || chargeResult.amount === 0) return null
+
+  const policy = await getOrgBillingPolicy(organizationId)
+  if (policy.billingMode === 'monthly') return null
 
   const supabase = createServiceRoleClient()
   const timezone = await getOrgTimezone(organizationId)

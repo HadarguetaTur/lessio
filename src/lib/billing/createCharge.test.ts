@@ -18,6 +18,14 @@ vi.mock('@/lib/organizations/pricing', () => ({
   getOrgPricing: vi.fn(),
 }))
 
+vi.mock('./orgBillingPolicy', () => ({
+  getOrgBillingPolicy: vi.fn().mockResolvedValue({
+    billingMode: 'per_lesson',
+    cycleStartDay: 1,
+    dueDays: 7,
+  }),
+}))
+
 // Charge creation resolves a due date, which needs the org's timezone. Mocked
 // rather than added to every `from()` fixture below — the tests here are about
 // amounts and idempotency, not about which zone the org keeps.
@@ -28,9 +36,11 @@ vi.mock('@/lib/organizations', () => ({
 import { createCancellationCharge, createLessonCharge } from './createCharge'
 import { resolveBillingParent, MissingPrimaryParentError } from './resolveBillingParent'
 import { getOrgPricing } from '@/lib/organizations/pricing'
+import { getOrgBillingPolicy } from './orgBillingPolicy'
 
 const mockResolveBillingParent = vi.mocked(resolveBillingParent)
 const mockGetOrgPricing = vi.mocked(getOrgPricing)
+const mockGetOrgBillingPolicy = vi.mocked(getOrgBillingPolicy)
 
 /** Org with no individual default set — teacher rate is the only source. */
 const NO_ORG_RATE = {
@@ -67,7 +77,15 @@ function activeSub(studentId: string) {
 describe('createLessonCharge', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetOrgBillingPolicy.mockResolvedValue({ billingMode: 'per_lesson', cycleStartDay: 1, dueDays: 7 })
     mockGetOrgPricing.mockResolvedValue(NO_ORG_RATE)
+  })
+
+  it('creates no lesson charge for a monthly organization', async () => {
+    mockGetOrgBillingPolicy.mockResolvedValue({ billingMode: 'monthly', cycleStartDay: 15, dueDays: 7 })
+
+    await expect(createLessonCharge('lesson-1', 'org-1')).resolves.toBeNull()
+    expect(mockFrom).not.toHaveBeenCalled()
   })
 
   it('creates exactly one lesson charge for a completed lesson', async () => {

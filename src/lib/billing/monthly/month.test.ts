@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DateTime } from 'luxon'
 import {
   formatBillingMonthLabel,
+  getBillingPeriodDates,
   getBillingMonthRange,
   getBillingMonthSelectOptionValues,
   getCurrentBillingMonth,
@@ -20,6 +21,15 @@ describe('billing month helpers', () => {
 
     expect(range.monthStartUTC).toBe('2026-04-30T21:00:00.000Z')
     expect(range.monthEndUTC).toBe('2026-05-31T21:00:00.000Z')
+  })
+
+  it('uses the previous period before a custom cycle start day', () => {
+    const now = DateTime.fromISO('2026-09-10T12:00:00', { zone: 'Asia/Jerusalem' })
+    expect(getCurrentBillingMonth('Asia/Jerusalem', now, 15)).toBe('2026-08')
+    expect(getBillingPeriodDates('2026-08', 'Asia/Jerusalem', 15)).toEqual({
+      periodStart: '2026-08-15',
+      periodEnd: '2026-09-14',
+    })
   })
 
   it('formats billing month labels with the requested Intl locale', () => {

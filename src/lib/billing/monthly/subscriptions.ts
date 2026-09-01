@@ -37,12 +37,18 @@ export function checkActiveSubscriptionForLesson(
  */
 export function isSubscriptionActiveForMonth(
   subscription: SubscriptionRow,
-  billingMonth: string // YYYY-MM
+  billingMonth: string, // YYYY-MM
+  periodStart?: string,
+  periodEnd?: string
 ): boolean {
   if (subscription.is_paused) return false
 
-  const monthStart = DateTime.fromFormat(billingMonth, 'yyyy-MM').startOf('month')
-  const monthEnd = monthStart.endOf('month')
+  const monthStart = periodStart
+    ? DateTime.fromISO(periodStart).startOf('day')
+    : DateTime.fromFormat(billingMonth, 'yyyy-MM').startOf('month')
+  const monthEnd = periodEnd
+    ? DateTime.fromISO(periodEnd).endOf('day')
+    : monthStart.endOf('month')
 
   const startDate = DateTime.fromISO(subscription.start_date)
   const endDate = subscription.end_date
@@ -63,13 +69,19 @@ export function calculateProRataAmount(
   monthlyAmount: number,
   billingMonth: string, // YYYY-MM
   startDate: string,    // YYYY-MM-DD
-  endDate?: string | null
+  endDate?: string | null,
+  periodStart?: string,
+  periodEnd?: string
 ): number {
   if (monthlyAmount <= 0) return 0
 
-  const monthStart = DateTime.fromFormat(billingMonth, 'yyyy-MM').startOf('month')
-  const monthEnd = monthStart.endOf('month')
-  const daysInMonth = monthEnd.day
+  const monthStart = periodStart
+    ? DateTime.fromISO(periodStart).startOf('day')
+    : DateTime.fromFormat(billingMonth, 'yyyy-MM').startOf('month')
+  const monthEnd = periodEnd
+    ? DateTime.fromISO(periodEnd).endOf('day')
+    : monthStart.endOf('month')
+  const daysInMonth = Math.floor(monthEnd.startOf('day').diff(monthStart, 'days').days) + 1
 
   const subStart = DateTime.fromISO(startDate)
   const subEnd = endDate ? DateTime.fromISO(endDate) : null
@@ -89,10 +101,12 @@ export function calculateProRataAmount(
  */
 export function calculateSubscriptionsContribution(
   subscriptions: SubscriptionRow[],
-  billingMonth: string
+  billingMonth: string,
+  periodStart?: string,
+  periodEnd?: string
 ): SubscriptionsContribution | MissingFieldsError {
   const active = subscriptions.filter((s) =>
-    isSubscriptionActiveForMonth(s, billingMonth)
+    isSubscriptionActiveForMonth(s, billingMonth, periodStart, periodEnd)
   )
 
   if (active.length > 1) {
@@ -119,7 +133,9 @@ export function calculateSubscriptionsContribution(
       sub.monthly_amount,
       billingMonth,
       sub.start_date,
-      sub.end_date
+      sub.end_date,
+      periodStart,
+      periodEnd
     )
   }
 

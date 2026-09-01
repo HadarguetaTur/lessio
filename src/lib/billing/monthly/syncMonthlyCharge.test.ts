@@ -6,6 +6,10 @@ vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({ from: (table: string) => mockFrom(table) }),
 }))
 
+vi.mock('./conflicts', () => ({
+  assertMonthlyBillingHasNoIndividualChargeConflicts: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { syncMonthlyCharge } from './syncMonthlyCharge'
 
 /** The audit log is written on every charge insert; tests only care that it is tolerated. */

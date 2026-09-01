@@ -2,6 +2,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { monthlyChargeNote } from '@/lib/charges/renderNote'
 import { logChargeAudit } from '@/lib/charges/audit'
 import { resolveChargeDueDate } from '../chargeDueDate'
+import { assertMonthlyBillingHasNoIndividualChargeConflicts } from './conflicts'
 
 type ChargeStatus = 'pending' | 'invoiced' | 'paid' | 'waived' | 'voided'
 
@@ -21,6 +22,8 @@ interface SyncMonthlyChargeInput {
   isApproved: boolean
   isPaid: boolean
   paidAtHint?: string | null
+  periodEnd?: string | null
+  dueDays?: number
 }
 
 interface SyncMonthlyChargeResult {
@@ -44,6 +47,8 @@ export async function syncMonthlyCharge({
   isApproved,
   isPaid,
   paidAtHint,
+  periodEnd,
+  dueDays = 7,
 }: SyncMonthlyChargeInput): Promise<SyncMonthlyChargeResult> {
   const db = createServiceRoleClient()
 
@@ -99,6 +104,8 @@ export async function syncMonthlyCharge({
     }
   }
 
+  await assertMonthlyBillingHasNoIndividualChargeConflicts(organizationId, billingRecordId)
+
   const chargeStatus: ChargeStatus = effectiveIsPaid
     ? 'paid'
     : existing?.status === 'invoiced'
@@ -126,6 +133,8 @@ export async function syncMonthlyCharge({
       chargeType: 'monthly',
       issuedAt: new Date(),
       billingMonth,
+      periodEnd,
+      dueDays,
       timezone: 'UTC',
     }),
     updated_at: new Date().toISOString(),

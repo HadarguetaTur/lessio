@@ -1,3 +1,4 @@
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
@@ -10,7 +11,7 @@ import { listSaasInvoicesForPlatform } from '@/lib/superadmin/revenue'
 import { listAdminAuditLog } from '@/lib/superadmin/audit'
 import { listActiveSaasPlans } from '@/lib/saas/plans'
 import { getOrgQuotaUsage } from '@/lib/saas/quota'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { PageHeader } from '@/components/ui/page-header'
 import { AdminTabs } from '@/components/admin/AdminTabs'
 import { OrganizationDetailCard } from '@/components/admin/OrganizationDetailCard'
 import { OrganizationSettingsForm } from '@/components/admin/OrganizationSettingsForm'
@@ -47,6 +48,8 @@ interface Props {
 }
 
 export default async function AdminOrgDetailPage({ params, searchParams }: Props) {
+  await requirePlatformSession('orgs.read')
+
   const t = await getTranslations('common')
   const tOrgs = await getTranslations('admin.orgs')
   const locale = await getLocale()
@@ -68,10 +71,11 @@ export default async function AdminOrgDetailPage({ params, searchParams }: Props
         {t('actions.back')}
       </Link>
 
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <AdminHeader title={org.name} description={`slug: ${org.slug}`} />
-        <StartSupportModeButton orgId={org.id} orgName={org.name} />
-      </div>
+      <PageHeader
+        title={org.name}
+        subtitle={org.slug}
+        actions={<StartSupportModeButton orgId={org.id} orgName={org.name} />}
+      />
 
       <AdminTabs
         basePath={`/admin/orgs/${org.id}`}

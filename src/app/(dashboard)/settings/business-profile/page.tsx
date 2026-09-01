@@ -15,7 +15,7 @@ export default async function BusinessProfilePage() {
   const { data: org } = await db
     .from('organizations')
     .select(
-      'business_legal_name, tax_id, business_address, currency, default_vat_rate, logo_url, enforce_weekly_quota'
+      'business_legal_name, tax_id, business_address, currency, default_vat_rate, logo_url, enforce_weekly_quota, lesson_duration_settings'
     )
     .eq('id', session.orgId)
     .single()
@@ -28,6 +28,7 @@ export default async function BusinessProfilePage() {
     defaultVatRate: Number((org as Record<string, unknown>)?.default_vat_rate ?? 0),
     logoUrl: (org as Record<string, unknown>)?.logo_url as string | null ?? null,
     enforceWeeklyQuota: ((org as Record<string, unknown>)?.enforce_weekly_quota as boolean | null) ?? true,
+    lessonDurations: (org as Record<string, unknown>)?.lesson_duration_settings,
   }
 
   return (

@@ -1,15 +1,18 @@
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { getTranslations } from 'next-intl/server'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { PageHeader } from '@/components/ui/page-header'
 import { listOpenSaasInquiries } from '@/lib/superadmin/saasInquiries'
 import { ResolveInquiryButton } from './ResolveInquiryButton'
 
 export default async function AdminSaasInquiriesPage() {
+  await requirePlatformSession('billing.read')
+
   const t = await getTranslations('admin.saasInquiries')
   const items = await listOpenSaasInquiries()
 
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col overflow-hidden">
-      <AdminHeader title={t('title')} description={t('description')} />
+      <PageHeader title={t('title')} subtitle={t('description')} />
 
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground mt-4">{t('empty')}</p>

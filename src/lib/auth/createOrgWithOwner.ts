@@ -12,6 +12,7 @@
  * Compensating deletes on failure (same pattern as superadmin createOrganization).
  */
 
+import { trackEvent } from '@/lib/tracking/events'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { syncOrgHolidays } from '@/lib/holidays/syncOrgHolidays'
 import { z } from 'zod'
@@ -54,7 +55,10 @@ const TRIAL_DAYS = 30
 export async function provisionProgressiveSetup(
   db: ReturnType<typeof createServiceRoleClient>,
   orgId: string,
-  userId: string
+  userId: string,
+  /** Identity and origin for the conversion events. Optional so a caller that
+   *  has neither still provisions correctly. */
+  signal?: { email?: string | null; visitorId?: string | null }
 ): Promise<boolean> {
   const { data: plan } = await db
     .from('saas_plans')
@@ -83,6 +87,18 @@ export async function provisionProgressiveSetup(
       { onConflict: 'organization_id' }
     ),
   ])
+
+  // Per /docs/sprint-34-scope.md § C, step 4. Fire-and-forget: a tracking
+  // outage must never fail a signup, and trackEvent swallows its own errors
+  // into the tracking_events log where an operator can see and retry them.
+  for (const event of ['CompleteRegistration', 'StartTrial'] as const) {
+    void trackEvent({
+      event,
+      organizationId: orgId,
+      visitorId: signal?.visitorId ?? null,
+      email: signal?.email ?? null,
+    })
+  }
 
   if (teacherError || subscriptionError) {
     console.error('[createOrgWithOwner] initial product setup failed', {
@@ -218,7 +234,12 @@ export async function createOrgWithOwner(
     return { success: false, error: errors.profileFailed }
   }
 
-  if (!(await provisionProgressiveSetup(db, orgId, userId))) {
+  if (
+    !(await provisionProgressiveSetup(db, orgId, userId, {
+      email: input.email,
+      visitorId: attribution?.visitorId ?? null,
+    }))
+  ) {
     await db.auth.admin.deleteUser(userId)
     await db.from('organizations').delete().eq('id', orgId)
     return { success: false, error: errors.orgFailed }
@@ -290,6 +311,9 @@ export async function createOrgForExistingUser(
     return { success: false, error: errors.profileFailed }
   }
 
+  // No email or visitor id here: GoogleSignupInput carries neither, and the
+  // OAuth round trip has already left our origin. The events still fire with
+  // the org id — only Meta's match quality is weaker on this path.
   if (!(await provisionProgressiveSetup(db, orgId, userId))) {
     await db.from('organizations').delete().eq('id', orgId)
     return { success: false, error: errors.orgFailed }

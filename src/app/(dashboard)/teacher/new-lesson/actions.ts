@@ -9,12 +9,13 @@ import { checkLessonCalendarConflicts } from '@/lib/google-calendar/checkLessonC
 import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
+import { isLessonDurationAllowed } from '@/lib/organizations/lessonDurations'
 
 const TeacherLessonSchema = z.object({
   student_id:       z.string().uuid(),
   date:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   start_time:       z.string().regex(/^\d{2}:\d{2}$/),
-  duration_minutes: z.coerce.number().refine((v) => [30, 45, 60, 90].includes(v)),
+  duration_minutes: z.coerce.number().int().min(5).max(480),
 })
 
 export async function createTeacherLessonAction(
@@ -34,6 +35,9 @@ export async function createTeacherLessonAction(
   if (!parsed.success) return { error: await commonError('invalidData') }
 
   const { student_id, date, start_time, duration_minutes } = parsed.data
+  if (!(await isLessonDurationAllowed(orgId, 'teacher', duration_minutes))) {
+    return { error: await commonError('invalidData') }
+  }
   const confirmedCalendarConflict = formData.get('confirm_calendar_conflict') === '1'
 
   if (!confirmedCalendarConflict) {

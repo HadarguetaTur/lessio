@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { requireSuperAdminSession } from '@/lib/superadmin/session'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { createOrganization, CreateOrganizationSchema } from '@/lib/superadmin/createOrganization'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { z } from 'zod'
@@ -15,7 +15,7 @@ export async function createOrganizationAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const session = await requireSuperAdminSession()
+  const session = await requirePlatformSession('orgs.write')
 
   const raw = {
     name: formData.get('name'),
@@ -61,7 +61,7 @@ export async function updateOrganizationAction(
   formData: FormData
 ): Promise<ActionState> {
   const t = await getTranslations()
-  const session = await requireSuperAdminSession()
+  const session = await requirePlatformSession('orgs.write')
 
   const raw = {
     id: formData.get('id'),

@@ -11,7 +11,7 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { requireSuperAdminSession } from '@/lib/superadmin/session'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { notifyMultiple, getOwnerAndAdminProfileIds } from '@/lib/notifications'
 import { parseAppLocale } from '@/lib/i18n/locale'
@@ -44,7 +44,7 @@ export async function replyToTicketAction(
   _prev: AdminActionState | null,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireSuperAdminSession()
+  const session = await requirePlatformSession('support.reply')
 
   const parsed = replySchema.safeParse({
     ticketId: formData.get('ticket_id'),
@@ -55,9 +55,13 @@ export async function replyToTicketAction(
   const thread = await getTicketWithMessages(parsed.data.ticketId)
   if (!thread) return { error: 'Ticket not found' }
 
+  // Attribute the reply. addMessage has always accepted authorProfileId; the
+  // admin path never passed it, so every operator reply was an anonymous
+  // 'admin' — unreadable the moment more than one person works the queue.
   const ok = await addMessage({
     ticketId: parsed.data.ticketId,
     authorType: 'admin',
+    authorProfileId: session.profileId,
     body: parsed.data.body,
   })
   if (!ok) return { error: 'Failed to save reply' }
@@ -87,7 +91,7 @@ export async function setTicketStatusAction(
   _prev: AdminActionState | null,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireSuperAdminSession()
+  await requirePlatformSession('support.reply')
 
   const parsed = statusSchema.safeParse({
     ticketId: formData.get('ticket_id'),

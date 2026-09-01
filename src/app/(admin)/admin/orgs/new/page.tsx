@@ -1,7 +1,8 @@
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { PageHeader } from '@/components/ui/page-header'
 import { NewOrganizationForm } from '@/components/admin/NewOrganizationForm'
 import { createOrganizationAction } from '../actions'
 
@@ -10,6 +11,8 @@ import { createOrganizationAction } from '../actions'
  * Per /docs/sprint-18-scope.md § Story 4.
  */
 export default async function NewOrganizationPage() {
+  await requirePlatformSession('orgs.write')
+
   const t = await getTranslations('admin')
   const tCommon = await getTranslations('common')
   return (
@@ -21,7 +24,7 @@ export default async function NewOrganizationPage() {
         <ArrowRight size={13} />
         {tCommon('actions.back')}
       </Link>
-      <AdminHeader title={t('orgs.newOrg')} />
+      <PageHeader title={t('orgs.newOrg')} />
       <NewOrganizationForm action={createOrganizationAction} />
     </div>
   )

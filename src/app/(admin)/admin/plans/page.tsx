@@ -1,8 +1,9 @@
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { getLocale, getTranslations } from 'next-intl/server'
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { parseSaasFeatures, type SaasFeatures, type SaasPlanName } from '@/lib/saas/types'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { PageHeader } from '@/components/ui/page-header'
 import { PlanEditorCard, type EditablePlan } from '@/components/admin/PlanEditorCard'
 import { updatePlanAction } from './actions'
 
@@ -29,6 +30,8 @@ type PlanQueryRow = {
 }
 
 export default async function AdminPlansPage() {
+  await requirePlatformSession('billing.read')
+
   const t = await getTranslations('admin.plans')
   const locale = await getLocale()
   const db = createServiceRoleClient()
@@ -65,7 +68,7 @@ export default async function AdminPlansPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <AdminHeader title={t('title')} description={t('description')} />
+      <PageHeader title={t('title')} subtitle={t('description')} />
 
       <p className="mb-5 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
         {t('priceChangeNote')}

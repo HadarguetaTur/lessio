@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { getTranslations, getFormatter } from 'next-intl/server'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { PageHeader } from '@/components/ui/page-header'
 import { listTicketsForAdmin, type QueueFilter } from '@/lib/superadmin/supportTickets'
 import { SupportStatusBadge } from '@/components/dashboard/support/SupportStatusBadge'
 import { TicketSeverityBadge } from '@/components/admin/TicketSeverityBadge'
@@ -24,7 +24,7 @@ export default async function AdminSupportPage({
 
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col overflow-hidden">
-      <AdminHeader title={t('title')} description={t('description')} />
+      <PageHeader title={t('title')} subtitle={t('description')} />
 
       <nav className="mb-4 flex flex-wrap gap-2" aria-label={t('filterLabel')}>
         {FILTERS.map((f) => (

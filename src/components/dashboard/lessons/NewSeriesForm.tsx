@@ -29,6 +29,7 @@ interface Props {
   holidays: { date: string; name: string }[]
   /** Org price defaults, shown as the pair price placeholder. */
   pairPriceDefault?: number
+  durationValues: number[]
 }
 
 const initialState: CreateSeriesState = { error: null }
@@ -71,6 +72,7 @@ export function NewSeriesForm({
   appLocale,
   holidays,
   pairPriceDefault,
+  durationValues,
 }: Props) {
   const t = useTranslations('lessons')
   const tCommon = useTranslations('common')
@@ -117,8 +119,6 @@ export function NewSeriesForm({
     { value: 5, label: tCommon('days.fri') },
     { value: 6, label: tCommon('days.sat') },
   ]
-
-  const DURATION_OPTIONS = [30, 45, 60, 90]
 
   if (state.result) {
     const { created, skipped, conflicts } = state.result
@@ -347,11 +347,11 @@ export function NewSeriesForm({
               id="duration_minutes"
               name="duration_minutes"
               required
-              defaultValue={60}
+              defaultValue={durationValues.includes(60) ? 60 : durationValues[0]}
               className={selectClass}
             >
-              {DURATION_OPTIONS.map((n) => (
-                <option key={n} value={n}>{tCommon(`durations.${n}`)}</option>
+              {durationValues.map((n) => (
+                <option key={n} value={n}>{tCommon('durationMinutes', { n })}</option>
               ))}
             </select>
           )}

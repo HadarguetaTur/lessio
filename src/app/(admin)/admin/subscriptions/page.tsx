@@ -1,3 +1,4 @@
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import Link from 'next/link'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { DateTime } from 'luxon'
@@ -5,7 +6,7 @@ import { DateTime } from 'luxon'
 import { listActiveSaasPlans } from '@/lib/saas/plans'
 import { listSubscriptions } from '@/lib/superadmin/metrics'
 import { formatMoney } from '@/lib/i18n/formatCurrency'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { PageHeader } from '@/components/ui/page-header'
 import { AdminTable, type AdminTableRow } from '@/components/admin/AdminTable'
 import { SubscriptionActions } from '@/components/admin/SubscriptionActions'
 import { SubscriptionStatusBadge } from '@/components/admin/SubscriptionStatusBadge'
@@ -33,6 +34,8 @@ interface Props {
 }
 
 export default async function AdminSubscriptionsPage({ searchParams }: Props) {
+  await requirePlatformSession('billing.read')
+
   const t = await getTranslations('admin.subscriptions')
   const tTable = await getTranslations('admin.table')
   const locale = await getLocale()
@@ -117,7 +120,7 @@ export default async function AdminSubscriptionsPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <AdminHeader title={t('title')} description={t('description')} />
+      <PageHeader title={t('title')} subtitle={t('description')} />
 
       <nav className="mb-4 flex flex-wrap gap-1.5">
         {QUEUES.map((q) => {

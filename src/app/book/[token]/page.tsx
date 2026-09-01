@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { verifyBookingToken, BookingTokenError } from '@/lib/jwt'
 import { BookingFlow } from '@/components/booking/BookingFlow'
+import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
 
 interface BookPageProps {
   params: Promise<{ token: string }>
@@ -22,7 +23,8 @@ export default async function BookPage({ params, searchParams }: BookPageProps) 
   }
 
   if (payload) {
-    return <BookingFlow token={token} payload={payload} initialWeekStart={initialWeekStart} />
+    const durations = await getOrgLessonDurations(payload.organizationId, 'bot')
+    return <BookingFlow token={token} payload={payload} initialWeekStart={initialWeekStart} durationValues={durations.map((item) => item.minutes)} />
   }
 
   const t = await getTranslations('booking.link')

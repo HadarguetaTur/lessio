@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { normalizeLessonDurations } from '@/lib/organizations/lessonDurations'
 
 // ─── Save Business Profile ──────────────────────────────────────────────────
 
@@ -17,6 +18,15 @@ const BusinessProfileSchema = z.object({
     .min(0)
     .max(25),
   enforce_weekly_quota: z.boolean(),
+  lesson_duration_settings: z.array(z.object({
+    minutes: z.number().int().min(5).max(480),
+    bot: z.boolean(),
+    teacher: z.boolean(),
+    admin: z.boolean(),
+  })).min(1).max(30)
+    .refine((items) => items.some((item) => item.bot), 'At least one bot duration is required')
+    .refine((items) => items.some((item) => item.teacher), 'At least one teacher duration is required')
+    .refine((items) => items.some((item) => item.admin), 'At least one admin duration is required'),
 })
 
 export async function saveBusinessProfileAction(
@@ -34,6 +44,13 @@ export async function saveBusinessProfileAction(
     return { error: err instanceof Error ? err.message : 'Support mode — read only' }
   }
 
+  let lessonDurationInput: unknown = []
+  try {
+    lessonDurationInput = JSON.parse((formData.get('lesson_duration_settings') as string) || '[]')
+  } catch {
+    return { error: 'Invalid lesson durations' }
+  }
+
   const raw = {
     business_legal_name: (formData.get('business_legal_name') as string) || '',
     tax_id: (formData.get('tax_id') as string) || '',
@@ -42,6 +59,7 @@ export async function saveBusinessProfileAction(
     default_vat_rate: parseFloat(formData.get('default_vat_rate') as string),
     // An unchecked switch submits nothing at all, which is the "off" case.
     enforce_weekly_quota: formData.get('enforce_weekly_quota') === 'on',
+    lesson_duration_settings: normalizeLessonDurations(lessonDurationInput),
   }
 
   const parsed = BusinessProfileSchema.safeParse(raw)
@@ -59,6 +77,7 @@ export async function saveBusinessProfileAction(
       currency: parsed.data.currency,
       default_vat_rate: parsed.data.default_vat_rate,
       enforce_weekly_quota: parsed.data.enforce_weekly_quota,
+      lesson_duration_settings: parsed.data.lesson_duration_settings,
     })
     .eq('id', session.orgId)
 

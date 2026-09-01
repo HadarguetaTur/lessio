@@ -1,9 +1,10 @@
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import Link from 'next/link'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { DateTime } from 'luxon'
 
 import { listAdminAuditLog } from '@/lib/superadmin/audit'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { PageHeader } from '@/components/ui/page-header'
 import { AdminTable, type AdminTableRow } from '@/components/admin/AdminTable'
 
 /**
@@ -13,6 +14,8 @@ import { AdminTable, type AdminTableRow } from '@/components/admin/AdminTable'
  * and data exports previously left no trace beyond a console line.
  */
 export default async function AdminAuditPage() {
+  await requirePlatformSession('audit.read')
+
   const t = await getTranslations('admin.audit')
   const tTable = await getTranslations('admin.table')
   const locale = await getLocale()
@@ -55,7 +58,7 @@ export default async function AdminAuditPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <AdminHeader title={t('title')} description={t('description')} />
+      <PageHeader title={t('title')} subtitle={t('description')} />
       <AdminTable
         exportName="lessio-admin-audit"
         emptyLabel={tTable('empty')}

@@ -1,37 +1,25 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowRight, Trash2 } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getTeacherById } from '@/lib/teachers'
-import { getTeacherAvailability, DAY_KEYS, AvailabilityWindow } from '@/lib/availability'
-import { AddAvailabilityForm } from '@/components/dashboard/availability/AddAvailabilityForm'
-import { createAvailability, deleteAvailability } from './actions'
+import { getTeacherAvailability, normalizeTime } from '@/lib/availability'
+import { WeeklyAvailabilityEditor } from '@/components/dashboard/availability/WeeklyAvailabilityEditor'
+import { createAvailability, deleteAvailability, updateAvailability } from './actions'
 import { getTranslations } from 'next-intl/server'
-
-/** Format Postgres time "HH:MM:SS" to "HH:MM" for display */
-function fmt(t: string) {
-  return t.substring(0, 5)
-}
 
 export default async function TeacherAvailabilityPage(props: {
   params: Promise<{ id: string }>
 }) {
   const { id } = await props.params
-  const { orgId } = await getSession()
+  const { orgId, isSupportMode } = await getSession()
 
   const teacher = await getTeacherById(id, orgId)
   if (!teacher) notFound()
 
   const windows = await getTeacherAvailability(id, orgId)
 
-  // Group by day_of_week
-  const byDay = new Map<number, AvailabilityWindow[]>()
-  for (let d = 0; d <= 6; d++) byDay.set(d, [])
-  windows.forEach((w) => byDay.get(w.day_of_week)!.push(w))
-
   const t = await getTranslations('teachers')
-  const tCommon = await getTranslations('common')
-  const boundCreate = createAvailability.bind(null, id)
 
   return (
     <div className="max-w-2xl pb-8 min-w-0">
@@ -70,48 +58,18 @@ export default async function TeacherAvailabilityPage(props: {
         </Link>
       </div>
 
-      <div className="space-y-2 mb-6">
-        {Array.from(byDay.entries()).map(([day, dayWindows]) => (
-          <div
-            key={day}
-            className="flex items-start gap-4 rounded-xl border border-border bg-card shadow-sm px-4 py-3"
-          >
-            <span className="w-16 shrink-0 text-sm font-medium text-foreground pt-0.5">{tCommon(`days.${DAY_KEYS[day]}`)}</span>
-
-            {dayWindows.length === 0 ? (
-              <span className="text-sm text-muted-foreground">—</span>
-            ) : (
-              <div className="flex flex-wrap gap-2 min-w-0">
-                {dayWindows.map((w) => {
-                  const deleteAction = deleteAvailability.bind(null, w.id, id)
-                  return (
-                    <div
-                      key={w.id}
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 text-sm text-foreground px-3 py-1"
-                    >
-                      <span dir="ltr" className="font-mono text-xs tabular-nums">
-                        {fmt(w.start_time)}–{fmt(w.end_time)}
-                      </span>
-                      <form action={deleteAction} className="flex">
-                        <button
-                          type="submit"
-                          className="text-muted-foreground hover:text-destructive transition-colors"
-                          title={tCommon('actions.delete')}
-                          aria-label={tCommon('actions.delete')}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </form>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <AddAvailabilityForm action={boundCreate} />
+      <WeeklyAvailabilityEditor
+        windows={windows.map((w) => ({
+          id: w.id,
+          day_of_week: w.day_of_week,
+          start_time: normalizeTime(w.start_time),
+          end_time: normalizeTime(w.end_time),
+        }))}
+        addAction={createAvailability.bind(null, id)}
+        updateAction={updateAvailability.bind(null, id)}
+        deleteAction={deleteAvailability.bind(null, id)}
+        readOnly={isSupportMode}
+      />
     </div>
   )
 }

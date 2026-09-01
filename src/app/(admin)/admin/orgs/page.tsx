@@ -1,7 +1,9 @@
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { OrganizationsTable } from '@/components/admin/OrganizationsTable'
 import { OrganizationFilters } from '@/components/admin/OrganizationFilters'
 import { getOrganizationsList } from '@/lib/superadmin/organizations'
@@ -17,6 +19,8 @@ interface Props {
 }
 
 export default async function AdminOrgsPage({ searchParams }: Props) {
+  await requirePlatformSession('orgs.read')
+
   const t = await getTranslations('admin')
   const { search, status, missingSetup } = await searchParams
 
@@ -33,19 +37,18 @@ export default async function AdminOrgsPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <div className="flex items-start justify-between mb-6">
-        <AdminHeader
-          title={t('orgs.title')}
-          description={`${orgs.length} ${t('orgs.title')}`}
-        />
-        <Link
-          href="/admin/orgs/new"
-          className="flex shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-        >
-          <Plus size={15} />
-          {t('orgs.newOrg')}
-        </Link>
-      </div>
+      <PageHeader
+        title={t('orgs.title')}
+        subtitle={t('orgs.count', { count: orgs.length })}
+        actions={
+          <Button asChild>
+            <Link href="/admin/orgs/new">
+              <Plus size={15} />
+              {t('orgs.newOrg')}
+            </Link>
+          </Button>
+        }
+      />
 
       <OrganizationFilters />
       <OrganizationsTable orgs={orgs} />

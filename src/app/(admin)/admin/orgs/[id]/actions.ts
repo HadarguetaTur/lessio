@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { requireSuperAdminSession } from '@/lib/superadmin/session'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import {
   setSupportSessionCookie,
   clearSupportSessionCookie,
@@ -14,7 +14,7 @@ import { recordAdminAction } from '@/lib/superadmin/audit'
 import { getTranslations } from 'next-intl/server'
 
 export async function startSupportModeAction(orgId: string): Promise<never> {
-  const session = await requireSuperAdminSession()
+  const session = await requirePlatformSession('support_mode.enter')
 
   // Verify org exists
   const db = createServiceRoleClient()
@@ -30,6 +30,7 @@ export async function startSupportModeAction(orgId: string): Promise<never> {
     superAdminId: session.userId,
     targetOrgId: orgId,
     expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    grantedRole: session.role,
   })
 
   await recordAdminAction({
@@ -72,7 +73,7 @@ export async function processDeletionRequestAction(
   orgId: string
 ): Promise<{ error: string | null }> {
   const t = await getTranslations()
-  const session = await requireSuperAdminSession()
+  const session = await requirePlatformSession('orgs.write')
 
   try {
     await processDeletionRequest(requestId, action, session.profileId)
@@ -95,7 +96,7 @@ export async function processDeletionRequestAction(
 // ── Story 1b (Sprint 23): Data export ────────────────────────────────────────
 
 export async function exportOrgDataAction(orgId: string): Promise<{ json: string }> {
-  const session = await requireSuperAdminSession()
+  const session = await requirePlatformSession('orgs.export')
 
   const db = createServiceRoleClient()
 

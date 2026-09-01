@@ -65,6 +65,9 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   // OPENAI_API_KEY: optional platform-level fallback. Each org configures its own AI key.
   // RESEND_API_KEY / RESEND_FROM_EMAIL: optional. Required only when email reminders are used.
   // NEXT_PUBLIC_SENTRY_DSN: optional. Set to enable Sentry error monitoring.
+  // TRACKING_CONFIG_ENCRYPTION_KEY: optional. Required only to store a
+  //   server-side tracking credential (Meta CAPI token, GA4 api_secret).
+  //   Browser pixels work without it; /admin/tracking reports the miss.
 ]
 
 /**

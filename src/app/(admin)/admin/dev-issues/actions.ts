@@ -6,7 +6,7 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { requireSuperAdminSession } from '@/lib/superadmin/session'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { notifyMultiple, getOwnerAndAdminProfileIds } from '@/lib/notifications'
 import { parseAppLocale } from '@/lib/i18n/locale'
@@ -35,7 +35,7 @@ export async function setDevIssueStatusAction(
   _prev: AdminActionState | null,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireSuperAdminSession()
+  await requirePlatformSession('support.reply')
 
   const parsed = statusSchema.safeParse({
     issueId: formData.get('issue_id'),
@@ -118,7 +118,7 @@ export async function linkTicketToIssueAction(
   _prev: AdminActionState | null,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireSuperAdminSession()
+  await requirePlatformSession('support.reply')
 
   const parsed = linkSchema.safeParse({
     ticketId: formData.get('ticket_id'),

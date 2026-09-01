@@ -19,7 +19,6 @@ import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 // Keys into the shared common.days namespace, positioned Sunday-first to match
 // the summary's Sun–Sat week ordering.
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
-export const DURATION_VALUES = [45, 60, 90] as const
 const LOCK_DURATION_MS = 5 * 60 * 1000
 
 export interface AvailabilitySelection {
@@ -41,6 +40,7 @@ interface AvailabilityCalendarProps {
   onLocked: (selection: AvailabilitySelection) => void
   onBack: () => void
   onError: (errorCode: string) => void
+  durationValues: number[]
 }
 
 export function AvailabilityCalendar({
@@ -53,6 +53,7 @@ export function AvailabilityCalendar({
   onLocked,
   onBack,
   onError,
+  durationValues,
 }: AvailabilityCalendarProps) {
   const t = useTranslations('booking.availability')
   const tCommon = useTranslations('common')
@@ -326,7 +327,7 @@ export function AvailabilityCalendar({
             <div className="space-y-1">
               <p className="text-sm font-medium">{t('durationLabel')}</p>
               <div className="flex flex-wrap gap-2">
-                {DURATION_VALUES.map((value) => (
+                {durationValues.map((value) => (
                   <button
                     key={value}
                     type="button"
@@ -338,7 +339,7 @@ export function AvailabilityCalendar({
                         : 'border-border bg-background hover:bg-accent'
                     } disabled:opacity-50`}
                   >
-                    {tCommon(`durations.${value}`)}
+                    {tCommon('durationMinutes', { n: value })}
                   </button>
                 ))}
               </div>

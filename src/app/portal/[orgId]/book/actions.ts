@@ -20,6 +20,7 @@ import {
   WeeklyQuotaExceededError,
 } from '@/lib/booking'
 import { LessonConflictError } from '@/lib/lessons/createLesson'
+import { isLessonDurationAllowed } from '@/lib/organizations/lessonDurations'
 
 async function requirePortalSession(orgId: string) {
   const session = await getPortalSession()
@@ -101,6 +102,7 @@ export async function getPortalSlotsAction(
 ): Promise<AvailableSlot[]> {
   const session = await requirePortalSession(orgId)
   if (studentId) await assertOwnsStudent(orgId, session.parentId, studentId)
+  if (!(await isLessonDurationAllowed(orgId, 'bot', durationMinutes))) throw new Error('Invalid duration')
   return getAvailableSlots({ teacherId, date, durationMinutes, organizationId: orgId, studentId })
 }
 
@@ -113,6 +115,7 @@ export async function getPortalAvailabilitySummaryAction(
 ): Promise<AvailabilitySummary> {
   const session = await requirePortalSession(orgId)
   if (studentId) await assertOwnsStudent(orgId, session.parentId, studentId)
+  if (!(await isLessonDurationAllowed(orgId, 'bot', durationMinutes))) throw new Error('Invalid duration')
   return getAvailabilitySummary({ teacherId, organizationId: orgId, durationMinutes, weekStart, studentId })
 }
 

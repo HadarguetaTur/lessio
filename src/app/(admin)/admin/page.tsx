@@ -1,8 +1,8 @@
 import { getTranslations } from 'next-intl/server'
 
-import { requireSuperAdminSession } from '@/lib/auth/session'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { getPlatformOverview } from '@/lib/superadmin/dashboard'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { PageHeader } from '@/components/ui/page-header'
 import { ActivationFunnel } from '@/components/admin/ActivationFunnel'
 import { AttentionQueue } from '@/components/admin/AttentionQueue'
 import { PlatformActivityRow } from '@/components/admin/PlatformActivityRow'
@@ -12,19 +12,19 @@ import { SaasMetricRow } from '@/components/admin/SaasMetricRow'
 
 /**
  * Platform overview — superadmin only.
- * Guard is in (admin)/admin/layout.tsx via requireSuperAdminSession().
+ * Guard is in (admin)/admin/layout.tsx via requirePlatformSession().
  *
  * Per /docs/sprint-34-scope.md § /admin. `/admin` used to 404: the sidebar
  * always deep-linked to /admin/dashboard, which now redirects here.
  */
 export default async function AdminOverviewPage() {
   const t = await getTranslations('admin.overview')
-  const { profileId } = await requireSuperAdminSession()
+  const { profileId } = await requirePlatformSession()
   const { metrics, funnel, attention, activity, recentOrgs } = await getPlatformOverview()
 
   return (
     <div className="mx-auto max-w-5xl">
-      <AdminHeader title={t('title')} description={t('description')} />
+      <PageHeader title={t('title')} subtitle={t('description')} />
       <PlatformNotificationsList profileId={profileId} />
 
       <SaasMetricRow metrics={metrics} />

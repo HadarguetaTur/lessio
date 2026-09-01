@@ -223,6 +223,7 @@
       "90": "90 דקות",
       "120": "120 דקות"
     },
+    "durationMinutes": "{n} דקות",
     "emptyStates": {
       "noResults": "לא נמצאו תוצאות",
       "noLessonsToday": "אין שיעורים מתוכננים להיום"
@@ -934,7 +935,13 @@
     "availabilityConfirm": {
       "title": "המורה לא זמין בשעה זו",
       "fallback": "השעה המבוקשת נמצאת מחוץ לחלון הזמינות של המורה. האם לקבוע את השיעור בכל זאת?",
-      "scheduleAnyway": "קבע בכל זאת"
+      "scheduleAnyway": "קבע בכל זאת",
+      "windowsForDay": "חלונות הזמינות ביום {day}:",
+      "noWindowsForDay": "לא הוגדרה זמינות ביום {day}",
+      "overrideWindowForDate": "החלון שהוגדר לתאריך זה:",
+      "overrideReason": "סיבה: {reason}",
+      "editAvailability": "עריכת הזמינות",
+      "dismissedNotice": "השיעור לא נקבע. שנה את השעה, או ערוך את הזמינות."
     },
     "calendarConfirm": {
       "title": "חפיפה ביומן Google",
@@ -1461,7 +1468,16 @@
       "vatHint": "יוחל על חשבוניות חדשות (0–25%)",
       "saved": "פרופיל העסק נשמר",
       "enforceWeeklyQuota": "אכיפת מכסה שבועית לתלמיד",
-      "enforceWeeklyQuotaHint": "כשמופעל, תלמיד לא יוכל לקבוע יותר שיעורים בשבוע מהמכסה שנקבעה בכרטיס שלו. כשמכובה, שדה המכסה לא מוצג בכרטיס התלמיד ולא מתבצעת בדיקה בעת קביעת שיעור."
+      "enforceWeeklyQuotaHint": "כשמופעל, תלמיד לא יוכל לקבוע יותר שיעורים בשבוע מהמכסה שנקבעה בכרטיס שלו. כשמכובה, שדה המכסה לא מוצג בכרטיס התלמיד ולא מתבצעת בדיקה בעת קביעת שיעור.",
+      "lessonDurationsTitle": "משכי שיעור זמינים",
+      "lessonDurationsHint": "אפשר להוסיף או להסיר משכים ולבחור היכן כל משך זמין להזמנה.",
+      "durationMinutes": "דקות",
+      "availableBot": "בוט / הורה",
+      "availableTeacher": "מורה",
+      "availableAdmin": "מנהל",
+      "newDurationPlaceholder": "משך בדקות",
+      "addDuration": "הוספה",
+      "removeDuration": "הסרה"
     },
     "whatsapp": {
       "title": "WhatsApp",
@@ -2615,6 +2631,13 @@
       "title": "הזמינות שלי",
       "addSlot": "הוסף זמינות",
       "addSlotTitle": "הוסף חלון זמינות",
+      "days": "ימים",
+      "selectDaysHint": "בחר יום אחד או יותר, והחלון יתווסף לכולם",
+      "selectAll": "כל השבוע",
+      "clearDays": "נקה בחירה",
+      "editWindow": "ערוך חלון",
+      "emptyDay": "אין זמינות",
+      "readOnlyHint": "מצב תמיכה — צפייה בלבד",
       "noSlots": "לא הוגדרה זמינות",
       "day": "יום",
       "from": "משעה",
@@ -2708,6 +2731,11 @@
       "endAfterStart": "שעת הסיום חייבת להיות לאחר שעת ההתחלה",
       "overlapping": "חלון הזמן חופף עם זמינות קיימת באותו יום",
       "saveAvailabilityFailed": "שגיאה בשמירת הזמינות",
+      "pickDays": "יש לבחור לפחות יום אחד",
+      "overlappingDays": "חלון הזמן חופף לזמינות קיימת בימים: {days}",
+      "windowNotFound": "חלון הזמינות לא נמצא",
+      "updateAvailabilityFailed": "שגיאה בעדכון הזמינות",
+      "deleteAvailabilityFailed": "שגיאה במחיקת הזמינות",
       "pickDate": "יש לבחור תאריך",
       "overrideExists": "כבר קיים חריג לתאריך זה",
       "saveOverrideFailed": "שגיאה בשמירת החריג",
@@ -2747,23 +2775,33 @@
       "leads": "לידים",
       "campaigns": "קמפיינים",
       "attribution": "ייחוס ומשפך",
-      "tracking": "מדידה וטרקינג",
+      "tracking": "מדידה",
       "support": "תמיכה",
       "devIssues": "באגים חוזרים",
       "errors": "שגיאות",
       "cost": "עלות תפעול",
       "plans": "תוכניות ופיצ׳רים",
       "audit": "יומן פעולות",
-      "soon": "בקרוב",
       "searchPlaceholder": "חיפוש עמודים וארגונים…",
       "noResults": "לא נמצאה התאמה",
       "groups": {
-        "pages": "עמודים",
+        "pages": "עמודים"
+      },
+      "sections": {
         "growth": "צמיחה",
         "customers": "לקוחות",
         "operations": "תפעול",
         "platform": "פלטפורמה"
-      }
+      },
+      "roles": {
+        "superadmin": "סופר-אדמין",
+        "platform_support": "תמיכה",
+        "platform_billing": "כספים",
+        "platform_marketing": "שיווק",
+        "platform_viewer": "צפייה בלבד"
+      },
+      "openNavigation": "פתיחת ניווט",
+      "staff": "צוות"
     },
     "saasInquiries": {
       "title": "פניות תוכנית מותאמת",
@@ -2890,7 +2928,8 @@
           "referrer": "הפניה",
           "landingPath": "דף נחיתה"
         }
-      }
+      },
+      "count": "{count} ארגונים"
     },
     "billing": {
       "title": "בילינג",
@@ -3161,6 +3200,107 @@
         "details": "פרטים"
       },
       "empty": "לא נרשמו פעולות אדמין בארגון הזה"
+    },
+    "staff": {
+      "title": "צוות",
+      "description": "מי עובד על הפלטפורמה, ומה כל אחד יכול לעשות",
+      "invite": "הזמנת עמית",
+      "inviteHint": "נשלחת אליהם הזמנה במייל והם בוחרים סיסמה בעצמם.",
+      "sendInvite": "שליחת הזמנה",
+      "fullName": "שם מלא",
+      "email": "אימייל",
+      "role": "תפקיד",
+      "roleHint": "צפייה בלבד רואה הכל ולא משנה כלום — נקודת הפתיחה הבטוחה.",
+      "changeRole": "שינוי תפקיד",
+      "deactivate": "השבתה",
+      "reactivate": "הפעלה מחדש",
+      "rowActions": "פעולות",
+      "notEditable": "—",
+      "you": "(אתה)",
+      "active": "פעיל",
+      "inactive": "מושבת",
+      "capabilityCount": "{count} הרשאות",
+      "columns": {
+        "name": "שם",
+        "role": "תפקיד",
+        "status": "סטטוס",
+        "capabilities": "הרשאות",
+        "invitedBy": "הוזמן ע״י",
+        "joined": "הצטרף"
+      },
+      "roles": {
+        "superadmin": "סופר-אדמין",
+        "platform_support": "תמיכה",
+        "platform_billing": "כספים",
+        "platform_marketing": "שיווק",
+        "platform_viewer": "צפייה בלבד"
+      },
+      "errors": {
+        "INVALID_INPUT": "בדוק את השם, האימייל והתפקיד.",
+        "EMAIL_EXISTS": "לאימייל הזה כבר יש חשבון.",
+        "ROLE_NOT_ASSIGNABLE": "אי אפשר להעניק את התפקיד הזה מכאן.",
+        "CANNOT_CHANGE_OWN_ROLE": "אי אפשר לשנות את התפקיד של עצמך.",
+        "CANNOT_DEACTIVATE_SELF": "אי אפשר להשבית את עצמך.",
+        "CANNOT_DEMOTE_SUPERADMIN": "סופר-אדמין ניתן לשינוי רק במסד הנתונים.",
+        "NOT_PLATFORM_STAFF": "המשתמש הזה אינו איש צוות פלטפורמה.",
+        "NOT_FOUND": "המשתמש הזה כבר לא קיים.",
+        "INVITE_FAILED": "לא הצלחנו לשלוח את ההזמנה."
+      }
+    },
+    "tracking": {
+      "title": "מדידה",
+      "description": "לאן נשלחים אירועי ההמרה, והאם הם הגיעו",
+      "idsInDbNote": "מזהי הפיקסלים חיים כאן ולא במשתני סביבה — Next מטמיע אותם בזמן build, כך שהחלפת פיקסל הייתה מחייבת דיפלוי.",
+      "addDestination": "הוספת יעד",
+      "provider": "ספק",
+      "label": "שם",
+      "externalId": "מזהה",
+      "externalIdHint": "מזהה פיקסל, מזהה מדידה או מזהה קונטיינר.",
+      "serverCredential": "טוקן צד-שרת",
+      "serverCredentialHint": "השאר ריק כדי לשמור על הטוקן הקיים.",
+      "credentialSet": "שמור טוקן",
+      "credentialEmpty": "אין טוקן שמור",
+      "consentCategory": "קטגוריית הסכמה",
+      "testEventCode": "קוד אירוע בדיקה",
+      "testEventCodeHint": "אופציונלי",
+      "isEnabled": "מופעל",
+      "add": "הוספה",
+      "save": "שמירה",
+      "saved": "נשמר",
+      "delete": "מחיקה",
+      "sendTest": "שליחת אירוע בדיקה",
+      "deliveryLog": "שליחות — 24 שעות אחרונות",
+      "failuresInWindow": "{count} נכשלו",
+      "providers": {
+        "meta_pixel": "Meta Pixel + Conversions API",
+        "ga4": "Google Analytics 4",
+        "gtm": "Google Tag Manager",
+        "google_ads": "Google Ads",
+        "tiktok": "TikTok",
+        "linkedin": "LinkedIn"
+      },
+      "categories": {
+        "necessary": "הכרחי",
+        "analytics": "אנליטיקס",
+        "marketing": "שיווק"
+      },
+      "status": {
+        "sent": "נשלח",
+        "pending": "ממתין",
+        "failed": "נכשל"
+      },
+      "columns": {
+        "when": "שעה",
+        "event": "אירוע",
+        "destination": "יעד",
+        "status": "סטטוס",
+        "detail": "פרטים"
+      },
+      "errors": {
+        "INVALID_INPUT": "בדוק את הספק, השם והמזהה.",
+        "PROVIDER_ALREADY_ENABLED": "כבר קיים יעד מופעל לספק הזה.",
+        "MISSING_ENCRYPTION_KEY": "המשתנה TRACKING_CONFIG_ENCRYPTION_KEY לא מוגדר בשרת."
+      }
     }
   },
   "auth": {
@@ -4785,5 +4925,13 @@
         "system": "עדכון מערכת"
       }
     }
+  },
+  "consent": {
+    "title": "עוגיות",
+    "body": "אנחנו משתמשים בעוגיות כדי למדוד איך משתמשים באתר ואיך מגיעים אלינו.",
+    "privacyLink": "מדיניות הפרטיות",
+    "acceptAll": "אישור הכל",
+    "analyticsOnly": "אנליטיקס בלבד",
+    "rejectAll": "דחיית הכל"
   }
 }

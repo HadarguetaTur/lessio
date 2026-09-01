@@ -19,6 +19,9 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { capabilitiesFor } from '@/lib/superadmin/capabilities'
+
 const COOKIE_NAME = 'support_session'
 const TTL_SECONDS = 60 * 30 // 30 minutes
 
@@ -26,6 +29,12 @@ export interface SupportSession {
   superAdminId: string
   targetOrgId: string
   expiresAt: string
+  /**
+   * The operator's platform role at the moment the cookie was minted.
+   * Recorded so a revoked grant is visible in the audit trail even after the
+   * profile has changed; the live check is {@link getActiveSupportSession}.
+   */
+  grantedRole?: string
 }
 
 function getSecret(): Uint8Array {
@@ -49,6 +58,7 @@ export async function verifySupportSession(token: string): Promise<SupportSessio
     superAdminId: payload.superAdminId as string,
     targetOrgId: payload.targetOrgId as string,
     expiresAt: payload.expiresAt as string,
+    grantedRole: typeof payload.grantedRole === 'string' ? payload.grantedRole : undefined,
   }
 }
 
@@ -78,4 +88,29 @@ export async function setSupportSessionCookie(session: SupportSession): Promise<
 export async function clearSupportSessionCookie(): Promise<void> {
   const cookieStore = await cookies()
   cookieStore.delete(COOKIE_NAME)
+}
+
+/**
+ * The support session, but only if the operator may still impersonate.
+ *
+ * The cookie has a fixed 30-minute TTL and no revocation list, so a colleague
+ * whose role is downgraded — or who is deactivated — would otherwise keep
+ * browsing a tenant's dashboard until it expired. Costs one primary-key lookup,
+ * and only on the rare request that actually carries the cookie.
+ */
+export async function getActiveSupportSession(): Promise<SupportSession | null> {
+  const session = await getSupportSession()
+  if (!session) return null
+
+  const db = createServiceRoleClient()
+  const { data: profile } = await db
+    .from('profiles')
+    .select('role, is_active')
+    .eq('id', session.superAdminId)
+    .maybeSingle()
+
+  if (!profile || profile.is_active === false) return null
+  if (!capabilitiesFor(profile.role).includes('support_mode.enter')) return null
+
+  return session
 }

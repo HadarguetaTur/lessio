@@ -6,6 +6,7 @@ import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PortalBookingFlow } from '@/components/portal/PortalBookingFlow'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
+import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
 
 /**
  * Portal booking page — portal-session auth, reuses booking lib.
@@ -29,6 +30,7 @@ export default async function PortalBookPage({
     .eq('id', orgId)
     .single()
   const timezone = org?.timezone ?? 'Asia/Jerusalem'
+  const durations = await getOrgLessonDurations(orgId, 'bot')
 
   return (
     <main className="flex flex-col flex-1 pb-16">
@@ -43,7 +45,7 @@ export default async function PortalBookPage({
         </Link>
         <h1 className="font-bold text-gray-900">{t('tagline')}</h1>
       </header>
-      <PortalBookingFlow orgId={orgId} timezone={timezone} />
+      <PortalBookingFlow orgId={orgId} timezone={timezone} durationValues={durations.map((item) => item.minutes)} />
       <PortalTabBar orgId={orgId} active="book" />
     </main>
   )

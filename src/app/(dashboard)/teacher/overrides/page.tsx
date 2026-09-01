@@ -22,12 +22,18 @@ export default async function TeacherOverridesPage() {
   const tSelf = await getTranslations('teacherSelf')
   const tCommon = await getTranslations('common')
 
-  if (role !== 'teacher') {
+  // Not teacher-only: an owner/admin who also teaches reaches their own
+  // overrides here, since a solo tutor's sidebar hides the teachers section.
+  // The teacher row is still resolved from the session below.
+  if (role !== 'teacher' && role !== 'owner' && role !== 'admin') {
     redirect('/dashboard')
   }
 
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) {
+    // "Ask your manager" is the right message for a teacher, not for the
+    // owner who would be that manager.
+    if (role !== 'teacher') redirect('/dashboard')
     return (
       <div className="text-center mt-16 text-sm text-muted-foreground">
         {tSelf('noTeacherRecordContact')}

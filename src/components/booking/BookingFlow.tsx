@@ -87,9 +87,10 @@ interface BookingFlowProps {
   token: string
   payload: BookingTokenPayload
   initialWeekStart?: string
+  durationValues: number[]
 }
 
-export function BookingFlow({ token, payload, initialWeekStart }: BookingFlowProps) {
+export function BookingFlow({ token, payload, initialWeekStart, durationValues }: BookingFlowProps) {
   const t = useTranslations('booking.flow')
   const [step, setStep] = useState<Step>('teacher')
   const [state, setState] = useState<FlowState>({ weekStart: initialWeekStart })
@@ -99,7 +100,7 @@ export function BookingFlow({ token, payload, initialWeekStart }: BookingFlowPro
       teacherId,
       teacherName,
       weekStart: state.weekStart,
-      durationMinutes: state.durationMinutes ?? 60,
+      durationMinutes: state.durationMinutes ?? durationValues[0],
     })
     setStep('availability')
   }
@@ -181,6 +182,7 @@ export function BookingFlow({ token, payload, initialWeekStart }: BookingFlowPro
             initialWeekStart={state.weekStart}
             initialDate={state.date}
             initialDurationMinutes={state.durationMinutes}
+            durationValues={durationValues}
             onLocked={handleAvailabilityLocked}
             onBack={() => setStep('teacher')}
             onError={handleError}

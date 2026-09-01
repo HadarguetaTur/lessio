@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { DateTime } from 'luxon'
+import { isLessonDurationAllowed } from '@/lib/organizations/lessonDurations'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
@@ -115,6 +116,9 @@ export async function createSeriesAction(
   const { teacher_id, student_ids, day_of_week, start_time, duration_minutes, frequency, until } =
     parsed.data
   const price_per_student = parsed.data.price_per_student ?? null
+  if (lessonType !== 'custom' && !(await isLessonDurationAllowed(orgId, 'admin', duration_minutes))) {
+    return { error: await commonError('invalidData') }
+  }
 
   // "In the future" means the org's calendar day, not UTC's: createLessonSeries
   // walks dates in the org timezone, so comparing against a UTC date rejects a

@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { getShareableBaseUrl } from "@/lib/url/appUrl";
+import { ConsentBanner } from "@/components/tracking/ConsentBanner";
+import { TrackingScripts } from "@/components/tracking/TrackingScripts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -71,7 +73,11 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
           <Toaster position="bottom-center" richColors />
+          {/* Per /docs/sprint-34-scope.md § C. The banner gates the scripts:
+              nothing loads until the visitor has answered it. */}
+          <ConsentBanner />
         </NextIntlClientProvider>
+        <TrackingScripts />
       </body>
     </html>
   );

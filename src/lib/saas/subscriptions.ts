@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getSaasPlanById, getSaasPlanByName } from './plans'
 import type { SaasPlanName, SaasSubscriptionStatus } from './types'
@@ -289,14 +290,20 @@ export type ActivationResult =
 /** Underpayment guard tolerance — absorbs VAT/agorot rounding, not a cheaper plan. */
 const AMOUNT_TOLERANCE = 0.02
 
+/**
+ * One billing period after `from`.
+ *
+ * Luxon, not Date arithmetic: `setMonth(getMonth() + 1)` on the 31st of a
+ * month lands in the month *after* next, because the intermediate date does not
+ * exist and JS silently rolls it over — 31 Aug + 1 month gave 1 Oct, billing
+ * the customer for two months and charging them for one. `setFullYear` has the
+ * same hole on 29 February. Luxon clamps to the last valid day instead
+ * (30 Sep, 28 Feb), which is what every payment processor does.
+ */
 function addBillingPeriod(from: Date, interval: 'monthly' | 'yearly'): Date {
-  const end = new Date(from)
-  if (interval === 'yearly') {
-    end.setFullYear(end.getFullYear() + 1)
-  } else {
-    end.setMonth(end.getMonth() + 1)
-  }
-  return end
+  return DateTime.fromJSDate(from)
+    .plus(interval === 'yearly' ? { years: 1 } : { months: 1 })
+    .toJSDate()
 }
 
 /**

@@ -34,6 +34,7 @@ export function WeekNav({
   const searchParams = useSearchParams()
   const t = useTranslations('lessons')
   const uiLocale = parseAppLocale(useLocale())
+  const isRtl = uiLocale === 'he'
 
   function navigate(delta: number) {
     const base = new Date(`${weekStr}T12:00:00Z`)
@@ -56,8 +57,8 @@ export function WeekNav({
 
   return (
     <div className="flex w-full max-w-sm flex-col items-center gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-      {/* Week navigation — kept LTR so arrow directions stay intuitive */}
-      <div className="flex min-w-0 items-center justify-center gap-1 sm:justify-start" dir="ltr">
+      {/* Navigation follows the active locale: previous is rightward in Hebrew. */}
+      <div className="flex min-w-0 items-center justify-center gap-1 sm:justify-start" dir={isRtl ? 'rtl' : 'ltr'}>
         {/* "היום" button — shown only when not on current week */}
         {currentWeekStr && weekStr !== currentWeekStr && (
           <Link
@@ -81,7 +82,7 @@ export function WeekNav({
           className="p-1.5 rounded hover:bg-gray-100 text-gray-600"
           title={t('series.prevWeek')}
         >
-          <ChevronLeft size={18} />
+          {isRtl ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
         <span className="text-sm font-medium text-gray-800 min-w-28 sm:min-w-44 text-center">{label}</span>
         <button
@@ -89,7 +90,7 @@ export function WeekNav({
           className="p-1.5 rounded hover:bg-gray-100 text-gray-600"
           title={t('series.nextWeek')}
         >
-          <ChevronRight size={18} />
+          {isRtl ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
         </button>
       </div>
 

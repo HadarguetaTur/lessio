@@ -1,3 +1,4 @@
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import Link from 'next/link'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { DateTime } from 'luxon'
@@ -9,7 +10,7 @@ import {
   computeRevenueTotals,
   listSaasInvoicesForPlatform,
 } from '@/lib/superadmin/revenue'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { PageHeader } from '@/components/ui/page-header'
 import { AdminTable, type AdminTableRow } from '@/components/admin/AdminTable'
 import { MrrHistoryChart } from '@/components/admin/MrrHistoryChart'
 import { cn } from '@/lib/utils'
@@ -22,6 +23,8 @@ import { cn } from '@/lib/utils'
  * revenue on a screen labelled with the platform's.
  */
 export default async function AdminRevenuePage() {
+  await requirePlatformSession('billing.read')
+
   const t = await getTranslations('admin.revenue')
   const tTable = await getTranslations('admin.table')
   const locale = await getLocale()
@@ -104,7 +107,7 @@ export default async function AdminRevenuePage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <AdminHeader title={t('title')} description={t('description')} />
+      <PageHeader title={t('title')} subtitle={t('description')} />
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cards.map((c) => (

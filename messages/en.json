@@ -223,6 +223,7 @@
       "90": "90 minutes",
       "120": "120 minutes"
     },
+    "durationMinutes": "{n} minutes",
     "emptyStates": {
       "noResults": "No results found",
       "noLessonsToday": "No lessons scheduled for today"
@@ -934,7 +935,13 @@
     "availabilityConfirm": {
       "title": "Teacher is unavailable at this time",
       "fallback": "The requested time falls outside the teacher's availability window. Schedule the lesson anyway?",
-      "scheduleAnyway": "Schedule anyway"
+      "scheduleAnyway": "Schedule anyway",
+      "windowsForDay": "Availability on {day}:",
+      "noWindowsForDay": "No availability set for {day}",
+      "overrideWindowForDate": "The window set for this date:",
+      "overrideReason": "Reason: {reason}",
+      "editAvailability": "Edit availability",
+      "dismissedNotice": "The lesson was not scheduled. Change the time, or edit the availability."
     },
     "calendarConfirm": {
       "title": "Google Calendar conflict",
@@ -1461,7 +1468,16 @@
       "vatHint": "Applied to new invoices (0–25%)",
       "saved": "Business profile saved",
       "enforceWeeklyQuota": "Enforce weekly lesson quota",
-      "enforceWeeklyQuotaHint": "When on, a student cannot book more lessons in a week than the quota set on their card. When off, the quota field is hidden on the student card and no check runs during booking."
+      "enforceWeeklyQuotaHint": "When on, a student cannot book more lessons in a week than the quota set on their card. When off, the quota field is hidden on the student card and no check runs during booking.",
+      "lessonDurationsTitle": "Available lesson durations",
+      "lessonDurationsHint": "Add or remove durations and choose where each one can be booked.",
+      "durationMinutes": "Minutes",
+      "availableBot": "Bot / parent",
+      "availableTeacher": "Teacher",
+      "availableAdmin": "Admin",
+      "newDurationPlaceholder": "Duration in minutes",
+      "addDuration": "Add",
+      "removeDuration": "Remove"
     },
     "whatsapp": {
       "title": "WhatsApp",
@@ -2615,6 +2631,13 @@
       "title": "My Availability",
       "addSlot": "Add Availability",
       "addSlotTitle": "Add Availability Window",
+      "days": "Days",
+      "selectDaysHint": "Pick one or more days and the window is added to all of them",
+      "selectAll": "Whole week",
+      "clearDays": "Clear",
+      "editWindow": "Edit window",
+      "emptyDay": "No availability",
+      "readOnlyHint": "Support mode — read only",
       "noSlots": "No availability defined",
       "day": "Day",
       "from": "From",
@@ -2708,6 +2731,11 @@
       "endAfterStart": "The end time must be after the start time",
       "overlapping": "This window overlaps existing availability on the same day",
       "saveAvailabilityFailed": "Could not save the availability",
+      "pickDays": "Select at least one day",
+      "overlappingDays": "This window overlaps existing availability on: {days}",
+      "windowNotFound": "Availability window not found",
+      "updateAvailabilityFailed": "Could not update the availability",
+      "deleteAvailabilityFailed": "Could not delete the availability",
       "pickDate": "Select a date",
       "overrideExists": "An override already exists for this date",
       "saveOverrideFailed": "Could not save the override",
@@ -2747,23 +2775,33 @@
       "leads": "Leads",
       "campaigns": "Campaigns",
       "attribution": "Attribution",
-      "tracking": "Tracking",
+      "tracking": "Measurement",
       "support": "Support",
       "devIssues": "Recurring bugs",
       "errors": "Errors",
       "cost": "Cost to serve",
       "plans": "Plans & features",
       "audit": "Audit log",
-      "soon": "Soon",
       "searchPlaceholder": "Search pages and organizations…",
       "noResults": "Nothing matches that",
       "groups": {
-        "pages": "Pages",
+        "pages": "Pages"
+      },
+      "sections": {
         "growth": "Growth",
         "customers": "Customers",
         "operations": "Operations",
         "platform": "Platform"
-      }
+      },
+      "roles": {
+        "superadmin": "Super Admin",
+        "platform_support": "Support",
+        "platform_billing": "Billing",
+        "platform_marketing": "Marketing",
+        "platform_viewer": "Viewer"
+      },
+      "openNavigation": "Open navigation",
+      "staff": "Team"
     },
     "saasInquiries": {
       "title": "Custom plan inquiries",
@@ -2890,7 +2928,8 @@
           "referrer": "Referrer",
           "landingPath": "Landing page"
         }
-      }
+      },
+      "count": "{count} organizations"
     },
     "billing": {
       "title": "Billing",
@@ -3161,6 +3200,107 @@
         "details": "Details"
       },
       "empty": "No admin actions recorded for this organization"
+    },
+    "staff": {
+      "title": "Team",
+      "description": "Who works on the platform, and what each of them can do",
+      "invite": "Invite colleague",
+      "inviteHint": "They receive an email invitation and set their own password.",
+      "sendInvite": "Send invitation",
+      "fullName": "Full name",
+      "email": "Email",
+      "role": "Role",
+      "roleHint": "Viewer sees everything and changes nothing — the safest starting point.",
+      "changeRole": "Change role",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "rowActions": "Member actions",
+      "notEditable": "—",
+      "you": "(you)",
+      "active": "Active",
+      "inactive": "Deactivated",
+      "capabilityCount": "{count} permissions",
+      "columns": {
+        "name": "Name",
+        "role": "Role",
+        "status": "Status",
+        "capabilities": "Permissions",
+        "invitedBy": "Invited by",
+        "joined": "Joined"
+      },
+      "roles": {
+        "superadmin": "Super Admin",
+        "platform_support": "Support",
+        "platform_billing": "Billing",
+        "platform_marketing": "Marketing",
+        "platform_viewer": "Viewer"
+      },
+      "errors": {
+        "INVALID_INPUT": "Check the name, email and role.",
+        "EMAIL_EXISTS": "That email already has an account.",
+        "ROLE_NOT_ASSIGNABLE": "That role cannot be granted from here.",
+        "CANNOT_CHANGE_OWN_ROLE": "You cannot change your own role.",
+        "CANNOT_DEACTIVATE_SELF": "You cannot deactivate yourself.",
+        "CANNOT_DEMOTE_SUPERADMIN": "A super admin can only be changed in the database.",
+        "NOT_PLATFORM_STAFF": "That user is not platform staff.",
+        "NOT_FOUND": "That user no longer exists.",
+        "INVITE_FAILED": "The invitation could not be sent."
+      }
+    },
+    "tracking": {
+      "title": "Measurement",
+      "description": "Where conversion events go, and whether they arrived",
+      "idsInDbNote": "Pixel ids live here, not in environment variables — Next inlines those at build time, so swapping a pixel would need a redeploy.",
+      "addDestination": "Add a destination",
+      "provider": "Provider",
+      "label": "Name",
+      "externalId": "Id",
+      "externalIdHint": "Pixel id, measurement id or container id.",
+      "serverCredential": "Server-side token",
+      "serverCredentialHint": "Leave blank to keep the stored token.",
+      "credentialSet": "A token is stored",
+      "credentialEmpty": "No token stored",
+      "consentCategory": "Consent category",
+      "testEventCode": "Test event code",
+      "testEventCodeHint": "Optional",
+      "isEnabled": "Enabled",
+      "add": "Add",
+      "save": "Save",
+      "saved": "Saved",
+      "delete": "Delete",
+      "sendTest": "Send test event",
+      "deliveryLog": "Deliveries — last 24 hours",
+      "failuresInWindow": "{count} failed",
+      "providers": {
+        "meta_pixel": "Meta Pixel + Conversions API",
+        "ga4": "Google Analytics 4",
+        "gtm": "Google Tag Manager",
+        "google_ads": "Google Ads",
+        "tiktok": "TikTok",
+        "linkedin": "LinkedIn"
+      },
+      "categories": {
+        "necessary": "Necessary",
+        "analytics": "Analytics",
+        "marketing": "Marketing"
+      },
+      "status": {
+        "sent": "Sent",
+        "pending": "Pending",
+        "failed": "Failed"
+      },
+      "columns": {
+        "when": "Time",
+        "event": "Event",
+        "destination": "Destination",
+        "status": "Status",
+        "detail": "Detail"
+      },
+      "errors": {
+        "INVALID_INPUT": "Check the provider, name and id.",
+        "PROVIDER_ALREADY_ENABLED": "Another destination for this provider is already enabled.",
+        "MISSING_ENCRYPTION_KEY": "TRACKING_CONFIG_ENCRYPTION_KEY is not set on the server."
+      }
     }
   },
   "auth": {
@@ -4785,5 +4925,13 @@
         "system": "System update"
       }
     }
+  },
+  "consent": {
+    "title": "Cookies",
+    "body": "We use cookies to measure how the site is used and how people find us.",
+    "privacyLink": "Privacy policy",
+    "acceptAll": "Accept all",
+    "analyticsOnly": "Analytics only",
+    "rejectAll": "Reject all"
   }
 }

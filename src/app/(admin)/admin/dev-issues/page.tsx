@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getTranslations, getFormatter } from 'next-intl/server'
-import { AdminHeader } from '@/components/admin/AdminHeader'
-import { requireSuperAdminSession } from '@/lib/superadmin/session'
+import { PageHeader } from '@/components/ui/page-header'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { listDevIssues, type DevIssueFilter } from '@/lib/superadmin/devIssues'
 import { DevIssueStatusBadge } from '@/components/admin/DevIssueStatusBadge'
 import { cn } from '@/lib/utils'
@@ -13,7 +13,7 @@ export default async function AdminDevIssuesPage({
 }: {
   searchParams: Promise<{ filter?: string }>
 }) {
-  await requireSuperAdminSession()
+  await requirePlatformSession('support.read')
   const { filter } = await searchParams
   const t = await getTranslations('admin.devIssues')
   const format = await getFormatter()
@@ -25,7 +25,7 @@ export default async function AdminDevIssuesPage({
 
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col overflow-hidden">
-      <AdminHeader title={t('title')} description={t('description')} />
+      <PageHeader title={t('title')} subtitle={t('description')} />
 
       <nav className="mb-4 flex flex-wrap gap-2" aria-label={t('filterLabel')}>
         {FILTERS.map((f) => (

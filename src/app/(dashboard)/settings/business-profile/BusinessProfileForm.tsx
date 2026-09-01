@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { saveBusinessProfileAction, uploadLogoAction } from './actions'
+import { normalizeLessonDurations, type LessonDurationSetting } from '@/lib/organizations/lessonDurations'
 
 interface InitialData {
   businessLegalName: string | null
@@ -17,6 +18,7 @@ interface InitialData {
   defaultVatRate: number
   logoUrl: string | null
   enforceWeeklyQuota: boolean
+  lessonDurations: unknown
 }
 
 const CURRENCY_OPTIONS = [
@@ -37,6 +39,10 @@ export default function BusinessProfileForm({
   const [isPending, startTransition] = useTransition()
   const [isUploading, setIsUploading] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(initialData.logoUrl)
+  const [lessonDurations, setLessonDurations] = useState<LessonDurationSetting[]>(
+    normalizeLessonDurations(initialData.lessonDurations)
+  )
+  const [newDuration, setNewDuration] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleSave(formData: FormData) {
@@ -70,6 +76,22 @@ export default function BusinessProfileForm({
       // Reset input so the same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  function addDuration() {
+    const minutes = Number(newDuration)
+    if (!Number.isInteger(minutes) || minutes < 5 || minutes > 480) return
+    setLessonDurations((current) => [
+      ...current.filter((item) => item.minutes !== minutes),
+      { minutes, bot: true, teacher: true, admin: true },
+    ].sort((a, b) => a.minutes - b.minutes))
+    setNewDuration('')
+  }
+
+  function toggleDuration(minutes: number, audience: 'bot' | 'teacher' | 'admin') {
+    setLessonDurations((current) => current.map((item) =>
+      item.minutes === minutes ? { ...item, [audience]: !item[audience] } : item
+    ))
   }
 
   return (
@@ -206,6 +228,52 @@ export default function BusinessProfileForm({
                 <span className="text-sm font-medium">{t('enforceWeeklyQuota')}</span>
               </label>
               <p className="text-xs text-muted-foreground">{t('enforceWeeklyQuotaHint')}</p>
+            </div>
+
+            <div className="space-y-3 border-t border-border pt-4">
+              <div>
+                <p className="text-sm font-medium">{t('lessonDurationsTitle')}</p>
+                <p className="text-xs text-muted-foreground">{t('lessonDurationsHint')}</p>
+              </div>
+              <input type="hidden" name="lesson_duration_settings" value={JSON.stringify(lessonDurations)} />
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-start">{t('durationMinutes')}</th>
+                      <th className="px-3 py-2 text-center">{t('availableBot')}</th>
+                      <th className="px-3 py-2 text-center">{t('availableTeacher')}</th>
+                      <th className="px-3 py-2 text-center">{t('availableAdmin')}</th>
+                      <th className="px-3 py-2"><span className="sr-only">{t('removeDuration')}</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lessonDurations.map((item) => (
+                      <tr key={item.minutes} className="border-t border-border">
+                        <td className="px-3 py-2 font-medium">{item.minutes}</td>
+                        {(['bot', 'teacher', 'admin'] as const).map((audience) => (
+                          <td key={audience} className="px-3 py-2 text-center">
+                            <input type="checkbox" checked={item[audience]}
+                              onChange={() => toggleDuration(item.minutes, audience)}
+                              aria-label={`${item.minutes} ${t(`available${audience[0].toUpperCase()}${audience.slice(1)}`)}`}
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                          </td>
+                        ))}
+                        <td className="px-3 py-2 text-end">
+                          <button type="button" onClick={() => setLessonDurations((current) => current.filter((d) => d.minutes !== item.minutes))}
+                            disabled={lessonDurations.length === 1}
+                            className="text-xs text-red-600 disabled:opacity-30">{t('removeDuration')}</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex gap-2">
+                <Input type="number" min={5} max={480} step={5} value={newDuration}
+                  onChange={(event) => setNewDuration(event.target.value)} placeholder={t('newDurationPlaceholder')} />
+                <Button type="button" variant="outline" onClick={addDuration}>{t('addDuration')}</Button>
+              </div>
             </div>
 
             {/* Submit */}

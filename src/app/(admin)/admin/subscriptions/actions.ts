@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
-import { requireSuperAdminSession } from '@/lib/superadmin/session'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import {
   cancelSubscription,
   changePlan,
@@ -40,7 +40,7 @@ export async function changePlanAction(
   _prev: SubscriptionActionState | null,
   formData: FormData
 ): Promise<SubscriptionActionState> {
-  const { profileId } = await requireSuperAdminSession()
+  const { profileId } = await requirePlatformSession('billing.write')
 
   const parsed = changePlanSchema.safeParse({
     orgId: formData.get('orgId'),
@@ -65,7 +65,7 @@ export async function extendTrialAction(
   _prev: SubscriptionActionState | null,
   formData: FormData
 ): Promise<SubscriptionActionState> {
-  const { profileId } = await requireSuperAdminSession()
+  const { profileId } = await requirePlatformSession('billing.write')
 
   const parsed = extendTrialSchema.safeParse({
     orgId: formData.get('orgId'),
@@ -89,7 +89,7 @@ export async function setSubscriptionStatusAction(
   _prev: SubscriptionActionState | null,
   formData: FormData
 ): Promise<SubscriptionActionState> {
-  const { profileId } = await requireSuperAdminSession()
+  const { profileId } = await requirePlatformSession('billing.write')
 
   const parsed = statusSchema.safeParse({
     orgId: formData.get('orgId'),
@@ -113,7 +113,7 @@ export async function cancelSubscriptionAction(
   _prev: SubscriptionActionState | null,
   formData: FormData
 ): Promise<SubscriptionActionState> {
-  const { profileId } = await requireSuperAdminSession()
+  const { profileId } = await requirePlatformSession('billing.write')
 
   const parsed = cancelSchema.safeParse({
     orgId: formData.get('orgId'),

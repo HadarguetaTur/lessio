@@ -1,6 +1,7 @@
+import { isPlatformRole } from '@/lib/superadmin/capabilities'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getSupportSession } from '@/lib/support-session'
+import { getActiveSupportSession } from '@/lib/support-session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export interface UserSession {
@@ -30,7 +31,7 @@ export interface SuperAdminSession {
 export async function getSession(): Promise<UserSession> {
   // Support mode: superadmin viewing an org's dashboard read-only.
   // Check the support cookie before the normal Supabase session.
-  const support = await getSupportSession()
+  const support = await getActiveSupportSession()
   if (support) {
     // Resolve the superadmin's name from their profile.
     const db = createServiceRoleClient()
@@ -69,7 +70,9 @@ export async function getSession(): Promise<UserSession> {
   if (!profile) redirect('/login')
 
   // Superadmins have no org — redirect them to their own shell.
-  if (profile.role === 'superadmin') redirect('/admin/dashboard')
+  // Any platform role, not just superadmin: they all have organization_id
+  // NULL, and the UserSession contract promises orgId is a non-null string.
+  if (isPlatformRole(profile.role)) redirect('/admin')
 
   return {
     userId: user.id,

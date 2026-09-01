@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { requireSuperAdminSession } from '@/lib/superadmin/session'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { getSaasPlanByName } from '@/lib/saas/plans'
 import { markOrganizationOnboardingComplete } from '@/lib/saas/subscriptions'
 
@@ -13,7 +13,7 @@ export async function resolveSaasPlanInquiryAction(
   _prev: { error: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  await requireSuperAdminSession()
+  await requirePlatformSession('billing.write')
   const id = idSchema.safeParse(formData.get('inquiry_id'))
   if (!id.success) return { error: 'Invalid inquiry' }
 

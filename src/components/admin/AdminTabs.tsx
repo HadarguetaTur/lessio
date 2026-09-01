@@ -39,10 +39,10 @@ export function AdminTabs({
             href={href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              '-mb-px shrink-0 border-b-2 px-3 py-2 text-sm transition-colors',
+              '-mb-px flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
               active
-                ? 'border-indigo-600 font-semibold text-foreground'
-                : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
           >
             {tab.label}

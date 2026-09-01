@@ -31,6 +31,7 @@ import { sendTextMessage } from '@/lib/whatsapp'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { recordParentConsent } from '@/lib/whatsapp/consent'
 import { parseAppLocale, resolveRecipientLocale, toIntlLocale } from '@/lib/i18n/locale'
+import { isLessonDurationAllowed } from '@/lib/organizations/lessonDurations'
 
 /**
  * Errors thrown inside Server Actions cross to the client as opaque generic
@@ -92,6 +93,7 @@ export async function getAvailableSlotsAction(
 ): Promise<BookingDataResult<AvailableSlot[]>> {
   try {
     const { organizationId, studentId } = await verifyBookingToken(token)
+    if (!(await isLessonDurationAllowed(organizationId, 'bot', durationMinutes))) throw new Error('Invalid duration')
     const slots = await getAvailableSlots({ teacherId, date, durationMinutes, organizationId, studentId })
     return { success: true, data: slots }
   } catch (err) {
@@ -109,6 +111,7 @@ export async function getAvailabilitySummaryAction(
 ): Promise<BookingDataResult<AvailabilitySummary>> {
   try {
     const { organizationId, studentId } = await verifyBookingToken(token)
+    if (!(await isLessonDurationAllowed(organizationId, 'bot', durationMinutes))) throw new Error('Invalid duration')
     const summary = await getAvailabilitySummary({ teacherId, organizationId, durationMinutes, weekStart, studentId })
     return { success: true, data: summary }
   } catch (err) {

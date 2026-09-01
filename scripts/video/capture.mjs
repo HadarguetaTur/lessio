@@ -84,7 +84,9 @@ async function runShot(browser, shot, loc, ctxDeps) {
   const byKey = (key, role) => makeByKey(loc)(page, key, role)
 
   const url = typeof shot.route === 'function' ? await shot.route(ctxDeps) : shot.route
-  await page.goto(BASE + url, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  // Mockups are local files, not app routes — they carry their own absolute URL.
+  const target = url.startsWith('file://') ? url : BASE + url
+  await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 60000 })
 
   // Everything below happens behind the curtain.
   await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {})

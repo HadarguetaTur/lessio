@@ -11,6 +11,7 @@ import { NewLessonForm } from '@/components/dashboard/lessons/NewLessonForm'
 import { createLessonAction } from './actions'
 import { getTranslations } from 'next-intl/server'
 import { z } from 'zod'
+import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
 
 export default async function NewLessonPage(props: {
   searchParams: Promise<{ date?: string }>
@@ -19,12 +20,13 @@ export default async function NewLessonPage(props: {
   const { orgId, role } = await getSession()
   if (role !== 'owner' && role !== 'admin') redirect('/lessons')
 
-  const [teachers, students, groups, timezone, pricing] = await Promise.all([
+  const [teachers, students, groups, timezone, pricing, durations] = await Promise.all([
     getTeachers(orgId),
     getStudents(orgId),
     getGroups(orgId),
     getOrgTimezone(orgId),
     getOrgPricing(orgId),
+    getOrgLessonDurations(orgId, 'admin'),
   ])
 
   const activeTeachers = teachers
@@ -69,6 +71,7 @@ export default async function NewLessonPage(props: {
           pairPricePerStudent: pricing.pairPricePerStudent,
           groupPricePerStudent: pricing.groupPricePerStudent,
         }}
+        durationValues={durations.map((item) => item.minutes)}
       />
     </div>
   )

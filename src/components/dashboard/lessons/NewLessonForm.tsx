@@ -8,6 +8,8 @@ import { StudentMultiPicker } from './StudentMultiPicker'
 import type { StudentGroup } from '@/lib/groups'
 import type { LessonType } from '@/lib/lessons/types'
 import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
+import type { AvailabilityNotice } from '@/lib/availability/availabilityNotice'
+import { DAY_KEYS } from '@/lib/availability/constants'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SearchSelect } from '@/components/ui/search-select'
@@ -22,8 +24,6 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
-const DURATION_VALUES = [30, 45, 60, 90]
-
 /** Custom lessons escape the fixed durations; these bounds match the importer. */
 const CUSTOM_DURATION_MIN = 5
 const CUSTOM_DURATION_MAX = 480
@@ -33,6 +33,61 @@ export interface PricingDefaults {
   groupPricePerStudent: number
 }
 
+
+/**
+ * "Not available" on its own is unactionable — it never says what the
+ * availability *is*, so a teacher whose weekly grid is simply wrong has no way
+ * to tell from this screen. This block shows the windows the slot collided
+ * with and links to where they can be changed.
+ */
+function AvailabilityDetails({ info }: { info: AvailabilityNotice }) {
+  const t = useTranslations('lessons')
+  const tCommon = useTranslations('common')
+  const day = info.dayOfWeek === null ? null : tCommon(`days.${DAY_KEYS[info.dayOfWeek]}`)
+
+  return (
+    <div className="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
+      <p className="text-muted-foreground">
+        {info.source === 'override'
+          ? t('availabilityConfirm.overrideWindowForDate')
+          : info.windows.length > 0 && day
+            ? t('availabilityConfirm.windowsForDay', { day })
+            : t('availabilityConfirm.noWindowsForDay', { day: day ?? '' })}
+      </p>
+
+      {info.windows.length > 0 && (
+        <ul className="space-y-0.5">
+          {info.windows.map((w) => (
+            <li
+              key={`${w.start}-${w.end}`}
+              dir="ltr"
+              className="font-mono text-xs tabular-nums text-foreground"
+            >
+              {w.start}–{w.end}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {info.reason && (
+        <p className="text-xs text-muted-foreground">
+          {t('availabilityConfirm.overrideReason', { reason: info.reason })}
+        </p>
+      )}
+
+      {/* New tab on purpose: the form is uncontrolled and half-filled, and
+          navigating away in this tab throws the lesson away. */}
+      <Link
+        href={info.editHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-block text-xs font-medium text-primary hover:underline"
+      >
+        {t('availabilityConfirm.editAvailability')}
+      </Link>
+    </div>
+  )
+}
 
 const selectClassName = cn(
   'h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground',
@@ -60,6 +115,7 @@ interface Props {
   variant?: 'page' | 'sheet'
   onCancel?: () => void
   onSuccess?: () => void
+  durationValues?: number[]
 }
 
 const initialState: NewLessonState = { error: null }
@@ -80,6 +136,7 @@ export function NewLessonForm({
   variant = 'page',
   onCancel,
   onSuccess,
+  durationValues = [30, 45, 60, 90],
 }: Props) {
   const t = useTranslations('lessons')
   const tCommon = useTranslations('common')
@@ -120,6 +177,14 @@ export function NewLessonForm({
   const confirmMessage = state.error
   const confirmOpen = Boolean(state.needsAvailabilityConfirm && state.error) && !dismissed.availability && !pending
   const calendarConfirmOpen = Boolean(state.needsCalendarConfirm) && !dismissed.calendar && !pending
+  // Cancelling a confirm dialog used to leave a blank screen: the banner stayed
+  // suppressed for the whole life of the flag, so the Create button looked like
+  // it had done nothing. Suppress it only while a dialog is actually up.
+  const confirmDismissed =
+    (Boolean(state.needsAvailabilityConfirm) || Boolean(state.needsCalendarConfirm)) &&
+    !confirmOpen &&
+    !calendarConfirmOpen &&
+    !pending
 
   useEffect(() => {
     onSuccessRef.current = onSuccess
@@ -160,6 +225,11 @@ export function NewLessonForm({
 
   const handleCancelConfirm = () => {
     setDismissed((d) => ({ ...d, availability: true }))
+    // The dialog is derived state with no trigger element, so Radix returns
+    // focus to <body>. Put the caret on the field they came here to change.
+    requestAnimationFrame(() => {
+      formRef.current?.querySelector<HTMLInputElement>('#start_time')?.focus()
+    })
   }
 
   const handleConfirmCalendar = () => {
@@ -181,6 +251,13 @@ export function NewLessonForm({
       {state.error && !state.needsAvailabilityConfirm && !state.needsCalendarConfirm && (
         <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
           {state.error}
+        </div>
+      )}
+
+      {confirmDismissed && (
+        <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+          <p>{t('availabilityConfirm.dismissedNotice')}</p>
+          {state.availabilityInfo && <AvailabilityDetails info={state.availabilityInfo} />}
         </div>
       )}
 
@@ -361,9 +438,9 @@ export function NewLessonForm({
             name="duration_minutes"
             required
             className={selectClassName}
-            defaultValue="60"
+            defaultValue={durationValues.includes(60) ? 60 : durationValues[0]}
           >
-            {DURATION_VALUES.map((n) => (
+            {durationValues.map((n) => (
               <option key={n} value={n}>
                 {t('durationMinutes', { n })}
               </option>
@@ -433,6 +510,7 @@ export function NewLessonForm({
             {confirmMessage ?? t('availabilityConfirm.fallback')}
           </DialogDescription>
         </DialogHeader>
+        {state.availabilityInfo && <AvailabilityDetails info={state.availabilityInfo} />}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={handleCancelConfirm}>
             {tCommon('actions.cancel')}

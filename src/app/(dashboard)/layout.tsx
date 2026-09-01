@@ -1,3 +1,4 @@
+import { isPlatformRole } from '@/lib/superadmin/capabilities'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -15,7 +16,7 @@ import {
   fetchConversationAction,
 } from './support/actions'
 import { SupportModeBanner } from '@/components/dashboard/SupportModeBanner'
-import { getSupportSession } from '@/lib/support-session'
+import { getActiveSupportSession } from '@/lib/support-session'
 import { PATHNAME_HEADER } from '@/proxy'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { SaasOwnerBanners } from '@/components/dashboard/SaasOwnerBanners'
@@ -28,7 +29,7 @@ import {
   markAllReadAction,
 } from './notifications/actions'
 import { getNavigationSaasFeatures } from '@/lib/saas/subscriptions'
-import { getActiveTeacherCount } from '@/lib/teachers'
+import { getActiveTeacherCount, getTeacherByProfileId } from '@/lib/teachers'
 import { LiveRefreshProvider } from '@/lib/realtime/LiveRefreshProvider'
 
 export default async function DashboardLayout({
@@ -43,7 +44,7 @@ export default async function DashboardLayout({
   // ── Support mode (superadmin inspecting an org) ──────────────────────────
   // Check BEFORE the normal session flow, because the superadmin's own profile
   // would otherwise be redirected back to /admin/dashboard.
-  const supportSession = await getSupportSession()
+  const supportSession = await getActiveSupportSession()
 
   if (supportSession) {
     const [saasFeaturesSupport, teacherCountSupport] = await Promise.all([
@@ -132,9 +133,11 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single()
 
-  // Superadmins have no org — redirect them to the platform admin shell.
-  if (profile?.role === 'superadmin') {
-    redirect('/admin/dashboard')
+  // Platform staff have no org — send them to the console. Checking only
+  // 'superadmin' would drop a support or billing colleague into a tenant shell
+  // with orgId null, which every query below assumes is a string.
+  if (profile?.role && isPlatformRole(profile.role)) {
+    redirect('/admin')
   }
 
   // Setup is progressive inside the product. Owners always reach the dashboard;
@@ -164,14 +167,22 @@ export default async function DashboardLayout({
   // enforced elsewhere against the real plan.
   let saasFeatures: Awaited<ReturnType<typeof getNavigationSaasFeatures>>
   let teacherCount: number | undefined
+  // An owner or admin who also teaches needs a route to their own weekly
+  // availability. The teachers section — where those links live — is hidden
+  // once the org is down to a single teacher, which is exactly the org where
+  // the owner IS the teacher.
+  let hasOwnTeacherRecord = false
   if (
     profile?.organization_id &&
     (profile.role === 'owner' || profile.role === 'admin')
   ) {
-    ;[saasFeatures, teacherCount] = await Promise.all([
+    let ownTeacher: Awaited<ReturnType<typeof getTeacherByProfileId>>
+    ;[saasFeatures, teacherCount, ownTeacher] = await Promise.all([
       getNavigationSaasFeatures(profile.organization_id),
       getActiveTeacherCount(profile.organization_id),
+      getTeacherByProfileId(user.id, profile.organization_id, { activeOnly: true }),
     ])
+    hasOwnTeacherRecord = ownTeacher !== null
   }
 
   const showSaasBanners =
@@ -199,6 +210,7 @@ export default async function DashboardLayout({
       <Sidebar
         userName={profile?.full_name ?? user.email ?? ''}
         userRole={profile?.role ?? ''}
+        hasOwnTeacherRecord={hasOwnTeacherRecord}
         saasFeatures={saasFeatures}
         teacherCount={teacherCount}
       />
@@ -212,6 +224,7 @@ export default async function DashboardLayout({
             <Sidebar
               userName={profile?.full_name ?? user.email ?? ''}
               userRole={profile?.role ?? ''}
+              hasOwnTeacherRecord={hasOwnTeacherRecord}
               mobile
               saasFeatures={saasFeatures}
               teacherCount={teacherCount}

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
-import { requireSuperAdminSession } from '@/lib/superadmin/session'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getSaasPlanById } from '@/lib/saas/plans'
 import { recordAdminAction } from '@/lib/superadmin/audit'
@@ -46,7 +46,7 @@ export async function updatePlanAction(
   _prev: PlanActionState | null,
   formData: FormData
 ): Promise<PlanActionState> {
-  const { profileId } = await requireSuperAdminSession()
+  const { profileId } = await requirePlatformSession('billing.write')
 
   const parsed = schema.safeParse({
     planId: formData.get('planId'),

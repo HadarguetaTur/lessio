@@ -1,86 +1,87 @@
 'use server'
 
 /**
- * Teacher self-service availability actions.
- * teacherId is always resolved from the authenticated session — never from the request.
- * Per /docs/sprint-10-scope.md § Story 4.
+ * Availability actions for the session's own teacher record.
+ * teacherId is always resolved from the authenticated session — never from the
+ * request. Per /docs/sprint-10-scope.md § Story 4.
+ *
+ * Also serves an owner/admin who teaches: a solo tutor's sidebar hides the
+ * whole teacher-management section, so this is their only route to their own
+ * weekly grid. The teacher row still comes from the session, so the wider role
+ * gate grants nobody access to anyone else's availability.
  */
 
-import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
-import { getTeacherAvailabilityByDay, hasOverlap } from '@/lib/availability'
+import {
+  createAvailabilityWindows,
+  deleteAvailabilityWindow,
+  updateAvailabilityWindow,
+} from '@/lib/availability'
 import { revalidatePath } from 'next/cache'
-import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { commonError } from '@/lib/i18n/actionErrors'
+import { availabilityErrorMessage } from '@/lib/availability/errorMessage'
 import { getTranslations } from 'next-intl/server'
 
 type ActionState = { error: string } | null
 
-export async function addTeacherAvailability(
-  _prevState: ActionState,
-  formData: FormData
-): Promise<ActionState> {
+/** Resolves the acting user's own teacher row, or the error to show instead. */
+async function ownTeacher(): Promise<
+  { teacherId: string; orgId: string } | { error: string }
+> {
   const t = await getTranslations()
   const session = await getSession()
   const { userId, orgId, role } = session
   requireMutation(session)
 
-  if (role !== 'teacher') return { error: await commonError('noPermission') }
+  if (role !== 'teacher' && role !== 'owner' && role !== 'admin') {
+    return { error: await commonError('noPermission') }
+  }
 
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) return { error: t('teacherSelf.errors.noTeacherRecord') }
 
-  const day_of_week = parseInt(formData.get('day_of_week') as string, 10)
-  const start_time = (formData.get('start_time') as string).trim()
-  const end_time = (formData.get('end_time') as string).trim()
+  return { teacherId: teacher.id, orgId }
+}
 
-  if (isNaN(day_of_week) || day_of_week < 0 || day_of_week > 6) {
-    return { error: t('teacherSelf.errors.pickDay') }
-  }
-  if (!start_time || !end_time) {
-    return { error: t('teacherSelf.errors.fillTimes') }
-  }
-  if (start_time >= end_time) {
-    return { error: t('teacherSelf.errors.endAfterStart') }
-  }
+export async function addTeacherAvailability(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const who = await ownTeacher()
+  if ('error' in who) return who
 
-  const existing = await getTeacherAvailabilityByDay(teacher.id, orgId, day_of_week)
-  if (hasOverlap(start_time, end_time, existing)) {
-    return { error: t('teacherSelf.errors.overlapping') }
-  }
-
-  const supabase = await createClient()
-  const { error } = await supabase.from('availability').insert({
-    organization_id: orgId,
-    teacher_id: teacher.id,
-    day_of_week,
-    start_time,
-    end_time,
-  })
-
-  if (error) return { error: t('teacherSelf.errors.saveAvailabilityFailed') }
+  const failure = await createAvailabilityWindows(who.orgId, who.teacherId, formData)
+  if (failure) return { error: await availabilityErrorMessage(failure) }
 
   revalidatePath('/teacher/availability')
   return null
 }
 
-export async function deleteTeacherAvailability(id: string): Promise<void> {
-  const session = await getSession()
-  const { userId, orgId, role } = session
-  requireMutation(session)
-  if (role !== 'teacher') return
+export async function updateTeacherAvailability(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const who = await ownTeacher()
+  if ('error' in who) return who
 
-  const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
-  if (!teacher) return
-
-  const supabase = await createClient()
-  // Security: scoped to own teacher record + org
-  await supabase
-    .from('availability')
-    .delete()
-    .eq('id', id)
-    .eq('teacher_id', teacher.id)
-    .eq('organization_id', orgId)
+  const failure = await updateAvailabilityWindow(who.orgId, who.teacherId, formData)
+  if (failure) return { error: await availabilityErrorMessage(failure) }
 
   revalidatePath('/teacher/availability')
+  return null
+}
+
+export async function deleteTeacherAvailability(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const who = await ownTeacher()
+  if ('error' in who) return who
+
+  const failure = await deleteAvailabilityWindow(who.orgId, who.teacherId, formData)
+  if (failure) return { error: await availabilityErrorMessage(failure) }
+
+  revalidatePath('/teacher/availability')
+  return null
 }

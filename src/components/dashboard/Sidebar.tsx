@@ -196,6 +196,12 @@ interface SidebarProps {
   saasFeatures?: SaasFeatures
   /** Active teachers in the org; 1 hides the teacher-management section. */
   teacherCount?: number
+  /**
+   * The owner/admin also has a teacher record of their own. Hiding the
+   * teacher-management section for a solo tutor also hid the only route to
+   * their own availability, so they get direct rows instead.
+   */
+  hasOwnTeacherRecord?: boolean
 }
 
 export function Sidebar({
@@ -204,6 +210,7 @@ export function Sidebar({
   mobile = false,
   saasFeatures,
   teacherCount,
+  hasOwnTeacherRecord = false,
 }: SidebarProps) {
   const pathname = usePathname()
   const t = useTranslations('nav')
@@ -291,6 +298,23 @@ export function Sidebar({
                 active={activeCategory?.id === category.id}
               />
             ))}
+
+            {hasOwnTeacherRecord && (
+              <>
+                <NavLink
+                  href="/teacher/availability"
+                  label={t('teacherAvailability')}
+                  icon={Clock}
+                  active={pathname === '/teacher/availability'}
+                />
+                <NavLink
+                  href="/teacher/overrides"
+                  label={t('teacherOverrides')}
+                  icon={CalendarX}
+                  active={pathname === '/teacher/overrides'}
+                />
+              </>
+            )}
 
             <NavLink
               href="/reports"

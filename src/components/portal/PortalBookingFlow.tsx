@@ -28,7 +28,6 @@ import { BookingError } from '@/components/booking/BookingError'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 
 // Labels come from common.durations.* — looked up at render.
-const DURATION_VALUES = [30, 45, 60, 90] as const
 
 function getWeekStart(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00Z')
@@ -65,16 +64,17 @@ interface FlowState {
 interface PortalBookingFlowProps {
   orgId: string
   timezone: string
+  durationValues: number[]
 }
 
-export function PortalBookingFlow({ orgId, timezone }: PortalBookingFlowProps) {
+export function PortalBookingFlow({ orgId, timezone, durationValues }: PortalBookingFlowProps) {
   const [step, setStep] = useState<Step>('students')
-  const [state, setState] = useState<FlowState>({ durationMinutes: 60 })
+  const [state, setState] = useState<FlowState>({ durationMinutes: durationValues[0] })
   /** True when the parent has one child — the picker is skipped, so there is nothing to go back to. */
   const [singleStudent, setSingleStudent] = useState(false)
 
   function handleRestart() {
-    setState({ durationMinutes: 60 })
+    setState({ durationMinutes: durationValues[0] })
     setStep('students')
   }
 
@@ -119,7 +119,8 @@ export function PortalBookingFlow({ orgId, timezone }: PortalBookingFlowProps) {
         studentId={state.studentId!}
         studentName={state.studentName!}
         initialDate={state.date ?? todayStr()}
-        initialDuration={state.durationMinutes ?? 60}
+        initialDuration={state.durationMinutes ?? durationValues[0]}
+        durationValues={durationValues}
         onSlotLocked={(slot, lock, date, duration) => {
           setState((s) => ({ ...s, slot, lock, date, durationMinutes: duration }))
           setStep('confirm')
@@ -334,6 +335,7 @@ function SlotsStep({
   studentName,
   initialDate,
   initialDuration,
+  durationValues,
   onSlotLocked,
   onBack,
 }: {
@@ -345,6 +347,7 @@ function SlotsStep({
   studentName: string
   initialDate: string
   initialDuration: number
+  durationValues: number[]
   onSlotLocked: (slot: AvailableSlot, lock: SlotLock, date: string, duration: number) => void
   onBack: () => void
 }) {
@@ -457,7 +460,7 @@ function SlotsStep({
 
         {/* Duration pills */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {DURATION_VALUES.map((value) => (
+          {durationValues.map((value) => (
             <button
               key={value}
               onClick={() => setDuration(value)}
@@ -467,7 +470,7 @@ function SlotsStep({
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {tCommon(`durations.${value}`)}
+              {tCommon('durationMinutes', { n: value })}
             </button>
           ))}
         </div>

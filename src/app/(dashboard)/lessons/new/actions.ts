@@ -8,10 +8,14 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
-import { checkTeacherAvailability } from '@/lib/availability/checkTeacherAvailability'
+import {
+  buildAvailabilityNotice,
+  type AvailabilityNotice,
+} from '@/lib/availability/availabilityNotice'
 import { checkLessonCalendarConflicts, CalendarConflict } from '@/lib/google-calendar/checkLessonCalendarConflicts'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
+import { isLessonDurationAllowed } from '@/lib/organizations/lessonDurations'
 
 const lessonStatusZ = z.enum(['scheduled', 'completed', 'cancelled', 'no_show'])
 
@@ -21,7 +25,7 @@ const IndividualLessonSchema = z.object({
   student_id:       z.string().uuid(),
   date:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   start_time:       z.string().regex(/^\d{2}:\d{2}$/),
-  duration_minutes: z.coerce.number().refine((v) => [30, 45, 60, 90].includes(v)),
+  duration_minutes: z.coerce.number().int().min(5).max(480),
   status:           lessonStatusZ,
 })
 
@@ -31,7 +35,7 @@ const GroupLessonSchema = z.object({
   student_ids:      z.array(z.string().uuid()).min(1, 'validation.pickGroupWithStudent'),
   date:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   start_time:       z.string().regex(/^\d{2}:\d{2}$/),
-  duration_minutes: z.coerce.number().refine((v) => [30, 45, 60, 90].includes(v)),
+  duration_minutes: z.coerce.number().int().min(5).max(480),
   status:           lessonStatusZ,
   price_per_student: z.coerce.number().positive().optional().nullable(),
 })
@@ -45,7 +49,7 @@ const PairLessonSchema = z.object({
     .refine((ids) => new Set(ids).size === 2, 'validation.pairDistinctStudents'),
   date:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   start_time:       z.string().regex(/^\d{2}:\d{2}$/),
-  duration_minutes: z.coerce.number().refine((v) => [30, 45, 60, 90].includes(v)),
+  duration_minutes: z.coerce.number().int().min(5).max(480),
   status:           lessonStatusZ,
   // Optional: falls back to the org pair price.
   price_per_student: z.coerce.number().positive().optional().nullable(),
@@ -86,6 +90,11 @@ export type NewLessonState = {
    * `confirm_outside_availability=1` skips the soft check.
    */
   needsAvailabilityConfirm?: boolean
+  /**
+   * What the teacher's availability actually says for that day, so the
+   * confirmation dialog can show it instead of a bare "not available".
+   */
+  availabilityInfo?: AvailabilityNotice
   /**
    * Set when a Google Calendar event overlaps the requested slot.
    * The UI surfaces a warning dialog; resubmitting with
@@ -141,6 +150,14 @@ export async function createLessonAction(
   const confirmedCalendarConflict =
     formData.get('confirm_calendar_conflict') === '1'
 
+  if (lessonType !== 'custom') {
+    const requestedDuration = Number(formData.get('duration_minutes'))
+    const audience = role === 'teacher' ? 'teacher' : 'admin'
+    if (!(await isLessonDurationAllowed(orgId, audience, requestedDuration))) {
+      return { error: await commonError('invalidData') }
+    }
+  }
+
   let lessonId: string
 
   try {
@@ -175,6 +192,7 @@ export async function createLessonAction(
           date,
           startTime: start_time,
           durationMinutes: duration_minutes,
+          role,
         })
         if (avail) return avail
       }
@@ -223,6 +241,7 @@ export async function createLessonAction(
           date,
           startTime: start_time,
           durationMinutes: duration_minutes,
+          role,
         })
         if (avail) return avail
       }
@@ -266,6 +285,7 @@ export async function createLessonAction(
           date,
           startTime: start_time,
           durationMinutes: duration_minutes,
+          role,
         })
         if (avail) return avail
       }
@@ -345,6 +365,9 @@ async function assertNoCalendarConflicts(params: {
  * Helper: returns a `NewLessonState` describing the availability conflict, or
  * null when the slot fits inside the teacher's availability. Used by every
  * branch of `createLessonAction` before persisting.
+ *
+ * The wording and the "here is what your availability actually says" payload
+ * live in `buildAvailabilityNotice`, shared with the teacher's own route.
  */
 async function assertWithinTeacherAvailability(params: {
   orgId: string
@@ -352,27 +375,14 @@ async function assertWithinTeacherAvailability(params: {
   date: string
   startTime: string
   durationMinutes: number
+  role: string
 }): Promise<NewLessonState | null> {
-  const t = await getTranslations()
-  const result = await checkTeacherAvailability(params)
-
-  if (result.status === 'inside') return null
-
-  // No availability defined at all — don't block. Schools onboarding often
-  // skip the recurring availability step; we only warn when there *is* data
-  // that conflicts with the request.
-  if (result.status === 'no_windows') return null
-
-  const messages: Record<'outside_windows' | 'override_unavailable' | 'partial_override', string> = {
-    outside_windows: t('lessons.conflicts.outsideWindows'),
-    override_unavailable:
-      t('lessons.conflicts.markedUnavailable'),
-    partial_override:
-      t('lessons.conflicts.outsideDayWindow'),
-  }
+  const built = await buildAvailabilityNotice(params)
+  if (!built) return null
 
   return {
-    error: messages[result.status],
+    error: built.message,
     needsAvailabilityConfirm: true,
+    availabilityInfo: built.notice,
   }
 }

@@ -24,7 +24,9 @@ export async function addTeacherOverride(
   const { userId, orgId, role } = session
   requireMutation(session)
 
-  if (role !== 'teacher') return { error: await commonError('noPermission') }
+  if (role !== 'teacher' && role !== 'owner' && role !== 'admin') {
+    return { error: await commonError('noPermission') }
+  }
 
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) return { error: t('teacherSelf.errors.noTeacherRecord') }
@@ -70,7 +72,7 @@ export async function deleteTeacherOverride(id: string): Promise<void> {
   const session = await getSession()
   const { userId, orgId, role } = session
   requireMutation(session)
-  if (role !== 'teacher') return
+  if (role !== 'teacher' && role !== 'owner' && role !== 'admin') return
 
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) return

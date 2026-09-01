@@ -18,6 +18,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { activateSubscriptionFromPayment } from '@/lib/saas/subscriptions'
+import { trackEvent } from '@/lib/tracking/events'
 import { confirmSumitPayment } from '@/lib/saas/sumit'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
@@ -142,6 +143,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           }
         : undefined,
   })
+
+  if (result.activated && confirmation.amount != null) {
+    // Per /docs/sprint-34-scope.md § C, step 4 — the event that lets Meta
+    // optimise for paying subscribers, and the one that makes CAC computable.
+    void trackEvent({
+      event: 'Purchase',
+      organizationId: sub.organization_id,
+      value: confirmation.amount,
+      currency: 'ILS',
+    })
+  }
 
   if (!result.activated) {
     if (result.reason === 'no_pending_subscription') {

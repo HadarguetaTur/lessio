@@ -7,6 +7,7 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { getStudents } from '@/lib/students'
 import { NewLessonForm } from '@/components/dashboard/lessons/NewLessonForm'
 import { createTeacherLessonAction } from './actions'
+import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
 
 export default async function TeacherNewLessonPage() {
   const { orgId, profileId, role } = await getSession()
@@ -17,9 +18,10 @@ export default async function TeacherNewLessonPage() {
   if (!teacher) redirect('/teacher/schedule')
 
   // Only show students assigned to this teacher
-  const [students, timezone] = await Promise.all([
+  const [students, timezone, durations] = await Promise.all([
     getStudents(orgId, { teacherId: teacher.id }),
     getOrgTimezone(orgId),
+    getOrgLessonDurations(orgId, 'teacher'),
   ])
   const activeStudents = students.map((s) => ({ id: s.id, full_name: s.full_name }))
   const todayStr = getCurrentDayStr(timezone)
@@ -33,6 +35,7 @@ export default async function TeacherNewLessonPage() {
         allowGroupLessons={false}
         action={createTeacherLessonAction}
         minDateStr={todayStr}
+        durationValues={durations.map((item) => item.minutes)}
       />
     </div>
   )

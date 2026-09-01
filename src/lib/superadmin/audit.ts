@@ -23,6 +23,12 @@ export type AdminAuditAction =
   | 'subscription.set_status'
   | 'subscription.cancel'
   | 'plan.update'
+  | 'staff.invite'
+  | 'staff.role_change'
+  | 'staff.deactivate'
+  | 'staff.reactivate'
+  | 'tracking.destination_save'
+  | 'tracking.destination_delete'
 
 export type AdminAuditEntry = {
   id: string

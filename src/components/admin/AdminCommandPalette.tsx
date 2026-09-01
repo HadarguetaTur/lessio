@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Building2, CornerDownLeft, Loader2, Search } from 'lucide-react'
 
+import {
+  ADMIN_NAV,
+  ADMIN_OVERVIEW,
+  adminCategoryFor,
+  filterAdminNav,
+  matchAdminPages,
+} from '@/lib/navigation/adminRegistry'
+import type { PlatformCapability } from '@/lib/superadmin/capabilities'
 import { cn } from '@/lib/utils'
 
 /**
@@ -25,7 +33,11 @@ type Row =
   | { kind: 'page'; key: string; label: string; group: string; href: string }
   | { kind: 'org'; key: string; label: string; group: string; href: string; slug: string }
 
-export function AdminCommandPalette() {
+export function AdminCommandPalette({
+  capabilities,
+}: {
+  capabilities: readonly PlatformCapability[]
+}) {
   const router = useRouter()
   const t = useTranslations('admin')
 
@@ -36,19 +48,6 @@ export function AdminCommandPalette() {
   const [cursor, setCursor] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Latin synonyms only. The Hebrew label is already matched directly via
-  // `p.label`, so repeating it here would duplicate a translated string into
-  // the component — which is what the no-hardcoded-Hebrew rule exists to stop.
-  const PAGES: { label: string; href: string; group: string; keywords: string }[] = [
-    { label: t('nav.overview'), href: '/admin', group: t('nav.groups.pages'), keywords: 'overview dashboard mrr home' },
-    { label: t('nav.orgs'), href: '/admin/orgs', group: t('nav.groups.customers'), keywords: 'organizations orgs tenants accounts' },
-    { label: t('nav.subscriptions'), href: '/admin/subscriptions', group: t('nav.groups.customers'), keywords: 'subscriptions plans trials past due' },
-    { label: t('nav.revenue'), href: '/admin/revenue', group: t('nav.groups.customers'), keywords: 'revenue invoices mrr money sumit' },
-    { label: t('nav.support'), href: '/admin/support', group: t('nav.groups.operations'), keywords: 'support tickets help' },
-    { label: t('nav.devIssues'), href: '/admin/dev-issues', group: t('nav.groups.operations'), keywords: 'bugs issues errors dev' },
-    { label: t('nav.plans'), href: '/admin/plans', group: t('nav.groups.platform'), keywords: 'plans pricing quotas features' },
-    { label: t('nav.audit'), href: '/admin/audit', group: t('nav.groups.platform'), keywords: 'audit log history trail' },
-  ]
 
   const close = useCallback(() => {
     setOpen(false)
@@ -114,13 +113,20 @@ export function AdminCommandPalette() {
     }
   }, [query, open])
 
-  const term = query.trim().toLowerCase()
-  const pageRows: Row[] = PAGES.filter(
-    (p) =>
-      term.length === 0 ||
-      p.label.toLowerCase().includes(term) ||
-      p.keywords.toLowerCase().includes(term)
-  ).map((p) => ({ kind: 'page', key: `page:${p.href}`, label: p.label, group: p.group, href: p.href }))
+  const term = query.trim()
+  const visiblePages = [ADMIN_OVERVIEW, ...filterAdminNav(ADMIN_NAV, capabilities)]
+  const matched =
+    term.length === 0
+      ? visiblePages
+      : matchAdminPages(term, visiblePages, (e) => t(e.navKey), visiblePages.length)
+
+  const pageRows: Row[] = matched.map((entry) => ({
+    kind: 'page',
+    key: `page:${entry.href}`,
+    label: t(entry.navKey),
+    group: t(adminCategoryFor(entry.href)?.sectionKey ?? 'groups.pages'),
+    href: entry.href,
+  }))
 
   const orgRows: Row[] = orgs.map((o) => ({
     kind: 'org',

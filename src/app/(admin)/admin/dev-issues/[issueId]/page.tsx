@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getTranslations, getFormatter } from 'next-intl/server'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
-import { AdminHeader } from '@/components/admin/AdminHeader'
-import { requireSuperAdminSession } from '@/lib/superadmin/session'
+import { PageHeader } from '@/components/ui/page-header'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { getDevIssue, getLinkedTickets, getRecentEvents } from '@/lib/superadmin/devIssues'
 import { DevIssueStatusBadge } from '@/components/admin/DevIssueStatusBadge'
 import { DevIssueStatusControls } from '@/components/admin/DevIssueStatusControls'
@@ -16,7 +16,7 @@ export default async function AdminDevIssuePage({
 }: {
   params: Promise<{ issueId: string }>
 }) {
-  await requireSuperAdminSession()
+  await requirePlatformSession('support.read')
   const { issueId } = await params
   const t = await getTranslations('admin.devIssues')
   const format = await getFormatter()
@@ -39,7 +39,7 @@ export default async function AdminDevIssuePage({
         {t('back')}
       </Link>
 
-      <AdminHeader title={issue.title} />
+      <PageHeader title={issue.title} />
 
       <dl className="mb-6 grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border border-border bg-card p-4 text-sm sm:grid-cols-3">
         <Fact label={t('fields.status')}>

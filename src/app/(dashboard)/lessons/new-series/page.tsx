@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { getTranslations, getLocale } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { updateSeriesUntilAction, deleteSeriesAction } from './actions'
+import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 
@@ -23,13 +24,14 @@ export default async function NewSeriesPage() {
     redirect('/lessons')
   }
 
-  const [teachers, students, series, timezone, holidays, pricing] = await Promise.all([
+  const [teachers, students, series, timezone, holidays, pricing, durations] = await Promise.all([
     getTeachers(orgId),
     getStudents(orgId),
     getLessonSeriesList(orgId),
     getOrgTimezone(orgId),
     getOrgHolidays(orgId, { from: calendarHolidaysFrom() }),
     getOrgPricing(orgId),
+    getOrgLessonDurations(orgId, 'admin'),
   ])
 
   const activeTeachers = teachers
@@ -60,6 +62,7 @@ export default async function NewSeriesPage() {
           appLocale={locale}
           holidays={holidays.map((h) => ({ date: h.date, name: h.name }))}
           pairPriceDefault={pricing.pairPricePerStudent}
+          durationValues={durations.map((item) => item.minutes)}
         />
       </div>
 

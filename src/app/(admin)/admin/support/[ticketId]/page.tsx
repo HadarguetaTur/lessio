@@ -2,10 +2,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getTranslations, getFormatter } from 'next-intl/server'
 import { ArrowLeft } from 'lucide-react'
-import { AdminHeader } from '@/components/admin/AdminHeader'
+import { PageHeader } from '@/components/ui/page-header'
 import { getTicketWithMessages } from '@/lib/support/tickets'
 import { getTicketContext } from '@/lib/superadmin/supportTickets'
-import { requireSuperAdminSession } from '@/lib/superadmin/session'
+import { requirePlatformSession } from '@/lib/superadmin/session'
 import { SupportThread } from '@/components/dashboard/support/SupportThread'
 import { SupportReplyForm } from '@/components/dashboard/support/SupportReplyForm'
 import { SupportStatusBadge } from '@/components/dashboard/support/SupportStatusBadge'
@@ -22,7 +22,7 @@ export default async function AdminSupportTicketPage({
 }: {
   params: Promise<{ ticketId: string }>
 }) {
-  await requireSuperAdminSession()
+  await requirePlatformSession('support.read')
   const { ticketId } = await params
   const t = await getTranslations('admin.support')
   const format = await getFormatter()
@@ -46,7 +46,7 @@ export default async function AdminSupportTicketPage({
         {t('back')}
       </Link>
 
-      <AdminHeader title={thread.ticket.subject} />
+      <PageHeader title={thread.ticket.subject} />
 
       <dl className="mb-6 grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border border-border bg-card p-4 text-sm sm:grid-cols-3">
         <Fact label={t('fields.org')}>

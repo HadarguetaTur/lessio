@@ -22,6 +22,9 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/lib/support-session', () => ({
+  // getSession now reads the *verified* variant, which re-checks that the
+  // operator still holds support_mode.enter before honouring the cookie.
+  getActiveSupportSession: mockGetSupportSession,
   getSupportSession: mockGetSupportSession,
 }))
 
@@ -98,20 +101,25 @@ describe('getSession', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/login')
   })
 
-  it('redirects to /admin/dashboard when user is a superadmin', async () => {
+  // Every platform role, not just superadmin: they all have organization_id
+  // NULL, and UserSession promises orgId is a non-null string. /admin is the
+  // console's real index now — /admin/dashboard only redirects to it.
+  it.each([
+    'superadmin',
+    'platform_support',
+    'platform_billing',
+    'platform_marketing',
+    'platform_viewer',
+  ])('sends a %s to the platform console', async (role) => {
     mockCreateClient.mockResolvedValue(
       createSupabaseClient({
         user: { id: 'sa-1' },
-        profile: {
-          organization_id: null,
-          role: 'superadmin',
-          full_name: 'Platform Admin',
-        },
+        profile: { organization_id: null, role, full_name: 'Platform Staff' },
       })
     )
 
-    await expect(getSession()).rejects.toThrow('REDIRECT:/admin/dashboard')
-    expect(mockRedirect).toHaveBeenCalledWith('/admin/dashboard')
+    await expect(getSession()).rejects.toThrow('REDIRECT:/admin')
+    expect(mockRedirect).toHaveBeenCalledWith('/admin')
   })
 
   it('returns support-mode session when support cookie is active', async () => {

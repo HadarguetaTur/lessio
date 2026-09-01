@@ -22,6 +22,7 @@ export function MonthNav({
 }: MonthNavProps) {
   const t = useTranslations('lessons')
   const uiLocale = parseAppLocale(useLocale())
+  const isRtl = uiLocale === 'he'
   const intlLocale = toIntlLocale(uiLocale)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -45,7 +46,7 @@ export function MonthNav({
   }).format(new Date(Date.UTC(year, month - 1, 15)))
 
   return (
-    <div className="flex w-full max-w-md items-center justify-center gap-1 sm:w-auto sm:max-w-none sm:justify-start" dir="ltr">
+    <div className="flex w-full max-w-md items-center justify-center gap-1 sm:w-auto sm:max-w-none sm:justify-start" dir={isRtl ? 'rtl' : 'ltr'}>
       {!isCurrentMonth && (
         <Link
           href={(() => {
@@ -64,7 +65,7 @@ export function MonthNav({
         className="p-1.5 rounded hover:bg-gray-100 text-gray-600"
         title={t('prevMonth')}
       >
-        <ChevronLeft size={18} />
+        {isRtl ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
       </button>
       <span
         className="text-sm font-medium text-gray-800 min-w-28 sm:min-w-44 text-center"
@@ -77,7 +78,7 @@ export function MonthNav({
         className="p-1.5 rounded hover:bg-gray-100 text-gray-600"
         title={t('nextMonth')}
       >
-        <ChevronRight size={18} />
+        {isRtl ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
       </button>
     </div>
   )

@@ -76,29 +76,33 @@ export async function getAvailableSlots({
   if (holidayError) throw new Error(`Failed to load holidays: ${holidayError.message}`)
   if (holiday) return []
 
-  // 4. Check for a date-specific override first
-  const { data: override, error: overrideError } = await db
+  // 4. Date-specific overrides. Several rows per date are legal — a morning and
+  // an evening can be blocked separately — so this is a list read, not
+  // maybeSingle(). The old .limit(1) silently picked an arbitrary row.
+  const { data: overrideRows, error: overrideError } = await db
     .from('availability_overrides')
     .select('is_available, start_time, end_time')
     .eq('teacher_id', teacherId)
+    .eq('organization_id', organizationId)
     .eq('override_date', date)
-    .limit(1)
-    .maybeSingle()
 
   if (overrideError) throw new Error(`Failed to load availability override: ${overrideError.message}`)
 
-  // If override exists and marks the day unavailable → no slots
-  if (override && !override.is_available) return []
+  const overrides = overrideRows ?? []
+
+  // A whole-day block (no times) closes the date outright.
+  if (overrides.some(o => !o.is_available && !o.start_time)) return []
 
   // 5. Determine the availability windows for this day.
   // A teacher may have multiple recurring windows per weekday (e.g. morning + evening),
   // so this must NOT use maybeSingle() — with 2+ rows it errors and the day would
   // silently come back empty.
+  const specialHours = overrides.filter(o => o.is_available && o.start_time && o.end_time)
   let windows: { start: string; end: string }[]
 
-  if (override && override.is_available && override.start_time && override.end_time) {
-    // Override provides a custom window for this specific date
-    windows = [{ start: override.start_time, end: override.end_time }]
+  if (specialHours.length > 0) {
+    // Special hours for this date replace the weekly grid entirely.
+    windows = specialHours.map(o => ({ start: o.start_time!, end: o.end_time! }))
   } else {
     // Fall back to recurring weekly availability
     const { data: weekly, error: weeklyError } = await db
@@ -113,6 +117,16 @@ export async function getAvailableSlots({
   }
 
   if (windows.length === 0) return [] // No availability defined for this day
+
+  // Ranged blocks subtract from whatever the windows turned out to be. They
+  // join the same blockedIntervals list as lessons and slot locks below, so the
+  // slot loop needs no change at all.
+  const rangedBlocks = overrides
+    .filter(o => !o.is_available && o.start_time && o.end_time)
+    .map(o => ({
+      start: DateTime.fromISO(`${date}T${o.start_time}`, { zone: timezone }).toUTC(),
+      end: DateTime.fromISO(`${date}T${o.end_time}`, { zone: timezone }).toUTC(),
+    }))
 
   // 6. Load existing lessons for this teacher on this date (scheduled only)
   const dayStartUtc = localDate.startOf('day').toUTC().toISO()!
@@ -137,12 +151,12 @@ export async function getAvailableSlots({
     .lte('start_at', dayEndUtc)
 
   const blockedIntervals = [
-    ...(lessons ?? []),
-    ...(locks ?? []),
-  ].map(r => ({
-    start: DateTime.fromISO(r.start_at, { zone: 'utc' }),
-    end: DateTime.fromISO(r.end_at, { zone: 'utc' }),
-  }))
+    ...[...(lessons ?? []), ...(locks ?? [])].map(r => ({
+      start: DateTime.fromISO(r.start_at, { zone: 'utc' }),
+      end: DateTime.fromISO(r.end_at, { zone: 'utc' }),
+    })),
+    ...rangedBlocks,
+  ]
 
   // 8. Earliest bookable time: now + min_booking_notice_hours
   const earliestBookable = DateTime.utc().plus({ hours: min_booking_notice_hours })

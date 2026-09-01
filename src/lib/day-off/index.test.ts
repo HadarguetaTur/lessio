@@ -104,6 +104,7 @@ type TableScript = {
   update?: unknown
   insert?: unknown
   upsert?: unknown
+  delete?: unknown
 }
 
 function mockTables(script: Record<string, TableScript>) {
@@ -150,11 +151,17 @@ function mockTables(script: Record<string, TableScript>) {
       record()
       return self
     }
+    self['delete'] = () => {
+      op = 'delete'
+      record()
+      return self
+    }
 
     const result = () => {
       if (op === 'update') return entry.update ?? { data: [], error: null }
       if (op === 'insert') return entry.insert ?? { data: null, error: null }
       if (op === 'upsert') return entry.upsert ?? { data: null, error: null }
+      if (op === 'delete') return entry.delete ?? { data: [], error: null }
       return entry.select ?? { data: [], error: null, count: 0 }
     }
 
@@ -273,12 +280,40 @@ describe('approveDayOffRequest', () => {
 
     await approveDayOffRequest({ requestId: REQUEST_ID, decidedByProfileId: DECIDER, ctx: CTX })
 
-    const upsert = findCall(calls, 'availability_overrides', 'upsert')
-    expect(upsert?.payload).toEqual([
+    // Delete-then-insert, not an upsert: several rows per date are legal since
+    // partial-day blocks, so there is no unique constraint to name in ON
+    // CONFLICT. The clear is also the supersede — an approved day off wipes any
+    // blocked range or special hours already set for those dates.
+    const cleared = findCall(calls, 'availability_overrides', 'delete')
+    expect(cleared?.filters['eq:organization_id']).toBe(ORG_ID)
+    expect(cleared?.filters['eq:teacher_id']).toBe(TEACHER_ID)
+    expect(cleared?.filters['in:override_date']).toEqual([
+      '2026-08-20',
+      '2026-08-21',
+      '2026-08-22',
+    ])
+
+    const insert = findCall(calls, 'availability_overrides', 'insert')
+    expect(insert?.payload).toEqual([
       expect.objectContaining({ override_date: '2026-08-20', is_available: false, teacher_id: TEACHER_ID }),
       expect.objectContaining({ override_date: '2026-08-21', is_available: false }),
       expect.objectContaining({ override_date: '2026-08-22', is_available: false }),
     ])
+  })
+
+  it('reopens the request and cancels nothing when the days cannot be blocked', async () => {
+    // This used to be swallowed: the days stayed bookable while every parent
+    // was told the teacher was away. Blocking runs before the cancellations, so
+    // throwing costs nothing and the claim goes back to pending.
+    const calls = approvalScript({
+      availability_overrides: { insert: { data: null, error: { message: 'boom' } } },
+    })
+
+    await expect(
+      approveDayOffRequest({ requestId: REQUEST_ID, decidedByProfileId: DECIDER, ctx: CTX })
+    ).rejects.toThrow(/block days/i)
+
+    expect(findCall(calls, 'lessons', 'update')).toBeUndefined()
   })
 
   it('cancels only this teacher’s still-scheduled lessons, and charges nobody', async () => {
@@ -311,8 +346,11 @@ describe('approveDayOffRequest', () => {
     await approveDayOffRequest({ requestId: REQUEST_ID, decidedByProfileId: DECIDER, ctx: CTX })
 
     const update = findCall(calls, 'lessons', 'update')
-    // 20/08 00:00 and 23/08 00:00 Jerusalem — the day after the last day off.
-    expect(update?.filters['gte:start_at']).toBe(
+    // Overlap, not "starts within": a lesson that begins before the absence and
+    // runs into it collides too, which matters once an absence can be a few
+    // hours rather than whole days. Same instants either way — 20/08 00:00 and
+    // 23/08 00:00 Jerusalem, the day after the last day off.
+    expect(update?.filters['gt:end_at']).toBe(
       DateTime.fromISO('2026-08-20T00:00:00', { zone: TZ }).toUTC().toISO()
     )
     expect(update?.filters['lt:start_at']).toBe(
@@ -456,7 +494,7 @@ describe('approveDayOffRequest', () => {
       ctx: CTX,
     })
 
-    expect(findCall(calls, 'availability_overrides', 'upsert')).toBeDefined()
+    expect(findCall(calls, 'availability_overrides', 'insert')).toBeDefined()
     expect(outcome).toMatchObject({ status: 'approved', lessonsCancelled: 0, parentsNotified: 0 })
   })
 
@@ -512,7 +550,7 @@ describe('approveDayOffRequest', () => {
 
     expect(outcome).toEqual({ status: 'already_decided' })
     expect(findCall(calls, 'lessons', 'update')).toBeUndefined()
-    expect(findCall(calls, 'availability_overrides', 'upsert')).toBeUndefined()
+    expect(findCall(calls, 'availability_overrides', 'insert')).toBeUndefined()
     expect(mockSendTemplateWithQuickReplies).not.toHaveBeenCalled()
   })
 
@@ -603,7 +641,7 @@ describe('rejectDayOffRequest', () => {
       decided_by: DECIDER,
     })
     expect(findCall(calls, 'lessons', 'update')).toBeUndefined()
-    expect(findCall(calls, 'availability_overrides', 'upsert')).toBeUndefined()
+    expect(findCall(calls, 'availability_overrides', 'insert')).toBeUndefined()
     expect(mockSendSmartMessage).toHaveBeenCalledWith(
       expect.objectContaining({ vars: expect.objectContaining({ decision: 'נדחתה' }) })
     )

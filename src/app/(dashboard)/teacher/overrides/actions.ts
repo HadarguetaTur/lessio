@@ -1,24 +1,55 @@
 'use server'
 
 /**
- * Teacher self-service override actions.
- * teacherId is always resolved from the authenticated session — never from the request.
- * Per /docs/sprint-10-scope.md § Story 5.
+ * Schedule-exception actions for the session's own teacher record.
+ * teacherId is always resolved from the authenticated session — never from the
+ * request. Per /docs/sprint-10-scope.md § Story 5.
+ *
+ * Also serves an owner/admin who teaches: a solo tutor's sidebar hides the
+ * teacher-management section, so this is their only route to their own
+ * exceptions. The teacher row still comes from the session, so the wider role
+ * gate grants nobody access to anyone else's calendar.
  */
 
-import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getTeacherByProfileId } from '@/lib/teachers'
+import {
+  createOverride,
+  deleteOverride,
+  updateOverride,
+  type ConflictingLesson,
+  type OverrideCreateResult,
+} from '@/lib/availability-overrides'
+import { overrideErrorMessage } from '@/lib/availability-overrides/errorMessage'
 import { revalidatePath } from 'next/cache'
-import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { commonError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 
-type ActionState = { error: string } | null
+type ActionState = {
+  error?: string
+  /** Lessons already booked inside the range the reader is about to close. */
+  needsLessonConfirm?: boolean
+  lessons?: ConflictingLesson[]
+  cancelled?: number
+  notified?: number
+} | null
 
-export async function addTeacherOverride(
-  _prevState: ActionState,
-  formData: FormData
-): Promise<ActionState> {
+/** Maps the mutation result onto the state the form renders. */
+async function toState(result: OverrideCreateResult): Promise<ActionState> {
+  if (!result) return null
+  if ('needsLessonConfirm' in result) {
+    return { needsLessonConfirm: true, lessons: result.lessons }
+  }
+  if ('created' in result) {
+    return { cancelled: result.cancelled, notified: result.notified }
+  }
+  return { error: await overrideErrorMessage(result) }
+}
+
+/** Resolves the acting user's own teacher row, or the error to show instead. */
+async function ownTeacher(): Promise<
+  { teacherId: string; orgId: string; teacherName: string | null } | { error: string }
+> {
   const t = await getTranslations()
   const session = await getSession()
   const { userId, orgId, role } = session
@@ -31,60 +62,49 @@ export async function addTeacherOverride(
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) return { error: t('teacherSelf.errors.noTeacherRecord') }
 
-  const override_date = (formData.get('override_date') as string).trim()
-  const type = formData.get('type') as string // 'block' | 'available'
-  const start_time = (formData.get('start_time') as string | null)?.trim() || null
-  const end_time = (formData.get('end_time') as string | null)?.trim() || null
-  const reason = (formData.get('reason') as string).trim() || null
+  return { teacherId: teacher.id, orgId, teacherName: teacher.profile.full_name ?? null }
+}
 
-  if (!override_date) return { error: t('teacherSelf.errors.pickDate') }
+export async function addTeacherOverride(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const who = await ownTeacher()
+  if ('error' in who) return who
 
-  const is_available = type === 'available'
+  const result = await createOverride(who.orgId, who.teacherId, formData, who.teacherName)
+  const state = await toState(result)
+  // Nothing was written when the reader still has to decide about the lessons.
+  if (state?.needsLessonConfirm) return state
 
-  if (is_available) {
-    if (!start_time || !end_time) return { error: t('teacherSelf.errors.fillTimes') }
-    if (start_time >= end_time) return { error: t('teacherSelf.errors.endAfterStart') }
-  }
+  revalidatePath('/teacher/overrides')
+  return state
+}
 
-  const supabase = await createClient()
-  const { error } = await supabase.from('availability_overrides').insert({
-    organization_id: orgId,
-    teacher_id: teacher.id,   // always from session
-    override_date,
-    is_available,
-    start_time: is_available ? start_time : null,
-    end_time: is_available ? end_time : null,
-    reason,
-  })
+export async function updateTeacherOverride(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const who = await ownTeacher()
+  if ('error' in who) return who
 
-  if (error) {
-    if (error.code === '23505') {
-      return { error: t('teacherSelf.errors.overrideExists') }
-    }
-    return { error: t('teacherSelf.errors.saveOverrideFailed') }
-  }
+  const failure = await updateOverride(who.orgId, who.teacherId, formData)
+  if (failure) return { error: await overrideErrorMessage(failure) }
 
   revalidatePath('/teacher/overrides')
   return null
 }
 
-export async function deleteTeacherOverride(id: string): Promise<void> {
-  const session = await getSession()
-  const { userId, orgId, role } = session
-  requireMutation(session)
-  if (role !== 'teacher' && role !== 'owner' && role !== 'admin') return
+export async function deleteTeacherOverride(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const who = await ownTeacher()
+  if ('error' in who) return who
 
-  const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
-  if (!teacher) return
-
-  const supabase = await createClient()
-  // Security: scoped to own teacher record + org
-  await supabase
-    .from('availability_overrides')
-    .delete()
-    .eq('id', id)
-    .eq('teacher_id', teacher.id)
-    .eq('organization_id', orgId)
+  const failure = await deleteOverride(who.orgId, who.teacherId, formData)
+  if (failure) return { error: await overrideErrorMessage(failure) }
 
   revalidatePath('/teacher/overrides')
+  return null
 }

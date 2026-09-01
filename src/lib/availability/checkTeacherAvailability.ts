@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { normalizeTime } from './constants'
+import { normalizeTime, subtractRanges } from './constants'
 
 export interface AvailabilityWindowTimes {
   /** HH:MM in org timezone */
@@ -81,71 +81,123 @@ export async function checkTeacherAvailability(
   const slotEnd = slotStart.plus({ minutes: durationMinutes })
   if (!slotStart.isValid || !slotEnd.isValid) return { status: 'no_windows', ...unknown }
 
-  // 1. Date-specific override takes precedence
-  const { data: override } = await db
+  // 1. Date-specific overrides. Several rows per date are legal, so this must
+  //    be a list read: the old .maybeSingle() errored on two rows, and because
+  //    the error was discarded it fell through to the weekly grid — a blocked
+  //    morning read as a fully open day.
+  const { data: overrides, error: overridesError } = await db
     .from('availability_overrides')
     .select('is_available, start_time, end_time, reason')
     .eq('teacher_id', teacherId)
     .eq('organization_id', orgId)
     .eq('override_date', date)
-    .maybeSingle()
 
-  if (override && !override.is_available) {
+  if (overridesError) return { status: 'no_windows', ...unknown }
+
+  const rows = overrides ?? []
+  const fullDayBlock = rows.find((o) => !o.is_available && !o.start_time)
+  if (fullDayBlock) {
     return {
       status: 'override_unavailable',
-      reason: override.reason ?? null,
+      reason: fullDayBlock.reason ?? null,
       dayOfWeek,
       windows: [],
       source: 'override',
     }
   }
 
-  if (override && override.is_available && override.start_time && override.end_time) {
-    const winStart = DateTime.fromISO(`${date}T${override.start_time}`, { zone: tz })
-    const winEnd = DateTime.fromISO(`${date}T${override.end_time}`, { zone: tz })
-    if (slotStart >= winStart && slotEnd <= winEnd) {
-      return { status: 'inside' }
-    }
+  const specialHours = rows.filter((o) => o.is_available && o.start_time && o.end_time)
+  const blocks = rows
+    .filter((o) => !o.is_available && o.start_time && o.end_time)
+    .map((o) => ({
+      start: normalizeTime(o.start_time as string),
+      end: normalizeTime(o.end_time as string),
+      reason: o.reason ?? null,
+    }))
+
+  // 2. Base windows: special hours for this date if any were set, otherwise the
+  //    recurring weekly grid for this weekday.
+  let base: AvailabilityWindowTimes[]
+  let source: 'weekly' | 'override'
+
+  if (specialHours.length > 0) {
+    source = 'override'
+    base = specialHours.map((o) => ({
+      start: normalizeTime(o.start_time as string),
+      end: normalizeTime(o.end_time as string),
+    }))
+  } else {
+    source = 'weekly'
+    const { data: weekly } = await db
+      .from('availability')
+      .select('start_time, end_time')
+      .eq('teacher_id', teacherId)
+      .eq('organization_id', orgId)
+      .eq('day_of_week', dayOfWeek)
+
+    base = (weekly ?? []).map((w) => ({
+      start: normalizeTime(w.start_time),
+      end: normalizeTime(w.end_time),
+    }))
+  }
+
+  if (base.length === 0) {
+    return { status: 'no_windows', dayOfWeek, windows: [], source }
+  }
+
+  // 3. Effective windows are the base minus every blocked range.
+  const effective = subtractRanges(base, blocks)
+
+  const slotStartLocal = normalizeTime(startTime)
+  // A lesson running past midnight wraps to "00:30", which would compare as
+  // earlier than its own start. Windows are same-day by definition, so pin it
+  // past every possible end instead.
+  const slotEndLocal =
+    slotEnd.toISODate() === localDate.toISODate() ? slotEnd.toFormat('HH:mm') : '24:00'
+  const fits = (w: AvailabilityWindowTimes) =>
+    slotStartLocal >= w.start && slotEndLocal <= w.end
+
+  if (effective.some(fits)) return { status: 'inside' }
+
+  // Blocks that leave nothing open are a whole-day statement, whatever shape
+  // they were typed in. Reporting partial_override here would render "the hours
+  // for this date are: —", which says nothing.
+  if (blocks.length > 0 && effective.length === 0) {
     return {
-      status: 'partial_override',
-      reason: override.reason ?? null,
+      status: 'override_unavailable',
+      reason: blocks.find((b) => b.reason)?.reason ?? null,
       dayOfWeek,
-      windows: [
-        {
-          start: normalizeTime(override.start_time),
-          end: normalizeTime(override.end_time),
-        },
-      ],
+      windows: [],
       source: 'override',
     }
   }
 
-  // 2. Fall back to recurring weekly availability — there can be multiple
-  //    windows per weekday; the slot only needs to fit inside one of them.
-  const { data: windows } = await db
-    .from('availability')
-    .select('start_time, end_time')
-    .eq('teacher_id', teacherId)
-    .eq('organization_id', orgId)
-    .eq('day_of_week', dayOfWeek)
-
-  if (!windows || windows.length === 0) {
-    return { status: 'no_windows', dayOfWeek, windows: [], source: 'weekly' }
-  }
-
-  for (const w of windows) {
-    const winStart = DateTime.fromISO(`${date}T${w.start_time}`, { zone: tz })
-    const winEnd = DateTime.fromISO(`${date}T${w.end_time}`, { zone: tz })
-    if (slotStart >= winStart && slotEnd <= winEnd) {
-      return { status: 'inside' }
+  // A slot that would have fitted before the blocks is a different message from
+  // one that never fitted: the reader blocked it themselves, and saying so with
+  // their own reason is what makes the dialog actionable.
+  const clash = blocks.find((b) => slotStartLocal < b.end && slotEndLocal > b.start)
+  if (clash && base.some(fits)) {
+    return {
+      status: 'partial_override',
+      reason: clash.reason,
+      dayOfWeek,
+      windows: effective,
+      source: 'override',
     }
   }
 
-  // Sorted here rather than with .order() — the query is three .eq() links deep
-  // and its test mock ends the chain there.
-  const shown = windows
-    .map((w) => ({ start: normalizeTime(w.start_time), end: normalizeTime(w.end_time) }))
-    .sort((a, b) => a.start.localeCompare(b.start))
+  // Special hours narrow the day just as a block does, so a slot outside them
+  // is still a partial_override — and the reason the reader typed on that row
+  // is the one worth showing.
+  if (source === 'override') {
+    return {
+      status: 'partial_override',
+      reason: specialHours.find((o) => o.reason)?.reason ?? null,
+      dayOfWeek,
+      windows: effective,
+      source: 'override',
+    }
+  }
 
-  return { status: 'outside_windows', dayOfWeek, windows: shown, source: 'weekly' }
+  return { status: 'outside_windows', dayOfWeek, windows: effective, source }
 }

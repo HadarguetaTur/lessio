@@ -7,39 +7,33 @@
  * three things at once: blocks the days so the booking WebView stops offering
  * them, cancels the lessons already in them, and tells every affected parent.
  *
- * Two rules are load-bearing and easy to break by reaching for the existing
- * cancellation helpers:
- *
- *   1. **No charge, ever.** A family does not pay for their teacher's holiday.
- *      That means not calling the charge path AND not writing a cancellation
- *      event — the monthly billing engine counts those separately, so a waived
- *      charge with an event still lands on the invoice.
- *   2. **Service role only.** `guard_teacher_lesson_update()` blocks a
- *      teacher-role client from cancelling a lesson at all.
+ * The cancelling and the parent notices live in ./cancelForAbsence, shared with
+ * the dashboard's partial-day blocks — including the two load-bearing rules
+ * (never charge for a teacher's absence, and cancel only through the service
+ * role). Read that file before touching either path.
  *
  * Everything here is called from the webhook, which already holds a decrypted
- * access token; a future dashboard caller would decrypt one the same way.
+ * access token; a dashboard caller builds one with `buildSendContext`.
  */
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { sendTextMessage } from '@/lib/whatsapp'
-import { sendReplyButtons, sendTemplateWithQuickReplies } from '@/lib/whatsapp/interactive'
+import { sendReplyButtons } from '@/lib/whatsapp/interactive'
 import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
-import { prepareBusinessSend } from '@/lib/whatsapp/consent'
-import { LESSON_CANCELLED_BY_TEACHER_TEMPLATE } from '@/lib/whatsapp/approvedTemplates'
-import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { botString } from '@/lib/whatsapp/strings'
-import { encodeMenuPayload } from '@/lib/whatsapp/menu'
 import { encodeStaffRequestPayload, datesInRange, formatDateRange } from '@/lib/whatsapp/dayOffPayloads'
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
+import {
+  cancelLessons,
+  loadAffectedLessons,
+  notifyParents,
+  type AbsenceWindow,
+} from './cancelForAbsence'
 import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
 
 type Db = ReturnType<typeof createServiceRoleClient>
 
-/** Free-text marker on the cancelled lessons, matching the 'ביטול סדרה' convention. */
-const CANCEL_REASON = 'TEACHER_DAY_OFF'
 const OVERRIDE_REASON = 'APPROVED_DAY_OFF'
 
 export type DayOffRequest = {
@@ -332,15 +326,17 @@ export async function approveDayOffRequest(params: {
     //    getAvailableSlots before the weekly availability rows.
     await blockDays(db, request, ctx.timezone)
 
+    const window = absenceWindowFor(request, ctx.timezone)
+
     // 2. Read the affected lessons BEFORE cancelling — afterwards the status
     //    filter no longer matches them and the parents are unreachable.
-    const affected = await loadAffectedLessons(db, request, ctx.timezone)
+    const affected = await loadAffectedLessons(db, window)
 
-    // 3. Cancel. No charge and no cancellation event, by design (see file header).
-    lessonsCancelled = await cancelLessons(db, request, ctx.timezone)
+    // 3. Cancel. No charge and no cancellation event, by design.
+    lessonsCancelled = await cancelLessons(db, window)
 
     // 4. Tell the parents.
-    ;({ notified, failed } = await notifyParents(request, ctx, affected))
+    ;({ notified, failed } = await notifyParents(window, ctx, affected))
   } catch (err) {
     // The claim is already recorded, so a retry would come back
     // "already decided" and the owner would think their approval went through
@@ -436,26 +432,73 @@ async function releaseClaim(db: Db, orgId: string, requestId: string): Promise<v
   if (error) throw new Error(`Failed to reopen day-off request: ${error.message}`)
 }
 
+/**
+ * Blocks whole days for an approved day off.
+ *
+ * Delete-then-insert rather than an upsert: several override rows per date are
+ * legal since partial-day blocks landed, so 'teacher_id,override_date' is no
+ * longer a unique constraint an ON CONFLICT clause can name. It is also the
+ * right semantics — an approved day off supersedes a blocked morning and any
+ * special hours already set for that date. Whole-day is the strongest statement
+ * the table can make; anything underneath it is noise.
+ *
+ * Not atomic: a crash between the two statements leaves the date with no
+ * override at all. That is strictly better than a stale partial block, and the
+ * caller reopens the request so the next approval redoes it.
+ */
 async function blockDays(db: Db, request: DayOffRequest, timezone: string): Promise<void> {
-  const rows = datesInRange(request.startDate, request.endDate, timezone).map((date) => ({
-    organization_id: request.organizationId,
-    teacher_id: request.teacherId,
-    override_date: date,
-    is_available: false,
-    reason: OVERRIDE_REASON,
-  }))
+  const dates = datesInRange(request.startDate, request.endDate, timezone)
+  if (dates.length === 0) return
 
-  if (rows.length === 0) return
-
-  const { error } = await db
+  const { data: cleared, error: clearError } = await db
     .from('availability_overrides')
-    .upsert(rows, { onConflict: 'teacher_id,override_date' })
+    .delete()
+    .eq('organization_id', request.organizationId)
+    .eq('teacher_id', request.teacherId)
+    .in('override_date', dates)
+    .select('id')
 
+  if (clearError) {
+    throw new Error(`Failed to clear existing overrides for an approved day off: ${clearError.message}`)
+  }
+
+  if ((cleared ?? []).length > 0) {
+    // "My special hours vanished" is otherwise an unanswerable support ticket.
+    console.info('[day-off] Replaced existing overrides', {
+      requestId: request.id,
+      replaced: (cleared ?? []).length,
+    })
+  }
+
+  const { error } = await db.from('availability_overrides').insert(
+    dates.map((date) => ({
+      organization_id: request.organizationId,
+      teacher_id: request.teacherId,
+      override_date: date,
+      is_available: false,
+      reason: OVERRIDE_REASON,
+    }))
+  )
+
+  // Throwing, where this used to only log. The caller wraps steps 1-4 and
+  // reopens the claim on failure, and blocking runs BEFORE the cancellations —
+  // so a throw here costs nothing, while swallowing it left the days bookable
+  // after every parent had been told the teacher was away.
   if (error) {
-    // The cancellations below still matter, so this is logged rather than
-    // thrown — a day left bookable is worse than nothing, but losing the
-    // cancellations too would be worse still.
-    console.error('[day-off] Failed to block days', { requestId: request.id, error })
+    throw new Error(`Failed to block days for an approved day off: ${error.message}`)
+  }
+}
+
+/** A whole-day day-off request, as the shared absence helpers see it. */
+function absenceWindowFor(request: DayOffRequest, timezone: string): AbsenceWindow {
+  const { gte, lt } = rangeBounds(request.startDate, request.endDate, timezone)
+  return {
+    orgId: request.organizationId,
+    teacherId: request.teacherId,
+    gte,
+    lt,
+    label: formatDateRange(request.startDate, request.endDate, timezone),
+    teacherName: request.teacherName,
   }
 }
 
@@ -464,175 +507,6 @@ function rangeBounds(startDate: string, endDate: string, timezone: string): { gt
   const start = DateTime.fromFormat(startDate, 'yyyy-MM-dd', { zone: timezone }).startOf('day')
   const end = DateTime.fromFormat(endDate, 'yyyy-MM-dd', { zone: timezone }).plus({ days: 1 }).startOf('day')
   return { gte: start.toUTC().toISO()!, lt: end.toUTC().toISO()! }
-}
-
-type AffectedLesson = {
-  lesson_students: Array<{
-    student: {
-      relationships: Array<{
-        is_primary: boolean | null
-        parent: { id: string; phone: string | null; preferred_locale: string | null } | null
-      }> | null
-    } | null
-  }> | null
-}
-
-async function loadAffectedLessons(
-  db: Db,
-  request: DayOffRequest,
-  timezone: string
-): Promise<AffectedLesson[]> {
-  const { gte, lt } = rangeBounds(request.startDate, request.endDate, timezone)
-
-  const { data, error } = await db
-    .from('lessons')
-    .select(`
-      id,
-      lesson_students (
-        student:students (
-          relationships (
-            is_primary,
-            parent:parents ( id, phone, preferred_locale )
-          )
-        )
-      )
-    `)
-    .eq('organization_id', request.organizationId)
-    .eq('teacher_id', request.teacherId)
-    .eq('status', 'scheduled')
-    .gte('start_at', gte)
-    .lt('start_at', lt)
-
-  if (error) {
-    console.error('[day-off] Failed to load affected lessons', { requestId: request.id, error })
-    return []
-  }
-
-  return (data ?? []) as unknown as AffectedLesson[]
-}
-
-async function cancelLessons(db: Db, request: DayOffRequest, timezone: string): Promise<number> {
-  const { gte, lt } = rangeBounds(request.startDate, request.endDate, timezone)
-
-  const { data, error } = await db
-    .from('lessons')
-    .update({ status: 'cancelled', cancel_reason: CANCEL_REASON, updated_at: new Date().toISOString() })
-    .eq('organization_id', request.organizationId)
-    .eq('teacher_id', request.teacherId)
-    .eq('status', 'scheduled')
-    .gte('start_at', gte)
-    .lt('start_at', lt)
-    .select('id')
-
-  if (error) {
-    console.error('[day-off] Failed to cancel lessons', { requestId: request.id, error })
-    throw new Error('Failed to cancel lessons for an approved day off')
-  }
-
-  // lesson_students rows are left alone, matching the dashboard cancel path.
-  return (data ?? []).length
-}
-
-/**
- * One message per parent, not per lesson: a parent with two children taught by
- * the same teacher would otherwise get the same notice twice.
- */
-async function notifyParents(
-  request: DayOffRequest,
-  ctx: SendContext,
-  lessons: AffectedLesson[]
-): Promise<{ notified: number; failed: number }> {
-  const byParent = new Map<string, { phone: string; locale: AppLocale }>()
-
-  for (const lesson of lessons) {
-    for (const ls of lesson.lesson_students ?? []) {
-      const relationships = ls.student?.relationships ?? []
-      const primary = relationships.find((r) => r.is_primary) ?? relationships[0]
-      const parent = primary?.parent
-      if (!parent?.phone) continue
-      if (byParent.has(parent.id)) continue
-      byParent.set(parent.id, {
-        phone: parent.phone,
-        locale: parseAppLocale(parent.preferred_locale ?? undefined),
-      })
-    }
-  }
-
-  const dateRange = formatDateRange(request.startDate, request.endDate, ctx.timezone)
-  let notified = 0
-  let failed = 0
-
-  for (const [parentId, parent] of byParent) {
-    const vars = {
-      teacher_name: teacherLabel(request, parent.locale),
-      date_range: dateRange,
-    }
-
-    // Business-initiated: an opted-out parent is skipped (not a failure), and
-    // a first-contact parent gets the welcome notice before the cancellation.
-    const gate = await prepareBusinessSend({
-      orgId: ctx.orgId,
-      phone: parent.phone,
-      accessToken: ctx.accessToken,
-      phoneNumberId: ctx.phoneNumberId,
-      locale: parent.locale,
-    })
-    if (!gate.ok) {
-      console.info('[day-off] Parent opted out — notice skipped', { orgId: ctx.orgId, parentId })
-      continue
-    }
-
-    try {
-      // The approved template carries the rebooking button. Its payload is
-      // bound here rather than at registration, so the tap runs the ordinary
-      // parent booking flow and mints a fresh link — a URL baked into the body
-      // would be a 15-minute token that expired before anyone read it.
-      const template =
-        LESSON_CANCELLED_BY_TEACHER_TEMPLATE[parent.locale] ??
-        LESSON_CANCELLED_BY_TEACHER_TEMPLATE.he
-
-      await sendTemplateWithQuickReplies(
-        parent.phone,
-        {
-          name: template.name,
-          languageCode: template.languageCode,
-          bodyParams: [vars.teacher_name, vars.date_range],
-          payloads: [encodeMenuPayload('book')],
-        },
-        ctx.accessToken,
-        ctx.phoneNumberId
-      )
-      notified++
-    } catch (err) {
-      // Most often the template is not approved at Meta yet. Text still reaches
-      // anyone whose session window happens to be open.
-      console.warn('[day-off] Template notice failed — trying text', {
-        orgId: ctx.orgId,
-        parentId,
-        error: String(err),
-      })
-      try {
-        const body = await resolveTemplate(
-          ctx.orgId,
-          'lesson_cancelled_by_teacher',
-          vars,
-          parent.locale
-        )
-        await sendTextMessage(parent.phone, body, ctx.accessToken, ctx.phoneNumberId)
-        notified++
-      } catch (textErr) {
-        // One unreachable parent must not cost the others their notice.
-        failed++
-        console.error('[day-off] Could not notify parent', {
-          orgId: ctx.orgId,
-          parentId,
-          error: String(textErr),
-        })
-      }
-    }
-  }
-
-  return { notified, failed }
 }
 
 async function notifyTeacherOfDecision(

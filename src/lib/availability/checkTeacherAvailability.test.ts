@@ -12,14 +12,19 @@ vi.mock('@/lib/supabase/service-role', () => ({
 
 import { checkTeacherAvailability } from './checkTeacherAvailability'
 
+interface OverrideRow {
+  is_available: boolean
+  start_time: string | null
+  end_time: string | null
+  reason: string | null
+}
+
 type RowsFor = {
   organizations?: { timezone: string } | null
-  override?: {
-    is_available: boolean
-    start_time: string | null
-    end_time: string | null
-    reason: string | null
-  } | null
+  /** A single override, for the common case. */
+  override?: OverrideRow | null
+  /** Several overrides on the same date — legal since partial-day blocks. */
+  overrides?: OverrideRow[]
   availability?: Array<{ start_time: string; end_time: string }>
   /** Keyed by day_of_week, so a test can prove the weekday mapping. */
   availabilityByDay?: Record<number, Array<{ start_time: string; end_time: string }>>
@@ -41,13 +46,13 @@ function setupClient(rows: RowsFor) {
       }
     }
     if (table === 'availability_overrides') {
+      // A list read, not maybeSingle: several rows per date are legal now.
+      const overrideRows = rows.overrides ?? (rows.override ? [rows.override] : [])
       return {
         select: () => ({
           eq: () => ({
             eq: () => ({
-              eq: () => ({
-                maybeSingle: async () => ({ data: rows.override ?? null }),
-              }),
+              eq: async () => ({ data: overrideRows, error: null }),
             }),
           }),
         }),
@@ -280,3 +285,128 @@ it('asks for the org-local weekday, not the Luxon one', async () => {
   })
 })
 
+
+describe('checkTeacherAvailability — partial-day blocks', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const block = (start: string, end: string, reason: string | null = null) => ({
+    is_available: false,
+    start_time: start,
+    end_time: end,
+    reason,
+  })
+
+  it('reports the slot as inside when it sits outside the blocked range', async () => {
+    setupClient({
+      organizations: { timezone: 'Asia/Jerusalem' },
+      overrides: [block('08:00:00', '09:30:00')],
+      availability: [{ start_time: '08:00', end_time: '17:00' }],
+    })
+
+    // BASE is 10:00 for 60 minutes — after the block ends.
+    const result = await checkTeacherAvailability(BASE)
+    expect(result.status).toBe('inside')
+  })
+
+  it('flags a slot that falls inside a blocked range, with that block reason', async () => {
+    setupClient({
+      organizations: { timezone: 'Asia/Jerusalem' },
+      overrides: [block('08:00:00', '12:00:00', 'doctor')],
+      availability: [{ start_time: '08:00', end_time: '17:00' }],
+    })
+
+    const result = await checkTeacherAvailability(BASE)
+    expect(result.status).toBe('partial_override')
+    if (result.status !== 'partial_override') return
+    expect(result.reason).toBe('doctor')
+    // What is left open after the block — this is what the dialog shows.
+    expect(result.windows).toEqual([{ start: '12:00', end: '17:00' }])
+  })
+
+  it('honours several blocked ranges on one date', async () => {
+    // The regression that mattered: two rows used to make .maybeSingle() error,
+    // the error was discarded, and the day read as fully open.
+    setupClient({
+      organizations: { timezone: 'Asia/Jerusalem' },
+      overrides: [block('08:00:00', '12:00:00'), block('15:00:00', '17:00:00')],
+      availability: [{ start_time: '08:00', end_time: '20:00' }],
+    })
+
+    const result = await checkTeacherAvailability(BASE)
+    expect(result.status).toBe('partial_override')
+    if (result.status !== 'partial_override') return
+    expect(result.windows).toEqual([
+      { start: '12:00', end: '15:00' },
+      { start: '17:00', end: '20:00' },
+    ])
+  })
+
+  it('calls the day unavailable when the blocks cover the whole weekly grid', async () => {
+    // Not partial_override: "the hours for this date are: —" says nothing, and
+    // a day with nothing left open is exactly what override_unavailable means.
+    setupClient({
+      organizations: { timezone: 'Asia/Jerusalem' },
+      overrides: [block('08:00:00', '17:00:00', 'renovation')],
+      availability: [{ start_time: '09:00', end_time: '17:00' }],
+    })
+
+    const result = await checkTeacherAvailability(BASE)
+    expect(result.status).toBe('override_unavailable')
+    if (result.status !== 'override_unavailable') return
+    expect(result.reason).toBe('renovation')
+    expect(result.windows).toEqual([])
+  })
+
+  it('still reports outside_windows when the slot never fitted the grid', async () => {
+    // A block exists, but the slot misses the weekly window on its own — the
+    // block is not the reason, so the message must not blame it.
+    setupClient({
+      organizations: { timezone: 'Asia/Jerusalem' },
+      overrides: [block('06:00:00', '07:00:00')],
+      availability: [{ start_time: '13:00', end_time: '17:00' }],
+    })
+
+    const result = await checkTeacherAvailability(BASE)
+    expect(result.status).toBe('outside_windows')
+    if (result.status !== 'outside_windows') return
+    expect(result.source).toBe('weekly')
+  })
+
+  it('lets a whole-day block win over any range rows on the same date', async () => {
+    setupClient({
+      organizations: { timezone: 'Asia/Jerusalem' },
+      overrides: [
+        block('15:00:00', '17:00:00'),
+        { is_available: false, start_time: null, end_time: null, reason: 'vacation' },
+      ],
+      availability: [{ start_time: '08:00', end_time: '20:00' }],
+    })
+
+    const result = await checkTeacherAvailability(BASE)
+    expect(result.status).toBe('override_unavailable')
+    if (result.status !== 'override_unavailable') return
+    expect(result.reason).toBe('vacation')
+    expect(result.windows).toEqual([])
+  })
+
+  it('subtracts a block from special hours, not from the weekly grid', async () => {
+    setupClient({
+      organizations: { timezone: 'Asia/Jerusalem' },
+      overrides: [
+        { is_available: true, start_time: '08:00:00', end_time: '20:00:00', reason: null },
+        block('09:00:00', '12:00:00'),
+      ],
+      // Deliberately different from the special hours: it must be ignored.
+      availability: [{ start_time: '06:00', end_time: '07:00' }],
+    })
+
+    const result = await checkTeacherAvailability(BASE)
+    expect(result.status).toBe('partial_override')
+    if (result.status !== 'partial_override') return
+    expect(result.source).toBe('override')
+    expect(result.windows).toEqual([
+      { start: '08:00', end: '09:00' },
+      { start: '12:00', end: '20:00' },
+    ])
+  })
+})

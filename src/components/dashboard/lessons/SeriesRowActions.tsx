@@ -33,19 +33,21 @@ const IDLE: SeriesManageState = { error: null }
 export function SeriesRowActions({
   seriesId,
   currentUntil,
+  defaultStopDate,
   updateUntilAction,
-  deleteAction,
+  stopAction,
 }: {
   seriesId: string
   currentUntil: string
+  defaultStopDate: string
   updateUntilAction: (prev: SeriesManageState, formData: FormData) => Promise<SeriesManageState>
-  deleteAction: (prev: SeriesManageState, formData: FormData) => Promise<SeriesManageState>
+  stopAction: (prev: SeriesManageState, formData: FormData) => Promise<SeriesManageState>
 }) {
   const t = useTranslations('lessons.series')
   const tCommon = useTranslations('common')
-  const [dialog, setDialog] = useState<'until' | 'delete' | null>(null)
+  const [dialog, setDialog] = useState<'until' | 'stop' | null>(null)
   const [untilState, submitUntil, untilPending] = useActionState(updateUntilAction, IDLE)
-  const [deleteState, submitDelete, deletePending] = useActionState(deleteAction, IDLE)
+  const [stopState, submitStop, stopPending] = useActionState(stopAction, IDLE)
 
   const doneMessage = (state: SeriesManageState) => {
     if (state.error || state.affected === undefined) return null
@@ -67,9 +69,9 @@ export function SeriesRowActions({
             <CalendarClock className="me-2 h-4 w-4" />
             {t('changeUntil')}
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setDialog('delete')} className="text-destructive">
+          <DropdownMenuItem onSelect={() => setDialog('stop')} className="text-destructive">
             <Trash2 className="me-2 h-4 w-4" />
-            {t('deleteSeries')}
+            {t('stopSeries')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -110,29 +112,29 @@ export function SeriesRowActions({
         </DialogContent>
       </Dialog>
 
-      {/* Delete series */}
-      <Dialog open={dialog === 'delete'} onOpenChange={(open) => !open && setDialog(null)}>
+      {/* Stop series from a required date. */}
+      <Dialog open={dialog === 'stop'} onOpenChange={(open) => !open && setDialog(null)}>
         <DialogContent>
-          <form action={submitDelete}>
+          <form action={submitStop}>
             <DialogHeader>
-              <DialogTitle>{t('deleteSeries')}</DialogTitle>
-              <DialogDescription>{t('deleteSeriesConfirm')}</DialogDescription>
+              <DialogTitle>{t('stopSeries')}</DialogTitle>
+              <DialogDescription>{t('stopSeriesHint')}</DialogDescription>
             </DialogHeader>
-            <input type="hidden" name="series_id" value={seriesId} />
-            {deleteState.error && (
-              <p className="py-2 text-sm text-destructive">{deleteState.error}</p>
-            )}
-            {deleteState.action === 'deleted' && !deleteState.error && (
-              <p className="py-2 text-sm text-green-700">
-                {t('deletedCount', { count: deleteState.affected ?? 0 })}
-              </p>
-            )}
+            <div className="space-y-2 py-4">
+              <Label htmlFor={`stop-${seriesId}`}>{t('stopFromDate')}</Label>
+              <Input id={`stop-${seriesId}`} type="date" name="stop_from_date" defaultValue={defaultStopDate} required />
+              <input type="hidden" name="series_id" value={seriesId} />
+              {stopState.error && <p className="text-sm text-destructive">{stopState.error}</p>}
+              {stopState.action === 'stopped' && !stopState.error && (
+                <p className="text-sm text-green-700">{t('stoppedCount', { count: stopState.affected ?? 0 })}</p>
+              )}
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>
-                {tCommon('actions.cancel')}
+                {t('keepSeries')}
               </Button>
-              <Button type="submit" variant="destructive" disabled={deletePending}>
-                {deletePending ? tCommon('actions.saving') : tCommon('actions.delete')}
+              <Button type="submit" variant="destructive" disabled={stopPending}>
+                {stopPending ? tCommon('actions.saving') : t('confirmStop')}
               </Button>
             </DialogFooter>
           </form>

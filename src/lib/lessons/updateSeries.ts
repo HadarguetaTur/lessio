@@ -9,7 +9,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { SeriesRule } from '@/lib/lessons/createSeries'
-import { cancelLessonSeries } from '@/lib/lessons/cancelSeries'
+import { cancelLessonSeries, stopLessonSeries } from '@/lib/lessons/cancelSeries'
 
 export type UpdateSeriesResult = {
   /** Lessons newly created (extend) or cancelled (shorten). */
@@ -148,13 +148,9 @@ export async function shortenLessonSeries(
   orgId: string,
   newUntil: string
 ): Promise<UpdateSeriesResult> {
-  const db = createServiceRoleClient()
-  const series = await getSeriesOrThrow(db, seriesId, orgId)
-
   const dayAfter = DateTime.fromISO(newUntil).plus({ days: 1 }).toISODate()!
-  const { cancelled } = await cancelLessonSeries(seriesId, orgId, 'from_date', dayAfter)
-  await setSeriesUntil(db, seriesId, series.rule, newUntil)
-  return { affected: cancelled, conflicts: [] }
+  const { removed } = await stopLessonSeries(seriesId, orgId, dayAfter)
+  return { affected: removed, conflicts: [] }
 }
 
 /**

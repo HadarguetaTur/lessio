@@ -16,7 +16,7 @@ import type { LessonType } from '@/lib/lessons/types'
 import { resolveBillingParent, MissingPrimaryParentError } from '@/lib/billing/resolveBillingParent'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { autoSendPaymentRequest } from '@/lib/payment-request/autoSend'
-import { cancelLessonSeries, type CancelSeriesScope } from '@/lib/lessons/cancelSeries'
+import { stopLessonSeries } from '@/lib/lessons/cancelSeries'
 import { createCancellationEvent } from '@/lib/billing/monthly/cancellationEvents'
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
 import { DateTime } from 'luxon'
@@ -272,12 +272,12 @@ export async function cancelLesson(
 
 export type CancelSeriesActionResult = {
   error: string | null
-  cancelled?: number
+  removed?: number
 }
 
 /**
- * Cancels all or future lessons in a series (owner/admin only).
- * Does NOT auto-charge cancellation fees.
+ * Stops a series from a required date (owner/admin only).
+ * Planned occurrences are removed; lesson history is preserved.
  */
 export async function cancelSeriesAction(
   lessonId: string,
@@ -297,17 +297,15 @@ export async function cancelSeriesAction(
     return { error: await commonError('noPermission') }
   }
 
-  const scope = formData.get('scope') as CancelSeriesScope
-  if (scope !== 'all' && scope !== 'from_date') {
-    return { error: t('lessons.errors.invalidScope') }
-  }
+  const stopDateParsed = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(formData.get('stop_from_date'))
+  if (!stopDateParsed.success) return { error: t('lessons.series.stopDateRequired') }
 
   const supabase = createServiceRoleClient()
 
-  // Fetch series_id and start_at from the lesson (org-scoped)
+  // Fetch series_id from the lesson (org-scoped).
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
-    .select('series_id, start_at')
+    .select('series_id')
     .eq('id', lessonId)
     .eq('organization_id', orgId)
     .single()
@@ -315,25 +313,15 @@ export async function cancelSeriesAction(
   if (lessonError || !lesson) return { error: 'validation.lessonNotFound' }
   if (!lesson.series_id) return { error: t('lessons.errors.notInSeries') }
 
-  const fromDate =
-    scope === 'from_date'
-      ? new Date(lesson.start_at).toISOString().substring(0, 10)
-      : undefined
-
   try {
-    const { cancelled } = await cancelLessonSeries(
-      lesson.series_id,
-      orgId,
-      scope,
-      fromDate
-    )
+    const { removed } = await stopLessonSeries(lesson.series_id, orgId, stopDateParsed.data)
 
     revalidatePath(`/lessons/${lessonId}`)
     revalidatePath('/lessons')
     revalidatePath('/dashboard')
     revalidatePath('/teacher/schedule')
 
-    return { error: null, cancelled }
+    return { error: null, removed }
   } catch (e) {
     return { error: t('lessons.errors.cancelSeriesFailed') }
   }

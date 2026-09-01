@@ -86,7 +86,10 @@ export default async function LessonDetailPage(props: {
 
       {/* Series banner */}
       {canCancel && lesson.series_id && (
-        <SeriesBanner cancelSeriesAction={boundCancelSeriesAction} />
+        <SeriesBanner
+          cancelSeriesAction={boundCancelSeriesAction}
+          defaultStopDate={DateTime.fromISO(lesson.start_at).setZone(timezone).toISODate()!}
+        />
       )}
 
       {/* Lesson details */}

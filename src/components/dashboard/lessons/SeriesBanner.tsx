@@ -1,9 +1,13 @@
 'use client'
 
 import { Repeat } from 'lucide-react'
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { CancelSeriesActionResult } from '@/app/(dashboard)/lessons/[id]/actions'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 type FormAction = (
   prevState: CancelSeriesActionResult,
@@ -12,19 +16,21 @@ type FormAction = (
 
 interface Props {
   cancelSeriesAction: FormAction
+  defaultStopDate: string
 }
 
 const initialState: CancelSeriesActionResult = { error: null }
 
-export function SeriesBanner({ cancelSeriesAction }: Props) {
+export function SeriesBanner({ cancelSeriesAction, defaultStopDate }: Props) {
   const t = useTranslations('lessons')
   const [state, formAction, pending] = useActionState(cancelSeriesAction, initialState)
+  const [open, setOpen] = useState(false)
 
-  if (state.cancelled !== undefined && state.error === null) {
+  if (state.removed !== undefined && state.error === null) {
     return (
       <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-100 text-sm text-green-700 mb-4">
         <Repeat size={15} />
-        {t('series.cancelledCount', { count: state.cancelled })}
+        {t('series.stoppedCount', { count: state.removed })}
       </div>
     )
   }
@@ -40,29 +46,29 @@ export function SeriesBanner({ cancelSeriesAction }: Props) {
         <p className="text-red-600 text-xs">{state.error}</p>
       )}
 
-      <div className="flex flex-wrap gap-2 pt-1">
-        <form action={formAction}>
-          <input type="hidden" name="scope" value="from_date" />
-          <button
-            type="submit"
-            disabled={pending}
-            className="px-3 py-1 text-xs font-medium rounded border border-purple-300 hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {pending ? '...' : t('series.cancelFromHereButton')}
-          </button>
-        </form>
-
-        <form action={formAction}>
-          <input type="hidden" name="scope" value="all" />
-          <button
-            type="submit"
-            disabled={pending}
-            className="px-3 py-1 text-xs font-medium rounded border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {pending ? '...' : t('series.cancelAll')}
-          </button>
-        </form>
-      </div>
+      <button type="button" onClick={() => setOpen(true)}
+        className="px-3 py-1 text-xs font-medium rounded border border-red-300 text-red-700 hover:bg-red-50">
+        {t('series.stopSeries')}
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <form action={formAction}>
+            <DialogHeader>
+              <DialogTitle>{t('series.stopSeries')}</DialogTitle>
+              <DialogDescription>{t('series.stopSeriesHint')}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-4">
+              <Label htmlFor="stop-from-date">{t('series.stopFromDate')}</Label>
+              <Input id="stop-from-date" name="stop_from_date" type="date" defaultValue={defaultStopDate} required />
+              {state.error && <p className="text-sm text-destructive">{state.error}</p>}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t('series.keepSeries')}</Button>
+              <Button type="submit" variant="destructive" disabled={pending}>{pending ? '...' : t('series.confirmStop')}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

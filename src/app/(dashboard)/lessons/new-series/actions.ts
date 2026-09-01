@@ -11,8 +11,8 @@ import { createLessonSeries } from '@/lib/lessons/createSeries'
 import {
   extendLessonSeries,
   shortenLessonSeries,
-  deleteLessonSeries,
 } from '@/lib/lessons/updateSeries'
+import { stopLessonSeries } from '@/lib/lessons/cancelSeries'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 
@@ -152,9 +152,9 @@ export async function createSeriesAction(
 
 export type SeriesManageState = {
   error: string | null
-  /** Lessons created (extend) or cancelled (shorten / delete). */
+  /** Lessons created (extend) or removed (shorten / stop). */
   affected?: number
-  action?: 'extended' | 'shortened' | 'deleted'
+  action?: 'extended' | 'shortened' | 'stopped'
 }
 
 const UntilSchema = z.object({
@@ -202,7 +202,12 @@ export async function updateSeriesUntilAction(
   }
 }
 
-export async function deleteSeriesAction(
+const StopSeriesSchema = z.object({
+  series_id: z.string().uuid(),
+  stop_from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
+
+export async function stopSeriesAction(
   _prevState: SeriesManageState,
   formData: FormData
 ): Promise<SeriesManageState> {
@@ -213,17 +218,18 @@ export async function deleteSeriesAction(
     return { error: await commonError('noPermission') }
   }
 
-  const seriesId = formData.get('series_id')
-  if (typeof seriesId !== 'string' || !z.string().uuid().safeParse(seriesId).success) {
-    return { error: await commonError('invalidData') }
-  }
+  const parsed = StopSeriesSchema.safeParse({
+    series_id: formData.get('series_id'),
+    stop_from_date: formData.get('stop_from_date'),
+  })
+  if (!parsed.success) return { error: t('lessons.series.stopDateRequired') }
 
   try {
-    const { affected } = await deleteLessonSeries(seriesId, session.orgId)
+    const { removed } = await stopLessonSeries(parsed.data.series_id, session.orgId, parsed.data.stop_from_date)
     revalidatePath('/lessons/new-series')
     revalidatePath('/lessons')
     revalidatePath('/dashboard')
-    return { error: null, affected, action: 'deleted' }
+    return { error: null, affected: removed, action: 'stopped' }
   } catch {
     return { error: t('lessons.seriesErrors.updateSeriesFailed') }
   }

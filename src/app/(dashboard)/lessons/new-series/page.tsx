@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { DateTime } from 'luxon'
 import { CalendarClock } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getTeachers } from '@/lib/teachers'
@@ -12,7 +13,7 @@ import { SeriesRowActions } from '@/components/dashboard/lessons/SeriesRowAction
 import { EmptyState } from '@/components/ui/empty-state'
 import { getTranslations, getLocale } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
-import { updateSeriesUntilAction, deleteSeriesAction } from './actions'
+import { updateSeriesUntilAction, stopSeriesAction } from './actions'
 import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
@@ -50,6 +51,7 @@ export default async function NewSeriesPage() {
     month: '2-digit',
     year: 'numeric',
   })
+  const todayStr = DateTime.now().setZone(timezone).toISODate()!
 
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
@@ -134,8 +136,9 @@ export default async function NewSeriesPage() {
                         <SeriesRowActions
                           seriesId={s.id}
                           currentUntil={s.rule.until}
+                          defaultStopDate={todayStr}
                           updateUntilAction={updateSeriesUntilAction}
-                          deleteAction={deleteSeriesAction}
+                          stopAction={stopSeriesAction}
                         />
                       </td>
                     </tr>

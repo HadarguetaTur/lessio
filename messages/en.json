@@ -1123,6 +1123,8 @@
     "noCharges": "No charges",
     "allStatuses": "All statuses",
     "allParents": "All parents",
+    "searchLabel": "Search charges",
+    "searchPlaceholder": "Student, parent, or phone number",
     "filter": "Filter",
     "reset": "Reset",
     "showingFor": "Showing charges for:",

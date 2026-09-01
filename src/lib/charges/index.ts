@@ -62,6 +62,8 @@ function mapChargeRow(c: any): Charge {
 export interface ChargesFilter {
   status?: ChargeStatus
   parentId?: string
+  /** Parent ids whose parent/student contact details matched the free-text search. */
+  parentIds?: string[]
   dateFrom?: string
   dateTo?: string
 }
@@ -80,6 +82,10 @@ export async function getCharges(
 
   if (filter.status) query = query.eq('status', filter.status)
   if (filter.parentId) query = query.eq('parent_id', filter.parentId)
+  if (filter.parentIds) {
+    if (filter.parentIds.length === 0) return []
+    query = query.in('parent_id', filter.parentIds)
+  }
   if (filter.dateFrom) query = query.gte('created_at', filter.dateFrom)
   if (filter.dateTo) query = query.lte('created_at', filter.dateTo)
 
@@ -87,6 +93,65 @@ export async function getCharges(
   if (error) throw new Error(error.message)
 
   return (data ?? []).map(mapChargeRow)
+}
+
+function searchable(value: string | null | undefined): string {
+  return (value ?? '').trim().toLocaleLowerCase().replace(/\s+/g, ' ')
+}
+
+function phoneDigits(value: string | null | undefined): string {
+  const digits = (value ?? '').replace(/\D/g, '')
+  return digits.startsWith('972') ? `0${digits.slice(3)}` : digits
+}
+
+/**
+ * Resolves a billing search to the parents whose charges should be shown.
+ * A charge belongs to a parent, while a student is connected through
+ * relationships, so both sides are searched before filtering the ledger.
+ */
+export async function findChargeParentIds(
+  organizationId: string,
+  search: string
+): Promise<string[]> {
+  const term = searchable(search)
+  if (!term) return []
+
+  const db = createServiceRoleClient()
+  const [{ data: parents, error: parentsError }, { data: relationships, error: relationshipsError }] =
+    await Promise.all([
+      db
+        .from('parents')
+        .select('id, full_name, phone, second_phone')
+        .eq('organization_id', organizationId),
+      db
+        .from('relationships')
+        .select('parent_id, students(full_name)')
+        .eq('organization_id', organizationId),
+    ])
+
+  if (parentsError) throw new Error(parentsError.message)
+  if (relationshipsError) throw new Error(relationshipsError.message)
+
+  const termDigits = phoneDigits(search)
+  const matches = new Set<string>()
+
+  for (const parent of parents ?? []) {
+    const nameMatches = searchable(parent.full_name).includes(term)
+    const phoneMatches = Boolean(
+      termDigits &&
+        [parent.phone, parent.second_phone].some((phone) => phoneDigits(phone).includes(termDigits))
+    )
+    if (nameMatches || phoneMatches) matches.add(parent.id)
+  }
+
+  for (const relationship of relationships ?? []) {
+    const student = relationship.students as { full_name?: string } | null
+    if (student && searchable(student.full_name).includes(term)) {
+      matches.add(relationship.parent_id)
+    }
+  }
+
+  return [...matches]
 }
 
 export async function getParentDebt(

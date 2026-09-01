@@ -3,7 +3,7 @@ import { Receipt } from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
-import { getCharges, ChargeStatus, getChargeRemaining } from '@/lib/charges'
+import { getCharges, ChargeStatus, findChargeParentIds, getChargeRemaining } from '@/lib/charges'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getOrgProviderStatus } from '@/lib/organizations/providerStatus'
 import { getParents } from '@/lib/parents'
@@ -38,7 +38,7 @@ function remainingOf(charge: { amount: number; amount_paid: number }): number {
 }
 
 export default async function ChargesPage(props: {
-  searchParams: Promise<{ status?: string; parent?: string; from?: string; to?: string }>
+  searchParams: Promise<{ status?: string; parent?: string; q?: string; from?: string; to?: string }>
 }) {
   const searchParams = await props.searchParams
   const { orgId, role } = await getSession()
@@ -53,10 +53,14 @@ export default async function ChargesPage(props: {
   const hasPaymentProvider = providers.hasPayment
   const hasReceiptProvider = providers.hasReceipt
 
+  const search = searchParams.q?.trim() ?? ''
+  const matchingParentIds = search ? await findChargeParentIds(orgId, search) : undefined
+
   const [charges, allCharges, parents, timezone] = await Promise.all([
     getCharges(orgId, {
       status: statusFilter,
       parentId: searchParams.parent || undefined,
+      parentIds: matchingParentIds,
       dateFrom: searchParams.from || undefined,
       dateTo: searchParams.to || undefined,
     }),
@@ -137,6 +141,17 @@ export default async function ChargesPage(props: {
           <div className="pt-3">
             <form method="GET" className="grid items-end gap-3">
               <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                {t('searchLabel')}
+                <input
+                  name="q"
+                  type="search"
+                  defaultValue={search}
+                  placeholder={t('searchPlaceholder')}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                 {tCommon('table.status')}
                 <select
                   name="status"
@@ -198,7 +213,18 @@ export default async function ChargesPage(props: {
         </details>
       </div>
 
-      <form method="GET" className="mb-5 hidden items-end gap-3 rounded-xl border border-border bg-card p-4 md:grid md:grid-cols-2 xl:grid-cols-5">
+      <form method="GET" className="mb-5 hidden items-end gap-3 rounded-xl border border-border bg-card p-4 md:grid md:grid-cols-2 xl:grid-cols-6">
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground md:col-span-2 xl:col-span-1">
+          {t('searchLabel')}
+          <input
+            name="q"
+            type="search"
+            defaultValue={search}
+            placeholder={t('searchPlaceholder')}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </label>
+
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           {tCommon('table.status')}
           <select

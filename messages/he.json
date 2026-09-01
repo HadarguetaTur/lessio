@@ -1123,6 +1123,8 @@
     "noCharges": "אין חיובים",
     "allStatuses": "כל הסטטוסים",
     "allParents": "כל ההורים",
+    "searchLabel": "חיפוש חיוב",
+    "searchPlaceholder": "שם תלמיד, שם הורה או מספר טלפון",
     "filter": "סנן",
     "reset": "איפוס",
     "showingFor": "מוצגים חיובים עבור:",

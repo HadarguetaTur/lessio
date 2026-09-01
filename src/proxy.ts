@@ -157,7 +157,9 @@ export async function proxy(request: NextRequest) {
     // needs to report is the one that fired because the session or the shell
     // itself broke, and an auth round-trip here would silently drop exactly
     // those reports. The route is bounded and rate-limited instead.
-    request.nextUrl.pathname.startsWith('/api/telemetry/')
+    request.nextUrl.pathname.startsWith('/api/telemetry/') ||
+    // Supabase pg_cron calls this with the service-role key as a bearer token.
+    request.nextUrl.pathname.startsWith('/api/internal/lessons/auto-complete')
   ) {
     // Bypassed routes are still real landing surfaces for a campaign, so they
     // get the attribution cookie too — just not the Supabase session round-trip.

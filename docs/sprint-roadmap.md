@@ -398,6 +398,19 @@ Mid-day gaps are out of scope — only the last window of a day is examined. The
 
 ---
 
+## Automatic lesson completion (2026-09-01)
+
+**Status:** Built (migration `20260901190000` and cron registration not yet applied)
+**Track:** standalone; no sprint dependency
+
+Scheduled lessons are automatically marked completed 15 minutes after `end_at`.
+The five-minute job atomically claims only still-scheduled rows, then reuses the
+existing immediate/monthly billing and automatic payment-request paths. Completion
+source and billing warnings are stored on the lesson; warnings are retried without
+moving the lesson back to scheduled. Cancelled and no-show lessons are never claimed.
+
+---
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

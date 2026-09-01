@@ -55,5 +55,29 @@ begin
   end loop;
 end $$;
 
+-- Automatic lesson completion runs in Next.js because that runtime owns the
+-- billing and payment-provider adapters. Replace both placeholders before use.
+do $$
+begin
+  if exists (select 1 from cron.job where jobname = 'automatic-lesson-completion') then
+    perform cron.unschedule('automatic-lesson-completion');
+  end if;
+
+  perform cron.schedule(
+    'automatic-lesson-completion',
+    '*/5 * * * *',
+    $cmd$
+    select net.http_post(
+      url := 'APP_URL_PLACEHOLDER/api/internal/lessons/auto-complete',
+      headers := jsonb_build_object(
+        'Authorization', 'Bearer ' || 'SERVICE_KEY_PLACEHOLDER',
+        'Content-Type', 'application/json'
+      ),
+      body := '{}'::jsonb
+    );
+    $cmd$
+  );
+end $$;
+
 -- Verify
 select jobname, schedule, active from cron.job order by jobname;

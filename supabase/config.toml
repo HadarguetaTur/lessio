@@ -420,6 +420,10 @@ deno_version = 2
 #   supabase secrets set GITHUB_ISSUES_REPO=<owner/repo>
 [functions.error-monitor]
 
+# Automatic lesson completion runs in the Next.js runtime so it can reuse the
+# existing Node billing/provider flow. Register it via scripts/setup-crons.sql:
+#   automatic-lesson-completion: "*/5 * * * *"
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

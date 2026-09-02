@@ -6,6 +6,7 @@ import { CalendarPlus } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { NewLessonForm, type PricingDefaults } from '@/components/dashboard/lessons/NewLessonForm'
 import { createLessonAction } from '@/app/(dashboard)/lessons/new/actions'
+import { getRecommendedLessonSlotsAction } from '@/app/(dashboard)/lessons/new/recommended-slots'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import type { StudentGroup } from '@/lib/groups'
 
@@ -81,6 +82,7 @@ export function NewLessonSheet({
               teachers={teachers}
               fixedTeacherId={allowGroupLessons ? undefined : defaultTeacherId}
               action={createLessonAction}
+              getRecommendedSlots={getRecommendedLessonSlotsAction}
               minDateStr={minDateStr}
               initialDate={initialDate}
               defaultTeacherId={defaultTeacherId}

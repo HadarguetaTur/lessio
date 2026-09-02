@@ -8,6 +8,7 @@ import { getStudents } from '@/lib/students'
 import { NewLessonForm } from '@/components/dashboard/lessons/NewLessonForm'
 import { createTeacherLessonAction } from './actions'
 import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
+import { getRecommendedLessonSlotsAction } from '@/app/(dashboard)/lessons/new/recommended-slots'
 
 export default async function TeacherNewLessonPage() {
   const { orgId, profileId, role } = await getSession()
@@ -34,6 +35,7 @@ export default async function TeacherNewLessonPage() {
         fixedTeacherId={teacher.id}
         allowGroupLessons={false}
         action={createTeacherLessonAction}
+        getRecommendedSlots={getRecommendedLessonSlotsAction}
         minDateStr={todayStr}
         durationValues={durations.map((item) => item.minutes)}
       />

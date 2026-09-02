@@ -126,6 +126,11 @@ interface Props {
   students: { id: string; full_name: string }[]
   groups?: StudentGroup[]
   action: (prev: NewLessonState, formData: FormData) => Promise<NewLessonState>
+  getRecommendedSlots: (
+    teacherId: string,
+    date: string,
+    durationMinutes: number
+  ) => Promise<{ startTime: string; endTime: string }[]>
   teachers?: { id: string; full_name: string }[]
   fixedTeacherId?: string
   allowGroupLessons?: boolean
@@ -150,6 +155,7 @@ export function NewLessonForm({
   students,
   groups = [],
   action,
+  getRecommendedSlots,
   teachers,
   fixedTeacherId,
   allowGroupLessons = true,
@@ -169,6 +175,8 @@ export function NewLessonForm({
   const locale = useLocale()
   const activeTeachers = teachers ?? []
   const soleTeacherId = activeTeachers.length === 1 ? activeTeachers[0].id : null
+  const dateDefault = initialDate && initialDate >= minDateStr ? initialDate : minDateStr
+  const defaultDuration = durationValues.includes(60) ? 60 : durationValues[0]
   const [state, formAction, pending] = useActionState(action, initialState)
   const [lessonType, setLessonType] = useState<LessonType>('individual')
   const [studentId, setStudentId] = useState('')
@@ -178,6 +186,13 @@ export function NewLessonForm({
   // Pair lessons name both students explicitly; custom lessons take any number.
   const [pairStudentIds, setPairStudentIds] = useState<[string, string]>(['', ''])
   const [customStudentIds, setCustomStudentIds] = useState<string[]>([])
+  const [teacherId, setTeacherId] = useState(fixedTeacherId ?? soleTeacherId ?? defaultTeacherId ?? '')
+  const [date, setDate] = useState(dateDefault)
+  const [duration, setDuration] = useState(defaultDuration)
+  const [timeMode, setTimeMode] = useState<'recommended' | 'manual'>('recommended')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [recommendedSlots, setRecommendedSlots] = useState<{ startTime: string; endTime: string }[]>([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
 
   const isPair = effectiveLessonType === 'pair'
   const isCustom = effectiveLessonType === 'custom'
@@ -223,6 +238,34 @@ export function NewLessonForm({
       onSuccessRef.current?.()
     }
   }, [state.success])
+
+  useEffect(() => {
+    if (!teacherId || !date || !duration || timeMode !== 'recommended') {
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      // Yield once so state updates happen as part of the async synchronization,
+      // not synchronously in the effect body.
+      await Promise.resolve()
+      if (cancelled) return
+      setSlotsLoading(true)
+      setSelectedTime('')
+      try {
+        const slots = await getRecommendedSlots(teacherId, date, duration)
+        if (!cancelled) setRecommendedSlots(slots)
+      } catch {
+        if (!cancelled) setRecommendedSlots([])
+      } finally {
+        if (!cancelled) setSlotsLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [teacherId, date, duration, timeMode, getRecommendedSlots])
 
   const handleGroupChange = (groupId: string, studentIds: string[]) => {
     setSelectedGroupId(groupId)
@@ -290,6 +333,7 @@ export function NewLessonForm({
     const input = formRef.current?.querySelector<HTMLInputElement>('#start_time')
     if (!fd || !input) return
     input.value = time
+    setSelectedTime(time)
     fd.set('start_time', time)
     fd.delete('confirm_outside_availability')
     fd.delete('confirm_schedule_impact')
@@ -298,11 +342,9 @@ export function NewLessonForm({
     startTransition(() => formAction(fd))
   }
 
-  const dateDefault = initialDate && initialDate >= minDateStr ? initialDate : minDateStr
-
   const formInner = (
     <>
-      {state.error && !state.needsAvailabilityConfirm && !state.needsCalendarConfirm && (
+      {state.error && !state.needsAvailabilityConfirm && !state.needsScheduleImpactConfirm && !state.needsCalendarConfirm && (
         <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
           {state.error}
         </div>
@@ -318,11 +360,11 @@ export function NewLessonForm({
       {calendarFlow ? <input type="hidden" name="calendar_flow" value="1" /> : null}
 
       {fixedTeacherId ? (
-        <input type="hidden" name="teacher_id" value={fixedTeacherId} />
+        <input type="hidden" name="teacher_id" value={teacherId} />
       ) : soleTeacherId ? (
         // One teacher in the org: asking "which teacher?" has a single possible
         // answer, so assign it silently rather than making her pick.
-        <input type="hidden" name="teacher_id" value={soleTeacherId} />
+        <input type="hidden" name="teacher_id" value={teacherId} />
       ) : (
         <div className="space-y-1.5">
           <Label htmlFor="teacher_id">
@@ -333,7 +375,8 @@ export function NewLessonForm({
             name="teacher_id"
             required
             className={selectClassName}
-            defaultValue={defaultTeacherId ?? ''}
+            value={teacherId}
+            onChange={(event) => setTeacherId(event.target.value)}
           >
             <option value="">{t('selectTeacher')}</option>
             {(teachers ?? []).map((te) => (
@@ -454,15 +497,9 @@ export function NewLessonForm({
             type="date"
             required
             min={minDateStr}
-            defaultValue={dateDefault}
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
           />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="start_time">
-            {t('fields.time')} <span className="text-destructive">*</span>
-          </Label>
-          <Input id="start_time" name="start_time" type="time" required defaultValue={initialTime} />
         </div>
       </div>
 
@@ -481,7 +518,8 @@ export function NewLessonForm({
               min={CUSTOM_DURATION_MIN}
               max={CUSTOM_DURATION_MAX}
               step="1"
-              defaultValue={60}
+              value={duration}
+              onChange={(event) => setDuration(Number(event.target.value))}
               dir="ltr"
             />
             <p className="text-xs text-muted-foreground">{t('customDurationHint')}</p>
@@ -492,7 +530,8 @@ export function NewLessonForm({
             name="duration_minutes"
             required
             className={selectClassName}
-            defaultValue={durationValues.includes(60) ? 60 : durationValues[0]}
+            value={duration}
+            onChange={(event) => setDuration(Number(event.target.value))}
           >
             {durationValues.map((n) => (
               <option key={n} value={n}>
@@ -500,6 +539,60 @@ export function NewLessonForm({
               </option>
             ))}
           </select>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <Label htmlFor="start_time">
+            {t('fields.time')} <span className="text-destructive">*</span>
+          </Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setTimeMode((mode) => (mode === 'recommended' ? 'manual' : 'recommended'))
+              setSelectedTime('')
+            }}
+          >
+            {timeMode === 'recommended' ? t('recommendedSlots.chooseManual') : t('recommendedSlots.showRecommended')}
+          </Button>
+        </div>
+
+        {timeMode === 'manual' ? (
+          <Input
+            id="start_time"
+            name="start_time"
+            type="time"
+            required
+            value={selectedTime || initialTime || ''}
+            onChange={(event) => setSelectedTime(event.target.value)}
+          />
+        ) : (
+          <>
+            <input id="start_time" name="start_time" type="hidden" value={selectedTime} />
+            {slotsLoading ? (
+              <p className="text-sm text-muted-foreground">{t('recommendedSlots.loading')}</p>
+            ) : !teacherId ? (
+              <p className="text-sm text-muted-foreground">{t('recommendedSlots.pickTeacher')}</p>
+            ) : recommendedSlots.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('recommendedSlots.empty')}</p>
+            ) : (
+              <div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3" dir="ltr">
+                {recommendedSlots.map((slot) => (
+                  <Button
+                    key={`${slot.startTime}-${slot.endTime}`}
+                    type="button"
+                    variant={selectedTime === slot.startTime ? 'default' : 'outline'}
+                    onClick={() => setSelectedTime(slot.startTime)}
+                  >
+                    {slot.startTime}–{slot.endTime}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -543,7 +636,11 @@ export function NewLessonForm({
             <Link href="/lessons">{tCommon('actions.cancel')}</Link>
           </Button>
         )}
-        <Button type="submit" disabled={pending} className="sm:flex-1">
+        <Button
+          type="submit"
+          disabled={pending || (timeMode === 'recommended' && !selectedTime)}
+          className="sm:flex-1"
+        >
           {pending ? t('creating') : t('create')}
         </Button>
       </div>

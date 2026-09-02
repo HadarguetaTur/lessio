@@ -960,6 +960,13 @@
       "scheduleAnyway": "Schedule anyway",
       "dismissedNotice": "The lesson was not scheduled. Choose another time to keep the day compact."
     },
+    "recommendedSlots": {
+      "loading": "Loading recommended times...",
+      "pickTeacher": "Choose a teacher to see available times.",
+      "empty": "No recommended times are available on this day. You can choose a time manually.",
+      "chooseManual": "Choose a time manually",
+      "showRecommended": "Show recommended times"
+    },
     "calendarConfirm": {
       "title": "Google Calendar conflict",
       "description": "Google Calendar events were found overlapping the requested time slot. You can still schedule the lesson.",

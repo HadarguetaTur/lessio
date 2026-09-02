@@ -9,6 +9,7 @@ import { getOrgPricing } from '@/lib/organizations/pricing'
 import { LESSON_FORM_MIN_DATE_STR } from '@/lib/lessons/lessonFormDates'
 import { NewLessonForm } from '@/components/dashboard/lessons/NewLessonForm'
 import { createLessonAction } from './actions'
+import { getRecommendedLessonSlotsAction } from './recommended-slots'
 import { getTranslations } from 'next-intl/server'
 import { z } from 'zod'
 import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
@@ -40,7 +41,6 @@ export default async function NewLessonPage(props: {
   const t = await getTranslations('lessons')
 
   const now = DateTime.now().setZone(timezone)
-  const todayStr = now.toFormat('yyyy-MM-dd')
   // Next round half hour, clamped to teaching hours: nobody schedules a lesson
   // for 23:30 just because that is when she opened the form. Before 08:00 the
   // default is 08:00 today; after 21:00 it is 08:00 tomorrow (date included).
@@ -64,6 +64,7 @@ export default async function NewLessonPage(props: {
         students={activeStudents}
         groups={groups}
         action={createLessonAction}
+        getRecommendedSlots={getRecommendedLessonSlotsAction}
         minDateStr={LESSON_FORM_MIN_DATE_STR}
         initialDate={initialDate}
         initialTime={nextHalfHour}

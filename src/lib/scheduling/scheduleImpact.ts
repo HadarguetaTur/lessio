@@ -32,7 +32,7 @@ export function analyzeFreeSegment(params: {
   proposedStart: string
   durationMinutes: number
   breakMinutes: number
-  shortestDuration: number
+  allowedDurations: number[]
   busy: BusyRange[]
 }): ScheduleImpact | null {
   const windowStart = toMinutes(params.windowStart)
@@ -65,26 +65,75 @@ export function analyzeFreeSegment(params: {
 
   const leftEnd = Math.max(segmentStart, proposedStart - params.breakMinutes)
   const rightStart = Math.min(segmentEnd, proposedEnd + params.breakMinutes)
-  const candidates = [
-    { start: segmentStart, end: leftEnd },
-    { start: rightStart, end: segmentEnd },
-  ]
-  const fragments = candidates
-    .map((range) => ({ ...range, minutes: range.end - range.start }))
-    .filter((range) => range.minutes > 0 && range.minutes < params.shortestDuration)
-    .map((range) => ({ start: toTime(range.start), end: toTime(range.end), minutes: range.minutes }))
+  const reachableSpans = getReachableSpans(
+    Math.max(leftEnd - segmentStart, segmentEnd - rightStart),
+    params.allowedDurations,
+    params.breakMinutes
+  )
+  const leftRemainder = remainderAfterPacking(leftEnd - segmentStart, reachableSpans)
+  const rightRemainder = remainderAfterPacking(segmentEnd - rightStart, reachableSpans)
+  const fragments: ScheduleFragment[] = []
+  if (leftRemainder > 0) {
+    fragments.push({
+      start: toTime(leftEnd - leftRemainder),
+      end: toTime(leftEnd),
+      minutes: leftRemainder,
+    })
+  }
+  if (rightRemainder > 0) {
+    fragments.push({
+      start: toTime(rightStart),
+      end: toTime(rightStart + rightRemainder),
+      minutes: rightRemainder,
+    })
+  }
 
   if (fragments.length === 0) return null
 
   // Pack against either edge of the free segment. The segment already includes
   // the required distance from neighbouring lessons; window edges need no break.
-  const suggestions = [segmentStart, segmentEnd - params.durationMinutes]
+  const suggestions = [
+    segmentStart,
+    segmentEnd - params.durationMinutes,
+    ...reachableSpans.flatMap((span) => [
+      segmentStart + span + (span > 0 ? params.breakMinutes : 0),
+      segmentEnd - span - (span > 0 ? params.breakMinutes : 0) - params.durationMinutes,
+    ]),
+  ]
     .filter((start) => start >= windowStart && start + params.durationMinutes <= windowEnd)
     .filter((start) => start !== proposedStart)
     .filter((start, index, all) => all.indexOf(start) === index)
+    .sort((a, b) => Math.abs(a - proposedStart) - Math.abs(b - proposedStart))
+    .slice(0, 4)
     .map(toTime)
 
   return { fragments, suggestions }
+}
+
+/** Spans exactly fillable by one or more lessons, including internal breaks. */
+function getReachableSpans(limit: number, durations: number[], breakMinutes: number): number[] {
+  const allowed = [...new Set(durations)].filter((duration) => duration > 0)
+  const reachable = new Set<number>([0])
+  const queue = [...allowed].filter((duration) => duration <= limit)
+  for (const duration of queue) reachable.add(duration)
+
+  for (let index = 0; index < queue.length; index++) {
+    const span = queue[index]
+    for (const duration of allowed) {
+      const next = span + breakMinutes + duration
+      if (next <= limit && !reachable.has(next)) {
+        reachable.add(next)
+        queue.push(next)
+      }
+    }
+  }
+  return [...reachable].sort((a, b) => a - b)
+}
+
+function remainderAfterPacking(length: number, reachableSpans: number[]): number {
+  if (length <= 0) return 0
+  const best = reachableSpans.reduce((max, span) => (span <= length ? Math.max(max, span) : max), 0)
+  return length - best
 }
 
 /** Analyze whether a manual lesson strands time too short for any allowed lesson. */
@@ -137,7 +186,7 @@ export async function analyzeScheduleImpact(params: {
     proposedStart: startTime,
     durationMinutes,
     breakMinutes,
-    shortestDuration: Math.min(...durations.map((item) => item.minutes)),
+    allowedDurations: durations.map((item) => item.minutes),
     busy,
   })
 }

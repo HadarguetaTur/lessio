@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { CalendarDays } from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getTranslations } from 'next-intl/server'
-import { formatTime, type Lesson } from '@/lib/lessons'
+import { formatTime, getLessonTitle, type Lesson } from '@/lib/lessons'
 import { findNextLessonId } from '@/lib/lessons/nextLesson'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { Button } from '@/components/ui/button'
@@ -30,7 +30,11 @@ export async function TodayLessonsList({
   appLocale,
   limit = 8,
 }: TodayLessonsListProps) {
-  const [t, tc] = await Promise.all([getTranslations('dashboard'), getTranslations('common')])
+  const [t, tc, tLessons] = await Promise.all([
+    getTranslations('dashboard'),
+    getTranslations('common'),
+    getTranslations('lessons'),
+  ])
 
   const total = lessons.length
   const completed = lessons.filter((l) => l.status === 'completed').length
@@ -72,6 +76,7 @@ export async function TodayLessonsList({
       <ul className="px-2 pb-2 sm:px-3">
         {visible.map((lesson) => {
           const isNext = lesson.id === nextLessonId
+          const title = getLessonTitle(lesson, tLessons)
           return (
             <li key={lesson.id}>
               <Link
@@ -90,12 +95,12 @@ export async function TodayLessonsList({
                   {formatTime(lesson.start_at, timezone, appLocale)}–
                   {formatTime(lesson.end_at, timezone, appLocale)}
                 </span>
-                <UserAvatar name={lesson.student.full_name} />
+                <UserAvatar name={title} />
                 <span className="flex min-w-0 flex-1 items-center gap-2">
                   {/* bdi keeps the ellipsis at the logical end of a Latin
                       name inside an RTL row (was "…phie Bennett"). */}
                   <bdi className="min-w-0 truncate text-sm font-medium text-foreground">
-                    {lesson.student.full_name}
+                    {title}
                   </bdi>
                   {isNext && (
                     <span className="inline-flex shrink-0 items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">

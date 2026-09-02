@@ -4,6 +4,7 @@ import { CalendarClock } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getTeachers } from '@/lib/teachers'
 import { getStudents } from '@/lib/students'
+import { getGroups } from '@/lib/groups'
 import { getLessonSeriesList } from '@/lib/lessons/getSeries'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getOrgHolidays, calendarHolidaysFrom } from '@/lib/organizations/holidays'
@@ -25,9 +26,10 @@ export default async function NewSeriesPage() {
     redirect('/lessons')
   }
 
-  const [teachers, students, series, timezone, holidays, pricing, durations] = await Promise.all([
+  const [teachers, students, groups, series, timezone, holidays, pricing, durations] = await Promise.all([
     getTeachers(orgId),
     getStudents(orgId),
+    getGroups(orgId, { status: 'active' }),
     getLessonSeriesList(orgId),
     getOrgTimezone(orgId),
     getOrgHolidays(orgId, { from: calendarHolidaysFrom() }),
@@ -63,7 +65,9 @@ export default async function NewSeriesPage() {
           timezone={timezone}
           appLocale={locale}
           holidays={holidays.map((h) => ({ date: h.date, name: h.name }))}
+          groups={groups}
           pairPriceDefault={pricing.pairPricePerStudent}
+          groupPriceDefault={pricing.groupPricePerStudent}
           durationValues={durations.map((item) => item.minutes)}
         />
       </div>
@@ -113,7 +117,18 @@ export default async function NewSeriesPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3 text-sm text-foreground">
-                        {s.studentNames.join(', ') || '—'}
+                        {s.groupName ? (
+                          <>
+                            <span className="font-medium">{s.groupName}</span>
+                            {s.studentNames.length > 0 && (
+                              <span className="block text-xs text-muted-foreground">
+                                {s.studentNames.join(', ')}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          s.studentNames.join(', ') || '—'
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-sm text-muted-foreground">
                         {s.teacherName}

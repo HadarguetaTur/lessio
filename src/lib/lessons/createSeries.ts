@@ -11,8 +11,8 @@ import type { LessonType } from '@/lib/lessons/types'
 
 export type SeriesFrequency = 'weekly' | 'biweekly'
 
-/** Series can repeat any type built from a fixed roster. */
-export type SeriesLessonType = Extract<LessonType, 'individual' | 'pair' | 'custom'>
+/** Series can repeat any lesson type; a group series enrols the group's roster at creation time. */
+export type SeriesLessonType = LessonType
 
 export type SeriesRule = {
   frequency: SeriesFrequency
@@ -30,8 +30,10 @@ export type CreateSeriesParams = {
   rule: SeriesRule
   createdByProfileId: string
   lessonType?: SeriesLessonType
-  /** Per-student price; required for custom, optional override for pair. */
+  /** Per-student price; required for custom, optional override for pair/group. */
   pricePerStudent?: number | null
+  /** The student group a group series was built from; stored on the series and every lesson. */
+  groupId?: string | null
 }
 
 export type CreateSeriesResult = {
@@ -59,10 +61,12 @@ export async function createLessonSeries(
     createdByProfileId,
     lessonType = 'individual',
     pricePerStudent = null,
+    groupId = null,
   } = params
   const db = createServiceRoleClient()
 
   if (studentIds.length === 0) throw new Error('At least one student is required')
+  const seriesGroupId = lessonType === 'group' ? groupId : null
 
   // 1. Fetch org timezone
   const { data: org, error: orgError } = await db
@@ -83,6 +87,7 @@ export async function createLessonSeries(
       // lesson_series.student_id is the display/primary student; the real
       // roster lives on each generated lesson's lesson_students rows.
       student_id: studentIds[0],
+      group_id: seriesGroupId,
       rule,
       created_by: createdByProfileId,
     })
@@ -238,6 +243,7 @@ export async function createLessonSeries(
       max_students: studentIds.length,
     }
     if (pricePerStudent != null) lessonPayload.price_per_student = pricePerStudent
+    if (seriesGroupId) lessonPayload.group_id = seriesGroupId
 
     const { data: lesson, error: lessonError } = await db
       .from('lessons')

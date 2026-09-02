@@ -21,6 +21,11 @@ export type CreateLessonParams = {
    * default); required for custom lessons, which have no org default.
    */
   pricePerStudent?: number | null
+  /**
+   * The student group a group lesson was built from, so the calendar can name
+   * it. Only stored for lessonType 'group' (a DB check enforces this).
+   */
+  groupId?: string | null
 }
 
 export type CreateLessonResult = {
@@ -61,6 +66,7 @@ export async function createLesson(
     createdByProfileId,
     status: lessonStatus,
     pricePerStudent,
+    groupId,
   } = params
 
   const status: LessonStatus = lessonStatus ?? 'scheduled'
@@ -150,6 +156,7 @@ export async function createLesson(
     max_students: studentIds.length,
   }
   if (pricePerStudent != null) insertPayload.price_per_student = pricePerStudent
+  if (lessonType === 'group' && groupId) insertPayload.group_id = groupId
   const { data: lesson, error: lessonError } = await db
     .from('lessons')
     .insert(insertPayload)
@@ -175,6 +182,7 @@ export async function createLesson(
     lesson_type: lessonType,
     teacher_id: teacherId,
     student_ids: studentIds,
+    group_id: lessonType === 'group' ? groupId ?? null : null,
     created_by: createdByProfileId,
   })
 

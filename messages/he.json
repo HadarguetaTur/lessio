@@ -1076,6 +1076,7 @@
     "statusUpdatedFor": "{lesson} · הסטטוס עודכן ל{status}",
     "typePair": "זוגי",
     "typeCustom": "מותאם אישית",
+    "rosterCount": "{count} תלמידים",
     "students": "תלמידים",
     "addStudent": "הוסף תלמיד",
     "studentFirst": "תלמיד ראשון",

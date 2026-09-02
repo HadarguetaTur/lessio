@@ -62,7 +62,7 @@ export async function extendLessonSeries(
   // Template lesson: the latest non-cancelled occurrence.
   const { data: template, error: tErr } = await db
     .from('lessons')
-    .select('start_at, lesson_type, max_students, price_per_student, lesson_students(student_id)')
+    .select('start_at, lesson_type, max_students, price_per_student, group_id, lesson_students(student_id)')
     .eq('series_id', seriesId)
     .eq('organization_id', orgId)
     .neq('status', 'cancelled')
@@ -116,6 +116,8 @@ export async function extendLessonSeries(
         lesson_type: template.lesson_type,
         max_students: template.max_students,
         price_per_student: template.price_per_student,
+        // A group series keeps naming its group on the lessons it grows.
+        group_id: template.group_id ?? null,
       })
       .select('id')
       .single()

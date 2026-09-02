@@ -4,6 +4,7 @@ import type { Lesson, LessonAccessScope, LessonStatus, LessonType } from '@/lib/
 
 export type { Lesson, LessonAccessScope, LessonStatus, LessonType } from '@/lib/lessons/types'
 export { formatTime, formatDate } from '@/lib/lessons/format'
+export { getLessonTitle } from '@/lib/lessons/title'
 export { filterCalendarLessons } from '@/lib/lessons/filterCalendarLessons'
 export type { CalendarLessonsResult } from '@/lib/lessons/filterCalendarLessons'
 
@@ -74,18 +75,27 @@ export function getWeekDays(weekSundayStr: string, timezone: string): string[] {
   })
 }
 
+/** Maps a LESSON_SELECT row to a Lesson. Exported for tests only. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapLesson(l: any): Lesson {
+export function mapLesson(l: any): Lesson {
   const rawTeacher = l.teachers as
     | { id: string; profiles: { full_name: string } | null }
     | { id: string; profiles: { full_name: string } | null }[]
     | null
   const teacherRow = Array.isArray(rawTeacher) ? rawTeacher[0] ?? null : rawTeacher
-  // lesson_students is an array; prefer a row with a resolved student join (FK can be null if orphaned).
+  // Orphaned enrolments (student FK resolved to null) are skipped rather than
+  // shown as a blank name.
   type LsRow = { student_id: string; students: { id: string; full_name: string } | null }
-  const rows = l.lesson_students as LsRow[] | undefined
-  const ls = rows?.find((r) => r.students != null) ?? rows?.[0]
-  const st = ls?.students
+  const rows = (l.lesson_students as LsRow[] | undefined) ?? []
+  const students = rows
+    .filter((r) => r.students != null)
+    .map((r) => ({ id: r.students!.id, full_name: r.students!.full_name }))
+  const rawGroup = l.student_groups as
+    | { id: string; name: string }
+    | { id: string; name: string }[]
+    | null
+    | undefined
+  const groupRow = Array.isArray(rawGroup) ? rawGroup[0] ?? null : rawGroup ?? null
   return {
     id: l.id,
     start_at: l.start_at,
@@ -98,14 +108,13 @@ function mapLesson(l: any): Lesson {
       id: teacherRow?.id ?? '',
       full_name: teacherRow?.profiles?.full_name ?? '—',
     },
-    student: st
-      ? { id: st.id, full_name: st.full_name }
-      : { id: (ls?.student_id as string | undefined) ?? '', full_name: '—' },
+    students,
+    group: groupRow ? { id: groupRow.id, name: groupRow.name } : null,
   }
 }
 
 const LESSON_SELECT =
-  'id, start_at, end_at, status, cancel_reason, lesson_type, series_id, teachers(id, profiles(full_name)), lesson_students(student_id, students(id, full_name))'
+  'id, start_at, end_at, status, cancel_reason, lesson_type, series_id, group_id, teachers(id, profiles(full_name)), lesson_students(student_id, students(id, full_name)), student_groups(id, name)'
 
 async function getLessonIdsForStudent(studentId: string): Promise<string[]> {
   const supabase = await createClient()

@@ -10,8 +10,14 @@ export interface Lesson {
   cancel_reason: string | null
   series_id: string | null
   teacher: { id: string; full_name: string }
-  /** Primary (first enrolled) student. For group lessons use a separate query. */
-  student: { id: string; full_name: string }
+  /** Everyone enrolled, in enrolment order. Display through getLessonTitle(). */
+  students: { id: string; full_name: string }[]
+  /**
+   * The student group a group lesson was created from. Null for other lesson
+   * types, for group lessons created before the link existed, and once the
+   * group is deleted.
+   */
+  group: { id: string; name: string } | null
 }
 
 export interface LessonAccessScope {

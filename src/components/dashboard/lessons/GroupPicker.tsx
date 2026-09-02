@@ -34,8 +34,11 @@ export function GroupPicker({ groups, value, onChange }: GroupPickerProps) {
       <Label htmlFor="group_id">
         {t('group')} <span className="text-destructive">*</span>
       </Label>
+      {/* Posted as group_id: the action reads the roster from the group itself. */}
       <select
         id="group_id"
+        name="group_id"
+        required
         value={value}
         onChange={handleChange}
         className={selectClassName}

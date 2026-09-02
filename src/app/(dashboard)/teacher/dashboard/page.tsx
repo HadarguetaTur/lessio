@@ -11,6 +11,7 @@ import {
   getLessonsForRange,
   getCurrentDayStr,
   formatTime,
+  getLessonTitle,
 } from '@/lib/lessons'
 import { getTeacherDashboardStats } from '@/lib/dashboard/teacherStats'
 import { KpiCard } from '@/components/dashboard/KpiCard'
@@ -30,11 +31,12 @@ export default async function TeacherDashboardPage() {
     redirect('/dashboard')
   }
 
-  const [timezone, locale, t, tc] = await Promise.all([
+  const [timezone, locale, t, tc, tLessons] = await Promise.all([
     getOrgTimezone(orgId),
     getLocale(),
     getTranslations('teacherSelf.dashboard'),
     getTranslations('common'),
+    getTranslations('lessons'),
   ])
 
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
@@ -153,9 +155,9 @@ export default async function TeacherDashboardPage() {
                           href={`/teacher/schedule/${lesson.id}`}
                           className="group flex items-center gap-2.5"
                         >
-                          <UserAvatar name={lesson.student.full_name} />
+                          <UserAvatar name={getLessonTitle(lesson, tLessons)} />
                           <span className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
-                            {lesson.student.full_name}
+                            {getLessonTitle(lesson, tLessons)}
                           </span>
                         </Link>
                       </td>

@@ -4,7 +4,14 @@ import { forbidden, notFound } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
-import { getLessonAccessScope, getLessonById, formatTime, formatDate, LessonStatus } from '@/lib/lessons'
+import {
+  getLessonAccessScope,
+  getLessonById,
+  formatTime,
+  formatDate,
+  getLessonTitle,
+  LessonStatus,
+} from '@/lib/lessons'
 import { LessonStatusForm } from '@/components/dashboard/lessons/LessonStatusForm'
 import { CancelLessonForm } from '@/components/dashboard/lessons/CancelLessonForm'
 import { SeriesBanner } from '@/components/dashboard/lessons/SeriesBanner'
@@ -116,10 +123,47 @@ export default async function LessonDetailPage(props: {
               {formatTime(lesson.start_at, timezone, appLocale)}–{formatTime(lesson.end_at, timezone, appLocale)}
             </dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">{tCommon('table.student')}</dt>
-            <dd className="text-gray-900 font-medium">{lesson.student.full_name}</dd>
-          </div>
+          {lesson.lesson_type === 'individual' ? (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">{tCommon('table.student')}</dt>
+              <dd className="text-gray-900 font-medium">
+                {lesson.students[0] ? (
+                  <Link href={`/students/${lesson.students[0].id}`} className="hover:text-primary">
+                    {lesson.students[0].full_name}
+                  </Link>
+                ) : (
+                  '—'
+                )}
+              </dd>
+            </div>
+          ) : (
+            <>
+              {lesson.group && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">{t('group')}</dt>
+                  <dd className="text-gray-900 font-medium">{lesson.group.name}</dd>
+                </div>
+              )}
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground shrink-0">{t('students')}</dt>
+                <dd className="text-gray-900 font-medium text-end">
+                  {lesson.students.length === 0 ? (
+                    '—'
+                  ) : (
+                    <ul className="space-y-0.5">
+                      {lesson.students.map((s) => (
+                        <li key={s.id}>
+                          <Link href={`/students/${s.id}`} className="hover:text-primary">
+                            {s.full_name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </dd>
+              </div>
+            </>
+          )}
           <div className="flex justify-between">
             <dt className="text-muted-foreground">{tCommon('table.teacher')}</dt>
             <dd className="text-gray-900 font-medium">{lesson.teacher.full_name}</dd>
@@ -139,7 +183,7 @@ export default async function LessonDetailPage(props: {
           <h2 className="text-sm font-semibold text-gray-700 mb-3">{t('statusUpdate')}</h2>
           <LessonStatusForm
             currentStatus={lesson.status}
-            lessonLabel={`${lesson.student.full_name} · ${formatTime(lesson.start_at, timezone, appLocale)}`}
+            lessonLabel={`${getLessonTitle(lesson, t)} · ${formatTime(lesson.start_at, timezone, appLocale)}`}
             action={boundAction}
           />
         </div>

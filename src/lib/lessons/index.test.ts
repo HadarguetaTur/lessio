@@ -4,8 +4,60 @@ import {
   localMidnightToUTC,
   getCurrentWeekSunday,
   getWeekDays,
+  mapLesson,
   LessonStatus,
 } from './index'
+
+describe('mapLesson', () => {
+  const base = {
+    id: 'l1',
+    start_at: '2026-09-02T10:00:00Z',
+    end_at: '2026-09-02T11:00:00Z',
+    status: 'scheduled',
+    cancel_reason: null,
+    series_id: null,
+    teachers: { id: 't1', profiles: { full_name: 'מורה' } },
+  }
+
+  it('keeps every enrolled student, skipping orphaned enrolments', () => {
+    const lesson = mapLesson({
+      ...base,
+      lesson_type: 'group',
+      lesson_students: [
+        { student_id: 's1', students: { id: 's1', full_name: 'א' } },
+        { student_id: 's-gone', students: null },
+        { student_id: 's2', students: { id: 's2', full_name: 'ב' } },
+      ],
+      student_groups: { id: 'g1', name: 'קבוצה א' },
+    })
+    expect(lesson.students).toEqual([
+      { id: 's1', full_name: 'א' },
+      { id: 's2', full_name: 'ב' },
+    ])
+    expect(lesson.group).toEqual({ id: 'g1', name: 'קבוצה א' })
+  })
+
+  it('reads a null group for lessons without a link', () => {
+    const lesson = mapLesson({
+      ...base,
+      lesson_type: 'individual',
+      lesson_students: [{ student_id: 's1', students: { id: 's1', full_name: 'א' } }],
+      student_groups: null,
+    })
+    expect(lesson.group).toBeNull()
+    expect(lesson.students).toHaveLength(1)
+  })
+
+  it('tolerates the embed arriving as an array', () => {
+    const lesson = mapLesson({
+      ...base,
+      lesson_type: 'group',
+      lesson_students: [],
+      student_groups: [{ id: 'g1', name: 'קבוצה א' }],
+    })
+    expect(lesson.group?.name).toBe('קבוצה א')
+  })
+})
 
 describe('isValidStatusTransition', () => {
   it('allows any transition from scheduled', () => {

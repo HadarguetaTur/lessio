@@ -14,7 +14,8 @@ function lesson(id: string, status: LessonStatus, start_at: string): Lesson {
     cancel_reason: status === 'cancelled' ? 'SERIES_CANCELLED' : null,
     series_id: null,
     teacher: { id: 't1', full_name: 'Teacher' },
-    student: { id: 's1', full_name: 'Student' },
+    students: [{ id: 's1', full_name: 'Student' }],
+    group: null,
   }
 }
 

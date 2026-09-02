@@ -1076,6 +1076,7 @@
     "statusUpdatedFor": "{lesson} · marked {status}",
     "typePair": "Pair",
     "typeCustom": "Custom",
+    "rosterCount": "{count} students",
     "students": "Students",
     "addStudent": "Add student",
     "studentFirst": "First student",

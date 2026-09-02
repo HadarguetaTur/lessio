@@ -3,7 +3,7 @@ import { Repeat, Clock } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import type { Lesson, LessonStatus } from '@/lib/lessons'
-import { formatTime } from '@/lib/lessons'
+import { formatTime, getLessonTitle } from '@/lib/lessons'
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-50 text-blue-700 border border-blue-200',
@@ -105,7 +105,7 @@ export async function DayView({
             <div className="w-px self-stretch bg-current opacity-20" />
 
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{lesson.student.full_name}</p>
+              <p className="font-medium text-sm truncate">{getLessonTitle(lesson, t)}</p>
               <p className="text-xs truncate">{lesson.teacher.full_name}</p>
             </div>
 

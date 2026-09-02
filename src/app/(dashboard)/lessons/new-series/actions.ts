@@ -8,6 +8,7 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createLessonSeries } from '@/lib/lessons/createSeries'
+import { getGroupRosterServiceRole } from '@/lib/groups/roster'
 import {
   extendLessonSeries,
   shortenLessonSeries,
@@ -44,6 +45,14 @@ const SeriesFormSchema = z.discriminatedUnion('lesson_type', [
   }),
   z.object({
     ...seriesBase,
+    lesson_type: z.literal('group'),
+    // The roster is resolved server-side from the group, never taken from the form.
+    group_id: z.string().uuid('validation.pickGroupWithStudent'),
+    duration_minutes: z.coerce.number().int().positive(),
+    price_per_student: z.coerce.number().positive().optional().nullable(),
+  }),
+  z.object({
+    ...seriesBase,
     lesson_type: z.literal('custom'),
     student_ids: z
       .array(z.string().uuid())
@@ -54,7 +63,7 @@ const SeriesFormSchema = z.discriminatedUnion('lesson_type', [
   }),
 ])
 
-const SERIES_LESSON_TYPES = ['individual', 'pair', 'custom'] as const
+const SERIES_LESSON_TYPES = ['individual', 'pair', 'group', 'custom'] as const
 
 export type CreateSeriesState = {
   error: string | null
@@ -99,6 +108,7 @@ export async function createSeriesAction(
     lesson_type: lessonType,
     teacher_id: formData.get('teacher_id'),
     student_ids: studentIds,
+    group_id: formData.get('group_id') || undefined,
     day_of_week: formData.get('day_of_week'),
     start_time: formData.get('start_time'),
     duration_minutes: formData.get('duration_minutes'),
@@ -113,9 +123,19 @@ export async function createSeriesAction(
     return { error: await zodError(firstError) }
   }
 
-  const { teacher_id, student_ids, day_of_week, start_time, duration_minutes, frequency, until } =
-    parsed.data
+  const { teacher_id, day_of_week, start_time, duration_minutes, frequency, until } = parsed.data
   const price_per_student = parsed.data.price_per_student ?? null
+
+  let student_ids: string[]
+  let group_id: string | null = null
+  if (parsed.data.lesson_type === 'group') {
+    const roster = await getGroupRosterServiceRole(orgId, parsed.data.group_id)
+    if (!roster) return { error: t('validation.pickGroupWithStudent') }
+    student_ids = roster.studentIds
+    group_id = roster.id
+  } else {
+    student_ids = parsed.data.student_ids
+  }
   if (lessonType !== 'custom' && !(await isLessonDurationAllowed(orgId, 'admin', duration_minutes))) {
     return { error: await commonError('invalidData') }
   }
@@ -138,6 +158,7 @@ export async function createSeriesAction(
       createdByProfileId: userId,
       lessonType,
       pricePerStudent: price_per_student,
+      groupId: group_id,
     })
 
     revalidatePath('/lessons')

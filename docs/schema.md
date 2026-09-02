@@ -271,7 +271,8 @@ Metadata for a recurring lesson series. Individual lessons reference this via `s
 id              uuid pk
 organization_id uuid not null references organizations(id)
 teacher_id      uuid not null references teachers(id)
-student_id      uuid not null references students(id)
+student_id      uuid not null references students(id)   -- display/primary only; the roster is per lesson
+group_id        uuid references student_groups(id) on delete set null  -- set for a group series
 rule            jsonb not null                      -- { frequency, day_of_week, start_time, duration_minutes, until }
 created_by      uuid not null references profiles(id)
 created_at      timestamptz default now()
@@ -299,9 +300,13 @@ id              uuid pk
 organization_id uuid not null references organizations(id)
 teacher_id      uuid not null references teachers(id)
 -- student_id removed in Sprint 7 (now in lesson_students junction)
-lesson_type     text not null check (lesson_type in ('individual','pair','group')) default 'individual'
+lesson_type     text not null check (lesson_type in ('individual','pair','group','custom')) default 'individual'
 max_students    int not null default 1
 series_id       uuid references lesson_series(id)  -- null for one-off lessons
+group_id        uuid references student_groups(id) on delete set null
+                -- the student group a group lesson was built from; the calendar shows its name.
+                -- check: group_id is null or lesson_type = 'group'. Null for legacy group lessons
+                -- that no single group matched at backfill, and after the group is deleted.
 start_at        timestamptz not null               -- UTC
 end_at          timestamptz not null               -- UTC
 status          text not null check (status in ('scheduled','completed','cancelled','no_show'))
@@ -311,6 +316,7 @@ updated_at      timestamptz default now()
 
 index: (organization_id, teacher_id, start_at)
 index: (organization_id, series_id)
+index: (group_id) where group_id is not null
 ```
 
 ---

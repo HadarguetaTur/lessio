@@ -106,10 +106,35 @@ export default async function TeacherLessonDetailPage(props: {
               {formatTime(lesson.start_at, timezone, appLocale)}–{formatTime(lesson.end_at, timezone, appLocale)}
             </dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">{tCommon('table.student')}</dt>
-            <dd className="text-gray-900 font-medium">{lesson.student.full_name}</dd>
-          </div>
+          {lesson.lesson_type === 'individual' ? (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">{tCommon('table.student')}</dt>
+              <dd className="text-gray-900 font-medium">{lesson.students[0]?.full_name ?? '—'}</dd>
+            </div>
+          ) : (
+            <>
+              {lesson.group && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">{tLessons('group')}</dt>
+                  <dd className="text-gray-900 font-medium">{lesson.group.name}</dd>
+                </div>
+              )}
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground shrink-0">{tLessons('students')}</dt>
+                <dd className="text-gray-900 font-medium text-end">
+                  {lesson.students.length === 0 ? (
+                    '—'
+                  ) : (
+                    <ul className="space-y-0.5">
+                      {lesson.students.map((s) => (
+                        <li key={s.id}>{s.full_name}</li>
+                      ))}
+                    </ul>
+                  )}
+                </dd>
+              </div>
+            </>
+          )}
           {lesson.cancel_reason && (
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{tLessons('cancel.reason')}</dt>

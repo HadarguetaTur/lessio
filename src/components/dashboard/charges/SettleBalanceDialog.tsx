@@ -5,7 +5,6 @@ import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { CheckCheck, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -14,9 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { PAYMENT_METHODS, type PaymentMethod } from '@/lib/charges/paymentMethods'
+import { type PaymentMethod } from '@/lib/charges/paymentMethods'
 import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { paymentToast, type ManualPaymentResult } from './RecordPaymentDialog'
+import { PaymentDetailsFields } from './PaymentDetailsFields'
 
 export interface SettleBalanceInput {
   parentId: string
@@ -139,43 +139,16 @@ export function SettleBalanceDialog({
           </p>
 
           <div className="space-y-3 py-1">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground" htmlFor="settle-method">
-                {tPayment('methodLabel')}
-              </label>
-              <select
-                id="settle-method"
-                value={method}
-                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>
-                    {tPayment(`methods.${m}` as Parameters<typeof tPayment>[0])}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder={tPayment('notesPlaceholder')}
-              rows={2}
-              maxLength={500}
+            <PaymentDetailsFields
+              idPrefix="settle"
+              method={method}
+              onMethodChange={setMethod}
+              notes={notes}
+              onNotesChange={setNotes}
+              notifyParent={notifyParent}
+              onNotifyChange={setNotifyParent}
+              showNotify={parentHasPhone}
             />
-
-            {parentHasPhone && (
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input
-                  type="checkbox"
-                  checked={notifyParent}
-                  onChange={(e) => setNotifyParent(e.target.checked)}
-                  className="h-4 w-4 rounded border-input accent-primary"
-                />
-                {tPayment('notifyParent')}
-              </label>
-            )}
           </div>
 
           <DialogFooter>

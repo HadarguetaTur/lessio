@@ -182,7 +182,6 @@ export function NewLessonForm({
   const [studentId, setStudentId] = useState('')
   const effectiveLessonType: LessonType = allowGroupLessons ? lessonType : 'individual'
   const [selectedGroupId, setSelectedGroupId] = useState('')
-  const [groupStudentIds, setGroupStudentIds] = useState<string[]>([])
   // Pair lessons name both students explicitly; custom lessons take any number.
   const [pairStudentIds, setPairStudentIds] = useState<[string, string]>(['', ''])
   const [customStudentIds, setCustomStudentIds] = useState<string[]>([])
@@ -266,11 +265,6 @@ export function NewLessonForm({
       cancelled = true
     }
   }, [teacherId, date, duration, timeMode, getRecommendedSlots])
-
-  const handleGroupChange = (groupId: string, studentIds: string[]) => {
-    setSelectedGroupId(groupId)
-    setGroupStudentIds(studentIds)
-  }
 
   // Submit through the action manually: the browser still runs native
   // constraint validation before firing `submit`, but preventDefault stops
@@ -400,7 +394,6 @@ export function NewLessonForm({
               // Switching type clears the roster picked for the previous one,
               // so a stale student can never ride along on the submit.
               setSelectedGroupId('')
-              setGroupStudentIds([])
               setPairStudentIds(['', ''])
               setCustomStudentIds([])
             }}
@@ -470,12 +463,9 @@ export function NewLessonForm({
       )}
 
       {effectiveLessonType === 'group' && (
-        <>
-          <GroupPicker groups={groups} value={selectedGroupId} onChange={handleGroupChange} />
-          {groupStudentIds.map((id) => (
-            <input key={id} type="hidden" name="student_ids" value={id} />
-          ))}
-        </>
+        // Only the group id is posted; the action enrols the group's current
+        // members itself, so a stale roster in the browser cannot win.
+        <GroupPicker groups={groups} value={selectedGroupId} onChange={setSelectedGroupId} />
       )}
 
       {isCustom && (

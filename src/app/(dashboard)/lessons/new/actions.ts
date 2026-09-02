@@ -8,6 +8,7 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
+import { getGroupRosterServiceRole } from '@/lib/groups/roster'
 import {
   buildAvailabilityNotice,
   type AvailabilityNotice,
@@ -33,7 +34,8 @@ const IndividualLessonSchema = z.object({
 const GroupLessonSchema = z.object({
   lesson_type:      z.literal('group'),
   teacher_id:       z.string().uuid(),
-  student_ids:      z.array(z.string().uuid()).min(1, 'validation.pickGroupWithStudent'),
+  // The roster is resolved server-side from the group, never taken from the form.
+  group_id:         z.string().uuid('validation.pickGroupWithStudent'),
   date:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   start_time:       z.string().regex(/^\d{2}:\d{2}$/),
   duration_minutes: z.coerce.number().int().min(5).max(480),
@@ -226,13 +228,15 @@ export async function createLessonAction(
       lessonId = result.lessonId
     } else if (lessonType !== 'individual') {
       // pair / group / custom all take a roster of students and a per-student
-      // price; only their validation rules differ.
-      const studentIds = formData.getAll('student_ids').map(String).filter(Boolean)
+      // price; only their validation rules differ. A group lesson names its
+      // group instead of a roster — the members are read here, not trusted
+      // from the form.
       const rawPrice = formData.get('price_per_student')
       const parsed = MULTI_STUDENT_SCHEMAS[lessonType].safeParse({
         lesson_type: lessonType,
         teacher_id: formData.get('teacher_id'),
-        student_ids: studentIds,
+        student_ids: formData.getAll('student_ids').map(String).filter(Boolean),
+        group_id: formData.get('group_id') || undefined,
         date: formData.get('date'),
         start_time: formData.get('start_time'),
         duration_minutes: formData.get('duration_minutes'),
@@ -241,8 +245,19 @@ export async function createLessonAction(
       })
       if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
 
-      const { teacher_id, student_ids, date, start_time, duration_minutes, status } = parsed.data
+      const { teacher_id, date, start_time, duration_minutes, status } = parsed.data
       const price_per_student = parsed.data.price_per_student ?? null
+
+      let student_ids: string[]
+      let group_id: string | null = null
+      if (parsed.data.lesson_type === 'group') {
+        const roster = await getGroupRosterServiceRole(orgId, parsed.data.group_id)
+        if (!roster) return { error: t('validation.pickGroupWithStudent') }
+        student_ids = roster.studentIds
+        group_id = roster.id
+      } else {
+        student_ids = parsed.data.student_ids
+      }
 
       if (!confirmedOutsideAvailability && status === 'scheduled') {
         const avail = await assertWithinTeacherAvailability({
@@ -276,6 +291,7 @@ export async function createLessonAction(
         createdByProfileId: profileId,
         status,
         pricePerStudent: price_per_student,
+        groupId: group_id,
       })
       lessonId = result.lessonId
     } else {

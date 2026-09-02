@@ -11,11 +11,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SearchSelect } from '@/components/ui/search-select'
 import { StudentMultiPicker } from './StudentMultiPicker'
+import { GroupPicker } from './GroupPicker'
+import type { StudentGroup } from '@/lib/groups'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { toLuxonLocale } from '@/lib/i18n/locale'
 
-/** Series repeat a fixed roster; group lessons keep their own group flow. */
-type SeriesLessonType = 'individual' | 'pair' | 'custom'
+/** Series repeat a fixed roster; a group series takes the group's members at creation. */
+type SeriesLessonType = 'individual' | 'pair' | 'group' | 'custom'
 
 const CUSTOM_DURATION_MIN = 5
 const CUSTOM_DURATION_MAX = 480
@@ -27,8 +29,11 @@ interface Props {
   appLocale: AppLocale
   /** Org holidays, so the preview can flag dates the series will skip. */
   holidays: { date: string; name: string }[]
-  /** Org price defaults, shown as the pair price placeholder. */
+  /** Active student groups a group series can be built from. */
+  groups?: StudentGroup[]
+  /** Org price defaults, shown as the pair / group price placeholder. */
   pairPriceDefault?: number
+  groupPriceDefault?: number
   durationValues: number[]
 }
 
@@ -71,7 +76,9 @@ export function NewSeriesForm({
   timezone,
   appLocale,
   holidays,
+  groups = [],
   pairPriceDefault,
+  groupPriceDefault,
   durationValues,
 }: Props) {
   const t = useTranslations('lessons')
@@ -83,8 +90,10 @@ export function NewSeriesForm({
   const [studentId, setStudentId] = useState('')
   const [pairStudentIds, setPairStudentIds] = useState<[string, string]>(['', ''])
   const [customStudentIds, setCustomStudentIds] = useState<string[]>([])
+  const [groupId, setGroupId] = useState('')
 
   const isPair = lessonType === 'pair'
+  const isGroup = lessonType === 'group'
   const isCustom = lessonType === 'custom'
   const [dayOfWeek, setDayOfWeek] = useState('')
   const [frequency, setFrequency] = useState<'weekly' | 'biweekly'>('weekly')
@@ -197,11 +206,13 @@ export function NewSeriesForm({
             setStudentId('')
             setPairStudentIds(['', ''])
             setCustomStudentIds([])
+            setGroupId('')
           }}
           className={selectClass}
         >
           <option value="individual">{t('typeIndividual')}</option>
           <option value="pair">{t('typePair')}</option>
+          <option value="group">{t('typeGroup')}</option>
           <option value="custom">{t('typeCustom')}</option>
         </select>
       </div>
@@ -257,6 +268,11 @@ export function NewSeriesForm({
         </div>
       )}
 
+      {isGroup && (
+        // Only the group id is posted; the action enrols the group's current members.
+        <GroupPicker groups={groups} value={groupId} onChange={setGroupId} />
+      )}
+
       {isCustom && (
         <StudentMultiPicker
           students={students}
@@ -281,7 +297,9 @@ export function NewSeriesForm({
             placeholder={
               isPair && pairPriceDefault != null
                 ? String(pairPriceDefault)
-                : t('pricePerStudentPlaceholder')
+                : isGroup && groupPriceDefault != null
+                  ? String(groupPriceDefault)
+                  : t('pricePerStudentPlaceholder')
             }
             dir="ltr"
           />

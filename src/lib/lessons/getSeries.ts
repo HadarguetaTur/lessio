@@ -6,6 +6,8 @@ export interface LessonSeriesListItem {
   teacherName: string
   /** Participant names, derived from the series' upcoming lessons (falls back to the series' student_id). */
   studentNames: string[]
+  /** Name of the student group a group series was built from; null otherwise or once the group is deleted. */
+  groupName: string | null
   rule: SeriesRule
   upcomingCount: number
 }
@@ -20,7 +22,7 @@ export async function getLessonSeriesList(organizationId: string): Promise<Lesso
 
   const { data: seriesRows, error } = await db
     .from('lesson_series')
-    .select('id, student_id, rule, teachers(profiles(full_name))')
+    .select('id, student_id, rule, teachers(profiles(full_name)), student_groups(name)')
     .eq('organization_id', organizationId)
   if (error) throw new Error(error.message)
   if (!seriesRows?.length) return []
@@ -63,12 +65,14 @@ export async function getLessonSeriesList(organizationId: string): Promise<Lesso
 
   const items = seriesRows.map((s) => {
     const teacher = s.teachers as unknown as { profiles: { full_name: string } | null } | null
+    const group = s.student_groups as unknown as { name: string } | null
     const derived = [...(namesBySeries.get(s.id) ?? [])]
     const fallback = fallbackNames.get(s.student_id)
     return {
       id: s.id,
       teacherName: teacher?.profiles?.full_name ?? '',
       studentNames: derived.length ? derived.sort() : fallback ? [fallback] : [],
+      groupName: group?.name ?? null,
       rule: s.rule as SeriesRule,
       upcomingCount: countBySeries.get(s.id) ?? 0,
     }

@@ -444,6 +444,30 @@ scoped to the portal.
 
 ---
 
+## Group lessons carry their group (2026-09-02)
+
+**Status:** Built (migration `20260902200000` not yet applied to production)
+**Track:** standalone; no sprint dependency
+**Amends:** `docs/groups-spec.md`
+
+A group lesson used to be saved as `lesson_type='group'` plus its `lesson_students`
+rows — the group chosen in the form was expanded in the browser and its id dropped,
+so every calendar view named one arbitrary member. Now `lessons.group_id` (and
+`lesson_series.group_id`) point at the `student_groups` row, `ON DELETE SET NULL`,
+and the Server Actions read the roster from the group server-side instead of
+trusting the posted `student_ids`. A single `getLessonTitle()` names lessons
+everywhere: group name → up to two participants by name → `<type> · N students`.
+Recurring series gained the `group` type. Legacy group lessons were backfilled to
+the one group whose membership matches exactly; ambiguous or unmatched rows stay
+unlinked and fall back to the head-count title.
+
+**Known gaps:** the roster is a snapshot at creation — changing a group's members
+does not touch existing lessons, and extending a series copies the last lesson's
+roster rather than re-reading the group. Cancellation and reminders still act on
+the first enrolled student only (Sprint 31 backlog).
+
+---
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

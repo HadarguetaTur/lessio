@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { formatTime } from '@/lib/lessons/format'
+import { getLessonTitle } from '@/lib/lessons/title'
 import type { Lesson, LessonStatus } from '@/lib/lessons/types'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { cn } from '@/lib/utils'
@@ -181,7 +182,7 @@ export function MonthViewClient({
                     <span
                       key={lesson.id}
                       className={cn('w-1.5 h-1.5 rounded-full shrink-0', STATUS_DOT[lesson.status])}
-                      title={`${lesson.student.full_name} — ${formatTime(lesson.start_at, timezone, appLocale)}`}
+                      title={`${getLessonTitle(lesson, t)} — ${formatTime(lesson.start_at, timezone, appLocale)}`}
                     />
                   ))}
                   {dayLessons.length > 5 && (
@@ -201,12 +202,12 @@ export function MonthViewClient({
                         STATUS_CHIP[lesson.status],
                         'hover:opacity-75 transition-opacity'
                       )}
-                      title={`${lesson.student.full_name} — ${formatTime(lesson.start_at, timezone, appLocale)}`}
+                      title={`${getLessonTitle(lesson, t)} — ${formatTime(lesson.start_at, timezone, appLocale)}`}
                     >
                       <span dir="ltr" className="font-mono">
                         {formatTime(lesson.start_at, timezone, appLocale)}
                       </span>{' '}
-                      <span>{lesson.student.full_name}</span>
+                      <span>{getLessonTitle(lesson, t)}</span>
                     </Link>
                   ))}
                 </div>

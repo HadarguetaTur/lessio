@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { Repeat } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { formatTime } from '@/lib/lessons/format'
+import { getLessonTitle } from '@/lib/lessons/title'
 import type { Lesson, LessonStatus } from '@/lib/lessons/types'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { cn } from '@/lib/utils'
@@ -59,6 +61,7 @@ export function WeekViewClient({
   onPickDay,
   legend,
 }: WeekViewClientProps) {
+  const t = useTranslations('lessons')
   const holidayDates = new Set(holidays.map((h) => h.date))
 
   const byDay = new Map<string, Lesson[]>()
@@ -149,7 +152,7 @@ export function WeekViewClient({
                 </span>
                 {lesson.series_id && <Repeat size={10} className="shrink-0 opacity-70" />}
               </span>
-              <span className="truncate block">{lesson.student.full_name}</span>
+              <span className="truncate block">{getLessonTitle(lesson, t)}</span>
             </Link>
           ))}
         </div>

@@ -1104,6 +1104,7 @@
     "partiallyPaid": "שולם {paid} מתוך {total}",
     "noPaymentProvider": "לא הוגדר ספק סליקה — אי אפשר ליצור קישור תשלום",
     "sendPaymentRequest": "בקשת תשלום מרוכזת",
+    "settleBalance": "סמן הכל כשולם",
     "sendPaymentRequestBulk": "שלח בקשת תשלום ל-{count} הורים",
     "requestsSent": "נשלחו {sent} בקשות תשלום",
     "requestsSentWithSkipped": "נשלחו {sent} בקשות תשלום, {skipped} דולגו",
@@ -1178,7 +1179,23 @@
       "chargeAlreadyPaid": "החיוב כבר שולם. לביטול חיוב ששולם יש להנפיק חשבונית זיכוי",
       "chargeAlreadyResolved": "החיוב כבר אופס או בוטל",
       "chargeNotOpen": "החיוב אינו פתוח לתשלום",
-      "paymentTooLarge": "הסכום גדול מהיתרה הפתוחה ({max})"
+      "paymentTooLarge": "הסכום גדול מהיתרה הפתוחה ({max})",
+      "nothingOpen": "להורה אין חיובים פתוחים"
+    },
+    "notification": {
+      "queued": "אישור נשלח להורה בוואטסאפ",
+      "noPhone": "לא נשלח אישור — להורה אין מספר טלפון",
+      "whatsappNotConnected": "לא נשלח אישור — וואטסאפ לא מחובר"
+    },
+    "settleBalance": {
+      "action": "סמן את כל היתרה כשולם",
+      "menuAction": "סמן את כל היתרה של ההורה כשולם",
+      "title": "סימון כל היתרה כשולם",
+      "summary": "{count, plural, one {חיוב פתוח אחד} other {# חיובים פתוחים}} · סה״כ {total}",
+      "description": "כל החיובים הפתוחים של {name} יסומנו כשולמו במלואם. לתשלום חלקי יש להשתמש ב״רישום תשלום״ על חיוב בודד.",
+      "confirm": "סמן הכל כשולם",
+      "success": "{count, plural, one {חיוב אחד סומן} other {# חיובים סומנו}} כשולם",
+      "partialFailure": "{settled} סומנו כשולמו, {failed} נותרו פתוחים — נסו שוב"
     },
     "resolve": {
       "resolvedAt": "טופל בתאריך",
@@ -1229,6 +1246,7 @@
       "notesPlaceholder": "הערה (אופציונלי)",
       "invalidAmount": "יש להזין סכום בין 0.01 ל-{max}",
       "partialHint": "תשלום חלקי — יישארו {balance} כחוב פתוח. קבלה תופק רק בסגירת החיוב.",
+      "notifyParent": "שלח אישור להורה בוואטסאפ",
       "confirm": "שמור תשלום",
       "successFull": "התשלום נרשם והחיוב נסגר",
       "successPartial": "התשלום החלקי נרשם",

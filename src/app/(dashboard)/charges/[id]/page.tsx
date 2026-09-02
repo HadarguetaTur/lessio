@@ -209,6 +209,7 @@ export default async function ChargeDetailPage({
             <RecordPaymentDialog
               chargeId={charge.id}
               remaining={remaining}
+              parentHasPhone={Boolean(charge.parent.phone)}
               action={recordChargePaymentAction}
             />
             <ResolveChargeDialog

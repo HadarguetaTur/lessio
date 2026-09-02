@@ -30,12 +30,12 @@ export interface Charge {
   resolution_reason: string | null
   /** True when a tax invoice was already issued for the monthly bill behind this charge. */
   has_invoice: boolean
-  parent: { id: string; full_name: string }
+  parent: { id: string; full_name: string; phone: string | null }
   lesson: { start_at: string } | null
 }
 
 const CHARGE_SELECT =
-  'id, amount, amount_paid, charge_type, status, notes, paid_at, due_date, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, resolved_at, resolution_reason, parents(id, full_name), lessons(start_at), student_monthly_billing(invoice_number)'
+  'id, amount, amount_paid, charge_type, status, notes, paid_at, due_date, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, resolved_at, resolution_reason, parents(id, full_name, phone), lessons(start_at), student_monthly_billing(invoice_number)'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapChargeRow(c: any): Charge {
@@ -58,7 +58,11 @@ function mapChargeRow(c: any): Charge {
     resolved_at: c.resolved_at ?? null,
     resolution_reason: c.resolution_reason ?? null,
     has_invoice: Boolean(c.student_monthly_billing?.invoice_number),
-    parent: c.parents as { id: string; full_name: string },
+    parent: {
+      id: c.parents?.id,
+      full_name: c.parents?.full_name,
+      phone: c.parents?.phone ?? null,
+    },
     lesson: c.lessons as { start_at: string } | null,
   }
 }
@@ -174,6 +178,50 @@ export async function getParentDebt(
 
   if (error) throw new Error(error.message)
   return sumRemaining(data ?? [])
+}
+
+export interface ParentOpenBalance {
+  /** What is still owed across every open charge. */
+  total: number
+  /** How many open charges make up that total. */
+  count: number
+}
+
+/**
+ * Open balance per parent, for the parents shown on a filtered ledger page.
+ *
+ * The rows on screen cannot be summed for this: a status or date filter hides
+ * the rest of a parent's debt, and "settle the whole balance" must mean the
+ * whole balance. One query for every parent on the page, not one per row.
+ */
+export async function getOpenBalancesByParent(
+  organizationId: string,
+  parentIds: string[]
+): Promise<Map<string, ParentOpenBalance>> {
+  const balances = new Map<string, ParentOpenBalance>()
+  if (parentIds.length === 0) return balances
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('charges')
+    .select('parent_id, amount, amount_paid')
+    .eq('organization_id', organizationId)
+    .in('parent_id', parentIds)
+    .in('status', [...OPEN_CHARGE_STATUSES])
+
+  if (error) throw new Error(error.message)
+
+  for (const row of data ?? []) {
+    const remaining = getChargeRemaining(row.amount, row.amount_paid)
+    if (remaining <= 0) continue
+    const current = balances.get(row.parent_id) ?? { total: 0, count: 0 }
+    balances.set(row.parent_id, {
+      total: Math.round((current.total + remaining) * 100) / 100,
+      count: current.count + 1,
+    })
+  }
+
+  return balances
 }
 
 /**

@@ -3,15 +3,27 @@ import { Receipt } from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
-import { getCharges, ChargeStatus, findChargeParentIds, getChargeRemaining } from '@/lib/charges'
+import {
+  getCharges,
+  ChargeStatus,
+  findChargeParentIds,
+  getChargeRemaining,
+  getOpenBalancesByParent,
+} from '@/lib/charges'
 import { getChargeDateRange } from '@/lib/charges/dateRange'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getOrgProviderStatus } from '@/lib/organizations/providerStatus'
 import { getParents } from '@/lib/parents'
 import { ChargeRowActions } from '@/components/dashboard/charges/ChargeRowActions'
+import { SettleBalanceDialog } from '@/components/dashboard/charges/SettleBalanceDialog'
 import { getProviderUI } from '@/lib/payments/registry-ui'
 import { renderChargeNote } from '@/lib/charges/renderNote'
-import { waiveChargeAction, voidChargeAction, recordChargePaymentAction } from './actions'
+import {
+  waiveChargeAction,
+  voidChargeAction,
+  recordChargePaymentAction,
+  settleParentBalanceAction,
+} from './actions'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -76,6 +88,14 @@ export default async function ChargesPage(props: {
   const canMarkPaid = role === 'owner' || role === 'admin'
   const isOwner = role === 'owner'
   const selectedParent = parents.find((parent) => parent.id === searchParams.parent)
+
+  // Whole open balance per parent on the page — the rows here may be narrowed
+  // by status or date, and "settle the whole balance" must mean all of it.
+  const parentIdsOnPage = [...new Set(charges.map((c) => c.parent.id))]
+  const openBalances = canMarkPaid
+    ? await getOpenBalancesByParent(orgId, parentIdsOnPage)
+    : new Map<string, { total: number; count: number }>()
+  const selectedParentBalance = selectedParent ? openBalances.get(selectedParent.id) : undefined
   const t = await getTranslations('charges')
   const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
@@ -289,10 +309,26 @@ export default async function ChargesPage(props: {
       </form>
 
       {selectedParent && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          {t('showingFor')}{' '}
-          <span className="font-medium text-foreground">{selectedParent.full_name}</span>
-        </p>
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span>
+            {t('showingFor')}{' '}
+            <span className="font-medium text-foreground">{selectedParent.full_name}</span>
+          </span>
+          {/* One parent in view with something owed: settle it all from here,
+              instead of one dialog per row. */}
+          {canMarkPaid && selectedParentBalance && (
+            <span className="ms-auto">
+              <SettleBalanceDialog
+                parentId={selectedParent.id}
+                parentName={selectedParent.full_name}
+                total={selectedParentBalance.total}
+                chargeCount={selectedParentBalance.count}
+                parentHasPhone={Boolean(selectedParent.phone)}
+                action={settleParentBalanceAction}
+              />
+            </span>
+          )}
+        </div>
       )}
 
       {charges.length === 0 ? (
@@ -444,7 +480,14 @@ export default async function ChargesPage(props: {
                             isOwner={isOwner}
                             hasPaymentLink={Boolean(charge.payment_link)}
                             hasInvoice={charge.has_invoice}
+                            parent={{
+                              id: charge.parent.id,
+                              name: charge.parent.full_name,
+                              hasPhone: Boolean(charge.parent.phone),
+                            }}
+                            parentBalance={openBalances.get(charge.parent.id)}
                             recordPaymentAction={recordChargePaymentAction}
+                            settleAction={settleParentBalanceAction}
                             waiveAction={waiveChargeAction}
                             voidAction={voidChargeAction}
                           />

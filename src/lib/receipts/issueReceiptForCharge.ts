@@ -26,13 +26,19 @@ import { renderChargeNote } from '@/lib/charges/renderNote'
 /**
  * Issues a receipt for a paid charge and updates the charge row.
  *
+ * `notifyParent: false` skips step 8 for callers that fold the receipt link into
+ * a message of their own (the manual payment confirmation), so the parent does
+ * not get a "thank you" and a "here is your receipt" as two separate bubbles.
+ *
  * @returns receipt URL on success, null if provider not configured or receipt already issued.
  * Receipt failure never rolls back a completed payment — always fire-and-forget from callers.
  */
 export async function issueReceiptForCharge(
   chargeId: string,
-  orgId: string
+  orgId: string,
+  options: { notifyParent?: boolean } = {}
 ): Promise<string | null> {
+  const { notifyParent = true } = options
   const db = createServiceRoleClient()
 
   // ── 1. Load charge with parent + org ───────────────────────────────────────
@@ -193,7 +199,7 @@ export async function issueReceiptForCharge(
   }
 
   // ── 8. WhatsApp notification — best-effort ────────────────────────────────
-  await notifyParentOfReceipt({
+  if (notifyParent) await notifyParentOfReceipt({
     orgId,
     chargeId,
     amount: charge.amount,

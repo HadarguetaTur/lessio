@@ -9,8 +9,17 @@ import { Button } from '@/components/ui/button'
 import { SearchField } from '@/components/ui/search-field'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { RecordPaymentDialog, type RecordPaymentInput } from '@/components/dashboard/charges/RecordPaymentDialog'
+import {
+  RecordPaymentDialog,
+  type ManualPaymentResult,
+  type RecordPaymentInput,
+} from '@/components/dashboard/charges/RecordPaymentDialog'
 import { ResolveChargeDialog } from '@/components/dashboard/charges/ResolveChargeDialog'
+import {
+  SettleBalanceDialog,
+  type SettleBalanceInput,
+  type SettleBalanceResult,
+} from '@/components/dashboard/charges/SettleBalanceDialog'
 import { renderChargeNote } from '@/lib/charges/renderNote'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { matchesSearch } from '@/lib/search/text'
@@ -23,7 +32,8 @@ interface DebtorsListProps {
   isOwner: boolean
   sendRemindersAction: (parentIds: string[]) => Promise<SendRemindersResult>
   sendPaymentRequestsAction: (parentIds: string[]) => Promise<SendRemindersResult>
-  recordPaymentAction: (input: RecordPaymentInput) => Promise<{ error: string | null }>
+  recordPaymentAction: (input: RecordPaymentInput) => Promise<ManualPaymentResult>
+  settleAction: (input: SettleBalanceInput) => Promise<SettleBalanceResult>
   waiveAction: (chargeId: string, reason: string) => Promise<{ error: string | null }>
   voidAction: (chargeId: string, reason: string) => Promise<{ error: string | null }>
 }
@@ -40,6 +50,7 @@ export function DebtorsList({
   sendRemindersAction,
   sendPaymentRequestsAction,
   recordPaymentAction,
+  settleAction,
   waiveAction,
   voidAction,
 }: DebtorsListProps) {
@@ -264,6 +275,18 @@ export function DebtorsList({
                       <CreditCard size={14} />
                       {t('sendPaymentRequest')}
                     </Button>
+                    {/* The money came in for everything at once — one
+                        confirmation instead of a dialog per charge below. */}
+                    <SettleBalanceDialog
+                      parentId={row.parentId}
+                      parentName={row.parentName}
+                      total={row.totalDebt}
+                      chargeCount={row.chargeCount}
+                      parentHasPhone={Boolean(row.phone)}
+                      action={settleAction}
+                      variant="ghost"
+                      triggerLabel={t('settleBalance')}
+                    />
                     <Button
                       variant="ghost"
                       size="sm"
@@ -319,6 +342,7 @@ export function DebtorsList({
                           <RecordPaymentDialog
                             chargeId={charge.id}
                             remaining={charge.remaining}
+                            parentHasPhone={Boolean(row.phone)}
                             action={recordPaymentAction}
                           />
                           <ResolveChargeDialog

@@ -51,11 +51,14 @@ const ALL_TYPES = Object.keys(DEFAULT_TEMPLATES.he) as MessageTemplateType[]
  * Sent outside the 24h window, so Meta approval applies.
  * `lesson_cancelled_by_teacher` is here for its status only — its Meta template
  * carries a quick-reply button, which is a different submission shape, so it
- * stays on Lessio's built-in copy.
+ * stays on Lessio's built-in copy. `payment_received` likewise: its two optional
+ * tails (balance, receipt) collapse into one Meta parameter, which an org-authored
+ * body-only submission cannot express.
  */
 const OUT_OF_WINDOW_TYPES: MessageTemplateType[] = [
   ...SUBMITTABLE_TYPES,
   'lesson_cancelled_by_teacher',
+  'payment_received',
 ]
 
 const LANG_TABS: Array<{ locale: AppLocale; label: string }> = [

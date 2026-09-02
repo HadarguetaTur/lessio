@@ -201,6 +201,29 @@ const HE_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = {
       },
     ],
   },
+
+  payment_received: {
+    // Confirms a payment the tutor recorded by hand, usually days after the
+    // parent last wrote in — so almost always outside the window. {{3}} is the
+    // optional tail (remaining balance and/or receipt link); Meta rejects an
+    // empty parameter, so an empty tail becomes a closing line instead.
+    name: 'lessio_payment_received_he_v2',
+    languageCode: 'he',
+    buildComponents: (vars) => [
+      {
+        type: 'body',
+        parameters: [
+          param(vars.parent_name, 'הורים יקרים'),
+          // Formatted money on purpose: the registered body has no '₪' of its own.
+          param(vars.amount, ''),
+          param(
+            [vars.balance_line, vars.receipt_line].filter(Boolean).join(' '),
+            vars.payment_received_closing || 'הכל מסודר.'
+          ),
+        ],
+      },
+    ],
+  },
 }
 
 /**
@@ -246,6 +269,7 @@ const EN_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = Obj
           feedback_line: vars.feedback_line || 'No additional feedback.',
           decision: vars.decision || 'updated',
           org_name: vars.org_name || 'your tutor',
+          payment_received_closing: vars.payment_received_closing || 'Everything is settled.',
         }),
     } satisfies ApprovedTemplate,
   ])

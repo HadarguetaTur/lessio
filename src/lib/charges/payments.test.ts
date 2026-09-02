@@ -97,7 +97,7 @@ describe('recordChargePayment', () => {
       actorProfileId: 'profile-1',
     })
 
-    expect(result).toEqual({ ok: true, amountPaid: 200, remaining: 250, closed: false })
+    expect(result).toEqual({ ok: true, amountPaid: 200, remaining: 250, closed: false, parentId: 'parent-1' })
     expect(inserted[0]).toMatchObject({ charge_id: 'charge-1', amount: 200, method: 'cash' })
     expect(updated[0]).toMatchObject({ amount_paid: 200 })
     expect(mockMarkChargeAsPaid).not.toHaveBeenCalled()
@@ -113,7 +113,7 @@ describe('recordChargePayment', () => {
       actorProfileId: 'profile-1',
     })
 
-    expect(result).toEqual({ ok: true, amountPaid: 450, remaining: 0, closed: true })
+    expect(result).toEqual({ ok: true, amountPaid: 450, remaining: 0, closed: true, parentId: 'parent-1' })
     // amount_paid is written before closing, so the close call adds no second payment row.
     expect(updated[0]).toMatchObject({ amount_paid: 450 })
     expect(mockMarkChargeAsPaid).toHaveBeenCalledWith('charge-1', 'org-1', undefined, 'profile-1')

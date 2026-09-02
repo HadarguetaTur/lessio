@@ -71,6 +71,9 @@ export type BotStringKey =
   | 'charge_item_of'
   | 'charge_item_line'
   | 'charge_lines_total'
+  // Optional tails of the payment_received confirmation
+  | 'payment_received_balance_line'
+  | 'payment_received_receipt_line'
   // CTA button labels (Meta caps display_text at 20 chars — keep them short)
   | 'cta_book_lesson'
   | 'cta_book_next_week'
@@ -291,6 +294,12 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_item_of: 'של',
     charge_item_line: '{{index}}. {{label}}{{detail}}: {{amount}}',
     charge_lines_total: 'סה״כ לתשלום: {{total}}',
+
+    // Spliced into payment_received's {{balance_line}} / {{receipt_line}}. The
+    // receipt line introduces its URL with a full sentence so it can lift into
+    // a button (see the rules at the top of templates.ts).
+    payment_received_balance_line: '\nיתרה לתשלום: {{remaining}}',
+    payment_received_receipt_line: '\nהקבלה זמינה כאן.\n{{url}}',
 
     cta_book_lesson: 'לקביעת שיעור',
     cta_book_next_week: 'לשבוע הבא',
@@ -535,6 +544,9 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_item_of: 'for',
     charge_item_line: '{{index}}. {{label}}{{detail}}: {{amount}}',
     charge_lines_total: 'Total due: {{total}}',
+
+    payment_received_balance_line: '\nRemaining balance: {{remaining}}',
+    payment_received_receipt_line: '\nYour receipt is available here.\n{{url}}',
 
     cta_book_lesson: 'Book a lesson',
     cta_book_next_week: 'Book next week',

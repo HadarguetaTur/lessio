@@ -184,6 +184,25 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Hi! Messages in this chat are sent on behalf of {{1}} via Lessio — lesson reminders, homework and payment requests. Reply "stop" at any time to opt out.',
     example: [['Brightpath Tutoring']],
   },
+  // ── Payment received ────────────────────────────────────────────────────
+  // Sent when the tutor records a payment by hand, which is typically days
+  // after the parent last wrote in — so a template, not text. {{2}} is the
+  // amount already formatted with its currency (like the v4 payment set), and
+  // {{3}} is the optional tail: the remaining balance after a partial payment,
+  // the receipt link, or a closing line when neither applies (Meta rejects an
+  // empty parameter and a variable at the very end of the body).
+  {
+    name: 'lessio_payment_received_he_v2',
+    language: 'he',
+    bodyText: 'היי {{1}} 👋 התשלום על סך {{2}} התקבל, תודה רבה! 🙏 {{3}} נתראה!',
+    example: [['מיכל', '₪250.00', 'יתרה לתשלום: ₪150.00']],
+  },
+  {
+    name: 'lessio_payment_received_en_v2',
+    language: 'en',
+    bodyText: 'Hi {{1}} 👋 Your payment of {{2}} has been received, thank you! 🙏 {{3}} See you soon!',
+    example: [['Michelle', '₪250.00', 'Remaining balance: ₪150.00']],
+  },
   // ── Menu with quick-reply buttons ───────────────────────────────────────
   // Free-form interactive messages are rejected outside the 24h window, so the
   // tappable menu needs a template twin. Meta stores only the labels; the

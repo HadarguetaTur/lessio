@@ -12,6 +12,7 @@ import {
   waiveChargeAction,
   voidChargeAction,
   recordChargePaymentAction,
+  settleParentBalanceAction,
 } from '../../charges/actions'
 import { sendDebtRemindersAction, sendConsolidatedRequestsAction } from './actions'
 
@@ -62,6 +63,7 @@ export default async function DebtsPage() {
             sendRemindersAction={sendDebtRemindersAction}
             sendPaymentRequestsAction={sendConsolidatedRequestsAction}
             recordPaymentAction={recordChargePaymentAction}
+            settleAction={settleParentBalanceAction}
             waiveAction={waiveChargeAction}
             voidAction={voidChargeAction}
           />

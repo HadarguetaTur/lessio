@@ -22,17 +22,57 @@ export interface RecordPaymentInput {
   amount: number
   method: PaymentMethod
   notes?: string
+  /** Whether to WhatsApp the parent a confirmation. Defaults to true server-side. */
+  notifyParent?: boolean
+}
+
+/** What the server decided about the parent confirmation, for the toast. */
+export type PaymentNotificationStatus = 'queued' | 'disabled' | 'no_phone' | 'whatsapp_not_connected'
+
+export interface ManualPaymentResult {
+  error: string | null
+  notification?: PaymentNotificationStatus
+}
+
+/**
+ * The toast for a manual payment: the outcome, plus what happened to the
+ * parent confirmation when it was asked for and could not go out.
+ */
+export function paymentToast(
+  base: string,
+  notification: PaymentNotificationStatus | undefined,
+  /** A translator scoped to `charges.notification`. */
+  notifyLabel: (key: 'queued' | 'noPhone' | 'whatsappNotConnected') => string
+): string {
+  switch (notification) {
+    case 'queued':
+      return `${base} · ${notifyLabel('queued')}`
+    case 'no_phone':
+      return `${base} · ${notifyLabel('noPhone')}`
+    case 'whatsapp_not_connected':
+      return `${base} · ${notifyLabel('whatsappNotConnected')}`
+    default:
+      return base
+  }
 }
 
 interface RecordPaymentDialogProps {
   chargeId: string
   /** What is still owed — the default and the maximum. */
   remaining: number
-  action: (input: RecordPaymentInput) => Promise<{ error: string | null }>
+  /** Hides the confirmation checkbox when there is nobody to message. */
+  parentHasPhone?: boolean
+  action: (input: RecordPaymentInput) => Promise<ManualPaymentResult>
 }
 
-export function RecordPaymentDialog({ chargeId, remaining, action }: RecordPaymentDialogProps) {
+export function RecordPaymentDialog({
+  chargeId,
+  remaining,
+  parentHasPhone = true,
+  action,
+}: RecordPaymentDialogProps) {
   const t = useTranslations('charges.recordPayment')
+  const tNotify = useTranslations('charges.notification')
   const tCommon = useTranslations('common')
   const locale = useLocale()
   const money = (amount: number) => formatMoney(amount, locale)
@@ -40,6 +80,7 @@ export function RecordPaymentDialog({ chargeId, remaining, action }: RecordPayme
   const [amount, setAmount] = useState(String(remaining))
   const [method, setMethod] = useState<PaymentMethod>('manual')
   const [notes, setNotes] = useState('')
+  const [notifyParent, setNotifyParent] = useState(true)
   const [isPending, startTransition] = useTransition()
 
   const parsedAmount = Number(amount)
@@ -55,6 +96,7 @@ export function RecordPaymentDialog({ chargeId, remaining, action }: RecordPayme
         amount: parsedAmount,
         method,
         notes: notes.trim() || undefined,
+        notifyParent: parentHasPhone && notifyParent,
       })
 
       if (result.error) {
@@ -62,7 +104,9 @@ export function RecordPaymentDialog({ chargeId, remaining, action }: RecordPayme
         return
       }
 
-      toast.success(isPartial ? t('successPartial') : t('successFull'))
+      toast.success(
+        paymentToast(isPartial ? t('successPartial') : t('successFull'), result.notification, tNotify)
+      )
       setOpen(false)
       setNotes('')
     })
@@ -146,6 +190,18 @@ export function RecordPaymentDialog({ chargeId, remaining, action }: RecordPayme
               <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 {t('partialHint', { balance: money(remaining - parsedAmount) })}
               </p>
+            )}
+
+            {parentHasPhone && (
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={notifyParent}
+                  onChange={(e) => setNotifyParent(e.target.checked)}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                {t('notifyParent')}
+              </label>
             )}
           </div>
 

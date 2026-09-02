@@ -20,7 +20,14 @@ export type RecordPaymentFailure =
   | 'insert_failed'
 
 export type RecordPaymentResult =
-  | { ok: true; amountPaid: number; remaining: number; closed: boolean }
+  | {
+      ok: true
+      amountPaid: number
+      remaining: number
+      closed: boolean
+      /** Who owes the charge — so the caller can notify them without a second load. */
+      parentId: string | null
+    }
   | { ok: false; reason: RecordPaymentFailure; remaining?: number }
 
 const OPEN: ReadonlySet<string> = new Set(['pending', 'invoiced'])
@@ -138,6 +145,7 @@ export async function recordChargePayment({
     amountPaid: newAmountPaid,
     remaining: remainingAmount(total, newAmountPaid),
     closed,
+    parentId: (charge.parent_id as string | null) ?? null,
   }
 }
 

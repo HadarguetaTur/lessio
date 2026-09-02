@@ -5,14 +5,14 @@ import { z } from 'zod'
 import { runAfterResponse } from '@/lib/server/afterResponse'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { assertOrgNotSaasReadOnly } from '@/lib/saas/featureGate'
-import { markChargeAsPaid, ChargeAlreadyResolvedError } from '@/lib/charges'
 import { waiveCharge, voidCharge, type ResolveChargeResult } from '@/lib/charges/resolve'
 import { recordChargePayment, type PaymentMethod } from '@/lib/charges/payments'
+import { settleParentBalance } from '@/lib/charges/settle'
+import { notifyParentOfPayment } from '@/lib/charges/notifyParentOfPayment'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { receiptEmail } from '@/lib/email/templates/receipt'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { notifyMultiple, getOwnerAndAdminProfileIds } from '@/lib/notifications'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations, getLocale } from 'next-intl/server'
 import { formatMoney } from '@/lib/i18n/formatCurrency'
@@ -26,63 +26,87 @@ function revalidateChargeSurfaces() {
   revalidatePath('/reports/debt')
 }
 
-export async function markAsPaid(
-  chargeId: string,
-  notes?: string
-): Promise<{ error: string | null }> {
-  const t = await getTranslations()
-  const session = await getSession()
-  const { orgId, role } = session
-  requireMutation(session)
+/**
+ * Whether the parent will hear about a payment. Decided before the response so
+ * the toast can be honest; the send itself happens after it.
+ */
+export type PaymentNotificationStatus =
+  | 'queued'
+  | 'disabled'
+  | 'no_phone'
+  | 'whatsapp_not_connected'
 
-  if (role !== 'owner' && role !== 'admin') {
-    return { error: await commonError('noPermission') }
-  }
+export interface ManualPaymentResult {
+  error: string | null
+  notification?: PaymentNotificationStatus
+}
 
-  try {
-    await markChargeAsPaid(chargeId, orgId, notes?.trim() || undefined, session.profileId)
-    revalidateChargeSurfaces()
-  } catch (err) {
-    if (err instanceof ChargeAlreadyResolvedError) {
-      return { error: t('charges.errors.chargeResolved') }
-    }
-    return { error: t('charges.errors.updateStatusFailed') }
-  }
+async function resolveNotificationStatus(
+  orgId: string,
+  parentId: string | null,
+  notifyParent: boolean
+): Promise<PaymentNotificationStatus> {
+  if (!notifyParent || !parentId) return 'disabled'
 
-  // After the response — must not block or fail mark-paid, but must outlive the lambda.
-  await runAfterResponse(
-    Promise.all([
-      issueReceiptForCharge(chargeId, orgId).catch((err) => {
-        console.error('[charges] receipt issuance failed — charge already marked paid', {
-          chargeId,
-          orgId,
-          err,
+  const db = createServiceRoleClient()
+  const [{ data: parent }, { data: org }] = await Promise.all([
+    db.from('parents').select('phone').eq('id', parentId).eq('organization_id', orgId).maybeSingle(),
+    db.from('organizations').select('whatsapp_phone_number_id, whatsapp_access_token').eq('id', orgId).maybeSingle(),
+  ])
+
+  if (!parent?.phone) return 'no_phone'
+  if (!org?.whatsapp_phone_number_id || !org?.whatsapp_access_token) return 'whatsapp_not_connected'
+  return 'queued'
+}
+
+/**
+ * Everything a manual payment owes the parent once the money is written:
+ * receipts (and their email) for the charges that closed, then one WhatsApp
+ * confirmation that carries the receipt links. Runs after the response — it
+ * must not block or fail the payment, but must outlive the lambda.
+ *
+ * Receipt issuance passes `notifyParent: false` so the parent is not sent the
+ * receipt twice: once here inside the confirmation and once by the receipt path.
+ */
+function afterManualPayment(p: {
+  orgId: string
+  parentId: string | null
+  chargeIds: string[]
+  closedChargeIds: string[]
+  amount: number
+  remaining: number
+  notifyParent: boolean
+}): Promise<void> {
+  return runAfterResponse(
+    (async () => {
+      const receiptUrls: string[] = []
+      for (const chargeId of p.closedChargeIds) {
+        const url = await issueReceiptForCharge(chargeId, p.orgId, { notifyParent: false }).catch((err) => {
+          console.error('[charges] receipt issuance failed — charge already paid', {
+            chargeId,
+            orgId: p.orgId,
+            err,
+          })
+          return null
         })
-      }),
-      sendReceiptEmail(chargeId, orgId).catch((err) => {
-        console.error('[charges] receipt email failed', { chargeId, orgId, err })
-      }),
-    ])
+        if (url) receiptUrls.push(url)
+        await sendReceiptEmail(chargeId, p.orgId).catch((err) => {
+          console.error('[charges] receipt email failed', { chargeId, orgId: p.orgId, err })
+        })
+      }
+
+      if (p.notifyParent && p.parentId) {
+        await notifyParentOfPayment({
+          orgId: p.orgId,
+          parentId: p.parentId,
+          chargeIds: p.chargeIds,
+          amount: p.amount,
+          remaining: p.remaining,
+          receiptUrls,
+        })
+      }
+    })()
   )
-
-  // Fire-and-forget: in-app notification for payment received (Sprint 25 Story 4)
-  void (async () => {
-    try {
-      const recipients = await getOwnerAndAdminProfileIds(orgId)
-      await notifyMultiple(
-        orgId,
-        recipients,
-        'payment_received',
-        t('charges.paymentReceivedNotification'),
-        undefined,
-        `/charges/${chargeId}`
-      )
-    } catch (err) {
-      console.error('[charges] notification failed', { chargeId, err })
-    }
-  })()
-
-  return { error: null }
 }
 
 // ─── Waive / void ──────────────────────────────────────────────────────────
@@ -138,24 +162,29 @@ export async function voidChargeAction(
 
 // ─── Record a payment (full or partial) ────────────────────────────────────
 
+const paymentMethodSchema = z.enum(['manual', 'cash', 'bank_transfer', 'provider', 'other'])
+
 const recordPaymentSchema = z.object({
   chargeId: z.string().uuid(),
   amount: z.number().positive().max(1_000_000),
-  method: z.enum(['manual', 'cash', 'bank_transfer', 'provider', 'other']),
+  method: paymentMethodSchema,
   notes: z.string().max(500).optional(),
+  notifyParent: z.boolean().default(true),
 })
 
 /**
  * Records money received against a charge. A payment that covers the remaining
  * balance closes the charge (receipt included); anything less leaves the
- * remainder as open debt.
+ * remainder as open debt. Either way the parent gets a confirmation unless the
+ * tutor unticked it.
  */
 export async function recordChargePaymentAction(input: {
   chargeId: string
   amount: number
   method: PaymentMethod
   notes?: string
-}): Promise<{ error: string | null }> {
+  notifyParent?: boolean
+}): Promise<ManualPaymentResult> {
   const session = await getSession()
   requireMutation(session)
   await assertOrgNotSaasReadOnly(session.orgId)
@@ -199,24 +228,114 @@ export async function recordChargePaymentAction(input: {
   revalidateChargeSurfaces()
   revalidatePath(`/charges/${parsed.data.chargeId}`)
 
-  // A charge that just closed gets the same receipt treatment as mark-as-paid.
-  if (result.closed) {
-    await runAfterResponse(
-      Promise.all([
-        issueReceiptForCharge(parsed.data.chargeId, session.orgId).catch((err) => {
-          console.error('[charges] receipt issuance failed after final payment', {
-            chargeId: parsed.data.chargeId,
-            err,
-          })
-        }),
-        sendReceiptEmail(parsed.data.chargeId, session.orgId).catch((err) => {
-          console.error('[charges] receipt email failed', { chargeId: parsed.data.chargeId, err })
-        }),
-      ])
-    )
+  const notification = await resolveNotificationStatus(
+    session.orgId,
+    result.parentId,
+    parsed.data.notifyParent
+  )
+
+  await afterManualPayment({
+    orgId: session.orgId,
+    parentId: result.parentId,
+    chargeIds: [parsed.data.chargeId],
+    closedChargeIds: result.closed ? [parsed.data.chargeId] : [],
+    amount: parsed.data.amount,
+    remaining: result.remaining,
+    notifyParent: notification === 'queued',
+  })
+
+  return { error: null, notification }
+}
+
+// ─── Settle a parent's whole balance ───────────────────────────────────────
+
+const settleBalanceSchema = z.object({
+  parentId: z.string().uuid(),
+  method: paymentMethodSchema,
+  notes: z.string().max(500).optional(),
+  notifyParent: z.boolean().default(true),
+})
+
+export interface SettleBalanceResult extends ManualPaymentResult {
+  /** How many charges were closed — for the toast. */
+  settled?: number
+  /** How many stayed open because their payment could not be written. */
+  failed?: number
+}
+
+/**
+ * Marks every open charge of a parent as paid in one go — the parent who hands
+ * over the month's total should not cost the tutor one dialog per lesson.
+ * Per-charge partial payments stay on "record payment".
+ */
+export async function settleParentBalanceAction(input: {
+  parentId: string
+  method: PaymentMethod
+  notes?: string
+  notifyParent?: boolean
+}): Promise<SettleBalanceResult> {
+  const session = await getSession()
+  requireMutation(session)
+  await assertOrgNotSaasReadOnly(session.orgId)
+  const t = await getTranslations('charges.errors')
+
+  if (session.role !== 'owner' && session.role !== 'admin') {
+    return { error: await commonError('noPermission') }
   }
 
-  return { error: null }
+  const parsed = settleBalanceSchema.safeParse(input)
+  if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
+
+  let result
+  try {
+    result = await settleParentBalance({
+      parentId: parsed.data.parentId,
+      organizationId: session.orgId,
+      method: parsed.data.method,
+      notes: parsed.data.notes ?? null,
+      actorProfileId: session.profileId,
+    })
+  } catch (err) {
+    console.error('[charges] settle balance failed', { parentId: input.parentId, err })
+    return { error: t('updateStatusFailed') }
+  }
+
+  if (!result.ok) {
+    return { error: t('nothingOpen') }
+  }
+
+  revalidateChargeSurfaces()
+  for (const chargeId of result.settledChargeIds) revalidatePath(`/charges/${chargeId}`)
+
+  // Nothing was written, so there is nothing to confirm to the parent.
+  if (result.settledChargeIds.length === 0) {
+    return { error: t('updateStatusFailed') }
+  }
+
+  const notification = await resolveNotificationStatus(
+    session.orgId,
+    parsed.data.parentId,
+    parsed.data.notifyParent
+  )
+
+  await afterManualPayment({
+    orgId: session.orgId,
+    parentId: parsed.data.parentId,
+    chargeIds: result.settledChargeIds,
+    closedChargeIds: result.settledChargeIds,
+    amount: result.total,
+    // Whatever failed is still owed, but it is an error state, not a balance to
+    // quote back to the parent — the tutor sees it in the toast instead.
+    remaining: 0,
+    notifyParent: notification === 'queued',
+  })
+
+  return {
+    error: null,
+    notification,
+    settled: result.settledChargeIds.length,
+    failed: result.failedChargeIds.length,
+  }
 }
 
 async function runResolve(

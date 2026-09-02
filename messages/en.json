@@ -1104,6 +1104,7 @@
     "partiallyPaid": "Paid {paid} of {total}",
     "noPaymentProvider": "No payment provider configured — a payment link cannot be created",
     "sendPaymentRequest": "Consolidated request",
+    "settleBalance": "Mark all as paid",
     "sendPaymentRequestBulk": "Request payment from {count} parents",
     "requestsSent": "{sent} payment requests sent",
     "requestsSentWithSkipped": "{sent} payment requests sent, {skipped} skipped",
@@ -1178,7 +1179,23 @@
       "chargeAlreadyPaid": "This charge is already paid. Reverse a paid charge with a credit note instead",
       "chargeAlreadyResolved": "This charge was already waived or voided",
       "chargeNotOpen": "This charge is not open for payment",
-      "paymentTooLarge": "The amount is larger than the open balance ({max})"
+      "paymentTooLarge": "The amount is larger than the open balance ({max})",
+      "nothingOpen": "This parent has no open charges"
+    },
+    "notification": {
+      "queued": "A confirmation was sent to the parent on WhatsApp",
+      "noPhone": "No confirmation sent — the parent has no phone number",
+      "whatsappNotConnected": "No confirmation sent — WhatsApp is not connected"
+    },
+    "settleBalance": {
+      "action": "Mark whole balance as paid",
+      "menuAction": "Mark the parent's whole balance as paid",
+      "title": "Mark whole balance as paid",
+      "summary": "{count, plural, one {# open charge} other {# open charges}} · total {total}",
+      "description": "Every open charge of {name} will be marked as paid in full. For a partial payment, use \"Record payment\" on a single charge.",
+      "confirm": "Mark all as paid",
+      "success": "{count, plural, one {# charge} other {# charges}} marked as paid",
+      "partialFailure": "{settled} marked as paid, {failed} still open — try again"
     },
     "resolve": {
       "resolvedAt": "Resolved on",
@@ -1229,6 +1246,7 @@
       "notesPlaceholder": "Note (optional)",
       "invalidAmount": "Enter an amount between 0.01 and {max}",
       "partialHint": "Partial payment — {balance} stays open. A receipt is issued only when the charge closes.",
+      "notifyParent": "Send the parent a WhatsApp confirmation",
       "confirm": "Save payment",
       "successFull": "Payment recorded and the charge closed",
       "successPartial": "Partial payment recorded",

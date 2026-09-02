@@ -45,6 +45,7 @@ export type MessageTemplateType =
   | 'cancellation_confirmation'
   | 'cancellation_admin_alert'
   | 'receipt_notification'
+  | 'payment_received'
   | 'homework_assignment'
   | 'homework_reminder'
   | 'balance_reply'
@@ -83,6 +84,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       '🔔 בוטל שיעור דרך וואטסאפ\n\nתלמיד: {{student_name}}\nמורה: {{teacher_name}}\nמועד: {{date}} בשעה {{time}}{{charge_line}}\nמי ביטל: {{parent_phone}}',
     receipt_notification:
       'תודה על התשלום! 🙏\nהקבלה על {{amount}} זמינה כאן:\n{{receipt_url}}',
+    payment_received:
+      'היי {{parent_name}} 👋\nהתשלום על סך {{amount}} התקבל, תודה רבה! 🙏{{balance_line}}{{receipt_line}}',
     homework_assignment:
       '📚 שיעורי בית חדשים: {{title}}\n\n{{body}}{{due_line}}\n\nבהצלחה! 💪',
     homework_reminder:
@@ -129,6 +132,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       '🔔 Lesson cancelled via WhatsApp\n\nStudent: {{student_name}}\nTeacher: {{teacher_name}}\nWhen: {{date}} at {{time}}{{charge_line}}\nCancelled by: {{parent_phone}}',
     receipt_notification:
       'Thank you for your payment! 🙏\nYour receipt for {{amount}} is here:\n{{receipt_url}}',
+    payment_received:
+      'Hi {{parent_name}} 👋\nYour payment of {{amount}} has been received, thank you! 🙏{{balance_line}}{{receipt_line}}',
     homework_assignment:
       '📚 New homework: {{title}}\n\n{{body}}{{due_line}}\n\nGood luck! 💪',
     homework_reminder:

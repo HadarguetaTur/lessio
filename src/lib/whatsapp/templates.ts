@@ -27,6 +27,7 @@ export type MessageTemplateType =
   | 'cancellation_confirmation'
   | 'cancellation_admin_alert'
   | 'receipt_notification'
+  | 'payment_received'
   | 'homework_assignment'
   | 'homework_reminder'
   | 'balance_reply'
@@ -78,6 +79,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       '🔔 בוטל שיעור דרך וואטסאפ\n\nתלמיד: {{student_name}}\nמורה: {{teacher_name}}\nמועד: {{date}} בשעה {{time}}{{charge_line}}\nמי ביטל: {{parent_phone}}',
     receipt_notification:
       'תודה על התשלום! 🙏\nהקבלה על {{amount}} זמינה כאן:\n{{receipt_url}}',
+    payment_received:
+      'היי {{parent_name}} 👋\nהתשלום על סך {{amount}} התקבל, תודה רבה! 🙏{{balance_line}}{{receipt_line}}',
     homework_assignment:
       '📚 שיעורי בית חדשים: {{title}}\n\n{{body}}{{due_line}}\n\nבהצלחה! 💪',
     homework_reminder:
@@ -124,6 +127,8 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       '🔔 Lesson cancelled via WhatsApp\n\nStudent: {{student_name}}\nTeacher: {{teacher_name}}\nWhen: {{date}} at {{time}}{{charge_line}}\nCancelled by: {{parent_phone}}',
     receipt_notification:
       'Thank you for your payment! 🙏\nYour receipt for {{amount}} is here:\n{{receipt_url}}',
+    payment_received:
+      'Hi {{parent_name}} 👋\nYour payment of {{amount}} has been received, thank you! 🙏{{balance_line}}{{receipt_line}}',
     homework_assignment:
       '📚 New homework: {{title}}\n\n{{body}}{{due_line}}\n\nGood luck! 💪',
     homework_reminder:
@@ -311,6 +316,9 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   cancellation_confirmation: ['student_name', 'teacher_name', 'date', 'time', 'charge_line'],
   cancellation_admin_alert: ['student_name', 'teacher_name', 'date', 'time', 'charge_line', 'parent_phone'],
   receipt_notification: ['amount', 'receipt_url'],
+  // balance_line is non-empty only after a partial payment; receipt_line only
+  // when a tax document was issued for the payment. Both are botString fragments.
+  payment_received: ['parent_name', 'amount', 'balance_line', 'receipt_line'],
   homework_assignment: ['title', 'body', 'due_line'],
   homework_reminder: ['title', 'due_date_suffix'],
   homework_graded: ['title', 'score', 'feedback_line'],
@@ -345,6 +353,7 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
     cancellation_confirmation: 'אישור ביטול שיעור (להורה)',
     cancellation_admin_alert: 'התראת ביטול (למנהל)',
     receipt_notification: 'קבלה לאחר תשלום',
+    payment_received: 'אישור קבלת תשלום (להורה)',
     homework_assignment: 'שיעורי בית חדשים',
     homework_reminder: 'תזכורת שיעורי בית',
     homework_graded: 'ציון על שיעורי בית',
@@ -369,6 +378,7 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
     cancellation_confirmation: 'Cancellation confirmation (to parent)',
     cancellation_admin_alert: 'Cancellation alert (to admin)',
     receipt_notification: 'Receipt after payment',
+    payment_received: 'Payment received confirmation (to parent)',
     homework_assignment: 'New homework',
     homework_reminder: 'Homework reminder',
     homework_graded: 'Homework graded',
@@ -410,6 +420,7 @@ export const TEMPLATE_PREVIEW_VARS: Record<
     cancellation_confirmation: { student_name: 'דנה', teacher_name: 'אהרון כהן', date: 'יום שני, 21.4', time: '17:00', charge_line: '\nחיוב ביטול מלא: ₪250.00' },
     cancellation_admin_alert: { student_name: 'דנה', teacher_name: 'אהרון כהן', date: 'יום שני, 21.4', time: '17:00', charge_line: '\nחיוב: ₪250.00 (חיוב מלא)', parent_phone: '0501234567' },
     receipt_notification: { amount: '₪250.00', receipt_url: 'https://hashboniot.co.il/receipt/123' },
+    payment_received: { parent_name: 'מיכל', amount: '₪250.00', balance_line: '\nיתרה לתשלום: ₪150.00', receipt_line: '\nהקבלה זמינה כאן.\nhttps://hashboniot.co.il/receipt/123' },
     homework_assignment: { title: 'עמ׳ 45–47', body: 'תרגילים 1–10', due_line: '\nלהגשה עד: יום חמישי' },
     homework_reminder: { title: 'עמ׳ 45–47', due_date_suffix: ' (21.4)' },
     homework_graded: { title: 'עמ׳ 45–47', score: '92', feedback_line: 'עבודה מצוינת!' },
@@ -434,6 +445,7 @@ export const TEMPLATE_PREVIEW_VARS: Record<
     cancellation_confirmation: { student_name: 'Dana', teacher_name: 'Aaron Cohen', date: 'Monday, 21 Apr', time: '17:00', charge_line: '\nFull cancellation charge: ₪250.00' },
     cancellation_admin_alert: { student_name: 'Dana', teacher_name: 'Aaron Cohen', date: 'Monday, 21 Apr', time: '17:00', charge_line: '\nCharge: ₪250.00 (full)', parent_phone: '0501234567' },
     receipt_notification: { amount: '₪250.00', receipt_url: 'https://hashboniot.co.il/receipt/123' },
+    payment_received: { parent_name: 'Michelle', amount: '₪250.00', balance_line: '\nRemaining balance: ₪150.00', receipt_line: '\nYour receipt is available here.\nhttps://hashboniot.co.il/receipt/123' },
     homework_assignment: { title: 'pp. 45–47', body: 'Exercises 1–10', due_line: '\nDue by: Thursday' },
     homework_reminder: { title: 'pp. 45–47', due_date_suffix: ' (21 Apr)' },
     homework_graded: { title: 'pp. 45–47', score: '92', feedback_line: 'Excellent work!' },

@@ -9,7 +9,10 @@ import { POST } from './route'
 describe('automatic lesson completion route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key')
+    vi.stubEnv(
+      'LESSIO_AUTO_COMPLETION_CRON_SECRET_SHA256',
+      '7464acf030715a3ffe360c315aa691700adf241d3825c943803820101ab4e53e'
+    )
   })
 
   it('rejects calls without the cron bearer token', async () => {
@@ -22,7 +25,7 @@ describe('automatic lesson completion route', () => {
     const summary = { scanned: 2, completed: 2, retried: 0, warnings: 0, errors: 0 }
     mockCompleteDueLessons.mockResolvedValue(summary)
     const response = await POST(new NextRequest('http://localhost/api/internal/lessons/auto-complete', {
-      method: 'POST', headers: { authorization: 'Bearer test-service-role-key' },
+      method: 'POST', headers: { authorization: 'Bearer test-cron-secret' },
     }))
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual(summary)

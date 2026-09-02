@@ -392,9 +392,17 @@ own band whenever a break was set, and `resolveDayWindows` — one implementatio
 "special hours else weekly grid, minus blocks" rule that `getAvailableSlots` and
 `checkTeacherAvailability` had each written out separately.
 
-**Known gaps:** `createSeries` is not break-aware and does not run tail detection.
-Mid-day gaps are out of scope — only the last window of a day is examined. The
-`min_booking_notice_hours` end-vs-start quirk is documented, not fixed.
+**Follow-up (2026-09-02):** manual lesson creation now analyses the free segment
+before saving. If the chosen time strands a fragment shorter than every lesson
+duration available to that user, the form shows the exact fragment and offers
+edge-packed alternatives; the teacher can still explicitly continue. This is
+shared by the owner/admin and teacher creation routes.
+
+**Known gaps:** `createSeries` is not break-aware and does not run tail detection
+or the new packing analysis. The persistent end-of-day prompt still examines only
+the last window; the new mid-day analysis runs at manual creation time rather than
+as a general calendar-health scanner. The `min_booking_notice_hours` end-vs-start
+quirk is documented, not fixed.
 
 ---
 

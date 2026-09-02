@@ -198,17 +198,19 @@ export function NewLessonForm({
   // flight. The dialogs are derived from the action result rather than mirrored
   // into state by an effect, so there is no window where the result says
   // "confirm needed" and the dialog has not caught up.
-  const [dismissed, setDismissed] = useState({ availability: false, calendar: false })
+  const [dismissed, setDismissed] = useState({ availability: false, impact: false, calendar: false })
 
   const confirmMessage = state.error
   const confirmOpen = Boolean(state.needsAvailabilityConfirm && state.error) && !dismissed.availability && !pending
+  const impactConfirmOpen = Boolean(state.needsScheduleImpactConfirm) && !dismissed.impact && !pending
   const calendarConfirmOpen = Boolean(state.needsCalendarConfirm) && !dismissed.calendar && !pending
   // Cancelling a confirm dialog used to leave a blank screen: the banner stayed
   // suppressed for the whole life of the flag, so the Create button looked like
   // it had done nothing. Suppress it only while a dialog is actually up.
   const confirmDismissed =
-    (Boolean(state.needsAvailabilityConfirm) || Boolean(state.needsCalendarConfirm)) &&
+    (Boolean(state.needsAvailabilityConfirm) || Boolean(state.needsScheduleImpactConfirm) || Boolean(state.needsCalendarConfirm)) &&
     !confirmOpen &&
+    !impactConfirmOpen &&
     !calendarConfirmOpen &&
     !pending
 
@@ -237,7 +239,7 @@ export function NewLessonForm({
     lastFormDataRef.current = fd
     // A fresh attempt: any confirmation answered for the previous payload no
     // longer applies.
-    setDismissed({ availability: false, calendar: false })
+    setDismissed({ availability: false, impact: false, calendar: false })
     startTransition(() => formAction(fd))
   }
 
@@ -270,6 +272,32 @@ export function NewLessonForm({
     setDismissed((d) => ({ ...d, calendar: true }))
   }
 
+  const handleConfirmImpact = () => {
+    const fd = lastFormDataRef.current
+    setDismissed((d) => ({ ...d, impact: true }))
+    if (!fd) return
+    fd.set('confirm_schedule_impact', '1')
+    startTransition(() => formAction(fd))
+  }
+
+  const handleCancelImpact = () => {
+    setDismissed((d) => ({ ...d, impact: true }))
+    requestAnimationFrame(() => formRef.current?.querySelector<HTMLInputElement>('#start_time')?.focus())
+  }
+
+  const handleUseSuggestedTime = (time: string) => {
+    const fd = lastFormDataRef.current
+    const input = formRef.current?.querySelector<HTMLInputElement>('#start_time')
+    if (!fd || !input) return
+    input.value = time
+    fd.set('start_time', time)
+    fd.delete('confirm_outside_availability')
+    fd.delete('confirm_schedule_impact')
+    fd.delete('confirm_calendar_conflict')
+    setDismissed({ availability: false, impact: false, calendar: false })
+    startTransition(() => formAction(fd))
+  }
+
   const dateDefault = initialDate && initialDate >= minDateStr ? initialDate : minDateStr
 
   const formInner = (
@@ -282,7 +310,7 @@ export function NewLessonForm({
 
       {confirmDismissed && (
         <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-          <p>{t('availabilityConfirm.dismissedNotice')}</p>
+          <p>{state.needsScheduleImpactConfirm ? t('scheduleImpact.dismissedNotice') : t('availabilityConfirm.dismissedNotice')}</p>
           {state.availabilityInfo && <AvailabilityDetails info={state.availabilityInfo} />}
         </div>
       )}
@@ -589,6 +617,57 @@ export function NewLessonForm({
     </Dialog>
   )
 
+  const scheduleImpactDialog = (
+    <Dialog
+      open={impactConfirmOpen}
+      onOpenChange={(next) => {
+        if (!next) handleCancelImpact()
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('scheduleImpact.title')}</DialogTitle>
+          <DialogDescription>{t('scheduleImpact.description')}</DialogDescription>
+        </DialogHeader>
+        {state.scheduleImpact && (
+          <div className="space-y-3">
+            <ul className="space-y-1 rounded-lg border bg-amber-50/60 p-3 text-sm dark:bg-amber-950/20">
+              {state.scheduleImpact.fragments.map((fragment) => (
+                <li key={`${fragment.start}-${fragment.end}`}>
+                  {t('scheduleImpact.fragment', {
+                    start: fragment.start,
+                    end: fragment.end,
+                    minutes: fragment.minutes,
+                  })}
+                </li>
+              ))}
+            </ul>
+            {state.scheduleImpact.suggestions.length > 0 && (
+              <div>
+                <p className="mb-2 text-sm font-medium">{t('scheduleImpact.suggestions')}</p>
+                <div className="flex flex-wrap gap-2" dir="ltr">
+                  {state.scheduleImpact.suggestions.map((time) => (
+                    <Button key={time} type="button" variant="outline" onClick={() => handleUseSuggestedTime(time)}>
+                      {time}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={handleCancelImpact}>
+            {tCommon('actions.cancel')}
+          </Button>
+          <Button type="button" onClick={handleConfirmImpact} disabled={pending}>
+            {t('scheduleImpact.scheduleAnyway')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
   if (variant === 'sheet') {
     return (
       <>
@@ -596,6 +675,7 @@ export function NewLessonForm({
           {formInner}
         </form>
         {confirmDialog}
+        {scheduleImpactDialog}
         {calendarConflictDialog}
       </>
     )
@@ -612,6 +692,7 @@ export function NewLessonForm({
         {formInner}
       </form>
       {confirmDialog}
+      {scheduleImpactDialog}
       {calendarConflictDialog}
     </>
   )

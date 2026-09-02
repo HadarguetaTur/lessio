@@ -952,6 +952,14 @@
       "editAvailability": "Edit availability",
       "dismissedNotice": "The lesson was not scheduled. Change the time, or edit the availability."
     },
+    "scheduleImpact": {
+      "title": "This time creates a schedule gap",
+      "description": "The lesson is valid, but it would leave too little time for another lesson. Choose a time that packs the day more efficiently.",
+      "fragment": "{minutes} free minutes would remain between {start} and {end}",
+      "suggestions": "Recommended times",
+      "scheduleAnyway": "Schedule anyway",
+      "dismissedNotice": "The lesson was not scheduled. Choose another time to keep the day compact."
+    },
     "calendarConfirm": {
       "title": "Google Calendar conflict",
       "description": "Google Calendar events were found overlapping the requested time slot. You can still schedule the lesson.",

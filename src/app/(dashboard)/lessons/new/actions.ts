@@ -16,6 +16,7 @@ import { checkLessonCalendarConflicts, CalendarConflict } from '@/lib/google-cal
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 import { isLessonDurationAllowed } from '@/lib/organizations/lessonDurations'
+import { analyzeScheduleImpact, type ScheduleImpact } from '@/lib/scheduling/scheduleImpact'
 
 const lessonStatusZ = z.enum(['scheduled', 'completed', 'cancelled', 'no_show'])
 
@@ -102,6 +103,9 @@ export type NewLessonState = {
    */
   needsCalendarConfirm?: boolean
   calendarConflicts?: CalendarConflict[]
+  /** The lesson is legal, but would strand time too short for another lesson. */
+  needsScheduleImpactConfirm?: boolean
+  scheduleImpact?: ScheduleImpact
 }
 
 async function assertStudentsAssignedToTeacher(
@@ -149,6 +153,8 @@ export async function createLessonAction(
     formData.get('confirm_outside_availability') === '1'
   const confirmedCalendarConflict =
     formData.get('confirm_calendar_conflict') === '1'
+  const confirmedScheduleImpact =
+    formData.get('confirm_schedule_impact') === '1'
 
   if (lessonType !== 'custom') {
     const requestedDuration = Number(formData.get('duration_minutes'))
@@ -197,6 +203,10 @@ export async function createLessonAction(
         if (avail) return avail
       }
 
+      if (!confirmedScheduleImpact && status === 'scheduled') {
+        const impact = await assertCompactSchedule({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes, audience: 'teacher' })
+        if (impact) return impact
+      }
       if (!confirmedCalendarConflict && status === 'scheduled') {
         const cal = await assertNoCalendarConflicts({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes })
         if (cal) return cal
@@ -246,6 +256,10 @@ export async function createLessonAction(
         if (avail) return avail
       }
 
+      if (!confirmedScheduleImpact && status === 'scheduled') {
+        const impact = await assertCompactSchedule({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes, audience: 'admin' })
+        if (impact) return impact
+      }
       if (!confirmedCalendarConflict && status === 'scheduled') {
         const cal = await assertNoCalendarConflicts({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes })
         if (cal) return cal
@@ -290,6 +304,10 @@ export async function createLessonAction(
         if (avail) return avail
       }
 
+      if (!confirmedScheduleImpact && status === 'scheduled') {
+        const impact = await assertCompactSchedule({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes, audience: 'admin' })
+        if (impact) return impact
+      }
       if (!confirmedCalendarConflict && status === 'scheduled') {
         const cal = await assertNoCalendarConflicts({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes })
         if (cal) return cal
@@ -338,6 +356,17 @@ export async function createLessonAction(
     redirect(`/teacher/schedule/${lessonId}`)
   }
   redirect(`/lessons/${lessonId}`)
+}
+
+async function assertCompactSchedule(params: Parameters<typeof analyzeScheduleImpact>[0]): Promise<NewLessonState | null> {
+  const impact = await analyzeScheduleImpact(params)
+  if (!impact) return null
+  const t = await getTranslations()
+  return {
+    error: t('lessons.scheduleImpact.description'),
+    needsScheduleImpactConfirm: true,
+    scheduleImpact: impact,
+  }
 }
 
 /**

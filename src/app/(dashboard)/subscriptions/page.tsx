@@ -7,9 +7,11 @@ import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { UrlSearchField } from '@/components/dashboard/UrlSearchField'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { commonError } from '@/lib/i18n/actionErrors'
+import { matchesSearch } from '@/lib/search/text'
 
 function getSubscriptionStatus(sub: {
   is_paused: boolean
@@ -21,7 +23,7 @@ function getSubscriptionStatus(sub: {
 }
 
 export default async function SubscriptionsPage(props: {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{ status?: string; q?: string }>
 }) {
   const searchParams = await props.searchParams
   const { orgId, role } = await getSession()
@@ -39,13 +41,20 @@ export default async function SubscriptionsPage(props: {
   const fmtDate = (iso: string) => DateTime.fromISO(iso).toFormat('d.M.yyyy')
 
   const statusFilter = searchParams.status as 'active' | 'paused' | 'all' | undefined
+  const search = searchParams.q?.trim() ?? ''
   const allSubs = await getSubscriptions(orgId)
 
   const subs = allSubs.filter((sub) => {
     const status = getSubscriptionStatus(sub)
-    if (!statusFilter || statusFilter === 'all') return true
-    return status === statusFilter
+    if (statusFilter && statusFilter !== 'all' && status !== statusFilter) return false
+    return matchesSearch(search, { names: [sub.student?.full_name] })
   })
+
+  const statusHref = (status: string) => {
+    const params = new URLSearchParams({ status })
+    if (search) params.set('q', search)
+    return `/subscriptions?${params.toString()}`
+  }
 
   const FILTER_OPTIONS = [
     { value: 'active', label: t('status.active') },
@@ -63,15 +72,16 @@ export default async function SubscriptionsPage(props: {
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <PageHeader title={t('title')} />
 
-      {/* Status filter — pointless over an org with zero subscriptions. */}
+      {/* Filters — pointless over an org with zero subscriptions. */}
       {allSubs.length > 0 && (
-      <div className="mb-5 flex items-center gap-2">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <UrlSearchField q={search} placeholder={t('searchPlaceholder')} className="me-2 sm:max-w-xs" />
         {FILTER_OPTIONS.map((opt) => {
           const active = (statusFilter ?? 'active') === opt.value
           return (
             <Link
               key={opt.value}
-              href={`/subscriptions?status=${opt.value}`}
+              href={statusHref(opt.value)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 active
                   ? 'bg-primary text-primary-foreground'
@@ -88,7 +98,7 @@ export default async function SubscriptionsPage(props: {
       {subs.length === 0 ? (
         <EmptyState
           icon={CreditCard}
-          title={t('noSubscriptions')}
+          title={search ? tCommon('emptyStates.noResults') : t('noSubscriptions')}
           subtitle={allSubs.length === 0 ? t('noSubscriptionsHint') : undefined}
           action={
             allSubs.length === 0 ? (

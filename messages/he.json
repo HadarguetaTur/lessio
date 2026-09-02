@@ -1072,6 +1072,7 @@
     "title": "גבייה",
     "subtitle": "כל ההורים עם חוב פתוח, במקום אחד",
     "empty": "אין חובות פתוחים 🎉",
+    "searchPlaceholder": "חיפוש הורה, תלמיד או טלפון",
     "totalDebt": "סה״כ חוב פתוח",
     "debtorCount": "מספר הורים חייבים",
     "selectAll": "בחירת הכל",
@@ -2406,6 +2407,7 @@
   },
   "subscriptions": {
     "title": "מנויים",
+    "searchPlaceholder": "חיפוש לפי שם תלמיד",
     "addSubscription": "הוסף מנוי",
     "editSubscription": "ערוך מנוי",
     "fields": {
@@ -2588,6 +2590,7 @@
     "debt": {
       "title": "יתרות פתוחות",
       "description": "הורים עם יתרת חוב",
+      "searchPlaceholder": "חיפוש הורה או טלפון",
       "parent": "הורה",
       "balance": "יתרת חוב",
       "phone": "טלפון",

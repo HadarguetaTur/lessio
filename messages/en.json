@@ -1072,6 +1072,7 @@
     "title": "Collection",
     "subtitle": "Every parent with an open balance, in one place",
     "empty": "No open debt 🎉",
+    "searchPlaceholder": "Search parent, student or phone",
     "totalDebt": "Total open debt",
     "debtorCount": "Parents owing",
     "selectAll": "Select all",
@@ -2406,6 +2407,7 @@
   },
   "subscriptions": {
     "title": "Subscriptions",
+    "searchPlaceholder": "Search by student name",
     "addSubscription": "Add Subscription",
     "editSubscription": "Edit Subscription",
     "fields": {
@@ -2588,6 +2590,7 @@
     "debt": {
       "title": "Outstanding balances",
       "description": "Parents with outstanding balances",
+      "searchPlaceholder": "Search parent or phone",
       "parent": "Parent",
       "balance": "Balance",
       "phone": "Phone",

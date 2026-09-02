@@ -6,12 +6,14 @@ import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { ChevronDown, Copy, CreditCard, Loader2, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SearchField } from '@/components/ui/search-field'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { RecordPaymentDialog, type RecordPaymentInput } from '@/components/dashboard/charges/RecordPaymentDialog'
 import { ResolveChargeDialog } from '@/components/dashboard/charges/ResolveChargeDialog'
 import { renderChargeNote } from '@/lib/charges/renderNote'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
+import { matchesSearch } from '@/lib/search/text'
 import type { DebtorRow } from '@/lib/charges/debtors'
 import type { SendRemindersResult } from './actions'
 
@@ -24,6 +26,11 @@ interface DebtorsListProps {
   recordPaymentAction: (input: RecordPaymentInput) => Promise<{ error: string | null }>
   waiveAction: (chargeId: string, reason: string) => Promise<{ error: string | null }>
   voidAction: (chargeId: string, reason: string) => Promise<{ error: string | null }>
+}
+
+/** A debtor is found by their own name, any child's name, or their phone. */
+function matchesRow(row: DebtorRow, term: string): boolean {
+  return matchesSearch(term, { names: [row.parentName, ...row.childrenNames], phones: [row.phone] })
 }
 
 export function DebtorsList({
@@ -41,15 +48,31 @@ export function DebtorsList({
   const tCharges = useTranslations('charges')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [query, setQuery] = useState('')
   const [isPending, startTransition] = useTransition()
+
+  // Filtered in memory: the page already loads every debtor, and a collection
+  // list is short enough that a round trip per keystroke buys nothing.
+  const visibleRows = useMemo(() => rows.filter((r) => matchesRow(r, query)), [rows, query])
 
   // An opted-out parent cannot be messaged at all, so it is never selectable.
   const selectableIds = useMemo(
-    () => rows.filter((r) => !r.optedOut && r.phone).map((r) => r.parentId),
-    [rows]
+    () => visibleRows.filter((r) => !r.optedOut && r.phone).map((r) => r.parentId),
+    [visibleRows]
   )
 
   const allSelected = selectableIds.length > 0 && selected.size === selectableIds.length
+
+  function search(next: string) {
+    setQuery(next)
+    // A parent hidden by the filter must not stay silently selected — the bulk
+    // buttons say "{count} parents" and the user can only see the visible ones.
+    setSelected((prev) => {
+      if (prev.size === 0) return prev
+      const stillVisible = new Set(rows.filter((r) => matchesRow(r, next)).map((r) => r.parentId))
+      return new Set([...prev].filter((id) => stillVisible.has(id)))
+    })
+  }
 
   function toggle(parentId: string) {
     setSelected((prev) => {
@@ -105,6 +128,13 @@ export function DebtorsList({
         <span className="text-xs font-medium text-muted-foreground">
           {selected.size > 0 ? t('selectedCount', { count: selected.size }) : t('selectAll')}
         </span>
+        <SearchField
+          value={query}
+          onChange={(e) => search(e.target.value)}
+          placeholder={t('searchPlaceholder')}
+          aria-label={t('searchPlaceholder')}
+          className="ms-2 max-w-xs [&>input]:h-9"
+        />
         {selected.size > 0 && (
           <div className="ms-auto flex flex-wrap items-center gap-2">
             <Button
@@ -131,8 +161,13 @@ export function DebtorsList({
       </div>
 
       <div className="h-full overflow-auto">
+        {visibleRows.length === 0 && (
+          <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+            {tRoot('common.emptyStates.noResults')}
+          </p>
+        )}
         <ul className="divide-y divide-border">
-          {rows.map((row) => {
+          {visibleRows.map((row) => {
             const isExpanded = expanded === row.parentId
             const canMessage = !row.optedOut && Boolean(row.phone)
 

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { phoneDigits, searchable } from '@/lib/search/text'
 import { logChargeAudit } from './audit'
 
 export type ChargeStatus = 'pending' | 'invoiced' | 'paid' | 'waived' | 'voided'
@@ -16,6 +17,8 @@ export interface Charge {
   status: ChargeStatus
   notes: string | null
   paid_at: string | null
+  /** 'YYYY-MM-DD' — when the charge falls due; null on legacy rows. */
+  due_date: string | null
   created_at: string
   lesson_id: string | null
   payment_link: string | null
@@ -32,7 +35,7 @@ export interface Charge {
 }
 
 const CHARGE_SELECT =
-  'id, amount, amount_paid, charge_type, status, notes, paid_at, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, resolved_at, resolution_reason, parents(id, full_name), lessons(start_at), student_monthly_billing(invoice_number)'
+  'id, amount, amount_paid, charge_type, status, notes, paid_at, due_date, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, resolved_at, resolution_reason, parents(id, full_name), lessons(start_at), student_monthly_billing(invoice_number)'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapChargeRow(c: any): Charge {
@@ -44,6 +47,7 @@ function mapChargeRow(c: any): Charge {
     status: c.status,
     notes: c.notes,
     paid_at: c.paid_at,
+    due_date: c.due_date ?? null,
     created_at: c.created_at,
     lesson_id: c.lesson_id,
     payment_link: c.payment_link ?? null,
@@ -66,6 +70,11 @@ export interface ChargesFilter {
   parentIds?: string[]
   dateFrom?: string
   dateTo?: string
+  /**
+   * 'YYYY-MM-DD' (today, in the org timezone). Narrows to open charges whose
+   * due date is strictly before it — i.e. what is overdue right now.
+   */
+  overdueBefore?: string
 }
 
 export async function getCharges(
@@ -88,20 +97,16 @@ export async function getCharges(
   }
   if (filter.dateFrom) query = query.gte('created_at', filter.dateFrom)
   if (filter.dateTo) query = query.lte('created_at', filter.dateTo)
+  if (filter.overdueBefore) {
+    query = query
+      .in('status', [...OPEN_CHARGE_STATUSES])
+      .lt('due_date', filter.overdueBefore)
+  }
 
   const { data, error } = await query
   if (error) throw new Error(error.message)
 
   return (data ?? []).map(mapChargeRow)
-}
-
-function searchable(value: string | null | undefined): string {
-  return (value ?? '').trim().toLocaleLowerCase().replace(/\s+/g, ' ')
-}
-
-function phoneDigits(value: string | null | undefined): string {
-  const digits = (value ?? '').replace(/\D/g, '')
-  return digits.startsWith('972') ? `0${digits.slice(3)}` : digits
 }
 
 /**

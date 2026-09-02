@@ -10,6 +10,7 @@ import {
 } from '@/lib/billing/monthly/month'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { formatMoney } from '@/lib/i18n/formatCurrency'
+import { matchesSearch } from '@/lib/search/text'
 import { getLocale } from 'next-intl/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PageHeader } from '@/components/ui/page-header'
@@ -30,7 +31,7 @@ function getBillingStatus(row: { is_paid: boolean; is_approved: boolean }): stri
 }
 
 export default async function BillingPage(props: {
-  searchParams: Promise<{ month?: string }>
+  searchParams: Promise<{ month?: string; q?: string }>
 }) {
   const searchParams = await props.searchParams
   const { orgId, role } = await getSession()
@@ -43,6 +44,7 @@ export default async function BillingPage(props: {
   ])
 
   const billingMonth = searchParams.month || getCurrentBillingMonth(timezone, undefined, billingPolicy.cycleStartDay)
+  const search = searchParams.q?.trim() ?? ''
   const intlLocale = toIntlLocale(parseAppLocale(locale))
   const money = (amount: number) => formatMoney(amount, locale)
   const billingMonthOptions = getBillingMonthSelectOptionValues(timezone, billingMonth)
@@ -52,12 +54,12 @@ export default async function BillingPage(props: {
 
   const { data: billingRecords } = await supabase
     .from('student_monthly_billing')
-    .select('*, students(id, full_name)')
+    .select('*, students(id, full_name), parents(id, full_name, phone, second_phone)')
     .eq('organization_id', orgId)
     .eq('billing_month', billingMonth)
     .order('total_amount', { ascending: false })
 
-  const records = (billingRecords ?? []) as Array<{
+  const allRecords = (billingRecords ?? []) as Array<{
     id: string
     student_id: string
     billing_month: string
@@ -72,7 +74,20 @@ export default async function BillingPage(props: {
     invoice_number: string | null
     credit_note_number: string | null
     students: { id: string; full_name: string } | null
+    parents: {
+      id: string
+      full_name: string
+      phone: string
+      second_phone: string | null
+    } | null
   }>
+
+  const records = allRecords.filter((record) =>
+    matchesSearch(search, {
+      names: [record.students?.full_name, record.parents?.full_name],
+      phones: [record.parents?.phone, record.parents?.second_phone],
+    })
+  )
 
   const totalBilled = records.reduce((s, r) => s + Number(r.total_amount), 0)
   const totalPaid = records.filter((r) => r.is_paid).reduce((s, r) => s + Number(r.total_amount), 0)
@@ -115,6 +130,22 @@ export default async function BillingPage(props: {
               </option>
             ))}
           </select>
+        </div>
+        <div className="w-full min-w-0 sm:flex-1">
+          <label
+            htmlFor="billing-search"
+            className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          >
+            {t('searchLabel')}
+          </label>
+          <input
+            id="billing-search"
+            name="q"
+            type="search"
+            defaultValue={search}
+            placeholder={t('searchPlaceholder')}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
         </div>
         <button
           type="submit"

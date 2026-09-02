@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { cn } from '@/lib/utils'
 import type { SaasPlanRow } from '@/lib/saas/plans'
+import { PLAN_UI, type PurchasableSaasPlanName } from '@/lib/saas/planPresentation'
 import type { BeginPaidCheckoutSummary } from '@/lib/saas/types'
 import type { beginUpgradeCheckoutAction } from '@/app/(dashboard)/account/billing/upgrade-actions'
 
@@ -60,6 +61,8 @@ export function UpgradePlanPanel({
         return t('errors.planNotFound')
       case 'NOT_AN_UPGRADE':
         return t('errors.notUpgrade')
+      case 'USAGE_EXCEEDS_TARGET':
+        return t('errors.usageExceedsTarget')
       case 'INVALID_AMOUNT':
         return t('errors.invalidAmount')
       case 'UPSERT_FAILED':
@@ -73,7 +76,7 @@ export function UpgradePlanPanel({
     }
   }
 
-  const onPaid = (name: 'basic' | 'advanced') => {
+  const onPaid = (name: PurchasableSaasPlanName) => {
     setError(null)
     setExternalCheckout(null)
     startTransition(async () => {
@@ -203,10 +206,10 @@ export function UpgradePlanPanel({
             </div>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {upgradePlans.map((plan) => {
-              const featured = plan.name === 'advanced'
-              const rawBullets = t.raw(`plans.${plan.name}.bullets`)
+              const { featured, i18nKey } = PLAN_UI[plan.name]
+              const rawBullets = t.raw(`plans.${i18nKey}.bullets`)
               const bullets = Array.isArray(rawBullets) ? (rawBullets as string[]) : []
               return (
                 <div key={plan.id} className={cn(planCardBase, featured && planCardFeatured)}>
@@ -243,7 +246,7 @@ export function UpgradePlanPanel({
                     type="button"
                     className="mt-1 h-11 w-full font-semibold"
                     disabled={pending}
-                    onClick={() => onPaid(plan.name as 'basic' | 'advanced')}
+                    onClick={() => onPaid(plan.name as PurchasableSaasPlanName)}
                   >
                     {t('ctaUpgrade')}
                   </Button>

@@ -9,7 +9,7 @@ import { listDeletionRequests } from '@/lib/superadmin/dataDeletion'
 import { listSubscriptions } from '@/lib/superadmin/metrics'
 import { listSaasInvoicesForPlatform } from '@/lib/superadmin/revenue'
 import { listAdminAuditLog } from '@/lib/superadmin/audit'
-import { listActiveSaasPlans } from '@/lib/saas/plans'
+import { listAllSaasPlans } from '@/lib/saas/plans'
 import { getOrgQuotaUsage } from '@/lib/saas/quota'
 import { PageHeader } from '@/components/ui/page-header'
 import { AdminTabs } from '@/components/admin/AdminTabs'
@@ -106,7 +106,7 @@ async function SubscriptionTab({ orgId, locale }: { orgId: string; locale: strin
   const [subs, invoices, plans] = await Promise.all([
     listSubscriptions(),
     listSaasInvoicesForPlatform(),
-    listActiveSaasPlans(),
+    listAllSaasPlans(),
   ])
 
   return (

@@ -54,6 +54,7 @@ describe('filterNav', () => {
     homework: true,
     parent_portal: true,
     integrations: false,
+    data_retention: false,
   }
 
   it('hides owner-only entries from an admin', () => {

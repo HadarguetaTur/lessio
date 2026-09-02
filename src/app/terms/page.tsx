@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 
 import { LegalSimpleLayout } from '@/components/marketing/LegalSimpleLayout'
 import { getSiteContact } from '@/lib/marketing/siteContact'
+import { getPublicPricingRows } from '@/lib/marketing/publicPricing'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { TermsHe } from './TermsHe'
 import { TermsEn } from './TermsEn'
@@ -33,7 +34,8 @@ export default async function TermsPage() {
     day: 'numeric',
   })
 
-  const docProps = { email, addr, tel, reg }
+  const pricing = await getPublicPricingRows()
+  const docProps = { email, addr, tel, reg, pricing }
 
   return (
     <LegalSimpleLayout>

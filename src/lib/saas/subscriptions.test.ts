@@ -98,14 +98,20 @@ import {
   PAST_DUE_GRACE_DAYS,
   type OrgSubscriptionState,
 } from './subscriptions'
-import { getSaasPlanById, getSaasPlanByName } from './plans'
+import { getSaasPlanById, getSaasPlanByName, type SaasPlanRow } from './plans'
 
 const ORG = 'org-1'
 const REF = 'ref-aaaa-bbbb'
 
-const ADVANCED = {
+/**
+ * The RETIRED ₪199 tier, kept as the fixture on purpose: these tests are what
+ * prove a grandfathered customer still resolves the price they bought after the
+ * seat-priced catalog landed. Typed `: SaasPlanRow` so a new plan column is a
+ * compile error here rather than a silently-undefined field.
+ */
+const ADVANCED: SaasPlanRow = {
   id: 'plan-advanced',
-  name: 'advanced' as const,
+  name: 'advanced',
   display_name_he: 'מתקדם',
   display_name_en: 'Advanced',
   price_monthly: 199,
@@ -118,10 +124,12 @@ const ADVANCED = {
     homework: true,
     parent_portal: true,
     integrations: true,
+    data_retention: true,
   },
-  sort_order: 2,
+  sort_order: 15,
   students_quota: null,
   lessons_monthly_quota: null,
+  teachers_quota: null,
 }
 
 function pendingRow(overrides: Row = {}): Row {
@@ -230,6 +238,37 @@ describe('activateSubscriptionFromPayment', () => {
     const result = await activate({ paidAmount: 198.99 })
 
     expect(result).toEqual({ activated: true })
+  })
+
+  /**
+   * Grandfathering, end to end.
+   *
+   * ADVANCED is the RETIRED ₪199 tier. Its replacement, Studio, is ₪349. A
+   * customer who bought Advanced must keep being charged — and validated
+   * against — ₪199, because getSaasPlanById resolves their plan row regardless
+   * of is_active and there is no price stored on the subscription.
+   *
+   * If a future change filters is_active in getSaasPlanById, or a repricing
+   * edits a row in place instead of adding one, this pair of assertions is what
+   * catches it before a customer is silently overcharged.
+   */
+  it('still honours the retired tier price for a customer who bought it', async () => {
+    store.subs.push(pendingRow())
+
+    const atLegacyPrice = await activate({ paidAmount: 199, invoice: { amount: 199 } })
+
+    expect(atLegacyPrice).toEqual({ activated: true })
+    expect(store.subs[0].status).toBe('active')
+  })
+
+  it('does not quietly hold a legacy customer to the replacement tier price', async () => {
+    store.subs.push(pendingRow())
+
+    // ₪149 is the new entry tier. It is below ₪199, so it must still be
+    // refused — the legacy row, not the new catalog, is the reference point.
+    const result = await activate({ paidAmount: 149, invoice: { amount: 149 } })
+
+    expect(result).toEqual({ activated: false, reason: 'amount_below_plan_price' })
   })
 
   // Was always +1 month, so ₪1,990/year bought 30 days.

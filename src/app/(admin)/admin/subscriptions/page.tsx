@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { DateTime } from 'luxon'
 
-import { listActiveSaasPlans } from '@/lib/saas/plans'
+import { listAllSaasPlans } from '@/lib/saas/plans'
 import { listSubscriptions } from '@/lib/superadmin/metrics'
 import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { PageHeader } from '@/components/ui/page-header'
@@ -43,7 +43,7 @@ export default async function AdminSubscriptionsPage({ searchParams }: Props) {
 
   const queue: Queue = QUEUES.includes(queueParam as Queue) ? (queueParam as Queue) : 'all'
 
-  const [subs, plans] = await Promise.all([listSubscriptions(), listActiveSaasPlans()])
+  const [subs, plans] = await Promise.all([listSubscriptions(), listAllSaasPlans()])
 
   const filtered = subs.filter((s) => {
     if (queue === 'past_due') return s.status === 'past_due'

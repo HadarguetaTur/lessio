@@ -7,11 +7,23 @@ import { AlertTriangle, ArrowUpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { reportClientError } from '@/lib/telemetry/reportClientError'
 
-function parseQuotaKind(message: string): 'students' | 'lessons_monthly' | null {
+type QuotaKind = 'students' | 'lessons_monthly' | 'teachers'
+
+/**
+ * The message key does not match the kind (`lessons_monthly` → `lessons`), so
+ * this is a map rather than a template. Exhaustive over QuotaKind, so adding a
+ * dimension without copy is a compile error instead of a missing-message crash.
+ */
+const QUOTA_MESSAGE_KEY: Record<QuotaKind, string> = {
+  students: 'quotaExceeded.students',
+  lessons_monthly: 'quotaExceeded.lessons',
+  teachers: 'quotaExceeded.teachers',
+}
+
+function parseQuotaKind(message: string): QuotaKind | null {
   if (!message.startsWith('QUOTA_EXCEEDED:')) return null
   const kind = message.slice('QUOTA_EXCEEDED:'.length)
-  if (kind === 'students' || kind === 'lessons_monthly') return kind
-  return null
+  return kind in QUOTA_MESSAGE_KEY ? (kind as QuotaKind) : null
 }
 
 export default function DashboardError({
@@ -40,13 +52,14 @@ export default function DashboardError({
             {t('quotaExceeded.title')}
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
-            {quotaKind === 'students'
-              ? t('quotaExceeded.students')
-              : t('quotaExceeded.lessons')}
+            {t(QUOTA_MESSAGE_KEY[quotaKind])}
           </p>
           <div className="flex flex-col gap-3">
             <Button asChild>
-              <Link href="/account/billing?upgrade=quota">
+              {/* The kind travels in the param: billing renders the matching
+                  explanation. `?upgrade=quota` was not a recognised value, so
+                  the banner never showed and the user arrived with no reason. */}
+              <Link href={`/account/billing?upgrade=quota_${quotaKind}`}>
                 {t('quotaExceeded.upgrade')}
               </Link>
             </Button>

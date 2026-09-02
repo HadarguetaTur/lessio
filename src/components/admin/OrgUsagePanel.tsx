@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server'
 
 import { cn } from '@/lib/utils'
+import type { OrgQuotaUsage } from '@/lib/saas/quota'
 
 /**
  * Where the tenant sits against its plan's ceilings, and where its first-touch
@@ -66,12 +67,9 @@ export async function OrgUsagePanel({
   quota,
   attribution,
 }: {
-  quota: {
-    studentsUsed: number
-    studentsLimit: number | null
-    lessonsUsed: number
-    lessonsLimit: number | null
-  }
+  // Derived from getOrgQuotaUsage rather than restated, so a new quota
+  // dimension shows up here as a compile error instead of a missing meter.
+  quota: OrgQuotaUsage
   attribution: Record<string, unknown> | null
 }) {
   const t = await getTranslations('admin.orgs.usage')
@@ -103,6 +101,12 @@ export async function OrgUsagePanel({
             label={tPlans('lessonsQuota')}
             used={quota.lessonsUsed}
             limit={quota.lessonsLimit}
+            unlimitedLabel={tPlans('unlimited')}
+          />
+          <Meter
+            label={tPlans('teachersQuota')}
+            used={quota.teachersUsed}
+            limit={quota.teachersLimit}
             unlimitedLabel={tPlans('unlimited')}
           />
         </div>

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { cn } from '@/lib/utils'
 import type { SaasPlanRow } from '@/lib/saas/plans'
+import type { PurchasableSaasPlanName } from '@/lib/saas/planPresentation'
 import type { SaasPlanName } from '@/lib/saas/types'
 import type { BeginPaidCheckoutSummary } from '@/lib/saas/types'
 import {
@@ -102,7 +103,7 @@ export function PlanSelectionStep({
     })
   }
 
-  const onPaid = (name: 'basic' | 'advanced') => {
+  const onPaid = (name: PurchasableSaasPlanName) => {
     setError(null)
     setExternalCheckout(null)
     if (paidCheckoutMode() === 'stub') {
@@ -142,15 +143,19 @@ export function PlanSelectionStep({
   }
 
   const free = planByName('free')
-  const basic = planByName('basic')
-  const advanced = planByName('advanced')
+  const solo = planByName('solo')
+  const studio = planByName('studio')
+  const center = planByName('center')
   const custom = planByName('custom')
 
   const outcomes = asStringArray(t.raw('outcomes'))
   const freeBullets = asStringArray(t.raw('plans.free.bullets'))
-  const starterBullets = asStringArray(t.raw('plans.starter.bullets'))
-  const growthBullets = asStringArray(t.raw('plans.growth.bullets'))
+  const soloBullets = asStringArray(t.raw('plans.solo.bullets'))
+  const studioBullets = asStringArray(t.raw('plans.studio.bullets'))
   const centerBullets = asStringArray(t.raw('plans.center.bullets'))
+  // The custom-plan strip below the grid. Center is now a real tier, so the
+  // inquiry form needed a key of its own.
+  const customBullets = asStringArray(t.raw('plans.custom.bullets'))
 
   const planCardBase =
     'relative flex h-full min-h-0 min-w-0 w-full flex-col gap-4 rounded-2xl border border-border/70 bg-card px-6 pb-5 pt-6 shadow-sm transition-[box-shadow,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-violet-400/35 hover:shadow-md xl:w-auto xl:shrink'
@@ -318,7 +323,7 @@ export function PlanSelectionStep({
         ) : null}
 
         {!externalCheckout ? (
-          <div className="flex flex-col gap-5 xl:grid xl:grid-cols-3 xl:items-stretch xl:gap-7">
+          <div className="flex flex-col gap-5 xl:grid xl:grid-cols-4 xl:items-stretch xl:gap-7">
             {free ? (
               <div className={cn(planCardBase, 'border-dashed border-border/80 bg-muted/[0.08] hover:bg-card')}>
                 <div className="flex min-w-0 items-start justify-between gap-3">
@@ -348,29 +353,29 @@ export function PlanSelectionStep({
               </div>
             ) : null}
 
-            {basic ? (
+            {solo ? (
               <div className={planCardBase}>
                 <div className="flex min-w-0 items-start justify-between gap-3">
-                  <h3 className="text-xl font-semibold tracking-tight text-foreground">{t('plans.starter.title')}</h3>
-                  {priceBlock(basic.price_monthly, basic.price_yearly)}
+                  <h3 className="text-xl font-semibold tracking-tight text-foreground">{t('plans.solo.title')}</h3>
+                  {priceBlock(solo.price_monthly, solo.price_yearly)}
                 </div>
-                <p className="text-sm leading-snug text-muted-foreground">{t('plans.starter.tagline')}</p>
+                <p className="text-sm leading-snug text-muted-foreground">{t('plans.solo.tagline')}</p>
                 <div className="flex-1">
-                  <PlanBulletList items={starterBullets} />
+                  <PlanBulletList items={soloBullets} />
                 </div>
-                <PlanBestFor label={t('bestForLabel')} text={t('plans.starter.bestFor')} />
+                <PlanBestFor label={t('bestForLabel')} text={t('plans.solo.bestFor')} />
                 <Button
                   type="button"
                   className={`mt-1 h-11 w-full font-semibold ${onboardingGradientCta}`}
                   disabled={pending}
-                  onClick={() => onPaid('basic')}
+                  onClick={() => onPaid('solo')}
                 >
-                  {t('plans.starter.cta')}
+                  {t('plans.solo.cta')}
                 </Button>
               </div>
             ) : null}
 
-            {advanced ? (
+            {studio ? (
               <div className={cn(planCardBase, planCardFeatured)}>
                 <div className="pointer-events-none absolute -top-3 inset-x-0 flex justify-center px-2">
                   <Badge
@@ -381,22 +386,44 @@ export function PlanSelectionStep({
                   </Badge>
                 </div>
                 <div className="flex min-w-0 items-start justify-between gap-3">
-                  <h3 className="text-xl font-semibold tracking-tight text-foreground">{t('plans.growth.title')}</h3>
-                  {priceBlock(advanced.price_monthly, advanced.price_yearly)}
+                  <h3 className="text-xl font-semibold tracking-tight text-foreground">{t('plans.studio.title')}</h3>
+                  {priceBlock(studio.price_monthly, studio.price_yearly)}
                 </div>
-                <p className="text-sm leading-snug text-muted-foreground">{t('plans.growth.tagline')}</p>
+                <p className="text-sm leading-snug text-muted-foreground">{t('plans.studio.tagline')}</p>
                 <p className="text-xs font-semibold text-violet-600 dark:text-violet-400">{t('growthPickLine')}</p>
                 <div className="flex-1">
-                  <PlanBulletList items={growthBullets} />
+                  <PlanBulletList items={studioBullets} />
                 </div>
-                <PlanBestFor label={t('bestForLabel')} text={t('plans.growth.bestFor')} />
+                <PlanBestFor label={t('bestForLabel')} text={t('plans.studio.bestFor')} />
                 <Button
                   type="button"
                   className={`mt-1 h-11 w-full font-semibold ${onboardingGradientCta}`}
                   disabled={pending}
-                  onClick={() => onPaid('advanced')}
+                  onClick={() => onPaid('studio')}
                 >
-                  {t('plans.growth.cta')}
+                  {t('plans.studio.cta')}
+                </Button>
+              </div>
+            ) : null}
+
+            {center ? (
+              <div className={planCardBase}>
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <h3 className="text-xl font-semibold tracking-tight text-foreground">{t('plans.center.title')}</h3>
+                  {priceBlock(center.price_monthly, center.price_yearly)}
+                </div>
+                <p className="text-sm leading-snug text-muted-foreground">{t('plans.center.tagline')}</p>
+                <div className="flex-1">
+                  <PlanBulletList items={centerBullets} />
+                </div>
+                <PlanBestFor label={t('bestForLabel')} text={t('plans.center.bestFor')} />
+                <Button
+                  type="button"
+                  className={`mt-1 h-11 w-full font-semibold ${onboardingGradientCta}`}
+                  disabled={pending}
+                  onClick={() => onPaid('center')}
+                >
+                  {t('plans.center.cta')}
                 </Button>
               </div>
             ) : null}
@@ -404,7 +431,7 @@ export function PlanSelectionStep({
             {custom ? (
               <div
                 className={cn(
-                  'flex min-w-0 flex-col gap-5 rounded-2xl border-2 border-dashed border-violet-400/35 bg-gradient-to-br from-muted/30 via-card to-card px-6 py-6 shadow-sm sm:px-8 sm:py-7 xl:col-span-3 xl:flex-row xl:items-stretch xl:gap-10'
+                  'flex min-w-0 flex-col gap-5 rounded-2xl border-2 border-dashed border-violet-400/35 bg-gradient-to-br from-muted/30 via-card to-card px-6 py-6 shadow-sm sm:px-8 sm:py-7 xl:col-span-4 xl:flex-row xl:items-stretch xl:gap-10'
                 )}
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -413,14 +440,14 @@ export function PlanSelectionStep({
                       <Building2 className="size-5" aria-hidden />
                     </div>
                     <div className="min-w-0 space-y-1">
-                      <h3 className="text-xl font-semibold tracking-tight text-foreground">{t('plans.center.title')}</h3>
-                      <p className="text-sm leading-snug text-muted-foreground">{t('plans.center.tagline')}</p>
+                      <h3 className="text-xl font-semibold tracking-tight text-foreground">{t('plans.custom.title')}</h3>
+                      <p className="text-sm leading-snug text-muted-foreground">{t('plans.custom.tagline')}</p>
                     </div>
                   </div>
                   <div className="flex-1">
-                    <PlanBulletList items={centerBullets} />
+                    <PlanBulletList items={customBullets} />
                   </div>
-                  <PlanBestFor label={t('bestForLabel')} text={t('plans.center.bestFor')} />
+                  <PlanBestFor label={t('bestForLabel')} text={t('plans.custom.bestFor')} />
                 </div>
                 <div className="flex w-full min-w-0 flex-col justify-end gap-2 border-t border-border/50 pt-5 xl:w-[min(100%,20rem)] xl:shrink-0 xl:justify-center xl:border-t-0 xl:border-s xl:ps-10 xl:pt-0">
                   {!customOpen ? (
@@ -430,7 +457,7 @@ export function PlanSelectionStep({
                       className={`h-11 w-full font-semibold ${onboardingGradientCta}`}
                       onClick={() => setCustomOpen(true)}
                     >
-                      {t('plans.center.cta')}
+                      {t('plans.custom.cta')}
                     </Button>
                   ) : (
                     <form onSubmit={onCustomSubmit} className="space-y-2.5 rounded-xl border border-border/80 bg-card/60 p-4 shadow-inner">
@@ -476,7 +503,7 @@ export function PlanSelectionStep({
                     </form>
                   )}
                   {!customOpen ? (
-                    <p className="text-center text-xs text-muted-foreground">{t('plans.center.ctaOpen')}</p>
+                    <p className="text-center text-xs text-muted-foreground">{t('plans.custom.ctaOpen')}</p>
                   ) : null}
                 </div>
               </div>

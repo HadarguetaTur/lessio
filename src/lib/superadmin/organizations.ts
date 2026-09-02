@@ -14,7 +14,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { DateTime } from 'luxon'
 
-import { listActiveSaasPlans } from '@/lib/saas/plans'
+import { listAllSaasPlans } from '@/lib/saas/plans'
 import type { SaasPlanName, SaasSubscriptionStatus } from '@/lib/saas/types'
 import { getLastActivityMap } from './dashboard'
 import { listSubscriptions } from './metrics'
@@ -124,7 +124,7 @@ export async function getOrganizationsList(filters?: {
       db
         .from('organization_usage')
         .select('organization_id, active_students, lessons_this_month'),
-      listActiveSaasPlans(),
+      listAllSaasPlans(),
     ])
 
   if (!orgs) return []

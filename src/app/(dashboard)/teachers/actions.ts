@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 import { getTeacherById, type Teacher } from '@/lib/teachers'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { getTranslations } from 'next-intl/server'
 
 type ActionState = { error: string } | null
@@ -58,6 +59,15 @@ export async function inviteTeacher(
   const { orgId, role } = session
   requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return { error: await commonError('noPermission') }
+
+  // Seats are the value metric, so this is the check that makes the price real.
+  //
+  // It MUST run before inviteUserByEmail below. An invite that creates the
+  // auth.users row and is then rejected burns the address permanently — the
+  // retry after upgrading comes back "already been registered" and the customer
+  // cannot add the teacher they just paid for.
+  await requireQuotaCapacity(orgId, 'teachers')
+
   const adminClient = createServiceRoleClient()
 
   // Step 1: Send invite email via Supabase Auth admin API
@@ -190,6 +200,12 @@ export async function restoreTeacher(id: string): Promise<void> {
   const { orgId, role } = session
   requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return
+
+  // Un-archiving raises the active seat count exactly like an invite does, so
+  // it is enforced the same way. `add = 1` is right: an archived teacher is not
+  // currently counted. Throwing here (rather than the silent return above) is
+  // deliberate — the dashboard error boundary turns it into the upgrade card.
+  await requireQuotaCapacity(orgId, 'teachers')
 
   const supabase = await createClient()
 

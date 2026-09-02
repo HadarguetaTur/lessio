@@ -1,4 +1,21 @@
-export type SaasPlanName = 'free' | 'basic' | 'advanced' | 'custom'
+/**
+ * Every plan name that has ever existed, including retired ones.
+ *
+ * `basic` and `advanced` are retired from the catalog (is_active = false) but
+ * MUST stay in this union forever: orgs that bought them still resolve those
+ * rows through getSaasPlanById, which does not filter is_active. Dropping a
+ * name here would mis-type live production data.
+ *
+ * The purchasable subset lives in ./planPresentation.ts.
+ */
+export type SaasPlanName =
+  | 'free'
+  | 'basic'
+  | 'advanced'
+  | 'solo'
+  | 'studio'
+  | 'center'
+  | 'custom'
 
 export type SaasSubscriptionStatus =
   | 'trial'
@@ -17,6 +34,13 @@ export type SaasFeatures = {
   parent_portal: boolean
   /** Sprint 33: API keys, outbound webhooks, and the `make` payment provider. */
   integrations: boolean
+  /**
+   * Custom data-retention settings. Was the one entitlement expressed as a plan
+   * name comparison (`planName === 'advanced' || 'custom'`) in
+   * settings/privacy — which reads false for every customer on the seat-priced
+   * catalog. Now a real flag.
+   */
+  data_retention: boolean
 }
 
 export const DEFAULT_SAAS_FEATURES: SaasFeatures = {
@@ -27,6 +51,7 @@ export const DEFAULT_SAAS_FEATURES: SaasFeatures = {
   homework: true,
   parent_portal: true,
   integrations: true,
+  data_retention: true,
 }
 
 /** Summary shown before redirecting to hosted checkout (or mock payment page). */
@@ -49,5 +74,6 @@ export function parseSaasFeatures(raw: unknown): SaasFeatures {
     homework: Boolean(o.homework),
     parent_portal: Boolean(o.parent_portal),
     integrations: Boolean(o.integrations),
+    data_retention: Boolean(o.data_retention),
   }
 }

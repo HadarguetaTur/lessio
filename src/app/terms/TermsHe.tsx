@@ -1,13 +1,13 @@
 import Link from 'next/link'
 
-import type { LegalDocProps } from './types'
+import type { TermsDocProps } from './types'
 
 /**
  * Hebrew terms of use. Long-form legal prose with inline markup, so it lives as
  * a component per language rather than as catalog strings — the same shape the
  * marketing copy uses via getLandingContent(locale).
  */
-export function TermsHe({ email, addr, tel, reg }: LegalDocProps) {
+export function TermsHe({ email, addr, tel, reg, pricing }: TermsDocProps) {
   return (
       <div className="mt-8 space-y-10 text-sm leading-relaxed text-muted-foreground" dir="rtl">
 
@@ -212,8 +212,11 @@ export function TermsHe({ email, addr, tel, reg }: LegalDocProps) {
               <tbody>
                 {[
                   ['חינמי (ניסיון 30 יום)', '₪0', '—'],
-                  ['בסיסי', '₪99/חודש', '₪990/שנה'],
-                  ['מתקדם', '₪199/חודש', '₪1,990/שנה'],
+                  ...pricing.map((p) => [
+                    p.labelHe,
+                    `₪${p.priceMonthly.toLocaleString('he-IL')}/חודש`,
+                    p.priceYearly != null ? `₪${p.priceYearly.toLocaleString('he-IL')}/שנה` : '—',
+                  ]),
                   ['מותאם אישית', 'לפי הצעת מחיר', '—'],
                 ].map(([plan, monthly, annual]) => (
                   <tr key={plan}>

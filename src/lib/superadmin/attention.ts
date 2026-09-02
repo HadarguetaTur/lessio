@@ -12,7 +12,7 @@
 import { DateTime } from 'luxon'
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { listActiveSaasPlans } from '@/lib/saas/plans'
+import { listAllSaasPlans } from '@/lib/saas/plans'
 import type { SubscriptionRow } from './metrics'
 
 /** Ordered by how much it costs to ignore, not by how it was discovered. */
@@ -50,6 +50,7 @@ type UsageRow = {
   organization_id: string
   active_students: number
   lessons_this_month: number
+  active_teachers: number
 }
 
 export async function getAttentionQueue(
@@ -91,7 +92,7 @@ export async function getAttentionQueue(
   }
 
   const [usageRes, orgsRes, ticketsRes, plans] = await Promise.all([
-    db.from('organization_usage').select('organization_id, active_students, lessons_this_month'),
+    db.from('organization_usage').select('organization_id, active_students, lessons_this_month, active_teachers'),
     db
       .from('organizations')
       .select('id, name, whatsapp_phone_number_id, payment_provider'),
@@ -102,7 +103,7 @@ export async function getAttentionQueue(
       .lt('updated_at', now.minus({ hours: STALE_TICKET_HOURS }).toISO()!)
       .order('updated_at', { ascending: true })
       .limit(20),
-    listActiveSaasPlans(),
+    listAllSaasPlans(),
   ])
 
   // ── quota pressure ────────────────────────────────────────────────────────
@@ -116,7 +117,14 @@ export async function getAttentionQueue(
     const usage = usageByOrg.get(s.organizationId)
     if (!plan || !usage) continue
 
-    const checks: { used: number; limit: number | null; metric: 'students' | 'lessons' }[] = [
+    const checks: {
+      used: number
+      limit: number | null
+      metric: 'students' | 'lessons' | 'teachers'
+    }[] = [
+      // Teachers first: it is the value metric, so it is the strongest upgrade
+      // signal on this queue.
+      { used: Number(usage.active_teachers), limit: plan.teachers_quota, metric: 'teachers' },
       { used: Number(usage.active_students), limit: plan.students_quota, metric: 'students' },
       {
         used: Number(usage.lessons_this_month),

@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { getSaasPlanById, getSaasPlanByName } from './plans'
+import { getSaasPlanById, getSaasPlanByName, type SaasPlanRow } from './plans'
+import { TRIAL_ENTITLEMENT_PLAN } from './planPresentation'
 import type { SaasPlanName, SaasSubscriptionStatus } from './types'
 import { parseSaasFeatures, type SaasFeatures } from './types'
 
@@ -77,17 +78,66 @@ export async function getEffectiveSaasFeatures(orgId: string): Promise<SaasFeatu
   const state = await getOrgSubscriptionState(orgId)
   if (!state) return { ...parseSaasFeatures(null) }
 
-  const trialActive =
+  const trialPlan = await resolveTrialEntitlementPlan(state)
+  if (trialPlan) return trialPlan.features
+
+  return state.features
+}
+
+function isTrialActive(state: OrgSubscriptionState): boolean {
+  return (
     state.status === 'trial' &&
     state.trialEndsAt != null &&
     new Date(state.trialEndsAt).getTime() > Date.now()
+  )
+}
 
-  if (trialActive) {
-    const advanced = await getSaasPlanByName('advanced')
-    return advanced?.features ?? { ...parseSaasFeatures(null) }
+/**
+ * The plan row an active trial is entitled to, or null when the org is not on
+ * an active trial.
+ *
+ * Note the fail-open: if TRIAL_ENTITLEMENT_PLAN does not resolve, callers fall
+ * back to `parseSaasFeatures(null)` — which is DEFAULT_SAAS_FEATURES, i.e. every
+ * flag true. That is deliberate (a trial that silently loses the product is a
+ * worse business outcome than a generous one) but it is invisible, so it is
+ * logged loudly. If this fires, a migration retired the plan this constant
+ * names.
+ */
+async function resolveTrialEntitlementPlan(
+  state: OrgSubscriptionState
+): Promise<SaasPlanRow | null> {
+  if (!isTrialActive(state)) return null
+
+  const plan = await getSaasPlanByName(TRIAL_ENTITLEMENT_PLAN)
+  if (!plan) {
+    console.error('[saas] TRIAL_ENTITLEMENT_PLAN did not resolve — trials are ungated', {
+      plan: TRIAL_ENTITLEMENT_PLAN,
+    })
+    return null
   }
+  return plan
+}
 
-  return state.features
+/**
+ * The plan row that governs an org right now — quotas included.
+ *
+ * A trial resolves the trial-entitlement plan rather than the `free` row it
+ * technically sits on. Features and quotas used to disagree here: the trial got
+ * Advanced's features but `free`'s 50-student cap. Under seat pricing that
+ * asymmetry is fatal — a trialling studio owner would be blocked on their
+ * second teacher and could never see the product they are being sold.
+ *
+ * Returns null for grandfathered orgs (no subscription row), which enforce
+ * nothing.
+ */
+export async function getEffectiveSaasPlan(orgId: string): Promise<SaasPlanRow | null> {
+  const state = await getOrgSubscriptionState(orgId)
+  if (!state) return null
+
+  const trialPlan = await resolveTrialEntitlementPlan(state)
+  if (trialPlan) return trialPlan
+
+  return getSaasPlanById(state.planId)
 }
 
 /**

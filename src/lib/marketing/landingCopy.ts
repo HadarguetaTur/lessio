@@ -87,6 +87,24 @@ const landingEnCore = {
     closing:
       'Not every business needs a system like this. But a business that is already running should not have to keep holding itself together manually.',
   },
+  // Prices are NOT here. They are read from saas_plans at render time via
+  // getPublicPricingRows(), so the page and the catalog cannot drift apart.
+  pricing: {
+    title: 'One price per business, by number of teachers',
+    intro:
+      'Every plan includes WhatsApp, billing, receipts, the parent portal and homework. What changes is how many teachers you run.',
+    monthlyLabel: 'Monthly',
+    yearlyLabel: 'Yearly',
+    perMonth: '/ month',
+    perYear: '/ year',
+    yearlyNote: 'Yearly billing is two months free.',
+    vatNote: 'Prices exclude VAT.',
+    teachersOne: '1 teacher',
+    teachersUpTo: 'Up to {count} teachers',
+    teachersUnlimited: 'Unlimited teachers',
+    cta: 'Start 30 days free',
+    trialNote: '30 days free. No credit card.',
+  },
   faq: {
     title: 'Frequently asked questions',
     items: [
@@ -237,6 +255,22 @@ const landingHeCore = {
     ] as const,
     closing:
       'לא כל עסק צריך מערכת כזו. אבל עסק שכבר רץ — לא אמור להמשיך להחזיק את עצמו ידנית.',
+  },
+  pricing: {
+    title: 'מחיר אחד לעסק, לפי מספר המורים',
+    intro:
+      'בכל המסלולים יש וואטסאפ, גבייה, קבלות, פורטל הורים ושיעורי בית. מה שמשתנה הוא כמה מורים העסק מריץ.',
+    monthlyLabel: 'חודשי',
+    yearlyLabel: 'שנתי',
+    perMonth: '/ לחודש',
+    perYear: '/ לשנה',
+    yearlyNote: 'תשלום שנתי — חודשיים מתנה.',
+    vatNote: 'המחירים אינם כוללים מע"מ.',
+    teachersOne: 'מורה אחד',
+    teachersUpTo: 'עד {count} מורים',
+    teachersUnlimited: 'מורים ללא הגבלה',
+    cta: '30 יום ניסיון',
+    trialNote: '30 יום ניסיון. בלי כרטיס אשראי.',
   },
   faq: {
     title: 'מענה לשאלות נפוצות',

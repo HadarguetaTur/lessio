@@ -26,7 +26,15 @@ import { getTranslations } from 'next-intl/server'
 
 
 
-const planNameSchema = z.enum(['free', 'basic', 'advanced', 'custom'])
+const planNameSchema = z.enum([
+  'free',
+  'basic',
+  'advanced',
+  'solo',
+  'studio',
+  'center',
+  'custom',
+])
 const billingIntervalSchema = z.enum(['monthly', 'yearly'])
 
 export async function startFreeTrialSaas(): Promise<{ error: string } | { ok: true }> {

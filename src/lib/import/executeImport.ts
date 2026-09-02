@@ -141,10 +141,15 @@ export async function executeImport(
   const db = createServiceRoleClient()
   const result: ImportResult = { inserted: 0, updated: 0, skipped: 0, errors: [] }
 
-  // Quota enforcement for student imports
-  if (entityType === 'students') {
-    const insertCount = validRows.filter((r) => r.status !== 'error').length
-    await requireQuotaCapacity(orgId, 'students', insertCount)
+  // Quota enforcement. Only rows that will actually INSERT count: importStudents
+  // and importTeachers both update in place when `existingId` is set, so
+  // counting every valid row made a re-import of existing records fail against
+  // a quota it was not going to consume.
+  if (entityType === 'students' || entityType === 'teachers') {
+    const insertCount = validRows.filter((r) => r.status !== 'error' && !r.existingId).length
+    if (insertCount > 0) {
+      await requireQuotaCapacity(orgId, entityType, insertCount)
+    }
   }
 
   const rows = validRows.filter((r) => r.status !== 'error')

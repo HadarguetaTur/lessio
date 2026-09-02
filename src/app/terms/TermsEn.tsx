@@ -1,13 +1,13 @@
 import Link from 'next/link'
 
-import type { LegalDocProps } from './types'
+import type { TermsDocProps } from './types'
 
 /**
  * English terms of use — a translation of TermsHe, kept as a sibling component
  * rather than catalog strings because the prose carries inline markup, links and
  * tables. The Hebrew version remains the counsel-reviewed original.
  */
-export function TermsEn({ email, addr, tel, reg }: LegalDocProps) {
+export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
   return (
       <div className="mt-8 space-y-10 text-sm leading-relaxed text-muted-foreground" dir="ltr">
 
@@ -220,8 +220,11 @@ export function TermsEn({ email, addr, tel, reg }: LegalDocProps) {
               <tbody>
                 {[
                   ['Free (30-day trial)', '₪0', '—'],
-                  ['Basic', '₪99/month', '₪990/year'],
-                  ['Advanced', '₪199/month', '₪1,990/year'],
+                  ...pricing.map((p) => [
+                    p.labelEn,
+                    `₪${p.priceMonthly.toLocaleString('en-US')}/month`,
+                    p.priceYearly != null ? `₪${p.priceYearly.toLocaleString('en-US')}/year` : '—',
+                  ]),
                   ['Custom', 'By quote', '—'],
                 ].map(([plan, monthly, annual]) => (
                   <tr key={plan}>

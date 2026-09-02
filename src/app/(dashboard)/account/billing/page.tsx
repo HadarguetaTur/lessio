@@ -2,6 +2,9 @@ import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
 import { getSaasPlanById, listActiveSaasPlans } from '@/lib/saas/plans'
+import { isPurchasablePlanName } from '@/lib/saas/planPresentation'
+import { evaluateUpgrade } from '@/lib/saas/upgradeEligibility'
+import { getOrgQuotaUsage } from '@/lib/saas/quota'
 import type { SaasFeatures } from '@/lib/saas/types'
 import {
   getOrgSubscriptionState,
@@ -24,10 +27,25 @@ const SAAS_FEATURE_PARAM_KEYS = new Set([
   'leads',
   'homework',
   'parent_portal',
+  'integrations',
+  'data_retention',
 ])
 
 function isSaasFeatureGateParam(raw: string | undefined): raw is keyof SaasFeatures {
   return raw != null && SAAS_FEATURE_PARAM_KEYS.has(raw)
+}
+
+/**
+ * Quota blocks arrive here too, from the dashboard error boundary.
+ *
+ * They used to arrive as `?upgrade=quota`, which is not a feature key — so the
+ * explanatory banner never rendered and the user landed on billing with no idea
+ * why they had been sent. The kind is now carried in the param.
+ */
+const QUOTA_PARAM_KEYS = new Set(['quota_students', 'quota_lessons_monthly', 'quota_teachers'])
+
+function isQuotaPromptParam(raw: string | undefined): boolean {
+  return raw != null && QUOTA_PARAM_KEYS.has(raw)
 }
 
 export default async function AccountBillingPage({
@@ -40,6 +58,8 @@ export default async function AccountBillingPage({
   const sp = await searchParams
   const featureGateParam =
     typeof sp.upgrade === 'string' && isSaasFeatureGateParam(sp.upgrade) ? sp.upgrade : null
+  const quotaPromptParam =
+    typeof sp.upgrade === 'string' && isQuotaPromptParam(sp.upgrade) ? sp.upgrade : null
   const locale = await getLocale()
   const intlLocale = toIntlLocale(parseAppLocale(locale))
 
@@ -55,21 +75,36 @@ export default async function AccountBillingPage({
     )
   }
 
-  const [state, invoices, timezone, catalog] = await Promise.all([
+  const [state, invoices, timezone, catalog, usage] = await Promise.all([
     getOrgSubscriptionState(session.orgId),
     listSaasInvoices(session.orgId),
     getOrgTimezone(session.orgId),
     listActiveSaasPlans(),
+    getOrgQuotaUsage(session.orgId),
   ])
 
   const currentCatalogPlan = state ? await getSaasPlanById(state.planId) : null
 
   const legacyNoRow = !state
 
+  /**
+   * On a retired tier: the plan resolves fine (getSaasPlanById ignores
+   * is_active) but is no longer in the catalog anyone can buy.
+   *
+   * Detected structurally rather than by name, so it keeps working through
+   * every future repricing without a code change.
+   */
+  const onRetiredPlan =
+    currentCatalogPlan != null && !catalog.some((p) => p.id === currentCatalogPlan.id)
+
+  const purchasable = catalog.filter((p) => isPurchasablePlanName(p.name))
+
   const upgradePlans = (() => {
-    // Legacy org (no subscription row yet) — show all paid plans.
+    // Legacy org (no subscription row yet) — no ladder, but usage must still fit.
     if (legacyNoRow) {
-      return catalog.filter((p) => p.name === 'basic' || p.name === 'advanced')
+      return purchasable.filter(
+        (p) => evaluateUpgrade({ current: null, target: p, usage }).ok
+      )
     }
     if (
       !state ||
@@ -80,10 +115,8 @@ export default async function AccountBillingPage({
     ) {
       return []
     }
-    return catalog.filter(
-      (p) =>
-        (p.name === 'basic' || p.name === 'advanced') &&
-        p.sort_order > currentCatalogPlan.sort_order
+    return purchasable.filter(
+      (p) => evaluateUpgrade({ current: currentCatalogPlan, target: p, usage }).ok
     )
   })()
 
@@ -128,6 +161,16 @@ export default async function AccountBillingPage({
         </div>
       ) : null}
 
+      {quotaPromptParam ? (
+        <div
+          className="max-w-xl rounded-lg border border-orange-500/25 bg-orange-500/5 px-4 py-3 text-sm text-foreground"
+          role="status"
+          id="billing-quota-gate"
+        >
+          {t(`upgrade.quotaPrompt.${quotaPromptParam}`)}
+        </div>
+      ) : null}
+
       <section className="rounded-xl border border-border bg-card p-5 space-y-3 max-w-xl">
         <h2 className="text-sm font-semibold text-foreground">{t('currentPlan')}</h2>
         {legacyNoRow ? (
@@ -135,6 +178,9 @@ export default async function AccountBillingPage({
         ) : (
           <>
         <p className="text-lg font-medium text-foreground">{planLabel}</p>
+        {onRetiredPlan ? (
+          <p className="text-sm text-muted-foreground">{t('legacyPlanNote')}</p>
+        ) : null}
         <p className="text-sm text-muted-foreground">
           {t('status')}: {t(statusKey)}
         </p>

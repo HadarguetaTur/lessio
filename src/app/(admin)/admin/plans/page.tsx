@@ -25,6 +25,7 @@ type PlanQueryRow = {
   features: unknown
   students_quota: number | null
   lessons_monthly_quota: number | null
+  teachers_quota: number | null
   is_active: boolean
   sort_order: number
 }
@@ -40,7 +41,7 @@ export default async function AdminPlansPage() {
     db
       .from('saas_plans')
       .select(
-        'id, name, display_name_he, display_name_en, price_monthly, price_yearly, features, students_quota, lessons_monthly_quota, is_active, sort_order'
+        'id, name, display_name_he, display_name_en, price_monthly, price_yearly, features, students_quota, lessons_monthly_quota, teachers_quota, is_active, sort_order'
       )
       .order('sort_order', { ascending: true }),
     db.from('organization_subscriptions').select('plan_id'),
@@ -60,6 +61,7 @@ export default async function AdminPlansPage() {
       priceYearly: p.price_yearly != null ? Number(p.price_yearly) : null,
       studentsQuota: p.students_quota,
       lessonsMonthlyQuota: p.lessons_monthly_quota,
+      teachersQuota: p.teachers_quota,
       isActive: p.is_active,
       features: parseSaasFeatures(p.features) as SaasFeatures,
       subscriberCount: counts.get(p.id) ?? 0,

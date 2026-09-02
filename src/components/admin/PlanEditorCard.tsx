@@ -25,6 +25,7 @@ export type EditablePlan = {
   priceYearly: number | null
   studentsQuota: number | null
   lessonsMonthlyQuota: number | null
+  teachersQuota: number | null
   isActive: boolean
   features: SaasFeatures
   /** How many orgs are on this plan right now. */
@@ -103,6 +104,18 @@ export function PlanEditorCard({
             type="number"
             min={0}
             defaultValue={plan.lessonsMonthlyQuota ?? ''}
+            placeholder={t('unlimited')}
+          />
+        </div>
+        {/* The value metric — what the price is actually a function of. */}
+        <div className="space-y-1.5">
+          <Label htmlFor={`tq-${plan.id}`}>{t('teachersQuota')}</Label>
+          <Input
+            id={`tq-${plan.id}`}
+            name="teachersQuota"
+            type="number"
+            min={0}
+            defaultValue={plan.teachersQuota ?? ''}
             placeholder={t('unlimited')}
           />
         </div>

@@ -1119,10 +1119,17 @@
     "markAsPaidConfirm": "Mark this charge as paid?",
     "markAsPaidPlaceholder": "Payment note (optional)",
     "updating": "Updating...",
-    "agingSummary": {
-      "pending": "Pending",
-      "invoiced": "Invoiced",
-      "paidThisMonth": "Paid This Month"
+    "summary": {
+      "open": "Open to collect",
+      "openSub": "{count, plural, one {# parent} other {# parents}}",
+      "openNone": "No open debt",
+      "overdue": "Overdue",
+      "overdueSub": "{count, plural, one {# charge} other {# charges}} past due date",
+      "overdueNone": "Nothing overdue",
+      "collected": "Collected this month",
+      "collectedSub": "Month to date",
+      "results": "{count, plural, one {# charge} other {# charges}} · total {total} · open {open}",
+      "overdueBy": "{days, plural, one {# day} other {# days}} overdue"
     },
     "noCharges": "No charges",
     "allStatuses": "All statuses",
@@ -1232,6 +1239,8 @@
     "generating": "Calculating...",
     "monthLabel": "Billing Month",
     "showPeriod": "Show period",
+    "searchLabel": "Search billing",
+    "searchPlaceholder": "Student, parent, or phone number",
     "summary": {
       "totalBilled": "Total Billed",
       "totalPaid": "Paid",
@@ -1636,8 +1645,14 @@
       "modeLabel": "Collection model",
       "modeHint": "The model determines whether each lesson creates a payment demand or activity is consolidated into one demand per cycle. The same activity is never billed through both paths.",
       "modes": {
-        "monthly": { "label": "Consolidated monthly billing", "hint": "Lessons accumulate in a draft and one payment demand is created after the cycle is approved." },
-        "per_lesson": { "label": "Per-lesson billing", "hint": "Completing a lesson creates a separate payment demand for it." }
+        "monthly": {
+          "label": "Consolidated monthly billing",
+          "hint": "Lessons accumulate in a draft and one payment demand is created after the cycle is approved."
+        },
+        "per_lesson": {
+          "label": "Per-lesson billing",
+          "hint": "Completing a lesson creates a separate payment demand for it."
+        }
       },
       "cycleStartDay": "Cycle start day",
       "cycleStartHint": "Day 1–28 in the business timezone.",
@@ -3253,12 +3268,14 @@
     "plans": {
       "title": "Plans & features",
       "description": "Prices, quotas and what each plan unlocks",
-      "priceChangeNote": "Changing a price does not touch existing subscriptions — they keep the price captured when they signed up.",
+      "priceChangeNote": "Editing a price here re-prices every existing subscriber on this plan — no price is stored on the subscription. To change the price for new customers only: add a new plan row in a migration and deactivate this one.",
+      "cannotDeactivateTrialPlan": "This plan defines what a trial is entitled to and cannot be deactivated.",
       "subscribers": "{count} orgs",
       "priceMonthly": "Monthly",
       "priceYearly": "Yearly",
       "studentsQuota": "Students",
       "lessonsQuota": "Lessons / month",
+      "teachersQuota": "Teachers",
       "unlimited": "Unlimited",
       "none": "None",
       "features": "Features",
@@ -3272,7 +3289,8 @@
         "leads": "Leads",
         "homework": "Homework",
         "parent_portal": "Parent portal",
-        "integrations": "Integrations"
+        "integrations": "Integrations",
+        "data_retention": "Custom data retention"
       }
     },
     "audit": {
@@ -3863,6 +3881,7 @@
       "openPdf": "Open",
       "cancelAtEnd": "Cancel subscription (end of period)",
       "cancelPending": "Cancellation scheduled for period end",
+      "legacyPlanNote": "This plan is no longer sold. Your price and terms stay as they are for as long as the subscription is active.",
       "upgradeHint": "Contact support for bespoke plans or the Center package.",
       "upgradeHintSelfServe": "Upgrade to a higher plan in the section below — no support ticket needed.",
       "upgrade": {
@@ -3882,7 +3901,14 @@
           "full_reports": "Advanced reporting needs a higher plan. Choose one below.",
           "leads": "Lead tracking needs a higher plan. Choose one below.",
           "homework": "Homework for students needs a higher plan. Choose one below.",
-          "parent_portal": "The parent portal needs a higher plan. Choose one below."
+          "parent_portal": "The parent portal needs a higher plan. Choose one below.",
+          "integrations": "Integrations and the API need a higher plan. Choose one below.",
+          "data_retention": "Custom data retention needs a higher plan. Choose one below."
+        },
+        "quotaPrompt": {
+          "quota_teachers": "You've used every teacher seat on your current plan. A higher plan opens more seats.",
+          "quota_students": "You've reached the student limit on your current plan. A higher plan removes it.",
+          "quota_lessons_monthly": "You've reached the monthly lesson limit on your current plan. A higher plan removes it."
         },
         "plans": {
           "basic": {
@@ -3903,10 +3929,38 @@
               "AI assistance for messaging and ops",
               "Priority support"
             ]
+          },
+          "solo": {
+            "bullets": [
+              "One teacher",
+              "Full WhatsApp automation",
+              "Unlimited students and lessons",
+              "Billing, cancellations, and receipts",
+              "Parent portal and homework"
+            ]
+          },
+          "studio": {
+            "bullets": [
+              "Up to 5 teachers",
+              "Everything in Solo",
+              "Advanced reports and revenue forecasting",
+              "AI assistance for messaging and ops",
+              "Integrations and API"
+            ]
+          },
+          "center": {
+            "bullets": [
+              "Unlimited teachers",
+              "Everything in Studio",
+              "Priority support",
+              "Guided onboarding",
+              "Custom data retention"
+            ]
           }
         },
         "errors": {
           "generic": "Something went wrong. Please try again.",
+          "usageExceedsTarget": "This plan is smaller than what the account already holds. Choose a higher plan.",
           "readOnlySession": "Read-only session — upgrades are disabled.",
           "ownerOnly": "Only the business owner can upgrade the subscription.",
           "invalidInput": "Invalid plan selection.",
@@ -4069,8 +4123,8 @@
           "a": "No charge while you try: students, lessons, and calendar at a basic level. Full automation, advanced reports, parent portal, and AI are on Growth and above."
         },
         "choose": {
-          "q": "Starter or Growth?",
-          "a": "Starter — solo or very small ops, structure and basic reminders. Growth — steady volume, full automation, reports, parent portal, and AI. Unsure? Start free or Starter and upgrade when you’re ready."
+          "q": "What's the difference between Solo, Studio and Center?",
+          "a": "The number of teachers. Solo is one, Studio is up to five, Center is unlimited. Everything else — WhatsApp, billing, the parent portal — is in every plan."
         },
         "cancel": {
           "q": "How do I cancel?",
@@ -4090,34 +4144,46 @@
             "No full automation stack, advanced reports, or AI"
           ]
         },
-        "starter": {
-          "title": "Starter",
-          "tagline": "Day-to-day order instead of WhatsApp and spreadsheets.",
-          "bestFor": "Private teachers or a very small operation.",
-          "cta": "Choose Starter",
+        "solo": {
+          "title": "Solo",
+          "tagline": "For one teacher carrying a real operational load.",
+          "bestFor": "A private tutor with 40+ students",
+          "cta": "Choose Solo",
           "bullets": [
-            "Students and lessons in one place",
-            "Lesson notes and history",
-            "Basic WhatsApp reminders",
-            "Attendance, cancellations, and billing rhythm",
-            "Light homework"
+            "One teacher",
+            "Full WhatsApp automation",
+            "Unlimited students and lessons",
+            "Billing, cancellations, and receipts",
+            "Parent portal and homework"
           ]
         },
-        "growth": {
-          "title": "Growth",
-          "tagline": "Automation, reports, parent portal, and AI — less manual chasing.",
-          "bestFor": "An active workload that needs serious time savings.",
-          "cta": "Choose Growth",
+        "studio": {
+          "title": "Studio",
+          "tagline": "For a business with several teachers that needs one system.",
+          "bestFor": "A studio or centre with up to 5 teachers",
+          "cta": "Choose Studio",
           "bullets": [
-            "Everything in Starter",
-            "Full WhatsApp automation",
-            "Advanced reports",
-            "Parent portal and homework",
-            "AI for routine messaging and ops",
-            "Priority support"
+            "Up to 5 teachers",
+            "Everything in Solo",
+            "Advanced reports and revenue forecasting",
+            "AI assistance for messaging and ops",
+            "Integrations and API"
           ]
         },
         "center": {
+          "title": "Center",
+          "tagline": "For a growing learning centre, with no ceiling on teachers.",
+          "bestFor": "A centre with 6 or more teachers",
+          "cta": "Choose Center",
+          "bullets": [
+            "Unlimited teachers",
+            "Everything in Studio",
+            "Priority support",
+            "Guided onboarding",
+            "Custom data retention"
+          ]
+        },
+        "custom": {
           "title": "Center",
           "tagline": "Tailored rollout, teams, integrations, and support — not “just another seat.”",
           "bestFor": "Learning centers, multi-teacher setups, or special requirements.",
@@ -4841,6 +4907,7 @@
       "title": "You've reached your plan limit",
       "students": "You've reached the maximum number of students on your current plan. Upgrade to add more.",
       "lessons": "You've reached the monthly lesson limit on your current plan. Upgrade to schedule more.",
+      "teachers": "Every teacher seat on your current plan is taken. Upgrade to add another.",
       "upgrade": "Upgrade plan",
       "retry": "Try again"
     },

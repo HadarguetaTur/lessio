@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
-import { getOrgSubscriptionState } from '@/lib/saas/subscriptions'
+import { getEffectiveSaasFeatures } from '@/lib/saas/subscriptions'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PageHeader } from '@/components/ui/page-header'
 import { saveDataRetentionAction } from './actions'
@@ -16,8 +16,8 @@ export default async function PrivacySettingsPage() {
   const { role, orgId } = await getSession()
   if (role !== 'owner') redirect('/settings')
 
-  const [sub, orgRow] = await Promise.all([
-    getOrgSubscriptionState(orgId),
+  const [features, orgRow] = await Promise.all([
+    getEffectiveSaasFeatures(orgId),
     createServiceRoleClient()
       .from('organizations')
       .select('data_retention_days')
@@ -25,9 +25,13 @@ export default async function PrivacySettingsPage() {
       .single(),
   ])
 
-  // Only Advanced/Custom plan owners see this UI — others silently use 365-day default
-  const planName = sub?.planName ?? null
-  const canCustomiseRetention = planName === 'advanced' || planName === 'custom' || !sub
+  // A feature flag, not a plan-name comparison. This was `planName ===
+  // 'advanced' || 'custom'`, which reads false for every customer on the
+  // seat-priced catalog — retention customisation would have silently
+  // disappeared for Studio and Center. Grandfathered orgs (no subscription row)
+  // still pass, as before; trials now pass too, since they resolve the tier the
+  // trial grants. Others silently use the 365-day default.
+  const canCustomiseRetention = features.data_retention
 
   const currentDays = (orgRow.data as { data_retention_days: number | null } | null)?.data_retention_days ?? 365
 

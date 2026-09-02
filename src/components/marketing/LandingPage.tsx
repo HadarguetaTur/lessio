@@ -14,11 +14,13 @@ import {
 import { AuthPageDecorations } from '@/components/auth/AuthPageDecorations'
 import { LandingFaqAccordion } from '@/components/marketing/LandingFaqAccordion'
 import { LandingLocaleToggle } from '@/components/marketing/LandingLocaleToggle'
+import { LandingPricing } from '@/components/marketing/LandingPricing'
 import { LandingProcessSteps } from '@/components/marketing/LandingProcessSteps'
 import { LandingReveal } from '@/components/marketing/LandingReveal'
 import { LandingStagger } from '@/components/marketing/LandingStagger'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import type { PublicPricingRow } from '@/lib/marketing/publicPricing'
 import type { LandingContent } from '@/lib/marketing/landingCopy'
 import type { SiteContact } from '@/lib/marketing/siteContact'
 
@@ -122,11 +124,13 @@ export function LandingPage({
   content,
   dir,
   locale,
+  pricingRows = [],
   siteContact = { address: '', supportEmail: '', phone: '', registrationNumber: '' },
 }: {
   content: LandingContent
   dir: 'rtl' | 'ltr'
   locale: string
+  pricingRows?: PublicPricingRow[]
   siteContact?: SiteContact
 }) {
   const {
@@ -136,6 +140,7 @@ export function LandingPage({
     solution,
     businessValue,
     audience,
+    pricing,
     faq,
     footer,
     links,
@@ -511,6 +516,21 @@ export function LandingPage({
             </LandingReveal>
           </div>
         </SectionShell>
+
+        {/* Pricing — after the qualifying "who it's for" section, before the
+            FAQ that answers the objections a price raises. */}
+        {pricingRows.length > 0 ? (
+          <SectionShell id="pricing" className="bg-muted/[0.35]">
+            <LandingReveal variant="fade-up">
+              <LandingPricing
+                copy={pricing}
+                rows={pricingRows}
+                locale={locale}
+                signupHref={links.signup}
+              />
+            </LandingReveal>
+          </SectionShell>
+        ) : null}
 
         {/* FAQ */}
         <SectionShell>

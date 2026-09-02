@@ -6,6 +6,12 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getSaasPlanById, getSaasPlanByName } from '@/lib/saas/plans'
+import {
+  PURCHASABLE_PLAN_NAMES,
+  type PurchasableSaasPlanName,
+} from '@/lib/saas/planPresentation'
+import { evaluateUpgrade } from '@/lib/saas/upgradeEligibility'
+import { getOrgQuotaUsage } from '@/lib/saas/quota'
 import type { BeginPaidCheckoutSummary, SaasPlanName } from '@/lib/saas/types'
 import {
   activateSubscriptionFromPayment,
@@ -23,7 +29,7 @@ import {
 import { confirmSumitPayment } from '@/lib/saas/sumit'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
-const planNameSchema = z.enum(['basic', 'advanced'])
+const planNameSchema = z.enum(PURCHASABLE_PLAN_NAMES)
 const billingIntervalSchema = z.enum(['monthly', 'yearly'])
 
 function canStartUpgradeCheckout(state: OrgSubscriptionState | null): boolean {
@@ -44,42 +50,49 @@ function canStartUpgradeCheckout(state: OrgSubscriptionState | null): boolean {
 /**
  * Validates that checking out the target plan is allowed.
  * Legacy orgs (no subscription row) may freely choose any paid plan.
+ *
+ * The rule itself lives in @/lib/saas/upgradeEligibility so that the billing
+ * page offers exactly the plans this action will accept — they used to be two
+ * hand-maintained copies, and the page could show a card this rejected.
  */
 async function assertUpgradeAllowed(
   orgId: string,
-  targetPlanName: 'basic' | 'advanced'
+  targetPlanName: PurchasableSaasPlanName
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const state = await getOrgSubscriptionState(orgId)
+  const targetPlan = await getSaasPlanByName(targetPlanName)
+  if (!targetPlan) return { ok: false, error: 'PLAN_NOT_FOUND' }
 
+  const state = await getOrgSubscriptionState(orgId)
+  const usage = await getOrgQuotaUsage(orgId)
+
+  // Legacy org — no subscription row yet. No ladder to climb, but the target
+  // still has to be able to hold what they already have.
   if (!state) {
-    // Legacy org — no subscription row yet, any paid plan is valid.
-    const targetPlan = await getSaasPlanByName(targetPlanName)
-    if (!targetPlan) return { ok: false, error: 'PLAN_NOT_FOUND' }
-    return { ok: true }
+    return toResult(evaluateUpgrade({ current: null, target: targetPlan, usage }))
   }
 
   if (!canStartUpgradeCheckout(state)) {
     return { ok: false, error: 'UPGRADE_UNAVAILABLE' }
   }
 
-  const targetPlan = await getSaasPlanByName(targetPlanName)
-  if (!targetPlan) {
-    return { ok: false, error: 'PLAN_NOT_FOUND' }
-  }
-
-  // A pending purchase is not an active plan — allow (re)starting checkout for any paid plan.
+  // A pending purchase is not an active plan — allow (re)starting checkout for
+  // any paid plan, subject only to the usage check.
   if (state.status === 'pending_payment') {
-    return { ok: true }
+    return toResult(evaluateUpgrade({ current: null, target: targetPlan, usage }))
   }
 
   const currentPlan = await getSaasPlanById(state.planId)
   if (!currentPlan) {
     return { ok: false, error: 'PLAN_NOT_FOUND' }
   }
-  if (targetPlan.sort_order <= currentPlan.sort_order) {
-    return { ok: false, error: 'NOT_AN_UPGRADE' }
-  }
-  return { ok: true }
+
+  return toResult(evaluateUpgrade({ current: currentPlan, target: targetPlan, usage }))
+}
+
+function toResult(
+  verdict: ReturnType<typeof evaluateUpgrade>
+): { ok: true } | { ok: false; error: string } {
+  return verdict.ok ? { ok: true } : { ok: false, error: verdict.reason }
 }
 
 export async function beginUpgradeCheckoutAction(

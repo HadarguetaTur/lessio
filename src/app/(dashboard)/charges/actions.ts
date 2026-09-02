@@ -7,7 +7,7 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { assertOrgNotSaasReadOnly } from '@/lib/saas/featureGate'
 import { waiveCharge, voidCharge, type ResolveChargeResult } from '@/lib/charges/resolve'
 import { recordChargePayment, type PaymentMethod } from '@/lib/charges/payments'
-import { settleCharges, settleParentBalance } from '@/lib/charges/settle'
+import { settleParentBalance } from '@/lib/charges/settle'
 import { notifyParentOfPayment } from '@/lib/charges/notifyParentOfPayment'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
@@ -335,108 +335,6 @@ export async function settleParentBalanceAction(input: {
     notification,
     settled: result.settledChargeIds.length,
     failed: result.failedChargeIds.length,
-  }
-}
-
-// ─── Settle a hand-picked set of charges ───────────────────────────────────
-
-const settleChargesSchema = z.object({
-  chargeIds: z.array(z.string().uuid()).min(1).max(200),
-  method: paymentMethodSchema,
-  notes: z.string().max(500).optional(),
-  notifyParent: z.boolean().default(true),
-})
-
-export interface SettleChargesActionResult {
-  error: string | null
-  /** Charges closed. */
-  settled?: number
-  /** Charges that stayed open because their payment could not be written. */
-  failed?: number
-  /** How many parents fall into each notification outcome — for the toast. */
-  notifications?: Record<PaymentNotificationStatus, number>
-}
-
-/**
- * Marks the charges the tutor ticked as paid — the middle ground between one
- * charge and a parent's whole balance, for the parent who paid for three of
- * this month's five lessons.
- *
- * The selection may span parents; each one gets a single confirmation naming
- * what they paid now and what they still owe.
- */
-export async function settleChargesAction(input: {
-  chargeIds: string[]
-  method: PaymentMethod
-  notes?: string
-  notifyParent?: boolean
-}): Promise<SettleChargesActionResult> {
-  const session = await getSession()
-  requireMutation(session)
-  await assertOrgNotSaasReadOnly(session.orgId)
-  const t = await getTranslations('charges.errors')
-
-  if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: await commonError('noPermission') }
-  }
-
-  const parsed = settleChargesSchema.safeParse(input)
-  if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
-
-  let result
-  try {
-    result = await settleCharges({
-      chargeIds: parsed.data.chargeIds,
-      organizationId: session.orgId,
-      method: parsed.data.method,
-      notes: parsed.data.notes ?? null,
-      actorProfileId: session.profileId,
-    })
-  } catch (err) {
-    console.error('[charges] settle charges failed', { count: input.chargeIds.length, err })
-    return { error: t('updateStatusFailed') }
-  }
-
-  if (!result.ok) return { error: t('nothingOpen') }
-
-  revalidateChargeSurfaces()
-  for (const chargeId of result.settledChargeIds) revalidatePath(`/charges/${chargeId}`)
-
-  if (result.settledChargeIds.length === 0) {
-    return { error: t('updateStatusFailed') }
-  }
-
-  const notifications: Record<PaymentNotificationStatus, number> = {
-    queued: 0,
-    disabled: 0,
-    no_phone: 0,
-    whatsapp_not_connected: 0,
-  }
-
-  for (const parent of result.byParent) {
-    const notification = await resolveNotificationStatus(
-      session.orgId,
-      parent.parentId,
-      parsed.data.notifyParent
-    )
-    notifications[notification] += 1
-
-    await afterManualPayment({
-      orgId: session.orgId,
-      parentId: parent.parentId,
-      chargeIds: parent.chargeIds,
-      closedChargeIds: parent.chargeIds,
-      amount: parent.amount,
-      remaining: parent.remaining,
-      notifyParent: notification === 'queued',
-    })
-  }
-
-  return {
-    error: null,
-    settled: result.settledChargeIds.length,
-    failed: result.failedChargeIds.length,
-    notifications,
   }
 }
 

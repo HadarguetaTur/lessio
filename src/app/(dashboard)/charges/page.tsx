@@ -373,17 +373,11 @@ export default async function ChargesPage(props: {
           title={t('noCharges')}
         />
       ) : (
-        <ChargeSelectionProvider selectableIds={selectableRows.map((r) => r.chargeId)}>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <div className="min-h-0 flex-1 overflow-auto">
-            <Table className="min-w-[1020px]">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="h-full overflow-auto">
+            <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  {canMarkPaid && (
-                    <TableHead className="sticky top-0 z-10 w-10 bg-muted/95 px-3 text-start backdrop-blur">
-                      <SelectAllCheckbox rows={selectableRows} />
-                    </TableHead>
-                  )}
                   <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
                     {t('fields.parent')}
                   </TableHead>
@@ -419,15 +413,6 @@ export default async function ChargesPage(props: {
               <TableBody>
                 {charges.map((charge) => (
                   <TableRow key={charge.id} className="hover:bg-muted/20">
-                    {canMarkPaid && (
-                      <TableCell className="w-10 px-3 py-3.5">
-                        {/* Only an open charge can be settled; a closed row keeps
-                            the column's width without offering an action. */}
-                        {selectableById.get(charge.id) ? (
-                          <ChargeSelectCheckbox charge={selectableById.get(charge.id)!} />
-                        ) : null}
-                      </TableCell>
-                    )}
                     <TableCell className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <UserAvatar name={charge.parent.full_name} />
@@ -559,9 +544,7 @@ export default async function ChargesPage(props: {
               </TableBody>
             </Table>
           </div>
-          {canMarkPaid && <BulkMarkPaidBar action={settleChargesAction} />}
         </div>
-        </ChargeSelectionProvider>
       )}
     </div>
   )

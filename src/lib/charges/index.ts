@@ -69,7 +69,7 @@ export interface ChargesFilter {
   /** Parent ids whose parent/student contact details matched the free-text search. */
   parentIds?: string[]
   dateFrom?: string
-  dateTo?: string
+  dateToExclusive?: string
   /**
    * 'YYYY-MM-DD' (today, in the org timezone). Narrows to open charges whose
    * due date is strictly before it — i.e. what is overdue right now.
@@ -96,7 +96,7 @@ export async function getCharges(
     query = query.in('parent_id', filter.parentIds)
   }
   if (filter.dateFrom) query = query.gte('created_at', filter.dateFrom)
-  if (filter.dateTo) query = query.lte('created_at', filter.dateTo)
+  if (filter.dateToExclusive) query = query.lt('created_at', filter.dateToExclusive)
   if (filter.overdueBefore) {
     query = query
       .in('status', [...OPEN_CHARGE_STATUSES])

@@ -4,6 +4,7 @@ import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { getCharges, ChargeStatus, findChargeParentIds, getChargeRemaining } from '@/lib/charges'
+import { getChargeDateRange } from '@/lib/charges/dateRange'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getOrgProviderStatus } from '@/lib/organizations/providerStatus'
 import { getParents } from '@/lib/parents'
@@ -54,19 +55,22 @@ export default async function ChargesPage(props: {
   const hasReceiptProvider = providers.hasReceipt
 
   const search = searchParams.q?.trim() ?? ''
-  const matchingParentIds = search ? await findChargeParentIds(orgId, search) : undefined
+  const [matchingParentIds, timezone] = await Promise.all([
+    search ? findChargeParentIds(orgId, search) : Promise.resolve(undefined),
+    getOrgTimezone(orgId),
+  ])
+  const dateRange = getChargeDateRange(searchParams.from, searchParams.to, timezone)
 
-  const [charges, allCharges, parents, timezone] = await Promise.all([
+  const [charges, allCharges, parents] = await Promise.all([
     getCharges(orgId, {
       status: statusFilter,
       parentId: searchParams.parent || undefined,
       parentIds: matchingParentIds,
-      dateFrom: searchParams.from || undefined,
-      dateTo: searchParams.to || undefined,
+      dateFrom: dateRange.fromInclusive,
+      dateToExclusive: dateRange.toExclusive,
     }),
     getCharges(orgId),
     getParents(orgId),
-    getOrgTimezone(orgId),
   ])
 
   const canMarkPaid = role === 'owner' || role === 'admin'

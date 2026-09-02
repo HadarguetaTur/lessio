@@ -11,6 +11,7 @@ import { generateOtp, storeOtp, verifyOtp, countRecentOtpRequests } from '@/lib/
 import { setPortalSessionCookie } from '@/lib/portal/session'
 import { recordParentConsent } from '@/lib/whatsapp/consent'
 import { assertFeature } from '@/lib/saas/featureGate'
+import { getPortalSettings } from '@/lib/organizations/portalSettings'
 
 const PhoneSchema = z.object({
   phone: z.string().min(9),
@@ -57,6 +58,10 @@ export async function requestOtpAction(
 ): Promise<LoginState> {
   // Feature gate first — must not be inside a try/catch (redirect() throws internally).
   await assertFeature(orgId, 'parent_portal')
+  // The layout already swaps the form for a "portal closed" screen; this stops
+  // a request posted around it from sending an OTP for a portal that will not
+  // let the parent in.
+  if (!(await getPortalSettings(orgId)).enabled) return { error: 'serviceUnavailable' }
 
   const raw = Object.fromEntries(formData)
   const typedPhone = typeof raw.phone === 'string' ? raw.phone : ''
@@ -144,6 +149,7 @@ export async function verifyOtpAction(
   formData: FormData
 ): Promise<LoginState> {
   await assertFeature(orgId, 'parent_portal')
+  if (!(await getPortalSettings(orgId)).enabled) return { error: 'serviceUnavailable' }
 
   const parsed = OtpSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return { error: 'invalidCode' }

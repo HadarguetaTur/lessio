@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTranslations } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
+import { isPortalFeatureEnabled } from '@/lib/portal/features'
 import { sendPortalMessage } from '@/lib/portal/messages'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createNotification, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
@@ -22,8 +23,11 @@ export async function sendMessageAction(
   if (!session || session.orgId !== orgId) {
     return { error: t('errors.unauthorized') }
   }
+  if (!(await isPortalFeatureEnabled(orgId, 'messages'))) {
+    return { error: t('errors.unauthorized') }
+  }
 
-  const body = (formData.get('body') as string | null)?.trim()
+  const body =(formData.get('body') as string | null)?.trim()
   if (!body || body.length === 0) return { error: t('errors.empty') }
   if (body.length > 2000) return { error: t('errors.tooLong', { max: 2000 }) }
 

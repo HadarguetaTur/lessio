@@ -111,6 +111,15 @@ describe('role menus', () => {
     // Allowed for anyone holding a second capacity, whatever their menu says.
     expect(isActionAllowedForRole('switch_role', 'student')).toBe(true)
   })
+
+  it('drops rows the org has switched off without touching the rest', () => {
+    // An org with the parent portal closed in its settings must not offer it.
+    const actions = menuActionsFor('parent', true, ['portal'])
+    expect(actions).not.toContain('portal')
+    expect(actions).toEqual(['book', 'cancel', 'balance', 'schedule', 'switch_role'])
+    // Hiding is per send, not a mutation of the role's menu.
+    expect(menuActionsFor('parent')).toContain('portal')
+  })
 })
 
 describe('isGreeting', () => {

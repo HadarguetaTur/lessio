@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
+import { requirePortalFeature } from '@/lib/portal/features'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PortalBookingFlow } from '@/components/portal/PortalBookingFlow'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
@@ -20,6 +21,7 @@ export default async function PortalBookPage({
   const { orgId } = await params
   const session = await getPortalSession()
   if (!session || session.orgId !== orgId) redirect(`/portal/${orgId}/login`)
+  await requirePortalFeature(orgId, 'booking')
 
   const t = await getTranslations('booking.flow')
 

@@ -33,6 +33,11 @@ payment_provider              text check (payment_provider in ('cardcom','payplu
 payment_config_encrypted      text                     -- AES-256-GCM encrypted JSON with credentials
 -- Auto payment (Sprint 9)
 auto_send_payment_request     boolean not null default false
+-- Parent portal (owner/admin-editable at /settings/parent-portal since 2026-09)
+portal_settings               jsonb not null default '{}'::jsonb
+                              -- {enabled, payments, homework, exams, progress,
+                              --  messages, booking, cancellation}; a missing key
+                              --  means on. Read via normalizePortalSettings().
 -- Reminders (Sprint 12)
 reminders_enabled             boolean not null default true
 lesson_reminder_hours         smallint not null default 24
@@ -602,6 +607,11 @@ index: (organization_id, phone, created_at)
 
 SaaS subscription tracking for LESSIO's own customers.
 
+> **Superseded.** This Stripe-shaped sketch never shipped. What was actually
+> built is `saas_plans` / `organization_subscriptions` / `saas_invoices`,
+> billed through Sumit — see **SaaS platform billing** at the end of this
+> document.
+
 ```sql
 -- organizations table additions (Sprint 21):
 -- trial_ends_at      timestamptz
@@ -783,3 +793,121 @@ Notes:
   caller retry past the limit for free.
 - `saas_plans.features` gained an `integrations` key. `parseSaasFeatures` reads keys by
   name and coerces a missing one to `false`, so every plan row needs an explicit value.
+
+---
+
+## SaaS platform billing
+
+Organizations paying **Lessio**. Entirely separate from the billing engine that
+bills an org’s own students (`charges`, `student_monthly_billing`).
+
+### saas_plans
+
+The catalog. Prices are VAT-inclusive ILS.
+
+```sql
+id                    uuid primary key
+name                  text unique       -- free | basic | advanced | solo | studio | center | custom
+display_name_he       text
+display_name_en       text
+price_monthly         numeric(10,2) not null default 0
+price_yearly          numeric(10,2)
+features              jsonb default '{}'  -- 8 boolean flags, see src/lib/saas/types.ts
+is_active             boolean default true
+sort_order            int                 -- the value ladder; retired tiers interleave
+students_quota        int                 -- null = unlimited
+lessons_monthly_quota int
+teachers_quota        int                 -- the seat metric since Sep 2026
+```
+
+`getSaasPlanById` deliberately does **not** filter `is_active`: a retired row
+keeps resolving for the orgs that hold it, which is what makes grandfathering
+structural rather than a promise. Pinned by `plans.test.ts`.
+
+### organization_subscriptions
+
+One row per org (`organization_id` is UNIQUE).
+
+```sql
+id                          uuid primary key
+organization_id             uuid unique references organizations(id)
+plan_id                     uuid references saas_plans(id)
+status                      text  -- trial | active | pending_payment | past_due | cancelled | read_only
+billing_interval            text  -- monthly | yearly
+trial_ends_at               timestamptz
+current_period_start        timestamptz
+current_period_end          timestamptz
+cancel_at_period_end        boolean default false
+cancelled_at                timestamptz
+
+-- Sumit linkage, written at activation
+sumit_customer_id           text
+sumit_subscription_id       text
+sumit_payment_token         text          -- the card the renewal charger charges
+card_last_four              text
+card_expiry_month           smallint      -- 20260902120000
+card_expiry_year            smallint      -- 20260902120000
+
+-- Checkout in flight
+pending_checkout_reference  text          -- server-generated uuid, the binding key
+pending_checkout_started_at timestamptz   -- 20260902120000; a payment older than this cannot activate
+previous_status             text          -- snapshot so an abandoned checkout can revert
+previous_plan_id            uuid
+
+-- Renewal state machine (20260902120000)
+renewal_attempts            integer not null default 0
+next_renewal_attempt_at     timestamptz   -- period_end + 0/3/7 days
+last_renewal_attempt_at     timestamptz   -- doubles as the claim lease
+last_renewal_error          text
+```
+
+### saas_invoices
+
+Every platform charge, successful or not.
+
+```sql
+id                   uuid primary key
+organization_id      uuid
+subscription_id      uuid
+amount               numeric(10,2)
+currency             text default 'ILS'
+status               text  -- paid | pending | failed
+source               text  -- checkout | renewal | manual   (20260902120000)
+sumit_payment_id     text          -- 20260902120000; unique across paid rows
+sumit_document_id    text          -- unique where not null (20260829130100)
+sumit_document_url   text
+failure_reason       text          -- 20260902120000; the binding refusal or Sumit decline
+billing_period_start timestamptz
+billing_period_end   timestamptz
+issued_at            timestamptz
+```
+
+Two unique indexes carry the money-safety guarantees:
+
+- `idx_saas_invoices_sumit_payment` — a Sumit payment id may appear on **one**
+  paid row. This is the anti-replay guard: a valid payment id pasted into a
+  fresh callback URL cannot activate a second subscription.
+- `idx_saas_invoices_paid_period` — one paid row per `(subscription_id,
+  billing_period_start)`, a backstop against a double renewal.
+
+### Functions (20260902120000)
+
+| Function | Purpose |
+|---|---|
+| `claim_saas_renewals(now, lease, max_attempts, limit)` | Selects due renewals and stamps the lease in one statement (`FOR UPDATE SKIP LOCKED`), so overlapping cron runs cannot charge the same row |
+| `record_saas_renewal_success(...)` | Advances the period **from the previous period end** and inserts the paid invoice, in one statement. Guarded on the period end the caller charged for, so a stale caller is a no-op |
+| `record_saas_renewal_failure(...)` | Moves to `past_due`, increments the attempt, schedules the next, and writes the failed invoice row |
+
+All three have `EXECUTE` revoked from `PUBLIC` — service role only.
+
+### Related
+
+- `organizations.service_state` (`active|grace|suspended|dormant`) is derived from
+  the subscription by `derive_service_state` / `sync_org_service_states`
+  (20260829140100). It is what actually silences the bot, the crons and the
+  parent portal.
+- `notification_log` carries the platform sends: `saas_renewal_reminder`,
+  `saas_dunning`, `saas_trial_reminder`, `saas_lifecycle_email`,
+  `org_suspended_notice`. `status` gained `pending` (20260902120000) so an owner
+  email is claimed before it is sent rather than after.
+- `saas_plan_inquiries` — custom-plan requests from onboarding.

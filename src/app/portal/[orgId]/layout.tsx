@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { setLandingLocaleAction } from '@/app/landing-locale-action'
 import { LocaleToggle } from '@/components/i18n/LocaleToggle'
 import { getOrgServiceState, isServiceSuspended } from '@/lib/saas/subscriptions'
+import { getPortalSettings } from '@/lib/organizations/portalSettings'
 
 /**
  * Parent portal shell — mobile-first, no Supabase session.
@@ -20,7 +21,14 @@ export default async function PortalLayout({
   const { orgId } = await params
   const locale = await getLocale()
   const dir = locale === 'he' ? 'rtl' : 'ltr'
-  const serviceState = await getOrgServiceState(orgId)
+  const [serviceState, portalSettings] = await Promise.all([
+    getOrgServiceState(orgId),
+    getPortalSettings(orgId),
+  ])
+
+  let body: ReactNode = children
+  if (isServiceSuspended(serviceState)) body = <ServiceUnavailable />
+  else if (!portalSettings.enabled) body = <PortalClosed />
 
   return (
     // The root layout body is `overflow-hidden`, so this shell must provide its
@@ -30,9 +38,27 @@ export default async function PortalLayout({
         <LocaleToggle currentLocale={locale} action={setLandingLocaleAction} />
       </div>
       <div className="max-w-[480px] mx-auto min-h-full bg-card shadow-sm flex flex-col">
-        {isServiceSuspended(serviceState) ? <ServiceUnavailable /> : children}
+        {body}
       </div>
     </div>
+  )
+}
+
+/**
+ * Shown instead of any portal page while the org has the portal switched off
+ * in its settings (`portal_settings.enabled`). Same placement reasoning as
+ * ServiceUnavailable: in the layout, so a parent holding a live cookie is
+ * stopped too, and so the login page shows this instead of an OTP form that
+ * would only lead here.
+ */
+async function PortalClosed() {
+  const t = await getTranslations('portal.closed')
+
+  return (
+    <main className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <h1 className="text-lg font-semibold text-foreground">{t('title')}</h1>
+      <p className="max-w-[36ch] text-sm text-muted-foreground">{t('body')}</p>
+    </main>
   )
 }
 

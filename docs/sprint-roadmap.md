@@ -41,7 +41,7 @@ in `docs/archive/sprint-scopes/`.
 | 27 | Billing & Accounting Pro (PDF invoices, tax docs, quotas, credit notes) | ✅ Done |
 | 28 | Analytics Pro (KPI deltas, revenue forecasting, teacher performance, student LTV) | ✅ Done |
 | 29 | Google Login + Google Calendar Integration | 🚧 In Progress |
-| 30 | Revenue Integrity & Reliability | 📝 Planned |
+| 30 | Revenue Integrity & Reliability | 🚧 Story 2 built (SaaS renewals) |
 | 31 | WhatsApp Production Launch | 📝 Planned — stories 5, 7, 9 already done |
 | 32 | Customer Support System (tickets, AI triage, recurring-bug detection) | ✅ M1–M3 done |
 | 33 | Integration Hub (API keys, `/api/v1`, Make payment provider, webhooks) | ✅ M1 shipped |
@@ -252,7 +252,7 @@ CREATE TABLE in_app_notifications (
 
 ### Stories
 - Story 1: Payment webhook security (Stripe signature verification, Cardcom/PayPlus server-side confirmation, receipt idempotency fix, payments test coverage)
-- Story 2: SaaS renewal engine (token-charge cron, past_due enforcement, cancel-subscription flow, Sumit E2E cutover — carried since Sprint 23)
+- Story 2: ✅ **SaaS renewal engine built (2026-09-02)** — token-charge cron with a 0/3/7 dunning ladder, checkout↔payment binding with replay protection, reconciliation, trial-end interstitial and lifecycle emails. **Sumit E2E cutover against the live company is still outstanding** (carried since Sprint 23); see `docs/release-checklist.md`
 - Story 3: Ship WhatsApp automations WIP (Edge template sync, toggle E2E, WABA ID signup)
 - Story 4: Reliability hardening (Sentry in Edge Functions, cron send/mark atomicity, webhook rate limiting)
 - Story 5 (stretch): Dashboard CRUD completions (edit teacher/goal/note, teacher lesson cancel, subscriptions page links)
@@ -416,6 +416,31 @@ The five-minute job atomically claims only still-scheduled rows, then reuses the
 existing immediate/monthly billing and automatic payment-request paths. Completion
 source and billing warnings are stored on the lesson; warnings are retried without
 moving the lesson back to scheduled. Cancelled and no-show lessons are never claimed.
+
+---
+
+## Parent-portal feature toggles (2026-09-02)
+
+**Status:** Built (migration `20260902150000` not yet applied)
+**Track:** standalone; no sprint dependency
+
+Owners and admins choose what the parent portal offers, at `/settings/parent-portal`:
+a master switch plus seven toggles — payments, homework, exams, progress, messages,
+self-service booking, and parent self-cancel. Home and the schedule are always
+available while the portal is open. Everything defaults to on, so existing orgs are
+unchanged.
+
+The set lives in one jsonb column, `organizations.portal_settings`, where a missing
+key means on (Decision #34). Enforcement is per page *and* per server action, not tab
+visibility alone. The bot keeps working either way; only its portal-facing links move
+— a closed portal is not offered in the parent menu, and the balance reply points at
+the portal home, or at nothing, when the payments page is closed. The portal link
+moved off the WhatsApp settings page onto the new one.
+
+**Known gaps:** the Edge Function crons (homework sender/reminders) still send on
+`reminders_enabled` and `service_state` alone — a parent whose org closed portal
+homework can still receive a homework WhatsApp message. Deliberate: the toggles are
+scoped to the portal.
 
 ---
 

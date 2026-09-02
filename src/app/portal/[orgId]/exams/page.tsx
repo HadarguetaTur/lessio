@@ -3,6 +3,7 @@ import { ClipboardList } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { getPortalSession } from '@/lib/portal/session'
+import { requirePortalFeature } from '@/lib/portal/features'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { listExams, type StudentExam } from '@/lib/students/exams'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
@@ -20,6 +21,7 @@ export default async function PortalExamsPage({
   if (!session || session.orgId !== orgId) {
     redirect(`/portal/${orgId}/login`)
   }
+  await requirePortalFeature(orgId, 'exams')
 
   const [t, locale] = await Promise.all([getTranslations('portal.exams'), getLocale()])
   const intlLocale = toIntlLocale(parseAppLocale(locale))

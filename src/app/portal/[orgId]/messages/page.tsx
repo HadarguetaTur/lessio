@@ -4,6 +4,7 @@ import { MessageCircle } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { getPortalSession } from '@/lib/portal/session'
+import { requirePortalFeature } from '@/lib/portal/features'
 import { getParentConversationSummaries } from '@/lib/portal/messages'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
 import { PollingRefresh } from '@/lib/realtime/PollingRefresh'
@@ -19,6 +20,7 @@ export default async function PortalMessagesPage({
   if (!session || session.orgId !== orgId) {
     redirect(`/portal/${orgId}/login`)
   }
+  await requirePortalFeature(orgId, 'messages')
 
   const [summaries, t, locale] = await Promise.all([
     getParentConversationSummaries(orgId, session.parentId),

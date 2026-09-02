@@ -4,6 +4,7 @@ import { CalendarDays, AlertCircle, Target, ArrowLeft } from 'lucide-react'
 import { getPortalSession } from '@/lib/portal/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getOrgTimezone } from '@/lib/organizations'
+import { getPortalSettings } from '@/lib/organizations/portalSettings'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { formatTime, formatDate } from '@/lib/lessons'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
@@ -27,11 +28,12 @@ export default async function PortalHomePage({
   }
 
   const db = createServiceRoleClient()
-  const [timezone, locale, t, tStatus] = await Promise.all([
+  const [timezone, locale, t, tStatus, portal] = await Promise.all([
     getOrgTimezone(orgId),
     getLocale(),
     getTranslations('portal.home'),
     getTranslations('portal.schedule.status'),
+    getPortalSettings(orgId),
   ])
   const appLocale = parseAppLocale(locale)
   const now = new Date().toISOString()
@@ -50,12 +52,17 @@ export default async function PortalHomePage({
     // Same definition of "owed" as /payments: every open status, and what is
     // left after partial payments. Summing raw `amount` over `pending` alone
     // showed a different number on each of the two screens.
-    db
-      .from('charges')
-      .select('amount, amount_paid')
-      .eq('parent_id', session.parentId)
-      .eq('organization_id', orgId)
-      .in('status', OPEN_CHARGE_STATUSES),
+    // An org that keeps payments off the portal gets no balance card at all —
+    // a figure with nowhere to pay it is a question the teacher then has to
+    // answer over WhatsApp.
+    portal.payments
+      ? db
+          .from('charges')
+          .select('amount, amount_paid')
+          .eq('parent_id', session.parentId)
+          .eq('organization_id', orgId)
+          .in('status', OPEN_CHARGE_STATUSES)
+      : Promise.resolve({ data: [] as Array<{ amount: number; amount_paid?: number | null }> }),
     getActiveGoalsForStudents(orgId, studentIds),
   ])
 
@@ -226,7 +233,7 @@ export default async function PortalHomePage({
         )}
 
         {/* Payments link (when no balance shown above) */}
-        {balance === 0 && (
+        {portal.payments && balance === 0 && (
           <Link
             href={`/portal/${orgId}/payments`}
             className="flex items-center justify-center gap-1 text-center text-xs text-muted-foreground hover:text-foreground transition-colors"

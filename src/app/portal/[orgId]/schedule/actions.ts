@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getLocale } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
+import { isPortalFeatureEnabled } from '@/lib/portal/features'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { executeCancellation } from '@/lib/cancellation-flow/executeCancellation'
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
@@ -26,8 +27,14 @@ export async function cancelLessonAction(
   if (!session || session.orgId !== orgId) {
     return { ok: false, error: 'unauthorized' }
   }
+  // Self-cancel switched off for this org. The schedule stops offering the
+  // button, so this only meets a dialog that was open when the toggle flipped;
+  // `not_eligible` is the copy that already says "not from here, talk to us".
+  if (!(await isPortalFeatureEnabled(orgId, 'cancellation'))) {
+    return { ok: false, error: 'not_eligible' }
+  }
 
-  const outcome = await executeCancellation(lessonId, session.parentId, orgId, 'portal')
+  const outcome =await executeCancellation(lessonId, session.parentId, orgId, 'portal')
 
   if (!outcome.success) {
     const known = ['already_cancelled', 'not_eligible', 'not_found'] as const

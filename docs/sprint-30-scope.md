@@ -42,7 +42,23 @@
 
 ---
 
-## Story 2 — SaaS Renewal Engine 🔴
+## Story 2 — SaaS Renewal Engine ✅ (built 2026-09-02)
+
+> **Shipped, with one deviation.** The charger runs as a Next.js internal
+> route (`/api/internal/saas/renew`) driven by pg_cron, not as a Deno Edge
+> Function: that runtime already owns the Sumit adapter, the email templates
+> and the activation path, and mirroring all three into Deno would have
+> doubled the money-handling code with no test coverage on the copy. The
+> precedent is `automatic-lesson-completion` (commit `2eefa32`). Retry state
+> lives in columns on `organization_subscriptions` rather than a
+> `saas_renewal_attempts` table — history is already in `saas_invoices` once
+> failed rows carry `failure_reason`.
+>
+> Also found and fixed here: the Sumit client had never run against the real
+> API and every call used a guessed contract (`Succeed`/`ReturnValue` instead
+> of `Status`/`Data`, `Identifier` instead of `ExternalIdentifier`, and a
+> callback that read `Valid`/`ID` where Sumit sends `OG-PaymentID`). See
+> decision #34.
 
 ### 2a: `saas-renewal-charger` Edge Function (new, daily cron)
 - Finds `organization_subscriptions` with `status = 'active'`, `cancel_at_period_end = false`, `current_period_end < now`

@@ -8,21 +8,22 @@ import { getSaasPlanByName } from '@/lib/saas/plans'
 import type { BeginPaidCheckoutSummary, SaasPlanName } from '@/lib/saas/types'
 import { getOwnerOnboardingSession } from '@/lib/auth/onboardingSession'
 import {
-  activateSubscriptionFromPayment,
   upsertTrialSubscription,
   upsertPendingPaymentSubscription,
   markOrganizationOnboardingComplete,
   devMockActivatePendingSubscription,
   revertPendingCheckout,
 } from '@/lib/saas/subscriptions'
+import { createSumitHostedCheckoutUrl, isSumitCheckoutMock } from '@/lib/saas/sumit-checkout'
+import { hasSumitCredentials } from '@/lib/saas/sumit'
 import {
-  createSumitHostedCheckoutUrl,
-  getSumitCredentialsFromEnv,
-} from '@/lib/saas/sumit-checkout'
-import { confirmSumitPayment } from '@/lib/saas/sumit'
+  completeCheckoutReturn,
+  type CheckoutReturnQuery,
+} from '@/lib/saas/checkoutReturn'
+import { parseAppLocale } from '@/lib/i18n/locale'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 
 
 
@@ -92,21 +93,11 @@ export async function beginPaidSaasCheckout(
 
   const baseUrl = getShareableBaseUrl()
   const successUrl = `${baseUrl}/onboarding/payment-callback`
-  const failureUrl = `${baseUrl}/onboarding/payment-callback?failed=1`
+  const cancelUrl = `${baseUrl}/onboarding/payment-callback/cancelled`
 
-  const isMock = process.env.SUMIT_CHECKOUT_MOCK === '1'
-  let creds: { companyId: string; apiKey: string }
-  if (isMock) {
-    creds = { companyId: 'mock', apiKey: 'mock' }
-  } else {
-    const envCreds = getSumitCredentialsFromEnv()
-    if (!envCreds) {
-      return {
-        error:
-          t('validation.missingSumitConfig'),
-      }
-    }
-    creds = envCreds
+  const isMock = isSumitCheckoutMock()
+  if (!isMock && !hasSumitCredentials()) {
+    return { error: t('validation.missingSumitConfig') }
   }
 
   const supabase = await createClient()
@@ -121,17 +112,18 @@ export async function beginPaidSaasCheckout(
 
   // Create the checkout link first — only mark the subscription pending once a link exists,
   // so a failed Sumit call never leaves the org stuck in `pending_payment`.
+  const locale = parseAppLocale(await getLocale())
   const checkout = await createSumitHostedCheckoutUrl({
-    companyId: creds.companyId,
-    apiKey: creds.apiKey,
+    orgId,
     amount,
-    description: `LESSIO ${plan.display_name_he}`,
+    description: `LESSIO ${locale === 'en' ? plan.display_name_en : plan.display_name_he}`,
     customerName: prof?.full_name ?? 'Owner',
     customerEmail: user?.email ?? null,
     customerPhone: null,
     reference: checkoutReference,
     successUrl,
-    failureUrl,
+    cancelUrl,
+    language: locale,
   })
 
   if ('error' in checkout) return { error: checkout.error }
@@ -248,15 +240,15 @@ export async function checkSaasActivationAndComplete(): Promise<'dashboard' | 'p
   return 'pending'
 }
 
-/** Called from payment-callback page with URL search params (mock / failure). */
-export async function applyPaymentCallbackQuery(params: {
-  mock?: string | null
-  failed?: string | null
-  /** Sumit redirect-return params (see beginredirect flow). */
-  valid?: string | null
-  identifier?: string | null
-  id?: string | null
-}): Promise<'dashboard' | 'pending' | 'failed'> {
+export type OnboardingCallbackResult = 'dashboard' | 'pending' | 'failed' | 'cancelled' | 'refused'
+
+/**
+ * The Sumit redirect-return during onboarding. Same binding rules and the same
+ * activation as the in-app upgrade — see @/lib/saas/checkoutReturn.
+ */
+export async function applyPaymentCallbackQuery(
+  params: CheckoutReturnQuery & { mock?: string | null }
+): Promise<OnboardingCallbackResult> {
   let orgId: string
   try {
     ;({ orgId } = await getOwnerOnboardingSession())
@@ -264,57 +256,25 @@ export async function applyPaymentCallbackQuery(params: {
     return 'failed'
   }
 
-  if (params.failed === '1' || params.valid === '0') return 'failed'
-
-  if (params.mock === '1' && process.env.SUMIT_CHECKOUT_MOCK === '1') {
+  if (params.mock === '1' && isSumitCheckoutMock()) {
     await devMockActivatePendingSubscription(orgId)
     await markOrganizationOnboardingComplete(orgId)
     return 'dashboard'
   }
 
-  // Authoritative confirmation against Sumit — never trust the redirect body.
-  if (params.id || params.identifier) {
-    const confirmation = await confirmSumitPayment({
-      transactionId: params.id ?? null,
-      reference: params.identifier ?? null,
-    })
-    // See the twin in account/billing/upgrade-actions.ts: the confirmed
-    // payment's own reference wins over the one supplied in the URL.
-    const checkoutReference = confirmation.externalReference ?? params.identifier ?? null
+  const { outcome } = await completeCheckoutReturn({
+    orgId,
+    query: {
+      paymentId: params.paymentId,
+      customerId: params.customerId,
+      externalIdentifier: params.externalIdentifier,
+      cancelled: params.cancelled,
+    },
+    source: 'callback',
+  })
 
-    if (confirmation.valid && checkoutReference) {
-      const result = await activateSubscriptionFromPayment({
-        orgId,
-        checkoutReference,
-        paidAmount: confirmation.amount,
-        sumitCustomerId: confirmation.customerId,
-        sumitPaymentToken: confirmation.paymentToken,
-        cardLastFour: confirmation.cardLastFour,
-        invoice:
-          confirmation.amount != null
-            ? {
-                amount: confirmation.amount,
-                sumitDocumentId: confirmation.documentId,
-                sumitDocumentUrl: confirmation.documentUrl,
-              }
-            : undefined,
-      })
-
-      if (result.activated) {
-        await markOrganizationOnboardingComplete(orgId)
-        return 'dashboard'
-      }
-
-      console.info('[saas/onboarding-callback] activation refused', { orgId, reason: result.reason })
-    }
-  }
-
-  const { getOrgSubscriptionState } = await import('@/lib/saas/subscriptions')
-  const state = await getOrgSubscriptionState(orgId)
-  if (state?.status === 'active') {
-    await markOrganizationOnboardingComplete(orgId)
-    return 'dashboard'
-  }
-
+  if (outcome === 'activated' || outcome === 'already_active') return 'dashboard'
+  if (outcome === 'cancelled') return 'cancelled'
+  if (outcome === 'refused') return 'refused'
   return 'pending'
 }

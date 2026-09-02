@@ -4,12 +4,15 @@
  * Trigger: scheduled cron, daily at 00:00 UTC (0 0 * * *)
  *
  * Algorithm:
+ *   0. Abandon checkouts started more than 72h ago and never paid
  *   1. Find trial subscriptions where trial_ends_at < now → set status = 'read_only'
  *   2. Find active/past_due subscriptions where current_period_end < now
  *      and cancel_at_period_end = true → set status = 'cancelled'
- *   3. Find active subscriptions where current_period_end < now
- *      and cancel_at_period_end = false → set status = 'past_due'
- *      (actual renewal is handled by Sumit webhooks; this is a safety net)
+ *   3. Find active subscriptions whose period ended and that the renewal
+ *      charger cannot rescue → set status = 'past_due'. Charging is owned by
+ *      /api/internal/saas/renew (Next.js — it holds the Sumit adapter), so a
+ *      subscription with a stored token is left alone for two days before this
+ *      steps in; that only happens if the charger stopped running.
  *   4. Derive organizations.service_state from the subscription — the single
  *      value the WhatsApp webhook, the sending crons and the parent portal read
  *      to decide whether an org's service is on. This function is its ONLY
@@ -28,11 +31,53 @@ Deno.serve(async (_req) => {
 
   const now = new Date().toISOString()
   const results = {
+    staleCheckouts: 0,
     trialExpired: 0,
     cancelledAtPeriodEnd: 0,
     pastDue: 0,
     serviceStateChanged: 0,
     errors: 0,
+  }
+
+  // ── 0. Abandon checkouts that were never paid ───────────────────────────────
+  // A row left in pending_payment is invisible to every other pass here, and to
+  // the renewal charger. Reconciliation (in the Next.js cron) has had three days
+  // to find a real payment for it by now.
+  const staleBefore = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()
+  const { data: stale, error: staleErr } = await db
+    .from('organization_subscriptions')
+    .select('id, organization_id, previous_status, previous_plan_id')
+    .eq('status', 'pending_payment')
+    .not('pending_checkout_started_at', 'is', null)
+    .lt('pending_checkout_started_at', staleBefore)
+
+  if (staleErr) {
+    console.error('[saas-checker] Failed to query stale checkouts', { error: staleErr.message })
+    results.errors++
+  } else {
+    for (const sub of stale ?? []) {
+      // Restore what the org had before the checkout. Never delete the row: an
+      // org with no subscription reads as grandfathered and gets everything free.
+      const update: Record<string, unknown> = {
+        status: sub.previous_status ?? 'read_only',
+        pending_checkout_reference: null,
+        pending_checkout_started_at: null,
+        previous_status: null,
+        previous_plan_id: null,
+        updated_at: now,
+      }
+      if (sub.previous_plan_id) update.plan_id = sub.previous_plan_id
+
+      const { error } = await db.from('organization_subscriptions').update(update).eq('id', sub.id)
+
+      if (error) {
+        console.error('[saas-checker] Failed to abandon stale checkout', { subId: sub.id, error: error.message })
+        results.errors++
+      } else {
+        console.info('[saas-checker] Stale checkout abandoned', { subId: sub.id, orgId: sub.organization_id })
+        results.staleCheckouts++
+      }
+    }
   }
 
   // ── 1. Expire free trials ───────────────────────────────────────────────────
@@ -77,7 +122,10 @@ Deno.serve(async (_req) => {
     for (const sub of toCancel ?? []) {
       const { error } = await db
         .from('organization_subscriptions')
-        .update({ status: 'cancelled', updated_at: now })
+        // cancelled_at was never stamped here, so every self-serve cancellation
+        // was invisible to churn metrics keyed on it (the superadmin path does
+        // stamp it — src/lib/superadmin/subscriptions.ts).
+        .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
         .eq('id', sub.id)
 
       if (error) {
@@ -91,10 +139,19 @@ Deno.serve(async (_req) => {
   }
 
   // ── 3. Mark overdue active subscriptions as past_due ───────────────────────
-  // (Sumit handles actual renewal; this catches cases where the webhook was missed)
+  //
+  // The renewal charger owns the normal path: it charges the stored token and
+  // sets past_due itself on a decline, with the dunning emails attached. This
+  // pass must not race it — flipping a subscription the charger is about to
+  // rescue would send a customer a lock-out warning for a card that works.
+  //
+  // So: a subscription WITH a token is left alone for two days. If it is still
+  // overdue after that, the charger is not running, which is an incident.
+  // A subscription with no token can only be handled here.
+  const chargerGraceCutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
   const { data: overdue, error: overdueErr } = await db
     .from('organization_subscriptions')
-    .select('id, organization_id')
+    .select('id, organization_id, sumit_payment_token, current_period_end')
     .eq('status', 'active')
     .eq('cancel_at_period_end', false)
     .lt('current_period_end', now)
@@ -104,16 +161,32 @@ Deno.serve(async (_req) => {
     results.errors++
   } else {
     for (const sub of overdue ?? []) {
+      const hasToken = Boolean(sub.sumit_payment_token)
+      const chargerHadItsChance = (sub.current_period_end ?? now) < chargerGraceCutoff
+      if (hasToken && !chargerHadItsChance) continue
+
       const { error } = await db
         .from('organization_subscriptions')
         .update({ status: 'past_due', updated_at: now })
         .eq('id', sub.id)
+        // Do not overwrite a status the charger changed while we were working.
+        .eq('status', 'active')
 
       if (error) {
         console.error('[saas-checker] Failed to mark past_due', { subId: sub.id, orgId: sub.organization_id, error: error.message })
         results.errors++
+      } else if (hasToken) {
+        console.error('[saas-checker] Overdue 2+ days WITH a stored card — is the renewal charger running?', {
+          subId: sub.id,
+          orgId: sub.organization_id,
+          periodEnd: sub.current_period_end,
+        })
+        results.pastDue++
       } else {
-        console.info('[saas-checker] Active subscription past_due (missed renewal?)', { subId: sub.id, orgId: sub.organization_id })
+        console.info('[saas-checker] Overdue subscription with no stored card → past_due', {
+          subId: sub.id,
+          orgId: sub.organization_id,
+        })
         results.pastDue++
       }
     }

@@ -33,14 +33,14 @@ export async function fetchUnreadCountAction(): Promise<number> {
 
 export async function markAsReadAction(notificationId: string): Promise<void> {
   const session = await getSession()
-  requireMutation(session)
+  requireMutation(session, { allowWhenLapsed: true })
   await markAsRead(notificationId)
 }
 
 export async function markAllReadAction(): Promise<void> {
   const session = await getSession()
   const { profileId, orgId } = session
-  requireMutation(session)
+  requireMutation(session, { allowWhenLapsed: true })
   await markAllRead(profileId, orgId)
   revalidatePath('/')
 }

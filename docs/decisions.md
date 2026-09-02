@@ -548,6 +548,96 @@ Rules:
 * changing billing mode is blocked while open charges from the old model remain
 * parent-facing monthly charges show the captured period, not an assumed calendar month
 
+## 34. SaaS Renewal Is Self-Managed Through Sumit
+
+✅ DECIDED (Sep 2026): Lessio charges its own customers on its own schedule.
+Sumit is a payment rail and a document issuer, not the system of record for a
+subscription. A Sumit standing order would put the retry policy, the price and
+the plan-change behaviour inside a vendor UI where none of it can be tested.
+
+Rules:
+
+* renewals are charged by `/api/internal/saas/renew` (Next.js, pg_cron-triggered)
+  against the card token Sumit stored at checkout — not by a Sumit recurring
+  charge. The route runs in Next.js, not as an Edge Function, because that
+  runtime already owns the Sumit adapter, the email templates and the
+  activation path; the precedent is `automatic-lesson-completion`
+* a declined card is retried at period end + 0 / 3 / 7 days, then the
+  subscription stays `past_due` and the existing 7-day grace turns it
+  `read_only`. Only a decline consumes an attempt: a technical failure
+  (outage, malformed response, HTTP error) is retried without counting
+* the new period runs from the previous `current_period_end`, never from the
+  day the charge cleared — a card that clears three days late does not buy
+  three free days
+* renewals claim their rows through `claim_saas_renewals`, which stamps a lease
+  in the same statement that selects them, so two overlapping runs can never
+  charge the same subscription
+
+A payment may activate a subscription only when **all** of these hold. They are
+evaluated in `evaluateCheckoutBinding`, against what Sumit reports about the
+payment — never against the redirect query, which the customer can edit:
+
+* the `OG-ExternalIdentifier` equals the `pending_checkout_reference` we
+  generated and stored for that org
+* the Sumit payment id has not already paid for something (unique index on
+  `saas_invoices.sumit_payment_id` for paid rows)
+* the payment is not dated before the checkout started, allowing four hours of
+  skew because Sumit's `Payment.Date` carries no documented offset
+* the Sumit customer matches the one already on the org, when there is one
+* the amount covers the plan price for the stored interval, within rounding
+
+A payment that fails these is recorded as a `failed` invoice row and raised to
+the superadmins. It is never silently discarded: money may have moved.
+
+Related:
+
+* **the webhook is not authoritative.** Sumit’s hosted checkout has no IPN,
+  so `/api/sumit/webhook` can only ever be a Sumit UI trigger with an
+  unguaranteed payload. It is a latency optimisation; the daily reconciliation
+  in the renewal cron is the real safety net for a customer who closed the tab
+* **a lapsed org keeps its data.** Trial over, grace exhausted or cancelled
+  makes the org read-only, not locked out: reading, exporting, support and
+  billing stay reachable, and only the working surfaces redirect. Writes are
+  refused centrally in `requireMutation`, so a new action is covered by
+  default and the failure mode of forgetting a guard is "blocked", not
+  "free product"
+* **owners are told before it happens** — email at T-7 / T-3 / T-1 / T0 of a
+  trial, three days before a renewal, and on every declined charge. Email, not
+  WhatsApp: the existing WhatsApp reminder needs the org’s own connected
+  number, which a trialling org usually does not have
+
+---
+
+## 35. What the Parent Portal Offers Is an Org Setting
+
+✅ DECIDED (Sep 2026): what parents can see and do in the portal is
+per-organization configuration, not a property of the product. A school that is
+not ready to take payments online, or that does not use homework, opens the
+portal without them rather than not at all.
+
+Rules:
+
+* the toggles live in one jsonb column, `organizations.portal_settings`, not one
+  boolean per feature — a new portal section must not require a schema
+  migration. Same shape and reasoning as Decision #31
+* a missing key means **on**. That is what makes the column backward-compatible
+  with every org that predates it, and what makes a newly shipped section
+  visible by default instead of silently switched off for everyone
+* the master switch (`enabled`) is enforced in the portal **layout**, like
+  `service_state` before it, so a parent already holding a session cookie is
+  stopped too — a check that only runs at login leaves a week-long hole
+* every section is gated in **both** its page and its server actions:
+  `requirePortalFeature` redirects (pages), `isPortalFeatureEnabled` returns a
+  value (actions). Hiding a tab is not enforcement — the URL and the
+  already-open form both survive the toggle flipping
+* the toggles govern the **portal**, not the bot. The WhatsApp assistant keeps
+  answering about balances, schedules and cancellations regardless: closing the
+  payments page is a statement about a web page, not about whether a parent may
+  ask what they owe. The one thing that must follow is the links — the bot never
+  sends a parent to a portal page their org has closed
+* home and the schedule have no toggle. A portal without them is not a smaller
+  portal, it is a closed one, and that is what the master switch says
+
 ---
 
 ## Schema Changes Summary by Sprint

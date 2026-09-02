@@ -88,6 +88,37 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
   }
 }
 
+/**
+ * Email from Lessio itself to an org owner (subscription, receipts). Always the
+ * platform Resend account — the org's connected Gmail is for its parents, and
+ * a lapsed org's Gmail is the wrong sender for "your card was declined".
+ * Catches errors, logs, never throws.
+ */
+export async function sendPlatformEmail(params: {
+  to: string
+  subject: string
+  html: string
+}): Promise<boolean> {
+  const resend = getResend()
+  if (!resend) {
+    console.warn('[email] No platform email provider configured — skipping', { to: params.to })
+    return false
+  }
+  try {
+    await resend.emails.send({
+      from: `Lessio <${getFromEmail()}>`,
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+    })
+    console.info('[email] Platform email sent', { to: params.to, subject: params.subject })
+    return true
+  } catch (err) {
+    console.error('[email] Platform email failed', { to: params.to, subject: params.subject, err })
+    return false
+  }
+}
+
 export type EmailNotificationType =
   | 'lesson_reminder'
   | 'payment_reminder'

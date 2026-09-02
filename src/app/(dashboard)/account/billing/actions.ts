@@ -7,7 +7,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 export async function requestCancelSaasAtPeriodEndAction(): Promise<{ error: string } | void> {
   const session = await getSession()
   try {
-    requireMutation(session)
+    requireMutation(session, { allowWhenLapsed: true })
   } catch {
     return { error: 'Read-only session' }
   }

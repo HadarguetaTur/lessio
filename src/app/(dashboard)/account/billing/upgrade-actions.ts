@@ -11,10 +11,10 @@ import {
   type PurchasableSaasPlanName,
 } from '@/lib/saas/planPresentation'
 import { evaluateUpgrade } from '@/lib/saas/upgradeEligibility'
+import { isRepurchase } from '@/lib/saas/repurchase'
 import { getOrgQuotaUsage } from '@/lib/saas/quota'
 import type { BeginPaidCheckoutSummary, SaasPlanName } from '@/lib/saas/types'
 import {
-  activateSubscriptionFromPayment,
   devMockActivatePendingSubscription,
   getOrgSubscriptionState,
   markOrganizationOnboardingComplete,
@@ -22,11 +22,15 @@ import {
   upsertPendingPaymentSubscription,
   type OrgSubscriptionState,
 } from '@/lib/saas/subscriptions'
+import { createSumitHostedCheckoutUrl, isSumitCheckoutMock } from '@/lib/saas/sumit-checkout'
+import { hasSumitCredentials } from '@/lib/saas/sumit'
 import {
-  createSumitHostedCheckoutUrl,
-  getSumitCredentialsFromEnv,
-} from '@/lib/saas/sumit-checkout'
-import { confirmSumitPayment } from '@/lib/saas/sumit'
+  completeCheckoutReturn,
+  type CheckoutReturnQuery,
+  type CheckoutReturnOutcome,
+} from '@/lib/saas/checkoutReturn'
+import { getLocale } from 'next-intl/server'
+import { parseAppLocale } from '@/lib/i18n/locale'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
 const planNameSchema = z.enum(PURCHASABLE_PLAN_NAMES)
@@ -39,6 +43,11 @@ function canStartUpgradeCheckout(state: OrgSubscriptionState | null): boolean {
     state.status !== 'trial' &&
     state.status !== 'active' &&
     state.status !== 'read_only' &&
+    // A lapsed customer must be able to pay their way back in. These used to be
+    // excluded, so the "update your payment method" link in a dunning email led
+    // to a page that refused every plan — including the one they already had.
+    state.status !== 'past_due' &&
+    state.status !== 'cancelled' &&
     // A previous checkout that was never completed — allow restarting it.
     state.status !== 'pending_payment'
   ) {
@@ -46,6 +55,7 @@ function canStartUpgradeCheckout(state: OrgSubscriptionState | null): boolean {
   }
   return true
 }
+
 
 /**
  * Validates that checking out the target plan is allowed.
@@ -75,9 +85,9 @@ async function assertUpgradeAllowed(
     return { ok: false, error: 'UPGRADE_UNAVAILABLE' }
   }
 
-  // A pending purchase is not an active plan — allow (re)starting checkout for
-  // any paid plan, subject only to the usage check.
-  if (state.status === 'pending_payment') {
+  // A pending, lapsed or cancelled subscription is not an active plan — allow
+  // (re)starting checkout for any paid plan, subject only to the usage check.
+  if (isRepurchase(state)) {
     return toResult(evaluateUpgrade({ current: null, target: targetPlan, usage }))
   }
 
@@ -103,7 +113,7 @@ export async function beginUpgradeCheckoutAction(
 > {
   const session = await getSession()
   try {
-    requireMutation(session)
+    requireMutation(session, { allowWhenLapsed: true })
   } catch {
     return { error: 'READ_ONLY_SESSION', errorCode: 'READ_ONLY_SESSION' }
   }
@@ -136,17 +146,12 @@ export async function beginUpgradeCheckoutAction(
 
   const baseUrl = getShareableBaseUrl()
   const successUrl = `${baseUrl}/account/billing/payment-callback`
-  const failureUrl = `${baseUrl}/account/billing/payment-callback?failed=1`
+  const cancelUrl = `${baseUrl}/account/billing/payment-callback/cancelled`
   const mockPath = '/account/billing/mock-payment'
 
-  const isMock = process.env.SUMIT_CHECKOUT_MOCK === '1'
-  let creds: { companyId: string; apiKey: string }
-  if (isMock) {
-    creds = { companyId: 'mock', apiKey: 'mock' }
-  } else {
-    const envCreds = getSumitCredentialsFromEnv()
-    if (!envCreds) return { error: 'SUMIT_ENV_MISSING', errorCode: 'SUMIT_ENV_MISSING' }
-    creds = envCreds
+  const isMock = isSumitCheckoutMock()
+  if (!isMock && !hasSumitCredentials()) {
+    return { error: 'SUMIT_ENV_MISSING', errorCode: 'SUMIT_ENV_MISSING' }
   }
 
   const supabase = await createClient()
@@ -161,17 +166,18 @@ export async function beginUpgradeCheckoutAction(
 
   // Create the checkout link first — only mark the subscription pending once a link exists,
   // so a failed Sumit call never leaves the org stuck in `pending_payment`.
+  const locale = parseAppLocale(await getLocale())
   const checkout = await createSumitHostedCheckoutUrl({
-    companyId: creds.companyId,
-    apiKey: creds.apiKey,
+    orgId: session.orgId,
     amount,
-    description: `LESSIO ${plan.display_name_he}`,
+    description: `LESSIO ${locale === 'en' ? plan.display_name_en : plan.display_name_he}`,
     customerName: prof?.full_name ?? 'Owner',
     customerEmail: user?.email ?? null,
     customerPhone: null,
     reference: checkoutReference,
     successUrl,
-    failureUrl,
+    cancelUrl,
+    language: locale,
     ...(isMock ? { mockPaymentPath: mockPath } : {}),
   })
 
@@ -208,7 +214,7 @@ export async function completeMockUpgradeCheckoutAction(): Promise<void> {
   }
   const session = await getSession()
   try {
-    requireMutation(session)
+    requireMutation(session, { allowWhenLapsed: true })
   } catch {
     redirect('/account/billing')
   }
@@ -228,7 +234,7 @@ export async function completeMockUpgradeCheckoutAction(): Promise<void> {
 export async function cancelPendingUpgradeCheckoutAction(): Promise<void> {
   const session = await getSession()
   try {
-    requireMutation(session)
+    requireMutation(session, { allowWhenLapsed: true })
   } catch {
     redirect('/account/billing')
   }
@@ -243,81 +249,45 @@ export async function cancelPendingUpgradeCheckoutAction(): Promise<void> {
   redirect('/account/billing')
 }
 
+export type BillingCallbackResult = 'billing' | 'pending' | 'failed' | 'cancelled' | 'refused'
+
 /**
- * Applies URL params from `/account/billing/payment-callback` (same semantics as onboarding callback).
+ * Applies the Sumit redirect-return at `/account/billing/payment-callback`.
+ * The binding rules and the activation live in @/lib/saas/checkoutReturn, which
+ * the onboarding callback and the webhook share.
  */
-export async function applyAccountBillingPaymentCallbackQuery(params: {
-  mock?: string | null
-  failed?: string | null
-  /** Sumit redirect-return params (see beginredirect flow). */
-  valid?: string | null
-  identifier?: string | null
-  id?: string | null
-}): Promise<'billing' | 'pending' | 'failed'> {
+export async function applyAccountBillingPaymentCallbackQuery(
+  params: CheckoutReturnQuery & { mock?: string | null }
+): Promise<BillingCallbackResult> {
   const session = await getSession()
   if (session.role !== 'owner') return 'failed'
 
-  if (params.failed === '1' || params.valid === '0') return 'failed'
-
-  if (params.mock === '1' && process.env.SUMIT_CHECKOUT_MOCK === '1') {
+  if (params.mock === '1' && isSumitCheckoutMock()) {
     await devMockActivatePendingSubscription(session.orgId)
     await markOrganizationOnboardingComplete(session.orgId)
     revalidatePath('/account/billing')
     return 'billing'
   }
 
-  // Authoritative confirmation against Sumit — never trust the redirect body.
-  if (params.id || params.identifier) {
-    const confirmation = await confirmSumitPayment({
-      transactionId: params.id ?? null,
-      reference: params.identifier ?? null,
-    })
-    // Prefer the reference Sumit echoes back over the one in the URL: the URL
-    // param is only a hint about which payment to look up, while
-    // externalReference belongs to the payment Sumit actually confirmed.
-    const checkoutReference = confirmation.externalReference ?? params.identifier ?? null
+  const { outcome } = await completeCheckoutReturn({
+    orgId: session.orgId,
+    query: {
+      paymentId: params.paymentId,
+      customerId: params.customerId,
+      externalIdentifier: params.externalIdentifier,
+      cancelled: params.cancelled,
+    },
+    source: 'callback',
+  })
 
-    if (confirmation.valid && checkoutReference) {
-      const result = await activateSubscriptionFromPayment({
-        orgId: session.orgId,
-        checkoutReference,
-        paidAmount: confirmation.amount,
-        sumitCustomerId: confirmation.customerId,
-        sumitPaymentToken: confirmation.paymentToken,
-        cardLastFour: confirmation.cardLastFour,
-        invoice:
-          confirmation.amount != null
-            ? {
-                amount: confirmation.amount,
-                sumitDocumentId: confirmation.documentId,
-                sumitDocumentUrl: confirmation.documentUrl,
-              }
-            : undefined,
-      })
+  revalidatePath('/account/billing')
+  return mapCheckoutOutcome(outcome)
+}
 
-      if (result.activated) {
-        await markOrganizationOnboardingComplete(session.orgId)
-        revalidatePath('/account/billing')
-        return 'billing'
-      }
-
-      // A refusal is normal here — a refreshed callback tab, or the webhook
-      // having already activated. Fall through to the status check below, which
-      // reports 'billing' when the subscription is active by any route.
-      console.info('[saas/callback] activation refused', {
-        orgId: session.orgId,
-        reason: result.reason,
-      })
-    }
-  }
-
-  const state = await getOrgSubscriptionState(session.orgId)
-  if (state?.status === 'active') {
-    await markOrganizationOnboardingComplete(session.orgId)
-    revalidatePath('/account/billing')
-    return 'billing'
-  }
-
+function mapCheckoutOutcome(outcome: CheckoutReturnOutcome): BillingCallbackResult {
+  if (outcome === 'activated' || outcome === 'already_active') return 'billing'
+  if (outcome === 'cancelled') return 'cancelled'
+  if (outcome === 'refused') return 'refused'
   return 'pending'
 }
 

@@ -15,6 +15,7 @@
 import { trackEvent } from '@/lib/tracking/events'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { syncOrgHolidays } from '@/lib/holidays/syncOrgHolidays'
+import { TRIAL_DAYS } from '@/lib/saas/subscriptions'
 import { z } from 'zod'
 
 export type SignupInput = {
@@ -49,8 +50,6 @@ export type SignupFlowServerErrors = {
 export type SignupResult =
   | { success: true; orgId: string; userId: string }
   | { success: false; error: string }
-
-const TRIAL_DAYS = 30
 
 export async function provisionProgressiveSetup(
   db: ReturnType<typeof createServiceRoleClient>,

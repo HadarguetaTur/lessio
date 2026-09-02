@@ -301,6 +301,7 @@
     "settingsCancellation": "Cancellation Policy",
     "settingsHolidays": "Holidays",
     "settingsReminders": "Reminders",
+    "settingsParentPortal": "Parent Portal",
     "settingsExams": "Exam Policy",
     "settingsScheduling": "Scheduling & Breaks",
     "settingsAiAssistant": "AI Assistant",
@@ -1474,6 +1475,10 @@
         "title": "Reminders",
         "description": "Automated reminder settings"
       },
+      "parentPortal": {
+        "title": "Parent Portal",
+        "description": "What parents can see and do in their portal"
+      },
       "aiAssistant": {
         "title": "AI Assistant",
         "description": "Smart WhatsApp assistant for automatic replies"
@@ -1668,6 +1673,53 @@
       "overriddenByTeachers": "{count, plural, one {# teacher has set their own break, which overrides this default} other {# teachers have set their own break, which overrides this default}}",
       "minutes": "minutes",
       "hours": "hours",
+      "saved": "Settings saved",
+      "errors": {
+        "saveFailed": "Could not save the settings"
+      }
+    },
+    "parentPortal": {
+      "title": "Parent Portal",
+      "subtitle": "What parents see and can do in their own area",
+      "enabled": {
+        "label": "Portal is open to parents",
+        "hint": "While this is off parents cannot sign in and the bot stops offering the portal. You still see everything from the dashboard."
+      },
+      "featuresTitle": "What is open in the portal",
+      "featuresHint": "Home and the schedule are always shown. Choose what else parents get.",
+      "closedNote": "The portal is off — these choices are saved and come back when you open it again.",
+      "features": {
+        "payments": {
+          "label": "Payments",
+          "description": "Open charges, payment history and paying by link"
+        },
+        "homework": {
+          "label": "Homework",
+          "description": "Viewing assignments and submitting from the portal"
+        },
+        "exams": {
+          "label": "Exams",
+          "description": "Viewing exams and reporting an upcoming one"
+        },
+        "progress": {
+          "label": "Progress",
+          "description": "Attendance, homework rates, goals and notes marked visible to parents"
+        },
+        "messages": {
+          "label": "Messages",
+          "description": "Messaging your team through the portal"
+        },
+        "booking": {
+          "label": "Book a lesson",
+          "description": "Parents booking an available slot themselves"
+        },
+        "cancellation": {
+          "label": "Cancel a lesson",
+          "description": "Parents cancelling a lesson themselves, under your cancellation policy"
+        }
+      },
+      "linkTitle": "Portal link",
+      "linkHint": "Share this link with parents so they can reach their personal area.",
       "saved": "Settings saved",
       "errors": {
         "saveFailed": "Could not save the settings"
@@ -3884,6 +3936,10 @@
         "abandoned": "Abandoned"
       }
     },
+    "closed": {
+      "title": "This portal is not open yet",
+      "body": "The parent portal is not open at the moment. For scheduling, cancellations or any question, please contact your teacher directly."
+    },
     "serviceUnavailable": {
       "unavailableTitle": "This portal is not available right now",
       "unavailableBody": "The parent portal is inactive at the moment. For scheduling, cancellations or any question, please contact your teacher directly."
@@ -4019,13 +4075,38 @@
         "slow": "This is taking longer than expected. Refresh the page or try again later.",
         "failedTitle": "Payment not completed",
         "failedBody": "You were not charged. You can try upgrading again from Account & billing.",
-        "backToBilling": "Back to Account & billing"
+        "backToBilling": "Back to Account & billing",
+        "refusedTitle": "Payment not matched to your subscription",
+        "refusedBody": "We received a payment we could not match to this upgrade. Our team has been alerted. If you were charged, do not pay again — contact us and we will sort it out.",
+        "cancelledTitle": "Checkout cancelled",
+        "cancelledBody": "You were not charged and your subscription is unchanged. You can pick a plan again from Account & billing."
       },
       "ownerOnly": "Only the business owner can view this page.",
-      "legacyNoSubscription": "No platform subscription record (org created before SaaS plans). You can keep using the product as usual."
+      "legacyNoSubscription": "No platform subscription record (org created before SaaS plans). You can keep using the product as usual.",
+      "statusPastDue": "Payment failed",
+      "statusCancelled": "Cancelled",
+      "lapsedHero": {
+        "trial_ended": {
+          "title": "Your free trial has ended",
+          "body": "Choose a plan to switch your schedule, WhatsApp automations and parent portal back on. All of your data is still here."
+        },
+        "past_due_locked": {
+          "title": "Account locked until payment is settled",
+          "body": "We could not charge the card on file. Update your payment method to bring the account back — nothing has been deleted."
+        },
+        "cancelled": {
+          "title": "Subscription cancelled",
+          "body": "Your data stays readable and exportable. Choose a plan to pick up exactly where you left off."
+        }
+      }
     },
     "pastDueBanner": "The last payment did not go through. You have {days} days to update your payment method before the account becomes read-only.",
-    "cancelledBanner": "The subscription is cancelled. Your data is kept and can be viewed and exported, but not edited."
+    "cancelledBanner": "The subscription is cancelled. Your data is kept and can be viewed and exported, but not edited.",
+    "lapsedNotice": {
+      "title": "This account is not active",
+      "body": "This organization's subscription is not active, so some screens are unavailable. Ask the account owner to sort out the subscription."
+    },
+    "repurchaseHint": "Choose a plan to reactivate the account."
   },
   "onboarding": {
     "errors": {
@@ -4242,7 +4323,11 @@
       "timeoutBody": "We couldn’t confirm payment with the provider in time. Go back to setup to pick a plan again or try later.",
       "failedTitle": "Payment not completed",
       "failedBody": "You were not charged. You can choose a plan again from onboarding.",
-      "backToOnboarding": "Back to setup"
+      "backToOnboarding": "Back to setup",
+      "refusedTitle": "Payment not matched to your subscription",
+      "refusedBody": "We received a payment we could not match to this signup. Our team has been alerted. If you were charged, do not pay again — contact us and we will sort it out.",
+      "cancelledTitle": "Checkout cancelled",
+      "cancelledBody": "You were not charged. You can pick a plan again or carry on with your free trial."
     },
     "checkoutPreview": {
       "title": "Confirm before payment",
@@ -4950,7 +5035,12 @@
     "forbiddenTitle": "Access denied",
     "forbiddenBody": "You do not have permission to view this resource or perform the action you requested.",
     "backToDashboard": "Back to dashboard",
-    "home": "Home"
+    "home": "Home",
+    "saasReadOnly": {
+      "title": "Your account is read-only",
+      "body": "Changes are paused until the subscription is settled. Your data is safe and still available to view and export.",
+      "upgrade": "Manage subscription"
+    }
   },
   "meta": {
     "title": "LESSIO — business infrastructure for private tutors and learning centres",

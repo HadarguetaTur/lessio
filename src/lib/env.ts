@@ -62,6 +62,10 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   'GMAIL_TOKEN_ENCRYPTION_KEY',
   // Sprint 29: Google Calendar conflict detection
   'GOOGLE_CALENDAR_ENCRYPTION_KEY',
+  // SHA-256 of the bearer token pg_cron sends to /api/internal/saas/*. Without
+  // it the renewal cron cannot authenticate and no subscription is ever charged
+  // — a silent revenue outage, so it fails the build instead.
+  'LESSIO_SAAS_CRON_SECRET_SHA256',
   // OPENAI_API_KEY: optional platform-level fallback. Each org configures its own AI key.
   // RESEND_API_KEY / RESEND_FROM_EMAIL: optional. Required only when email reminders are used.
   // NEXT_PUBLIC_SENTRY_DSN: optional. Set to enable Sentry error monitoring.

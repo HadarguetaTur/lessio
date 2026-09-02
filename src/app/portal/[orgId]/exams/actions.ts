@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTranslations } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
+import { isPortalFeatureEnabled } from '@/lib/portal/features'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createExamReport, ExamReportSchema } from '@/lib/students/exams'
 import { MAX_EXAM_FILE_SIZE } from '@/lib/students/examFiles'
@@ -25,6 +26,9 @@ export async function reportExamAction(
 
   const session = await getPortalSession()
   if (!session || session.orgId !== orgId) {
+    return { error: t('unauthorized') }
+  }
+  if (!(await isPortalFeatureEnabled(orgId, 'exams'))) {
     return { error: t('unauthorized') }
   }
 

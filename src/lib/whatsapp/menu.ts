@@ -105,9 +105,20 @@ const ROLE_MENUS: Record<KnownSenderRole, readonly MenuAction[]> = {
   staff: ['today_summary', 'pending_requests', 'support', 'dashboard'],
 }
 
-/** The actions a role may invoke, plus the role switcher when it applies. */
-export function menuActionsFor(role: KnownSenderRole, canSwitchRole = false): MenuAction[] {
-  const actions = [...ROLE_MENUS[role]]
+/**
+ * The actions a role may invoke, plus the role switcher when it applies.
+ *
+ * `hiddenActions` drops rows the org has switched off for its parents — today
+ * only `portal`, when the parent portal is closed in the org's settings. It
+ * trims the *offer*; whether a tapped payload may run is still
+ * isActionAllowedForRole plus the handler's own check.
+ */
+export function menuActionsFor(
+  role: KnownSenderRole,
+  canSwitchRole = false,
+  hiddenActions: readonly MenuAction[] = []
+): MenuAction[] {
+  const actions = ROLE_MENUS[role].filter((action) => !hiddenActions.includes(action))
   // Meta caps a list section at 10 rows; no role menu comes close.
   if (canSwitchRole) actions.push('switch_role')
   return actions
@@ -201,6 +212,8 @@ export async function sendMainMenu(params: {
   fullName?: string | null
   role?: KnownSenderRole
   canSwitchRole?: boolean
+  /** Rows the org has switched off — see menuActionsFor. */
+  hiddenActions?: readonly MenuAction[]
   onFallback: () => Promise<void>
 }): Promise<void> {
   const { phone, accessToken, phoneNumberId, locale, fullName, onFallback } = params
@@ -214,7 +227,7 @@ export async function sendMainMenu(params: {
     first_name: name,
   })
 
-  const actions = menuActionsFor(role, params.canSwitchRole)
+  const actions = menuActionsFor(role, params.canSwitchRole, params.hiddenActions)
   const rows = actions.map((action) => ({
     id: action === 'switch_role' ? encodeMenuPayload('switch_role') : encodeMenuPayload(action),
     title: botString(`menu_${action}` as const, locale),

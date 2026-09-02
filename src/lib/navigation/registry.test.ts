@@ -21,10 +21,10 @@ describe('registry shape', () => {
     expect(new Set(hrefs).size).toBe(hrefs.length)
   })
 
-  it('keeps platform billing separate from the eighteen business settings pages', () => {
+  it('keeps platform billing separate from the nineteen business settings pages', () => {
     expect(ACCOUNT_NAV.map((entry) => entry.href)).toEqual(['/account/billing'])
-    expect(SETTINGS_NAV).toHaveLength(18)
-    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(18)
+    expect(SETTINGS_NAV).toHaveLength(19)
+    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(19)
     expect(SETTINGS_NAV.map((entry) => entry.href)).not.toContain('/account/billing')
   })
 
@@ -63,12 +63,15 @@ describe('filterNav', () => {
       '/settings/exams',
       '/settings/scheduling',
       '/settings/holidays',
+      // Deciding what parents may see and do is day-to-day operations, not a
+      // business or money setting, so an admin gets it too.
+      '/settings/parent-portal',
       '/settings/locale',
     ])
   })
 
   it('shows everything to an owner when no plan is resolved', () => {
-    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(18)
+    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(19)
   })
 
   it('drops plan-gated entries when the feature is off', () => {

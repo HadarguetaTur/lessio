@@ -60,7 +60,7 @@ export async function createTicketAction(
 ): Promise<CreateTicketState> {
   const session = await getSession()
   try {
-    requireMutation(session)
+    requireMutation(session, { allowWhenLapsed: true })
   } catch {
     return { error: await commonError('supportModeReadOnly') }
   }
@@ -142,7 +142,7 @@ export async function replyToTicketAction(
 ): Promise<ReplyState> {
   const session = await getSession()
   try {
-    requireMutation(session)
+    requireMutation(session, { allowWhenLapsed: true })
   } catch {
     return { error: await commonError('supportModeReadOnly') }
   }

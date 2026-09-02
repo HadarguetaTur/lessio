@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTranslations } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
+import { isPortalFeatureEnabled } from '@/lib/portal/features'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { submitHomework } from '@/lib/homework/submissions'
 import { createNotification, getTeacherProfileId } from '@/lib/notifications'
@@ -25,6 +26,9 @@ export async function submitHomeworkAction(
 
   const session = await getPortalSession()
   if (!session || session.orgId !== orgId) {
+    return { error: t('unauthorized') }
+  }
+  if (!(await isPortalFeatureEnabled(orgId, 'homework'))) {
     return { error: t('unauthorized') }
   }
 

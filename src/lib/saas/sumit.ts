@@ -1,15 +1,39 @@
 /**
- * Sumit API client — server-only.
+ * Sumit API client for SaaS platform billing — server-only.
  *
- * Covers two Sumit API groups used for SaaS platform billing:
- *   - Accounting (Documents): create + send invoices
- *   - Payments: direct charge with stored card token
+ * Four things Lessio needs from Sumit to bill an organization:
+ *   - open a hosted payment page that saves the card on the customer
+ *     (`beginSumitRedirect`)
+ *   - look a payment up after the customer returns (`getSumitPayment`,
+ *     `listSumitPayments`) — the redirect query is a hint, Sumit is the truth
+ *   - charge the saved card again at renewal (`chargeSumitCustomer`)
+ *   - find the invoice/receipt document a payment produced
+ *     (`findSumitDocumentForPayment`)
  *
- * Auth: Credentials object (CompanyID + APIKey) in every request body.
- * Base URL: https://api.sumit.co.il
+ * Auth: `Credentials: { CompanyID, APIKey }` in every request body — platform
+ * credentials from env, one Sumit company for all of Lessio. Per-org receipts
+ * are a different adapter (src/lib/receipts/sumit.ts) with the org's own keys.
  *
- * @see https://api.sumit.co.il (Sumit API docs)
+ * Field names and envelope are per the OpenAPI spec
+ * (https://api.sumit.co.il/swagger/v1/swagger.json); parsing lives in
+ * ./sumitParse.ts. Every function here either returns a typed result or throws
+ * SumitApiError — callers decide whether a BusinessError is a decline to
+ * schedule around or a bug to surface.
  */
+
+import {
+  SumitApiError,
+  normalizePayment,
+  sumitStatusCode,
+  unwrapSumit,
+  type SumitEnvelope,
+  type SumitPayment,
+  type SumitPaymentMethodRaw,
+  type SumitPaymentRaw,
+} from './sumitParse'
+
+export { SumitApiError } from './sumitParse'
+export type { SumitPayment } from './sumitParse'
 
 const SUMIT_API_BASE = 'https://api.sumit.co.il'
 
@@ -33,362 +57,398 @@ export function getSumitCredentials(): SumitCredentials {
   return { CompanyID: companyId, APIKey: apiKey }
 }
 
-// ─── Shared fetch helper ──────────────────────────────────────────────────────
-
-interface SumitBaseResponse {
-  Succeed?: boolean
-  ErrorMessage?: string
+/** True when the platform Sumit credentials are configured (does not call Sumit). */
+export function hasSumitCredentials(): boolean {
+  try {
+    getSumitCredentials()
+    return true
+  } catch {
+    return false
+  }
 }
 
-async function sumitPost<T extends SumitBaseResponse>(
-  path: string,
-  body: Record<string, unknown>
-): Promise<T> {
-  const url = `${SUMIT_API_BASE}${path}`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+// ─── Transport ───────────────────────────────────────────────────────────────
 
-  const text = await res.text()
-  let json: T
+const REQUEST_TIMEOUT_MS = 30_000
+
+async function sumitPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+  let res: Response
+  let text: string
   try {
-    json = JSON.parse(text) as T
+    res = await fetch(`${SUMIT_API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ Credentials: getSumitCredentials(), ...body }),
+      signal: controller.signal,
+    })
+    text = await res.text()
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    throw new SumitApiError(path, null, null, `transport: ${msg}`, 0)
+  } finally {
+    clearTimeout(timer)
+  }
+
+  let json: unknown
+  try {
+    json = JSON.parse(text)
   } catch {
-    throw new Error(`[sumit] Non-JSON response from ${path} (HTTP ${res.status}): ${text.slice(0, 300)}`)
+    throw new SumitApiError(path, null, null, `non-JSON response: ${text.slice(0, 300)}`, res.status)
   }
 
   if (!res.ok) {
-    throw new Error(`[sumit] HTTP ${res.status} from ${path}: ${json.ErrorMessage ?? text.slice(0, 200)}`)
+    // Sumit puts its own message in the envelope even on 4xx/5xx; unwrap reads it.
+    const env = (typeof json === 'object' && json) as SumitEnvelope<unknown> | false
+    throw new SumitApiError(
+      path,
+      env ? (sumitStatusCode(env.Status) as 1 | 2 | null) : null,
+      env && typeof env.UserErrorMessage === 'string' ? env.UserErrorMessage : null,
+      env && typeof env.TechnicalErrorDetails === 'string' ? env.TechnicalErrorDetails : null,
+      res.status
+    )
   }
 
-  if (json.Succeed === false) {
-    throw new Error(`[sumit] Request rejected at ${path}: ${json.ErrorMessage ?? 'unknown error'}`)
-  }
-
-  return json
+  return unwrapSumit<T>(path, res.status, json)
 }
 
-// ─── Document types ───────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
-/** Sumit document type codes */
-export const SUMIT_DOC_TYPE = {
-  TAX_INVOICE: 1,         // חשבונית מס
-  RECEIPT: 2,             // קבלה
-  TAX_INVOICE_RECEIPT: 5, // חשבונית מס קבלה
+/** Accounting_Typed_DocumentType — what the payment page / charge issues. */
+export const SUMIT_DOCUMENT_TYPE = {
+  INVOICE_AND_RECEIPT: 1, // חשבונית מס קבלה
 } as const
 
-export type SumitDocumentType = typeof SUMIT_DOC_TYPE[keyof typeof SUMIT_DOC_TYPE]
+/** Accounting_Typed_Language */
+export const SUMIT_LANGUAGE = { he: 0, en: 1 } as const
 
-// ─── Create document ──────────────────────────────────────────────────────────
+export type SumitLanguage = keyof typeof SUMIT_LANGUAGE
 
-export type SumitCreateDocumentParams = {
-  customerName: string
-  customerEmail: string | null
-  /** Amount in ILS (VAT included) */
+/**
+ * How long the hosted page link stays valid. Sumit defaults to 1 hour, which
+ * is short for someone who opens the tab, goes to find a card, and comes back.
+ */
+export const SUMIT_CHECKOUT_EXPIRATION_HOURS = 4
+
+/** Accounting_Typed_CustomerSearchMode */
+const CUSTOMER_SEARCH_BY_EXTERNAL_ID = 2
+/** Accounting_Typed_IncomeItemSearchMode */
+const ITEM_SEARCH_BY_NAME = 3
+/** PaymentMethodType */
+const PAYMENT_METHOD_CREDIT_CARD = 1
+
+// ─── Hosted checkout ─────────────────────────────────────────────────────────
+
+export interface BeginRedirectParams {
+  /** VAT-inclusive ILS amount. */
   amount: number
+  /** Item name on the page and on the document. */
   description: string
-  /** External reference ID (e.g. our subscription ID) */
-  reference?: string | null
-  documentType?: SumitDocumentType
-}
-
-interface SumitCreateDocumentResponse extends SumitBaseResponse {
-  ReturnValue?: {
-    DocumentID?: number
-    DocumentNumber?: number
-    DocumentURL?: string
-    DocumentPDFURL?: string
+  customer: {
+    name: string
+    email: string | null
+    phone: string | null
+    /** Our org id. Sumit files the card token under this customer. */
+    externalIdentifier: string
   }
+  /** Our checkout reference. Sumit echoes it back as `OG-ExternalIdentifier`. */
+  externalIdentifier: string
+  /** Sumit appends OG-PaymentID, OG-CustomerID, OG-ExternalIdentifier. */
+  redirectUrl: string
+  /** Sumit appends OG-ExternalIdentifier. */
+  cancelRedirectUrl: string
+  language: SumitLanguage
 }
 
-export type SumitDocumentResult = {
-  documentId: number
-  documentUrl: string | null
+interface BeginRedirectData {
+  RedirectURL?: string | null
 }
 
 /**
- * Creates a tax invoice + receipt document in Sumit.
- * Returns the Sumit document ID and URL for storage in saas_invoices.
+ * Opens a Sumit hosted payment page. The customer pays there; Sumit stores the
+ * card as the customer's default payment method (PreventSavingPaymentMethod
+ * is left false) — that is the token every later renewal charges.
  */
-export async function createSumitDocument(
-  params: SumitCreateDocumentParams
-): Promise<SumitDocumentResult> {
-  const creds = getSumitCredentials()
-
-  const body = {
-    Credentials: creds,
-    Details: {
-      Type: params.documentType ?? SUMIT_DOC_TYPE.TAX_INVOICE_RECEIPT,
-      Customer: {
-        Name: params.customerName,
-        EmailAddress: params.customerEmail ?? null,
-        SearchMode: 0,
-      },
-      Description: params.description,
-      ExternalReference: params.reference ?? null,
-      SendByEmail: params.customerEmail
-        ? {
-            EmailAddress: params.customerEmail,
-            Original: true,
-            SendAsPaymentRequest: false,
-          }
-        : null,
-    },
-    Items: [
-      {
-        Quantity: 1,
-        UnitPrice: params.amount,
-        TotalPrice: params.amount,
-        Item: {
-          Name: params.description,
-          SearchMode: 0,
-        },
-      },
-    ],
-    VATIncluded: true,
-  }
-
-  const res = await sumitPost<SumitCreateDocumentResponse>(
-    '/accounting/documents/create/',
-    body
-  )
-
-  const documentId = res.ReturnValue?.DocumentID
-  if (!documentId) {
-    throw new Error('[sumit] createDocument: no DocumentID in response')
-  }
-
-  return {
-    documentId,
-    documentUrl: res.ReturnValue?.DocumentURL ?? res.ReturnValue?.DocumentPDFURL ?? null,
-  }
-}
-
-// ─── Send document by email ───────────────────────────────────────────────────
-
-export type SumitSendDocumentParams = {
-  documentId: number
-  emailAddress: string
-}
-
-/**
- * Sends an existing Sumit document to the customer by email.
- * Idempotent — safe to call multiple times.
- */
-export async function sendSumitDocument(params: SumitSendDocumentParams): Promise<void> {
-  const creds = getSumitCredentials()
-
-  await sumitPost('/accounting/documents/send/', {
-    Credentials: creds,
-    EntityID: params.documentId,
-    EmailAddress: params.emailAddress,
-    Original: true,
-    Language: 'Hebrew (0)',
-  })
-}
-
-// ─── Charge with stored card token ───────────────────────────────────────────
-
-export type SumitChargeParams = {
-  customerName: string
-  customerEmail: string | null
-  /** Sumit payment token from a previous transaction */
-  paymentToken: string
-  /** Amount in ILS */
-  amount: number
-  description: string
-  reference?: string | null
-  /** Whether to also create a document (invoice) for this charge */
-  createDocument?: boolean
-}
-
-interface SumitChargeResponse extends SumitBaseResponse {
-  ReturnValue?: {
-    DocumentID?: number
-    DocumentURL?: string
-    TransactionID?: string
-    CardLastDigits?: string
-  }
-}
-
-export type SumitChargeResult = {
-  transactionId: string | null
-  documentId: number | null
-  documentUrl: string | null
-  cardLastFour: string | null
-}
-
-/**
- * Charges a customer using a stored Sumit payment token.
- * Used for automatic subscription renewals.
- *
- * @throws if Sumit rejects the charge (declined, expired token, etc.)
- */
-export async function chargeSumitToken(params: SumitChargeParams): Promise<SumitChargeResult> {
-  const creds = getSumitCredentials()
-
-  const body = {
-    Credentials: creds,
+export async function beginSumitRedirect(p: BeginRedirectParams): Promise<{ redirectUrl: string }> {
+  const path = '/billing/payments/beginredirect/'
+  const data = await sumitPost<BeginRedirectData>(path, {
     Customer: {
-      Name: params.customerName,
-      EmailAddress: params.customerEmail ?? null,
-      SearchMode: 0,
-    },
-    PaymentMethod: {
-      CreditCard_Token: params.paymentToken,
-      Type: 1,
+      Name: p.customer.name,
+      EmailAddress: p.customer.email,
+      Phone: p.customer.phone,
+      ExternalIdentifier: p.customer.externalIdentifier,
+      SearchMode: CUSTOMER_SEARCH_BY_EXTERNAL_ID,
     },
     Items: [
       {
+        Item: { Name: p.description, SearchMode: ITEM_SEARCH_BY_NAME },
         Quantity: 1,
-        UnitPrice: params.amount,
-        Item: {
-          Name: params.description,
-          SearchMode: null,
-        },
+        UnitPrice: p.amount,
       },
     ],
     VATIncluded: true,
-    SendDocumentByEmail: params.customerEmail ? true : false,
-    PreventDocumentCreation: params.createDocument === false ? true : false,
-    DocumentDescription: params.description,
-  }
+    DocumentType: SUMIT_DOCUMENT_TYPE.INVOICE_AND_RECEIPT,
+    DocumentDescription: p.description,
+    RedirectURL: p.redirectUrl,
+    CancelRedirectURL: p.cancelRedirectUrl,
+    ExternalIdentifier: p.externalIdentifier,
+    // A subscription is not paid in installments.
+    MaximumPayments: 0,
+    ExpirationHours: SUMIT_CHECKOUT_EXPIRATION_HOURS,
+    Language: SUMIT_LANGUAGE[p.language],
+    UpdateCustomerOnSuccess: true,
+    SendUpdateByEmailAddress: p.customer.email ?? undefined,
+    PreventSavingPaymentMethod: false,
+  })
 
-  const res = await sumitPost<SumitChargeResponse>('/billing/payments/charge/', body)
-
-  return {
-    transactionId: res.ReturnValue?.TransactionID ?? null,
-    documentId: res.ReturnValue?.DocumentID ?? null,
-    documentUrl: res.ReturnValue?.DocumentURL ?? null,
-    cardLastFour: res.ReturnValue?.CardLastDigits ?? null,
+  const redirectUrl = typeof data.RedirectURL === 'string' ? data.RedirectURL.trim() : ''
+  if (!redirectUrl) {
+    throw new SumitApiError(path, null, null, 'success without RedirectURL', 200)
   }
+  return { redirectUrl }
 }
 
-// ─── Confirm a payment (server-to-server) ─────────────────────────────────────
+// ─── Payments ────────────────────────────────────────────────────────────────
+
+/** Authoritative record of one payment, by the id Sumit put in `OG-PaymentID`. */
+export async function getSumitPayment(paymentId: string | number): Promise<SumitPayment> {
+  const path = '/billing/payments/get/'
+  const id = Number(paymentId)
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new SumitApiError(path, null, null, `invalid PaymentID: ${String(paymentId)}`, 0)
+  }
+  const data = await sumitPost<{ Payment?: SumitPaymentRaw | null }>(path, { PaymentID: id })
+  if (!data.Payment) {
+    throw new SumitApiError(path, null, null, 'success without Payment', 200)
+  }
+  return normalizePayment(data.Payment)
+}
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
 
 /**
- * Authoritative payment status, used to activate a subscription after the
- * hosted-checkout redirect-return (or from the webhook safety net). We NEVER
- * trust the redirect/webhook body — we look the payment up at Sumit.
+ * Every payment in a date window, paged. Used by reconciliation to find a
+ * completed checkout whose redirect never reached us.
  */
-export type SumitPaymentConfirmation = {
-  valid: boolean
-  paymentId: string | null
+export async function listSumitPayments(p: {
+  from: Date
+  to: Date
+  validOnly?: boolean
+}): Promise<SumitPayment[]> {
+  const path = '/billing/payments/list/'
+  const out: SumitPayment[] = []
+  let startIndex = 0
+  // Hard stop so a misbehaving HasNextPage can never loop forever.
+  for (let page = 0; page < 50; page++) {
+    const data = await sumitPost<{ Payments?: SumitPaymentRaw[] | null; HasNextPage?: boolean }>(path, {
+      Date_From: isoDate(p.from),
+      Date_To: isoDate(p.to),
+      Valid: p.validOnly ? true : undefined,
+      StartIndex: startIndex,
+    })
+    const batch = data.Payments ?? []
+    for (const raw of batch) out.push(normalizePayment(raw))
+    if (!data.HasNextPage || batch.length === 0) break
+    startIndex += batch.length
+  }
+  return out
+}
+
+// ─── Saved payment method ────────────────────────────────────────────────────
+
+export interface SumitSavedCard {
   customerId: string | null
-  documentId: string | null
-  documentUrl: string | null
-  paymentToken: string | null
-  cardLastFour: string | null
-  amount: number | null
-  /** Our original checkout reference echoed back by Sumit (Identifier / ExternalReference). */
-  externalReference: string | null
-}
-
-interface SumitPaymentRecord {
-  ValidPayment?: boolean
-  Status?: string | number
-  ID?: string | number
-  PaymentID?: string | number
-  CustomerID?: string | number
-  DocumentID?: string | number
-  DocumentURL?: string
-  Token?: string
-  PaymentToken?: string
-  CardLastDigits?: string
-  CardLast4?: string
-  Amount?: number
-  ExternalReference?: string
-  Identifier?: string
-}
-
-interface SumitGetPaymentResponse extends SumitBaseResponse {
-  ReturnValue?: SumitPaymentRecord & { Payment?: SumitPaymentRecord }
-  Data?: SumitPaymentRecord & { Payment?: SumitPaymentRecord; Payments?: SumitPaymentRecord[] }
-  Payment?: SumitPaymentRecord
-  Payments?: SumitPaymentRecord[]
-}
-
-function extractPaymentRecord(res: SumitGetPaymentResponse): SumitPaymentRecord | null {
-  return (
-    res.ReturnValue?.Payment ??
-    res.ReturnValue ??
-    res.Data?.Payment ??
-    res.Data ??
-    res.Payment ??
-    null
-  )
-}
-
-function isPaymentValid(rec: SumitPaymentRecord): boolean {
-  if (rec.ValidPayment === true) return true
-  const s = rec.Status != null ? String(rec.Status) : null
-  return s === '000' || s === '0'
-}
-
-function normalizePaymentRecord(rec: SumitPaymentRecord): SumitPaymentConfirmation {
-  return {
-    valid: isPaymentValid(rec),
-    paymentId:
-      rec.ID != null ? String(rec.ID) : rec.PaymentID != null ? String(rec.PaymentID) : null,
-    customerId: rec.CustomerID != null ? String(rec.CustomerID) : null,
-    documentId: rec.DocumentID != null ? String(rec.DocumentID) : null,
-    documentUrl: rec.DocumentURL ?? null,
-    paymentToken: rec.PaymentToken ?? rec.Token ?? null,
-    cardLastFour: rec.CardLastDigits ?? rec.CardLast4 ?? null,
-    amount: typeof rec.Amount === 'number' ? rec.Amount : null,
-    externalReference: rec.ExternalReference ?? rec.Identifier ?? null,
-  }
-}
-
-const FAILED_CONFIRMATION: SumitPaymentConfirmation = {
-  valid: false,
-  paymentId: null,
-  customerId: null,
-  documentId: null,
-  documentUrl: null,
-  paymentToken: null,
-  cardLastFour: null,
-  amount: null,
-  externalReference: null,
+  token: string | null
+  last4: string | null
+  expiryMonth: number | null
+  expiryYear: number | null
 }
 
 /**
- * Looks a payment up at Sumit by transaction ID (preferred) or by our checkout
- * reference, and returns its authoritative status. Returns an invalid result
- * (never throws) when the lookup fails or the payment is not found/valid.
+ * The card Sumit holds for a customer, by Sumit id or by our org id
+ * (`Customer.ExternalIdentifier` set at checkout). Null when the customer has
+ * no saved card — Sumit reports that as a BusinessError.
  */
-export async function confirmSumitPayment(params: {
-  transactionId?: string | null
-  reference?: string | null
-}): Promise<SumitPaymentConfirmation> {
-  const creds = getSumitCredentials()
+export async function getSumitPaymentMethodForCustomer(p: {
+  customerId?: string | null
+  externalIdentifier?: string | null
+}): Promise<SumitSavedCard | null> {
+  const path = '/billing/paymentmethods/getforcustomer/'
+  const customer = p.customerId
+    ? { ID: Number(p.customerId) }
+    : { ExternalIdentifier: p.externalIdentifier, SearchMode: CUSTOMER_SEARCH_BY_EXTERNAL_ID }
 
   try {
-    let record: SumitPaymentRecord | null = null
-
-    if (params.transactionId) {
-      const res = await sumitPost<SumitGetPaymentResponse>('/billing/payments/get/', {
-        Credentials: creds,
-        ID: params.transactionId,
-      })
-      record = extractPaymentRecord(res)
+    const data = await sumitPost<{ PaymentMethod?: SumitPaymentMethodRaw | null }>(path, {
+      Customer: customer,
+      IncludeInactive: false,
+    })
+    const pm = data.PaymentMethod
+    if (!pm) return null
+    return {
+      customerId: pm.CustomerID != null ? String(pm.CustomerID) : (p.customerId ?? null),
+      token: pm.CreditCard_Token?.trim() || null,
+      last4: pm.CreditCard_LastDigits?.trim() || null,
+      expiryMonth: typeof pm.CreditCard_ExpirationMonth === 'number' ? pm.CreditCard_ExpirationMonth : null,
+      expiryYear: typeof pm.CreditCard_ExpirationYear === 'number' ? pm.CreditCard_ExpirationYear : null,
     }
-
-    if (!record && params.reference) {
-      const res = await sumitPost<SumitGetPaymentResponse>('/billing/payments/list/', {
-        Credentials: creds,
-      })
-      const list = res.Data?.Payments ?? res.Payments ?? []
-      record =
-        list.find((p) => (p.ExternalReference ?? p.Identifier) === params.reference) ?? null
-    }
-
-    if (!record) return FAILED_CONFIRMATION
-    return normalizePaymentRecord(record)
   } catch (e) {
-    console.error('[sumit] confirmSumitPayment failed', e instanceof Error ? e.message : String(e))
-    return FAILED_CONFIRMATION
+    if (e instanceof SumitApiError && e.isBusinessError) return null
+    throw e
+  }
+}
+
+// ─── Charge a saved card ─────────────────────────────────────────────────────
+
+export interface ChargeParams {
+  /** Sumit customer id stored at activation. */
+  customerId: string
+  /** Saved card token. Null → Sumit charges the customer's default method. */
+  token: string | null
+  /** VAT-inclusive ILS amount. */
+  amount: number
+  description: string
+  language: SumitLanguage
+  /** Validate the card without moving money. The cutover dry run. */
+  authoriseOnly?: boolean
+  /** Sumit emails the customer the invoice/receipt it issues. */
+  sendDocumentByEmail?: boolean
+}
+
+export type ChargeResult =
+  | {
+      ok: true
+      payment: SumitPayment
+      documentId: string | null
+      documentNumber: string | null
+      documentUrl: string | null
+      customerId: string | null
+    }
+  | {
+      ok: false
+      payment: SumitPayment | null
+      /** Sumit's own wording of the decline, for the failed invoice row. */
+      reason: string
+    }
+
+interface ChargeData {
+  Payment?: SumitPaymentRaw | null
+  DocumentID?: number | null
+  DocumentNumber?: number | null
+  CustomerID?: number | null
+  DocumentDownloadURL?: string | null
+}
+
+/**
+ * Charges a customer's saved card. A decline is a *result*, not an exception:
+ * Sumit reports it as BusinessError, or as Success with ValidPayment=false,
+ * and both come back as `{ ok: false }`. Only outages, malformed responses and
+ * TechnicalError throw — callers must not count those as attempts.
+ */
+export async function chargeSumitCustomer(p: ChargeParams): Promise<ChargeResult> {
+  const path = '/billing/payments/charge/'
+  const body: Record<string, unknown> = {
+    Customer: { ID: Number(p.customerId) },
+    Items: [
+      {
+        Item: { Name: p.description, SearchMode: ITEM_SEARCH_BY_NAME },
+        Quantity: 1,
+        UnitPrice: p.amount,
+      },
+    ],
+    VATIncluded: true,
+    DocumentType: SUMIT_DOCUMENT_TYPE.INVOICE_AND_RECEIPT,
+    DocumentDescription: p.description,
+    DocumentLanguage: SUMIT_LANGUAGE[p.language],
+    SendDocumentByEmail: p.sendDocumentByEmail ?? false,
+    AuthoriseOnly: p.authoriseOnly ?? false,
+    MaximumPayments: 0,
+  }
+  if (p.token) {
+    body.PaymentMethod = { CreditCard_Token: p.token, Type: PAYMENT_METHOD_CREDIT_CARD }
+  }
+
+  let data: ChargeData
+  try {
+    data = await sumitPost<ChargeData>(path, body)
+  } catch (e) {
+    if (e instanceof SumitApiError && e.isBusinessError) {
+      return { ok: false, payment: null, reason: e.userMessage ?? e.technicalDetails ?? 'BusinessError' }
+    }
+    throw e
+  }
+
+  const payment = data.Payment ? normalizePayment(data.Payment) : null
+  if (!payment || !payment.valid) {
+    return {
+      ok: false,
+      payment,
+      reason: payment?.statusDescription ?? payment?.status ?? 'payment not valid',
+    }
+  }
+
+  return {
+    ok: true,
+    payment,
+    documentId: data.DocumentID != null ? String(data.DocumentID) : null,
+    documentNumber: data.DocumentNumber != null ? String(data.DocumentNumber) : null,
+    documentUrl: data.DocumentDownloadURL?.trim() || null,
+    customerId: data.CustomerID != null ? String(data.CustomerID) : payment.customerId || null,
+  }
+}
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+interface ListedDocument {
+  DocumentID?: number | null
+  DocumentNumber?: number | null
+  CustomerID?: number | null
+  Date?: string | null
+  Type?: number | string | null
+  DocumentDownloadURL?: string | null
+}
+
+/**
+ * The invoice/receipt a hosted-checkout payment produced. Sumit's Payment
+ * record does not carry a document id, so this lists the day's documents and
+ * picks the newest one for that customer. Best-effort: any failure returns
+ * null and activation proceeds without a document link.
+ */
+export async function findSumitDocumentForPayment(p: {
+  customerId: string
+  paidOn: Date
+}): Promise<{ documentId: string; documentNumber: string | null; documentUrl: string | null } | null> {
+  const path = '/accounting/documents/list/'
+  try {
+    const dayBefore = new Date(p.paidOn.getTime() - 86_400_000)
+    const dayAfter = new Date(p.paidOn.getTime() + 86_400_000)
+    const data = await sumitPost<{ Documents?: ListedDocument[] | null }>(path, {
+      DocumentTypes: [SUMIT_DOCUMENT_TYPE.INVOICE_AND_RECEIPT],
+      DateFrom: isoDate(dayBefore),
+      DateTo: isoDate(dayAfter),
+      IncludeDrafts: false,
+      Paging: { StartIndex: 0, PageSize: 100 },
+    })
+    const mine = (data.Documents ?? []).filter(
+      (d) => d.DocumentID != null && String(d.CustomerID) === p.customerId
+    )
+    if (mine.length === 0) return null
+    mine.sort((a, b) => (b.DocumentID ?? 0) - (a.DocumentID ?? 0))
+    const doc = mine[0]
+    return {
+      documentId: String(doc.DocumentID),
+      documentNumber: doc.DocumentNumber != null ? String(doc.DocumentNumber) : null,
+      documentUrl: doc.DocumentDownloadURL?.trim() || null,
+    }
+  } catch (e) {
+    console.warn('[sumit] document lookup failed', {
+      customerId: p.customerId,
+      error: e instanceof Error ? e.message : String(e),
+    })
+    return null
   }
 }

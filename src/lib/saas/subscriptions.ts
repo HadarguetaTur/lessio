@@ -1,11 +1,14 @@
+import { cache } from 'react'
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { AMOUNT_TOLERANCE, type CheckoutBindingRefusal } from './checkoutBinding'
 import { getSaasPlanById, getSaasPlanByName, type SaasPlanRow } from './plans'
 import { TRIAL_ENTITLEMENT_PLAN } from './planPresentation'
 import type { SaasPlanName, SaasSubscriptionStatus } from './types'
 import { parseSaasFeatures, type SaasFeatures } from './types'
 
-const TRIAL_DAYS = 30
+/** Free-trial length. The signup path (src/lib/auth/createOrgWithOwner.ts) imports this. */
+export const TRIAL_DAYS = 30
 
 export type OrgSubscriptionState = {
   subscriptionId: string
@@ -32,7 +35,13 @@ export async function getOpenCustomPlanInquiry(orgId: string): Promise<{ id: str
   return data?.id ? { id: data.id } : null
 }
 
-export async function getOrgSubscriptionState(orgId: string): Promise<OrgSubscriptionState | null> {
+/**
+ * Memoised per request: the dashboard layout, the owner banners and the lapsed
+ * gate all ask this on the same render.
+ */
+export const getOrgSubscriptionState = cache(async function getOrgSubscriptionState(
+  orgId: string
+): Promise<OrgSubscriptionState | null> {
   const db = createServiceRoleClient()
   const { data: sub } = await db
     .from('organization_subscriptions')
@@ -59,7 +68,7 @@ export async function getOrgSubscriptionState(orgId: string): Promise<OrgSubscri
     cardLastFour: sub.card_last_four,
     features: plan.features,
   }
-}
+})
 
 /**
  * What the org is actually entitled to. This is the answer `requireFeature` and
@@ -315,6 +324,9 @@ export async function upsertPendingPaymentSubscription(params: {
       status: 'pending_payment',
       billing_interval: params.billingInterval,
       pending_checkout_reference: params.checkoutReference,
+      // A payment dated before this cannot activate the checkout — see
+      // evaluateCheckoutBinding. Refreshed on every (re)start on purpose.
+      pending_checkout_started_at: new Date().toISOString(),
       // An unfinished checkout must not consume a trial that is still running;
       // revertPendingCheckout restores the trial status from the snapshot.
       trial_ends_at: existing?.trial_ends_at ?? null,
@@ -328,17 +340,11 @@ export async function upsertPendingPaymentSubscription(params: {
 }
 
 /** Why an activation attempt did nothing. Callers log it; none of it reaches the browser. */
-export type ActivationRefusal =
-  | 'no_pending_subscription'
-  | 'reference_mismatch'
-  | 'amount_below_plan_price'
+export type ActivationRefusal = 'no_pending_subscription' | CheckoutBindingRefusal
 
 export type ActivationResult =
   | { activated: true }
   | { activated: false; reason: ActivationRefusal }
-
-/** Underpayment guard tolerance — absorbs VAT/agorot rounding, not a cheaper plan. */
-const AMOUNT_TOLERANCE = 0.02
 
 /**
  * One billing period after `from`.
@@ -391,6 +397,10 @@ export async function activateSubscriptionFromPayment(params: {
   sumitSubscriptionId?: string | null
   sumitPaymentToken?: string | null
   cardLastFour?: string | null
+  cardExpiryMonth?: number | null
+  cardExpiryYear?: number | null
+  /** Sumit Payment.ID — recorded on the invoice so it can never pay twice. */
+  sumitPaymentId?: string | null
   invoice?: {
     amount: number
     sumitDocumentId?: string | null
@@ -403,7 +413,9 @@ export async function activateSubscriptionFromPayment(params: {
 
   const { data: sub } = await db
     .from('organization_subscriptions')
-    .select('id, plan_id, billing_interval, pending_checkout_reference, status')
+    .select(
+      'id, plan_id, billing_interval, pending_checkout_reference, status, sumit_customer_id, sumit_subscription_id, sumit_payment_token, card_last_four, card_expiry_month, card_expiry_year'
+    )
     .eq('organization_id', params.orgId)
     .maybeSingle()
 
@@ -433,16 +445,26 @@ export async function activateSubscriptionFromPayment(params: {
     .from('organization_subscriptions')
     .update({
       status: 'active',
-      sumit_customer_id: params.sumitCustomerId ?? null,
-      sumit_subscription_id: params.sumitSubscriptionId ?? null,
-      sumit_payment_token: params.sumitPaymentToken ?? null,
-      card_last_four: params.cardLastFour ?? null,
+      // Keep what Sumit already holds for this org when the caller has nothing
+      // newer. This used to write null, so a returning customer's second
+      // checkout wiped the token the renewal charger needs.
+      sumit_customer_id: params.sumitCustomerId ?? sub.sumit_customer_id ?? null,
+      sumit_subscription_id: params.sumitSubscriptionId ?? sub.sumit_subscription_id ?? null,
+      sumit_payment_token: params.sumitPaymentToken ?? sub.sumit_payment_token ?? null,
+      card_last_four: params.cardLastFour ?? sub.card_last_four ?? null,
+      card_expiry_month: params.cardExpiryMonth ?? sub.card_expiry_month ?? null,
+      card_expiry_year: params.cardExpiryYear ?? sub.card_expiry_year ?? null,
       pending_checkout_reference: null,
+      pending_checkout_started_at: null,
       trial_ends_at: null,
       previous_status: null,
       previous_plan_id: null,
       current_period_start: periodStart.toISOString(),
       current_period_end: periodEnd.toISOString(),
+      renewal_attempts: 0,
+      next_renewal_attempt_at: null,
+      last_renewal_attempt_at: null,
+      last_renewal_error: null,
     })
     // Re-stating the guard inside the UPDATE closes the window between the read
     // above and the write: the redirect callback and the webhook can land at the
@@ -464,15 +486,18 @@ export async function activateSubscriptionFromPayment(params: {
       amount: params.invoice.amount,
       currency: 'ILS',
       status: 'paid',
+      source: 'checkout',
+      sumit_payment_id: params.sumitPaymentId ?? null,
       sumit_document_id: params.invoice.sumitDocumentId ?? null,
       sumit_document_url: params.invoice.sumitDocumentUrl ?? null,
       billing_period_start: params.invoice.billingPeriodStart ?? periodStart.toISOString(),
       billing_period_end: params.invoice.billingPeriodEnd ?? periodEnd.toISOString(),
       issued_at: new Date().toISOString(),
     })
-    // A duplicate document id means the invoice is already recorded (unique
-    // index, migration 20260829130100). The subscription is active either way —
-    // never fail an activation over the bookkeeping row.
+    // A duplicate document or payment id means the invoice is already recorded
+    // (unique indexes, migrations 20260829130100 and 20260902120000). The
+    // subscription is active either way — never fail an activation over the
+    // bookkeeping row.
     if (invErr && invErr.code !== '23505') {
       console.error('[saas] invoice insert failed after activation', {
         orgId: params.orgId,
@@ -517,9 +542,9 @@ export async function devMockActivatePendingSubscription(orgId: string): Promise
  *
  * Both cancel actions used to DELETE the row. An org with no subscription row
  * is treated as grandfathered everywhere — getEffectiveSaasFeatures returns
- * DEFAULT_SAAS_FEATURES (every flag true), requireQuotaCapacity returns early,
- * and subscriptionAllowsDashboardAccess returns ok — so "start checkout, then
- * cancel" handed out the full product, unlimited and permanently. Reverting to
+ * DEFAULT_SAAS_FEATURES (every flag true) and requireQuotaCapacity returns
+ * early — so "start checkout, then cancel" handed out the full product,
+ * unlimited and permanently. Reverting to
  * a bounded state keeps the org inside the entitlement system.
  */
 export async function revertPendingCheckout(orgId: string): Promise<void> {
@@ -545,6 +570,7 @@ export async function revertPendingCheckout(orgId: string): Promise<void> {
       status: sub.previous_status ?? 'read_only',
       plan_id: sub.previous_plan_id ?? freePlan?.id ?? sub.plan_id,
       pending_checkout_reference: null,
+      pending_checkout_started_at: null,
       previous_status: null,
       previous_plan_id: null,
     })
@@ -560,22 +586,6 @@ export async function markOrganizationOnboardingComplete(orgId: string): Promise
     .update({ onboarding_completed: true })
     .eq('id', orgId)
   if (error) throw new Error(error.message)
-}
-
-export async function subscriptionAllowsDashboardAccess(
-  orgId: string
-): Promise<{ ok: boolean; reason?: 'pending_payment' | 'custom_inquiry' }> {
-  const state = await getOrgSubscriptionState(orgId)
-  if (!state) return { ok: true }
-
-  if (state.status === 'pending_payment') return { ok: false, reason: 'pending_payment' }
-
-  const inquiry = await getOpenCustomPlanInquiry(orgId)
-  if (inquiry && state.status !== 'active' && state.status !== 'trial' && state.status !== 'read_only') {
-    return { ok: false, reason: 'custom_inquiry' }
-  }
-
-  return { ok: true }
 }
 
 /**

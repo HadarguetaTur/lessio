@@ -3,6 +3,7 @@ import { Paperclip, FileText, CheckCircle } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { getPortalSession } from '@/lib/portal/session'
+import { requirePortalFeature } from '@/lib/portal/features'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { listAttachments, getAttachmentDownloadUrl } from '@/lib/homework/attachments'
 import { getSubmission, getSubmissionDownloadUrl } from '@/lib/homework/submissions'
@@ -21,6 +22,7 @@ export default async function PortalHomeworkDetailPage({
   if (!session || session.orgId !== orgId) {
     redirect(`/portal/${orgId}/login`)
   }
+  await requirePortalFeature(orgId, 'homework')
 
   const [t, locale] = await Promise.all([
     getTranslations('portal.homework'),

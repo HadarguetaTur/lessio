@@ -27,6 +27,10 @@ vi.mock('@/lib/notifications', () => ({
   getOwnerAndAdminProfileIds: vi.fn().mockResolvedValue([]),
   getTeacherProfileId: vi.fn().mockResolvedValue(null),
 }))
+const mockIsPortalFeatureEnabled = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/portal/features', () => ({
+  isPortalFeatureEnabled: mockIsPortalFeatureEnabled,
+}))
 
 import { cancelLessonAction } from './actions'
 
@@ -50,6 +54,7 @@ function lessonClient(teacherId: string | null) {
 beforeEach(() => {
   vi.clearAllMocks()
   mockGetPortalSession.mockResolvedValue({ parentId: 'parent-1', orgId: ORG })
+  mockIsPortalFeatureEnabled.mockResolvedValue(true)
   mockCreateServiceRoleClient.mockReturnValue(lessonClient(null))
   mockExecuteCancellation.mockResolvedValue({
     success: true,
@@ -73,6 +78,16 @@ describe('cancelLessonAction', () => {
     mockGetPortalSession.mockResolvedValue({ parentId: 'parent-1', orgId: 'other-org' })
 
     expect(await cancelLessonAction(ORG, LESSON)).toEqual({ ok: false, error: 'unauthorized' })
+    expect(mockExecuteCancellation).not.toHaveBeenCalled()
+  })
+
+  // The org switched parent self-cancel off in its portal settings. A dialog
+  // that was already open must not get past the toggle.
+  it('refuses when the org has portal cancellation switched off', async () => {
+    mockIsPortalFeatureEnabled.mockResolvedValue(false)
+
+    expect(await cancelLessonAction(ORG, LESSON)).toEqual({ ok: false, error: 'not_eligible' })
+    expect(mockIsPortalFeatureEnabled).toHaveBeenCalledWith(ORG, 'cancellation')
     expect(mockExecuteCancellation).not.toHaveBeenCalled()
   })
 

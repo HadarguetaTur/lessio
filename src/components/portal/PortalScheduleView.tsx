@@ -27,6 +27,8 @@ interface Props {
   upcoming: ScheduleLesson[]
   history: ScheduleLesson[]
   orgId: string
+  /** Org portal setting: whether parents may book lessons themselves. */
+  canBook: boolean
   cancelAction: (lessonId: string) => Promise<CancelLessonResult>
 }
 
@@ -38,7 +40,7 @@ const STATUS_CLASS: Record<string, string> = {
   no_show: 'bg-red-50 text-red-700 border-red-200',
 }
 
-export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: Props) {
+export function PortalScheduleView({ upcoming, history, orgId, canBook, cancelAction }: Props) {
   const t = useTranslations('portal.schedule')
   const [view, setView] = useState<'upcoming' | 'history'>('upcoming')
   const [cancelTarget, setCancelTarget] = useState<ScheduleLesson | null>(null)
@@ -76,7 +78,7 @@ export function PortalScheduleView({ upcoming, history, orgId, cancelAction }: P
 
       {/* Book CTA. Above the list, not below it: at the bottom it sat under
           eight lesson cards, and /book has no other entry point. */}
-      {view === 'upcoming' && (
+      {view === 'upcoming' && canBook && (
         <Link
           href={`/portal/${orgId}/book`}
           className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"

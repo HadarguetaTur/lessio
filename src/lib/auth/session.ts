@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getActiveSupportSession } from '@/lib/support-session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getOrgSubscriptionState, isOrgSaasReadOnly } from '@/lib/saas/subscriptions'
 
 export interface UserSession {
   userId: string
@@ -12,6 +13,14 @@ export interface UserSession {
   fullName: string
   /** True when a superadmin is viewing this org via support-mode cookie. */
   isSupportMode?: boolean
+  /**
+   * True when the org's Lessio subscription has lapsed (trial over, card
+   * declined past its grace window, or cancelled). Resolved once per request
+   * here so that {@link requireMutation} — which every mutating action
+   * already calls — can refuse writes without 126 call sites having to
+   * remember a second guard.
+   */
+  isSaasReadOnly?: boolean
 }
 
 export interface SuperAdminSession {
@@ -74,12 +83,32 @@ export async function getSession(): Promise<UserSession> {
   // NULL, and the UserSession contract promises orgId is a non-null string.
   if (isPlatformRole(profile.role)) redirect('/admin')
 
+  const orgId = profile.organization_id as string
+
+  // One query per request: getOrgSubscriptionState is React-cached, and the
+  // dashboard layout asks for the same row.
+  //
+  // Never fatal. This runs on every authenticated request, so a transient
+  // failure here would take the whole app down rather than one screen; and
+  // it fails open on purpose — locking paying customers out of their own
+  // data because a query blipped is the worse outcome of the two.
+  let saasReadOnly = false
+  try {
+    saasReadOnly = isOrgSaasReadOnly(await getOrgSubscriptionState(orgId))
+  } catch (e) {
+    console.error('[auth/session] subscription lookup failed — treating org as writable', {
+      orgId,
+      error: e instanceof Error ? e.message : String(e),
+    })
+  }
+
   return {
     userId: user.id,
     profileId: user.id,
-    orgId: profile.organization_id as string,
+    orgId,
     role: profile.role,
     fullName: profile.full_name,
+    isSaasReadOnly: saasReadOnly,
   }
 }
 
@@ -97,16 +126,43 @@ export const requireDashboardSession = getSession
  *   const session = await getSession()
  *   requireMutation(session)
  */
-export function requireMutation(session: UserSession): void {
+export interface RequireMutationOptions {
+  /**
+   * Allow the write even when the subscription has lapsed. Only for the
+   * actions a locked-out owner must still be able to perform: paying,
+   * cancelling, opening a support ticket, reading notifications, changing
+   * language. Everything else stays blocked — that is the point of the lock.
+   */
+  allowWhenLapsed?: boolean
+}
+
+export function requireMutation(
+  session: UserSession,
+  options?: RequireMutationOptions
+): void {
   if (session.isSupportMode) {
     // A stable code, not display copy: this is synchronous, so it cannot await a
     // translator. Callers surface it with `commonError('supportModeReadOnly')`.
     throw new Error(SUPPORT_MODE_READ_ONLY)
   }
+
+  // A lapsed subscription is read-only. Enforcing it here rather than at each
+  // action means a newly written action is covered by default: the failure
+  // mode of forgetting a guard is now "blocked" rather than "free product".
+  if (session.isSaasReadOnly && !options?.allowWhenLapsed) {
+    throw new Error(SAAS_READ_ONLY)
+  }
 }
 
 /** Thrown by {@link requireMutation}. Never shown to a user as-is. */
 export const SUPPORT_MODE_READ_ONLY = 'SUPPORT_MODE_READ_ONLY'
+
+/**
+ * Thrown by {@link requireMutation} when the org subscription has lapsed.
+ * Caught by the dashboard error boundary, which shows an upgrade card.
+ * Matches the string {@link assertOrgNotSaasReadOnly} already throws.
+ */
+export const SAAS_READ_ONLY = 'SAAS_READ_ONLY'
 
 /**
  * Returns the current superadmin session.

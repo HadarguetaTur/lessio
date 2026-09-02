@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getPortalSession } from '@/lib/portal/session'
+import { requirePortalFeature } from '@/lib/portal/features'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
   getAvailableSlots,
@@ -30,6 +31,10 @@ async function requirePortalSession(orgId: string) {
   if (!session || session.orgId !== orgId) {
     redirect(`/portal/${orgId}/login`)
   }
+  // Same bounce for an org that has switched self-service booking off: the
+  // page redirects to home, and a flow already open when the toggle flipped
+  // must not get further than the page would.
+  await requirePortalFeature(orgId, 'booking')
   return session
 }
 

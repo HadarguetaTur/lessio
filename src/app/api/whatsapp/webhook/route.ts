@@ -41,6 +41,10 @@ import { recordParentConsent } from '@/lib/whatsapp/consent'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
 import { resolvePaymentLine, sumOpenCharges } from '@/lib/whatsapp/balance'
+import {
+  normalizePortalSettings,
+  type PortalSettings,
+} from '@/lib/organizations/portalSettings'
 import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import { botString } from '@/lib/whatsapp/strings'
 import { notifyIfWeeklyQuotaReached } from './bookingQuotaNotice'
@@ -323,7 +327,8 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
       automation_new_leads_enabled,
       default_locale,
       currency,
-      service_state
+      service_state,
+      portal_settings
     `)
     .eq('whatsapp_phone_number_id', msg.phoneNumberId)
     .maybeSingle()
@@ -480,6 +485,12 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
 
   const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
   const orgCurrency = (org.currency as string | null) ?? undefined
+  // What this org opened to parents in the portal. Read from the row already
+  // fetched above, so the toggles cost no extra query per inbound message.
+  const portalSettings = normalizePortalSettings(org.portal_settings)
+  // A closed portal must not be offered in the menu — the row would lead to a
+  // login the parent cannot finish.
+  const hiddenMenuActions: MenuAction[] = portalSettings.enabled ? [] : ['portal']
 
   // 6a₀. Stop / resume business-initiated messages.
   //
@@ -537,6 +548,7 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
       accessToken,
       phoneNumberId,
       locale,
+      hiddenActions: hiddenMenuActions,
     })
     return
   }
@@ -553,6 +565,7 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
         locale,
         fullName: sender.fullName,
         role: sender.role,
+        hiddenActions: hiddenMenuActions,
       })
       return
     }
@@ -718,6 +731,7 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
       locale,
       fullName: parent.full_name as string | null,
       canSwitchRole: sender.alsoKnownAs.length > 0,
+      hiddenActions: hiddenMenuActions,
     })
     return
   }
@@ -777,7 +791,7 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
 
   // 9b. Balance query
   if (hasBalanceIntent(msg.text)) {
-    await handleBalanceQuery(parent.id, org.id, senderPhone, accessToken, phoneNumberId, locale, origin, orgCurrency)
+    await handleBalanceQuery(parent.id, org.id, senderPhone, accessToken, phoneNumberId, locale, origin, portalSettings, orgCurrency)
     return
   }
 
@@ -812,7 +826,7 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
 
   // 9e. Portal link
   if (hasPortalIntent(msg.text)) {
-    await handlePortalQuery(org.id, senderPhone, accessToken, phoneNumberId, locale, origin)
+    await handlePortalQuery(org.id, senderPhone, accessToken, phoneNumberId, locale, origin, portalSettings)
     return
   }
 
@@ -884,6 +898,7 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
         locale,
         fullName: parent.full_name as string | null,
         canSwitchRole: sender.alsoKnownAs.length > 0,
+        hiddenActions: hiddenMenuActions,
       })
     }
     return
@@ -998,6 +1013,8 @@ async function sendMenuWithFallback(params: {
   fullName: string | null
   role?: KnownSenderRole
   canSwitchRole?: boolean
+  /** Menu rows this org has switched off — see menuActionsFor. */
+  hiddenActions?: readonly MenuAction[]
   skipTextFallback?: boolean
 }): Promise<void> {
   const { orgId, senderPhone, accessToken, phoneNumberId, locale, fullName } = params
@@ -1010,6 +1027,7 @@ async function sendMenuWithFallback(params: {
     fullName,
     role: params.role ?? 'parent',
     canSwitchRole: params.canSwitchRole,
+    hiddenActions: params.hiddenActions,
     onFallback: async () => {
       if (params.skipTextFallback) return
       const body = await resolveTemplate(orgId, 'unknown_intent_fallback', {}, locale)
@@ -1064,8 +1082,10 @@ async function handleRoleSwitch(params: {
   accessToken: string
   phoneNumberId: string
   locale: AppLocale
+  /** Menu rows this org has switched off — see menuActionsFor. */
+  hiddenActions?: readonly MenuAction[]
 }): Promise<void> {
-  const { orgId, senderPhone, sender, pick, accessToken, phoneNumberId, locale } = params
+  const { orgId, senderPhone, sender, pick, accessToken, phoneNumberId, locale, hiddenActions } = params
   if (sender.role === 'unknown') return
 
   const held: KnownSenderRole[] = [sender.role, ...sender.alsoKnownAs]
@@ -1084,6 +1104,7 @@ async function handleRoleSwitch(params: {
       fullName: sender.fullName,
       role: sender.role,
       canSwitchRole: sender.alsoKnownAs.length > 0,
+      hiddenActions,
     })
     return
   }
@@ -1109,6 +1130,7 @@ async function handleRoleSwitch(params: {
     fullName: sender.fullName,
     role: pick,
     canSwitchRole: true,
+    hiddenActions,
     skipTextFallback: true,
   })
 }
@@ -1196,6 +1218,9 @@ async function runMenuAction(params: {
   const { action, parentId, org, senderPhone, accessToken, phoneNumberId, locale, origin } = params
   const timezone = (org.timezone as string | null) ?? 'Asia/Jerusalem'
   const orgCurrency = (org.currency as string | null) ?? undefined
+  // A payload can be echoed back from a menu sent before the org closed the
+  // portal, so the handlers re-check rather than trusting the tap.
+  const portalSettings = normalizePortalSettings(org.portal_settings)
 
   switch (action) {
     case 'cancel':
@@ -1214,7 +1239,7 @@ async function runMenuAction(params: {
       })
       return
     case 'balance':
-      await handleBalanceQuery(parentId, org.id, senderPhone, accessToken, phoneNumberId, locale, origin, orgCurrency)
+      await handleBalanceQuery(parentId, org.id, senderPhone, accessToken, phoneNumberId, locale, origin, portalSettings, orgCurrency)
       return
     case 'schedule':
       await handleScheduleQuery(
@@ -1222,7 +1247,7 @@ async function runMenuAction(params: {
       )
       return
     case 'portal':
-      await handlePortalQuery(org.id, senderPhone, accessToken, phoneNumberId, locale, origin)
+      await handlePortalQuery(org.id, senderPhone, accessToken, phoneNumberId, locale, origin, portalSettings)
       return
     default:
       console.warn('[whatsapp/webhook] Unhandled menu action', { action })
@@ -1322,6 +1347,7 @@ async function handleBalanceQuery(
   phoneNumberId: string,
   locale: AppLocale,
   origin: string,
+  portalSettings: PortalSettings,
   currency?: string
 ): Promise<void> {
   const db = createServiceRoleClient()
@@ -1363,19 +1389,45 @@ async function handleBalanceQuery(
     return line
   }).join('')
 
+  // Where the button lands depends on what the org opened to parents: the
+  // payments page when it is on, the portal home when only the portal is, and
+  // nowhere at all when the portal is closed — in which case the reply is the
+  // total plus the per-charge links, with no way in.
+  const portalPayments = portalSettings.enabled && portalSettings.payments
+  const paymentLine = resolvePaymentLine(chargeRows, locale, portalPayments)
+
+  if (!portalSettings.enabled) {
+    const body = await resolveTemplate(
+      orgId,
+      'balance_reply',
+      {
+        total: formatBotMoney(total, locale, currency),
+        payment_line: paymentLine,
+        charge_lines: chargeLines,
+        portal_url: '',
+      },
+      locale
+    )
+    await sendTextMessage(senderPhone, body, accessToken, phoneNumberId)
+    console.info('[whatsapp/webhook] Balance query replied — portal closed', { orgId, senderPhone, total })
+    return
+  }
+
   await sendLinkReply({
     orgId,
     to: senderPhone,
     templateType: 'balance_reply',
     urlVar: 'portal_url',
-    url: `${origin}/portal/${orgId}/payments`,
+    url: portalPayments
+      ? `${origin}/portal/${orgId}/payments`
+      : `${origin}/portal/${orgId}`,
     buttonKey: 'cta_open_portal',
     locale,
     accessToken,
     phoneNumberId,
     vars: {
       total: formatBotMoney(total, locale, currency),
-      payment_line: resolvePaymentLine(chargeRows, locale),
+      payment_line: paymentLine,
       charge_lines: chargeLines,
     },
   })
@@ -1474,8 +1526,17 @@ async function handlePortalQuery(
   accessToken: string,
   phoneNumberId: string,
   locale: AppLocale,
-  origin: string
+  origin: string,
+  portalSettings: PortalSettings
 ): Promise<void> {
+  // The org has not opened the portal to parents. Sending the link anyway lands
+  // them on a "not open" screen after an OTP they cannot complete.
+  if (!portalSettings.enabled) {
+    await sendTextMessage(senderPhone, botString('portal_closed', locale), accessToken, phoneNumberId)
+    console.info('[whatsapp/webhook] Portal query replied — portal closed', { orgId, senderPhone })
+    return
+  }
+
   // Built from the request origin, not NEXT_PUBLIC_APP_URL: that var is inlined
   // at build time, so a stale/localhost value in the deploy environment shipped
   // parents an unreachable link. The origin is whatever host Meta just called.

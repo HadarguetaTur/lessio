@@ -5,7 +5,6 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { EmbeddedSignupButton } from './EmbeddedSignupButton'
 import { DisconnectButton } from './DisconnectButton'
 import { RegisterTemplatesButton } from './RegisterTemplatesButton'
-import { PortalUrlCopy } from '@/components/dashboard/settings/PortalUrlCopy'
 import { AutomationsSettings } from './AutomationsSettings'
 import { WhatsAppRequirements } from '@/components/dashboard/settings/WhatsAppRequirements'
 import { WhatsAppUsageTab } from '@/components/dashboard/settings/WhatsAppUsageTab'
@@ -128,14 +127,9 @@ export default async function WhatsAppSettingsPage({
         </div>
       )}
 
-      {/* Portal URL — shown when WhatsApp is connected */}
-      {isConnected && org?.id && (
-        <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-1">{t('whatsapp.portalUrl')}</h2>
-          <p className="text-xs text-muted-foreground mb-3">{tp('whatsappPage.portalUrlHint')}</p>
-          <PortalUrlCopy orgId={org.id} />
-        </div>
-      )}
+      {/* The parent-portal link used to sit here. It moved to
+          /settings/parent-portal, next to the toggles that decide what a
+          parent finds behind it. */}
 
       {/* Automations — shown when WhatsApp is connected */}
       {isConnected && org && (

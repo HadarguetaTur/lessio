@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { TrendingUp } from 'lucide-react'
 import { getPortalSession } from '@/lib/portal/session'
+import { requirePortalFeature } from '@/lib/portal/features'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getLocale, getTranslations } from 'next-intl/server'
@@ -33,6 +34,7 @@ export default async function PortalProgressPage({
   if (!session || session.orgId !== orgId) {
     redirect(`/portal/${orgId}/login`)
   }
+  await requirePortalFeature(orgId, 'progress')
 
   const db = createServiceRoleClient()
   const [timezone, locale, t] = await Promise.all([

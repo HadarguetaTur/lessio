@@ -19,6 +19,17 @@
   | `data-retention` | `0 3 * * *` | אנונימיזציית conversation_log + whatsapp_processed_messages — יום יום ב-03:00 UTC |
   | `homework-sender` | `0 * * * *` | שליחת שיעורי בית מתוזמנים דרך WhatsApp — כל שעה |
 
+  שתי משימות נוספות רצות ב-Next.js דרך pg_cron (הרצת `scripts/setup-crons.sql`,
+  לא דרך לוח הבקרה של Supabase):
+
+  | משימה | תזמון | תפקיד |
+  |---|---|---|
+  | `saas-renew` | `*/15 2-3 * * *` | חיוב חידוש מנוי בטוקן השמור + השלמת תשלומים שלא חזרו |
+  | `saas-lifecycle-emails` | `0 8 * * *` | מיילים לבעל העסק: סוף ניסיון, חידוש קרוב, ביטול |
+
+  - [ ] הגדירי `LESSIO_SAAS_CRON_SECRET_SHA256` ב-Vercel — sha256 (hex) של אותו
+    טוקן שהוזן ב-`scripts/setup-crons.sql`. בלעדיו אף מנוי לא יחויב.
+
 - [ ] הגדרת Environment Secrets לכל Edge Function ב-Supabase Dashboard:
   - `SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`

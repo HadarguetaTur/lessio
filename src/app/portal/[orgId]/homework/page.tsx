@@ -4,6 +4,7 @@ import { FileText, CheckCircle } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { getPortalSession } from '@/lib/portal/session'
+import { requirePortalFeature } from '@/lib/portal/features'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
 
@@ -18,6 +19,7 @@ export default async function PortalHomeworkPage({
   if (!session || session.orgId !== orgId) {
     redirect(`/portal/${orgId}/login`)
   }
+  await requirePortalFeature(orgId, 'homework')
 
   const [t, locale] = await Promise.all([
     getTranslations('portal.homework'),

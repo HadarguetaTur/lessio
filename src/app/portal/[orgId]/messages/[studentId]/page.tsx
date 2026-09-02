@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { getPortalSession } from '@/lib/portal/session'
+import { requirePortalFeature } from '@/lib/portal/features'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getConversation, markConversationRead } from '@/lib/portal/messages'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
@@ -21,6 +22,7 @@ export default async function PortalMessageThreadPage({
   if (!session || session.orgId !== orgId) {
     redirect(`/portal/${orgId}/login`)
   }
+  await requirePortalFeature(orgId, 'messages')
 
   const t = await getTranslations('portal.messages')
 

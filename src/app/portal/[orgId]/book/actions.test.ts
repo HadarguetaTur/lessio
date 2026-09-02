@@ -18,6 +18,10 @@ const {
 
 vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 vi.mock('@/lib/portal/session', () => ({ getPortalSession: mockGetPortalSession }))
+// Booking is on for these orgs; the toggle itself is covered in portalSettings.test.ts.
+vi.mock('@/lib/portal/features', () => ({
+  requirePortalFeature: vi.fn().mockResolvedValue(undefined),
+}))
 vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: mockCreateServiceRoleClient,
 }))

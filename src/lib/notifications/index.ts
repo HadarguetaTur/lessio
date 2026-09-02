@@ -33,6 +33,10 @@ export type NotificationType =
   // directly — Deno cannot import this module, so its shape is mirrored there.
   | 'dev_issue_new'
   | 'dev_issue_fixed'
+  // SaaS billing (platform-level, superadmin): a hosted-checkout payment that
+  // could not be bound to its checkout, and a renewal charge Sumit declined.
+  | 'saas_activation_refused'
+  | 'saas_renewal_failed'
 
 export interface CreateNotificationParams {
   orgId: string

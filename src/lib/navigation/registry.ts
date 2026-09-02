@@ -55,6 +55,7 @@ import {
   Mail,
   Shield,
   LifeBuoy,
+  Smartphone,
 } from 'lucide-react'
 import type { SaasFeatures } from '@/lib/saas/types'
 
@@ -191,6 +192,18 @@ export const SETTINGS_NAV: NavEntry[] = [
     icon: Bell,
     roles: ['owner'],
     synonyms: ['reminder', 'reminders', 'תזכורת', 'תזכורות', 'late payment', 'debt', 'חוב', 'גביה', 'גבייה'],
+  },
+  {
+    href: '/settings/parent-portal',
+    navKey: 'settingsParentPortal',
+    cardKey: 'parentPortal',
+    icon: Smartphone,
+    roles: ['owner', 'admin'],
+    saasFeature: 'parent_portal',
+    synonyms: [
+      'portal', 'parent portal', 'parents', 'app',
+      'פורטל', 'אזור אישי', 'הורים', 'אפליקציה',
+    ],
   },
   {
     href: '/settings/ai-assistant',
@@ -559,6 +572,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       '/settings/whatsapp',
       '/settings/message-templates',
       '/settings/reminders',
+      '/settings/parent-portal',
       '/settings/email',
       '/settings/ai-assistant',
     ].map(entryOf),

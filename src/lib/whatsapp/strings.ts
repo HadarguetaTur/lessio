@@ -42,6 +42,7 @@ export type BotStringKey =
   | 'ai_human_redirect'
   | 'otp_fallback'
   | 'balance_none'
+  | 'portal_closed'
   | 'opt_out_confirmed'
   | 'opt_out_already'
   | 'opt_in_confirmed'
@@ -265,6 +266,8 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     ai_human_redirect: 'לא הצלחתי לענות על השאלה הזו 🙂 הצוות שלנו ישמח לעזור — אפשר לפנות ישירות.',
     otp_fallback: 'קוד הכניסה שלך ל-Lessio: *{{otp}}*\nהקוד בתוקף ל-10 דקות.',
     balance_none: 'אין לך יתרה פתוחה לתשלום 🎉',
+    portal_closed:
+      'האזור האישי עוד לא פתוח 🙂\nאפשר לשאול אותי כאן על השיעורים הקרובים, על היתרה או לבטל שיעור — ולכל דבר אחר פשוט להשיב להודעה הזו.',
     opt_out_confirmed:
       'סגור, הפסקנו לשלוח 👍\nלא יישלחו אליך יותר תזכורות, בקשות תשלום או עדכונים אוטומטיים.\nאפשר תמיד לכתוב "התחל" כדי לחדש, ואם תכתבו לנו — נענה תמיד.',
     opt_out_already:
@@ -513,6 +516,8 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'I could not answer that one 🙂 Our team would be happy to help — feel free to reach out.',
     otp_fallback: 'Your Lessio login code: *{{otp}}*\nThe code is valid for 10 minutes.',
     balance_none: 'You have no outstanding balance 🎉',
+    portal_closed:
+      'The personal area is not open yet 🙂\nYou can ask me here about upcoming lessons or your balance, or cancel a lesson — and for anything else, just reply to this message.',
     opt_out_confirmed:
       "Done — we've stopped 👍\nYou will no longer receive reminders, payment requests or any automated updates from us.\nReply START at any time to turn them back on, and if you message us we will always reply.",
     opt_out_already:

@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { AlertTriangle, ArrowUpCircle } from 'lucide-react'
+import { AlertTriangle, ArrowUpCircle, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { reportClientError } from '@/lib/telemetry/reportClientError'
 
@@ -26,6 +26,13 @@ function parseQuotaKind(message: string): QuotaKind | null {
   return kind in QUOTA_MESSAGE_KEY ? (kind as QuotaKind) : null
 }
 
+/**
+ * Thrown by requireMutation and assertOrgNotSaasReadOnly when the org
+ * subscription has lapsed. Like a quota block it is a product state the
+ * owner can act on, so it gets an upgrade card rather than a crash screen.
+ */
+const SAAS_READ_ONLY = 'SAAS_READ_ONLY'
+
 export default function DashboardError({
   error,
   reset,
@@ -35,13 +42,29 @@ export default function DashboardError({
 }) {
   const t = useTranslations('errors')
   const quotaKind = parseQuotaKind(error.message)
+  const isSaasReadOnly = error.message === SAAS_READ_ONLY
 
   useEffect(() => {
     console.error('[dashboard/error-boundary] Unhandled error', error)
-    // A quota block is a product state the user can act on, not a defect —
-    // reporting it would bury the real bugs in the feed.
-    if (!quotaKind) reportClientError(error)
-  }, [error, quotaKind])
+    // A quota block or a lapsed subscription is a product state the user can
+    // act on, not a defect — reporting them would bury the real bugs.
+    if (!quotaKind && !isSaasReadOnly) reportClientError(error)
+  }, [error, quotaKind, isSaasReadOnly])
+
+  if (isSaasReadOnly) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+        <div className="mx-auto w-full max-w-md rounded-xl border border-border bg-card p-8 shadow-sm">
+          <Lock className="mx-auto h-12 w-12 text-amber-500 mb-4" />
+          <h1 className="text-xl font-bold text-foreground mb-2">{t('saasReadOnly.title')}</h1>
+          <p className="text-sm text-muted-foreground mb-6">{t('saasReadOnly.body')}</p>
+          <Button asChild>
+            <Link href="/account/billing?reason=past_due_locked">{t('saasReadOnly.upgrade')}</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   if (quotaKind) {
     return (

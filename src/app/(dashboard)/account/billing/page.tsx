@@ -19,6 +19,7 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { CancelSaasButton } from './CancelSaasButton'
 import { UpgradePlanPanel } from '@/components/dashboard/billing/UpgradePlanPanel'
 import { beginUpgradeCheckoutAction } from './upgrade-actions'
+import { isRepurchase } from '@/lib/saas/repurchase'
 
 const SAAS_FEATURE_PARAM_KEYS = new Set([
   'whatsapp_automation',
@@ -48,16 +49,27 @@ function isQuotaPromptParam(raw: string | undefined): boolean {
   return raw != null && QUOTA_PARAM_KEYS.has(raw)
 }
 
+const LAPSED_REASON_KEYS = new Set(['trial_ended', 'past_due_locked', 'cancelled'])
+
+function isLapsedReasonParam(
+  raw: string | undefined
+): raw is 'trial_ended' | 'past_due_locked' | 'cancelled' {
+  return raw != null && LAPSED_REASON_KEYS.has(raw)
+}
+
 export default async function AccountBillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ upgrade?: string }>
+  searchParams: Promise<{ upgrade?: string; reason?: string }>
 }) {
   const session = await getSession()
   const t = await getTranslations('saas.accountBilling')
   const sp = await searchParams
   const featureGateParam =
     typeof sp.upgrade === 'string' && isSaasFeatureGateParam(sp.upgrade) ? sp.upgrade : null
+  // Set by the lapsed gate in the dashboard layout, so the page can say why
+  // the owner was sent here rather than just showing a plan grid.
+  const lapsedReasonParam = isLapsedReasonParam(sp.reason) ? sp.reason : null
   const quotaPromptParam =
     typeof sp.upgrade === 'string' && isQuotaPromptParam(sp.upgrade) ? sp.upgrade : null
   const locale = await getLocale()
@@ -106,15 +118,18 @@ export default async function AccountBillingPage({
         (p) => evaluateUpgrade({ current: null, target: p, usage }).ok
       )
     }
-    if (
-      !state ||
-      state.planName === 'custom' ||
-      state.status === 'pending_payment' ||
-      (state.status !== 'trial' && state.status !== 'active' && state.status !== 'read_only') ||
-      currentCatalogPlan == null
-    ) {
-      return []
+    if (!state || state.planName === 'custom') return []
+
+    // A lapsed org is not climbing a ladder — it is buying back in, and the
+    // plan it most likely wants is the one it just lost. Without this, the
+    // recovery link in a dunning email led to a page offering nothing.
+    if (isRepurchase(state)) {
+      return purchasable.filter((p) => evaluateUpgrade({ current: null, target: p, usage }).ok)
     }
+
+    if (state.status !== 'trial' && state.status !== 'active') return []
+    if (currentCatalogPlan == null) return []
+
     return purchasable.filter(
       (p) => evaluateUpgrade({ current: currentCatalogPlan, target: p, usage }).ok
     )
@@ -126,6 +141,9 @@ export default async function AccountBillingPage({
   const planLabel =
     plan != null ? (locale === 'he' ? plan.display_name_he : plan.display_name_en) : '—'
 
+  // past_due and cancelled used to fall through to the default and render as
+  // "pending" — telling a customer whose card bounced that we were waiting on
+  // them to finish a checkout.
   const statusKey =
     state?.status === 'trial' && !isTrialExpired(state)
       ? 'statusTrial'
@@ -133,11 +151,15 @@ export default async function AccountBillingPage({
         ? 'statusReadOnly'
         : state?.status === 'active'
           ? 'statusActive'
-          : state?.status === 'pending_payment'
-            ? 'statusPending'
-            : state?.status === 'read_only'
-              ? 'statusReadOnly'
-              : 'statusPending'
+          : state?.status === 'past_due'
+            ? 'statusPastDue'
+            : state?.status === 'cancelled'
+              ? 'statusCancelled'
+              : state?.status === 'pending_payment'
+                ? 'statusPending'
+                : state?.status === 'read_only'
+                  ? 'statusReadOnly'
+                  : 'statusPending'
 
   const renews =
     state?.currentPeriodEnd != null
@@ -150,6 +172,19 @@ export default async function AccountBillingPage({
   return (
     <div className="space-y-8">
       <PageHeader title={t('title')} subtitle={t('subtitle')} />
+
+      {lapsedReasonParam ? (
+        <div
+          className="max-w-xl rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-sm text-foreground"
+          role="status"
+          id="billing-lapsed-hero"
+        >
+          <p className="font-semibold">{t(`lapsedHero.${lapsedReasonParam}.title`)}</p>
+          <p className="mt-1 text-muted-foreground">
+            {t(`lapsedHero.${lapsedReasonParam}.body`)}
+          </p>
+        </div>
+      ) : null}
 
       {featureGateParam ? (
         <div

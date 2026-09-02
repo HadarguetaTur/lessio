@@ -23,6 +23,9 @@ vi.mock('next-intl/server', () => ({
   getTranslations: () => Promise.resolve((key: string) => key),
 }))
 vi.mock('@/lib/portal/session', () => ({ getPortalSession: mockGetPortalSession }))
+vi.mock('@/lib/portal/features', () => ({
+  isPortalFeatureEnabled: vi.fn().mockResolvedValue(true),
+}))
 vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: mockCreateServiceRoleClient,
 }))

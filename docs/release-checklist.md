@@ -32,6 +32,7 @@ Nothing ships to production without passing staging first (Decision #24).
   - [ ] `RESEND_API_KEY` (Sprint 25 — email delivery)
   - [ ] `RESEND_FROM_EMAIL` (Sprint 25 — verified sender email)
   - [ ] `NEXT_PUBLIC_ONBOARDING_PAID_CHECKOUT` (Sprint 22 — SaaS checkout mode)
+  - [ ] `LESSIO_SAAS_CRON_SECRET_SHA256` (hex sha256 of the bearer token pg_cron sends to `/api/internal/saas/*`; without it nothing is ever charged)
   - [ ] `NEXT_PUBLIC_SENTRY_DSN` (Sprint 28 — error monitoring)
 - [ ] App starts cleanly on staging (no startup errors from env validation)
 
@@ -52,6 +53,10 @@ Nothing ships to production without passing staging first (Decision #24).
 
 All 12 scenarios must pass on staging. Mark each as Pass / Fail / Blocked.
 Also verify that all crons are registered in Supabase Dashboard: `lesson-reminders`, `payment-reminders`, `homework-reminders`, `saas-subscription-checker`, `saas-renewal-reminder`, `data-retention`, `homework-sender`, `notification-cleanup`.
+
+And that `scripts/setup-crons.sql` has been run for the pg_cron HTTP jobs:
+`automatic-lesson-completion`, `saas-renew` (every 15 min, 02:00–03:45 UTC),
+`saas-lifecycle-emails` (08:00 UTC). Confirm with `select jobname, schedule from cron.job`.
 
 | # | Scenario | Steps | Result |
 |---|---|---|---|
@@ -107,6 +112,8 @@ Also verify that all crons are registered in Supabase Dashboard: `lesson-reminde
   - [ ] `RESEND_API_KEY` — production Resend API key (Sprint 25)
   - [ ] `RESEND_FROM_EMAIL` — verified sender email on production domain (Sprint 25)
   - [ ] `NEXT_PUBLIC_ONBOARDING_PAID_CHECKOUT` — `sumit` for live billing (Sprint 22)
+  - [ ] `SUMIT_CHECKOUT_MOCK` — **must be absent** in production (it activates subscriptions without payment)
+  - [ ] `LESSIO_SAAS_CRON_SECRET_SHA256` — matches the token in `scripts/setup-crons.sql`
   - [ ] `NEXT_PUBLIC_SENTRY_DSN` — production Sentry DSN (Sprint 28)
 
 ### 4.2 Migrations
@@ -137,6 +144,13 @@ Also verify that all crons are registered in Supabase Dashboard: `lesson-reminde
 | Parent portal: OTP login works on mobile | |
 | Monthly billing generate → approve → download invoice PDF | |
 | SaaS upgrade E2E: `/account/billing` → Sumit `beginredirect` page → pay → redirect-return confirms (server-to-server) → subscription `active` + invoice recorded | |
+| SaaS checkout: real ₪149 solo purchase → callback → subscription `active`, `sumit_payment_token` + `card_last_four` stored, paid `saas_invoices` row with `sumit_payment_id`, receipt email received | |
+| Replay guard: re-open the callback URL with the same `OG-PaymentID` → no second invoice, no second period | |
+| Cancel on the Sumit page → `/account/billing/payment-callback/cancelled` → subscription reverted to its previous plan/status | |
+| Renewal dry run: `POST /api/internal/saas/renew?dryRun=1&orgId=<test org>` with the bearer → Sumit authorises, nothing written | |
+| Real renewal: set `current_period_end` to yesterday → trigger the route → charged, period extended **from yesterday**, receipt email | |
+| Decline path: corrupt `sumit_payment_token` → trigger → `past_due`, failed invoice row, dunning email, `next_renewal_attempt_at` = period end + 3d | |
+| Trial end: set `trial_ends_at` to yesterday → owner on `/dashboard` is redirected to `/account/billing?reason=trial_ended`; a teacher sees the lapsed notice; the owner can re-buy the same tier | |
 | Sumit webhook safety net: closing the tab before redirect still activates via `/api/sumit/webhook` (no duplicate invoice) | |
 | Sentry receives test error (check Sentry dashboard) | |
 

@@ -11,7 +11,7 @@ const schema = z.object({ locale: z.enum(['he', 'en']) })
 
 export async function saveLocaleAction(formData: FormData) {
   const session = await getSession()
-  requireMutation(session)
+  requireMutation(session, { allowWhenLapsed: true })
 
   const parsed = schema.safeParse({ locale: formData.get('locale') })
   if (!parsed.success) return

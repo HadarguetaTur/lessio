@@ -28,7 +28,9 @@ import {
   markAsReadAction,
   markAllReadAction,
 } from './notifications/actions'
-import { getNavigationSaasFeatures } from '@/lib/saas/subscriptions'
+import { getNavigationSaasFeatures, getOrgSubscriptionState } from '@/lib/saas/subscriptions'
+import { isLapsedBlockedPath, lapsedReasonFor, type LapsedReason } from '@/lib/saas/lapsedGate'
+import { LapsedNotice } from '@/components/dashboard/LapsedNotice'
 import { getActiveTeacherCount, getTeacherByProfileId } from '@/lib/teachers'
 import { LiveRefreshProvider } from '@/lib/realtime/LiveRefreshProvider'
 
@@ -143,18 +145,33 @@ export default async function DashboardLayout({
   // Setup is progressive inside the product. Owners always reach the dashboard;
   // its setup centre reflects the real records and integrations still missing.
 
+  // src/proxy.ts forwards the current pathname on every request; both gates
+  // below and the lapsed-notice render read it.
+  const currentPathname = (await headers()).get(PATHNAME_HEADER) ?? '/'
+
   // Teachers may only access /teacher/* and /homework/* (sidebar links שיעורי בית).
-  // src/proxy.ts forwards the current pathname on every request.
   if (profile?.role === 'teacher') {
-    const headersList = await headers()
-    const pathname = headersList.get(PATHNAME_HEADER) ?? '/'
     const allowed =
-      pathname.startsWith('/teacher') ||
-      pathname.startsWith('/homework') ||
-      pathname.startsWith('/students') ||
-      pathname.startsWith('/parents')
+      currentPathname.startsWith('/teacher') ||
+      currentPathname.startsWith('/homework') ||
+      currentPathname.startsWith('/students') ||
+      currentPathname.startsWith('/parents')
     if (!allowed) {
       redirect('/teacher/dashboard')
+    }
+  }
+
+  // A lapsed subscription (trial over, card declined past its grace, cancelled)
+  // takes the working surfaces away but never the data: the owner is sent to
+  // billing where they can pay, and everyone else is told why. Reading,
+  // exporting and support stay open — see src/lib/saas/lapsedGate.ts.
+  //
+  // Deliberately outside try/catch: redirect() throws to unwind.
+  let lapsedReason: LapsedReason | null = null
+  if (profile?.organization_id) {
+    lapsedReason = lapsedReasonFor(await getOrgSubscriptionState(profile.organization_id))
+    if (lapsedReason && profile.role === 'owner' && isLapsedBlockedPath(currentPathname)) {
+      redirect(`/account/billing?reason=${lapsedReason}`)
     }
   }
 
@@ -241,7 +258,16 @@ export default async function DashboardLayout({
           className="mx-auto flex w-full max-w-[1440px] flex-1 min-h-0 flex-col overflow-y-auto px-4 py-4 max-lg:scroll-pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] max-lg:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 sm:px-6 sm:py-5 lg:px-8 lg:py-6"
         >
           {showSaasBanners ? <SaasOwnerBanners orgId={profile!.organization_id as string} /> : null}
-          {children}
+          {/*
+            A non-owner on a blocked surface gets an explanation instead of the
+            page: only the owner can pay, so redirecting an admin or teacher to
+            billing would strand them somewhere they cannot act.
+          */}
+          {lapsedReason && profile?.role !== 'owner' && isLapsedBlockedPath(currentPathname) ? (
+            <LapsedNotice />
+          ) : (
+            children
+          )}
         </div>
         {/*
           The provider wraps both launchers because they share one panel: a

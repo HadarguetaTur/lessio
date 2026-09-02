@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Receipt } from 'lucide-react'
+import { AlertCircle, Receipt, TrendingUp, Wallet } from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
@@ -11,11 +11,13 @@ import {
   getOpenBalancesByParent,
 } from '@/lib/charges'
 import { getChargeDateRange } from '@/lib/charges/dateRange'
+import { getChargesSummary } from '@/lib/charges/summary'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getOrgProviderStatus } from '@/lib/organizations/providerStatus'
 import { getParents } from '@/lib/parents'
 import { ChargeRowActions } from '@/components/dashboard/charges/ChargeRowActions'
 import { SettleBalanceDialog } from '@/components/dashboard/charges/SettleBalanceDialog'
+import { KpiCard } from '@/components/dashboard/KpiCard'
 import { getProviderUI } from '@/lib/payments/registry-ui'
 import { renderChargeNote } from '@/lib/charges/renderNote'
 import {
@@ -51,7 +53,7 @@ function remainingOf(charge: { amount: number; amount_paid: number }): number {
 }
 
 export default async function ChargesPage(props: {
-  searchParams: Promise<{ status?: string; parent?: string; q?: string; from?: string; to?: string }>
+  searchParams: Promise<{ status?: string; parent?: string; q?: string; from?: string; to?: string; due?: string }>
 }) {
   const searchParams = await props.searchParams
   const { orgId, role } = await getSession()
@@ -67,21 +69,27 @@ export default async function ChargesPage(props: {
   const hasReceiptProvider = providers.hasReceipt
 
   const search = searchParams.q?.trim() ?? ''
+  const overdueOnly = searchParams.due === 'overdue'
+
+  // "Overdue" is a calendar-date comparison in the org's own timezone, so the
+  // zone has to be known before the ledger query can be built.
   const [matchingParentIds, timezone] = await Promise.all([
     search ? findChargeParentIds(orgId, search) : Promise.resolve(undefined),
     getOrgTimezone(orgId),
   ])
+  const todayLocal = DateTime.now().setZone(timezone).toISODate()!
   const dateRange = getChargeDateRange(searchParams.from, searchParams.to, timezone)
 
-  const [charges, allCharges, parents] = await Promise.all([
+  const [charges, summary, parents] = await Promise.all([
     getCharges(orgId, {
       status: statusFilter,
       parentId: searchParams.parent || undefined,
       parentIds: matchingParentIds,
       dateFrom: dateRange.fromInclusive,
       dateToExclusive: dateRange.toExclusive,
+      overdueBefore: overdueOnly ? todayLocal : undefined,
     }),
-    getCharges(orgId),
+    getChargesSummary(orgId, timezone),
     getParents(orgId),
   ])
 
@@ -111,50 +119,67 @@ export default async function ChargesPage(props: {
     monthly: t('types.monthly'),
   }
 
-  const monthStart = DateTime.now().setZone(timezone).startOf('month')
-  // Open buckets show what is still owed; a partially-paid charge counts for its remainder.
-  const pendingTotal = allCharges
-    .filter((c) => c.status === 'pending')
+  // What the current filter shows — the cards above stay org-wide.
+  const filteredTotal = charges.reduce((sum, c) => sum + c.amount, 0)
+  const filteredOpen = charges
+    .filter((c) => OPEN_STATUSES.includes(c.status))
     .reduce((sum, c) => sum + remainingOf(c), 0)
-  const invoicedTotal = allCharges
-    .filter((c) => c.status === 'invoiced')
-    .reduce((sum, c) => sum + remainingOf(c), 0)
-  const paidThisMonth = allCharges
-    .filter((c) =>
-      c.status === 'paid' &&
-      c.paid_at &&
-      DateTime.fromISO(c.paid_at, { zone: 'utc' }).setZone(timezone) >= monthStart
-    )
-    .reduce((sum, c) => sum + c.amount, 0)
+
+  // A card is "active" only when the URL is exactly the filter it links to, so
+  // the ring never lies about what the table underneath is showing.
+  const hasNarrowingFilters = Boolean(
+    search || searchParams.parent || searchParams.from || searchParams.to
+  )
+  const openCardActive = statusFilter === 'pending' && !overdueOnly && !hasNarrowingFilters
+  const overdueCardActive = overdueOnly && !statusFilter && !hasNarrowingFilters
+
+  const isOverdue = (charge: { status: ChargeStatus; due_date: string | null }) =>
+    OPEN_STATUSES.includes(charge.status) && charge.due_date !== null && charge.due_date < todayLocal
+  const overdueDays = (dueDate: string) =>
+    Math.max(1, Math.floor(DateTime.fromISO(todayLocal).diff(DateTime.fromISO(dueDate), 'days').days))
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <LiveRefresh tables={['charges']} />
       <PageHeader title={t('title')} />
 
-      {/* Aging summary */}
-      {charges.length > 0 && (
-        <div className="mb-5 grid grid-cols-1 gap-4 rounded-xl border border-border bg-card p-5 md:grid-cols-3">
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-              {t('agingSummary.pending')}
-            </p>
-            <p className="text-lg font-bold text-foreground">{money(pendingTotal)}</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-              {t('agingSummary.invoiced')}
-            </p>
-            <p className="text-lg font-bold text-foreground">{money(invoicedTotal)}</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-              {t('agingSummary.paidThisMonth')}
-            </p>
-            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{money(paidThisMonth)}</p>
-          </div>
-        </div>
-      )}
+      {/* Collections at a glance — org-wide, never narrowed by the filters below. */}
+      <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <KpiCard
+          label={t('summary.open')}
+          value={money(summary.openTotal)}
+          subLabel={
+            summary.openDebtorCount > 0
+              ? t('summary.openSub', { count: summary.openDebtorCount })
+              : t('summary.openNone')
+          }
+          icon={Wallet}
+          variant={summary.openTotal > 0 ? 'debt' : 'default'}
+          href="/charges?status=pending"
+          className={openCardActive ? 'ring-2 ring-primary' : undefined}
+        />
+        <KpiCard
+          label={t('summary.overdue')}
+          value={money(summary.overdueTotal)}
+          subLabel={
+            summary.overdueCount > 0
+              ? t('summary.overdueSub', { count: summary.overdueCount })
+              : t('summary.overdueNone')
+          }
+          icon={AlertCircle}
+          variant={summary.overdueTotal > 0 ? 'warning' : 'default'}
+          href="/charges?due=overdue"
+          className={overdueCardActive ? 'ring-2 ring-primary' : undefined}
+        />
+        <KpiCard
+          label={t('summary.collected')}
+          value={money(summary.collectedThisMonth)}
+          subLabel={t('summary.collectedSub')}
+          icon={TrendingUp}
+          variant="revenue"
+          href="/reports/revenue"
+        />
+      </div>
 
       {/* Filters */}
       <div className="mb-5 md:hidden">
@@ -164,6 +189,7 @@ export default async function ChargesPage(props: {
           </summary>
           <div className="pt-3">
             <form method="GET" className="grid items-end gap-3">
+              {overdueOnly && <input type="hidden" name="due" value="overdue" />}
               <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                 {t('searchLabel')}
                 <input
@@ -184,7 +210,6 @@ export default async function ChargesPage(props: {
                 >
                   <option value="">{t('allStatuses')}</option>
                   <option value="pending">{tCommon('chargeStatus.pending')}</option>
-                  <option value="invoiced">{tCommon('chargeStatus.invoiced')}</option>
                   <option value="paid">{tCommon('chargeStatus.paid')}</option>
                   <option value="waived">{tCommon('chargeStatus.waived')}</option>
                   <option value="voided">{tCommon('chargeStatus.voided')}</option>
@@ -238,6 +263,7 @@ export default async function ChargesPage(props: {
       </div>
 
       <form method="GET" className="mb-5 hidden items-end gap-3 rounded-xl border border-border bg-card p-4 md:grid md:grid-cols-2 xl:grid-cols-6">
+        {overdueOnly && <input type="hidden" name="due" value="overdue" />}
         <label className="flex flex-col gap-1 text-xs text-muted-foreground md:col-span-2 xl:col-span-1">
           {t('searchLabel')}
           <input
@@ -258,7 +284,6 @@ export default async function ChargesPage(props: {
           >
             <option value="">{t('allStatuses')}</option>
             <option value="pending">{tCommon('chargeStatus.pending')}</option>
-            <option value="invoiced">{tCommon('chargeStatus.invoiced')}</option>
             <option value="paid">{tCommon('chargeStatus.paid')}</option>
             <option value="waived">{tCommon('chargeStatus.waived')}</option>
             <option value="voided">{tCommon('chargeStatus.voided')}</option>
@@ -308,15 +333,26 @@ export default async function ChargesPage(props: {
         </div>
       </form>
 
-      {selectedParent && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-          <span>
-            {t('showingFor')}{' '}
-            <span className="font-medium text-foreground">{selectedParent.full_name}</span>
-          </span>
+      {(selectedParent || charges.length > 0) && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+          {selectedParent && (
+            <span>
+              {t('showingFor')}{' '}
+              <span className="font-medium text-foreground">{selectedParent.full_name}</span>
+            </span>
+          )}
+          {charges.length > 0 && (
+            <span>
+              {t('summary.results', {
+                count: charges.length,
+                total: money(filteredTotal),
+                open: money(filteredOpen),
+              })}
+            </span>
+          )}
           {/* One parent in view with something owed: settle it all from here,
               instead of one dialog per row. */}
-          {canMarkPaid && selectedParentBalance && (
+          {canMarkPaid && selectedParent && selectedParentBalance && (
             <span className="ms-auto">
               <SettleBalanceDialog
                 parentId={selectedParent.id}
@@ -470,6 +506,11 @@ export default async function ChargesPage(props: {
                     )}
                     <TableCell className="px-5 py-3.5 text-sm text-muted-foreground">
                       {new Date(charge.created_at).toLocaleDateString(intlLocale)}
+                      {isOverdue(charge) && charge.due_date && (
+                        <div className="mt-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+                          {t('summary.overdueBy', { days: overdueDays(charge.due_date) })}
+                        </div>
+                      )}
                     </TableCell>
                     {canMarkPaid && (
                       <TableCell className="px-5 py-3.5">

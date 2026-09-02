@@ -8,6 +8,7 @@ import { formatTime, formatDate } from '@/lib/lessons'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { getOrgPricing } from '@/lib/organizations/pricing'
+import { getPortalSettings } from '@/lib/organizations/portalSettings'
 import { getCancellationPolicyServiceRole } from '@/lib/cancellation-policy/service'
 import {
   previewCancellationCharge,
@@ -30,10 +31,11 @@ export default async function PortalSchedulePage({
   }
 
   const db = createServiceRoleClient()
-  const [timezone, locale, t] = await Promise.all([
+  const [timezone, locale, t, portal] = await Promise.all([
     getOrgTimezone(orgId),
     getLocale(),
     getTranslations('portal.schedule'),
+    getPortalSettings(orgId),
   ])
   const appLocale = parseAppLocale(locale)
   const nowDate = new Date()
@@ -118,7 +120,10 @@ export default async function PortalSchedulePage({
   function mapLesson(raw: unknown, withCancelPreview = false) {
     const row = raw as unknown as LessonRow
     const dateStr = new Date(row.start_at).toLocaleDateString('sv-SE', { timeZone: timezone })
-    const cancellable = withCancelPreview && isCancellableByParent(row.start_at, nowDate)
+    // An org that keeps cancellations off the portal gets no cancel button and,
+    // since the preview only exists to price that button, no preview either.
+    const cancellable =
+      withCancelPreview && portal.cancellation && isCancellableByParent(row.start_at, nowDate)
 
     // The preview is resolved here, in the server component, and only its
     // outcome crosses to the client. PortalScheduleView is a client component,
@@ -183,6 +188,7 @@ export default async function PortalSchedulePage({
           upcoming={upcoming}
           history={history}
           orgId={orgId}
+          canBook={portal.booking}
           cancelAction={boundCancel}
         />
       </main>

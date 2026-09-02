@@ -137,7 +137,15 @@ UI components that invoke server actions must receive the action as a prop — n
 **SaaS platform layer (distinct from org-level billing):**
 Organizations themselves are tenants on the Lessio SaaS platform. Platform billing (plan selection, payment for Lessio itself) lives in `src/lib/saas/` and `src/app/(dashboard)/subscriptions/`. This is entirely separate from the org-level billing engine (`src/lib/billing/monthly/`) that bills *students*. The superadmin shell (`/admin/`) manages the platform; org owners manage their own org's student billing.
 
-The SaaS billing provider is **Sumit** (`src/lib/saas/sumit.ts`): creates tax invoices/receipts and charges stored card tokens for subscription renewals. Credentials (`SUMIT_COMPANY_ID`, `SUMIT_API_KEY`) are platform-level env vars (always required). `SUMIT_WEBHOOK_SECRET` is required in production for HMAC verification of Sumit payment callbacks. The Sumit webhook route (`/api/sumit/`) is in the `proxy.ts` public bypass list (no Supabase session check).
+The SaaS billing provider is **Sumit** (`src/lib/saas/sumit.ts`, parsing in `sumitParse.ts`). Credentials (`SUMIT_COMPANY_ID`, `SUMIT_API_KEY`) are platform-level env vars (always required).
+
+**Sumit's response envelope is `{ Status, UserErrorMessage, TechnicalErrorDetails, Data }`** where Status is `0` Success / `1` BusinessError / `2` TechnicalError — there is no `Succeed` and no `ReturnValue`. Its hosted checkout returns the customer with `OG-PaymentID`, `OG-CustomerID` and `OG-ExternalIdentifier` appended to the URL. Verify any field name against `https://api.sumit.co.il/swagger/v1/swagger.json`, never against older code: the original client was written to a guessed contract and silently treated every decline as a success.
+
+**The money path** (decision #34): checkout → the customer returns → `completeCheckoutReturn` (`src/lib/saas/checkoutReturn.ts`) looks the payment up at Sumit and `evaluateCheckoutBinding` decides whether it may activate — reference match, payment id not already used, not dated before the checkout, customer match, amount covers the plan. Renewals are ours, not a Sumit standing order: `/api/internal/saas/renew` (pg_cron via `scripts/setup-crons.sql`) charges the stored token with a 0/3/7-day retry ladder. `/api/sumit/webhook` is a non-authoritative Sumit UI trigger; the daily reconciliation in the same cron is the real safety net. Internal cron routes authenticate with a bearer token whose SHA-256 is in env (`src/lib/cron/auth.ts`) and are in the `proxy.ts` bypass list.
+
+**A lapsed org is read-only, not locked out.** `requireMutation` refuses writes for a lapsed subscription (the flag is resolved once in `getSession`), so a new server action is covered by default; reading, exporting, support and `/account/billing` stay reachable. Pass `{ allowWhenLapsed: true }` only for actions a locked-out owner must still perform.
+
+`SUMIT_CHECKOUT_MOCK=1` simulates checkout locally — it must never be set in production.
 
 **Teacher sub-shell (`/teacher/`):**
 Teachers access a scoped subset of the dashboard: `/teacher/schedule`, `/teacher/new-lesson`, `/teacher/dashboard`, `/teacher/reports`. These share the same Supabase Auth session but data queries are filtered by the authenticated teacher's `teacher_id`. Teachers cannot access billing, students, or parents pages.

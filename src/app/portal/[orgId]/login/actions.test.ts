@@ -40,6 +40,12 @@ vi.mock('@/lib/portal/session', () => ({
 vi.mock('@/lib/whatsapp/sendOtp', () => ({ sendOtp: vi.fn() }))
 vi.mock('@/lib/crypto', () => ({ decryptToken: vi.fn(() => 'token') }))
 
+const mockGetPortalSettings = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/organizations/portalSettings', () => ({
+  getPortalSettings: mockGetPortalSettings,
+}))
+mockGetPortalSettings.mockResolvedValue({ enabled: true })
+
 import { requestOtpAction, verifyOtpAction } from './actions'
 import { storeOtp } from '@/lib/portal/otp'
 import { sendOtp } from '@/lib/whatsapp/sendOtp'

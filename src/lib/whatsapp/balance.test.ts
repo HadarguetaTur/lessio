@@ -55,6 +55,20 @@ describe('resolvePaymentLine', () => {
     expect(line).toContain('למורה')
   })
 
+  // The org keeps payments off its portal: there is no page listing the
+  // per-charge links, so the reply must not send the parent to it.
+  it('does not point at the portal when the org has portal payments switched off', () => {
+    const charges = [
+      { amount: 250, payment_link: 'https://pay.example.com/1' },
+      { amount: 100, payment_link: 'https://pay.example.com/2' },
+    ]
+    const line = resolvePaymentLine(charges, 'he', false)
+    expect(line).not.toContain('האזור האישי')
+    expect(line).toContain('למורה')
+    // A single charge still gets its own link — that needs no portal page.
+    expect(resolvePaymentLine([charges[0]], 'he', false)).toContain('https://pay.example.com/1')
+  })
+
   it('answers in English for an English-speaking parent', () => {
     const withLink = resolvePaymentLine([{ amount: 250, payment_link: 'https://pay.example.com/1' }], 'en')
     const noLink = resolvePaymentLine([{ amount: 250, payment_link: null }], 'en')

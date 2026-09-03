@@ -185,11 +185,35 @@ export async function archiveTeacher(id: string): Promise<void> {
 
   const supabase = await createClient()
 
-  await supabase
+  const { data: archived } = await supabase
     .from('teachers')
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('organization_id', orgId)
+    .select('profile_id')
+    .maybeSingle()
+
+  // Only a dashboard teacher account is revoked. Owners/admins commonly also
+  // have a teacher row; archiving that scheduling record must not lock the
+  // business owner out of the organization.
+  if (archived?.profile_id) {
+    const db = createServiceRoleClient()
+    const { data: profile } = await db
+      .from('profiles')
+      .select('role')
+      .eq('id', archived.profile_id)
+      .eq('organization_id', orgId)
+      .maybeSingle()
+
+    if (profile?.role === 'teacher') {
+      await db
+        .from('profiles')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('id', archived.profile_id)
+        .eq('organization_id', orgId)
+      await db.auth.admin.signOut(archived.profile_id, 'global')
+    }
+  }
 
   revalidatePath('/teachers')
   revalidatePath(`/teachers/${id}/edit`)
@@ -209,11 +233,22 @@ export async function restoreTeacher(id: string): Promise<void> {
 
   const supabase = await createClient()
 
-  await supabase
+  const { data: restored } = await supabase
     .from('teachers')
     .update({ is_active: true, updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('organization_id', orgId)
+    .select('profile_id')
+    .maybeSingle()
+
+  if (restored?.profile_id) {
+    await createServiceRoleClient()
+      .from('profiles')
+      .update({ is_active: true, updated_at: new Date().toISOString() })
+      .eq('id', restored.profile_id)
+      .eq('organization_id', orgId)
+      .eq('role', 'teacher')
+  }
 
   revalidatePath('/teachers')
   revalidatePath(`/teachers/${id}/edit`)

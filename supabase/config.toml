@@ -379,36 +379,45 @@ deno_version = 2
 #   lesson-reminders:  "0 * * * *"   (every hour)
 #   payment-reminders: "0 9 * * *"   (daily at 09:00 UTC)
 [functions.lesson-reminders]
+verify_jwt = false
 
 [functions.payment-reminders]
+verify_jwt = false
 
 # Sprint 14: Homework reminder cron
 #   homework-reminders: "0 8 * * *"  (daily at 08:00 UTC)
 [functions.homework-reminders]
+verify_jwt = false
 
 # Sprint 22: SaaS subscription lifecycle checker
 #   saas-subscription-checker: "0 0 * * *"  (daily at 00:00 UTC)
 [functions.saas-subscription-checker]
+verify_jwt = false
 
 # Sprint 23: SaaS renewal reminder — WhatsApp to org owner 2 days before renewal
 #   saas-renewal-reminder: "0 8 * * *"  (daily at 08:00 UTC)
 [functions.saas-renewal-reminder]
+verify_jwt = false
 
 # Sprint 23: Data retention — anonymises conversation_log + whatsapp_processed_messages
 #   data-retention: "0 3 * * *"  (daily at 03:00 UTC)
 [functions.data-retention]
+verify_jwt = false
 
 # Sprint 24: Homework sender — sends scheduled homework assignments via WhatsApp
 #   homework-sender: "0 * * * *"  (hourly)
 [functions.homework-sender]
+verify_jwt = false
 
 # Sprint 25: Notification cleanup — deletes in_app_notifications older than 30 days
 #   notification-cleanup: "0 4 * * *"  (daily at 04:00 UTC)
 [functions.notification-cleanup]
+verify_jwt = false
 
 # Holiday sync — keeps auto-populated Jewish holidays topped up ~18 months ahead
 #   holiday-sync: "0 2 1 * *"  (monthly, 1st at 02:00 UTC)
 [functions.holiday-sync]
+verify_jwt = false
 
 # Sprint 32: Error monitor — groups the last 24h of error_events by fingerprint,
 # promotes anything past the threshold into a dev_issue (+ GitHub issue + a
@@ -419,6 +428,7 @@ deno_version = 2
 #   supabase secrets set GITHUB_ISSUES_TOKEN=<fine-grained PAT, issues:write>
 #   supabase secrets set GITHUB_ISSUES_REPO=<owner/repo>
 [functions.error-monitor]
+verify_jwt = false
 
 # Automatic lesson completion runs in the Next.js runtime so it can reuse the
 # existing Node billing/provider flow. Register it via scripts/setup-crons.sql:

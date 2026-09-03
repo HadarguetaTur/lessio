@@ -14,6 +14,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { authorizeCronRequest, getSupabaseSecretKey } from '../_shared/supabaseSecret.ts'
 
 const WINDOW_HOURS = 24
 const RETENTION_DAYS = 30
@@ -55,9 +56,12 @@ interface Group {
 }
 
 Deno.serve(async (_req) => {
+  const authError = authorizeCronRequest(_req)
+  if (authError) return authError
+
   const db = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    getSupabaseSecretKey()
   )
 
   const since = new Date(Date.now() - WINDOW_HOURS * 60 * 60 * 1000).toISOString()

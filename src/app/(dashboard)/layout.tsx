@@ -131,14 +131,18 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, role, organization_id')
+    .select('full_name, role, organization_id, is_active')
     .eq('id', user.id)
     .single()
 
   // Platform staff have no org — send them to the console. Checking only
   // 'superadmin' would drop a support or billing colleague into a tenant shell
   // with orgId null, which every query below assumes is a string.
-  if (profile?.role && isPlatformRole(profile.role)) {
+  if (!profile || profile.is_active === false) {
+    redirect('/login')
+  }
+
+  if (profile.role && isPlatformRole(profile.role)) {
     redirect('/admin')
   }
 

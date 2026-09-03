@@ -26,6 +26,10 @@ export function verifyWebhookHmacSha256Base64(
   logPrefix: string
 ): boolean {
   if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error(`${logPrefix} Webhook HMAC secret env not set in production`)
+      return false
+    }
     console.warn(
       `${logPrefix} Webhook HMAC secret env not set — skipping verification (set for production)`
     )

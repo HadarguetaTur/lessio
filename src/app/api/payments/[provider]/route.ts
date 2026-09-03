@@ -62,9 +62,17 @@ export async function POST(
     return NextResponse.json({ ok: false }, { status: 200 })
   }
 
+  // A payment reference identifies a checkout; it does not prove payment.
+  // Fail closed for providers whose generic callback is not cryptographically
+  // authenticated. They must use a server-confirmed or API-key settlement path.
+  if (!entry.acceptsWebhookSettlement || !entry.verifyWebhookRequest) {
+    console.error('[payments/webhook] Provider has no authenticated settlement path', { provider })
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
+
   const rawBody = await req.text()
 
-  if (entry.verifyWebhookRequest && !entry.verifyWebhookRequest(req.headers, rawBody)) {
+  if (!entry.verifyWebhookRequest(req.headers, rawBody)) {
     console.error('[payments/webhook] Webhook verification failed', { provider })
     return NextResponse.json({ ok: false }, { status: 200 })
   }
@@ -83,7 +91,7 @@ export async function POST(
   const parsed = entry.parseWebhookBody(body)
 
   if (!parsed) {
-    console.error('[payments/webhook] Could not parse webhook body', { provider, body })
+    console.error('[payments/webhook] Could not parse webhook body', { provider })
     return NextResponse.json({ ok: false }, { status: 200 })
   }
 
@@ -119,6 +127,24 @@ export async function POST(
     console.error('[payments/webhook] No charges found for payment_reference', {
       provider,
       paymentReference,
+    })
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
+
+  if (charges.some((charge) => charge.organization_id !== charges[0]!.organization_id)) {
+    console.error('[payments/webhook] Reference spans organizations', { provider, paymentReference })
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
+
+  const { data: org } = await db
+    .from('organizations')
+    .select('payment_provider')
+    .eq('id', charges[0]!.organization_id)
+    .maybeSingle()
+  if (org?.payment_provider !== provider) {
+    console.error('[payments/webhook] Provider mismatch', {
+      provider,
+      orgId: charges[0]!.organization_id,
     })
     return NextResponse.json({ ok: false }, { status: 200 })
   }

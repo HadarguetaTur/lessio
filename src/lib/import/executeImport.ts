@@ -141,6 +141,8 @@ export async function executeImport(
   const db = createServiceRoleClient()
   const result: ImportResult = { inserted: 0, updated: 0, skipped: 0, errors: [] }
 
+  await assertImportIdsBelongToOrg(db, orgId, entityType, validRows)
+
   // Quota enforcement. Only rows that will actually INSERT count: importStudents
   // and importTeachers both update in place when `existingId` is set, so
   // counting every valid row made a re-import of existing records fail against
@@ -169,6 +171,52 @@ export async function executeImport(
       return importLessonHistory(db, orgId, rows, result, timezone, tImport)
     case 'family-list':
       return importFamilyList(db, orgId, rows, result, tImport, consent)
+  }
+}
+
+/** Re-authorize client-returned preview ids before any service-role write. */
+async function assertImportIdsBelongToOrg(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string,
+  entityType: EntityType,
+  rows: ValidatedRow[]
+): Promise<void> {
+  const unique = (values: Array<string | null | undefined>) =>
+    [...new Set(values.filter((value): value is string => Boolean(value)))]
+
+  async function assertIds(table: 'students' | 'parents', ids: string[]): Promise<void> {
+    if (ids.length === 0) return
+    const { data, error } = await db
+      .from(table)
+      .select('id')
+      .eq('organization_id', orgId)
+      .in('id', ids)
+    if (error || (data?.length ?? 0) !== ids.length) {
+      throw new Error('IMPORT_ENTITY_OUTSIDE_ORGANIZATION')
+    }
+  }
+
+  if (entityType === 'students') {
+    await assertIds('students', unique(rows.map((row) => row.existingId)))
+  } else if (entityType === 'parents') {
+    await assertIds('parents', unique(rows.map((row) => row.existingId)))
+  } else if (entityType === 'teachers') {
+    const profileIds = unique(rows.map((row) => row.existingId))
+    if (profileIds.length > 0) {
+      const { data, error } = await db
+        .from('teachers')
+        .select('profile_id')
+        .eq('organization_id', orgId)
+        .in('profile_id', profileIds)
+      if (error || (data?.length ?? 0) !== profileIds.length) {
+        throw new Error('IMPORT_ENTITY_OUTSIDE_ORGANIZATION')
+      }
+    }
+  } else if (entityType === 'family-list') {
+    await Promise.all([
+      assertIds('students', unique(rows.map((row) => row.existingStudentId))),
+      assertIds('parents', unique(rows.flatMap((row) => [row.existingParentId, row.existingId]))),
+    ])
   }
 }
 
@@ -246,6 +294,7 @@ async function importStudents(
         teacher_id: findInMap(teacherMap, row.data.teacher_name),
       })
       .eq('id', row.existingId!)
+      .eq('organization_id', orgId)
 
     if (error) {
       result.errors.push({
@@ -320,6 +369,7 @@ async function importParents(
           relation_type: relationTypeCol,
         })
         .eq('id', row.existingId)
+        .eq('organization_id', orgId)
 
       if (error) {
         result.errors.push({
@@ -426,9 +476,11 @@ async function importTeachers(
 
     if (row.existingId) {
       const { error: profileError } = await db
-        .from('profiles')
-        .update({ full_name: fullName })
-        .eq('id', row.existingId)
+      .from('profiles')
+      .update({ full_name: fullName })
+      .eq('id', row.existingId)
+      .eq('organization_id', orgId)
+      .eq('role', 'teacher')
 
       if (profileError) {
         result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.profileUpdateFailed') })
@@ -809,6 +861,7 @@ async function upsertParent(
         relation_type: extrasSafe.relation_type,
       })
       .eq('id', existingId)
+      .eq('organization_id', orgId)
     result.updated++
     phoneToParentId.set(phone, existingId)
     return existingId

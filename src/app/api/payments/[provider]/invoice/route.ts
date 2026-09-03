@@ -22,12 +22,28 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getRegistryEntry } from '@/lib/payments/registry'
 import { webhookBodyFromPayload } from '@/lib/payments/webhookBody'
 import { recordExternalReceipt } from '@/lib/receipts/recordExternalReceipt'
+import { createHash, timingSafeEqual } from 'crypto'
+
+function isAuthorized(request: NextRequest): boolean {
+  const secret = process.env.GROW_INVOICE_WEBHOOK_SECRET
+  const supplied = request.headers.get('x-lessio-webhook-secret')
+  if (!secret || !supplied) return false
+  return timingSafeEqual(
+    createHash('sha256').update(secret).digest(),
+    createHash('sha256').update(supplied).digest()
+  )
+}
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ provider: string }> }
 ): Promise<NextResponse> {
   const { provider } = await params
+
+  if (provider !== 'grow' || !isAuthorized(req)) {
+    console.error('[payments/invoice] Unauthenticated invoice webhook rejected', { provider })
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
 
   const entry = getRegistryEntry(provider)
   if (!entry?.parseInvoiceWebhookBody) {
@@ -47,11 +63,18 @@ export async function POST(
 
   const parsed = entry.parseInvoiceWebhookBody(body)
   if (!parsed) {
-    console.error('[payments/invoice] Could not parse invoice webhook body', { provider, body })
+    console.error('[payments/invoice] Could not parse invoice webhook body', { provider })
     return NextResponse.json({ ok: false }, { status: 200 })
   }
 
   const { transactionCode, invoiceUrl, invoiceNumber } = parsed
+  try {
+    if (new URL(invoiceUrl).protocol !== 'https:') {
+      return NextResponse.json({ ok: false }, { status: 200 })
+    }
+  } catch {
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
 
   // Matched against the whole set of ids the payment webhook stored, because
   // the provider's docs do not say which of them becomes transactionCode.

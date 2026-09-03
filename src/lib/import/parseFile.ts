@@ -1,37 +1,44 @@
-import * as XLSX from 'xlsx'
-
 export interface RawRow {
   [key: string]: string | number | boolean | null | undefined
 }
 
 /**
- * Parse an uploaded file (XLSX or CSV) into an array of row objects.
+ * Parse an uploaded CSV into an array of row objects.
  * Returns the header row and data rows separately.
  */
 export function parseFile(buffer: ArrayBuffer, filename: string): {
   headers: string[]
   rows: RawRow[]
 } {
-  const workbook = XLSX.read(buffer, { type: 'array' })
-
-  const firstSheet = workbook.SheetNames[0]
-  if (!firstSheet) {
+  if (!filename.toLowerCase().endsWith('.csv')) {
+    throw new Error('Only CSV imports are supported')
+  }
+  const text = new TextDecoder('utf-8', { fatal: true }).decode(buffer).replace(/^\uFEFF/, '')
+  const records: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let quoted = false
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]!
+    if (quoted) {
+      if (char === '"' && text[i + 1] === '"') { field += '"'; i++ }
+      else if (char === '"') quoted = false
+      else field += char
+    } else if (char === '"') quoted = true
+    else if (char === ',') { row.push(field); field = '' }
+    else if (char === '\n') { row.push(field.replace(/\r$/, '')); records.push(row); row = []; field = '' }
+    else field += char
+  }
+  if (quoted) throw new Error('Unterminated CSV quote')
+  if (field || row.length) { row.push(field.replace(/\r$/, '')); records.push(row) }
+  const headers = records.shift()?.map((value) => value.trim()) ?? []
+  if (headers.length === 0) {
     return { headers: [], rows: [] }
   }
-
-  const sheet = workbook.Sheets[firstSheet]
-  const jsonData = XLSX.utils.sheet_to_json<RawRow>(sheet, {
-    defval: null,
-    raw: false,
-  })
-
-  if (jsonData.length === 0) {
-    return { headers: [], rows: [] }
-  }
-
-  const headers = Object.keys(jsonData[0])
-
-  return { headers, rows: jsonData }
+  const rows = records
+    .filter((record) => record.some((value) => value.trim() !== ''))
+    .map((record) => Object.fromEntries(headers.map((header, index) => [header, record[index] ?? null])))
+  return { headers, rows }
 }
 
 const COLUMN_ALIASES: Record<string, string[]> = {

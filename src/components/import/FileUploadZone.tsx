@@ -13,7 +13,7 @@ interface FileUploadZoneProps {
 
 export function FileUploadZone({
   onFileSelect,
-  accept = '.xlsx,.xls,.csv',
+  accept = '.csv',
   maxSizeMb = 5,
 }: FileUploadZoneProps) {
   const t = useTranslations('import')
@@ -26,7 +26,7 @@ export function FileUploadZone({
     (file: File) => {
       setError(null)
 
-      const validExtensions = ['.xlsx', '.xls', '.csv']
+      const validExtensions = ['.csv']
       const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
       if (!validExtensions.includes(ext)) {
         setError(t('fileErrors.unsupportedFormat'))

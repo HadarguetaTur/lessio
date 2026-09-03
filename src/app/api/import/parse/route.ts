@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: t('apiErrors.fileTooLarge') }, { status: 400 })
   }
 
-  const validExtensions = ['.xlsx', '.xls', '.csv']
+  const validExtensions = ['.csv']
   const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
   if (!validExtensions.includes(ext)) {
     return NextResponse.json({ error: t('apiErrors.unsupportedFormat') }, { status: 400 })

@@ -13,14 +13,18 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { authorizeCronRequest, getSupabaseSecretKey } from '../_shared/supabaseSecret.ts'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendSmartInteractive } from '../_shared/whatsapp.ts'
 import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
 import { botString } from '../_shared/botStrings.ts'
 
 Deno.serve(async (_req) => {
+  const authError = authorizeCronRequest(_req)
+  if (authError) return authError
+
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const serviceRoleKey = getSupabaseSecretKey()
   // deno-lint-ignore no-explicit-any
   const db = createClient(supabaseUrl, serviceRoleKey) as any
 

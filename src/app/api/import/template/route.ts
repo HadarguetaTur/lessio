@@ -1,7 +1,7 @@
 /**
  * GET /api/import/template?type=students|parents|teachers|lessons-schedule|lessons-history
  *
- * Returns a downloadable XLSX template for the given entity type.
+ * Returns a downloadable UTF-8 CSV template for the given entity type.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   return new NextResponse(buffer, {
     headers: {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
     },
   })

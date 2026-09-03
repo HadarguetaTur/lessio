@@ -72,11 +72,11 @@ export async function getSession(): Promise<UserSession> {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('organization_id, role, full_name')
+    .select('organization_id, role, full_name, is_active')
     .eq('id', user.id)
     .single()
 
-  if (!profile) redirect('/login')
+  if (!profile || profile.is_active === false) redirect('/login')
 
   // Superadmins have no org — redirect them to their own shell.
   // Any platform role, not just superadmin: they all have organization_id
@@ -182,11 +182,11 @@ export async function requireSuperAdminSession(): Promise<SuperAdminSession> {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, full_name')
+    .select('role, full_name, is_active')
     .eq('id', user.id)
     .single()
 
-  if (!profile) redirect('/login')
+  if (!profile || profile.is_active === false) redirect('/login')
   if (profile.role !== 'superadmin') redirect('/dashboard')
 
   return {
@@ -215,11 +215,11 @@ export async function getSuperAdminSessionOrNull(): Promise<SuperAdminSession | 
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, full_name')
+    .select('role, full_name, is_active')
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.role !== 'superadmin') return null
+  if (!profile || profile.is_active === false || profile.role !== 'superadmin') return null
 
   return { userId: user.id, profileId: user.id, fullName: profile.full_name }
 }

@@ -38,6 +38,8 @@ import { verifyWebhookHmacSha256Base64 } from './webhook-verify'
 export interface RegistryEntry {
   /** Slug — must match the id in registry-ui.ts and the DB payment_provider value */
   id: string
+  /** True only for a generic callback with cryptographic authentication. */
+  acceptsWebhookSettlement?: boolean
 
   /**
    * Validates raw form fields extracted from FormData.
@@ -162,6 +164,7 @@ const payPlusEntry: RegistryEntry = {
 
 const bitEntry: RegistryEntry = {
   id: 'bit',
+  acceptsWebhookSettlement: true,
 
   validateConfig(data) {
     const schema = z.object({
@@ -218,6 +221,7 @@ const bitEntry: RegistryEntry = {
 
 const payboxEntry: RegistryEntry = {
   id: 'paybox',
+  acceptsWebhookSettlement: true,
 
   validateConfig(data) {
     const schema = z.object({

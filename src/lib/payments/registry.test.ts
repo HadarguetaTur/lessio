@@ -66,6 +66,14 @@ describe('payment provider registry', () => {
     expect(PROVIDERS_UI.map((p) => p.id).filter((id) => !getRegistryEntry(id))).toEqual([])
   })
 
+  it('allows generic settlement only for providers with webhook verification', () => {
+    const enabled = ids.filter((id) => getRegistryEntry(id)?.acceptsWebhookSettlement)
+    expect(enabled).toEqual(['bit', 'paybox'])
+    for (const id of enabled) {
+      expect(getRegistryEntry(id)?.verifyWebhookRequest).toBeTypeOf('function')
+    }
+  })
+
   it('has catalog copy for every provider in both languages', () => {
     // A missing block renders the raw key path on the settings screen.
     for (const [name, catalog] of [

@@ -51,7 +51,13 @@ function unauthorized(reason: string): NextResponse {
  */
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
   const secret = process.env.SUMIT_WEBHOOK_SECRET
-  if (!secret) return true
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[sumit/webhook] SUMIT_WEBHOOK_SECRET is not configured in production')
+      return false
+    }
+    return true
+  }
   if (!signatureHeader) return false
 
   const expected = `sha256=${createHmac('sha256', secret).update(rawBody).digest('hex')}`

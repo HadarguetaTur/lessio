@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx'
 import type { EntityType } from './validators'
 import { getT } from '@/lib/i18n/serverTranslator'
 import type { AppLocale } from '@/lib/i18n/locale'
@@ -84,7 +83,7 @@ const COLUMNS: Record<EntityType, ColumnDef[]> = {
 // Entity titles and required fields live in entityMeta.ts for client-safe access
 
 /**
- * Generate a downloadable XLSX template for the given entity type.
+ * Generate a spreadsheet-compatible UTF-8 CSV template.
  */
 export async function generateTemplate(
   entityType: EntityType,
@@ -95,34 +94,14 @@ export async function generateTemplate(
   const col = (field: string, part: string) =>
     t(`columns.${entityType}.${field}.${part}`)
 
-  const wb = XLSX.utils.book_new()
-
-  // Data sheet
   const dataHeaders = columns.map((c) => col(c.field, 'header'))
   const row1 = columns.map((c) => col(c.field, 'ex1'))
   const row2 = columns.map((c) => col(c.field, 'ex2'))
-  const dataSheet = XLSX.utils.aoa_to_sheet([dataHeaders, row1, row2])
-
-  // Set column widths
-  dataSheet['!cols'] = columns.map(() => ({ wch: 18 }))
-  XLSX.utils.book_append_sheet(wb, dataSheet, t('dataSheet'))
-
-  // Notes sheet
-  const notesData = [
-    [t('notesColumn'), t('notesEnglishName'), t('notesRequired'), t('notesDescription')],
-    ...columns.map((c) => [
-      col(c.field, 'header'),
-      c.field,
-      c.required ? t('yes') : t('no'),
-      col(c.field, 'description'),
-    ]),
-  ]
-  const notesSheet = XLSX.utils.aoa_to_sheet(notesData)
-  notesSheet['!cols'] = [{ wch: 15 }, { wch: 18 }, { wch: 6 }, { wch: 45 }]
-  XLSX.utils.book_append_sheet(wb, notesSheet, t('notesSheet'))
-
-  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
-  return buf as ArrayBuffer
+  const escape = (value: string) => `"${value.replace(/"/g, '""')}"`
+  const csv = '\uFEFF' + [dataHeaders, row1, row2]
+    .map((row) => row.map(escape).join(','))
+    .join('\r\n')
+  return new TextEncoder().encode(csv).buffer
 }
 
 export function getTemplateFilename(entityType: EntityType, locale: AppLocale = 'he'): string {
@@ -138,5 +117,5 @@ export function getTemplateFilename(entityType: EntityType, locale: AppLocale = 
       'family-list': 'students-and-parents',
     },
   }
-  return `lessio-${names[locale][entityType]}.xlsx`
+  return `lessio-${names[locale][entityType]}.csv`
 }

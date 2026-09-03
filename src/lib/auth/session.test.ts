@@ -50,7 +50,7 @@ function createSupabaseClient({
   profile,
 }: {
   user: { id: string } | null
-  profile?: { organization_id: string | null; role: string; full_name: string } | null
+  profile?: { organization_id: string | null; role: string; full_name: string; is_active?: boolean } | null
 }) {
   return {
     auth: {
@@ -140,6 +140,23 @@ describe('getSession', () => {
       createSupabaseClient({
         user: { id: 'user-1' },
         profile: null,
+      })
+    )
+
+    await expect(getSession()).rejects.toThrow('REDIRECT:/login')
+    expect(mockRedirect).toHaveBeenCalledWith('/login')
+  })
+
+  it('redirects to /login when the authenticated profile is deactivated', async () => {
+    mockCreateClient.mockResolvedValue(
+      createSupabaseClient({
+        user: { id: 'user-1' },
+        profile: {
+          organization_id: 'org-1',
+          role: 'teacher',
+          full_name: 'Archived Teacher',
+          is_active: false,
+        },
       })
     )
 

@@ -8,7 +8,7 @@
  * Per /docs/sprint-13-scope.md § Story 8.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { AvailableSlot, SlotLock, ConfirmBookingResult, AvailabilitySummary } from '@/lib/booking'
@@ -365,12 +365,42 @@ function SlotsStep({
   const [locking, setLocking] = useState<string | null>(null)
   const [error, setError] = useState<SlotsErrorKey | null>(null)
 
+  // The flow opens on the current week, which for a busy teacher is often
+  // already spent — every remaining day full, blocked or quota-capped — so all
+  // seven chips render gray and the screen reads as "the teacher is never
+  // available". Until the parent first sees a bookable week, an empty summary
+  // silently advances to the next week (the skeleton stays up in between).
+  // The cap keeps a teacher with no availability at all from sending the
+  // calendar months ahead: when it runs out the view returns to the real week.
+  // Cleared on the first bookable week and on manual navigation, so paging
+  // through empty weeks by hand never yanks the parent elsewhere.
+  const autoAdvance = useRef<{ weeksLeft: number; homeWeek: string } | null>({
+    weeksLeft: 8,
+    homeWeek: getWeekStart(initialDate),
+  })
+
   // Load week availability summary whenever week or duration changes
   useEffect(() => {
     setSummaryLoading(true)
     setError(null)
     getPortalAvailabilitySummaryAction(orgId, teacherId, duration, weekStart, studentId)
       .then((s) => {
+        const bookable = s.days.some((d) => d.hasAvailability && d.date >= today)
+        const scan = autoAdvance.current
+        if (scan && !bookable) {
+          if (scan.weeksLeft > 0) {
+            scan.weeksLeft -= 1
+            setWeekStart((w) => addWeeks(w, 1))
+            return // still scanning — leave the skeleton up
+          }
+          autoAdvance.current = null
+          if (weekStart !== scan.homeWeek) {
+            setWeekStart(scan.homeWeek) // nothing found — come back to the real week
+            return
+          }
+        } else {
+          autoAdvance.current = null
+        }
         setSummary(s)
         // If selected date is outside new week, pick first available day or week start
         const dates = s.days.map((d) => d.date)
@@ -378,9 +408,13 @@ function SlotsStep({
           const firstAvailable = s.days.find((d) => d.hasAvailability && d.date >= today)
           setSelectedDate(firstAvailable?.date ?? s.days[0].date)
         }
+        setSummaryLoading(false)
       })
-      .catch(() => setError('summaryError'))
-      .finally(() => setSummaryLoading(false))
+      .catch(() => {
+        autoAdvance.current = null
+        setError('summaryError')
+        setSummaryLoading(false)
+      })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, teacherId, duration, weekStart])
 
@@ -480,7 +514,10 @@ function SlotsStep({
       <div className="px-4 py-3 border-b border-gray-100">
         <div className="flex items-center justify-between mb-2">
           <button
-            onClick={() => setWeekStart((w) => addWeeks(w, -1))}
+            onClick={() => {
+              autoAdvance.current = null
+              setWeekStart((w) => addWeeks(w, -1))
+            }}
             disabled={!canGoPrev}
             aria-label={t('prevWeek')}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-muted-foreground disabled:opacity-30"
@@ -491,7 +528,10 @@ function SlotsStep({
             {summary ? formatMonthYear(summary.days[0].date) : ''}
           </span>
           <button
-            onClick={() => setWeekStart((w) => addWeeks(w, 1))}
+            onClick={() => {
+              autoAdvance.current = null
+              setWeekStart((w) => addWeeks(w, 1))
+            }}
             aria-label={t('nextWeek')}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-muted-foreground"
           >

@@ -155,7 +155,11 @@ export default async function DashboardLayout({
       currentPathname.startsWith('/teacher') ||
       currentPathname.startsWith('/homework') ||
       currentPathname.startsWith('/students') ||
-      currentPathname.startsWith('/parents')
+      currentPathname.startsWith('/parents') ||
+      // WhatsApp conversations only — the list and every thread are scoped to
+      // this teacher's own students' parents. /messages itself stays closed:
+      // the portal threads it lists are org-wide.
+      currentPathname.startsWith('/messages/whatsapp')
     if (!allowed) {
       redirect('/teacher/dashboard')
     }

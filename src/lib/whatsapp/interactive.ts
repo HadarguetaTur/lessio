@@ -11,6 +11,7 @@
  */
 
 import { META_API_VERSION } from './graphVersion'
+import { recordOutboundSend } from './messageLog'
 
 // Meta interactive-message limits.
 export const LIST_BUTTON_MAX = 20
@@ -38,7 +39,9 @@ async function postInteractive(
   interactive: Record<string, unknown>,
   accessToken: string,
   phoneNumberId: string,
-  label: string
+  label: string,
+  /** What the recipient reads — the transcript stores this, not the JSON. */
+  logBody: string
 ): Promise<void> {
   const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`
 
@@ -61,6 +64,8 @@ async function postInteractive(
     console.error(`[whatsapp] ${label} API error`, { to, status: res.status, detail })
     throw new Error(`WhatsApp ${label} API error ${res.status}: ${detail}`)
   }
+
+  recordOutboundSend(res, logBody, 'interactive')
 }
 
 /**
@@ -98,7 +103,8 @@ export async function sendListMessage(
     },
     accessToken,
     phoneNumberId,
-    'list'
+    'list',
+    `${opts.body}\n${rows.map((r) => `• ${r.title}`).join('\n')}`
   )
 }
 
@@ -168,6 +174,8 @@ export async function sendTemplateWithQuickReplies(
     })
     throw new Error(`WhatsApp quick-reply template API error ${res.status}: ${detail}`)
   }
+
+  recordOutboundSend(res, `[template: ${opts.name}]`, 'template')
 }
 
 /**
@@ -196,6 +204,7 @@ export async function sendReplyButtons(
     },
     accessToken,
     phoneNumberId,
-    'reply buttons'
+    'reply buttons',
+    `${opts.body}\n${buttons.map((b) => `• ${b.reply.title}`).join('\n')}`
   )
 }

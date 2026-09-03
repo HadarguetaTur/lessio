@@ -33,6 +33,10 @@ payment_provider              text check (payment_provider in ('cardcom','payplu
 payment_config_encrypted      text                     -- AES-256-GCM encrypted JSON with credentials
 -- Auto payment (Sprint 9)
 auto_send_payment_request     boolean not null default false
+payment_confirmation_default_enabled boolean not null default true
+                              -- pre-checks the "tell the parent" box in the
+                              -- mark-as-paid dialogs; a default only, staff
+                              -- can flip it per payment
 -- Parent portal (owner/admin-editable at /settings/parent-portal since 2026-09)
 portal_settings               jsonb not null default '{}'::jsonb
                               -- {enabled, payments, homework, exams, progress,
@@ -608,6 +612,56 @@ created_at      timestamptz default now()
 
 index: (organization_id, phone, created_at)
 ```
+
+### whatsapp_messages (2026-09-03)
+
+The WhatsApp conversation transcript, both directions. Distinct from
+`conversation_log`, which only ever recorded the AI-assistant branch.
+
+```sql
+id                 uuid pk
+organization_id    uuid not null references organizations(id) on delete cascade
+phone              text not null                       -- conversation key, normalized E.164
+direction          text not null check (direction in ('in','out'))
+origin             text check (origin in ('bot','ai','staff','cron'))  -- null on inbound
+parent_id          uuid references parents(id) on delete set null      -- best-effort
+sender_role        text check (sender_role in ('parent','student','teacher','staff','unknown'))
+sent_by_profile_id uuid references profiles(id) on delete set null     -- staff manual sends
+kind               text not null default 'text'
+                     check (kind in ('text','template','interactive','cta_url','media','unsupported'))
+body               text not null                       -- '[template: …]' / '[media]' placeholders
+wa_message_id      text                                -- Meta's id (messages[0].id on outbound)
+status             text not null default 'sent' check (status in ('received','sent','failed'))
+created_at         timestamptz not null default now()
+
+index: idx_whatsapp_messages_thread on (organization_id, phone, created_at DESC)
+```
+
+RLS: SELECT for owner / admin / teacher in the org (org-wide, deliberately —
+teacher scoping is done by the page query through the service-role client).
+Writes are service-role only. Published to `supabase_realtime`.
+
+Written fire-and-forget by `src/lib/whatsapp/messageLog.ts`. Edge Function
+(Deno) sends are **not** logged yet. Anonymised by the `data-retention` cron.
+
+### whatsapp_takeovers (2026-09-03)
+
+A staff member is answering a conversation by hand; the webhook skips its
+auto-reply while a row is live. Same lifecycle as `support_sessions`.
+
+```sql
+id                  uuid pk
+organization_id     uuid not null references organizations(id) on delete cascade
+phone               text not null
+taken_by_profile_id uuid references profiles(id) on delete set null
+expires_at          timestamptz not null                -- now() + 6h, extended per staff message
+created_at          timestamptz not null default now()
+
+unique: (organization_id, phone)
+```
+
+Expiry is checked at read time (no cleanup cron); release is a DELETE. Same RLS
+and realtime posture as `whatsapp_messages`.
 
 ### subscriptions (Sprint 21)
 

@@ -468,6 +468,53 @@ the first enrolled student only (Sprint 31 backlog).
 
 ---
 
+## WhatsApp conversations + human takeover (2026-09-03)
+
+**Status:** Built (migration `20260903120000` applied locally, not yet in production)
+**Track:** standalone; closes Sprint 31 Story 6e and the "conversation handoff to
+a human agent" deferral from Sprint 19
+
+Staff can now read what the bot is saying to parents, and answer in their own
+words. Until now nothing kept the conversation: `conversation_log` recorded only
+the AI-fallback branch, `whatsapp_processed_messages` kept ids without bodies,
+and outbound sends were not recorded at all — every menu, cancellation and
+balance reply vanished the moment it was sent.
+
+**The transcript.** `whatsapp_messages` records both directions with an origin
+(`bot` / `ai` / `staff` / `cron`). Inbound is written in the webhook right after
+the idempotency claim — before the service-state gate and before the takeover
+check, so a message that gets no answer is still on file. Outbound logging
+avoids touching the ~28 send call sites: the entry points declare who is
+speaking through an `AsyncLocalStorage` context (`src/lib/whatsapp/logContext.ts`)
+and the low-level senders read it back, which also finally captures the
+`messages[0].id` Meta returns and every sender discarded. A send with no context
+in scope is not logged rather than logged as a guess. Every write is
+fire-and-forget: a transcript must never break a send.
+
+**The takeover.** Sending from the dashboard opens a `whatsapp_takeovers` row
+and the webhook stops auto-replying for that (org, phone) — otherwise a parent
+gets a human answer with a menu underneath it. Same lifecycle as
+`support_sessions`: presence is the state, expiry is read-time, release is a
+delete. Six hours, extended by each staff message, released by hand from the
+thread. The check fails **open**: a broken query must not silence the bot.
+
+**Access.** Owners and admins see every conversation; a teacher sees only
+parents of their own students, resolved the same two ways
+`canTeacherAccessStudent` resolves them (assigned, or sharing a lesson) and
+re-checked per thread, since a phone number in a URL is client input. Teachers
+reach `/messages/whatsapp` only — the portal threads at `/messages` are org-wide
+and stay owner/admin.
+
+**Known gaps:** Deno Edge Function sends (cron reminders) are not logged yet —
+they bypass the Node senders entirely. Meta delivery/read statuses are parsed
+nowhere, so `status` is always `sent`. No per-staff unread state: "awaiting
+reply" is simply "the last message came in". Manual sends are text-only and
+only inside the 24h window; the composer is disabled outside it rather than
+offering an approved template. No backfill exists — the transcript starts at
+deployment.
+
+---
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

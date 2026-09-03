@@ -10,6 +10,7 @@ import type { AppLocale } from '@/lib/i18n/locale'
 import { botString } from './strings'
 import { META_API_VERSION } from './graphVersion'
 import { clipButtonLabel } from './templateButtons'
+import { recordOutboundSend } from './messageLog'
 
 // ── Meta approved template message component types ────────────────────────────
 
@@ -61,6 +62,10 @@ export async function sendTemplateMessage(
     console.error('[whatsapp] Template API error', { to, templateName, status: res.status, detail })
     throw new Error(`WhatsApp template API error ${res.status}: ${detail}`)
   }
+
+  // The rendered body lives at Meta, not here — the transcript shows which
+  // template went out, which is what a person reading the thread needs.
+  recordOutboundSend(res, `[template: ${templateName}]`, 'template')
 }
 
 export async function sendTextMessage(
@@ -90,6 +95,8 @@ export async function sendTextMessage(
     console.error('[whatsapp] API error', { to, status: res.status, detail })
     throw new Error(`WhatsApp API error ${res.status}: ${detail}`)
   }
+
+  recordOutboundSend(res, text, 'text')
 }
 
 /**
@@ -169,6 +176,8 @@ export async function sendCtaUrlMessage(
     console.error('[whatsapp] CTA URL API error', { to, status: res.status, detail })
     throw new Error(`WhatsApp CTA URL API error ${res.status}: ${detail}`)
   }
+
+  recordOutboundSend(res, body, 'cta_url')
 }
 
 /**

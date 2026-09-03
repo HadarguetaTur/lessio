@@ -29,6 +29,8 @@ export const WATCHED_TABLES = [
   'availability',
   'availability_overrides',
   'in_app_notifications',
+  'whatsapp_messages',
+  'whatsapp_takeovers',
 ] as const
 
 export type WatchedTable = (typeof WATCHED_TABLES)[number]

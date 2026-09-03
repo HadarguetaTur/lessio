@@ -105,6 +105,9 @@ import { findRecentUsageLog, updateSatisfaction } from '@/lib/ai-assistant/usage
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { DateTime } from 'luxon'
 import { claimIncomingMessage, claimSuspendedNotice, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
+import { logInboundMessage, attachInboundSender } from '@/lib/whatsapp/messageLog'
+import { bindWaLogTarget, runWithWaLogContext, setWaLogOrigin } from '@/lib/whatsapp/logContext'
+import { isTakenOver } from '@/lib/whatsapp/takeover'
 import {
   notifyMultiple,
   getOwnerAndAdminProfileIds,
@@ -201,6 +204,21 @@ export async function POST(request: NextRequest) {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+/**
+ * What the transcript shows for an inbound message.
+ *
+ * A tapped button arrives as its own label, which is what the parent saw and
+ * therefore what a staff member reading the thread should see. Anything with no
+ * text of its own (a voice note, an image) gets a placeholder rather than an
+ * empty bubble.
+ */
+function inboundLogBody(msg: WhatsAppMessage): string {
+  if (msg.text?.trim()) return msg.text
+  if (msg.media) return `[${msg.media.kind}]`
+  if (msg.unsupportedType) return `[${msg.unsupportedType}]`
+  return '[empty]'
+}
+
 function verifySignature(rawBody: string, signature: string | null, appSecret: string): boolean {
   if (!signature) return false
   const expected = Buffer.from(
@@ -289,7 +307,21 @@ async function recordTemplateStatusUpdate(update: TemplateStatusUpdate): Promise
   })
 }
 
+/**
+ * Every reply this message produces is filed under one conversation.
+ *
+ * The context is opened here, unbound, and named once the org and normalized
+ * sender are known (bindWaLogTarget, right after the idempotency claim). That
+ * spares the handlers, the menus and the cancellation flow from carrying a
+ * logging argument they have no use for — see src/lib/whatsapp/logContext.ts.
+ */
 async function processMessage(msg: WhatsAppMessage, origin: string): Promise<void> {
+  return runWithWaLogContext({ orgId: null, phone: null, origin: 'bot' }, () =>
+    handleInboundMessage(msg, origin)
+  )
+}
+
+async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promise<void> {
   const db = createServiceRoleClient()
 
   // 4. Normalize sender phone
@@ -385,6 +417,21 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
     return
   }
 
+  // From here on every send belongs to this conversation.
+  bindWaLogTarget(org.id, senderPhone)
+
+  // Record what arrived before deciding what to do with it. A message that
+  // reaches a suspended org, or one a person has taken over, still belongs in
+  // the transcript — the staff member reading the thread needs to see it even
+  // though the bot said nothing back.
+  void logInboundMessage({
+    orgId: org.id,
+    phone: senderPhone,
+    body: inboundLogBody(msg),
+    kind: msg.unsupportedType ? 'unsupported' : msg.media ? 'media' : 'text',
+    waMessageId: msg.messageId,
+  })
+
   // Platform billing gate. A studio whose subscription lapsed stops answering,
   // but silence is the wrong shape of "off": a parent who texts "cancel
   // tomorrow's lesson" and gets nothing assumes it was cancelled, shows up or
@@ -418,12 +465,37 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
     return
   }
 
+  // A staff member is answering this conversation by hand. Two answers to one
+  // message — one written by a person, one by a menu — is worse than a pause,
+  // so the bot stays out until the takeover lapses or is handed back.
+  //
+  // Opt-out words are not processed while this holds. Accepted: a takeover
+  // lasts hours at most and exists precisely because someone is watching the
+  // thread, so "הסר" reaches a person rather than nobody.
+  if (await isTakenOver(org.id, senderPhone)) {
+    console.info('[whatsapp/webhook] Conversation under manual takeover — no auto-reply', {
+      orgId: org.id,
+      messageId: msg.messageId,
+    })
+    return
+  }
+
   try {
 
   // 6. Resolve WHO this is — parent, student, teacher or staff (before the
   //    intent check: only a genuine stranger may become a lead, regardless of
   //    what they wrote). Per /docs/decisions.md #26.
   const sender = await resolveSender(org.id, senderPhone)
+
+  // Name the sender on the row already written above. An enrichment, not a
+  // dependency: the conversation list falls back to a phone lookup for rows
+  // this never reached.
+  void attachInboundSender({
+    orgId: org.id,
+    waMessageId: msg.messageId,
+    senderRole: sender.role,
+    parentId: sender.role === 'parent' ? sender.parentId : null,
+  })
 
   // Only text the person actually typed may switch the conversation language.
   // Interactive titles are presentation copy (and often proper names such as
@@ -854,6 +926,9 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
         const aiResult = await aiAssistant(org.id, senderPhone, parent.id, msg.text, locale)
         reply = aiResult.reply
         shouldLogExchange = true
+        // File this reply as the assistant's, so a thread shows which system
+        // produced an answer someone is unhappy with.
+        setWaLogOrigin('ai')
       } catch (err) {
         console.error('[whatsapp/webhook] aiAssistant failed — falling back to template', {
           orgId: org.id,

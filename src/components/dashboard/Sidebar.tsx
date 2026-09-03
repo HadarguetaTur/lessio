@@ -235,6 +235,7 @@ export function Sidebar({
     { href: '/students',             label: t('teacherStudents'),     icon: GraduationCap,   roles: ['teacher'] },
     { href: '/parents',              label: t('teacherParents'),      icon: Users,           roles: ['teacher'] },
     { href: '/homework',             label: t('teacherHomework'),     icon: ClipboardList,   roles: ['teacher'] },
+    { href: '/messages/whatsapp',    label: t('teacherMessages'),     icon: MessageSquare,   roles: ['teacher'] },
     { href: '/teacher/schedule',     label: t('teacherSchedule'),     icon: CalendarDays, roles: ['teacher'] },
     { href: '/teacher/calendar',     label: t('teacherCalendar'),     icon: CalendarDays, roles: ['teacher'] },
     { href: '/teacher/new-lesson',   label: t('teacherNewLesson'),    icon: Plus,         roles: ['teacher'] },

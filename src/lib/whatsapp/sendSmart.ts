@@ -35,6 +35,20 @@ import { getApprovedCustomTemplate, isTemplateApproved } from './templateStatus'
 import { buildCustomComponents } from './submitTemplate'
 import { prepareBusinessSend } from './consent'
 import { botString } from './strings'
+import { getWaLogContext, runWithWaLogContext } from './logContext'
+
+/**
+ * Files a business-initiated send under the conversation it belongs to.
+ *
+ * Every caller here is proactive — a reminder, a payment request, a dunning
+ * notice — so 'cron' is the right label for anything that has not already
+ * declared itself. A caller that has (the dashboard's manual send, the webhook)
+ * keeps its own context: this only fills the gap.
+ */
+function withSendLogContext<T>(orgId: string, phone: string, fn: () => T): T {
+  if (getWaLogContext()) return fn()
+  return runWithWaLogContext({ orgId, phone, origin: 'cron' }, fn)
+}
 
 /** Why a send did not happen. `sent: true` means it was handed to Meta. */
 export type SmartSendResult = { sent: true } | { sent: false; reason: 'opted_out' }
@@ -49,6 +63,18 @@ export type SmartSendResult = { sent: true } | { sent: false; reason: 'opted_out
  * message do not come through here and are never blocked.
  */
 export async function sendSmartMessage(params: {
+  orgId: string
+  phone: string
+  accessToken: string
+  phoneNumberId: string
+  templateType: MessageTemplateType
+  vars: Record<string, string>
+  locale?: AppLocale
+}): Promise<SmartSendResult> {
+  return withSendLogContext(params.orgId, params.phone, () => smartSend(params))
+}
+
+async function smartSend(params: {
   orgId: string
   phone: string
   accessToken: string
@@ -149,6 +175,20 @@ export async function sendPaymentWithButton(params: {
   /** The charge the button resolves through. */
   chargeId: string
   /** The provider checkout URL, used directly inside the window. */
+  paymentUrl: string
+  locale?: AppLocale
+}): Promise<SmartSendResult> {
+  return withSendLogContext(params.orgId, params.phone, () => payWithButton(params))
+}
+
+async function payWithButton(params: {
+  orgId: string
+  phone: string
+  accessToken: string
+  phoneNumberId: string
+  templateType: Extract<MessageTemplateType, 'payment_request' | 'payment_reminder'>
+  vars: Record<string, string>
+  chargeId: string
   paymentUrl: string
   locale?: AppLocale
 }): Promise<SmartSendResult> {

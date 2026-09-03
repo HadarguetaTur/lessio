@@ -3,6 +3,7 @@ import { MessageSquare } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { getDashboardConversationSummaries } from '@/lib/portal/messages'
+import { MessagesTabs } from '@/components/dashboard/messages/MessagesTabs'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { getTranslations } from 'next-intl/server'
@@ -27,6 +28,7 @@ export default async function DashboardMessagesPage() {
         title={t('lessons.messagesPage.title')}
         subtitle={t('lessons.messagesPage.subtitle')}
       />
+      <MessagesTabs />
 
       {summaries.length === 0 ? (
         <EmptyState

@@ -313,6 +313,7 @@
     "teacherStudents": "My Students",
     "teacherParents": "My Parents",
     "teacherHomework": "Homework",
+    "teacherMessages": "WhatsApp Chats",
     "teacherReportsLessons": "Lessons by Month",
     "teacherReportsStudents": "Student Attendance",
     "teacherSchedule": "My Lessons",
@@ -2020,6 +2021,10 @@
         "automation_dunning_enabled": {
           "label": "Automatic payment reminders",
           "description": "Automatic overdue reminders at 3, 7 and 14 days (default: off)"
+        },
+        "payment_confirmation_default_enabled": {
+          "label": "Payment confirmation to the parent",
+          "description": "Pre-checked in the mark-as-paid dialog — you can change it on any single payment"
         },
         "automation_new_leads_enabled": {
           "label": "Reply to new enquiries",
@@ -5246,5 +5251,53 @@
     "acceptAll": "Accept all",
     "analyticsOnly": "Analytics only",
     "rejectAll": "Reject all"
+  },
+  "waConversations": {
+    "title": "WhatsApp Chats",
+    "subtitle": "Every conversation the bot is having, with the option to step in yourself",
+    "emptyTitle": "No conversations yet",
+    "emptySubtitle": "Chats appear here as soon as someone writes to your business WhatsApp number",
+    "noTeacherRecord": "No teacher record found for you. Contact your administrator.",
+    "backToList": "Back to conversations",
+    "colContact": "Contact",
+    "colLastMessage": "Last message",
+    "colDate": "Updated",
+    "colStatus": "Status",
+    "composerPlaceholder": "Write a message…",
+    "windowClosedNotice": "The 24-hour window is closed. You cannot send free text until they write again.",
+    "takeoverNotice": "The bot is paused on this conversation and will not reply automatically.",
+    "tabs": {
+      "portal": "Portal messages",
+      "whatsapp": "WhatsApp"
+    },
+    "roles": {
+      "parent": "Parent",
+      "student": "Student",
+      "teacher": "Teacher",
+      "staff": "Staff",
+      "unknown": "Unidentified"
+    },
+    "origins": {
+      "bot": "Bot",
+      "ai": "AI assistant",
+      "staff": "Staff",
+      "cron": "Automated message"
+    },
+    "badges": {
+      "takenOver": "Handled by a person",
+      "takenOverBy": "Handled by {name}",
+      "awaitingReply": "Awaiting reply"
+    },
+    "actions": {
+      "release": "Return to bot"
+    },
+    "errors": {
+      "empty": "Cannot send an empty message",
+      "tooLong": "Message is too long",
+      "notFound": "Conversation not found",
+      "windowClosed": "The 24-hour window closed. The message was not sent.",
+      "notConnected": "WhatsApp is not connected for this organization",
+      "sendFailed": "Failed to send the message"
+    }
   }
 }

@@ -96,6 +96,17 @@ vi.mock('@/lib/whatsapp/idempotency', () => ({
   isRateLimited: vi.fn().mockResolvedValue(false),
 }))
 
+vi.mock('@/lib/whatsapp/takeover', () => ({
+  isTakenOver: vi.fn().mockResolvedValue(false),
+}))
+
+vi.mock('@/lib/whatsapp/messageLog', () => ({
+  logInboundMessage: vi.fn().mockResolvedValue(undefined),
+  logOutboundMessage: vi.fn().mockResolvedValue(undefined),
+  attachInboundSender: vi.fn().mockResolvedValue(undefined),
+  recordOutboundSend: vi.fn(),
+}))
+
 vi.mock('@sentry/nextjs', () => ({
   captureException: vi.fn(),
 }))
@@ -177,6 +188,8 @@ import {
 import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { claimIncomingMessage, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
+import { isTakenOver } from '@/lib/whatsapp/takeover'
+import { logInboundMessage } from '@/lib/whatsapp/messageLog'
 import {
   notifyMultiple,
   notifySuperadmins,
@@ -236,6 +249,8 @@ const mockLogExchange = vi.mocked(logExchange)
 const mockClaimIncomingMessage = vi.mocked(claimIncomingMessage)
 const mockReleaseIncomingMessageClaim = vi.mocked(releaseIncomingMessageClaim)
 const mockIsRateLimited = vi.mocked(isRateLimited)
+const mockIsTakenOver = vi.mocked(isTakenOver)
+const mockLogInboundMessage = vi.mocked(logInboundMessage)
 const mockMarkAssignmentDone = vi.mocked(markAssignmentDone)
 const mockCreateDayOffRequest = vi.mocked(createDayOffRequest)
 const mockNotifyStaffOfRequest = vi.mocked(notifyStaffOfRequest)
@@ -396,6 +411,7 @@ describe('POST /api/whatsapp/webhook', () => {
     })
     mockAiAssistantConfigured.mockReturnValue(true)
     mockLogExchange.mockResolvedValue(undefined)
+    mockIsTakenOver.mockResolvedValue(false)
   })
 
   it('returns 200 for a valid signed request', async () => {
@@ -409,6 +425,49 @@ describe('POST /api/whatsapp/webhook', () => {
     const req = makeRequest(makeWebhookPayload('שיעור'), { signed: false })
     const res = await POST(req)
     expect(res.status).toBe(401)
+  })
+
+  it('records every inbound message in the transcript', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' },
+          error: null,
+        })
+      }
+      return buildChain({ data: null, error: null })
+    })
+
+    await POST(makeRequest(makeWebhookPayload('שלום')))
+
+    expect(mockLogInboundMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ phone: SENDER_PHONE_E164, body: 'שלום', kind: 'text' })
+    )
+  })
+
+  it('stays silent while a staff member has taken the conversation over', async () => {
+    mockIsTakenOver.mockResolvedValue(true)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({
+          data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' },
+          error: null,
+        })
+      }
+      if (table === 'parents') return buildChain({ data: { id: PARENT_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeWebhookPayload('אני רוצה לקבוע שיעור')))
+
+    expect(res.status).toBe(200)
+    // The message is still recorded — the person handling the thread has to see
+    // what arrived while the bot was quiet.
+    expect(mockLogInboundMessage).toHaveBeenCalled()
+    expect(mockSendTextMessage).not.toHaveBeenCalled()
+    expect(mockSendLinkReply).not.toHaveBeenCalled()
+    expect(mockSendListMessage).not.toHaveBeenCalled()
+    expect(mockSendUnknownParentReply).not.toHaveBeenCalled()
   })
 
   it('sends unknown parent reply and creates lead when parent not found', async () => {

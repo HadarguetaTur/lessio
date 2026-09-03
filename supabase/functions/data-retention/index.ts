@@ -11,6 +11,7 @@
  *         phone → '***', content → '[anonymised]'
  *      a'. leads.raw_message → '[anonymised]' for rows older than retention window
  *      b. whatsapp_processed_messages.phone → '***' for rows older than retention window
+ *      c. whatsapp_messages: phone → '***', body → '[anonymised]'
  *   3. Failures are isolated per org
  */
 
@@ -115,6 +116,23 @@ async function processOrg(db: any, orgId: string, retentionDays: number) {
     console.error('[data-retention] whatsapp_processed_messages update failed', {
       org_id: orgId,
       error: waErr.message,
+    })
+  }
+
+  // ── 2c. Anonymise the conversation transcript ────────────────────────────
+  // whatsapp_messages holds what parents and staff actually wrote — the most
+  // personal data in the schema, and squarely within the retention promise.
+  const { error: transcriptErr } = await db
+    .from('whatsapp_messages')
+    .update({ phone: '***', body: '[anonymised]' })
+    .eq('organization_id', orgId)
+    .lt('created_at', cutoffIso)
+    .neq('phone', '***') // skip already-anonymised rows
+
+  if (transcriptErr) {
+    console.error('[data-retention] whatsapp_messages update failed', {
+      org_id: orgId,
+      error: transcriptErr.message,
     })
   }
 }

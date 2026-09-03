@@ -313,6 +313,7 @@
     "teacherStudents": "התלמידים שלי",
     "teacherParents": "ההורים שלי",
     "teacherHomework": "שיעורי בית",
+    "teacherMessages": "שיחות WhatsApp",
     "teacherReportsLessons": "שיעורים לפי חודש",
     "teacherReportsStudents": "נוכחות תלמידים",
     "teacherSchedule": "השיעורים שלי",
@@ -2020,6 +2021,10 @@
         "automation_dunning_enabled": {
           "label": "תזכורות תשלום אוטומטיות",
           "description": "תזכורות חוב אוטומטיות ב-3, 7 ו-14 יום (ברירת מחדל: כבוי)"
+        },
+        "payment_confirmation_default_enabled": {
+          "label": "אישור תשלום להורה",
+          "description": "מסומן כברירת מחדל בחלון \"סימון כשולם\" — אפשר לשנות בכל תשלום"
         },
         "automation_new_leads_enabled": {
           "label": "מענה לפניות חדשות",
@@ -5246,5 +5251,53 @@
     "acceptAll": "אישור הכל",
     "analyticsOnly": "אנליטיקס בלבד",
     "rejectAll": "דחיית הכל"
+  },
+  "waConversations": {
+    "title": "שיחות WhatsApp",
+    "subtitle": "כל ההתכתבויות של הבוט, עם אפשרות להתערב ולענות בעצמכם",
+    "emptyTitle": "אין עדיין שיחות",
+    "emptySubtitle": "שיחות יופיעו כאן ברגע שמישהו יכתוב למספר ה-WhatsApp של העסק",
+    "noTeacherRecord": "לא נמצא רישום מורה עבורכם. פנו למנהל המערכת.",
+    "backToList": "חזרה לרשימת השיחות",
+    "colContact": "איש קשר",
+    "colLastMessage": "הודעה אחרונה",
+    "colDate": "עודכן",
+    "colStatus": "סטטוס",
+    "composerPlaceholder": "כתבו הודעה…",
+    "windowClosedNotice": "חלון 24 השעות סגור. אי אפשר לשלוח הודעה חופשית עד שהצד השני יכתוב שוב.",
+    "takeoverNotice": "הבוט מושתק בשיחה הזו ואינו עונה אוטומטית.",
+    "tabs": {
+      "portal": "הודעות פורטל",
+      "whatsapp": "WhatsApp"
+    },
+    "roles": {
+      "parent": "הורה",
+      "student": "תלמיד",
+      "teacher": "מורה",
+      "staff": "צוות",
+      "unknown": "לא מזוהה"
+    },
+    "origins": {
+      "bot": "בוט",
+      "ai": "עוזר AI",
+      "staff": "צוות",
+      "cron": "הודעה אוטומטית"
+    },
+    "badges": {
+      "takenOver": "בטיפול ידני",
+      "takenOverBy": "בטיפול של {name}",
+      "awaitingReply": "ממתין למענה"
+    },
+    "actions": {
+      "release": "החזר לבוט"
+    },
+    "errors": {
+      "empty": "לא ניתן לשלוח הודעה ריקה",
+      "tooLong": "ההודעה ארוכה מדי",
+      "notFound": "השיחה לא נמצאה",
+      "windowClosed": "חלון 24 השעות נסגר. ההודעה לא נשלחה.",
+      "notConnected": "WhatsApp אינו מחובר לארגון",
+      "sendFailed": "שליחת ההודעה נכשלה"
+    }
   }
 }

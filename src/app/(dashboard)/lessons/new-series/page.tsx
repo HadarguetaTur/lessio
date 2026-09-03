@@ -11,6 +11,8 @@ import { getOrgHolidays, calendarHolidaysFrom } from '@/lib/organizations/holida
 import { getOrgPricing } from '@/lib/organizations/pricing'
 import { NewSeriesForm } from '@/components/dashboard/lessons/NewSeriesForm'
 import { SeriesRowActions } from '@/components/dashboard/lessons/SeriesRowActions'
+import { EndedSeriesToggle } from '@/components/dashboard/lessons/EndedSeriesToggle'
+import { ENDED_SERIES_ON } from '@/components/dashboard/lessons/seriesParams'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { getTranslations, getLocale } from 'next-intl/server'
@@ -20,7 +22,11 @@ import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 
-export default async function NewSeriesPage() {
+export default async function NewSeriesPage(props: {
+  searchParams: Promise<{ ended?: string }>
+}) {
+  const { ended } = await props.searchParams
+  const showEnded = ended === ENDED_SERIES_ON
   const { orgId, role } = await getSession()
 
   if (role !== 'owner' && role !== 'admin') {
@@ -56,6 +62,12 @@ export default async function NewSeriesPage() {
   })
   const todayStr = DateTime.now().setZone(timezone).toISODate()!
 
+  // A series with nothing ahead of it is done — stopped, removed down to nothing,
+  // or simply run out. Listing those alongside live ones buries the live ones,
+  // and an org that has been running a while accumulates far more of them.
+  const endedCount = series.filter((s) => s.upcomingCount === 0).length
+  const visibleSeries = showEnded ? series : series.filter((s) => s.upcomingCount > 0)
+
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
       <div>
@@ -74,11 +86,15 @@ export default async function NewSeriesPage() {
       </div>
 
       <div className="min-w-0">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6 xl:mt-11">
-          {t('series.existingTitle')}
-        </h2>
-        {series.length === 0 ? (
-          <EmptyState icon={CalendarClock} title={t('series.existingEmpty')} />
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 xl:mt-11">
+          <h2 className="text-lg font-semibold text-gray-900">{t('series.existingTitle')}</h2>
+          <EndedSeriesToggle hiddenCount={endedCount} active={showEnded} />
+        </div>
+        {visibleSeries.length === 0 ? (
+          <EmptyState
+            icon={CalendarClock}
+            title={endedCount > 0 ? t('series.allEnded') : t('series.existingEmpty')}
+          />
         ) : (
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <div className="overflow-x-auto">
@@ -103,7 +119,7 @@ export default async function NewSeriesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {series.map((s) => (
+                  {visibleSeries.map((s) => (
                     <tr key={s.id} className={s.stoppedAt ? 'text-muted-foreground' : undefined}>
                       <td className="whitespace-nowrap px-5 py-3 text-sm text-foreground">
                         <span className="font-semibold">

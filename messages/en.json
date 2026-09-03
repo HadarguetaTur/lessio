@@ -852,6 +852,9 @@
     "series": {
       "badge": "Series",
       "existingTitle": "Existing series",
+      "showEnded": "Show ended series",
+      "showEndedHint": "Series with no upcoming lessons — stopped, or past their end date",
+      "allEnded": "No active series. Every series here has ended.",
       "existingEmpty": "No recurring lessons yet",
       "rowActions": "Series actions",
       "changeUntil": "Change end date",

@@ -4,14 +4,19 @@ import type { Lesson, LessonStatus } from './types'
 
 const NOW = new Date('2026-08-15T12:00:00.000Z')
 
-function lesson(id: string, status: LessonStatus, start_at: string): Lesson {
+function lesson(
+  id: string,
+  status: LessonStatus,
+  start_at: string,
+  cancel_reason?: string
+): Lesson {
   return {
     id,
     start_at,
     end_at: new Date(new Date(start_at).getTime() + 60 * 60 * 1000).toISOString(),
     status,
     lesson_type: 'individual',
-    cancel_reason: status === 'cancelled' ? 'SERIES_CANCELLED' : null,
+    cancel_reason: status === 'cancelled' ? cancel_reason ?? 'Parent asked' : null,
     series_id: null,
     teacher: { id: 't1', full_name: 'Teacher' },
     students: [{ id: 's1', full_name: 'Student' }],
@@ -43,6 +48,31 @@ describe('filterCalendarLessons', () => {
     })
     expect(ids(visible)).toEqual(['past-cancelled'])
     expect(hiddenCount).toBe(0)
+  })
+
+  it('hides a series-cancelled lesson even in the past — it never happened', () => {
+    const lessons = [
+      lesson('past-series', 'cancelled', '2026-08-15T09:00:00.000Z', 'SERIES_CANCELLED'),
+      lesson('past-manual', 'cancelled', '2026-08-15T10:00:00.000Z'),
+    ]
+    const { visible, hiddenCount } = filterCalendarLessons(lessons, {
+      includeCancelled: false,
+      now: NOW,
+    })
+    expect(ids(visible)).toEqual(['past-manual'])
+    expect(hiddenCount).toBe(1)
+  })
+
+  it('reveals series-cancelled lessons when the toggle is on', () => {
+    const lessons = [
+      lesson('past-series', 'cancelled', '2026-08-15T09:00:00.000Z', 'SERIES_CANCELLED'),
+    ]
+    const { visible, hiddenCount } = filterCalendarLessons(lessons, {
+      includeCancelled: true,
+      now: NOW,
+    })
+    expect(ids(visible)).toEqual(['past-series'])
+    expect(hiddenCount).toBe(1)
   })
 
   it('never hides scheduled, completed or no_show lessons', () => {

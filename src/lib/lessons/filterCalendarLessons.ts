@@ -1,4 +1,5 @@
 import type { Lesson } from '@/lib/lessons/types'
+import { SERIES_CANCEL_REASON } from '@/lib/lessons/renderCancelReason'
 
 export interface CalendarLessonsResult {
   /** Lessons the calendar should render. */
@@ -17,9 +18,18 @@ export interface CalendarLessonsResult {
  *
  * Cancelled lessons in the past stay visible: they happened, and they may carry a
  * cancellation charge someone needs to explain.
+ *
+ * A row a series-wide cancel wrote is the exception, at any date. That reason is
+ * only ever written in bulk, over lessons nobody attended and nobody was charged
+ * for, which is why the 20260901100000 migration deleted the future ones outright
+ * as "planning noise, not cancellation history". The past ones it could not safely
+ * delete are the same noise, so the calendar hides them too — the toggle still
+ * brings them back.
  */
 function isHiddenFromCalendar(lesson: Lesson, nowMs: number): boolean {
-  return lesson.status === 'cancelled' && new Date(lesson.start_at).getTime() >= nowMs
+  if (lesson.status !== 'cancelled') return false
+  if (lesson.cancel_reason === SERIES_CANCEL_REASON) return true
+  return new Date(lesson.start_at).getTime() >= nowMs
 }
 
 /**

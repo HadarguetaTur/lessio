@@ -479,6 +479,9 @@ describe('createLessonCharge', () => {
           teachers: { id: 'teacher-1', hourly_rate: 200 },
         })
       }
+      // The price is resolved per student now, inside the loop that follows the
+      // coverage lookup, so the lookup runs even when no price can be found.
+      if (table === 'subscriptions') return subscriptionList([])
       throw new Error(`Unexpected table: ${table}`)
     })
 

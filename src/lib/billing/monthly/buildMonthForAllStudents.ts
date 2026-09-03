@@ -11,6 +11,7 @@ import { isMissingFieldsError } from './types'
 import { buildStudentMonth } from './buildStudentMonth'
 import { getBillingMonthRange } from './month'
 import { getOrgPricing } from '@/lib/organizations/pricing'
+import { toStudentPricing } from '@/lib/billing/lessonPricing'
 
 function assertNoQueryError(
   operation: string,
@@ -47,7 +48,7 @@ export async function buildMonthForAllStudents(
     await Promise.all([
       supabase
         .from('students')
-        .select('id')
+        .select('id, hourly_rate, discount_percent')
         .eq('organization_id', organizationId)
         .eq('is_active', true),
       supabase
@@ -84,7 +85,11 @@ export async function buildMonthForAllStudents(
   assertNoQueryError('load subscriptions', subsRes.error)
   assertNoQueryError('load existing monthly billing', billingRes.error)
 
-  const students = (studentsRes.data ?? []) as Array<{ id: string }>
+  const students = (studentsRes.data ?? []) as Array<{
+    id: string
+    hourly_rate: number | null
+    discount_percent: number | null
+  }>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allLessons: LessonRow[] = (lessonsRes.data ?? []).map((l: any) => ({
     id: l.id,
@@ -175,6 +180,7 @@ export async function buildMonthForAllStudents(
       existingBilling: existing,
       studentCountByLesson,
       pricing,
+      studentPricing: toStudentPricing(student),
     }
 
     try {

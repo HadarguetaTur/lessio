@@ -5,7 +5,15 @@ import { resolveBillingParent, MissingPrimaryParentError } from './resolveBillin
 import type { CancellationChargeResult } from './calculateCancellationCharge'
 import { getOrgPricing } from '@/lib/organizations/pricing'
 import { getOrgTimezone } from '@/lib/organizations'
-import { resolveLessonBaseAmount, isMissingPrice, isLessonCoveredBySubscription } from './lessonPricing'
+import {
+  resolveLessonBaseAmount,
+  isMissingPrice,
+  isLessonCoveredBySubscription,
+  toStudentPricing,
+  type MissingPriceField,
+  type ResolvedAmount,
+  type StudentPricing,
+} from './lessonPricing'
 import {
   checkActiveSubscriptionForLesson,
   type CoverageSubscription,
@@ -55,7 +63,7 @@ export async function createLessonCharge(
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
     .select(
-      'id, start_at, end_at, lesson_type, price_per_student, lesson_students(student_id), teachers(id, hourly_rate)'
+      'id, start_at, end_at, lesson_type, price_per_student, lesson_students(student_id, students(hourly_rate, discount_percent)), teachers(id, hourly_rate)'
     )
     .eq('id', lessonId)
     .eq('organization_id', organizationId)
@@ -74,31 +82,41 @@ export async function createLessonCharge(
     (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / (1000 * 60)
 
   const pricing = await getOrgPricing(organizationId)
-  const resolved = resolveLessonBaseAmount(
-    {
-      lessonType,
-      pricePerStudent: (lesson.price_per_student as number | null) ?? null,
-      durationMinutes,
-      teacherHourlyRate: teacher?.hourly_rate ?? null,
-    },
-    pricing
-  )
 
-  if (isMissingPrice(resolved)) {
+  // The price is per student: a personal rate or discount on `students` changes
+  // what one family owes without touching the others in a pair/group lesson.
+  const priceForStudent = (studentPricing: StudentPricing): ResolvedAmount =>
+    resolveLessonBaseAmount(
+      {
+        lessonType,
+        pricePerStudent: (lesson.price_per_student as number | null) ?? null,
+        durationMinutes,
+        teacherHourlyRate: teacher?.hourly_rate ?? null,
+        studentHourlyRate: studentPricing.hourlyRate,
+        studentDiscountPercent: studentPricing.discountPercent,
+      },
+      pricing
+    )
+
+  const missingPriceAlert = (missing: MissingPriceField): ChargeAlert => {
     console.error('[createLessonCharge] cannot price lesson', {
       lessonId,
       orgId: organizationId,
       lessonType,
-      missing: resolved.missing.field,
+      missing: missing.field,
     })
-    return resolved.missing.field === 'hourly_rate'
+    return missing.field === 'hourly_rate'
       ? { type: 'missing_rate', message: 'validation.noTeacherRate' }
       : { type: 'missing_price', message: 'validation.noLessonPrice' }
   }
 
-  const amount = resolved
-
-  const lessonStudents = (lesson.lesson_students as Array<{ student_id: string }>) ?? []
+  // `students` is a to-one embed, but the select-string parser widens it to an
+  // array, so the cast goes through `unknown`.
+  const lessonStudents =
+    (lesson.lesson_students as unknown as Array<{
+      student_id: string
+      students?: { hourly_rate: number | null; discount_percent: number | null } | null
+    }>) ?? []
   if (lessonStudents.length === 0) {
     console.error('[createLessonCharge] no students in lesson_students', { lessonId, orgId: organizationId })
     return { type: 'missing_parent', message: 'validation.noLinkedStudents' }
@@ -133,7 +151,7 @@ export async function createLessonCharge(
     subscriptions = (subsData as CoverageSubscription[] | null) ?? []
   }
 
-  for (const { student_id: studentId } of lessonStudents) {
+  for (const { student_id: studentId, students: studentRow } of lessonStudents) {
     // Covered by an active subscription → the monthly engine bills 0, so no charge row.
     if (
       isLessonCoveredBySubscription(
@@ -145,6 +163,13 @@ export async function createLessonCharge(
       coveredCount++
       continue
     }
+
+    const resolved = priceForStudent(toStudentPricing(studentRow))
+    if (isMissingPrice(resolved)) {
+      firstAlert ??= missingPriceAlert(resolved.missing)
+      continue
+    }
+    const amount = resolved
 
     let parentId: string
     try {

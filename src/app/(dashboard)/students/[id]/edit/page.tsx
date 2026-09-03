@@ -11,7 +11,7 @@ export default async function EditStudentPage(props: {
   params: Promise<{ id: string }>
 }) {
   const { id } = await props.params
-  const { orgId } = await getSession()
+  const { orgId, role } = await getSession()
 
   const [student, teachers, showWeeklyQuota] = await Promise.all([
     getStudentById(id, orgId),
@@ -36,6 +36,7 @@ export default async function EditStudentPage(props: {
         action={boundUpdateStudent}
         teachers={teacherOptions}
         showWeeklyQuota={showWeeklyQuota}
+        showPricing={role !== 'teacher'}
         defaultValues={{
           full_name: student.full_name,
           grade: student.grade,
@@ -46,6 +47,9 @@ export default async function EditStudentPage(props: {
           weekly_quota: student.weekly_quota,
           status: student.status,
           teacher_id: student.teacher_id,
+          hourly_rate: student.hourly_rate,
+          discount_percent: student.discount_percent,
+          discount_reason: student.discount_reason,
         }}
       />
     </div>

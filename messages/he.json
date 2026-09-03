@@ -657,7 +657,16 @@
     },
     "noTeacherRecord": "לא נמצאה רשומת מורה פעילה עבור משתמש זה.",
     "moreDetails": "פרטים נוספים",
-    "noSearchMatch": "לא נמצאו תלמידים התואמים ל\"{query}\""
+    "noSearchMatch": "לא נמצאו תלמידים התואמים ל\"{query}\"",
+    "pricing": {
+      "title": "תמחור אישי",
+      "hint": "משאירים ריק כדי לרשת את תעריף המורה ואת מחירי הארגון. ההנחה חלה על כל שיעור ועל דמי ביטול, לא על מנויים וכרטיסיות.",
+      "hourlyRate": "תעריף לשעה (שיעור פרטי)",
+      "hourlyRatePlaceholder": "לפי המורה",
+      "discountPercent": "הנחה (%)",
+      "discountReason": "סיבת ההנחה",
+      "discountReasonPlaceholder": "למשל: הנחת אחים"
+    }
   },
   "parents": {
     "title": "הורים",
@@ -1187,7 +1196,26 @@
     "notification": {
       "queued": "אישור נשלח להורה בוואטסאפ",
       "noPhone": "לא נשלח אישור — להורה אין מספר טלפון",
+      "noPhoneCount": "{count, plural, one {להורה אחד אין טלפון} other {ל-# הורים אין טלפון}}",
       "whatsappNotConnected": "לא נשלח אישור — וואטסאפ לא מחובר"
+    },
+    "selection": {
+      "selectRow": "בחר חיוב של {name} על {amount}",
+      "selectAll": "בחר הכל",
+      "clear": "נקה בחירה",
+      "summary": "{count, plural, one {חיוב אחד נבחר} other {# חיובים נבחרו}} · סה״כ {total}",
+      "parents": "{count, plural, one {הורה אחד} other {# הורים}}"
+    },
+    "bulkPaid": {
+      "action": "סמן כשולם",
+      "title": "סימון {count, plural, one {חיוב אחד} other {# חיובים}} כשולם",
+      "description": "החיובים שנבחרו יסומנו כשולמו במלואם. לתשלום חלקי בתוך חיוב בודד יש להשתמש ב״רישום תשלום״.",
+      "summary": "{count, plural, one {חיוב אחד} other {# חיובים}} · סה״כ {total}",
+      "notifyParents": "שלח אישור להורים בוואטסאפ",
+      "confirm": "סמן כשולם",
+      "success": "{count, plural, one {חיוב אחד סומן} other {# חיובים סומנו}} כשולם",
+      "notified": "אישור נשלח ל{count, plural, one {הורה אחד} other {-# הורים}}",
+      "partialFailure": "{settled} סומנו כשולמו, {failed} נותרו פתוחים — נסו שוב"
     },
     "settleBalance": {
       "action": "סמן את כל היתרה כשולם",

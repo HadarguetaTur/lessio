@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   resolveLessonBaseAmount,
+  applyStudentDiscount,
   isMissingPrice,
   isLessonCoveredBySubscription,
   DEFAULT_SUBSCRIPTION_COVERED_LESSON_TYPES,
@@ -118,6 +119,87 @@ describe('resolveLessonBaseAmount', () => {
         expect(result.missing.table).toBe('lessons')
         expect(result.missing.field).toBe('price_per_student')
       }
+    })
+  })
+
+  describe('per-student pricing', () => {
+    it("the student's own rate wins over the teacher's and the org's", () => {
+      const result = resolveLessonBaseAmount(
+        {
+          lessonType: 'individual',
+          pricePerStudent: null,
+          durationMinutes: 60,
+          teacherHourlyRate: 150,
+          studentHourlyRate: 200,
+        },
+        PRICING
+      )
+      expect(amount(result)).toBe(200)
+    })
+
+    it('a student rate alone is enough when neither the teacher nor the org has one', () => {
+      const result = resolveLessonBaseAmount(
+        {
+          lessonType: 'individual',
+          pricePerStudent: null,
+          durationMinutes: 60,
+          teacherHourlyRate: null,
+          studentHourlyRate: 170,
+        },
+        NO_ORG_RATE
+      )
+      expect(amount(result)).toBe(170)
+    })
+
+    it('the student rate does not touch flat-priced lesson types', () => {
+      const result = resolveLessonBaseAmount(
+        { lessonType: 'pair', pricePerStudent: null, durationMinutes: 60, teacherHourlyRate: 150, studentHourlyRate: 500 },
+        PRICING
+      )
+      expect(amount(result)).toBe(112.5)
+    })
+
+    it('discounts the resolved amount and rounds to agorot', () => {
+      const individual = resolveLessonBaseAmount(
+        { lessonType: 'individual', pricePerStudent: null, durationMinutes: 60, teacherHourlyRate: 150, studentDiscountPercent: 10 },
+        PRICING
+      )
+      expect(amount(individual)).toBe(135)
+
+      const custom = resolveLessonBaseAmount(
+        { lessonType: 'custom', pricePerStudent: 85, durationMinutes: 50, teacherHourlyRate: null, studentDiscountPercent: 15 },
+        PRICING
+      )
+      expect(amount(custom)).toBe(72.25)
+
+      const group = resolveLessonBaseAmount(
+        { lessonType: 'group', pricePerStudent: null, durationMinutes: 60, teacherHourlyRate: null, studentDiscountPercent: 33 },
+        PRICING
+      )
+      expect(amount(group)).toBe(80.4)
+    })
+
+    it('a full discount prices the lesson at zero, never below', () => {
+      const result = resolveLessonBaseAmount(
+        { lessonType: 'individual', pricePerStudent: null, durationMinutes: 60, teacherHourlyRate: 150, studentDiscountPercent: 100 },
+        PRICING
+      )
+      expect(amount(result)).toBe(0)
+      expect(applyStudentDiscount(100, 150)).toBe(0)
+    })
+
+    it('null, undefined and zero discount leave the amount alone', () => {
+      expect(applyStudentDiscount(112.5, null)).toBe(112.5)
+      expect(applyStudentDiscount(112.5, undefined)).toBe(112.5)
+      expect(applyStudentDiscount(112.5, 0)).toBe(112.5)
+    })
+
+    it('still reports a missing rate rather than discounting nothing', () => {
+      const result = resolveLessonBaseAmount(
+        { lessonType: 'individual', pricePerStudent: null, durationMinutes: 60, teacherHourlyRate: null, studentDiscountPercent: 10 },
+        NO_ORG_RATE
+      )
+      expect(isMissingPrice(result)).toBe(true)
     })
   })
 

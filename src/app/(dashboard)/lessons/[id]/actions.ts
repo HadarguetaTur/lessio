@@ -11,7 +11,7 @@ import { createLessonCharge, createCancellationCharge } from '@/lib/billing/crea
 import { getCancellationPolicy } from '@/lib/cancellation-policy'
 import { calculateCancellationCharge } from '@/lib/billing/calculateCancellationCharge'
 import { getOrgPricing } from '@/lib/organizations/pricing'
-import { resolveLessonBaseAmount, isMissingPrice } from '@/lib/billing/lessonPricing'
+import { resolveLessonBaseAmount, isMissingPrice, toStudentPricing } from '@/lib/billing/lessonPricing'
 import type { LessonType } from '@/lib/lessons/types'
 import { resolveBillingParent, MissingPrimaryParentError } from '@/lib/billing/resolveBillingParent'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -127,7 +127,7 @@ export async function cancelLesson(
   // Fetch lesson with teacher hourly_rate; student resolved via lesson_students
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
-    .select('id, start_at, end_at, status, lesson_type, price_per_student, lesson_students(student_id), teachers(id, hourly_rate)')
+    .select('id, start_at, end_at, status, lesson_type, price_per_student, lesson_students(student_id, students(hourly_rate, discount_percent)), teachers(id, hourly_rate)')
     .eq('id', lessonId)
     .eq('organization_id', orgId)
     .single()
@@ -143,7 +143,12 @@ export async function cancelLesson(
     }
   }
 
-  const lessonStudents = (lesson.lesson_students as Array<{ student_id: string }>)
+  // `students` is a to-one embed, but the select-string parser widens it to an
+  // array, so the cast goes through `unknown` (same as `teachers` above).
+  const lessonStudents = lesson.lesson_students as unknown as Array<{
+    student_id: string
+    students?: { hourly_rate: number | null; discount_percent: number | null } | null
+  }>
   const primaryStudentId = lessonStudents[0]?.student_id
 
   // Determine charge
@@ -157,7 +162,10 @@ export async function cancelLesson(
     const policy = await getCancellationPolicy(orgId)
     const teacher = (lesson.teachers as unknown as { id: string; hourly_rate: number | null })
 
+    // The cancellation fee follows the first enrolled student's price (Sprint 31
+    // backlog: one fee per family), so that student's personal pricing applies.
     const pricing = await getOrgPricing(orgId)
+    const studentPricing = toStudentPricing(lessonStudents[0]?.students)
     const baseAmount = resolveLessonBaseAmount(
       {
         lessonType: ((lesson.lesson_type as LessonType) ?? 'individual'),
@@ -166,6 +174,8 @@ export async function cancelLesson(
           (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) /
           (1000 * 60),
         teacherHourlyRate: teacher?.hourly_rate ?? null,
+        studentHourlyRate: studentPricing.hourlyRate,
+        studentDiscountPercent: studentPricing.discountPercent,
       },
       pricing
     )

@@ -1,6 +1,6 @@
 import { calculateCancellationCharge } from '@/lib/billing/calculateCancellationCharge'
 import type { CancellationChargeResult } from '@/lib/billing/calculateCancellationCharge'
-import { resolveLessonBaseAmount, isMissingPrice } from '@/lib/billing/lessonPricing'
+import { resolveLessonBaseAmount, isMissingPrice, type StudentPricing } from '@/lib/billing/lessonPricing'
 import type { CancellationPolicy } from '@/lib/cancellation-policy'
 import type { OrgPricing } from '@/lib/organizations/pricing'
 import type { LessonType } from '@/lib/lessons/types'
@@ -14,6 +14,8 @@ export interface CancellationPreviewLesson {
   lesson_type: string | null
   price_per_student: number | null
   teacherHourlyRate: number | null
+  /** The cancelling student's personal pricing (students.hourly_rate / discount_percent). */
+  studentPricing?: StudentPricing
 }
 
 /**
@@ -38,6 +40,8 @@ export function previewCancellationCharge(
       durationMinutes:
         (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / (1000 * 60),
       teacherHourlyRate: lesson.teacherHourlyRate,
+      studentHourlyRate: lesson.studentPricing?.hourlyRate ?? null,
+      studentDiscountPercent: lesson.studentPricing?.discountPercent ?? null,
     },
     pricing
   )

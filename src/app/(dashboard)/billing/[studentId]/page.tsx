@@ -156,6 +156,8 @@ export default async function BillingDetailPage(props: {
         pricePerStudent: (l.price_per_student as number | null) ?? null,
         durationMinutes,
         teacherHourlyRate: (l.teachers as { hourly_rate: number | null })?.hourly_rate ?? null,
+        studentHourlyRate: student.hourly_rate,
+        studentDiscountPercent: student.discount_percent,
       },
       orgPricing
     )

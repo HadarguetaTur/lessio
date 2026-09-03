@@ -8,6 +8,7 @@ import { formatTime, formatDate } from '@/lib/lessons'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { getOrgPricing } from '@/lib/organizations/pricing'
+import { toStudentPricing } from '@/lib/billing/lessonPricing'
 import { getPortalSettings } from '@/lib/organizations/portalSettings'
 import { getCancellationPolicyServiceRole } from '@/lib/cancellation-policy/service'
 import {
@@ -75,7 +76,10 @@ export default async function PortalSchedulePage({
     lesson_type?: string | null
     price_per_student?: number | null
     teachers: { hourly_rate?: number | null; profiles: { full_name: string } }
-    lesson_students: Array<{ student_id: string; students: { full_name: string } }>
+    lesson_students: Array<{
+      student_id: string
+      students: { full_name: string; hourly_rate?: number | null; discount_percent?: number | null }
+    }>
   }
 
   // Upcoming carries the pricing inputs so the cancel dialog can quote a real
@@ -85,7 +89,7 @@ export default async function PortalSchedulePage({
     .select(`
       id, start_at, end_at, status, lesson_type, price_per_student,
       teachers ( hourly_rate, profiles ( full_name ) ),
-      lesson_students!inner ( student_id, students ( full_name ) )
+      lesson_students!inner ( student_id, students ( full_name, hourly_rate, discount_percent ) )
     `)
     .eq('organization_id', orgId)
     .eq('status', 'scheduled')
@@ -138,6 +142,8 @@ export default async function PortalSchedulePage({
           lesson_type: row.lesson_type ?? null,
           price_per_student: row.price_per_student ?? null,
           teacherHourlyRate: row.teachers?.hourly_rate ?? null,
+          // Same "first enrolled student" rule executeCancellation prices by.
+          studentPricing: toStudentPricing(row.lesson_students?.[0]?.students),
         },
         nowDate,
         pricing,

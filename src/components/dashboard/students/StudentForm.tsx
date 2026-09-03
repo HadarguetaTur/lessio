@@ -29,11 +29,16 @@ interface StudentFormProps {
     weekly_quota?: number | null
     status?: StudentStatus
     teacher_id?: string | null
+    hourly_rate?: number | null
+    discount_percent?: number | null
+    discount_reason?: string | null
   }
   onSuccess?: () => void
   onCancel?: () => void
   /** Hidden when the org does not enforce the weekly quota. */
   showWeeklyQuota?: boolean
+  /** Per-student pricing is a money decision: hidden for teachers, whose update path ignores it anyway. */
+  showPricing?: boolean
 }
 
 const selectClass =
@@ -47,6 +52,7 @@ export function StudentForm({
   onSuccess,
   onCancel,
   showWeeklyQuota = true,
+  showPricing = true,
 }: StudentFormProps) {
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
@@ -228,6 +234,54 @@ export function StudentForm({
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
             />
           </div>
+
+          {showPricing && (
+            <fieldset className="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
+              <legend className="px-1 text-sm font-medium text-foreground">{t('pricing.title')}</legend>
+              <p className="text-xs text-muted-foreground">{t('pricing.hint')}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="hourly_rate">{t('pricing.hourlyRate')}</Label>
+                  <Input
+                    id="hourly_rate"
+                    name="hourly_rate"
+                    type="number"
+                    min={1}
+                    max={10000}
+                    step="0.5"
+                    dir="ltr"
+                    placeholder={t('pricing.hourlyRatePlaceholder')}
+                    defaultValue={defaultValues?.hourly_rate ?? ''}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="discount_percent">{t('pricing.discountPercent')}</Label>
+                  <Input
+                    id="discount_percent"
+                    name="discount_percent"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.5"
+                    dir="ltr"
+                    placeholder="0"
+                    defaultValue={defaultValues?.discount_percent ?? ''}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="discount_reason">{t('pricing.discountReason')}</Label>
+                <Input
+                  id="discount_reason"
+                  name="discount_reason"
+                  type="text"
+                  maxLength={200}
+                  placeholder={t('pricing.discountReasonPlaceholder')}
+                  defaultValue={defaultValues?.discount_reason ?? ''}
+                />
+              </div>
+            </fieldset>
+          )}
         </div>
       </details>
 

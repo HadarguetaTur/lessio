@@ -11,6 +11,8 @@ import {
   resolveLessonBaseAmount,
   isMissingPrice,
   isLessonCoveredBySubscription,
+  NO_STUDENT_PRICING,
+  type StudentPricing,
 } from '@/lib/billing/lessonPricing'
 import type { OrgPricing } from '@/lib/organizations/pricing'
 import { getBillingMonthRange } from './month'
@@ -45,7 +47,8 @@ export function calculateLessonAmount(
   subscriptions: SubscriptionRow[],
   timezone: string,
   studentCountForLesson: number,
-  pricing: OrgPricing
+  pricing: OrgPricing,
+  studentPricing: StudentPricing = NO_STUDENT_PRICING
 ): number | MissingFieldsError {
   const durationMinutes =
     (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / (1000 * 60)
@@ -74,6 +77,8 @@ export function calculateLessonAmount(
       pricePerStudent: lesson.price_per_student,
       durationMinutes,
       teacherHourlyRate: lesson.teacher.hourly_rate,
+      studentHourlyRate: studentPricing.hourlyRate,
+      studentDiscountPercent: studentPricing.discountPercent,
     },
     pricing
   )
@@ -94,7 +99,8 @@ export function calculateLessonsContribution(
   cancelledLessonIds: Set<string>,
   studentCountByLesson: Map<string, number>,
   pricing: OrgPricing,
-  cycleStartDay = 1
+  cycleStartDay = 1,
+  studentPricing: StudentPricing = NO_STUDENT_PRICING
 ): LessonsContribution | MissingFieldsError {
   let lessonsTotal = 0
   let lessonsCount = 0
@@ -117,7 +123,8 @@ export function calculateLessonsContribution(
       subscriptions,
       timezone,
       studentCount,
-      pricing
+      pricing,
+      studentPricing
     )
 
     if (typeof amount === 'object') return amount // MissingFieldsError

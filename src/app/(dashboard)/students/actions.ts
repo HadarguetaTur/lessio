@@ -31,7 +31,20 @@ const studentSchema = z.object({
   status: z.enum(['active', 'on_hold', 'inactive']).default('active'),
   notes: z.string().optional().nullable(),
   teacher_id: z.string().uuid().optional().nullable(),
+  // Per-student pricing — owner/admin only; the teacher branch never writes these.
+  hourly_rate: z.coerce.number().positive().max(10000).optional().nullable(),
+  discount_percent: z.coerce.number().min(0).max(100).optional().nullable(),
+  discount_reason: z.string().max(200).optional().nullable(),
 })
+
+/** The pricing trio from a submitted form; blank fields become NULL (inherit / no discount). */
+function readPricingFields(formData: FormData) {
+  return {
+    hourly_rate: formData.get('hourly_rate') ? formData.get('hourly_rate') : null,
+    discount_percent: formData.get('discount_percent') ? formData.get('discount_percent') : null,
+    discount_reason: (formData.get('discount_reason') as string ?? '').trim() || null,
+  }
+}
 
 const PARENT_RELATIONS = new Set(['mother', 'father', 'guardian', 'other'])
 
@@ -50,6 +63,7 @@ export async function createStudent(
     status: (formData.get('status') as string) || 'active',
     notes: (formData.get('notes') as string ?? '').trim() || null,
     teacher_id: (formData.get('teacher_id') as string ?? '').trim() || null,
+    ...readPricingFields(formData),
   }
 
   const parsed = studentSchema.safeParse(raw)
@@ -149,6 +163,9 @@ export async function createStudent(
     notes: parsed.data.notes,
     status: parsed.data.status,
     teacher_id,
+    hourly_rate: parsed.data.hourly_rate ?? null,
+    discount_percent: parsed.data.discount_percent ?? null,
+    discount_reason: parsed.data.discount_reason ?? null,
   }
 
   const { data: insertedStudent, error: insErr } = await supabase
@@ -272,6 +289,7 @@ export async function updateStudent(
     status: (formData.get('status') as string) || 'active',
     notes: (formData.get('notes') as string ?? '').trim() || null,
     teacher_id: (formData.get('teacher_id') as string ?? '').trim() || null,
+    ...readPricingFields(formData),
   }
 
   const parsed = studentSchema.safeParse(raw)
@@ -343,6 +361,9 @@ export async function updateStudent(
       status: parsed.data.status,
       notes: parsed.data.notes,
       teacher_id: parsed.data.teacher_id,
+      hourly_rate: parsed.data.hourly_rate ?? null,
+      discount_percent: parsed.data.discount_percent ?? null,
+      discount_reason: parsed.data.discount_reason ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)

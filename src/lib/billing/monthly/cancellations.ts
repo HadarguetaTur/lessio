@@ -12,6 +12,8 @@ import {
   resolveLessonBaseAmount,
   isMissingPrice,
   isLessonCoveredBySubscription,
+  NO_STUDENT_PRICING,
+  type StudentPricing,
 } from '@/lib/billing/lessonPricing'
 import type { OrgPricing } from '@/lib/organizations/pricing'
 
@@ -23,7 +25,8 @@ function calculateCancellationEventAmount(
   lesson: LessonRow | undefined,
   subscriptions: SubscriptionRow[],
   timezone: string,
-  pricing: OrgPricing
+  pricing: OrgPricing,
+  studentPricing: StudentPricing
 ): number | MissingFieldsError {
   if (event.charge_override != null) return event.charge_override
 
@@ -60,6 +63,8 @@ function calculateCancellationEventAmount(
       pricePerStudent: lesson.price_per_student,
       durationMinutes,
       teacherHourlyRate: lesson.teacher.hourly_rate,
+      studentHourlyRate: studentPricing.hourlyRate,
+      studentDiscountPercent: studentPricing.discountPercent,
     },
     pricing
   )
@@ -76,7 +81,8 @@ export function calculateCancellationsContribution(
   lessonLookup: Map<string, LessonRow>,
   subscriptions: SubscriptionRow[],
   timezone: string,
-  pricing: OrgPricing
+  pricing: OrgPricing,
+  studentPricing: StudentPricing = NO_STUDENT_PRICING
 ): CancellationsContribution | MissingFieldsError {
   let cancellationsTotal = 0
   let cancellationsCount = 0
@@ -98,7 +104,8 @@ export function calculateCancellationsContribution(
       lesson,
       subscriptions,
       timezone,
-      pricing
+      pricing,
+      studentPricing
     )
 
     if (typeof amount === 'object') return amount // MissingFieldsError

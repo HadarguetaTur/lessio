@@ -144,6 +144,53 @@ describe('calculateLessonAmount', () => {
   })
 })
 
+describe('per-student pricing', () => {
+  it("bills an individual lesson at the student's own rate", () => {
+    const result = calculateLessonAmount(lesson(), 'student-1', [], TZ, 1, PRICING, {
+      hourlyRate: 240,
+      discountPercent: null,
+    })
+    expect(amountOf(result)).toBe(240)
+  })
+
+  it('applies the discount after the price is resolved, for any lesson type', () => {
+    expect(
+      amountOf(
+        calculateLessonAmount(lesson(), 'student-1', [], TZ, 1, PRICING, {
+          hourlyRate: null,
+          discountPercent: 10,
+        })
+      )
+    ).toBe(180)
+    expect(
+      amountOf(
+        calculateLessonAmount(lesson({ lesson_type: 'pair' }), 'student-1', [], TZ, 2, PRICING, {
+          hourlyRate: null,
+          discountPercent: 20,
+        })
+      )
+    ).toBe(90)
+  })
+
+  it('a discounted month sums the discounted amounts', () => {
+    const result = calculateLessonsContribution(
+      [lesson(), lesson({ id: 'lesson-2', lesson_type: 'group' })],
+      '2026-04',
+      'student-1',
+      [],
+      TZ,
+      new Set(),
+      new Map([['lesson-1', 1], ['lesson-2', 4]]),
+      PRICING,
+      1,
+      { hourlyRate: null, discountPercent: 50 }
+    )
+    if (isMissingFieldsError(result)) throw new Error('unexpected MissingFieldsError')
+    expect(result.lessonsTotal).toBe(160)
+    expect(result.lessonsCount).toBe(2)
+  })
+})
+
 describe('calculateLessonsContribution', () => {
   const counts = new Map([['lesson-1', 2]])
 

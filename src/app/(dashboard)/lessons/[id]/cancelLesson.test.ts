@@ -57,6 +57,10 @@ vi.mock('@/lib/organizations/pricing', () => ({ getOrgPricing: mockGetOrgPricing
 vi.mock('@/lib/billing/lessonPricing', () => ({
   resolveLessonBaseAmount: vi.fn(() => 100),
   isMissingPrice: vi.fn(() => false),
+  toStudentPricing: vi.fn((row) => ({
+    hourlyRate: row?.hourly_rate ?? null,
+    discountPercent: row?.discount_percent ?? null,
+  })),
 }))
 vi.mock('@/lib/i18n/actionErrors', () => ({ commonError: mockCommonError, zodError: vi.fn() }))
 vi.mock('next-intl/server', () => ({ getTranslations: vi.fn(async () => (k: string) => k) }))

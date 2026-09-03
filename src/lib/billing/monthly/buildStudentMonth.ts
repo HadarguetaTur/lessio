@@ -15,8 +15,9 @@ import { calculateSubscriptionsContribution } from './subscriptions'
 import { getBillingMonthRange, getBillingPeriodDates } from './month'
 import { syncMonthlyCharge } from './syncMonthlyCharge'
 import { getOrgPricing, type OrgPricing } from '@/lib/organizations/pricing'
+import { toStudentPricing, type StudentPricing } from '@/lib/billing/lessonPricing'
 
-interface PrefetchedData {
+export interface PrefetchedData {
   lessons: LessonRow[]
   cancellations: CancellationEventRow[]
   subscriptions: SubscriptionRow[]
@@ -25,6 +26,8 @@ interface PrefetchedData {
   studentCountByLesson: Map<string, number>
   /** Org lesson price defaults — fetched once by the bulk runner. */
   pricing: OrgPricing
+  /** This student's personal rate and discount (students.hourly_rate / discount_percent). */
+  studentPricing: StudentPricing
 }
 
 function assertNoQueryError(
@@ -62,6 +65,7 @@ export async function buildStudentMonth(
   let existingBilling: MonthlyBillingRow | null
   let studentCountByLesson: Map<string, number>
   let pricing: OrgPricing
+  let studentPricing: StudentPricing
 
   if (prefetched) {
     lessons = prefetched.lessons
@@ -70,8 +74,18 @@ export async function buildStudentMonth(
     existingBilling = prefetched.existingBilling
     studentCountByLesson = prefetched.studentCountByLesson
     pricing = prefetched.pricing
+    studentPricing = prefetched.studentPricing
   } else {
     pricing = await getOrgPricing(organizationId)
+
+    const { data: studentRow, error: studentError } = await supabase
+      .from('students')
+      .select('hourly_rate, discount_percent')
+      .eq('id', studentId)
+      .eq('organization_id', organizationId)
+      .maybeSingle()
+    assertNoQueryError('load student pricing', studentError)
+    studentPricing = toStudentPricing(studentRow)
 
     const { monthStartUTC, monthEndUTC } = getBillingMonthRange(
       billingMonth,
@@ -169,7 +183,8 @@ export async function buildStudentMonth(
     cancelledLessonIds,
     studentCountByLesson,
     pricing,
-    cycleStartDay
+    cycleStartDay,
+    studentPricing
   )
   if (isMissingFieldsError(lessonsResult)) return lessonsResult
 
@@ -182,7 +197,8 @@ export async function buildStudentMonth(
     lessonLookup,
     subscriptions,
     timezone,
-    pricing
+    pricing,
+    studentPricing
   )
   if (isMissingFieldsError(cancellationsResult)) return cancellationsResult
 

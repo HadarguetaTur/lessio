@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import { Coins, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -14,8 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { PAYMENT_METHODS, type PaymentMethod } from '@/lib/charges/paymentMethods'
+import { type PaymentMethod } from '@/lib/charges/paymentMethods'
 import { formatMoney } from '@/lib/i18n/formatCurrency'
+import { PaymentDetailsFields } from './PaymentDetailsFields'
 
 export interface RecordPaymentInput {
   chargeId: string
@@ -160,48 +160,21 @@ export function RecordPaymentDialog({
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground" htmlFor="payment-method">
-                {t('methodLabel')}
-              </label>
-              <select
-                id="payment-method"
-                value={method}
-                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>
-                    {t(`methods.${m}` as Parameters<typeof t>[0])}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder={t('notesPlaceholder')}
-              rows={2}
-              maxLength={500}
+            <PaymentDetailsFields
+              idPrefix="payment"
+              method={method}
+              onMethodChange={setMethod}
+              notes={notes}
+              onNotesChange={setNotes}
+              notifyParent={notifyParent}
+              onNotifyChange={setNotifyParent}
+              showNotify={parentHasPhone}
             />
 
             {isPartial && (
               <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 {t('partialHint', { balance: money(remaining - parsedAmount) })}
               </p>
-            )}
-
-            {parentHasPhone && (
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input
-                  type="checkbox"
-                  checked={notifyParent}
-                  onChange={(e) => setNotifyParent(e.target.checked)}
-                  className="h-4 w-4 rounded border-input accent-primary"
-                />
-                {t('notifyParent')}
-              </label>
             )}
           </div>
 

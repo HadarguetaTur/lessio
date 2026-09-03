@@ -17,6 +17,10 @@ export interface Student {
   created_at: string
   teacher_id: string | null
   teacher_name: string | null
+  // Per-student pricing (see src/lib/billing/lessonPricing.ts StudentPricing)
+  hourly_rate: number | null
+  discount_percent: number | null
+  discount_reason: string | null
 }
 
 export interface StudentLesson {
@@ -64,7 +68,7 @@ export interface GetStudentsOptions {
 }
 
 const STUDENT_SELECT =
-  'id, full_name, phone, grade, level, focused_subject, weekly_quota, notes, status, is_active, created_at, teacher_id, teachers!teacher_id(profiles(full_name))'
+  'id, full_name, phone, grade, level, focused_subject, weekly_quota, notes, status, is_active, created_at, teacher_id, hourly_rate, discount_percent, discount_reason, teachers!teacher_id(profiles(full_name))'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapStudent(row: any): Student {
@@ -82,6 +86,9 @@ function mapStudent(row: any): Student {
     created_at: row.created_at,
     teacher_id: row.teacher_id ?? null,
     teacher_name: row.teachers?.profiles?.full_name ?? null,
+    hourly_rate: row.hourly_rate == null ? null : Number(row.hourly_rate),
+    discount_percent: row.discount_percent == null ? null : Number(row.discount_percent),
+    discount_reason: row.discount_reason ?? null,
   }
 }
 

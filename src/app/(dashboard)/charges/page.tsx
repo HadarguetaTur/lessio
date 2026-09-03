@@ -12,11 +12,18 @@ import {
 } from '@/lib/charges'
 import { getChargeDateRange } from '@/lib/charges/dateRange'
 import { getChargesSummary } from '@/lib/charges/summary'
+import type { SelectedCharge } from '@/lib/charges/selection'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getOrgProviderStatus } from '@/lib/organizations/providerStatus'
 import { getParents } from '@/lib/parents'
 import { ChargeRowActions } from '@/components/dashboard/charges/ChargeRowActions'
 import { SettleBalanceDialog } from '@/components/dashboard/charges/SettleBalanceDialog'
+import {
+  BulkMarkPaidBar,
+  ChargeSelectCheckbox,
+  ChargeSelectionProvider,
+  SelectAllCheckbox,
+} from '@/components/dashboard/charges/ChargeSelection'
 import { KpiCard } from '@/components/dashboard/KpiCard'
 import { getProviderUI } from '@/lib/payments/registry-ui'
 import { renderChargeNote } from '@/lib/charges/renderNote'
@@ -25,6 +32,7 @@ import {
   voidChargeAction,
   recordChargePaymentAction,
   settleParentBalanceAction,
+  settleChargesAction,
 } from './actions'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -104,6 +112,21 @@ export default async function ChargesPage(props: {
     ? await getOpenBalancesByParent(orgId, parentIdsOnPage)
     : new Map<string, { total: number; count: number }>()
   const selectedParentBalance = selectedParent ? openBalances.get(selectedParent.id) : undefined
+
+  // The rows a tick can settle: open charges only, described well enough for the
+  // bulk dialog to name the parents and total the money without another query.
+  const selectableRows: SelectedCharge[] = canMarkPaid
+    ? charges
+        .filter((c) => OPEN_STATUSES.includes(c.status) && remainingOf(c) > 0)
+        .map((c) => ({
+          chargeId: c.id,
+          parentId: c.parent.id,
+          parentName: c.parent.full_name,
+          parentHasPhone: Boolean(c.parent.phone),
+          remaining: remainingOf(c),
+        }))
+    : []
+  const selectableById = new Map(selectableRows.map((r) => [r.chargeId, r]))
   const t = await getTranslations('charges')
   const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
@@ -373,11 +396,17 @@ export default async function ChargesPage(props: {
           title={t('noCharges')}
         />
       ) : (
-        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <div className="h-full overflow-auto">
-            <Table className="min-w-[980px]">
+        <ChargeSelectionProvider selectableIds={selectableRows.map((r) => r.chargeId)}>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="min-h-0 flex-1 overflow-auto">
+            <Table className="min-w-[1020px]">
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  {canMarkPaid && (
+                    <TableHead className="sticky top-0 z-10 w-10 bg-muted/95 px-3 text-start backdrop-blur">
+                      <SelectAllCheckbox rows={selectableRows} />
+                    </TableHead>
+                  )}
                   <TableHead className="sticky top-0 z-10 bg-muted/95 px-5 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
                     {t('fields.parent')}
                   </TableHead>
@@ -413,6 +442,15 @@ export default async function ChargesPage(props: {
               <TableBody>
                 {charges.map((charge) => (
                   <TableRow key={charge.id} className="hover:bg-muted/20">
+                    {canMarkPaid && (
+                      <TableCell className="w-10 px-3 py-3.5">
+                        {/* Only an open charge can be settled; a closed row keeps
+                            the column's width without offering an action. */}
+                        {selectableById.get(charge.id) ? (
+                          <ChargeSelectCheckbox charge={selectableById.get(charge.id)!} />
+                        ) : null}
+                      </TableCell>
+                    )}
                     <TableCell className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <UserAvatar name={charge.parent.full_name} />
@@ -544,7 +582,9 @@ export default async function ChargesPage(props: {
               </TableBody>
             </Table>
           </div>
+          {canMarkPaid && <BulkMarkPaidBar action={settleChargesAction} />}
         </div>
+        </ChargeSelectionProvider>
       )}
     </div>
   )

@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { ChevronDown, Copy, CreditCard, Loader2, Send } from 'lucide-react'
+import { CheckCheck, ChevronDown, Copy, CreditCard, Loader2, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchField } from '@/components/ui/search-field'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -20,6 +20,17 @@ import {
   type SettleBalanceInput,
   type SettleBalanceResult,
 } from '@/components/dashboard/charges/SettleBalanceDialog'
+import {
+  BulkMarkPaidDialog,
+  type SettleChargesActionResult,
+  type SettleChargesInput,
+} from '@/components/dashboard/charges/BulkMarkPaidDialog'
+import {
+  summarize,
+  toggleAllOf,
+  toggleSelection,
+  type SelectedCharge,
+} from '@/lib/charges/selection'
 import { renderChargeNote } from '@/lib/charges/renderNote'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { matchesSearch } from '@/lib/search/text'
@@ -34,6 +45,7 @@ interface DebtorsListProps {
   sendPaymentRequestsAction: (parentIds: string[]) => Promise<SendRemindersResult>
   recordPaymentAction: (input: RecordPaymentInput) => Promise<ManualPaymentResult>
   settleAction: (input: SettleBalanceInput) => Promise<SettleBalanceResult>
+  settleChargesAction: (input: SettleChargesInput) => Promise<SettleChargesActionResult>
   waiveAction: (chargeId: string, reason: string) => Promise<{ error: string | null }>
   voidAction: (chargeId: string, reason: string) => Promise<{ error: string | null }>
 }
@@ -41,6 +53,17 @@ interface DebtorsListProps {
 /** A debtor is found by their own name, any child's name, or their phone. */
 function matchesRow(row: DebtorRow, term: string): boolean {
   return matchesSearch(term, { names: [row.parentName, ...row.childrenNames], phones: [row.phone] })
+}
+
+/** One expanded charge, in the shape the shared selection helpers expect. */
+function chargeRowOf(row: DebtorRow, charge: DebtorRow['charges'][number]): SelectedCharge {
+  return {
+    chargeId: charge.id,
+    parentId: row.parentId,
+    parentName: row.parentName,
+    parentHasPhone: Boolean(row.phone),
+    remaining: charge.remaining,
+  }
 }
 
 export function DebtorsList({
@@ -51,16 +74,23 @@ export function DebtorsList({
   sendPaymentRequestsAction,
   recordPaymentAction,
   settleAction,
+  settleChargesAction,
   waiveAction,
   voidAction,
 }: DebtorsListProps) {
   const t = useTranslations('debts')
   const tRoot = useTranslations()
   const tCharges = useTranslations('charges')
+  const tSelection = useTranslations('charges.selection')
+  const tBulk = useTranslations('charges.bulkPaid')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
   const [isPending, startTransition] = useTransition()
+  // Charge selection lives inside the expanded parent, so it cannot be confused
+  // with the parent-level selection the bulk messaging buttons use above.
+  const [selectedCharges, setSelectedCharges] = useState<Map<string, SelectedCharge>>(new Map())
+  const [bulkOpen, setBulkOpen] = useState(false)
 
   // Filtered in memory: the page already loads every debtor, and a collection
   // list is short enough that a round trip per keystroke buys nothing.
@@ -181,6 +211,8 @@ export function DebtorsList({
           {visibleRows.map((row) => {
             const isExpanded = expanded === row.parentId
             const canMessage = !row.optedOut && Boolean(row.phone)
+            const chargeRows = isExpanded ? row.charges.map((c) => chargeRowOf(row, c)) : []
+            const chargeSummary = summarize(selectedCharges)
 
             return (
               <li key={row.parentId}>
@@ -292,7 +324,11 @@ export function DebtorsList({
                       size="sm"
                       aria-expanded={isExpanded}
                       aria-label={t('toggleCharges')}
-                      onClick={() => setExpanded(isExpanded ? null : row.parentId)}
+                      onClick={() => {
+                        // A selection belongs to the parent it was made in.
+                        setSelectedCharges(new Map())
+                        setExpanded(isExpanded ? null : row.parentId)
+                      }}
                     >
                       <ChevronDown
                         size={16}
@@ -304,11 +340,59 @@ export function DebtorsList({
 
                 {isExpanded && (
                   <ul className="divide-y divide-border border-t border-border bg-muted/20">
+                    {/* Tick the lessons this parent just paid for — the middle
+                        ground between one charge and their whole balance. */}
+                    <li className="flex flex-wrap items-center gap-3 bg-muted/40 px-5 py-2 ps-14">
+                      <input
+                        type="checkbox"
+                        checked={chargeRows.length > 0 && selectedCharges.size === chargeRows.length}
+                        ref={(el) => {
+                          if (el) el.indeterminate = selectedCharges.size > 0 && selectedCharges.size < chargeRows.length
+                        }}
+                        onChange={() => setSelectedCharges(toggleAllOf(selectedCharges, chargeRows))}
+                        aria-label={tSelection('selectAll')}
+                        className="h-4 w-4 rounded border-input accent-primary"
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {selectedCharges.size > 0
+                          ? tSelection('summary', {
+                              count: chargeSummary.count,
+                              total: formatCurrency(chargeSummary.total, locale),
+                            })
+                          : tSelection('selectAll')}
+                      </span>
+                      {selectedCharges.size > 0 && (
+                        <div className="ms-auto flex items-center gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedCharges(new Map())}>
+                            {tSelection('clear')}
+                          </Button>
+                          <Button size="sm" className="gap-1.5" onClick={() => setBulkOpen(true)}>
+                            <CheckCheck size={14} />
+                            {tBulk('action')}
+                          </Button>
+                        </div>
+                      )}
+                    </li>
+
                     {row.charges.map((charge) => (
                       <li
                         key={charge.id}
                         className="flex flex-wrap items-center gap-3 px-5 py-3 ps-14"
                       >
+                        <input
+                          type="checkbox"
+                          checked={selectedCharges.has(charge.id)}
+                          onChange={() =>
+                            setSelectedCharges(
+                              toggleSelection(selectedCharges, chargeRowOf(row, charge))
+                            )
+                          }
+                          aria-label={tSelection('selectRow', {
+                            name: row.parentName,
+                            amount: formatCurrency(charge.remaining, locale),
+                          })}
+                          className="h-4 w-4 rounded border-input accent-primary"
+                        />
                         <div className="min-w-40 flex-1">
                           <Link
                             href={`/charges/${charge.id}`}
@@ -371,6 +455,14 @@ export function DebtorsList({
           })}
         </ul>
       </div>
+
+      <BulkMarkPaidDialog
+        selection={selectedCharges}
+        action={settleChargesAction}
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        onDone={() => setSelectedCharges(new Map())}
+      />
     </div>
   )
 }

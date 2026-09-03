@@ -12,6 +12,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createCancellationCharge } from '@/lib/billing/createCharge'
 import type { CancellationChargeResult } from '@/lib/billing/calculateCancellationCharge'
 import { getOrgPricing } from '@/lib/organizations/pricing'
+import { toStudentPricing } from '@/lib/billing/lessonPricing'
 import { getCancellationPolicyServiceRole } from '@/lib/cancellation-policy/service'
 import { previewCancellationCharge, isCancellableByParent } from './previewCancellationCharge'
 
@@ -57,7 +58,7 @@ export async function executeCancellation(
   const { data: lesson, error: lessonError } = await db
     .from('lessons')
     .select(
-      'id, start_at, end_at, status, lesson_type, price_per_student, lesson_students(student_id, students(full_name)), teachers(id, hourly_rate, profiles(full_name))'
+      'id, start_at, end_at, status, lesson_type, price_per_student, lesson_students(student_id, students(full_name, hourly_rate, discount_percent)), teachers(id, hourly_rate, profiles(full_name))'
     )
     .eq('id', lessonId)
     .eq('organization_id', orgId)
@@ -72,7 +73,10 @@ export async function executeCancellation(
   if (lesson.status !== 'scheduled') return { success: false, error: 'not_eligible' }
 
   // Resolve primary student for this lesson
-  const lessonStudents = (lesson.lesson_students as unknown as Array<{ student_id: string; students: { full_name: string } }>)
+  const lessonStudents = lesson.lesson_students as unknown as Array<{
+    student_id: string
+    students: { full_name: string; hourly_rate: number | null; discount_percent: number | null }
+  }>
   const primaryStudentId = lessonStudents[0]?.student_id
 
   if (!primaryStudentId) return { success: false, error: 'not_eligible' }
@@ -114,6 +118,7 @@ export async function executeCancellation(
       lesson_type: lesson.lesson_type as string | null,
       price_per_student: (lesson.price_per_student as number | null) ?? null,
       teacherHourlyRate: teacher?.hourly_rate ?? null,
+      studentPricing: toStudentPricing(lessonStudents[0]?.students),
     },
     now,
     pricing,

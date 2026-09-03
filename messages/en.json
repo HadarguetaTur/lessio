@@ -657,7 +657,16 @@
     },
     "noTeacherRecord": "No active teacher record was found for this user.",
     "moreDetails": "More details",
-    "noSearchMatch": "No students match \"{query}\""
+    "noSearchMatch": "No students match \"{query}\"",
+    "pricing": {
+      "title": "Personal pricing",
+      "hint": "Leave blank to inherit the teacher's rate and the organization's prices. The discount applies to every lesson and cancellation fee, not to subscriptions or punch cards.",
+      "hourlyRate": "Hourly rate (individual lessons)",
+      "hourlyRatePlaceholder": "Teacher's rate",
+      "discountPercent": "Discount (%)",
+      "discountReason": "Discount reason",
+      "discountReasonPlaceholder": "e.g. sibling discount"
+    }
   },
   "parents": {
     "title": "Parents",
@@ -1187,7 +1196,26 @@
     "notification": {
       "queued": "A confirmation was sent to the parent on WhatsApp",
       "noPhone": "No confirmation sent — the parent has no phone number",
+      "noPhoneCount": "{count, plural, one {# parent has no phone} other {# parents have no phone}}",
       "whatsappNotConnected": "No confirmation sent — WhatsApp is not connected"
+    },
+    "selection": {
+      "selectRow": "Select {name}'s charge for {amount}",
+      "selectAll": "Select all",
+      "clear": "Clear selection",
+      "summary": "{count, plural, one {# charge selected} other {# charges selected}} · total {total}",
+      "parents": "{count, plural, one {# parent} other {# parents}}"
+    },
+    "bulkPaid": {
+      "action": "Mark as paid",
+      "title": "Mark {count, plural, one {# charge} other {# charges}} as paid",
+      "description": "The selected charges will be marked as paid in full. For a partial payment within a single charge, use \"Record payment\".",
+      "summary": "{count, plural, one {# charge} other {# charges}} · total {total}",
+      "notifyParents": "Send the parents a WhatsApp confirmation",
+      "confirm": "Mark as paid",
+      "success": "{count, plural, one {# charge} other {# charges}} marked as paid",
+      "notified": "confirmation sent to {count, plural, one {# parent} other {# parents}}",
+      "partialFailure": "{settled} marked as paid, {failed} still open — try again"
     },
     "settleBalance": {
       "action": "Mark whole balance as paid",

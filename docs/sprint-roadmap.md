@@ -547,6 +547,25 @@ greyed-out button and the server's refusal can never disagree. The dead
 `cancelLessonSeries` soft-cancel path and the orphaned scope-chooser i18n keys
 (`cancelFromHere`, `cancelAll`, …) were removed with it.
 
+Two follow-ups shipped the same day, once a real tenant showed what the change
+did *not* reach. The calendar had been hiding a cancelled lesson only while it
+was still ahead of us — a past cancellation happened and may carry a charge
+someone needs explained. That reasoning does not cover a row a series-wide cancel
+wrote: it is only ever written in bulk over lessons nobody attended and nobody
+was charged for, which is why the 20260901100000 migration deleted the future
+ones as planning noise. Those are now hidden at any date, with the existing
+"show cancelled" toggle still revealing them, and hand-typed cancellations
+untouched. The series list likewise hides series with nothing ahead of them
+behind a toggle of their own.
+
+`scripts/cleanup-dead-series.ts` then removes the spent series outright. It runs
+through `deleteLessonSeries`, so a series holding any history is reported and
+skipped rather than worked around, and `--orphans` also sweeps series-cancelled
+lessons whose series is already gone (`lessons.series_id` is ON DELETE SET NULL,
+so nothing else would ever collect them). Run against Raz Mazurik on 2026-09-03:
+27 series, 30 lessons and 1 orphan removed; his 97 hand-typed cancellations, 929
+completed lessons, 7 upcoming lessons and 386 charges untouched.
+
 **Known gaps:** removal is only offered on `/lessons/new-series`, not on a single
 lesson's page, where stopping remains the only series-wide action. Series created
 by the importer still write a differently shaped `rule`; they can now be removed,

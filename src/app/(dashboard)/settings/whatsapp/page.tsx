@@ -48,6 +48,7 @@ export default async function WhatsAppSettingsPage({
       automation_payment_request_enabled,
       automation_dunning_enabled,
       automation_new_leads_enabled,
+      payment_confirmation_default_enabled,
       automation_lesson_reminder_hours,
       ai_assistant_enabled
     `)
@@ -136,13 +137,14 @@ export default async function WhatsAppSettingsPage({
         <div className="mt-6">
           <AutomationsSettings
             org={{
-              automation_lesson_reminder_enabled:  org.automation_lesson_reminder_enabled ?? true,
-              automation_cancellation_enabled:     org.automation_cancellation_enabled ?? true,
-              automation_payment_request_enabled:  org.automation_payment_request_enabled ?? true,
-              automation_dunning_enabled:          org.automation_dunning_enabled ?? false,
-              automation_new_leads_enabled:        org.automation_new_leads_enabled ?? true,
-              automation_lesson_reminder_hours:    org.automation_lesson_reminder_hours ?? 24,
-              ai_assistant_enabled:                org.ai_assistant_enabled ?? false,
+              automation_lesson_reminder_enabled:   org.automation_lesson_reminder_enabled ?? true,
+              automation_cancellation_enabled:      org.automation_cancellation_enabled ?? true,
+              automation_payment_request_enabled:   org.automation_payment_request_enabled ?? true,
+              automation_dunning_enabled:           org.automation_dunning_enabled ?? false,
+              automation_new_leads_enabled:         org.automation_new_leads_enabled ?? true,
+              payment_confirmation_default_enabled: org.payment_confirmation_default_enabled ?? true,
+              automation_lesson_reminder_hours:     org.automation_lesson_reminder_hours ?? 24,
+              ai_assistant_enabled:                 org.ai_assistant_enabled ?? false,
             }}
           />
         </div>

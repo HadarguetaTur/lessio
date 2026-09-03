@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { type PaymentMethod } from '@/lib/charges/paymentMethods'
+import { type PaymentNotificationStatus } from '@/lib/charges/notificationStatus'
 import { summarize, type ChargeSelection } from '@/lib/charges/selection'
 import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { PaymentDetailsFields } from './PaymentDetailsFields'
@@ -33,10 +34,12 @@ export interface SettleChargesInput {
   chargeIds: string[]
   method: PaymentMethod
   notes?: string
+  /**
+   * Whether to WhatsApp each parent a confirmation. Omitted means the server
+   * falls back to the org default set at /settings/whatsapp.
+   */
   notifyParent?: boolean
 }
-
-export type PaymentNotificationStatus = 'queued' | 'disabled' | 'no_phone' | 'whatsapp_not_connected'
 
 export interface SettleChargesActionResult {
   error: string | null
@@ -52,6 +55,8 @@ interface BulkMarkPaidDialogProps {
   onOpenChange: (open: boolean) => void
   /** Called after a successful settle, so the caller can clear its selection. */
   onDone: () => void
+  /** Org default for the confirmation checkbox, set at /settings/whatsapp. */
+  defaultNotifyParent: boolean
 }
 
 export function BulkMarkPaidDialog({
@@ -60,6 +65,7 @@ export function BulkMarkPaidDialog({
   open,
   onOpenChange,
   onDone,
+  defaultNotifyParent,
 }: BulkMarkPaidDialogProps) {
   const t = useTranslations('charges.bulkPaid')
   const tNotify = useTranslations('charges.notification')
@@ -67,7 +73,7 @@ export function BulkMarkPaidDialog({
   const locale = useLocale()
   const [method, setMethod] = useState<PaymentMethod>('manual')
   const [notes, setNotes] = useState('')
-  const [notifyParent, setNotifyParent] = useState(true)
+  const [notifyParent, setNotifyParent] = useState(defaultNotifyParent)
   const [isPending, startTransition] = useTransition()
 
   const summary = summarize(selection)

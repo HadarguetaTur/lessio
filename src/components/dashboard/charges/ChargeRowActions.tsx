@@ -35,6 +35,8 @@ interface ChargeRowActionsProps {
    * more than this one charge — otherwise "record payment" already does it.
    */
   parentBalance?: { total: number; count: number }
+  /** Org default for the confirmation checkbox, set at /settings/whatsapp. */
+  defaultNotifyParent: boolean
   recordPaymentAction: (input: RecordPaymentInput) => Promise<ManualPaymentResult>
   settleAction: (input: SettleBalanceInput) => Promise<SettleBalanceResult>
   waiveAction: (chargeId: string, reason: string) => Promise<{ error: string | null }>
@@ -61,6 +63,7 @@ export function ChargeRowActions({
   hasInvoice,
   parent,
   parentBalance,
+  defaultNotifyParent,
   recordPaymentAction,
   settleAction,
   waiveAction,
@@ -81,6 +84,7 @@ export function ChargeRowActions({
         chargeId={chargeId}
         remaining={remaining}
         parentHasPhone={parent.hasPhone}
+        defaultNotifyParent={defaultNotifyParent}
         action={recordPaymentAction}
       />
 
@@ -125,6 +129,7 @@ export function ChargeRowActions({
           total={parentBalance.total}
           chargeCount={parentBalance.count}
           parentHasPhone={parent.hasPhone}
+          defaultNotifyParent={defaultNotifyParent}
           action={settleAction}
           open={settleOpen}
           onOpenChange={setSettleOpen}

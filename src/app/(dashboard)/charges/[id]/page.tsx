@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/session'
 import { getChargeById, ChargeStatus, getChargeRemaining } from '@/lib/charges'
 import { getChargeAuditLog } from '@/lib/charges/audit'
 import { getChargePayments } from '@/lib/charges/payments'
+import { getPaymentConfirmationDefault } from '@/lib/organizations/paymentNotification'
 import { ChargePaymentsList } from '@/components/dashboard/charges/ChargePaymentsList'
 import { getProviderUI } from '@/lib/payments/registry-ui'
 import { renderChargeNote } from '@/lib/charges/renderNote'
@@ -41,9 +42,10 @@ export default async function ChargeDetailPage({
     notFound()
   }
 
-  const [auditEntries, payments] = await Promise.all([
+  const [auditEntries, payments, defaultNotifyParent] = await Promise.all([
     getChargeAuditLog(orgId, charge.id),
     getChargePayments(orgId, charge.id),
+    getPaymentConfirmationDefault(orgId),
   ])
   const remaining = getChargeRemaining(charge.amount, charge.amount_paid)
   const canMarkPaid = role === 'owner' || role === 'admin'
@@ -210,6 +212,7 @@ export default async function ChargeDetailPage({
               chargeId={charge.id}
               remaining={remaining}
               parentHasPhone={Boolean(charge.parent.phone)}
+              defaultNotifyParent={defaultNotifyParent}
               action={recordChargePaymentAction}
             />
             <ResolveChargeDialog

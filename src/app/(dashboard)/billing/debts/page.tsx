@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/session'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { getDebtorsOverview } from '@/lib/charges/debtors'
+import { getPaymentConfirmationDefault } from '@/lib/organizations/paymentNotification'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -25,10 +26,11 @@ export default async function DebtsPage() {
     redirect('/dashboard')
   }
 
-  const [{ rows, totalDebt, debtorCount }, t, locale] = await Promise.all([
+  const [{ rows, totalDebt, debtorCount }, t, locale, defaultNotifyParent] = await Promise.all([
     getDebtorsOverview(orgId),
     getTranslations('debts'),
     getLocale(),
+    getPaymentConfirmationDefault(orgId),
   ])
 
   return (
@@ -61,6 +63,7 @@ export default async function DebtsPage() {
             rows={rows}
             locale={locale}
             isOwner={role === 'owner'}
+            defaultNotifyParent={defaultNotifyParent}
             sendRemindersAction={sendDebtRemindersAction}
             sendPaymentRequestsAction={sendConsolidatedRequestsAction}
             recordPaymentAction={recordChargePaymentAction}

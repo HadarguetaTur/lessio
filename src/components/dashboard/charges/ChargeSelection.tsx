@@ -144,8 +144,11 @@ export function SelectAllCheckbox({ rows }: { rows: SelectedCharge[] }) {
  */
 export function BulkMarkPaidBar({
   action,
+  defaultNotifyParent,
 }: {
   action: (input: SettleChargesInput) => Promise<SettleChargesActionResult>
+  /** Org default for the confirmation checkbox, set at /settings/whatsapp. */
+  defaultNotifyParent: boolean
 }) {
   const t = useTranslations('charges.selection')
   const tBulk = useTranslations('charges.bulkPaid')
@@ -185,6 +188,7 @@ export function BulkMarkPaidBar({
         open={open}
         onOpenChange={setOpen}
         onDone={clear}
+        defaultNotifyParent={defaultNotifyParent}
       />
     </div>
   )

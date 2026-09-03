@@ -22,6 +22,10 @@ export interface SettleBalanceInput {
   parentId: string
   method: PaymentMethod
   notes?: string
+  /**
+   * Whether to WhatsApp the parent a confirmation. Omitted means the server
+   * falls back to the org default set at /settings/whatsapp.
+   */
   notifyParent?: boolean
 }
 
@@ -50,6 +54,8 @@ interface SettleBalanceDialogProps {
    */
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Org default for the confirmation checkbox, set at /settings/whatsapp. */
+  defaultNotifyParent: boolean
 }
 
 /**
@@ -70,6 +76,7 @@ export function SettleBalanceDialog({
   triggerLabel,
   open: controlledOpen,
   onOpenChange,
+  defaultNotifyParent,
 }: SettleBalanceDialogProps) {
   const t = useTranslations('charges.settleBalance')
   const tNotify = useTranslations('charges.notification')
@@ -84,7 +91,7 @@ export function SettleBalanceDialog({
   }
   const [method, setMethod] = useState<PaymentMethod>('manual')
   const [notes, setNotes] = useState('')
-  const [notifyParent, setNotifyParent] = useState(true)
+  const [notifyParent, setNotifyParent] = useState(defaultNotifyParent)
   const [isPending, startTransition] = useTransition()
 
   function handleSubmit() {

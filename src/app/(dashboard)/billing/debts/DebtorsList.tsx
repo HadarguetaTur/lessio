@@ -41,6 +41,8 @@ interface DebtorsListProps {
   rows: DebtorRow[]
   locale: string
   isOwner: boolean
+  /** Org default for the confirmation checkbox, set at /settings/whatsapp. */
+  defaultNotifyParent: boolean
   sendRemindersAction: (parentIds: string[]) => Promise<SendRemindersResult>
   sendPaymentRequestsAction: (parentIds: string[]) => Promise<SendRemindersResult>
   recordPaymentAction: (input: RecordPaymentInput) => Promise<ManualPaymentResult>
@@ -70,6 +72,7 @@ export function DebtorsList({
   rows,
   locale,
   isOwner,
+  defaultNotifyParent,
   sendRemindersAction,
   sendPaymentRequestsAction,
   recordPaymentAction,
@@ -315,6 +318,7 @@ export function DebtorsList({
                       total={row.totalDebt}
                       chargeCount={row.chargeCount}
                       parentHasPhone={Boolean(row.phone)}
+                      defaultNotifyParent={defaultNotifyParent}
                       action={settleAction}
                       variant="ghost"
                       triggerLabel={t('settleBalance')}
@@ -427,6 +431,7 @@ export function DebtorsList({
                             chargeId={charge.id}
                             remaining={charge.remaining}
                             parentHasPhone={Boolean(row.phone)}
+                            defaultNotifyParent={defaultNotifyParent}
                             action={recordPaymentAction}
                           />
                           <ResolveChargeDialog
@@ -462,6 +467,7 @@ export function DebtorsList({
         open={bulkOpen}
         onOpenChange={setBulkOpen}
         onDone={() => setSelectedCharges(new Map())}
+        defaultNotifyParent={defaultNotifyParent}
       />
     </div>
   )

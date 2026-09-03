@@ -15,6 +15,7 @@ import { getChargesSummary } from '@/lib/charges/summary'
 import type { SelectedCharge } from '@/lib/charges/selection'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getOrgProviderStatus } from '@/lib/organizations/providerStatus'
+import { getPaymentConfirmationDefault } from '@/lib/organizations/paymentNotification'
 import { getParents } from '@/lib/parents'
 import { ChargeRowActions } from '@/components/dashboard/charges/ChargeRowActions'
 import { SettleBalanceDialog } from '@/components/dashboard/charges/SettleBalanceDialog'
@@ -81,9 +82,10 @@ export default async function ChargesPage(props: {
 
   // "Overdue" is a calendar-date comparison in the org's own timezone, so the
   // zone has to be known before the ledger query can be built.
-  const [matchingParentIds, timezone] = await Promise.all([
+  const [matchingParentIds, timezone, defaultNotifyParent] = await Promise.all([
     search ? findChargeParentIds(orgId, search) : Promise.resolve(undefined),
     getOrgTimezone(orgId),
+    getPaymentConfirmationDefault(orgId),
   ])
   const todayLocal = DateTime.now().setZone(timezone).toISODate()!
   const dateRange = getChargeDateRange(searchParams.from, searchParams.to, timezone)
@@ -383,6 +385,7 @@ export default async function ChargesPage(props: {
                 total={selectedParentBalance.total}
                 chargeCount={selectedParentBalance.count}
                 parentHasPhone={Boolean(selectedParent.phone)}
+                defaultNotifyParent={defaultNotifyParent}
                 action={settleParentBalanceAction}
               />
             </span>
@@ -565,6 +568,7 @@ export default async function ChargesPage(props: {
                               hasPhone: Boolean(charge.parent.phone),
                             }}
                             parentBalance={openBalances.get(charge.parent.id)}
+                            defaultNotifyParent={defaultNotifyParent}
                             recordPaymentAction={recordChargePaymentAction}
                             settleAction={settleParentBalanceAction}
                             waiveAction={waiveChargeAction}
@@ -582,7 +586,12 @@ export default async function ChargesPage(props: {
               </TableBody>
             </Table>
           </div>
-          {canMarkPaid && <BulkMarkPaidBar action={settleChargesAction} />}
+          {canMarkPaid && (
+            <BulkMarkPaidBar
+              action={settleChargesAction}
+              defaultNotifyParent={defaultNotifyParent}
+            />
+          )}
         </div>
         </ChargeSelectionProvider>
       )}

@@ -5,13 +5,14 @@ import { useTranslations } from 'next-intl'
 import { saveAutomationSettings, type AutomationSettingsResult } from './automations-actions'
 
 type OrgAutomations = {
-  automation_lesson_reminder_enabled:  boolean
-  automation_cancellation_enabled:     boolean
-  automation_payment_request_enabled:  boolean
-  automation_dunning_enabled:          boolean
-  automation_new_leads_enabled:        boolean
-  automation_lesson_reminder_hours:    number
-  ai_assistant_enabled:                boolean
+  automation_lesson_reminder_enabled:   boolean
+  automation_cancellation_enabled:      boolean
+  automation_payment_request_enabled:   boolean
+  automation_dunning_enabled:           boolean
+  automation_new_leads_enabled:         boolean
+  payment_confirmation_default_enabled: boolean
+  automation_lesson_reminder_hours:     number
+  ai_assistant_enabled:                 boolean
 }
 
 // Labels and descriptions live in the catalog under
@@ -22,6 +23,7 @@ const FLOWS = [
   { key: 'automation_cancellation_enabled' as const, hasHours: false },
   { key: 'automation_payment_request_enabled' as const, hasHours: false },
   { key: 'automation_dunning_enabled' as const, hasHours: false },
+  { key: 'payment_confirmation_default_enabled' as const, hasHours: false },
   { key: 'automation_new_leads_enabled' as const, hasHours: false },
   { key: 'ai_assistant_enabled' as const, hasHours: false },
 ]

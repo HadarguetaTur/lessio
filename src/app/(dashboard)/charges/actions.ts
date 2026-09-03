@@ -9,6 +9,10 @@ import { waiveCharge, voidCharge, type ResolveChargeResult } from '@/lib/charges
 import { recordChargePayment, type PaymentMethod } from '@/lib/charges/payments'
 import { settleCharges, settleParentBalance } from '@/lib/charges/settle'
 import { notifyParentOfPayment } from '@/lib/charges/notifyParentOfPayment'
+import {
+  decideNotificationStatus,
+  type PaymentNotificationStatus,
+} from '@/lib/charges/notificationStatus'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import { sendEmail, shouldSendEmail } from '@/lib/email'
 import { receiptEmail } from '@/lib/email/templates/receipt'
@@ -26,37 +30,37 @@ function revalidateChargeSurfaces() {
   revalidatePath('/reports/debt')
 }
 
-/**
- * Whether the parent will hear about a payment. Decided before the response so
- * the toast can be honest; the send itself happens after it.
- */
-export type PaymentNotificationStatus =
-  | 'queued'
-  | 'disabled'
-  | 'no_phone'
-  | 'whatsapp_not_connected'
-
 export interface ManualPaymentResult {
   error: string | null
   notification?: PaymentNotificationStatus
 }
 
+/** Gathers what `decideNotificationStatus` needs, then lets it decide. */
 async function resolveNotificationStatus(
   orgId: string,
   parentId: string | null,
-  notifyParent: boolean
+  notifyParent: boolean | undefined
 ): Promise<PaymentNotificationStatus> {
-  if (!notifyParent || !parentId) return 'disabled'
+  // An explicit "no" needs no lookup — nothing else can overturn it.
+  if (notifyParent === false || !parentId) return 'disabled'
 
   const db = createServiceRoleClient()
   const [{ data: parent }, { data: org }] = await Promise.all([
     db.from('parents').select('phone').eq('id', parentId).eq('organization_id', orgId).maybeSingle(),
-    db.from('organizations').select('whatsapp_phone_number_id, whatsapp_access_token').eq('id', orgId).maybeSingle(),
+    db
+      .from('organizations')
+      .select('whatsapp_phone_number_id, whatsapp_access_token, payment_confirmation_default_enabled')
+      .eq('id', orgId)
+      .maybeSingle(),
   ])
 
-  if (!parent?.phone) return 'no_phone'
-  if (!org?.whatsapp_phone_number_id || !org?.whatsapp_access_token) return 'whatsapp_not_connected'
-  return 'queued'
+  return decideNotificationStatus({
+    notifyParent,
+    orgDefault: org?.payment_confirmation_default_enabled ?? true,
+    hasParent: true,
+    hasPhone: Boolean(parent?.phone),
+    whatsappConnected: Boolean(org?.whatsapp_phone_number_id && org?.whatsapp_access_token),
+  })
 }
 
 /**
@@ -169,7 +173,8 @@ const recordPaymentSchema = z.object({
   amount: z.number().positive().max(1_000_000),
   method: paymentMethodSchema,
   notes: z.string().max(500).optional(),
-  notifyParent: z.boolean().default(true),
+  /** Omitted means "fall back to the org default" — see resolveNotificationStatus. */
+  notifyParent: z.boolean().optional(),
 })
 
 /**
@@ -253,7 +258,8 @@ const settleBalanceSchema = z.object({
   parentId: z.string().uuid(),
   method: paymentMethodSchema,
   notes: z.string().max(500).optional(),
-  notifyParent: z.boolean().default(true),
+  /** Omitted means "fall back to the org default" — see resolveNotificationStatus. */
+  notifyParent: z.boolean().optional(),
 })
 
 export interface SettleBalanceResult extends ManualPaymentResult {
@@ -344,7 +350,8 @@ const settleChargesSchema = z.object({
   chargeIds: z.array(z.string().uuid()).min(1).max(200),
   method: paymentMethodSchema,
   notes: z.string().max(500).optional(),
-  notifyParent: z.boolean().default(true),
+  /** Omitted means "fall back to the org default" — see resolveNotificationStatus. */
+  notifyParent: z.boolean().optional(),
 })
 
 export interface SettleChargesActionResult {

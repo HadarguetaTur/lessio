@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { type PaymentMethod } from '@/lib/charges/paymentMethods'
+import { type PaymentNotificationStatus } from '@/lib/charges/notificationStatus'
 import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { PaymentDetailsFields } from './PaymentDetailsFields'
 
@@ -22,12 +23,12 @@ export interface RecordPaymentInput {
   amount: number
   method: PaymentMethod
   notes?: string
-  /** Whether to WhatsApp the parent a confirmation. Defaults to true server-side. */
+  /**
+   * Whether to WhatsApp the parent a confirmation. Omitted means the server
+   * falls back to the org default set at /settings/whatsapp.
+   */
   notifyParent?: boolean
 }
-
-/** What the server decided about the parent confirmation, for the toast. */
-export type PaymentNotificationStatus = 'queued' | 'disabled' | 'no_phone' | 'whatsapp_not_connected'
 
 export interface ManualPaymentResult {
   error: string | null
@@ -62,6 +63,8 @@ interface RecordPaymentDialogProps {
   remaining: number
   /** Hides the confirmation checkbox when there is nobody to message. */
   parentHasPhone?: boolean
+  /** Org default for the confirmation checkbox, set at /settings/whatsapp. */
+  defaultNotifyParent: boolean
   action: (input: RecordPaymentInput) => Promise<ManualPaymentResult>
 }
 
@@ -69,6 +72,7 @@ export function RecordPaymentDialog({
   chargeId,
   remaining,
   parentHasPhone = true,
+  defaultNotifyParent,
   action,
 }: RecordPaymentDialogProps) {
   const t = useTranslations('charges.recordPayment')
@@ -80,7 +84,7 @@ export function RecordPaymentDialog({
   const [amount, setAmount] = useState(String(remaining))
   const [method, setMethod] = useState<PaymentMethod>('manual')
   const [notes, setNotes] = useState('')
-  const [notifyParent, setNotifyParent] = useState(true)
+  const [notifyParent, setNotifyParent] = useState(defaultNotifyParent)
   const [isPending, startTransition] = useTransition()
 
   const parsedAmount = Number(amount)

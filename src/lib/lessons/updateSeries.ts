@@ -3,19 +3,22 @@
 /**
  * Extend, shorten or delete a recurring lesson series after creation.
  * Complements createSeries.ts (initial generation) and cancelSeries.ts
- * (cancellation of scheduled occurrences).
+ * (stopping a series from a date).
  */
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { SeriesRule } from '@/lib/lessons/createSeries'
-import { cancelLessonSeries, stopLessonSeries } from '@/lib/lessons/cancelSeries'
+import { stopLessonSeries } from '@/lib/lessons/cancelSeries'
+import { EMPTY_FOOTPRINT, loadSeriesFootprint, SeriesHasHistoryError } from '@/lib/lessons/seriesFootprint'
 
 export type UpdateSeriesResult = {
-  /** Lessons newly created (extend) or cancelled (shorten). */
+  /** Lessons newly created (extend) or removed (shorten). */
   affected: number
   /** ISO dates skipped on extend (holiday / overlap). */
   conflicts: string[]
+  /** Occurrences a shorten left in place because they already happened or were charged. */
+  kept?: number
 }
 
 async function getSeriesOrThrow(db: ReturnType<typeof createServiceRoleClient>, seriesId: string, orgId: string) {
@@ -35,9 +38,10 @@ async function setSeriesUntil(
   rule: SeriesRule,
   until: string
 ) {
+  // Moving the end date forward revives a stopped series, so the marker goes.
   const { error } = await db
     .from('lesson_series')
-    .update({ rule: { ...rule, until } })
+    .update({ rule: { ...rule, until }, stopped_at: null })
     .eq('id', seriesId)
   if (error) throw new Error(`Failed to update series rule: ${error.message}`)
 }
@@ -141,9 +145,9 @@ export async function extendLessonSeries(
 }
 
 /**
- * Moves the series end earlier: cancels every scheduled lesson after `newUntil`
+ * Moves the series end earlier: removes every planned lesson after `newUntil`
  * (inclusive of nothing — lessons ON `newUntil` itself survive) and stores the
- * new end date on the rule.
+ * new end date on the rule. Occurrences with a footprint are kept.
  */
 export async function shortenLessonSeries(
   seriesId: string,
@@ -151,28 +155,43 @@ export async function shortenLessonSeries(
   newUntil: string
 ): Promise<UpdateSeriesResult> {
   const dayAfter = DateTime.fromISO(newUntil).plus({ days: 1 }).toISODate()!
-  const { removed } = await stopLessonSeries(seriesId, orgId, dayAfter)
-  return { affected: removed, conflicts: [] }
+  const { removed, kept } = await stopLessonSeries(seriesId, orgId, dayAfter)
+  return { affected: removed, conflicts: [], kept }
 }
 
 /**
- * Deletes the series: cancels all its scheduled lessons, then removes the
- * lesson_series row. Past lessons keep their history — lessons.series_id is
- * ON DELETE SET NULL.
+ * Removes the series outright: every lesson it produced, then the series row.
+ *
+ * Refuses when any occurrence carries a footprint — completed, cancelled by
+ * hand, charged or written about. Those are history, and history is not deleted
+ * to make a cleanup convenient (docs/decisions.md #33); the caller is expected
+ * to offer "stop the series" instead.
  */
 export async function deleteLessonSeries(
   seriesId: string,
   orgId: string
-): Promise<UpdateSeriesResult> {
+): Promise<{ deleted: number }> {
   const db = createServiceRoleClient()
   await getSeriesOrThrow(db, seriesId, orgId) // org-scoping guard
 
-  const { cancelled } = await cancelLessonSeries(seriesId, orgId, 'all')
+  const footprint = (await loadSeriesFootprint(db, orgId, [seriesId])).get(seriesId) ?? EMPTY_FOOTPRINT
+  if (footprint.blocking.length > 0) throw new SeriesHasHistoryError(footprint.blocking.length)
+
+  // lesson_students cascades; nothing else points at these rows, which is
+  // exactly what the footprint check just established.
+  const { error: lessonsError } = await db
+    .from('lessons')
+    .delete()
+    .eq('organization_id', orgId)
+    .eq('series_id', seriesId)
+  if (lessonsError) throw new Error(`Failed to delete series lessons: ${lessonsError.message}`)
+
   const { error } = await db
     .from('lesson_series')
     .delete()
     .eq('id', seriesId)
     .eq('organization_id', orgId)
   if (error) throw new Error(`Failed to delete series: ${error.message}`)
-  return { affected: cancelled, conflicts: [] }
+
+  return { deleted: footprint.removable.length }
 }

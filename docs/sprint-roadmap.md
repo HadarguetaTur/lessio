@@ -515,6 +515,45 @@ deployment.
 
 ---
 
+## Stopping a series vs removing it (2026-09-03)
+
+**Status:** Shipped (migration `20260903150000` applied to production 2026-09-03)
+**Track:** standalone; closes the "lesson series editing" gap listed as out of
+scope in `docs/sprint-30-scope.md`
+
+A series had one destructive action, "stop from a date", and it did not keep the
+promise its name makes: it deleted every `scheduled` row from the chosen date
+with no floor on that date, so a date in the past erased lessons that had already
+happened but were never marked completed — and with them, by cascade, the
+`lesson_students`, `lesson_notes` and `student_cancellation_events` rows the
+monthly bill is computed from. The delete also ran as one batch against
+`charges.lesson_id`, an FK with no `ON DELETE`, so a single charged lesson in
+range failed the whole stop behind a generic error.
+
+The two intentions are now separate actions on the series list:
+
+- **Stop** keeps everything that happened. A stop date may still sit in the past —
+  the past is protected by what an occurrence carries, not by the calendar:
+  completed, hand-cancelled, charged or written-about lessons are skipped and
+  reported back as "kept". The series row stays, marked stopped via the new
+  `lesson_series.stopped_at`, and extending it clears the marker and revives it.
+- **Remove** deletes the series and every lesson it produced, and is refused
+  outright while any occurrence carries history (decision #33 — financial rows are
+  not deleted to make a cleanup convenient). The list greys the action out and says
+  why; `deleteLessonSeries` throws `SeriesHasHistoryError` regardless of the UI.
+
+Both read the same classifier, `src/lib/lessons/seriesFootprint.ts`, so the
+greyed-out button and the server's refusal can never disagree. The dead
+`cancelLessonSeries` soft-cancel path and the orphaned scope-chooser i18n keys
+(`cancelFromHere`, `cancelAll`, …) were removed with it.
+
+**Known gaps:** removal is only offered on `/lessons/new-series`, not on a single
+lesson's page, where stopping remains the only series-wide action. Series created
+by the importer still write a differently shaped `rule`; they can now be removed,
+but they still render their schedule as `undefined`.
+
+---
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

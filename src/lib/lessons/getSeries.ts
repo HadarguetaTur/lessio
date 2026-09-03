@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { SeriesRule } from '@/lib/lessons/createSeries'
+import { loadSeriesFootprint } from '@/lib/lessons/seriesFootprint'
 
 export interface LessonSeriesListItem {
   id: string
@@ -10,6 +11,14 @@ export interface LessonSeriesListItem {
   groupName: string | null
   rule: SeriesRule
   upcomingCount: number
+  /** When an admin stopped the series; null while it is active or simply ran out. */
+  stoppedAt: string | null
+  /** False once any occurrence has history — deleting the series is then refused. */
+  canDelete: boolean
+  /** How many occurrences carry that history, for the blocked-delete explanation. */
+  historyCount: number
+  /** Lessons a delete would remove — shown in the confirmation before it runs. */
+  deletableCount: number
 }
 
 /**
@@ -22,7 +31,7 @@ export async function getLessonSeriesList(organizationId: string): Promise<Lesso
 
   const { data: seriesRows, error } = await db
     .from('lesson_series')
-    .select('id, student_id, rule, teachers(profiles(full_name)), student_groups(name)')
+    .select('id, student_id, rule, stopped_at, teachers(profiles(full_name)), student_groups(name)')
     .eq('organization_id', organizationId)
   if (error) throw new Error(error.message)
   if (!seriesRows?.length) return []
@@ -37,6 +46,10 @@ export async function getLessonSeriesList(organizationId: string): Promise<Lesso
     .gte('start_at', new Date().toISOString())
     .not('series_id', 'is', null)
   if (upErr) throw new Error(upErr.message)
+
+  // One pass over the org's series occurrences answers "may this be deleted?"
+  // for every row, with the same classifier the delete action itself uses.
+  const footprints = await loadSeriesFootprint(db, organizationId)
 
   const countBySeries = new Map<string, number>()
   const namesBySeries = new Map<string, Set<string>>()
@@ -68,6 +81,8 @@ export async function getLessonSeriesList(organizationId: string): Promise<Lesso
     const group = s.student_groups as unknown as { name: string } | null
     const derived = [...(namesBySeries.get(s.id) ?? [])]
     const fallback = fallbackNames.get(s.student_id)
+    const footprint = footprints.get(s.id)
+    const historyCount = footprint?.blocking.length ?? 0
     return {
       id: s.id,
       teacherName: teacher?.profiles?.full_name ?? '',
@@ -75,6 +90,10 @@ export async function getLessonSeriesList(organizationId: string): Promise<Lesso
       groupName: group?.name ?? null,
       rule: s.rule as SeriesRule,
       upcomingCount: countBySeries.get(s.id) ?? 0,
+      stoppedAt: (s.stopped_at as string | null) ?? null,
+      canDelete: historyCount === 0,
+      historyCount,
+      deletableCount: footprint?.removable.length ?? 0,
     }
   })
 

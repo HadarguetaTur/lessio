@@ -12,9 +12,10 @@ import { getOrgPricing } from '@/lib/organizations/pricing'
 import { NewSeriesForm } from '@/components/dashboard/lessons/NewSeriesForm'
 import { SeriesRowActions } from '@/components/dashboard/lessons/SeriesRowActions'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Badge } from '@/components/ui/badge'
 import { getTranslations, getLocale } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
-import { updateSeriesUntilAction, stopSeriesAction } from './actions'
+import { updateSeriesUntilAction, stopSeriesAction, deleteSeriesAction } from './actions'
 import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
@@ -103,7 +104,7 @@ export default async function NewSeriesPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {series.map((s) => (
-                    <tr key={s.id}>
+                    <tr key={s.id} className={s.stoppedAt ? 'text-muted-foreground' : undefined}>
                       <td className="whitespace-nowrap px-5 py-3 text-sm text-foreground">
                         <span className="font-semibold">
                           {tCommon(`days.${DAY_KEYS[s.rule.day_of_week]}`)}
@@ -146,14 +147,23 @@ export default async function NewSeriesPage() {
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-sm text-muted-foreground">
                         {dateFormatter.format(new Date(`${s.rule.until}T00:00:00`))}
+                        {s.stoppedAt && (
+                          <Badge variant="secondary" className="ms-2">
+                            {t('series.stoppedBadge')}
+                          </Badge>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-2 py-3 text-end">
                         <SeriesRowActions
                           seriesId={s.id}
                           currentUntil={s.rule.until}
                           defaultStopDate={todayStr}
+                          canDelete={s.canDelete}
+                          historyCount={s.historyCount}
+                          deletableCount={s.deletableCount}
                           updateUntilAction={updateSeriesUntilAction}
                           stopAction={stopSeriesAction}
+                          deleteAction={deleteSeriesAction}
                         />
                       </td>
                     </tr>

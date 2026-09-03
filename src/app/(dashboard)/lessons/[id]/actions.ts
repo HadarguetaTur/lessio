@@ -283,6 +283,8 @@ export async function cancelLesson(
 export type CancelSeriesActionResult = {
   error: string | null
   removed?: number
+  /** Occurrences left in place because they already happened or were charged. */
+  kept?: number
 }
 
 /**
@@ -324,14 +326,14 @@ export async function cancelSeriesAction(
   if (!lesson.series_id) return { error: t('lessons.errors.notInSeries') }
 
   try {
-    const { removed } = await stopLessonSeries(lesson.series_id, orgId, stopDateParsed.data)
+    const { removed, kept } = await stopLessonSeries(lesson.series_id, orgId, stopDateParsed.data)
 
     revalidatePath(`/lessons/${lessonId}`)
     revalidatePath('/lessons')
     revalidatePath('/dashboard')
     revalidatePath('/teacher/schedule')
 
-    return { error: null, removed }
+    return { error: null, removed, kept }
   } catch (e) {
     return { error: t('lessons.errors.cancelSeriesFailed') }
   }

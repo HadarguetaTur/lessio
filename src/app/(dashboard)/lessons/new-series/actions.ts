@@ -10,9 +10,11 @@ import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createLessonSeries } from '@/lib/lessons/createSeries'
 import { getGroupRosterServiceRole } from '@/lib/groups/roster'
 import {
+  deleteLessonSeries,
   extendLessonSeries,
   shortenLessonSeries,
 } from '@/lib/lessons/updateSeries'
+import { SeriesHasHistoryError } from '@/lib/lessons/seriesFootprint'
 import { stopLessonSeries } from '@/lib/lessons/cancelSeries'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
@@ -173,9 +175,11 @@ export async function createSeriesAction(
 
 export type SeriesManageState = {
   error: string | null
-  /** Lessons created (extend) or removed (shorten / stop). */
+  /** Lessons created (extend) or removed (shorten / stop / delete). */
   affected?: number
-  action?: 'extended' | 'shortened' | 'stopped'
+  /** Occurrences a stop left in place because they already happened or were charged. */
+  kept?: number
+  action?: 'extended' | 'shortened' | 'stopped' | 'deleted'
 }
 
 const UntilSchema = z.object({
@@ -210,14 +214,14 @@ export async function updateSeriesUntilAction(
 
   try {
     const extending = !currentUntil || until >= currentUntil
-    const { affected } = extending
+    const { affected, kept } = extending
       ? await extendLessonSeries(series_id, session.orgId, until)
       : await shortenLessonSeries(series_id, session.orgId, until)
 
     revalidatePath('/lessons/new-series')
     revalidatePath('/lessons')
     revalidatePath('/dashboard')
-    return { error: null, affected, action: extending ? 'extended' : 'shortened' }
+    return { error: null, affected, kept, action: extending ? 'extended' : 'shortened' }
   } catch {
     return { error: t('lessons.seriesErrors.updateSeriesFailed') }
   }
@@ -246,12 +250,47 @@ export async function stopSeriesAction(
   if (!parsed.success) return { error: t('lessons.series.stopDateRequired') }
 
   try {
-    const { removed } = await stopLessonSeries(parsed.data.series_id, session.orgId, parsed.data.stop_from_date)
+    const { removed, kept } = await stopLessonSeries(parsed.data.series_id, session.orgId, parsed.data.stop_from_date)
     revalidatePath('/lessons/new-series')
     revalidatePath('/lessons')
     revalidatePath('/dashboard')
-    return { error: null, affected: removed, action: 'stopped' }
+    return { error: null, affected: removed, kept, action: 'stopped' }
   } catch {
     return { error: t('lessons.seriesErrors.updateSeriesFailed') }
+  }
+}
+
+const DeleteSeriesSchema = z.object({ series_id: z.string().uuid() })
+
+/**
+ * Removes a series and every lesson it produced. Refused by the lib layer once
+ * any occurrence has history — the list greys the action out for those, but the
+ * server, not the UI, is what actually decides.
+ */
+export async function deleteSeriesAction(
+  _prevState: SeriesManageState,
+  formData: FormData
+): Promise<SeriesManageState> {
+  const t = await getTranslations()
+  const session = await getSession()
+  requireMutation(session)
+  if (session.role !== 'owner' && session.role !== 'admin') {
+    return { error: await commonError('noPermission') }
+  }
+
+  const parsed = DeleteSeriesSchema.safeParse({ series_id: formData.get('series_id') })
+  if (!parsed.success) return { error: await commonError('invalidData') }
+
+  try {
+    const { deleted } = await deleteLessonSeries(parsed.data.series_id, session.orgId)
+    revalidatePath('/lessons/new-series')
+    revalidatePath('/lessons')
+    revalidatePath('/dashboard')
+    return { error: null, affected: deleted, action: 'deleted' }
+  } catch (err) {
+    if (err instanceof SeriesHasHistoryError) {
+      return { error: t('lessons.seriesErrors.seriesHasHistory', { count: err.historyCount }) }
+    }
+    return { error: t('lessons.seriesErrors.deleteSeriesFailed') }
   }
 }

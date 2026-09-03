@@ -68,7 +68,7 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/lib/server/afterResponse', () => ({ runAfterResponse: vi.fn() }))
 vi.mock('@/lib/lessons', () => ({ updateLessonStatus: vi.fn() }))
 vi.mock('@/lib/lessons/notes', () => ({ createNote: vi.fn(), deleteNote: vi.fn() }))
-vi.mock('@/lib/lessons/cancelSeries', () => ({ cancelLessonSeries: vi.fn() }))
+vi.mock('@/lib/lessons/cancelSeries', () => ({ stopLessonSeries: vi.fn() }))
 vi.mock('@/lib/billing/monthly/cancellationEvents', () => ({ createCancellationEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/notifications', () => ({
   notifyMultiple: vi.fn(async () => {}),

@@ -1,24 +1,33 @@
 'use server'
 
 /**
- * cancelLessonSeries — server-only series cancellation logic.
+ * stopLessonSeries — server-only series stop logic.
  * Per /docs/sprint-11-scope.md § Story 2.
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
-import { SERIES_CANCEL_REASON } from './renderCancelReason'
-import { getSeriesStopBoundary, isRemovableSeriesOccurrence } from './seriesStop'
+import { EMPTY_FOOTPRINT, loadSeriesFootprint } from './seriesFootprint'
+import { getSeriesStopBoundary } from './seriesStop'
 
-export type CancelSeriesScope = 'all' | 'from_date'
-
-export type StopSeriesResult = { removed: number; until: string }
+export type StopSeriesResult = {
+  /** Planned occurrences deleted. */
+  removed: number
+  /** Occurrences at or after the cutoff that were left alone because they happened or were charged. */
+  kept: number
+  until: string
+}
 
 /**
  * Stops a materialized series from an organization-local calendar date.
- * Future plans are removed, not recorded as cancellations: only scheduled
- * occurrences and rows previously cancelled by the old series-cancel path are
- * eligible. Manual cancellations and completed/no-show history are preserved.
+ * Future plans are removed, not recorded as cancellations.
+ *
+ * A stop date may sit in the past — someone correcting a series that ran on
+ * paper weeks ago — so the past is protected by the occurrence's footprint, not
+ * by the date: anything completed, cancelled by hand, charged or written about
+ * is skipped and counted in `kept`. Skipping rather than failing also matters at
+ * the database level, since `charges.lesson_id` has no ON DELETE and a single
+ * charged lesson inside the batch would otherwise abort the whole stop.
  */
 export async function stopLessonSeries(
   seriesId: string,
@@ -36,18 +45,14 @@ export async function stopLessonSeries(
   const timezone = org.timezone ?? 'Asia/Jerusalem'
   const { cutoffUtc, until } = getSeriesStopBoundary(stopFromDate, timezone)
 
-  const { data: candidates, error: candidateError } = await db
-    .from('lessons')
-    .select('id, status, cancel_reason')
-    .eq('series_id', seriesId)
-    .eq('organization_id', orgId)
-    .gte('start_at', cutoffUtc)
-    .in('status', ['scheduled', 'cancelled'])
-  if (candidateError) throw new Error(`Failed to find future series lessons: ${candidateError.message}`)
+  const footprint = (await loadSeriesFootprint(db, orgId, [seriesId])).get(seriesId) ?? EMPTY_FOOTPRINT
+  // Postgres and Luxon render the same instant differently ('+00:00' vs 'Z'),
+  // so these are compared as instants, never as strings.
+  const cutoff = new Date(cutoffUtc).getTime()
+  const atOrAfter = (lesson: { start_at: string }) => new Date(lesson.start_at).getTime() >= cutoff
 
-  const removableIds = (candidates ?? [])
-    .filter(isRemovableSeriesOccurrence)
-    .map((lesson) => lesson.id)
+  const removableIds = footprint.removable.filter(atOrAfter).map((lesson) => lesson.id)
+  const kept = footprint.blocking.filter(atOrAfter).length
 
   if (removableIds.length > 0) {
     const { error: deleteError } = await db
@@ -64,51 +69,10 @@ export async function stopLessonSeries(
   const storedUntil = currentUntil && currentUntil < until ? currentUntil : until
   const { error: updateError } = await db
     .from('lesson_series')
-    .update({ rule: { ...rule, until: storedUntil } })
+    .update({ rule: { ...rule, until: storedUntil }, stopped_at: new Date().toISOString() })
     .eq('id', seriesId)
     .eq('organization_id', orgId)
   if (updateError) throw new Error(`Failed to store series stop date: ${updateError.message}`)
 
-  return { removed: removableIds.length, until: storedUntil }
-}
-
-/**
- * Cancels all scheduled lessons in a series.
- * scope='all' — all scheduled lessons
- * scope='from_date' — scheduled lessons with start_at >= fromDate
- *
- * Does NOT auto-charge cancellation fees.
- */
-export async function cancelLessonSeries(
-  seriesId: string,
-  orgId: string,
-  scope: CancelSeriesScope,
-  fromDate?: string   // ISO date 'YYYY-MM-DD' — required when scope === 'from_date'
-): Promise<{ cancelled: number }> {
-  if (scope === 'from_date' && !fromDate) {
-    throw new Error('fromDate is required when scope is from_date')
-  }
-
-  const db = createServiceRoleClient()
-
-  let query = db
-    .from('lessons')
-    .update({
-      status: 'cancelled',
-      cancel_reason: SERIES_CANCEL_REASON,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('series_id', seriesId)
-    .eq('organization_id', orgId)
-    .eq('status', 'scheduled')
-
-  if (scope === 'from_date' && fromDate) {
-    query = query.gte('start_at', `${fromDate}T00:00:00.000Z`)
-  }
-
-  const { data, error } = await query.select('id')
-
-  if (error) throw new Error(`Failed to cancel series: ${error.message}`)
-
-  return { cancelled: (data ?? []).length }
+  return { removed: removableIds.length, kept, until: storedUntil }
 }

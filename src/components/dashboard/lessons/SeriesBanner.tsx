@@ -28,9 +28,14 @@ export function SeriesBanner({ cancelSeriesAction, defaultStopDate }: Props) {
 
   if (state.removed !== undefined && state.error === null) {
     return (
-      <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-100 text-sm text-green-700 mb-4">
-        <Repeat size={15} />
-        {t('series.stoppedCount', { count: state.removed })}
+      <div className="flex flex-col gap-1 p-3 rounded-lg bg-green-50 border border-green-100 text-sm text-green-700 mb-4">
+        <span className="flex items-center gap-2">
+          <Repeat size={15} />
+          {t('series.stoppedCount', { count: state.removed })}
+        </span>
+        {!!state.kept && (
+          <span className="text-muted-foreground">{t('series.keptCount', { count: state.kept })}</span>
+        )}
       </div>
     )
   }

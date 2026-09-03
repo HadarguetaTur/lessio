@@ -30,9 +30,11 @@ export function renderCancelReason(
 }
 
 /**
- * Written to `lessons.cancel_reason` by cancelLessonSeries. It lives here rather
- * than in cancelSeries.ts because that module is `'use server'`, and such a
- * module may only export async functions — exporting a const from it silently
+ * Written to `lessons.cancel_reason` by the series-cancel path that predates
+ * stopLessonSeries, and still the marker that tells such a row apart from a
+ * cancellation someone made by hand. It lives here rather than in
+ * cancelSeries.ts because that module is `'use server'`, and such a module may
+ * only export async functions — exporting a const from it silently
  * strips every export, which only the build catches, not tsc.
  */
 export const SERIES_CANCEL_REASON = 'SERIES_CANCELLED'

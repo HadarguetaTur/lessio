@@ -278,10 +278,11 @@ teacher_id      uuid not null references teachers(id)
 student_id      uuid not null references students(id)   -- display/primary only; the roster is per lesson
 group_id        uuid references student_groups(id) on delete set null  -- set for a group series
 rule            jsonb not null                      -- { frequency, day_of_week, start_time, duration_minutes, until }
+stopped_at      timestamptz                         -- set when an admin stopped the series; cleared on extend
 created_by      uuid not null references profiles(id)
 created_at      timestamptz default now()
 
-index: (organization_id, teacher_id)
+index: none beyond the pk — always read as WHERE organization_id = ?
 ```
 
 **rule JSON shape:**

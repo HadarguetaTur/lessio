@@ -53,6 +53,7 @@ changing that area's logic.
 | Doc | Covers |
 | --- | --- |
 | [`meta-app-review-submission.md`](meta-app-review-submission.md) | The Meta App Review runbook. Business verification passed; the review itself is not yet submitted |
+| [`google-oauth-verification-submission.md`](google-oauth-verification-submission.md) | The Google OAuth verification runbook — login, Gmail and Calendar under one client. Not yet submitted; `gmail.send` is sensitive, so no CASA is needed |
 | [`whatsapp-embedded-signup-manual-test.md`](whatsapp-embedded-signup-manual-test.md) | Manual E2E test of the Connect-WhatsApp flow |
 | [`integrations-make-setup.md`](integrations-make-setup.md) | User-facing Hebrew setup guide for the `make` payment provider (the Grow API-fee workaround) |
 

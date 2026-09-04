@@ -20,7 +20,6 @@ export function SendTestEmailForm() {
           name="to"
           type="email"
           placeholder="example@gmail.com"
-          defaultValue="yeshuat11@gmail.com"
           className="text-sm"
           required
         />

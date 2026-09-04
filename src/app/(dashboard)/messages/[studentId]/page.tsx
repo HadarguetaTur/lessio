@@ -44,7 +44,7 @@ export default async function DashboardMessageThreadPage({
     <div className="space-y-4">
       <LiveRefresh tables={['portal_messages']} />
       <div className="flex items-center gap-3">
-        <Link href="/messages" aria-label="חזרה להודעות" className="text-muted-foreground hover:text-foreground">
+        <Link href="/messages" aria-label={t('lessons.messagesPage.backToMessages')} className="text-muted-foreground hover:text-foreground">
           <ArrowRight size={18} />
         </Link>
         <h1 className="text-lg font-semibold text-foreground">{t('lessons.messagesPage.threadTitle', { name: studentName })}</h1>

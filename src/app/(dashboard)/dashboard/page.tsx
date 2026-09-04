@@ -20,6 +20,7 @@ import {
   AttentionSection,
   MoneySection,
   OutlookSection,
+  SetupSection,
   TodaySection,
 } from '@/components/dashboard/sections'
 
@@ -79,6 +80,15 @@ export default async function DashboardPage() {
           </Button>
         }
       />
+
+      {/* 0 — Setup, owner only, gone once the studio is operational. No
+          skeleton: a fully set-up org would see a flash of placeholder for a
+          band that renders nothing. */}
+      {role === 'owner' && (
+        <Suspense fallback={null}>
+          <SetupSection orgId={orgId} />
+        </Suspense>
+      )}
 
       {/* 1 — Today, full width. */}
       <Suspense fallback={<BandSkeleton className="h-64 w-full rounded-xl" />}>

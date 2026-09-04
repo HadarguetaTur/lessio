@@ -85,7 +85,7 @@ export function RemindersForm({
           name="reminders_enabled"
           checked={remindersEnabled}
           onChange={(e) => setRemindersEnabled(e.target.checked)}
-          className={`mt-0.5 h-4 w-4 rounded border-gray-300 focus:ring-blue-500 ${
+          className={`mt-0.5 h-5 w-5 rounded border-gray-300 focus:ring-blue-500 ${
             onButNotSending ? 'text-amber-500' : 'text-blue-600'
           }`}
         />
@@ -143,7 +143,7 @@ export function RemindersForm({
           disabled={dependentsOff}
           min={1}
           max={30}
-          className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm disabled:cursor-not-allowed"
+          className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm disabled:cursor-not-allowed max-lg:py-2.5 max-lg:text-base"
         />
         <p className="text-xs text-muted-foreground mt-1">{tp('remindersPage.daysRange')}</p>
       </div>
@@ -157,7 +157,7 @@ export function RemindersForm({
         </p>
         <div className="space-y-2">
           {EMAIL_NOTIFICATION_KEYS.map((key) => (
-            <label key={key} className="flex items-center gap-3">
+            <label key={key} className="flex items-center gap-3 max-lg:py-1.5">
               <input
                 type="checkbox"
                 name={`email_${key}`}
@@ -166,7 +166,7 @@ export function RemindersForm({
                   setEmailPrefs((prev) => ({ ...prev, [key]: e.target.checked }))
                 }
                 disabled={dependentsOff}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed"
+                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed"
               />
               <span className="text-sm text-gray-700">{t(`emailTypes.${key}`)}</span>
             </label>
@@ -191,21 +191,26 @@ export function RemindersForm({
         </p>
       )}
 
-      {state.error && (
-        <p className="text-sm text-red-600">{state.error}</p>
-      )}
-      {state.success && !state.error && (
-        <p className="text-sm text-green-700">{tp('remindersPage.saved')}</p>
-      )}
+      {/* On a phone the form is longer than the screen; the action row sticks
+          just above the floating nav pill (the layout reserves 6.75rem for it)
+          so Save — and the result of pressing it — stay in view. */}
+      <div className="max-lg:sticky max-lg:bottom-[calc(6.75rem+env(safe-area-inset-bottom,0px))] max-lg:-mx-6 max-lg:-mb-6 max-lg:rounded-b-lg max-lg:border-t max-lg:border-gray-100 max-lg:bg-white max-lg:px-6 max-lg:py-3 space-y-3">
+        {state.error && (
+          <p className="text-sm text-red-600">{state.error}</p>
+        )}
+        {state.success && !state.error && (
+          <p className="text-sm text-green-700">{tp('remindersPage.saved')}</p>
+        )}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {isPending && <Loader2 size={14} className="animate-spin" aria-hidden />}
-        {tCommon('actions.save')}
-      </button>
+        <button
+          type="submit"
+          disabled={isPending}
+          className="inline-flex min-h-11 items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isPending && <Loader2 size={14} className="animate-spin" aria-hidden />}
+          {tCommon('actions.save')}
+        </button>
+      </div>
     </form>
   )
 }

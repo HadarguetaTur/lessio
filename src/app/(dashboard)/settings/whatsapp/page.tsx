@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import { forbidden } from 'next/navigation'
 import { CheckCircle, AlertCircle } from 'lucide-react'
+import { getPhoneIdentity } from '@/lib/whatsapp/phoneIdentity'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { EmbeddedSignupButton } from './EmbeddedSignupButton'
@@ -115,7 +117,11 @@ export default async function WhatsAppSettingsPage({
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {isConnected ? (
-          <ConnectedState phoneNumberId={phoneNumberId!} connectedLabel={t('whatsapp.connected')} />
+          <ConnectedState
+            orgId={orgId}
+            phoneNumberId={phoneNumberId!}
+            connectedLabel={t('whatsapp.connected')}
+          />
         ) : (
           <DisconnectedState metaAppId={metaAppId} metaConfigId={metaConfigId} />
         )}
@@ -156,7 +162,15 @@ export default async function WhatsAppSettingsPage({
   )
 }
 
-async function ConnectedState({ phoneNumberId, connectedLabel }: { phoneNumberId: string; connectedLabel: string }) {
+async function ConnectedState({
+  orgId,
+  phoneNumberId,
+  connectedLabel,
+}: {
+  orgId: string
+  phoneNumberId: string
+  connectedLabel: string
+}) {
   const tp = await getTranslations('settings')
   return (
     <div className="space-y-4">
@@ -165,10 +179,20 @@ async function ConnectedState({ phoneNumberId, connectedLabel }: { phoneNumberId
         <span className="font-medium text-sm">{connectedLabel}</span>
       </div>
 
+      {/* The number's human identity streams in from Meta so the page itself
+          never waits on Graph. The technical ID stays as a secondary row. */}
+      <Suspense
+        fallback={
+          <p className="text-sm text-muted-foreground">{tp('whatsappPage.identityLoading')}</p>
+        }
+      >
+        <PhoneIdentityRows orgId={orgId} />
+      </Suspense>
+
       <dl className="text-sm space-y-2">
         <div className="flex justify-between">
-          <dt className="text-muted-foreground">Phone Number ID</dt>
-          <dd className="font-mono text-gray-900 text-xs">{phoneNumberId}</dd>
+          <dt className="text-muted-foreground text-xs">Phone Number ID</dt>
+          <dd className="font-mono text-gray-500 text-xs" dir="ltr">{phoneNumberId}</dd>
         </div>
       </dl>
 
@@ -179,6 +203,40 @@ async function ConnectedState({ phoneNumberId, connectedLabel }: { phoneNumberId
         <DisconnectButton />
       </div>
     </div>
+  )
+}
+
+async function PhoneIdentityRows({ orgId }: { orgId: string }) {
+  const tp = await getTranslations('settings')
+  const identity = await getPhoneIdentity(orgId)
+
+  if (!identity.ok) {
+    // If Meta cannot tell us whose number this is, the token is most likely
+    // dead — say so next to the green check instead of leaving it unqualified.
+    return (
+      <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+        {tp('whatsappPage.identityUnverified')}
+      </p>
+    )
+  }
+
+  return (
+    <dl className="text-sm space-y-2">
+      {identity.verifiedName && (
+        <div className="flex justify-between">
+          <dt className="text-muted-foreground">{tp('whatsappPage.verifiedName')}</dt>
+          <dd className="font-medium text-gray-900">{identity.verifiedName}</dd>
+        </div>
+      )}
+      {identity.displayPhoneNumber && (
+        <div className="flex justify-between">
+          <dt className="text-muted-foreground">{tp('whatsappPage.phoneNumber')}</dt>
+          <dd className="font-medium text-gray-900" dir="ltr">
+            {identity.displayPhoneNumber}
+          </dd>
+        </div>
+      )}
+    </dl>
   )
 }
 

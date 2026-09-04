@@ -916,7 +916,7 @@ export function StudentDetailSheet({
                     <Button variant="outline" size="sm" className="gap-1.5" asChild>
                       <Link href={`/students/${student.id}`}>
                         <FileBarChart size={14} />
-                        {t('card.progressReport')}
+                        {t('card.fullProfile')}
                       </Link>
                     </Button>
                     <Button

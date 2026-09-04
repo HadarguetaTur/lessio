@@ -10,7 +10,9 @@ import { getAttentionData } from '@/lib/dashboard/attention'
 import type { AttentionActionResult } from '@/app/(dashboard)/dashboard/actions'
 import { getMonthlyRevenueTrend } from '@/lib/reports/revenue'
 import { getMonthForecast } from '@/lib/reports/forecast'
+import { getOrgSetupProgress } from '@/lib/organizations/readiness'
 import { KpiCard } from '@/components/dashboard/KpiCard'
+import { SetupChecklistCard } from '@/components/dashboard/SetupChecklistCard'
 import { TodayLessonsList } from '@/components/dashboard/TodayLessonsList'
 import { AttentionPanel } from '@/components/dashboard/AttentionPanel'
 import { ForecastCard } from '@/components/dashboard/ForecastCard'
@@ -30,6 +32,44 @@ interface SectionProps {
   timezone: string
   appLocale: AppLocale
   locale: string
+}
+
+/**
+ * "Finish setting up" — owner only, and only while something is missing.
+ *
+ * UX audit 5 (F5) found the old readiness strip tracked 3 of 16 surfaces; the
+ * dashboard rebuild then removed it entirely, leaving no answer to "did I
+ * finish setting up?". This band answers it from real product data
+ * (getOrgSetupProgress) and removes itself the day the studio is operational.
+ * The AI assistant is deliberately not on the list: the platform key usually
+ * covers it, and it is optional in a way payments and WhatsApp are not.
+ */
+export async function SetupSection({ orgId }: { orgId: string }) {
+  const [progress, t] = await Promise.all([
+    getOrgSetupProgress(orgId),
+    getTranslations('dashboard'),
+  ])
+
+  const items = [
+    { key: 'teacher', done: progress.hasTeacher, href: '/teachers' },
+    { key: 'student', done: progress.hasStudent, href: '/students' },
+    { key: 'lesson', done: progress.hasLesson, href: '/lessons/new' },
+    { key: 'whatsapp', done: progress.hasWhatsApp, href: '/settings/whatsapp' },
+    { key: 'payment', done: progress.hasPayment, href: '/settings/payment' },
+  ].map((item) => ({ ...item, label: t(`setup.items.${item.key}`) }))
+
+  const doneCount = items.filter((i) => i.done).length
+  if (doneCount === items.length) return null
+
+  return (
+    <SetupChecklistCard
+      title={t('setup.title')}
+      progressLabel={t('setup.progress', { done: doneCount, total: items.length })}
+      dismissLabel={t('setup.dismiss')}
+      orgId={orgId}
+      items={items}
+    />
+  )
 }
 
 export async function TodaySection({ orgId, timezone, appLocale }: SectionProps) {

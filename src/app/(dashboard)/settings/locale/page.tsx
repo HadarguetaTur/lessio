@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
-import { Globe } from 'lucide-react'
+import { Globe, MessageCircle } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { PageHeader } from '@/components/ui/page-header'
 import {
   Card,
@@ -12,7 +13,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { saveLocaleAction } from './actions'
+import { saveLocaleAction, saveOrgDefaultLocaleAction } from './actions'
 
 const LOCALES = [
   {
@@ -28,11 +29,23 @@ const LOCALES = [
 ] as const
 
 export default async function LocaleSettingsPage() {
-  const { role } = await getSession()
+  const { role, orgId } = await getSession()
   if (role !== 'owner' && role !== 'admin') redirect('/dashboard')
 
   const locale = await getLocale()
   const t = await getTranslations('settings')
+
+  // The parent-message fallback language is org-wide, so only the owner sets it.
+  let orgDefaultLocale: 'he' | 'en' = 'he'
+  if (role === 'owner') {
+    const db = createServiceRoleClient()
+    const { data: org } = await db
+      .from('organizations')
+      .select('default_locale')
+      .eq('id', orgId)
+      .single()
+    if (org?.default_locale === 'en') orgDefaultLocale = 'en'
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -89,6 +102,41 @@ export default async function LocaleSettingsPage() {
           )
         })}
       </div>
+
+      {role === 'owner' && (
+        <Card className="mt-6">
+          <CardHeader className="border-b">
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle size={16} />
+              {t('locale.parentDefaultTitle')}
+            </CardTitle>
+            <CardDescription>{t('locale.parentDefaultDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-3">
+              {LOCALES.map((option) => {
+                const isActive = orgDefaultLocale === option.value
+                return (
+                  <form key={option.value} action={saveOrgDefaultLocaleAction}>
+                    <input type="hidden" name="locale" value={option.value} />
+                    <Button
+                      type="submit"
+                      variant={isActive ? 'secondary' : 'outline'}
+                      disabled={isActive}
+                    >
+                      {option.title}
+                      {isActive && ` · ${t('locale.current')}`}
+                    </Button>
+                  </form>
+                )
+              })}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              {t('locale.parentDefaultPrecedence')}
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

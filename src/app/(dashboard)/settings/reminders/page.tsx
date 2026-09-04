@@ -68,7 +68,10 @@ export default async function RemindersSettingsPage() {
   ])
 
   return (
-    <div className="flex h-full min-h-0 w-full max-w-xl flex-col overflow-hidden">
+    // Mobile scrolls the whole page (the layout div is the scrollport) so the
+    // form is never clipped; desktop keeps the fixed-height page with the
+    // notification log scrolling in place.
+    <div className="flex w-full max-w-xl flex-col lg:h-full lg:min-h-0 lg:overflow-hidden">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('title')}</h1>
       <p className="text-sm text-muted-foreground mb-8">{tp('remindersPage.subtitle')}</p>
 

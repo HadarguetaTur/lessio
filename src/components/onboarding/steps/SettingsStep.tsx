@@ -17,7 +17,10 @@ import {
 
 const NOTICE_HOURS = [2, 4, 12, 24, 48] as const
 const CHARGE_PERCENTS = [0, 25, 50, 75, 100] as const
-const REMINDER_HOURS = [2, 4, 12, 24, 48] as const
+// Must match the CHECK on organizations.automation_lesson_reminder_hours
+// (migration 20260514000001) and the Zod refine in the WhatsApp automations
+// action. 4 and 48 were offered here for a column the reminder cron never read.
+const REMINDER_HOURS = [2, 12, 24] as const
 const PAYMENT_DAYS = [3, 5, 7, 14, 30] as const
 
 function snapToAllowed(
@@ -122,10 +125,10 @@ export function SettingsStep({ settingsDefaults, onNext, onBack }: SettingsStepP
           <h3 className="text-sm font-semibold text-foreground mb-3">{t('reminders')}</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="lesson_reminder_hours">{t('lessonReminder')}</Label>
+              <Label htmlFor="automation_lesson_reminder_hours">{t('lessonReminder')}</Label>
               <select
-                id="lesson_reminder_hours"
-                name="lesson_reminder_hours"
+                id="automation_lesson_reminder_hours"
+                name="automation_lesson_reminder_hours"
                 defaultValue={snapToAllowed(
                   settingsDefaults.lessonReminderHours,
                   REMINDER_HOURS,

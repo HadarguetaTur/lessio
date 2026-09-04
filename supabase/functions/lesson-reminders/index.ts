@@ -36,7 +36,7 @@ Deno.serve(async (_req) => {
   // (Sprint 31); reminders_enabled remains the legacy master switch.
   const { data: orgs, error: orgsError } = await db
     .from('organizations')
-    .select('id, timezone, lesson_reminder_hours, automation_lesson_reminder_hours, whatsapp_phone_number_id, whatsapp_access_token, email_notifications, default_locale')
+    .select('id, timezone, automation_lesson_reminder_hours, whatsapp_phone_number_id, whatsapp_access_token, email_notifications, default_locale')
     .eq('reminders_enabled', true)
     // Platform billing: a lapsed studio stops sending. See organizations.service_state
     // (migration 20260829140100) — the ladder is owned by saas-subscription-checker.
@@ -72,8 +72,12 @@ Deno.serve(async (_req) => {
 
 // deno-lint-ignore no-explicit-any
 async function processOrg(db: any, org: any, now: Date) {
-  const reminderHours: number =
-    org.automation_lesson_reminder_hours ?? org.lesson_reminder_hours ?? 24
+  // automation_lesson_reminder_hours is NOT NULL DEFAULT 24 (migration
+  // 20260514000001), so it is always the answer. The old
+  // `?? org.lesson_reminder_hours` fallback could never run, but reading as
+  // though it could is what let a second, editable copy of this setting stand
+  // in /settings/reminders and silently do nothing.
+  const reminderHours: number = org.automation_lesson_reminder_hours ?? 24
 
   // Window: lessons starting between (now + reminderHours) and (now + reminderHours + 1h)
   const windowStart = new Date(now.getTime() + reminderHours * 60 * 60 * 1000)

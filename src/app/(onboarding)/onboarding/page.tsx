@@ -29,7 +29,7 @@ export default async function OnboardingPage() {
   const { data: org } = await db
     .from('organizations')
     .select(
-      'name, timezone, billing_mode, onboarding_completed, lesson_reminder_hours, payment_reminder_days'
+      'name, timezone, billing_mode, onboarding_completed, automation_lesson_reminder_hours, payment_reminder_days'
     )
     .eq('id', orgId)
     .single()
@@ -45,7 +45,7 @@ export default async function OnboardingPage() {
   const settingsDefaults = {
     noticeHoursFull: cancellationPolicy?.notice_hours_full ?? 24,
     partialChargePercent: cancellationPolicy?.partial_charge_percent ?? 50,
-    lessonReminderHours: org.lesson_reminder_hours ?? 24,
+    lessonReminderHours: org.automation_lesson_reminder_hours ?? 24,
     paymentReminderDays: org.payment_reminder_days ?? 7,
   }
 

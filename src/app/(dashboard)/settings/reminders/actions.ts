@@ -26,13 +26,11 @@ const EmailNotificationsSchema = z.object({
   progress_report: z.boolean().optional().default(false),
 })
 
+// lesson_reminder_hours is deliberately absent: the lesson-reminder timing is
+// owned by /settings/whatsapp (automation_lesson_reminder_hours). This page
+// used to accept and store it into the legacy column, which no sender reads.
 const RemindersSchema = z.object({
   reminders_enabled: z.boolean(),
-  lesson_reminder_hours: z.coerce
-    .number()
-    .refine((v) => [2, 4, 12, 24, 48].includes(v), {
-      message: 'validation.invalidHours',
-    }),
   payment_reminder_days: z.coerce.number().int().min(1).max(30),
   email_notifications: EmailNotificationsSchema.optional(),
 })
@@ -52,7 +50,6 @@ export async function saveReminderSettings(
 
   const raw = {
     reminders_enabled: formData.get('reminders_enabled') === 'on',
-    lesson_reminder_hours: formData.get('lesson_reminder_hours'),
     payment_reminder_days: formData.get('payment_reminder_days'),
     email_notifications: {
       lesson_reminder: formData.get('email_lesson_reminder') === 'on',
@@ -74,7 +71,6 @@ export async function saveReminderSettings(
     .from('organizations')
     .update({
       reminders_enabled: parsed.data.reminders_enabled,
-      lesson_reminder_hours: parsed.data.lesson_reminder_hours,
       payment_reminder_days: parsed.data.payment_reminder_days,
       email_notifications: parsed.data.email_notifications ?? {},
     })

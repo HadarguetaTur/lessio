@@ -9,15 +9,20 @@ import { resolveRemindersToggleState } from './toggleState'
 
 interface RemindersFormProps {
   defaultEnabled: boolean
-  defaultLessonHours: number
+  /**
+   * Read-only here. The lesson-reminder timing lives on
+   * organizations.automation_lesson_reminder_hours and is owned by
+   * /settings/whatsapp (sprint-31-scope.md § 72). This page used to render its
+   * own select over the legacy lesson_reminder_hours column, which the cron
+   * never reads — so saving it changed nothing while reporting success.
+   */
+  lessonHours: number
   defaultPaymentDays: number
   defaultEmailNotifications: Record<string, boolean>
   parentsWithEmail: number
   /** No connected number means nothing on this page can actually be delivered. */
   hasWhatsApp: boolean
 }
-
-const LESSON_HOUR_OPTIONS = [2, 4, 12, 24, 48]
 
 const initialState: ReminderActionState = { error: null }
 
@@ -32,7 +37,7 @@ const EMAIL_NOTIFICATION_KEYS = [
 
 export function RemindersForm({
   defaultEnabled,
-  defaultLessonHours,
+  lessonHours,
   defaultPaymentDays,
   defaultEmailNotifications,
   parentsWithEmail,
@@ -51,7 +56,6 @@ export function RemindersForm({
   // submitted, which would silently wipe the stored values — the hidden mirrors
   // below keep the saved settings intact while the switch is off.
   const [remindersEnabled, setRemindersEnabled] = useState(defaultEnabled)
-  const [lessonHours, setLessonHours] = useState(String(defaultLessonHours))
   const [paymentDays, setPaymentDays] = useState(String(defaultPaymentDays))
   const [emailPrefs, setEmailPrefs] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
@@ -101,29 +105,24 @@ export function RemindersForm({
 
       <hr className="border-gray-100" />
 
-      {/* Lesson reminder hours */}
+      {/* Lesson reminder timing — shown, not edited. The owning control is on
+          /settings/whatsapp; a second editable copy here is what made this
+          setting silently do nothing. */}
       <div className={dependentsOff ? 'opacity-50' : undefined}>
-        <label
-          htmlFor="lesson_reminder_hours"
-          className="block text-sm font-medium text-gray-900 mb-1"
-        >
-          {t('hoursBeforeLesson')}
-        </label>
+        <p className="block text-sm font-medium text-gray-900 mb-1">{t('hoursBeforeLesson')}</p>
         <p className="text-xs text-muted-foreground mb-2">{tp('remindersPage.lessonHoursHint')}</p>
-        <select
-          id="lesson_reminder_hours"
-          name="lesson_reminder_hours"
-          value={lessonHours}
-          onChange={(e) => setLessonHours(e.target.value)}
-          disabled={dependentsOff}
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm disabled:cursor-not-allowed"
-        >
-          {LESSON_HOUR_OPTIONS.map((h) => (
-            <option key={h} value={h}>
-              {tp('remindersPage.hoursBefore', { h })}
-            </option>
-          ))}
-        </select>
+        <p className="text-sm text-gray-900">
+          {tp('remindersPage.lessonHoursValue', { h: lessonHours })}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {tp('remindersPage.lessonHoursManagedElsewhere')}{' '}
+          <Link
+            href="/settings/whatsapp"
+            className="font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
+          >
+            {tp('remindersPage.lessonHoursChangeLink')}
+          </Link>
+        </p>
       </div>
 
       {/* Payment reminder days */}
@@ -179,7 +178,6 @@ export function RemindersForm({
           master switch off saves the switch without erasing everything else. */}
       {dependentsOff && (
         <>
-          <input type="hidden" name="lesson_reminder_hours" value={lessonHours} />
           <input type="hidden" name="payment_reminder_days" value={paymentDays} />
           {EMAIL_NOTIFICATION_KEYS.filter((key) => emailPrefs[key]).map((key) => (
             <input key={key} type="hidden" name={`email_${key}`} value="on" />

@@ -125,7 +125,11 @@ export async function updateBasicSettings(
 
   const noticeHoursFull = parseInt(formData.get('notice_hours') as string) || 24
   const chargePercent = parseInt(formData.get('charge_percent') as string) || 50
-  const lessonReminderHours = parseInt(formData.get('lesson_reminder_hours') as string) || 24
+  // The wizard writes the timing the reminder cron actually reads. It used to
+  // write lesson_reminder_hours, a column no sender consults, so every new
+  // studio configured this into nothing.
+  const rawReminderHours = parseInt(formData.get('automation_lesson_reminder_hours') as string)
+  const lessonReminderHours = [2, 12, 24].includes(rawReminderHours) ? rawReminderHours : 24
   const paymentReminderDays = parseInt(formData.get('payment_reminder_days') as string) || 7
 
   const db = createServiceRoleClient()
@@ -146,7 +150,7 @@ export async function updateBasicSettings(
   const { error: orgError } = await db
     .from('organizations')
     .update({
-      lesson_reminder_hours: lessonReminderHours,
+      automation_lesson_reminder_hours: lessonReminderHours,
       payment_reminder_days: paymentReminderDays,
     })
     .eq('id', orgId)

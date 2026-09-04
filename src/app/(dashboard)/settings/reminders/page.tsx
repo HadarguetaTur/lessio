@@ -50,7 +50,7 @@ export default async function RemindersSettingsPage() {
     db
       .from('organizations')
       .select(
-        'reminders_enabled, lesson_reminder_hours, payment_reminder_days, email_notifications, whatsapp_phone_number_id'
+        'reminders_enabled, automation_lesson_reminder_hours, payment_reminder_days, email_notifications, whatsapp_phone_number_id'
       )
       .eq('id', orgId)
       .single(),
@@ -76,7 +76,7 @@ export default async function RemindersSettingsPage() {
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
         <RemindersForm
           defaultEnabled={org?.reminders_enabled ?? true}
-          defaultLessonHours={org?.lesson_reminder_hours ?? 24}
+          lessonHours={org?.automation_lesson_reminder_hours ?? 24}
           defaultPaymentDays={org?.payment_reminder_days ?? 7}
           defaultEmailNotifications={(org?.email_notifications ?? {}) as Record<string, boolean>}
           parentsWithEmail={parentsWithEmail ?? 0}

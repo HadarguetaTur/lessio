@@ -67,6 +67,8 @@ these stay as the record of what was found.
 | [`ux-audit-4-teacher-findings.md`](ux-audit-4-teacher-findings.md) | 27.08.2026, teacher shell — Conditional Pass, some Mediums still open |
 | [`ux-audit-5-settings-integrations.md`](ux-audit-5-settings-integrations.md) | 29–30.08.2026, settings + integrations — **Fail**: 1 Critical, 6 High |
 | [`ux-audit-5-visual-interaction.md`](ux-audit-5-visual-interaction.md) | 30.08.2026, visual + responsiveness + interaction — **Fail**: axe Serious on 5 pages |
+| [`ux-audit-5-remediation.md`](ux-audit-5-remediation.md) | 04.09.2026 — the change log for both audit-5 docs. 9 of 13 Critical/High were already fixed; F5/F20/F12/F13 fixed here. Open: F1 (needs a product decision) |
+| [`ux-audit-7-communications.md`](ux-audit-7-communications.md) | 03–04.09.2026, team ↔ parent communication — Conditional Pass; all findings closed |
 
 ## Marketing
 

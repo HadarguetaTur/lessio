@@ -540,12 +540,23 @@ export async function approveBillingAction(billingId: string) {
     return { error: t('billing.errors.approvedLedgerFailed') }
   }
 
-  // Fire-and-forget: generate PDF invoice
-  generateAndStoreInvoice(billingId, session.orgId).catch((err) => {
-    console.error('[billing] invoice generation failed after approve', {
-      billingId, orgId: session.orgId, err,
+  // Fire-and-forget: generate a PDF invoice, but only for an org that asked for
+  // one. Most orgs invoice through their own provider, and issuing a second
+  // independently numbered series alongside those books is an accounting
+  // hazard, not a feature. Off unless invoice_generation_enabled is true.
+  const { data: invoiceSettings } = await supabase
+    .from('organizations')
+    .select('invoice_generation_enabled')
+    .eq('id', session.orgId)
+    .single()
+
+  if (invoiceSettings?.invoice_generation_enabled) {
+    generateAndStoreInvoice(billingId, session.orgId).catch((err) => {
+      console.error('[billing] invoice generation failed after approve', {
+        billingId, orgId: session.orgId, err,
+      })
     })
-  })
+  }
 
   revalidateBillingSurfaces(billing.student_id as string)
 

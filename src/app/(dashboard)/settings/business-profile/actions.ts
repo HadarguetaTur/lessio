@@ -18,6 +18,7 @@ const BusinessProfileSchema = z.object({
     .min(0)
     .max(25),
   enforce_weekly_quota: z.boolean(),
+  invoice_generation_enabled: z.boolean(),
   lesson_duration_settings: z.array(z.object({
     minutes: z.number().int().min(5).max(480),
     bot: z.boolean(),
@@ -59,6 +60,7 @@ export async function saveBusinessProfileAction(
     default_vat_rate: parseFloat(formData.get('default_vat_rate') as string),
     // An unchecked switch submits nothing at all, which is the "off" case.
     enforce_weekly_quota: formData.get('enforce_weekly_quota') === 'on',
+    invoice_generation_enabled: formData.get('invoice_generation_enabled') === 'on',
     lesson_duration_settings: normalizeLessonDurations(lessonDurationInput),
   }
 
@@ -77,6 +79,7 @@ export async function saveBusinessProfileAction(
       currency: parsed.data.currency,
       default_vat_rate: parsed.data.default_vat_rate,
       enforce_weekly_quota: parsed.data.enforce_weekly_quota,
+      invoice_generation_enabled: parsed.data.invoice_generation_enabled,
       lesson_duration_settings: parsed.data.lesson_duration_settings,
     })
     .eq('id', session.orgId)

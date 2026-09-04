@@ -2,7 +2,10 @@ import { CheckCircle, AlertCircle, CalendarDays } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { listCalendars, resolveSelectedCalendars, CalendarListEntry } from '@/lib/google-calendar'
+import { CalendarSelectionCard } from '@/components/dashboard/settings/CalendarSelectionCard'
 import { DisconnectTeacherCalendarButton } from './DisconnectTeacherCalendarButton'
+import { updateTeacherCalendarSelection } from './actions'
 
 export default async function TeacherCalendarConnectPage({
   searchParams,
@@ -17,12 +20,22 @@ export default async function TeacherCalendarConnectPage({
   const db = createServiceRoleClient()
   const { data: teacherProfile } = await db
     .from('teachers')
-    .select('google_calendar_email')
+    .select('google_calendar_email, google_calendar_refresh_token, google_calendar_selected_calendars')
     .eq('profile_id', profileId)
     .maybeSingle()
 
   const connectedEmail = teacherProfile?.google_calendar_email ?? null
   const isConnected    = Boolean(connectedEmail)
+
+  let calendarList: CalendarListEntry[] | null = null
+  if (isConnected && teacherProfile?.google_calendar_refresh_token) {
+    try {
+      calendarList = await listCalendars(teacherProfile.google_calendar_refresh_token)
+    } catch (err) {
+      console.error('[teacher/calendar-connect] calendarList fetch failed', { err })
+    }
+  }
+  const selectedCalendars = resolveSelectedCalendars(teacherProfile?.google_calendar_selected_calendars)
 
   const params        = await searchParams
   const justConnected = params.connected === '1'
@@ -57,6 +70,15 @@ export default async function TeacherCalendarConnectPage({
           <DisconnectedState canConnect={canConnect} />
         )}
       </div>
+
+      {isConnected && (
+        <CalendarSelectionCard
+          calendars={calendarList}
+          selected={selectedCalendars}
+          listError={calendarList === null}
+          saveAction={updateTeacherCalendarSelection}
+        />
+      )}
     </div>
   )
 }
@@ -136,4 +158,6 @@ const ERROR_KEYS = [
   'db',
   'config',
   'unauthenticated',
+  'forbidden',
+  'scope',
 ]

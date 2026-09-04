@@ -3,7 +3,10 @@ import { getTranslations } from 'next-intl/server'
 import { CheckCircle, AlertCircle, CalendarDays } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { listCalendars, resolveSelectedCalendars, CalendarListEntry } from '@/lib/google-calendar'
+import { CalendarSelectionCard } from '@/components/dashboard/settings/CalendarSelectionCard'
 import { DisconnectCalendarButton } from './DisconnectCalendarButton'
+import { updateOrgCalendarSelection } from './actions'
 
 export default async function CalendarSettingsPage({
   searchParams,
@@ -19,12 +22,22 @@ export default async function CalendarSettingsPage({
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('google_calendar_email')
+    .select('google_calendar_email, google_calendar_refresh_token, google_calendar_selected_calendars')
     .eq('id', orgId)
     .single()
 
   const connectedEmail = org?.google_calendar_email ?? null
   const isConnected    = Boolean(connectedEmail)
+
+  let calendarList: CalendarListEntry[] | null = null
+  if (isConnected && org?.google_calendar_refresh_token) {
+    try {
+      calendarList = await listCalendars(org.google_calendar_refresh_token)
+    } catch (err) {
+      console.error('[settings/calendar] calendarList fetch failed', { err })
+    }
+  }
+  const selectedCalendars = resolveSelectedCalendars(org?.google_calendar_selected_calendars)
 
   const params         = await searchParams
   const justConnected  = params.connected === '1'
@@ -59,6 +72,15 @@ export default async function CalendarSettingsPage({
           <DisconnectedState canConnect={canConnect} />
         )}
       </div>
+
+      {isConnected && (
+        <CalendarSelectionCard
+          calendars={calendarList}
+          selected={selectedCalendars}
+          listError={calendarList === null}
+          saveAction={updateOrgCalendarSelection}
+        />
+      )}
 
       <div className="mt-6 rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800 space-y-1">
         <p className="font-medium">{t('howTitle')}</p>
@@ -148,4 +170,5 @@ const ERROR_KEYS = [
   'config',
   'forbidden',
   'unauthenticated',
+  'scope',
 ]

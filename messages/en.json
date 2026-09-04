@@ -359,6 +359,18 @@
   "dashboard": {
     "title": "Dashboard",
     "newLesson": "New Lesson",
+    "setup": {
+      "title": "Finish setting up your business",
+      "progress": "{done} of {total} done",
+      "dismiss": "Hide",
+      "items": {
+        "teacher": "Add your first teacher",
+        "student": "Add your first student",
+        "lesson": "Schedule your first lesson",
+        "whatsapp": "Connect WhatsApp",
+        "payment": "Set up a payment provider"
+      }
+    },
     "today": {
       "title": "Today",
       "summary": "{total} lessons · {completed} completed · {cancelled} cancelled",
@@ -470,6 +482,7 @@
       "registrationDate": "Registration Date",
       "lastActivity": "Last Activity",
       "progressReport": "Progress Report",
+      "fullProfile": "Full profile",
       "noSubscription": "No subscription",
       "noParent": "No parent linked",
       "exportCsv": "Export to Excel",
@@ -1061,6 +1074,7 @@
       "breakTooShort": "This lesson does not leave the teacher their {minutes}-minute break. Schedule it anyway?"
     },
     "messagesPage": {
+      "backToMessages": "Back to messages",
       "title": "Portal messages",
       "subtitle": "Conversations with parents from the parent portal",
       "emptyTitle": "No messages",
@@ -2003,7 +2017,10 @@
       "current": "Current",
       "available": "Available",
       "currentButton": "Current language",
-      "switchButton": "Switch to this language"
+      "switchButton": "Switch to this language",
+      "parentDefaultTitle": "Language for parent messages",
+      "parentDefaultDescription": "The language WhatsApp messages to parents are sent in when a parent has no language preference of their own.",
+      "parentDefaultPrecedence": "A parent who wrote in a specific language, or has a saved preference, keeps receiving messages in their own language. This setting only decides the default for everyone else."
     },
     "automations": {
       "title": "WhatsApp automations",
@@ -2058,7 +2075,20 @@
       "config": "Google settings are missing on the server. Contact your system administrator.",
       "forbidden": "You do not have permission to perform this action.",
       "unauthenticated": "You need to sign in again.",
+      "scope": "The connection completed without calendar access. Connect again and tick the calendar checkbox on the Google consent screen.",
       "generic": "Something went wrong during the connection. Please try again."
+    },
+    "calendarSelection": {
+      "title": "Which calendars are checked?",
+      "hint": "When a lesson is scheduled, conflicts are checked against the calendars selected below.",
+      "primaryCalendar": "Primary calendar",
+      "unavailableCalendar": "unavailable",
+      "save": "Save selection",
+      "saved": "Selection saved",
+      "saveError": "Saving the selection failed. Please try again.",
+      "listError": "Couldn't load the calendar list from Google right now.",
+      "refresh": "Refresh list",
+      "noneSelected": "Select at least one calendar"
     },
     "googleCommon": {
       "connected": "Connected",
@@ -2427,6 +2457,10 @@
       "req1": "A Meta Business account with access to the WhatsApp Business API",
       "req2": "A phone number not already registered on WhatsApp",
       "req3": "Meta Business Verification",
+      "identityLoading": "Loading the number details from Meta...",
+      "identityUnverified": "We could not confirm the connection with Meta — the connection may have expired. If this persists, disconnect and reconnect.",
+      "verifiedName": "Verified business name",
+      "phoneNumber": "Phone number",
       "disconnectHint": "Disconnecting stops WhatsApp messages being sent and received until you reconnect.",
       "disconnectedHint": "Click the button to start the connection process through Meta. You will be taken to Meta to choose the number you want to connect.",
       "missingVar": "{name} is not configured on the server — the connection process cannot start.",

@@ -682,6 +682,7 @@ export function NewLessonForm({
               <li key={i} className="flex items-center gap-2 text-muted-foreground">
                 <span className="text-xs font-medium text-foreground">
                   {c.calendar === 'org' ? t('calendarConfirm.orgCalendar') : t('calendarConfirm.teacherCalendar')}
+                  {c.label ? ` · ${c.label}` : ''}
                 </span>
                 <span dir="ltr" className="text-xs">
                   {new Date(c.start).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}

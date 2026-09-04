@@ -359,6 +359,18 @@
   "dashboard": {
     "title": "לוח הבקרה",
     "newLesson": "שיעור חדש",
+    "setup": {
+      "title": "השלמת ההגדרה של העסק",
+      "progress": "{done} מתוך {total} הושלמו",
+      "dismiss": "הסתרה",
+      "items": {
+        "teacher": "הוספת מורה ראשון",
+        "student": "הוספת תלמיד ראשון",
+        "lesson": "קביעת שיעור ראשון",
+        "whatsapp": "חיבור WhatsApp",
+        "payment": "הגדרת ספק סליקה"
+      }
+    },
     "today": {
       "title": "היום",
       "summary": "{total} שיעורים · {completed} הושלמו · {cancelled} בוטלו",
@@ -470,6 +482,7 @@
       "registrationDate": "תאריך רישום",
       "lastActivity": "פעילות אחרונה",
       "progressReport": "דוח התקדמות",
+      "fullProfile": "לפרופיל המלא",
       "noSubscription": "אין מנוי",
       "noParent": "לא קושר הורה",
       "exportCsv": "ייצוא לאקסל",
@@ -1061,6 +1074,7 @@
       "breakTooShort": "השיעור לא משאיר למורה את ההפסקה של {minutes} דקות. האם לקבוע את השיעור בכל זאת?"
     },
     "messagesPage": {
+      "backToMessages": "חזרה להודעות",
       "title": "הודעות פורטל",
       "subtitle": "שיחות עם הורים מפורטל ההורים",
       "emptyTitle": "אין הודעות",
@@ -2003,7 +2017,10 @@
       "current": "נבחרה כעת",
       "available": "זמינה לבחירה",
       "currentButton": "השפה הנוכחית",
-      "switchButton": "מעבר לשפה זו"
+      "switchButton": "מעבר לשפה זו",
+      "parentDefaultTitle": "שפת ההודעות להורים",
+      "parentDefaultDescription": "השפה שבה יישלחו הודעות WhatsApp להורים כשאין להם העדפת שפה משלהם.",
+      "parentDefaultPrecedence": "הורה שכתב בשפה מסוימת או שנשמרה לו העדפה — ימשיך לקבל הודעות בשפה שלו. ההגדרה הזו קובעת רק את ברירת המחדל לכל השאר."
     },
     "automations": {
       "title": "אוטומציות WhatsApp",
@@ -2058,7 +2075,20 @@
       "config": "הגדרות Google חסרות בשרת. פנה למנהל המערכת.",
       "forbidden": "אין לך הרשאה לבצע פעולה זו.",
       "unauthenticated": "נדרשת התחברות מחדש.",
+      "scope": "החיבור הושלם ללא הרשאת גישה ליומן. יש להתחבר שוב ולסמן את תיבת הגישה ליומן במסך של Google.",
       "generic": "אירעה שגיאה בתהליך החיבור. נסה שנית."
+    },
+    "calendarSelection": {
+      "title": "אילו יומנים ייבדקו?",
+      "hint": "בקביעת שיעור נבדקות חפיפות מול היומנים המסומנים למטה.",
+      "primaryCalendar": "היומן הראשי",
+      "unavailableCalendar": "לא זמין",
+      "save": "שמירת בחירה",
+      "saved": "הבחירה נשמרה",
+      "saveError": "שמירת הבחירה נכשלה. נסו שוב.",
+      "listError": "לא ניתן לטעון כרגע את רשימת היומנים מ-Google.",
+      "refresh": "רענון רשימה",
+      "noneSelected": "יש לסמן לפחות יומן אחד"
     },
     "googleCommon": {
       "connected": "מחובר",
@@ -2335,7 +2365,7 @@
     },
     "dataRetention": {
       "label": "תקופת שמירת נתוני פעילות",
-      "hint": "נתוני שיחות WhatsApp ויומן AI יאונימוזו לאחר תקופה זו.",
+      "hint": "נתוני שיחות WhatsApp ויומן AI יעברו אנונימיזציה לאחר תקופה זו.",
       "saved": "ההגדרות נשמרו בהצלחה",
       "days": "{n} יום",
       "daysDefault": "{n} יום (ברירת מחדל)",
@@ -2427,6 +2457,10 @@
       "req1": "חשבון Meta Business עם גישה ל-WhatsApp Business API",
       "req2": "מספר טלפון שאינו רשום כבר ב-WhatsApp",
       "req3": "אימות עסקי ב-Meta (Meta Business Verification)",
+      "identityLoading": "טוען את פרטי המספר מ-Meta...",
+      "identityUnverified": "לא הצלחנו לאמת את החיבור מול Meta — ייתכן שהחיבור פג. אם זה נמשך, נתקו והתחברו מחדש.",
+      "verifiedName": "שם העסק המאומת",
+      "phoneNumber": "מספר טלפון",
       "disconnectHint": "ניתוק יפסיק את קבלת ושליחת הודעות WhatsApp עד לחיבור מחדש.",
       "disconnectedHint": "לחץ על הכפתור להתחלת תהליך החיבור דרך Meta. תועבר לממשק של Meta לבחירת המספר שברצונך לחבר.",
       "missingVar": "{name} אינו מוגדר בשרת — לא ניתן להתחיל תהליך חיבור.",

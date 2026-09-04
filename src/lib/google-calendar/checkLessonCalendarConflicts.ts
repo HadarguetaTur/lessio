@@ -10,7 +10,7 @@
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { checkCalendarConflicts, CalendarConflict } from './index'
+import { checkCalendarConflicts, resolveSelectedCalendars, CalendarConflict } from './index'
 
 export type { CalendarConflict }
 
@@ -25,17 +25,17 @@ export async function checkLessonCalendarConflicts(params: {
 
   const db = createServiceRoleClient()
 
-  // Fetch org calendar token + timezone in one query
+  // Fetch org calendar token + timezone + calendar selection in one query
   const { data: org } = await db
     .from('organizations')
-    .select('google_calendar_refresh_token, timezone')
+    .select('google_calendar_refresh_token, google_calendar_selected_calendars, timezone')
     .eq('id', orgId)
     .maybeSingle()
 
-  // Fetch teacher's calendar token
+  // Fetch teacher's calendar token + calendar selection
   const { data: teacher } = await db
     .from('teachers')
-    .select('google_calendar_refresh_token')
+    .select('google_calendar_refresh_token, google_calendar_selected_calendars')
     .eq('id', teacherId)
     .maybeSingle()
 
@@ -55,8 +55,10 @@ export async function checkLessonCalendarConflicts(params: {
   const timeMax   = lessonEnd.toUTC().toISO()!
 
   return checkCalendarConflicts({
-    orgEncryptedToken:     orgToken,
-    teacherEncryptedToken: teacherToken,
+    orgEncryptedToken:        orgToken,
+    teacherEncryptedToken:    teacherToken,
+    orgSelectedCalendars:     resolveSelectedCalendars(org?.google_calendar_selected_calendars),
+    teacherSelectedCalendars: resolveSelectedCalendars(teacher?.google_calendar_selected_calendars),
     timeMin,
     timeMax,
   })

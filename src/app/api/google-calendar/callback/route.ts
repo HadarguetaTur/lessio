@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { exchangeCalendarCode } from '@/lib/google-calendar'
+import { exchangeCalendarCode, hasCalendarScope, DEFAULT_SELECTED_CALENDARS } from '@/lib/google-calendar'
 import { encryptCalendarToken } from '@/lib/crypto'
 
 const STATE_COOKIE = 'gcal_oauth_state'
@@ -79,6 +79,13 @@ export async function GET(request: NextRequest) {
     return errorRedirect(request, target, 'exchange')
   }
 
+  // Google's granular consent lets the user approve without ticking the
+  // calendar checkbox. Storing that token would show "connected" while every
+  // freeBusy call fails 403 — reject it and tell the user to re-consent.
+  if (!hasCalendarScope(tokens.scope)) {
+    return errorRedirect(request, target, 'scope')
+  }
+
   let encryptedToken: string
   try {
     encryptedToken = encryptCalendarToken(tokens.refreshToken)
@@ -90,35 +97,45 @@ export async function GET(request: NextRequest) {
   const db = createServiceRoleClient()
 
   if (target === 'teacher') {
-    const { error: dbErr } = await db
+    const { data: updated, error: dbErr } = await db
       .from('teachers')
       .update({
-        google_calendar_refresh_token: encryptedToken,
-        google_calendar_email:         tokens.email,
+        google_calendar_refresh_token:      encryptedToken,
+        google_calendar_email:              tokens.email,
+        google_calendar_selected_calendars: DEFAULT_SELECTED_CALENDARS,
       })
       .eq('profile_id', user.id)
+      .select('id')
 
     if (dbErr) {
       console.error('[gcal/callback] DB update (teacher) failed', { error: dbErr })
       return errorRedirect(request, target, 'db')
     }
+    // No teachers row matched — the signed-in user isn't a teacher; without
+    // this check they'd get ?connected=1 with nothing written.
+    if (!updated || updated.length === 0) {
+      return errorRedirect(request, target, 'forbidden')
+    }
   } else {
-    // org — look up the org from profile
+    // org — look up the org from profile. Only owner/admin may (re)bind the
+    // org-wide calendar; the settings page is owner-gated but this route is
+    // reachable directly.
     const { data: profile } = await db
       .from('profiles')
-      .select('organization_id')
+      .select('organization_id, role')
       .eq('id', user.id)
       .maybeSingle()
 
-    if (!profile?.organization_id) {
+    if (!profile?.organization_id || !['owner', 'admin'].includes(profile.role ?? '')) {
       return errorRedirect(request, target, 'forbidden')
     }
 
     const { error: dbErr } = await db
       .from('organizations')
       .update({
-        google_calendar_refresh_token: encryptedToken,
-        google_calendar_email:         tokens.email,
+        google_calendar_refresh_token:      encryptedToken,
+        google_calendar_email:              tokens.email,
+        google_calendar_selected_calendars: DEFAULT_SELECTED_CALENDARS,
       })
       .eq('id', profile.organization_id)
 

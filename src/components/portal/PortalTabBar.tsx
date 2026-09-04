@@ -36,7 +36,7 @@ export async function PortalTabBar({ orgId, active }: { orgId: string; active: s
   const tabs = TABS.filter((tab) => !tab.feature || settings[tab.feature])
 
   return (
-    <nav className="fixed bottom-0 right-0 left-0 max-w-[480px] mx-auto border-t border-border bg-card flex safe-bottom">
+    <nav className="fixed bottom-0 right-0 left-0 z-40 max-w-[480px] mx-auto border-t border-border bg-card flex safe-bottom">
       {tabs.map(({ id, href, icon: Icon }) => {
         const isActive = active === id
         return (

@@ -127,10 +127,10 @@ export function PortalMessageThread({ messages, sendAction, draftKey }: Props) {
               }`}
             >
               {!msg.isFromParent && (
-                <p className="text-[10px] font-medium opacity-70 mb-0.5">{msg.senderName}</p>
+                <p className="text-[11px] font-medium opacity-90 mb-0.5">{msg.senderName}</p>
               )}
               <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
-              <p className={`text-[10px] mt-1 ${msg.isFromParent ? 'opacity-70' : 'text-muted-foreground'}`}>
+              <p className={`text-[11px] mt-1 ${msg.isFromParent ? 'opacity-90' : 'text-muted-foreground'}`}>
                 {mounted
                   ? relativeTime(msg.createdAt, intlLocale)
                   : absoluteTime(msg.createdAt, intlLocale)}

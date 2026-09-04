@@ -11,6 +11,7 @@ interface PortalUrlCopyProps {
 
 export function PortalUrlCopy({ orgId }: PortalUrlCopyProps) {
   const t = useTranslations('common.actions')
+  const tPortal = useTranslations('settings.parentPortal')
   const [copied, setCopied] = useState(false)
 
   // Owners copy this link and send it to parents, so it must be the public
@@ -34,6 +35,7 @@ export function PortalUrlCopy({ orgId }: PortalUrlCopyProps) {
         readOnly
         value={portalUrl}
         dir="ltr"
+        aria-label={tPortal('linkTitle')}
         className="flex-1 border border-gray-200 rounded-md px-3 py-1.5 text-xs text-gray-700 bg-gray-50 font-mono truncate"
       />
       <button

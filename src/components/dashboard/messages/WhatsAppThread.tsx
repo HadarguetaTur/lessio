@@ -51,7 +51,7 @@ export function WhatsAppThread({
               className={`max-w-[70%] rounded-xl px-4 py-2.5 ${bubbleClasses(msg)}`}
             >
               {!msg.isInbound && (
-                <p className="text-[10px] font-medium mb-0.5 flex items-center gap-1 opacity-80">
+                <p className="text-[11px] font-medium mb-0.5 flex items-center gap-1 opacity-90">
                   {msg.origin === 'ai' && <Sparkles size={10} />}
                   {(msg.origin === 'bot' || msg.origin === 'cron') && <Bot size={10} />}
                   {msg.origin === 'staff'
@@ -60,7 +60,7 @@ export function WhatsAppThread({
                 </p>
               )}
               <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
-              <p className="text-[10px] mt-1 opacity-70">
+              <p className="text-[11px] mt-1 opacity-90">
                 {DateTime.fromISO(msg.createdAt).setZone(timezone).toFormat('dd/MM HH:mm')}
               </p>
             </div>

@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
@@ -49,6 +50,10 @@ function readCookie(): string | null {
  */
 export function ConsentBanner() {
   const t = useTranslations('consent')
+  // The parent portal pins its own nav to bottom-0. Sitting at bottom-0 with a
+  // higher z-index covered every tab, so a parent arriving from a WhatsApp link
+  // could not navigate at all until they answered this.
+  const onPortal = usePathname()?.startsWith('/portal/') ?? false
 
   // useSyncExternalStore, not an effect: the cookie is external state, the
   // server has no view of it, and `getServerSnapshot` returning null is what
@@ -72,7 +77,9 @@ export function ConsentBanner() {
     <div
       role="dialog"
       aria-label={t('title')}
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 p-4 shadow-lg backdrop-blur-md"
+      className={`fixed inset-x-0 z-50 border-t border-border bg-background/95 p-4 shadow-lg backdrop-blur-md ${
+        onPortal ? 'bottom-[calc(4.5rem+env(safe-area-inset-bottom))]' : 'bottom-0'
+      }`}
     >
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">

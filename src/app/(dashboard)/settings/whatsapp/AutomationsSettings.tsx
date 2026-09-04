@@ -48,13 +48,28 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
             }`}
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">{t(`flows.${flow.key}.label`)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t(`flows.${flow.key}.description`)}</p>
+              {/* A real <label>, not aria-labelledby on a <p>: it names the
+                  switch for assistive tech AND makes the row text tappable. */}
+              <label
+                htmlFor={flow.key}
+                className="block text-sm font-medium text-gray-900 cursor-pointer"
+              >
+                {t(`flows.${flow.key}.label`)}
+              </label>
+              <p id={`${flow.key}-description`} className="text-xs text-muted-foreground mt-0.5">
+                {t(`flows.${flow.key}.description`)}
+              </p>
 
               {flow.hasHours && org[flow.key] && (
                 <div className="mt-2 flex items-center gap-2">
-                  <label className="text-xs text-muted-foreground">{t('sendLabel')}</label>
+                  <label
+                    htmlFor="automation_lesson_reminder_hours"
+                    className="text-xs text-muted-foreground"
+                  >
+                    {t('sendLabel')}
+                  </label>
                   <select
+                    id="automation_lesson_reminder_hours"
                     name="automation_lesson_reminder_hours"
                     defaultValue={org.automation_lesson_reminder_hours}
                     className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
@@ -69,12 +84,14 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
               )}
             </div>
 
-            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+            <label htmlFor={flow.key} className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
               <input
                 type="checkbox"
+                id={flow.key}
                 name={flow.key}
                 value="on"
                 defaultChecked={org[flow.key]}
+                aria-describedby={`${flow.key}-description`}
                 className="sr-only peer"
               />
               <div className="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-700" />

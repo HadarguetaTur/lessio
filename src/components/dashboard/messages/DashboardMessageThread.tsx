@@ -48,14 +48,14 @@ export function DashboardMessageThread({ messages, replyAction }: Props) {
                   : 'bg-primary text-primary-foreground rounded-ee-sm'
               }`}
             >
-              <p className={`text-[10px] font-medium mb-0.5 ${
-                msg.isFromParent ? 'text-muted-foreground' : 'opacity-70'
+              <p className={`text-[11px] font-medium mb-0.5 ${
+                msg.isFromParent ? 'text-muted-foreground' : 'opacity-90'
               }`}>
                 {msg.senderName}
               </p>
               <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
-              <p className={`text-[10px] mt-1 ${
-                msg.isFromParent ? 'text-muted-foreground' : 'opacity-70'
+              <p className={`text-[11px] mt-1 ${
+                msg.isFromParent ? 'text-muted-foreground' : 'opacity-90'
               }`}>
                 {new Date(msg.createdAt).toLocaleString('he-IL', {
                   day: 'numeric',

@@ -123,6 +123,31 @@ const mockGetDebtorsOverview = vi.hoisted(() => vi.fn())
 const mockSendDebtReminderForParent = vi.hoisted(() => vi.fn())
 const mockIsAiConfiguredForOrg = vi.hoisted(() => vi.fn())
 
+/** The session id every proposal in these tests gets — button ids embed it. */
+const COPILOT_SESSION_ID = vi.hoisted(() => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+const mockCreateCopilotSession = vi.hoisted(() => vi.fn())
+const mockGetLiveCopilotSession = vi.hoisted(() => vi.fn())
+const mockGetCopilotSessionById = vi.hoisted(() => vi.fn())
+const mockClaimCopilotSession = vi.hoisted(() => vi.fn())
+const mockCancelCopilotSession = vi.hoisted(() => vi.fn())
+
+vi.mock('@/lib/ai-assistant/copilotSessions', () => ({
+  createCopilotSession: mockCreateCopilotSession,
+  getLiveCopilotSession: mockGetLiveCopilotSession,
+  getCopilotSessionById: mockGetCopilotSessionById,
+  claimCopilotSession: mockClaimCopilotSession,
+  cancelCopilotSession: mockCancelCopilotSession,
+  supersedeLiveCopilotSessions: vi.fn().mockResolvedValue(undefined),
+  setCopilotSessionResult: vi.fn().mockResolvedValue(undefined),
+}))
+
+// The lapsed-org gate reads the subscription tables; here it always passes —
+// the read-only refusal itself is covered where the gate is tested.
+vi.mock('@/lib/saas/subscriptions', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  assertOrgNotSaasReadOnly: vi.fn().mockResolvedValue(undefined),
+}))
+
 // The real module is spread back in so the pure helpers the handler depends on
 // (isOwnerCopilotWriteAction) keep working — stubbing them out silently turned
 // every write action into a crash.
@@ -412,6 +437,11 @@ describe('POST /api/whatsapp/webhook', () => {
     mockAiAssistantConfigured.mockReturnValue(true)
     mockLogExchange.mockResolvedValue(undefined)
     mockIsTakenOver.mockResolvedValue(false)
+    mockCreateCopilotSession.mockResolvedValue(COPILOT_SESSION_ID)
+    mockGetLiveCopilotSession.mockResolvedValue(null)
+    mockGetCopilotSessionById.mockResolvedValue(null)
+    mockClaimCopilotSession.mockResolvedValue(null)
+    mockCancelCopilotSession.mockResolvedValue(true)
   })
 
   it('returns 200 for a valid signed request', async () => {
@@ -1842,7 +1872,11 @@ describe('WhatsApp sender roles', () => {
     const res = await POST(makeRequest(makeWebhookPayload('כמה חייבים לי?')))
 
     expect(res.status).toBe(200)
-    expect(mockClassifyOwnerCopilotIntent).toHaveBeenCalledWith(ORG_ID, 'כמה חייבים לי?')
+    expect(mockClassifyOwnerCopilotIntent).toHaveBeenCalledWith(
+      ORG_ID,
+      'כמה חייבים לי?',
+      expect.objectContaining({ actorPhone: SENDER_PHONE_E164 })
+    )
     expect(mockSendTextMessage).toHaveBeenCalledWith(
       SENDER_PHONE_E164,
       'שאלה על החוב נענתה, יש 4,000 שקלים בחובות',
@@ -1853,7 +1887,7 @@ describe('WhatsApp sender roles', () => {
 
   it('asks for confirmation before a debt reminder action and only executes after the button tap', async () => {
     mockIdentity({ profiles: OWNER_ROW }, COPILOT_ON)
-    mockClassifyOwnerCopilotIntent.mockResolvedValue({ action: 'send_debt_reminder_all' })
+    mockClassifyOwnerCopilotIntent.mockResolvedValue({ action: 'send_debt_reminder_all', params: {} })
     mockGetDebtorsOverview.mockResolvedValue({
       rows: [
         { parentId: 'p-1', parentName: 'דנה', phone: '+972500000000', optedOut: false, totalDebt: 1200, oldestAgeDays: 5, chargeCount: 1 },
@@ -1871,10 +1905,28 @@ describe('WhatsApp sender roles', () => {
     expect(mockSendReplyButtons).toHaveBeenCalledTimes(1)
     expect(mockSendDebtReminderForParent).not.toHaveBeenCalled()
 
+    // The proposal now lives server-side; the button carries only the session id.
+    const buttons = mockSendReplyButtons.mock.calls[0][1].buttons as Array<{ id: string }>
+    expect(buttons[0].id).toBe(`cp:c:${COPILOT_SESSION_ID}`)
+    expect(buttons[1].id).toBe(`cp:x:${COPILOT_SESSION_ID}`)
+
+    // The tap claims the stored session; the claim is what makes a double-tap
+    // run nothing twice.
+    mockClaimCopilotSession.mockResolvedValue({
+      id: COPILOT_SESSION_ID,
+      organization_id: ORG_ID,
+      phone: SENDER_PHONE_E164,
+      actor_profile_id: PROFILE_ID,
+      action: 'send_debt_reminder_all',
+      params: {},
+      status: 'executed',
+      locale: 'he',
+      result: null,
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+    })
+
     // The title is what Meta echoes back for a tap — the Hebrew button label.
-    const second = await POST(
-      makeRequest(makeInteractivePayload('cp:confirm:send_debt_reminder_all', 'שליחה'))
-    )
+    const second = await POST(makeRequest(makeInteractivePayload(buttons[0].id, 'שליחה')))
     expect(second.status).toBe(200)
     expect(mockSendDebtReminderForParent).toHaveBeenCalledTimes(2)
     expect(mockSendDebtReminderForParent).toHaveBeenNthCalledWith(1, ORG_ID, 'p-1', PROFILE_ID)
@@ -1940,7 +1992,7 @@ describe('WhatsApp sender roles', () => {
     mockIdentity({ profiles: OWNER_ROW }, COPILOT_ON)
     mockClassifyOwnerCopilotIntent.mockResolvedValue({
       action: 'send_debt_reminder_parent',
-      parentId: 'p-1',
+      params: { parentId: 'p-1' },
     })
     mockGetDebtorsOverview.mockResolvedValue({
       rows: [{ parentId: 'p-1', parentName: 'דנה', optedOut: false, totalDebt: 1200, oldestAgeDays: 5 }],
@@ -1950,8 +2002,16 @@ describe('WhatsApp sender roles', () => {
 
     await POST(makeRequest(makeWebhookPayload('תשלחי תזכורת לדנה')))
 
+    // The parent id is stored on the session row, never in the button id.
+    expect(mockCreateCopilotSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'send_debt_reminder_parent',
+        sessionParams: { parentId: 'p-1' },
+        status: 'awaiting_confirm',
+      })
+    )
     const buttons = mockSendReplyButtons.mock.calls[0][1].buttons as Array<{ id: string }>
-    expect(buttons[0].id).toBe('cp:confirm:send_debt_reminder_parent:p-1')
+    expect(buttons[0].id).toBe(`cp:c:${COPILOT_SESSION_ID}`)
     expect(mockSendDebtReminderForParent).not.toHaveBeenCalled()
   })
 

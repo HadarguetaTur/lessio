@@ -73,6 +73,9 @@ All mutations go through Next.js Server Actions. Actions call `src/lib/auth/sess
 3. Decrypt `whatsapp_access_token` via `src/lib/crypto/`
 4. Dispatch to intent handler (cancellation state machine → `src/lib/cancellation-flow/`)
 
+**Staff copilot action registry (decision #26, amendments 2026-08-30 / 2026-09-03):**
+Staff (owner/admin) write actions over WhatsApp go through `src/lib/ai-assistant/copilotActions/` — the AI only classifies `{action, params}`; a proposal is stored in `copilot_sessions` and executed deterministically only after a confirm tap (`cp:c:<sessionId>` buttons). New secretary actions are added as a `CopilotActionDef` in that registry plus a prompt line in `src/lib/ai-assistant/copilot.ts` — never as free-form AI execution.
+
 **Edge Functions (Deno, not Node):**
 Live in `supabase/functions/`. Shared utilities in `supabase/functions/_shared/`. Use `SubtleCrypto` for AES-256-GCM (not Node `crypto`). Crons registered in `supabase/config.toml`.
 

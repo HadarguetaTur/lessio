@@ -247,8 +247,18 @@ export function hasBalanceIntent(text: string): boolean {
  *
  * JS \b is defined over [A-Za-z0-9_] and never fires next to a Hebrew letter,
  * so \s+ adjacency is the only reliable boundary on the Hebrew side.
+ *
+ * A change-shaped message is a request to act, not a schedule question — the
+ * guard below steps aside for it. This detector is an early return before both
+ * the parent AI assistant (route.ts § 9c) and the staff copilot (staff.ts), so
+ * "אני רוצה לשנות את הזמינות של השיעורים שלי" must fall through to them rather
+ * than be answered with a summary or lesson list. The verb list mirrors
+ * hasRescheduleIntent (demoReschedule.ts), which the webhook checks first.
  */
 export function hasScheduleIntent(text: string): boolean {
+  if (/לשנות|לעדכן|להזיז|להעביר|לדחות|זמינות|\b(change|update|modify|reschedule|move|availability)\b/i.test(text)) {
+    return false
+  }
   return (
     /מתי\s+(?:יש\s+(?:לי|לנו)\s+)?ה?שיעור/.test(text) ||
     /(?:אילו|איזה)\s+שיעורים/.test(text) ||

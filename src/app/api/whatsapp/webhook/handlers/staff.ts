@@ -20,16 +20,28 @@ import {
   askOwnerCopilot,
   classifyOwnerCopilotIntent,
   isOwnerCopilotWriteAction,
-  type OwnerCopilotIntent,
+  OWNER_COPILOT_DAILY_CAP,
 } from '@/lib/ai-assistant/copilot'
 import { isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { isAiConfiguredForOrg } from '@/lib/ai-assistant/providers/factory'
-import { decodeCopilotPayload, encodeCopilotPayload } from '@/lib/whatsapp/copilotPayloads'
-import { getDebtorsOverview } from '@/lib/charges/debtors'
+import { countOwnerCopilotCalls } from '@/lib/ai-assistant/usage'
+import { getCopilotAction } from '@/lib/ai-assistant/copilotActions/registry'
+import type { CopilotActionRunCtx, CopilotOption } from '@/lib/ai-assistant/copilotActions/types'
 import {
-  sendDebtReminderForParent,
-  type ReminderOutcome,
-} from '@/lib/payment-request/sendManualReminder'
+  cancelCopilotSession,
+  claimCopilotSession,
+  createCopilotSession,
+  getCopilotSessionById,
+  getLiveCopilotSession,
+  setCopilotSessionResult,
+  supersedeLiveCopilotSessions,
+} from '@/lib/ai-assistant/copilotSessions'
+import { assertOrgNotSaasReadOnly } from '@/lib/saas/subscriptions'
+import {
+  decodeCopilotPayload,
+  encodeCopilotSessionPayload,
+  type CopilotAction,
+} from '@/lib/whatsapp/copilotPayloads'
 import {
   decodeStaffRequestPayload,
   encodeStaffRequestPayload,
@@ -63,8 +75,12 @@ import { replyWith, type HandlerContext } from '../shared'
 const SUPPORT_SEND = 'sup:send'
 const SUPPORT_CANCEL = 'sup:cancel'
 
-/** Debt reminders go out in batches so a big org does not fan out all at once. */
-const REMINDER_BATCH_SIZE = 5
+/**
+ * Where a collecting session keeps its disambiguation rows. Prefixed so it can
+ * never collide with a real action param, and stripped before params reach an
+ * action's strict schema.
+ */
+const OPTIONS_KEY = '__options'
 
 /** Routes a message from an owner/admin. Returns true when it was handled. */
 export async function handleStaffMessage(
@@ -89,7 +105,12 @@ export async function handleStaffMessage(
   const copilotDecision = decodeCopilotPayload(ctx.msg.replyId)
   if (copilotDecision) {
     try {
-      await handleOwnerCopilotDecision(ctx, copilotDecision)
+      if (copilotDecision.action === 'confirm' || copilotDecision.action === 'cancel') {
+        // A button minted before the session flow shipped, tapped now.
+        await handleLegacyCopilotDecision(ctx, copilotDecision)
+      } else {
+        await handleCopilotSessionDecision(ctx, copilotDecision)
+      }
     } catch (err) {
       // They tapped a button and are waiting: an unanswered tap reads as "it
       // sent", and Meta would redeliver the tap into the same failure.
@@ -118,9 +139,16 @@ export async function handleStaffMessage(
 
   if (menuAction) {
     // Any other menu tap ends an open support request, exactly as it does for a
-    // cancellation session.
+    // cancellation session — and abandons an in-flight copilot proposal too.
     await deleteSupportSession(ctx.org.id, ctx.senderPhone)
+    await supersedeLiveCopilotSessions(ctx.org.id, ctx.senderPhone)
   } else if (await handleSupportFreeText(ctx)) {
+    return true
+  } else if (await handleCopilotSessionFreeText(ctx)) {
+    // Free text while a copilot proposal is open must be read against that
+    // proposal ("no, to Ruti" is a correction) BEFORE the rule-based intents
+    // below get a chance to swallow it — "יום שלישי" answering a slot question
+    // must not be re-routed to the summary.
     return true
   }
 
@@ -258,27 +286,73 @@ async function handleSupportDecision(ctx: HandlerContext, send: boolean): Promis
   await replyWith(ctx, 'support_created')
 }
 
-async function handleOwnerCopilotFreeText(ctx: HandlerContext): Promise<boolean> {
-  if (ctx.msg.text == null || !ctx.msg.text.trim()) return false
-
+/**
+ * All gates that decide whether the copilot may spend a provider call on this
+ * message. Returns the actor's profile id when it may, null when it may not.
+ */
+async function copilotGate(ctx: HandlerContext): Promise<string | null> {
   const actorProfileId = 'profileId' in ctx.sender ? ctx.sender.profileId : null
-  if (!actorProfileId) {
-    return false
-  }
+  if (!actorProfileId) return null
 
   // The same switch the parent path honours: turning the AI assistant off turns
   // the copilot off too, and an org with no key never reaches the provider.
-  if (!ctx.org.ai_assistant_enabled) return false
-  if (!(isAiAssistantConfigured() || (await isAiConfiguredForOrg(ctx.org.id)))) return false
+  if (!ctx.org.ai_assistant_enabled) return null
+  if (!(isAiAssistantConfigured() || (await isAiConfiguredForOrg(ctx.org.id)))) return null
 
-  const intent = await classifyOwnerCopilotIntent(ctx.org.id, ctx.msg.text)
+  return actorProfileId
+}
 
-  if (!intent || intent.action === 'unknown') {
+function copilotRunCtx(ctx: HandlerContext, actorProfileId: string): CopilotActionRunCtx {
+  return {
+    orgId: ctx.org.id,
+    actorProfileId,
+    locale: ctx.locale,
+    timezone: ctx.timezone,
+  }
+}
+
+function stripOptions(params: Record<string, unknown>): Record<string, unknown> {
+  const rest = { ...params }
+  delete rest[OPTIONS_KEY]
+  return rest
+}
+
+/** The Q&A fallback: when a write cannot be proposed, answer the message instead. */
+async function answerInstead(ctx: HandlerContext): Promise<boolean> {
+  const answer = await askOwnerCopilot(ctx.org.id, ctx.msg.text ?? '', ctx.locale, ctx.senderPhone)
+  await sendTextMessage(ctx.senderPhone, answer, ctx.accessToken, ctx.phoneNumberId)
+  return true
+}
+
+/** True when the daily budget is spent — and the person was told so. */
+async function copilotCapReached(ctx: HandlerContext): Promise<boolean> {
+  const calls = await countOwnerCopilotCalls(ctx.org.id, ctx.senderPhone)
+  if (calls < OWNER_COPILOT_DAILY_CAP) return false
+  await replyWith(ctx, 'copilot_limit_reached')
+  return true
+}
+
+async function handleOwnerCopilotFreeText(ctx: HandlerContext): Promise<boolean> {
+  if (ctx.msg.text == null || !ctx.msg.text.trim()) return false
+
+  const actorProfileId = await copilotGate(ctx)
+  if (!actorProfileId) return false
+  if (await copilotCapReached(ctx)) return true
+
+  const intent = await classifyOwnerCopilotIntent(ctx.org.id, ctx.msg.text, {
+    actorPhone: ctx.senderPhone,
+  })
+
+  if (!intent || intent.action === 'unknown' || intent.action === 'cancel_session') {
     return false
   }
 
   try {
-    return await runOwnerCopilotIntent(ctx, intent)
+    if (intent.action === 'ask') return await answerInstead(ctx)
+    if (isOwnerCopilotWriteAction(intent.action)) {
+      return await proposeCopilotAction(ctx, actorProfileId, intent.action, intent.params)
+    }
+    return false
   } catch (err) {
     // Past this point the copilot has taken the message. Throwing would leave
     // the owner with no reply and Meta redelivering into the same failure.
@@ -288,113 +362,176 @@ async function handleOwnerCopilotFreeText(ctx: HandlerContext): Promise<boolean>
   }
 }
 
-async function runOwnerCopilotIntent(
-  ctx: HandlerContext,
-  intent: OwnerCopilotIntent
-): Promise<boolean> {
-  if (ctx.msg.text == null) return false
+/**
+ * Free text while a copilot proposal is open. The classifier sees the pending
+ * action, so the message can amend it, replace it, cancel it — or turn out to
+ * be unrelated, in which case this returns false and normal routing continues
+ * (the proposal stays open until its expiry).
+ */
+async function handleCopilotSessionFreeText(ctx: HandlerContext): Promise<boolean> {
+  if (ctx.msg.text == null || !ctx.msg.text.trim()) return false
 
-  if (intent.action === 'ask') {
-    const answer = await askOwnerCopilot(ctx.org.id, ctx.msg.text, ctx.locale)
-    await sendTextMessage(ctx.senderPhone, answer, ctx.accessToken, ctx.phoneNumberId)
+  const session = await getLiveCopilotSession(ctx.org.id, ctx.senderPhone)
+  if (!session) return false
+
+  const actorProfileId = await copilotGate(ctx)
+  if (!actorProfileId) return false
+  if (await copilotCapReached(ctx)) return true
+
+  const intent = await classifyOwnerCopilotIntent(ctx.org.id, ctx.msg.text, {
+    actorPhone: ctx.senderPhone,
+    session: { action: session.action, params: stripOptions(session.params) },
+  })
+
+  if (!intent || intent.action === 'unknown') return false
+
+  try {
+    if (intent.action === 'cancel_session') {
+      await cancelCopilotSession(session.id, ctx.org.id, ctx.senderPhone)
+      await replyWith(ctx, 'copilot_cancelled')
+      return true
+    }
+    if (intent.action === 'ask') return await answerInstead(ctx)
+    if (isOwnerCopilotWriteAction(intent.action)) {
+      // Same action: the message amends the pending params. A different
+      // action: it replaces the proposal outright (propose supersedes).
+      const merged =
+        intent.action === session.action
+          ? { ...stripOptions(session.params), ...intent.params }
+          : intent.params
+      return await proposeCopilotAction(ctx, actorProfileId, intent.action, merged)
+    }
+    return false
+  } catch (err) {
+    console.error('[whatsapp/staff] Copilot session turn failed', {
+      orgId: ctx.org.id,
+      err: String(err),
+    })
+    await replyWith(ctx, 'copilot_error')
     return true
   }
-
-  if (isOwnerCopilotWriteAction(intent.action)) {
-    const ownerCopilotRegistry = {
-      send_debt_reminder_all: async () => {
-        const overview = await getDebtorsOverview(ctx.org.id)
-        const eligible = overview.rows.filter((row) => !row.optedOut)
-
-        if (eligible.length === 0) {
-          await sendTextMessage(
-            ctx.senderPhone,
-            botString('copilot_no_debtors', ctx.locale),
-            ctx.accessToken,
-            ctx.phoneNumberId
-          )
-          return true
-        }
-
-        await sendReplyButtons(
-          ctx.senderPhone,
-          {
-            body: botString('copilot_confirm_all', ctx.locale, {
-              count: String(eligible.length),
-            }),
-            buttons: [
-              {
-                id: encodeCopilotPayload('confirm', 'send_debt_reminder_all'),
-                title: botString('support_send_button', ctx.locale),
-              },
-              {
-                id: encodeCopilotPayload('cancel'),
-                title: botString('support_cancel_button', ctx.locale),
-              },
-            ],
-          },
-          ctx.accessToken,
-          ctx.phoneNumberId
-        )
-        return true
-      },
-      send_debt_reminder_parent: async () => {
-        if (!intent.parentId) {
-          const answer = await askOwnerCopilot(ctx.org.id, ctx.msg.text, ctx.locale)
-          await sendTextMessage(ctx.senderPhone, answer, ctx.accessToken, ctx.phoneNumberId)
-          return true
-        }
-
-        const overview = await getDebtorsOverview(ctx.org.id)
-        const parent = overview.rows.find((row) => row.parentId === intent.parentId)
-
-        if (!parent || parent.optedOut) {
-          const answer = await askOwnerCopilot(ctx.org.id, ctx.msg.text, ctx.locale)
-          await sendTextMessage(ctx.senderPhone, answer, ctx.accessToken, ctx.phoneNumberId)
-          return true
-        }
-
-        await sendReplyButtons(
-          ctx.senderPhone,
-          {
-            body: botString('copilot_confirm_parent', ctx.locale, {
-              parent_name: parent.parentName || botString('the_parent', ctx.locale),
-            }),
-            buttons: [
-              {
-                id: encodeCopilotPayload('confirm', 'send_debt_reminder_parent', intent.parentId),
-                title: botString('support_send_button', ctx.locale),
-              },
-              {
-                id: encodeCopilotPayload('cancel'),
-                title: botString('support_cancel_button', ctx.locale),
-              },
-            ],
-          },
-          ctx.accessToken,
-          ctx.phoneNumberId
-        )
-        return true
-      },
-    } as const
-
-    return await ownerCopilotRegistry[intent.action]()
-  }
-
-  return false
 }
 
 /**
- * Executes what the owner confirmed by tapping a button.
+ * Turns a classified write intent into a server-stored proposal. The AI's
+ * involvement ended at classification: params are validated against the
+ * action's strict schema, resolved org-scoped by deterministic code, and the
+ * buttons carry only the session id — never the params themselves.
+ */
+async function proposeCopilotAction(
+  ctx: HandlerContext,
+  actorProfileId: string,
+  actionName: string,
+  rawParams: Record<string, unknown>
+): Promise<boolean> {
+  const def = getCopilotAction(actionName)
+  if (!def) return false
+
+  // Params the schema rejects are params the model made up. Answering the
+  // message beats proposing an action built on invented input.
+  const parsed = def.paramsSchema.safeParse(rawParams)
+  if (!parsed.success) return await answerInstead(ctx)
+
+  const runCtx = copilotRunCtx(ctx, actorProfileId)
+  const proposal = await def.propose(runCtx, parsed.data)
+
+  switch (proposal.kind) {
+    case 'decline':
+      return await answerInstead(ctx)
+
+    case 'reply':
+      await supersedeLiveCopilotSessions(ctx.org.id, ctx.senderPhone)
+      await sendTextMessage(ctx.senderPhone, proposal.body, ctx.accessToken, ctx.phoneNumberId)
+      return true
+
+    case 'ask_slot':
+      await createCopilotSession({
+        orgId: ctx.org.id,
+        phone: ctx.senderPhone,
+        actorProfileId,
+        action: def.name,
+        sessionParams: proposal.params,
+        status: 'collecting',
+        locale: ctx.locale,
+      })
+      await sendTextMessage(ctx.senderPhone, proposal.body, ctx.accessToken, ctx.phoneNumberId)
+      return true
+
+    case 'ambiguous': {
+      const sessionId = await createCopilotSession({
+        orgId: ctx.org.id,
+        phone: ctx.senderPhone,
+        actorProfileId,
+        action: def.name,
+        sessionParams: { ...proposal.params, [OPTIONS_KEY]: proposal.options },
+        status: 'collecting',
+        locale: ctx.locale,
+      })
+      await sendListMessage(
+        ctx.senderPhone,
+        {
+          body: proposal.body,
+          buttonLabel: botString('copilot_pick_option', ctx.locale),
+          rows: proposal.options.slice(0, 10).map((option, index) => ({
+            id: encodeCopilotSessionPayload('pick', sessionId, index),
+            title: option.title,
+            description: option.description,
+          })),
+        },
+        ctx.accessToken,
+        ctx.phoneNumberId
+      )
+      return true
+    }
+
+    case 'confirm': {
+      const sessionId = await createCopilotSession({
+        orgId: ctx.org.id,
+        phone: ctx.senderPhone,
+        actorProfileId,
+        action: def.name,
+        sessionParams: parsed.data,
+        status: 'awaiting_confirm',
+        locale: ctx.locale,
+      })
+      await sendReplyButtons(
+        ctx.senderPhone,
+        {
+          body: proposal.body,
+          buttons: [
+            {
+              id: encodeCopilotSessionPayload('confirm', sessionId),
+              title: botString('support_send_button', ctx.locale),
+            },
+            {
+              id: encodeCopilotSessionPayload('cancel', sessionId),
+              title: botString('support_cancel_button', ctx.locale),
+            },
+          ],
+        },
+        ctx.accessToken,
+        ctx.phoneNumberId
+      )
+      return true
+    }
+  }
+}
+
+/**
+ * Executes what the owner confirmed by tapping a button on a session proposal.
  *
  * There is no requireMutation() here on purpose: that guard reads a dashboard
  * session, and a webhook has none. The authority check on this path is the
  * staff role resolved from the sender's phone plus the explicit confirmation
- * tap — see docs/decisions.md, Amendment 2026-08-30.
+ * tap — see docs/decisions.md, Amendment 2026-08-30. The webhook-side
+ * equivalent of the lapsed-org gate is assertOrgNotSaasReadOnly below.
  */
-async function handleOwnerCopilotDecision(
+async function handleCopilotSessionDecision(
   ctx: HandlerContext,
-  decision: { action: 'confirm' | 'cancel'; kind?: 'send_debt_reminder_all' | 'send_debt_reminder_parent'; parentId?: string }
+  payload:
+    | { action: 'confirm_session'; sessionId: string }
+    | { action: 'cancel_session'; sessionId: string }
+    | { action: 'pick'; sessionId: string; index: number }
 ): Promise<void> {
   const actorProfileId = 'profileId' in ctx.sender ? ctx.sender.profileId : null
   if (!actorProfileId) {
@@ -402,53 +539,114 @@ async function handleOwnerCopilotDecision(
     return
   }
 
-  if (decision.action === 'cancel') {
-    await replyWith(ctx, 'copilot_cancelled')
+  if (payload.action === 'cancel_session') {
+    const cancelled = await cancelCopilotSession(payload.sessionId, ctx.org.id, ctx.senderPhone)
+    await replyWith(ctx, cancelled ? 'copilot_cancelled' : 'copilot_session_expired')
     return
   }
 
-  if (decision.kind === 'send_debt_reminder_all') {
-    const overview = await getDebtorsOverview(ctx.org.id)
-    const eligible = overview.rows.filter((row) => !row.optedOut)
+  if (payload.action === 'pick') {
+    const session = await getCopilotSessionById(payload.sessionId, ctx.org.id, ctx.senderPhone)
+    const live =
+      session &&
+      (session.status === 'collecting' || session.status === 'awaiting_confirm') &&
+      new Date(session.expires_at) > new Date()
+    const options = live ? (session.params[OPTIONS_KEY] as CopilotOption[] | undefined) : undefined
+    const option = Array.isArray(options) ? options[payload.index] : undefined
 
-    let sent = 0
-    let skipped = 0
-    let failed = 0
-
-    // Batched rather than one Promise.all: a large org would otherwise open a
-    // send per debtor at once, and one rejection would abandon the rest.
-    for (let i = 0; i < eligible.length; i += REMINDER_BATCH_SIZE) {
-      const results = await Promise.allSettled(
-        eligible
-          .slice(i, i + REMINDER_BATCH_SIZE)
-          .map((row) => sendDebtReminderForParent(ctx.org.id, row.parentId, actorProfileId))
-      )
-
-      for (const result of results) {
-        if (result.status === 'rejected' || result.value === 'failed') failed += 1
-        else if (result.value === 'sent') sent += 1
-        else skipped += 1
-      }
+    if (!session || !option || typeof option.patch !== 'object' || option.patch === null) {
+      await replyWith(ctx, 'copilot_session_expired')
+      return
     }
 
-    await replyWith(ctx, 'copilot_summary', {
-      sent: String(sent),
-      skipped: String(skipped),
-      failed: String(failed),
+    await proposeCopilotAction(ctx, actorProfileId, session.action, {
+      ...stripOptions(session.params),
+      ...option.patch,
     })
     return
   }
 
-  if (decision.kind === 'send_debt_reminder_parent' && decision.parentId) {
-    let outcome: ReminderOutcome = 'failed'
-    try {
-      outcome = await sendDebtReminderForParent(ctx.org.id, decision.parentId, actorProfileId)
-    } catch (err) {
-      console.error('[whatsapp/staff] Debt reminder failed', { orgId: ctx.org.id, err: String(err) })
+  // Confirm. A lapsed org is read-only from the webhook exactly as it is from
+  // the dashboard.
+  try {
+    await assertOrgNotSaasReadOnly(ctx.org.id)
+  } catch (err) {
+    if (err instanceof Error && err.message === 'SAAS_READ_ONLY') {
+      await replyWith(ctx, 'copilot_org_readonly')
+      return
     }
-
-    await replyWith(ctx, outcome === 'sent' ? 'copilot_reminder_sent' : 'copilot_reminder_not_sent')
+    throw err
   }
+
+  // The claim is the idempotency lock: only one tap flips awaiting_confirm to
+  // executed, so a double-tap (or Meta redelivering the tap) runs nothing twice.
+  const claimed = await claimCopilotSession(payload.sessionId, ctx.org.id, ctx.senderPhone)
+  if (!claimed) {
+    const session = await getCopilotSessionById(payload.sessionId, ctx.org.id, ctx.senderPhone)
+    await replyWith(ctx, session?.status === 'executed' ? 'copilot_already_done' : 'copilot_session_expired')
+    return
+  }
+
+  const def = getCopilotAction(claimed.action)
+  const parsed = def?.paramsSchema.safeParse(stripOptions(claimed.params))
+  if (!def || !parsed || !parsed.success) {
+    // A stored action the registry no longer carries, or params that fail
+    // today's schema — a stale row from an older deploy. Nothing ran.
+    console.error('[whatsapp/staff] Claimed copilot session is not executable', {
+      orgId: ctx.org.id,
+      action: claimed.action,
+    })
+    await replyWith(ctx, 'copilot_error')
+    return
+  }
+
+  const outcome = await def.execute(copilotRunCtx(ctx, actorProfileId), parsed.data)
+  if (outcome.audit) {
+    await setCopilotSessionResult(claimed.id, ctx.org.id, outcome.audit)
+  }
+  await sendTextMessage(ctx.senderPhone, outcome.body, ctx.accessToken, ctx.phoneNumberId)
+}
+
+/**
+ * A confirm/cancel button minted before the session flow shipped. Decoding is
+ * strict (per-action arity), and execution goes through the same registry defs
+ * as the session path.
+ */
+async function handleLegacyCopilotDecision(
+  ctx: HandlerContext,
+  decision: { action: 'confirm' | 'cancel'; kind?: CopilotAction; parentId?: string }
+): Promise<void> {
+  const actorProfileId = 'profileId' in ctx.sender ? ctx.sender.profileId : null
+  if (!actorProfileId) {
+    await replyWith(ctx, 'action_not_for_role')
+    return
+  }
+
+  if (decision.action === 'cancel' || !decision.kind) {
+    await replyWith(ctx, 'copilot_cancelled')
+    return
+  }
+
+  try {
+    await assertOrgNotSaasReadOnly(ctx.org.id)
+  } catch (err) {
+    if (err instanceof Error && err.message === 'SAAS_READ_ONLY') {
+      await replyWith(ctx, 'copilot_org_readonly')
+      return
+    }
+    throw err
+  }
+
+  const def = getCopilotAction(decision.kind)
+  const params = decision.parentId ? { parentId: decision.parentId } : {}
+  const parsed = def?.paramsSchema.safeParse(params)
+  if (!def || !parsed || !parsed.success) {
+    await replyWith(ctx, 'copilot_error')
+    return
+  }
+
+  const outcome = await def.execute(copilotRunCtx(ctx, actorProfileId), parsed.data)
+  await sendTextMessage(ctx.senderPhone, outcome.body, ctx.accessToken, ctx.phoneNumberId)
 }
 
 // ── Day-off requests ──────────────────────────────────────────────────────────

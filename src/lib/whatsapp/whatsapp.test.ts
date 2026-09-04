@@ -394,4 +394,18 @@ describe('hasScheduleIntent', () => {
     expect(hasScheduleIntent('סיימתי את שיעורי הבית')).toBe(false)
     expect(hasScheduleIntent('stop')).toBe(false)
   })
+
+  // Regression: an admin's "אני רוצה לשנות את הזמינות של השיעורים שלי" matched
+  // the possessive alternation via "השיעורים שלי" and was answered with the
+  // staff daily summary before the copilot ever ran. A change-shaped message
+  // must fall through, not be read as a schedule question.
+  it('does not match change-shaped requests', () => {
+    expect(hasScheduleIntent('אני רוצה לשנות את הזמינות של השיעורים שלי')).toBe(false)
+    expect(hasScheduleIntent('אפשר לעדכן את השיעורים שלי?')).toBe(false)
+    expect(hasScheduleIntent('רוצה להעביר את השיעור שלי')).toBe(false)
+    expect(hasScheduleIntent('להזיז את השיעור הקרוב')).toBe(false)
+    expect(hasScheduleIntent('I want to change my lessons')).toBe(false)
+    expect(hasScheduleIntent('reschedule my lessons')).toBe(false)
+    expect(hasScheduleIntent('update my availability')).toBe(false)
+  })
 })

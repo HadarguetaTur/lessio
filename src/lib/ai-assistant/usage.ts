@@ -14,6 +14,10 @@ export interface LogAiUsageParams {
   promptTokens: number
   completionTokens: number
   estimatedCostUsd: number
+  /** Which feature made the call (e.g. 'owner_copilot'). Untagged = parent assistant. */
+  source?: string
+  /** The phone whose message triggered the call — the unit the staff cap counts. */
+  actorPhone?: string
 }
 
 /**
@@ -33,6 +37,8 @@ export async function logAiUsage(params: LogAiUsageParams): Promise<string | nul
         completion_tokens: params.completionTokens,
         estimated_cost_usd: params.estimatedCostUsd,
         satisfaction: 'none',
+        source: params.source ?? null,
+        actor_phone: params.actorPhone ?? null,
       })
       .select('id')
       .single()
@@ -45,6 +51,35 @@ export async function logAiUsage(params: LogAiUsageParams): Promise<string | nul
   } catch (err) {
     console.error('[ai-usage] Unexpected error logging usage', { orgId: params.orgId, err })
     return null
+  }
+}
+
+/**
+ * How many copilot calls a staff phone made in the last 24 hours. Used for the
+ * daily cap. Fails open (returns 0 on error) like the WhatsApp rate limiter —
+ * a broken counter must not silence the copilot.
+ */
+export async function countOwnerCopilotCalls(orgId: string, actorPhone: string): Promise<number> {
+  try {
+    const db = createServiceRoleClient()
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+    const { count, error } = await db
+      .from('ai_usage_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+      .eq('source', 'owner_copilot')
+      .eq('actor_phone', actorPhone)
+      .gte('created_at', since)
+
+    if (error) {
+      console.error('[ai-usage] Failed to count copilot calls', { orgId, error: error.message })
+      return 0
+    }
+    return count ?? 0
+  } catch (err) {
+    console.error('[ai-usage] Unexpected error counting copilot calls', { orgId, err })
+    return 0
   }
 }
 

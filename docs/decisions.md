@@ -417,6 +417,26 @@ Rules:
 This does not reopen the broader teacher-write policy. Teachers remain read-only in WhatsApp unless a
 separate, explicitly scoped feature is added with the same two-phase confirm model and role gating.
 
+### Amendment 2026-09-03 — copilot generalised to a per-action registry with server-stored proposals
+
+The debt-reminder whitelist above is now the first entry in a generic action registry
+(`src/lib/ai-assistant/copilotActions/`), built to grow into a staff "secretary" (availability,
+lessons, students) without changing the pipeline. The 2026-08-30 rules all still hold; this
+amendment adds the mechanics that let the whitelist grow safely:
+
+* the AI still only classifies — it returns `{action, params}` against a closed action list, and may
+  additionally fill missing params across turns when a proposal is pending. Execution is always a
+  deterministic `CopilotActionDef.execute` behind an explicit confirm tap
+* a proposal lives in `copilot_sessions`, not in the button: reply ids carry only a session id
+  (`cp:c:/cp:x:/cp:p:` in `src/lib/whatsapp/copilotPayloads.ts`), so a stale or forged button can
+  never replay params. Finished rows are retained as the audit trail of proposed → confirmed → result
+* execution re-validates at tap time: params re-parsed against the action's strict schema, entities
+  re-resolved org-scoped, `assertOrgNotSaasReadOnly` as the webhook-side `requireMutation`
+  equivalent, and a guarded status claim makes a double-tap run nothing twice
+* the staff copilot is capped at `OWNER_COPILOT_DAILY_CAP` provider calls per actor phone per day,
+  counted via `ai_usage_log.source = 'owner_copilot'`
+* teachers remain read-only over WhatsApp (day-off flow unchanged)
+
 ---
 
 ## 27. Teacher Google Calendar Sync

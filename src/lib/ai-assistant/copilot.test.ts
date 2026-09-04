@@ -19,7 +19,7 @@ vi.mock('./usage', () => ({
 }))
 
 import { AiProviderNotConfiguredError } from './providers/factory'
-import { askOwnerCopilot, classifyOwnerCopilotIntent } from './copilot'
+import { askOwnerCopilot, classifyOwnerCopilotIntent, safeParseIntent } from './copilot'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
 const PARENT_ID = '22222222-2222-2222-2222-222222222222'
@@ -67,6 +67,7 @@ describe('classifyOwnerCopilotIntent', () => {
 
     await expect(classifyOwnerCopilotIntent(ORG_ID, 'תשלחי תזכורת לכולם')).resolves.toEqual({
       action: 'send_debt_reminder_all',
+      params: {},
     })
   })
 
@@ -94,6 +95,39 @@ describe('classifyOwnerCopilotIntent', () => {
     await expect(classifyOwnerCopilotIntent(ORG_ID, 'משהו')).resolves.toEqual({
       action: 'unknown',
     })
+  })
+
+  it('downgrades cancel_session to unknown when nothing is pending', async () => {
+    // The model may only cancel a proposal it was shown. Without one, a
+    // cancel answer is it misreading the rules, not a real intent.
+    mockChat.mockResolvedValue(chatResult('{"action":"cancel_session"}'))
+
+    await expect(classifyOwnerCopilotIntent(ORG_ID, 'בטל')).resolves.toEqual({
+      action: 'unknown',
+    })
+  })
+
+  it('passes cancel_session through when a session is pending', async () => {
+    mockChat.mockResolvedValue(chatResult('{"action":"cancel_session"}'))
+
+    await expect(
+      classifyOwnerCopilotIntent(ORG_ID, 'עזבי, בטלי את זה', {
+        session: { action: 'send_debt_reminder_all', params: {} },
+      })
+    ).resolves.toEqual({ action: 'cancel_session' })
+  })
+
+  it('shows a pending proposal to the model', async () => {
+    mockChat.mockResolvedValue(chatResult('{"action":"ask"}'))
+
+    await classifyOwnerCopilotIntent(ORG_ID, 'לא, לרותי', {
+      session: { action: 'send_debt_reminder_parent', params: { parentId: PARENT_ID } },
+    })
+
+    const { systemPrompt } = mockChat.mock.calls[0][0]
+    expect(systemPrompt).toContain('Pending action')
+    expect(systemPrompt).toContain('send_debt_reminder_parent')
+    expect(systemPrompt).toContain(PARENT_ID)
   })
 
   it('returns null without calling the model when no AI is configured', async () => {
@@ -151,7 +185,7 @@ describe('classifyOwnerCopilotIntent', () => {
   it('logs usage so the copilot shows up in the org’s AI costs', async () => {
     mockChat.mockResolvedValue(chatResult('{"action":"ask"}'))
 
-    await classifyOwnerCopilotIntent(ORG_ID, 'כמה חייבים לי?')
+    await classifyOwnerCopilotIntent(ORG_ID, 'כמה חייבים לי?', { actorPhone: '+972500000000' })
 
     expect(mockLogAiUsage).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -160,6 +194,8 @@ describe('classifyOwnerCopilotIntent', () => {
         model: 'claude-haiku-4-5-20251001',
         promptTokens: 120,
         completionTokens: 20,
+        source: 'owner_copilot',
+        actorPhone: '+972500000000',
       })
     )
   })
@@ -216,5 +252,48 @@ describe('askOwnerCopilot', () => {
     mockChat.mockResolvedValue(chatResult(''))
 
     await expect(askOwnerCopilot(ORG_ID, 'כמה חייבים לי?')).resolves.toBe(COPILOT_ERROR_HE)
+  })
+})
+
+describe('safeParseIntent', () => {
+  it('parses every action the classifier may return', () => {
+    expect(safeParseIntent('{"action":"ask"}')).toEqual({ action: 'ask' })
+    expect(safeParseIntent('{"action":"unknown"}')).toEqual({ action: 'unknown' })
+    expect(safeParseIntent('{"action":"cancel_session"}')).toEqual({ action: 'cancel_session' })
+    expect(safeParseIntent('{"action":"send_debt_reminder_all","params":{}}')).toEqual({
+      action: 'send_debt_reminder_all',
+      params: {},
+    })
+    expect(
+      safeParseIntent('{"action":"send_debt_reminder_parent","params":{"parentId":"abc"}}')
+    ).toEqual({ action: 'send_debt_reminder_parent', params: { parentId: 'abc' } })
+  })
+
+  it('normalises the legacy top-level parentId into params', () => {
+    // A model still latched onto the pre-session prompt shape must not fail
+    // the parse — its output means the same thing.
+    expect(safeParseIntent('{"action":"send_debt_reminder_parent","parentId":"abc"}')).toEqual({
+      action: 'send_debt_reminder_parent',
+      params: { parentId: 'abc' },
+    })
+  })
+
+  it('defaults missing params to an empty object', () => {
+    expect(safeParseIntent('{"action":"send_debt_reminder_all"}')).toEqual({
+      action: 'send_debt_reminder_all',
+      params: {},
+    })
+    expect(safeParseIntent('{"action":"send_debt_reminder_parent"}')).toEqual({
+      action: 'send_debt_reminder_parent',
+      params: {},
+    })
+  })
+
+  it('returns null for anything off-schema', () => {
+    expect(safeParseIntent('')).toBeNull()
+    expect(safeParseIntent('not json')).toBeNull()
+    expect(safeParseIntent('{"action":"launch_missiles"}')).toBeNull()
+    expect(safeParseIntent('{"params":{"parentId":"abc"}}')).toBeNull()
+    expect(safeParseIntent('{"action":42}')).toBeNull()
   })
 })

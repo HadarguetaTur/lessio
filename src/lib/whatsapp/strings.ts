@@ -205,6 +205,11 @@ export type BotStringKey =
   | 'copilot_reminder_sent'
   | 'copilot_reminder_not_sent'
   | 'copilot_error'
+  | 'copilot_session_expired'
+  | 'copilot_already_done'
+  | 'copilot_limit_reached'
+  | 'copilot_org_readonly'
+  | 'copilot_pick_option'
   // Cross-role
   | 'action_not_for_role'
   | 'role_switch_body'
@@ -448,6 +453,13 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     copilot_reminder_sent: 'התזכורת נשלחה ✅',
     copilot_reminder_not_sent: 'התזכורת לא נשלחה 🙁 אפשר לנסות שוב מהדשבורד.',
     copilot_error: 'לא הצלחתי לטפל בזה כרגע 🙂 אפשר לנסות שוב או לכתוב "תפריט".',
+    copilot_session_expired: 'הבקשה הזו כבר לא בתוקף 🙂 אפשר פשוט לכתוב שוב מה לעשות.',
+    copilot_already_done: 'זה כבר בוצע 🙂',
+    copilot_limit_reached:
+      'הגעת למכסת הבקשות היומית לעוזר החכם. אפשר להמשיך דרך המערכת, או לנסות שוב מחר 🙂',
+    copilot_org_readonly:
+      'המנוי של העסק אינו פעיל כרגע, ולכן אי אפשר לבצע שינויים מכאן. אפשר להסדיר זאת בהגדרות החיוב במערכת.',
+    copilot_pick_option: 'בחירה',
 
     action_not_for_role: 'הפעולה הזו לא זמינה מהתפריט שלך 🙂 הנה מה שאפשר לעשות:',
     role_switch_body: 'באיזה תפקיד להמשיך?',
@@ -698,6 +710,13 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     copilot_reminder_sent: 'Reminder sent ✅',
     copilot_reminder_not_sent: 'The reminder was not sent 🙁 You can retry from the dashboard.',
     copilot_error: 'I could not handle that right now 🙂 Try again or type "menu".',
+    copilot_session_expired: 'That request is no longer active 🙂 Just write again what you need.',
+    copilot_already_done: 'That was already done 🙂',
+    copilot_limit_reached:
+      'You have reached today\'s smart-assistant quota. You can continue in the dashboard, or try again tomorrow 🙂',
+    copilot_org_readonly:
+      'The business subscription is not active right now, so changes cannot be made from here. You can sort it out under billing settings in the dashboard.',
+    copilot_pick_option: 'Choose',
 
     action_not_for_role: 'That action is not available from your menu 🙂 Here is what you can do:',
     role_switch_body: 'Which role would you like to continue as?',

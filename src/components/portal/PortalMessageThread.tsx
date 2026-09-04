@@ -53,9 +53,12 @@ export function PortalMessageThread({ messages, sendAction, draftKey }: Props) {
   const intlLocale = toIntlLocale(parseAppLocale(useLocale()))
   const [state, action, isPending] = useActionState(sendAction, { error: null })
   const scrollRef = useRef<HTMLDivElement>(null)
-  const formRef = useRef<HTMLFormElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [length, setLength] = useState(0)
+
+  // Controlled, so a failed send keeps what was typed on screen. React 19
+  // resets an uncontrolled form after any action completes, success or not:
+  // the draft below survived in sessionStorage, but the box looked empty and
+  // nothing told the parent their message was recoverable.
+  const [body, setBody] = useState('')
 
   // "5 minutes ago" depends on when it is read, so the server and the client
   // disagree and React throws away the tree. Render the absolute time on the
@@ -66,37 +69,52 @@ export function PortalMessageThread({ messages, sendAction, draftKey }: Props) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [messages.length])
 
-  // Clear the form on success. The counter clears from the form's own reset
-  // event, so it stays out of this effect.
-  useEffect(() => {
-    if (state.error === null && formRef.current) {
-      formRef.current.reset()
-      try {
-        sessionStorage.removeItem(draftKey)
-      } catch {
-        // Private browsing, or storage disabled — losing a sent draft is fine.
-      }
+  // Clear on success only. A failure leaves both the box and the saved draft
+  // alone, so the parent can hit send again instead of retyping.
+  //
+  // Adjusted during render, and keyed on identity rather than a "first run"
+  // flag: useActionState hands back the very same initial object until an
+  // action resolves, so a changed identity is the only reliable signal that a
+  // send actually settled. The old version cleared on mount — which wiped the
+  // stored draft before the restore below could read it, so it never came back.
+  // A counter, not a boolean derived during render: a render-phase update is
+  // discarded and re-run, so anything computed alongside it never reaches an
+  // effect. Committed state does, and each increment fires the cleanup once.
+  const [settled, setSettled] = useState(state)
+  const [sendCount, setSendCount] = useState(0)
+  if (state !== settled) {
+    setSettled(state)
+    if (state.error === null) {
+      setBody('')
+      setSendCount((n) => n + 1)
     }
-  }, [state, draftKey])
+  }
+
+  useEffect(() => {
+    if (sendCount === 0) return
+    try {
+      sessionStorage.removeItem(draftKey)
+    } catch {
+      // Private browsing, or storage disabled — losing a sent draft is fine.
+    }
+  }, [sendCount, draftKey])
 
   // A dropped connection sends the whole page to the error boundary, taking an
   // unsent message with it. Restore whatever was typed when the parent returns.
+  // sessionStorage cannot be read while rendering on the server, so this is the
+  // one place state genuinely has to be seeded from an effect.
   useEffect(() => {
-    const input = inputRef.current
-    if (!input) return
     try {
       const saved = sessionStorage.getItem(draftKey)
-      if (saved) {
-        input.value = saved
-        input.dispatchEvent(new Event('input', { bubbles: true }))
-      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved) setBody(saved)
     } catch {
       // Nothing to restore.
     }
   }, [draftKey])
 
   function rememberDraft(value: string) {
-    setLength(value.length)
+    setBody(value)
     try {
       if (value) sessionStorage.setItem(draftKey, value)
       else sessionStorage.removeItem(draftKey)
@@ -147,23 +165,18 @@ export function PortalMessageThread({ messages, sendAction, draftKey }: Props) {
         )}
         {/* The limit is silent otherwise: paste a long message and 500
             characters vanish with nothing on screen to say so. */}
-        {length >= COUNTER_FROM && (
+        {body.length >= COUNTER_FROM && (
           <p className="text-xs text-muted-foreground mb-2 text-end tabular-nums">
-            {t('charCount', { count: length, max: MAX_BODY })}
+            {t('charCount', { count: body.length, max: MAX_BODY })}
           </p>
         )}
-        <form
-          ref={formRef}
-          action={action}
-          onReset={() => setLength(0)}
-          className="flex gap-2"
-        >
+        <form action={action} className="flex gap-2">
           <input
-            ref={inputRef}
             type="text"
             name="body"
             required
             maxLength={MAX_BODY}
+            value={body}
             onChange={(e) => rememberDraft(e.target.value)}
             placeholder={t('inputPlaceholder')}
             className="flex-1 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"

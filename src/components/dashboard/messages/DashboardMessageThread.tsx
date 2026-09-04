@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useRef, useEffect } from 'react'
+import { useActionState, useRef, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Send } from 'lucide-react'
 import type { PortalMessage } from '@/lib/portal/messages'
@@ -15,17 +15,24 @@ export function DashboardMessageThread({ messages, replyAction }: Props) {
   const tCommon = useTranslations('common')
   const [state, action, isPending] = useActionState(replyAction, { error: null })
   const scrollRef = useRef<HTMLDivElement>(null)
-  const formRef = useRef<HTMLFormElement>(null)
+
+  // Controlled, so a failed reply keeps what was typed. React 19 resets an
+  // uncontrolled form after any action completes, success or not, which
+  // defeated the guard that used to sit on formRef.reset().
+  const [body, setBody] = useState('')
+
+  // Adjusted during render rather than in an effect: useActionState returns the
+  // same object until an action resolves, so a changed identity means a send
+  // just settled, and only a clean one should empty the box.
+  const [settled, setSettled] = useState(state)
+  if (state !== settled) {
+    setSettled(state)
+    if (state.error === null) setBody('')
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [messages.length])
-
-  useEffect(() => {
-    if (state.error === null && formRef.current) {
-      formRef.current.reset()
-    }
-  }, [state])
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -74,12 +81,14 @@ export function DashboardMessageThread({ messages, replyAction }: Props) {
         {state.error && (
           <p className="text-xs text-red-600 mb-2">{state.error}</p>
         )}
-        <form ref={formRef} action={action} className="flex gap-2">
+        <form action={action} className="flex gap-2">
           <input
             type="text"
             name="body"
             required
             maxLength={2000}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
             placeholder={t('threadPlaceholder')}
             className="flex-1 border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             autoComplete="off"

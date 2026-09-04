@@ -57,6 +57,11 @@ export default function PricingForm({
             placeholder={t('individualRatePlaceholder')}
           />
           <p className="text-xs text-muted-foreground">{t('individualHint')}</p>
+          {/* An empty rate is not neutral: the monthly build refuses a lesson it
+              cannot price. Say so here rather than at billing time. */}
+          {initialData.individualHourlyRate === null && (
+            <p className="text-xs text-amber-700">{t('individualEmptyConsequence')}</p>
+          )}
           {teachersWithOwnRate > 0 && (
             <p className="text-xs text-muted-foreground">
               {t('teacherOverrideCount', { count: teachersWithOwnRate })}

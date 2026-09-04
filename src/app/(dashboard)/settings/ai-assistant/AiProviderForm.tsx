@@ -12,6 +12,13 @@ import { PROVIDER_MODELS, AI_PROVIDER_NAMES } from '@/lib/ai-assistant/providers
 import type { AiProviderName } from '@/lib/ai-assistant/providers/types'
 import type { AiProviderActionState, TestConnectionActionState } from './actions'
 
+/** Where an owner actually creates a key, per provider. */
+const API_KEY_CONSOLES: Record<AiProviderName, string> = {
+  openai: 'https://platform.openai.com/api-keys',
+  anthropic: 'https://console.anthropic.com/settings/keys',
+  google: 'https://aistudio.google.com/apikey',
+}
+
 interface Props {
   currentProvider: AiProviderName
   currentModel: string
@@ -118,6 +125,18 @@ export function AiProviderForm({
             {selectedProvider === 'openai' && hasPlatformKey
               ? t('openaiKeyOptional')
               : t('apiKeyRequired')}
+          </p>
+          {/* The page was honest that a key is missing but never said where a
+              key comes from — a dead end for a non-technical owner. */}
+          <p className="text-xs text-muted-foreground mt-1">
+            <a
+              href={API_KEY_CONSOLES[selectedProvider]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline underline-offset-2 hover:text-blue-700"
+            >
+              {t('whereToGetKey', { provider: providerModels.label })}
+            </a>
           </p>
         </div>
 

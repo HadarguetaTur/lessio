@@ -1847,6 +1847,9 @@
         "lockedByMeta": "These buttons come from a Meta-approved template, so their wording is locked. Changing it needs a new review.",
         "maxLength": "Up to {max} characters"
       },
+      "statusLookupFailed": "We couldn't read template statuses from Meta — the connection may have expired. Until that's fixed, the statuses shown here are not up to date.",
+      "statusNotConnected": "No active WhatsApp connection, so template statuses can't be checked against Meta.",
+      "statusCheckConnection": "Check the connection in WhatsApp settings",
       "metaStatus": "Meta status",
       "status": {
         "UNKNOWN": "Unknown — refresh statuses",

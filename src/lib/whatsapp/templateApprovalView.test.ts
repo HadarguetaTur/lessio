@@ -59,6 +59,18 @@ describe('resolveTemplateApproval', () => {
     expect(view).toMatchObject({ status: 'PENDING', source: 'builtin' })
   })
 
+  it('reports UNKNOWN, not PENDING, when the status lookup failed', () => {
+    // An expired token produces no rows and no verdict. PENDING would tell the
+    // owner Meta is reviewing her copy while the connection is actually dead.
+    const view = resolveTemplateApproval([], TYPE, 'he', 'default text', false, false)
+    expect(view).toMatchObject({ status: 'UNKNOWN', source: 'builtin' })
+  })
+
+  it('keeps a real Meta verdict even when the lookup later failed', () => {
+    const view = resolveTemplateApproval([builtInRow()], TYPE, 'he', 'default text', false, false)
+    expect(view).toMatchObject({ status: 'APPROVED', source: 'builtin' })
+  })
+
   it('marks a saved custom body NOT_SUBMITTED even when the built-in is approved', () => {
     const view = resolveTemplateApproval([builtInRow()], TYPE, 'he', V1_BODY, true)
     expect(view).toMatchObject({

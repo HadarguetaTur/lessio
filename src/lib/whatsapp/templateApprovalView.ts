@@ -53,15 +53,20 @@ export function builtInTemplateName(type: MessageTemplateType, locale: AppLocale
 function builtInView(
   rows: TemplateStatusRow[],
   type: MessageTemplateType,
-  locale: AppLocale
+  locale: AppLocale,
+  statusesVerified: boolean
 ): TemplateApprovalView | null {
   const builtIn = builtInTemplateName(type, locale)
   if (!builtIn) return null
   const row = rows.find((r) => r.templateName === builtIn && r.language === locale)
   return {
     // Built-in templates are always registered, so PENDING is the honest
-    // default until a webhook or refresh reports otherwise.
-    status: row?.status ?? 'PENDING',
+    // default until a webhook or refresh reports otherwise — but only while we
+    // could actually reach Meta. When the lookup failed (an expired token is
+    // the usual cause) PENDING becomes a claim we cannot support: it tells an
+    // owner her copy is under review when nothing was ever submitted and the
+    // connection is dead. UNKNOWN says what we really know.
+    status: row?.status ?? (statusesVerified ? 'PENDING' : 'UNKNOWN'),
     metaName: builtIn,
     reason: row?.reason ?? null,
     source: 'builtin',
@@ -76,13 +81,17 @@ function builtInView(
  * @param rows        every status row for the org (any order)
  * @param savedBody   the body the bot will use: the org's custom row, else the default
  * @param hasCustomBody whether the org saved its own wording for this type+locale
+ * @param statusesVerified whether the stored rows reflect a successful read of
+ *   Meta's template list. False when that call failed, in which case a built-in
+ *   with no row is reported UNKNOWN rather than PENDING.
  */
 export function resolveTemplateApproval(
   rows: TemplateStatusRow[],
   type: MessageTemplateType,
   locale: AppLocale,
   savedBody: string,
-  hasCustomBody: boolean
+  hasCustomBody: boolean,
+  statusesVerified = true
 ): TemplateApprovalView | null {
   const submissions = rows
     .filter((r) => r.type === type && r.language === locale && r.bodyText !== null)
@@ -90,7 +99,7 @@ export function resolveTemplateApproval(
 
   // Never edited, never submitted: the built-in template is the whole story.
   if (!hasCustomBody && submissions.length === 0) {
-    return builtInView(rows, type, locale)
+    return builtInView(rows, type, locale, statusesVerified)
   }
 
   // What goes out of window right now, regardless of what is saved.

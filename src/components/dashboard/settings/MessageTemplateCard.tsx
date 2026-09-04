@@ -86,6 +86,10 @@ const initialState: ActionState = { error: null }
  */
 const STATUS_STYLES: Record<string, string> = {
   NOT_SUBMITTED: 'bg-blue-50 text-blue-700 border-blue-200',
+  // Listed so it renders translated rather than as the raw word: it is what a
+  // card shows when Meta could not be reached, which is a real state an owner
+  // sees, not a parse failure.
+  UNKNOWN: 'bg-gray-100 text-gray-600 border-gray-300',
   APPROVED: 'bg-green-50 text-green-700 border-green-200',
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
   REJECTED: 'bg-red-50 text-red-700 border-red-200',

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { AlertTriangle } from 'lucide-react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -77,24 +78,29 @@ const LANG_TABS: Array<{ locale: AppLocale; label: string }> = [
 async function loadStatusesWithCatchUp(
   db: ReturnType<typeof createServiceRoleClient>,
   orgId: string
-): Promise<TemplateStatusRow[]> {
+): Promise<{ rows: TemplateStatusRow[]; lookupFailed: boolean; notConnected: boolean }> {
   const existing = await getTemplateStatuses(orgId)
-  if (existing.length > 0) return existing
+  if (existing.length > 0) return { rows: existing, lookupFailed: false, notConnected: false }
 
   const { data: org } = await db
     .from('organizations')
     .select('whatsapp_waba_id, whatsapp_access_token')
     .eq('id', orgId)
     .maybeSingle()
-  if (!org?.whatsapp_waba_id || !org?.whatsapp_access_token) return existing
+  if (!org?.whatsapp_waba_id || !org?.whatsapp_access_token) {
+    return { rows: existing, lookupFailed: false, notConnected: true }
+  }
 
   try {
     await refreshTemplateStatusesFromMeta(orgId, org.whatsapp_waba_id, decryptToken(org.whatsapp_access_token))
   } catch (err) {
+    // Reported, not just logged. This used to return silently, so an expired
+    // token left every card reading "pending approval" with nothing on screen
+    // to say the connection was gone. See docs/ux-audit-7-communications.md F2.
     console.warn('[message-templates] Initial status catch-up failed', { orgId, err })
-    return existing
+    return { rows: existing, lookupFailed: true, notConnected: false }
   }
-  return getTemplateStatuses(orgId)
+  return { rows: await getTemplateStatuses(orgId), lookupFailed: false, notConnected: false }
 }
 
 export default async function MessageTemplatesPage({
@@ -128,7 +134,7 @@ export default async function MessageTemplatesPage({
     (a, b) => Number(b.locale === orgLocale) - Number(a.locale === orgLocale)
   )
 
-  const [{ data: rows }, statusRows, labelOverrides] = await Promise.all([
+  const [{ data: rows }, statusLoad, labelOverrides] = await Promise.all([
     db
       .from('message_templates')
       .select('type, body_template')
@@ -137,6 +143,8 @@ export default async function MessageTemplatesPage({
     loadStatusesWithCatchUp(db, orgId),
     getOrgBotStrings(orgId, locale),
   ])
+
+  const { rows: statusRows, lookupFailed, notConnected } = statusLoad
 
   const customMap = new Map<string, string>(
     (rows ?? []).map(r => [r.type, r.body_template])
@@ -159,7 +167,14 @@ export default async function MessageTemplatesPage({
     const customBody = customMap.get(type) ?? null
     const savedBody = customBody ?? DEFAULT_TEMPLATES[locale][type]
     const approval = OUT_OF_WINDOW_TYPES.includes(type)
-      ? resolveTemplateApproval(statusRows, type, locale, savedBody, customBody !== null)
+      ? resolveTemplateApproval(
+          statusRows,
+          type,
+          locale,
+          savedBody,
+          customBody !== null,
+          !lookupFailed && !notConnected
+        )
       : null
 
     // The body a parent gets outside the 24h window is a different, Meta-fixed
@@ -202,6 +217,24 @@ export default async function MessageTemplatesPage({
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-sm text-muted-foreground mt-1">{t('description')}</p>
       </div>
+
+      {/* A dead connection is otherwise invisible here: every card falls back to
+          a status chip, and the owner reads a column of them as "Meta is
+          reviewing my copy". Say what actually happened, and where to fix it. */}
+      {(lookupFailed || notConnected) && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />
+          <span>
+            {lookupFailed ? t('statusLookupFailed') : t('statusNotConnected')}{' '}
+            <Link
+              href="/settings/whatsapp"
+              className="font-medium underline underline-offset-2"
+            >
+              {t('statusCheckConnection')}
+            </Link>
+          </span>
+        </div>
+      )}
 
       {/* Language tabs */}
       <div className="flex gap-1 border-b border-gray-200">

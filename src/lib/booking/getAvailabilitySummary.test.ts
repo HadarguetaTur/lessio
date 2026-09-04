@@ -11,6 +11,12 @@ vi.mock('./getAvailableSlots', () => ({
   getAvailableSlots: (...args: unknown[]) => mockGetAvailableSlots(...args),
 }))
 
+// Google Calendar busy time (decision #36) — one fetch per week, threaded down.
+const mockExternalBusy = vi.fn().mockResolvedValue([])
+vi.mock('@/lib/google-calendar/getExternalBusyIntervals', () => ({
+  getExternalBusyIntervals: (...args: unknown[]) => mockExternalBusy(...args),
+}))
+
 import { getAvailabilitySummary, mergeSlotsIntoBands } from './getAvailabilitySummary'
 
 describe('mergeSlotsIntoBands', () => {
@@ -94,6 +100,33 @@ describe('getAvailabilitySummary', () => {
     })
     expect(summary.days[1].hasAvailability).toBe(false)
     expect(mockGetAvailableSlots).toHaveBeenCalledTimes(7)
+  })
+
+  it('fetches Google Calendar busy time once for the whole week and threads it to every day', async () => {
+    const weekBusy = [
+      { start: '2026-03-24T10:00:00.000Z', end: '2026-03-24T11:00:00.000Z' },
+    ]
+    mockExternalBusy.mockResolvedValueOnce(weekBusy)
+    mockGetAvailableSlots.mockResolvedValue([])
+
+    await getAvailabilitySummary({
+      teacherId: 'teacher-1',
+      organizationId: 'org-1',
+      durationMinutes: 45,
+      weekStart: '2026-03-24',
+    })
+
+    expect(mockExternalBusy).toHaveBeenCalledTimes(1)
+    expect(mockExternalBusy).toHaveBeenCalledWith({
+      orgId: 'org-1',
+      teacherId: 'teacher-1',
+      windowStartUtc: '2026-03-22T00:00:00.000Z',
+      windowEndUtc: '2026-03-28T23:59:59.999Z',
+    })
+    expect(mockGetAvailableSlots).toHaveBeenCalledTimes(7)
+    for (const call of mockGetAvailableSlots.mock.calls) {
+      expect(call[0]).toMatchObject({ externalBusy: weekBusy })
+    }
   })
 })
 

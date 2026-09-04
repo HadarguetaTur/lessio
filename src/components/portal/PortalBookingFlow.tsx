@@ -72,6 +72,8 @@ export function PortalBookingFlow({ orgId, timezone, durationValues }: PortalBoo
   const [state, setState] = useState<FlowState>({ durationMinutes: durationValues[0] })
   /** True when the parent has one child — the picker is skipped, so there is nothing to go back to. */
   const [singleStudent, setSingleStudent] = useState(false)
+  /** True when the teacher step auto-advanced (assigned teacher / one-teacher org). */
+  const [singleTeacher, setSingleTeacher] = useState(false)
 
   function handleRestart() {
     setState({ durationMinutes: durationValues[0] })
@@ -99,8 +101,10 @@ export function PortalBookingFlow({ orgId, timezone, durationValues }: PortalBoo
     return (
       <TeacherStep
         orgId={orgId}
+        studentId={state.studentId}
         studentName={state.studentName}
-        onSelect={(teacherId, teacherName) => {
+        onSelect={(teacherId, teacherName, wasOnlyTeacher) => {
+          setSingleTeacher(Boolean(wasOnlyTeacher))
           setState((s) => ({ ...s, teacherId, teacherName }))
           setStep('slots')
         }}
@@ -125,7 +129,15 @@ export function PortalBookingFlow({ orgId, timezone, durationValues }: PortalBoo
           setState((s) => ({ ...s, slot, lock, date, durationMinutes: duration }))
           setStep('confirm')
         }}
-        onBack={() => setStep('teachers')}
+        // An auto-skipped teacher step would bounce straight back to slots, so
+        // route "back" past it — or drop the button when there is nothing left.
+        onBack={
+          singleTeacher
+            ? singleStudent
+              ? undefined
+              : () => setStep('students')
+            : () => setStep('teachers')
+        }
       />
     )
   }
@@ -257,13 +269,17 @@ function StudentStep({
 
 function TeacherStep({
   orgId,
+  studentId,
   studentName,
   onSelect,
   onBack,
 }: {
   orgId: string
+  studentId?: string
   studentName?: string
-  onSelect: (teacherId: string, teacherName: string) => void
+  /** `wasOnlyTeacher` true = the step auto-advanced (assigned teacher or a
+   *  one-teacher org); the caller should not route "back" into it. */
+  onSelect: (teacherId: string, teacherName: string, wasOnlyTeacher?: boolean) => void
   onBack?: () => void
 }) {
   const t = useTranslations('booking.teacher')
@@ -272,11 +288,18 @@ function TeacherStep({
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    getPortalTeachersAction(orgId)
-      .then(setTeachers)
+    getPortalTeachersAction(orgId, studentId)
+      .then((list) => {
+        if (list.length === 1) {
+          onSelect(list[0].id, list[0].display_name, true)
+          return
+        }
+        setTeachers(list)
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [orgId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelect identity is not stable in the parent; re-fetching on it would loop
+  }, [orgId, studentId])
 
   return (
     <div className="flex flex-col flex-1 p-4">
@@ -349,7 +372,8 @@ function SlotsStep({
   initialDuration: number
   durationValues: number[]
   onSlotLocked: (slot: AvailableSlot, lock: SlotLock, date: string, duration: number) => void
-  onBack: () => void
+  /** Absent when every earlier step was auto-skipped. */
+  onBack?: () => void
 }) {
   const t = useTranslations('booking.availability')
   const tCommon = useTranslations('common')
@@ -481,13 +505,15 @@ function SlotsStep({
       {/* Header */}
       <div className="px-4 pt-3 pb-2 border-b border-gray-100">
         <div className="flex items-center gap-2 mb-3">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-gray-800 p-1 -ms-1"
-          >
-            <ArrowLeft className="size-3.5 rtl:rotate-180" aria-hidden />
-            {t('back')}
-          </button>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-gray-800 p-1 -ms-1"
+            >
+              <ArrowLeft className="size-3.5 rtl:rotate-180" aria-hidden />
+              {t('back')}
+            </button>
+          )}
           <span className="text-sm font-semibold text-gray-900">{teacherName}</span>
           <span className="text-sm text-muted-foreground truncate">· {studentName}</span>
         </div>

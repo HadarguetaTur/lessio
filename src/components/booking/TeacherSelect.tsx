@@ -7,7 +7,10 @@ import { getTeachersAction, type Teacher } from '@/app/book/[token]/actions'
 
 interface TeacherSelectProps {
   token: string
-  onSelect: (teacherId: string, teacherName: string) => void
+  /** `wasOnlyTeacher` is true when the step auto-advanced on a single-entry
+   *  list (assigned teacher, or a one-teacher org) — the caller should not
+   *  offer a "back" into this step, which would immediately bounce forward. */
+  onSelect: (teacherId: string, teacherName: string, wasOnlyTeacher?: boolean) => void
   onError?: (errorCode: string) => void
   inline?: boolean
 }
@@ -22,6 +25,11 @@ export function TeacherSelect({ token, onSelect, onError, inline }: TeacherSelec
     getTeachersAction(token)
       .then(result => {
         if (result.success) {
+          if (result.data.length === 1) {
+            const only = result.data[0]
+            onSelect(only.id, only.display_name, true)
+            return
+          }
           setTeachers(result.data)
         } else if (result.error === 'token_expired' && onError) {
           onError('token_expired')
@@ -31,6 +39,7 @@ export function TeacherSelect({ token, onSelect, onError, inline }: TeacherSelec
       })
       .catch(() => setHasError(true))
       .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelect identity is not stable in the parent; re-fetching on it would loop
   }, [token, onError])
 
   const content = (

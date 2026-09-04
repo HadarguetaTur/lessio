@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getEffectiveBreakMinutes } from '@/lib/scheduling/breaks'
+import { getExternalBusyIntervals } from '@/lib/google-calendar/getExternalBusyIntervals'
 import { getAvailableSlots, type AvailableSlot } from './getAvailableSlots'
 import { getWeeklyQuotaStatus } from './weeklyQuota'
 
@@ -81,6 +82,22 @@ export async function getAvailabilitySummary({
     }
   }
 
+  // Google Calendar busy time is fetched ONCE for the whole week and handed to
+  // every day below — a per-day fetch would mean 7× the token refreshes and
+  // freeBusy calls per week render. The whole array goes to each day untouched:
+  // the slot loop's overlap test ignores other days' intervals for free, and a
+  // per-day split would just be a second place to get boundary math wrong.
+  // getExternalBusyIntervals fail-opens to [] — so on a Google outage the seven
+  // children skip their own fetch instead of retrying seven times.
+  const weekBusy = await getExternalBusyIntervals({
+    orgId: organizationId,
+    teacherId,
+    windowStartUtc: DateTime.fromISO(normalizedWeekStart, { zone: timezone })
+      .startOf('day').toUTC().toISO()!,
+    windowEndUtc: DateTime.fromISO(normalizedWeekStart, { zone: timezone })
+      .plus({ days: 6 }).endOf('day').toUTC().toISO()!,
+  })
+
   const [slotsByDay, { breakMinutes }] = await Promise.all([
     Promise.all(
       dates.map((date) =>
@@ -89,6 +106,7 @@ export async function getAvailabilitySummary({
           date,
           durationMinutes,
           organizationId,
+          externalBusy: weekBusy,
         })
       )
     ),

@@ -12,6 +12,13 @@ vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({ from: (table: string) => fromMock(table) }),
 }))
 
+// Google Calendar busy time (decision #36) — defaults to none so the existing
+// suite exercises the pre-calendar behaviour unchanged.
+const mockExternalBusy = vi.fn().mockResolvedValue([])
+vi.mock('@/lib/google-calendar/getExternalBusyIntervals', () => ({
+  getExternalBusyIntervals: (...args: unknown[]) => mockExternalBusy(...args),
+}))
+
 // fromMock is reassigned per test
 let fromMock: (table: string) => unknown = () => buildChain({ data: null, error: null })
 
@@ -693,5 +700,118 @@ describe('getAvailableSlots — partial-day blocks', () => {
       '2026-03-23T09:00:00.000Z',
       '2026-03-23T15:00:00.000Z',
     ])
+  })
+})
+
+// ── Google Calendar busy time (decision #36) ─────────────────────────────────
+
+describe('getAvailableSlots — external calendar busy', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'))
+    fromMock = tableRouter({
+      organizations: single(baseOrg()),
+      availability_overrides: array([]),
+      availability: array([{ start_time: '16:00:00', end_time: '18:00:00' }]),
+      lessons: array([]),
+      slot_locks: array([]),
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('removes a slot that overlaps a calendar busy interval', async () => {
+    mockExternalBusy.mockResolvedValueOnce([
+      { start: '2026-03-23T16:00:00.000Z', end: '2026-03-23T17:00:00.000Z' },
+    ])
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    expect(slots.map(s => s.startAt)).toEqual(['2026-03-23T17:00:00.000Z'])
+  })
+
+  it('does not break-widen calendar busy — a slot starting the moment it ends is offered', async () => {
+    // Break 30: a *lesson* ending 16:00 would block the 16:00 slot via
+    // widening; a calendar event ending 16:00 must not.
+    fromMock = tableRouter({
+      organizations: single(baseOrg({ break_duration_minutes: 30 })),
+      availability_overrides: array([]),
+      availability: array([{ start_time: '16:00:00', end_time: '17:00:00' }]),
+      lessons: array([]),
+      slot_locks: array([]),
+    })
+    mockExternalBusy.mockResolvedValueOnce([
+      { start: '2026-03-23T15:00:00.000Z', end: '2026-03-23T16:00:00.000Z' },
+    ])
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    expect(slots.map(s => s.startAt)).toEqual(['2026-03-23T16:00:00.000Z'])
+  })
+
+  it('skips its own fetch when the caller passes prefetched busy intervals', async () => {
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+      externalBusy: [
+        { start: '2026-03-23T17:00:00.000Z', end: '2026-03-23T18:00:00.000Z' },
+      ],
+    })
+
+    expect(mockExternalBusy).not.toHaveBeenCalled()
+    expect(slots.map(s => s.startAt)).toEqual(['2026-03-23T16:00:00.000Z'])
+  })
+
+  it('fetches its own day window when no prefetch is given', async () => {
+    await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    expect(mockExternalBusy).toHaveBeenCalledTimes(1)
+    expect(mockExternalBusy).toHaveBeenCalledWith({
+      orgId: ORG_ID,
+      teacherId: TEACHER_ID,
+      windowStartUtc: '2026-03-23T00:00:00.000Z',
+      windowEndUtc: '2026-03-23T23:59:59.999Z',
+    })
+  })
+
+  it('never phones Google for a day closed by a holiday', async () => {
+    fromMock = tableRouter({
+      organizations: single(baseOrg()),
+      organization_holidays: single({ id: 'holiday-1' }),
+      availability_overrides: array([]),
+      availability: array([{ start_time: '16:00:00', end_time: '18:00:00' }]),
+      lessons: array([]),
+      slot_locks: array([]),
+    })
+
+    const slots = await getAvailableSlots({
+      teacherId: TEACHER_ID,
+      date: DATE,
+      durationMinutes: 60,
+      organizationId: ORG_ID,
+    })
+
+    expect(slots).toEqual([])
+    expect(mockExternalBusy).not.toHaveBeenCalled()
   })
 })

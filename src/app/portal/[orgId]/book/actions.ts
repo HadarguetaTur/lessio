@@ -84,14 +84,45 @@ async function assertOwnsStudent(orgId: string, parentId: string, studentId: str
   if (!data) throw new Error('student_not_owned')
 }
 
-export async function getPortalTeachersAction(orgId: string): Promise<PortalTeacher[]> {
-  await requirePortalSession(orgId)
+export async function getPortalTeachersAction(
+  orgId: string,
+  studentId?: string
+): Promise<PortalTeacher[]> {
+  const session = await requirePortalSession(orgId)
   const db = createServiceRoleClient()
-  const { data } = await db
+
+  // Decision #36: a student with an assigned teacher is offered that teacher
+  // only; the picker auto-skips a single-entry list. Falls back to the full
+  // list when the assigned teacher is no longer active.
+  let assignedTeacherId: string | null = null
+  if (studentId) {
+    await assertOwnsStudent(orgId, session.parentId, studentId)
+    const { data: student } = await db
+      .from('students')
+      .select('teacher_id')
+      .eq('id', studentId)
+      .eq('organization_id', orgId)
+      .maybeSingle()
+    assignedTeacherId = (student?.teacher_id as string | null) ?? null
+  }
+
+  let query = db
     .from('teachers')
     .select('id, profiles(full_name)')
     .eq('organization_id', orgId)
     .eq('is_active', true)
+  if (assignedTeacherId) query = query.eq('id', assignedTeacherId)
+
+  let { data } = await query
+  if (assignedTeacherId && (data ?? []).length === 0) {
+    const fallback = await db
+      .from('teachers')
+      .select('id, profiles(full_name)')
+      .eq('organization_id', orgId)
+      .eq('is_active', true)
+    data = fallback.data
+  }
+
   return (data ?? []).map((t) => ({
     id: t.id,
     display_name: (t.profiles as unknown as { full_name: string })?.full_name ?? '',

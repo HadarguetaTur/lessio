@@ -11,6 +11,12 @@ vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({ from: (t: string) => mockFrom(t) }),
 }))
 
+// Google Calendar re-check at lock time (decision #36) — defaults to no busy.
+const mockExternalBusy = vi.fn().mockResolvedValue([])
+vi.mock('@/lib/google-calendar/getExternalBusyIntervals', () => ({
+  getExternalBusyIntervals: (...args: unknown[]) => mockExternalBusy(...args),
+}))
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const ORG_ID = 'org-1'
@@ -94,6 +100,21 @@ describe('createSlotLock', () => {
     await expect(
       createSlotLock({ teacherId: TEACHER_ID, startAt: START, endAt: END, organizationId: ORG_ID })
     ).rejects.toThrow(SlotUnavailableError)
+  })
+
+  it('throws SlotUnavailableError when Google Calendar reports the slot busy', async () => {
+    mockFrom.mockImplementation(() => buildChain({ data: [], error: null }))
+    mockExternalBusy.mockResolvedValueOnce([{ start: START, end: END }])
+
+    await expect(
+      createSlotLock({ teacherId: TEACHER_ID, startAt: START, endAt: END, organizationId: ORG_ID })
+    ).rejects.toThrow(SlotUnavailableError)
+    expect(mockExternalBusy).toHaveBeenCalledWith({
+      orgId: ORG_ID,
+      teacherId: TEACHER_ID,
+      windowStartUtc: START,
+      windowEndUtc: END,
+    })
   })
 
   it('throws SlotUnavailableError when an active slot lock already exists', async () => {

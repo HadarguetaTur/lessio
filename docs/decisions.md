@@ -660,6 +660,46 @@ Rules:
 
 ---
 
+## 36. Google Calendar Busy Is Hard for Parents, Soft for Staff
+
+✅ DECIDED (Sep 2026): an org's connected Google Calendar is an **org-wide
+blackout** — its busy periods apply to every teacher (studio closed, staff
+meeting). A teacher's connected calendar is **that teacher's personal busy
+time**. Effective external busy is the union of both; the earlier "org first,
+then teacher" phrasing described query order, not precedence, and precedence
+does not exist — either calendar being busy blocks the time.
+
+Rules:
+
+* parent-facing surfaces (the `/book` WebView the bot links to, and the portal)
+  treat external busy as **hard**: `getAvailableSlots` never offers a busy slot,
+  and `createSlotLock` re-checks freeBusy before inserting the lock. The
+  dashboard keeps its soft-confirm dialog — staff may knowingly book over a
+  calendar event; a parent may never do so unknowingly
+* **fail-open everywhere in the parent flow**: a Google API failure is logged
+  and read as "no busy". A Google outage closing the booking book for every org
+  costs more than the rare double-booking it might let through, and the
+  teacher-overlap exclusion constraint still protects lesson-vs-lesson integrity
+* calendar busy intervals are **not break-widened**, same as ranged blocks: they
+  say when the teacher is *elsewhere*, not that a lesson needs a recovery gap.
+  Widening would also let one event on the org calendar eat 2×break out of every
+  teacher's day
+* the write path checks Google exactly once, at **lock time**. `confirmBooking`
+  does not re-check; an external event created inside the five-minute lock
+  window losing to the booking is an accepted race
+* a connection made without the calendar checkbox ticked on Google's granular
+  consent screen is **rejected at the callback** (`?error=scope`) instead of
+  stored — a stored token that cannot read freeBusy shows "connected" while
+  every check silently passes
+* teacher selection follows the assignment: a student with `students.teacher_id`
+  set is offered that teacher only, and the picker step auto-skips a
+  single-entry list; an unassigned student (or one whose assigned teacher was
+  deactivated) still sees every active teacher
+* no caching yet: each listing pays up to two extra HTTP round-trips (token
+  refresh + freeBusy per connected level), fetched once per week-summary rather
+  than per day. Future work: access-token reuse and a DB TTL cache per the
+  `whatsapp_usage_cache` pattern
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

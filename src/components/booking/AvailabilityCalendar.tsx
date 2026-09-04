@@ -38,7 +38,8 @@ interface AvailabilityCalendarProps {
   initialDate?: string
   initialDurationMinutes?: number
   onLocked: (selection: AvailabilitySelection) => void
-  onBack: () => void
+  /** Absent when the teacher step was auto-skipped — there is nothing to go back to. */
+  onBack?: () => void
   onError: (errorCode: string) => void
   durationValues: number[]
 }
@@ -310,13 +311,15 @@ export function AvailabilityCalendar({
   return (
     <div className="w-full space-y-6">
         <div className="space-y-2">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
-          >
-            <ArrowLeft className="size-3.5 rtl:rotate-180" aria-hidden />
-            {t('back')}
-          </button>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+            >
+              <ArrowLeft className="size-3.5 rtl:rotate-180" aria-hidden />
+              {t('back')}
+            </button>
+          )}
           <h1 className="text-xl font-semibold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('selectedTeacher', { name: teacherName })}</p>
           <p className="text-sm text-muted-foreground">{t('instructions')}</p>

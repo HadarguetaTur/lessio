@@ -94,8 +94,12 @@ export function BookingFlow({ token, payload, initialWeekStart, durationValues }
   const t = useTranslations('booking.flow')
   const [step, setStep] = useState<Step>('teacher')
   const [state, setState] = useState<FlowState>({ weekStart: initialWeekStart })
+  /** True when the teacher step auto-advanced (assigned teacher / one-teacher
+   *  org) — going "back" into it would just bounce forward again. */
+  const [singleTeacher, setSingleTeacher] = useState(false)
 
-  function handleTeacherSelect(teacherId: string, teacherName: string) {
+  function handleTeacherSelect(teacherId: string, teacherName: string, wasOnlyTeacher?: boolean) {
+    setSingleTeacher(Boolean(wasOnlyTeacher))
     setState({
       teacherId,
       teacherName,
@@ -184,7 +188,7 @@ export function BookingFlow({ token, payload, initialWeekStart, durationValues }
             initialDurationMinutes={state.durationMinutes}
             durationValues={durationValues}
             onLocked={handleAvailabilityLocked}
-            onBack={() => setStep('teacher')}
+            onBack={singleTeacher ? undefined : () => setStep('teacher')}
             onError={handleError}
           />
         )}

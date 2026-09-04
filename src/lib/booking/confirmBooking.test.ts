@@ -104,6 +104,23 @@ describe('confirmBooking', () => {
     expect(result.endAt).toBe(END)
   })
 
+  it('throws LessonConflictError(holiday) when the lock date became an org holiday', async () => {
+    mockValidateLock.mockResolvedValue({ valid: true, lock: validLock })
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { timezone: 'UTC' }, error: null })
+      if (table === 'organization_holidays') return buildChain({ data: { id: 'holiday-1' }, error: null })
+      if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
+      if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    await expect(confirmBooking(PARAMS)).rejects.toMatchObject({
+      name: 'LessonConflictError',
+      reason: 'holiday',
+    })
+  })
+
   it('throws LockExpiredError when the lock is expired', async () => {
     mockValidateLock.mockResolvedValue({ valid: false, reason: 'expired' })
 

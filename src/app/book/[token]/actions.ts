@@ -56,17 +56,46 @@ export interface Teacher {
 
 export async function getTeachersAction(token: string): Promise<BookingDataResult<Teacher[]>> {
   try {
-    const { organizationId } = await verifyBookingToken(token)
+    const { organizationId, studentId } = await verifyBookingToken(token)
     const db = createServiceRoleClient()
 
+    // Decision #36: a student with an assigned teacher (students.teacher_id) is
+    // offered that teacher only — the picker step auto-skips on a single-entry
+    // list. An unassigned student (or an assigned teacher who has since been
+    // deactivated) still sees every active teacher.
+    let assignedTeacherId: string | null = null
+    if (studentId) {
+      const { data: student } = await db
+        .from('students')
+        .select('teacher_id')
+        .eq('id', studentId)
+        .eq('organization_id', organizationId)
+        .maybeSingle()
+      assignedTeacherId = (student?.teacher_id as string | null) ?? null
+    }
+
     // teachers.display_name does not exist in schema — name comes from profiles.full_name
-    const { data, error } = await db
+    let query = db
       .from('teachers')
       .select('id, profiles(full_name)')
       .eq('organization_id', organizationId)
       .eq('is_active', true)
+    if (assignedTeacherId) query = query.eq('id', assignedTeacherId)
 
+    let { data, error } = await query
     if (error) throw new Error(`Failed to load teachers: ${error.message}`)
+
+    // Assigned teacher no longer active → fall back to the full list rather
+    // than presenting a dead end.
+    if (assignedTeacherId && (data ?? []).length === 0) {
+      const fallback = await db
+        .from('teachers')
+        .select('id, profiles(full_name)')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+      if (fallback.error) throw new Error(`Failed to load teachers: ${fallback.error.message}`)
+      data = fallback.data
+    }
 
     const teachers = (data ?? []).map(t => {
       const profiles = t.profiles as unknown as { full_name: string } | null

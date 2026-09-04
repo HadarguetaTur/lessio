@@ -21,6 +21,10 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { resolveBreakMinutes } from '@/lib/scheduling/breaks'
+import {
+  getExternalBusyIntervals,
+  type ExternalBusyInterval,
+} from '@/lib/google-calendar/getExternalBusyIntervals'
 import { getWeeklyQuotaStatus } from './weeklyQuota'
 
 export interface AvailableSlot {
@@ -35,6 +39,12 @@ export interface GetAvailableSlotsParams {
   organizationId: string
   /** When given, days in a week the student has already filled come back empty. */
   studentId?: string
+  /**
+   * Prefetched Google Calendar busy intervals (UTC ISO), e.g. one fetch for a
+   * whole week by getAvailabilitySummary. Pass [] to skip the per-day fetch;
+   * leave undefined and this function fetches its own day.
+   */
+  externalBusy?: ExternalBusyInterval[]
 }
 
 export async function getAvailableSlots({
@@ -43,6 +53,7 @@ export async function getAvailableSlots({
   durationMinutes,
   organizationId,
   studentId,
+  externalBusy,
 }: GetAvailableSlotsParams): Promise<AvailableSlot[]> {
   const db = createServiceRoleClient()
 
@@ -151,27 +162,39 @@ export async function getAvailableSlots({
       end: DateTime.fromISO(`${date}T${o.end_time}`, { zone: timezone }).toUTC(),
     }))
 
-  // 6. Load existing lessons for this teacher on this date (scheduled only)
+  // 6. Load existing lessons for this teacher on this date (scheduled only),
+  // active slot locks, and Google Calendar busy time (org blackout + teacher
+  // personal, decision #36) in parallel. The calendar fetch sits after every
+  // early return above on purpose — a closed day never phones Google — and a
+  // caller that already fetched a wider window passes it in as externalBusy.
   const dayStartUtc = localDate.startOf('day').toUTC().toISO()!
   const dayEndUtc = localDate.endOf('day').toUTC().toISO()!
 
-  const { data: lessons } = await db
-    .from('lessons')
-    .select('start_at, end_at')
-    .eq('teacher_id', teacherId)
-    .eq('status', 'scheduled')
-    .gte('start_at', dayStartUtc)
-    .lte('start_at', dayEndUtc)
-
-  // 7. Load active (non-expired) slot locks for this teacher on this date
-  const { data: locks } = await db
-    .from('slot_locks')
-    .select('start_at, end_at')
-    .eq('teacher_id', teacherId)
-    .eq('status', 'active')
-    .gt('expires_at', new Date().toISOString())
-    .gte('start_at', dayStartUtc)
-    .lte('start_at', dayEndUtc)
+  const [{ data: lessons }, { data: locks }, calendarBusy] = await Promise.all([
+    db
+      .from('lessons')
+      .select('start_at, end_at')
+      .eq('teacher_id', teacherId)
+      .eq('status', 'scheduled')
+      .gte('start_at', dayStartUtc)
+      .lte('start_at', dayEndUtc),
+    db
+      .from('slot_locks')
+      .select('start_at, end_at')
+      .eq('teacher_id', teacherId)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .gte('start_at', dayStartUtc)
+      .lte('start_at', dayEndUtc),
+    externalBusy !== undefined
+      ? Promise.resolve(externalBusy)
+      : getExternalBusyIntervals({
+          orgId: organizationId,
+          teacherId,
+          windowStartUtc: dayStartUtc,
+          windowEndUtc: dayEndUtc,
+        }),
+  ])
 
   // Lessons and locks are widened by the break on both sides, which is what
   // makes the break a real gap rather than only a slot stride: without this,
@@ -183,12 +206,21 @@ export async function getAvailableSlots({
   // recover from, so demanding a gap before they arrive would just shrink the
   // day. Keeping them un-widened is also what preserves the cadence property
   // the "block bisects a window" test locks in.
+  //
+  // Google Calendar busy time follows the ranged-block rule, not the lesson
+  // rule: it says the teacher is elsewhere, not that a lesson here needs a
+  // recovery gap — and widening it would let one staff meeting on the org
+  // calendar silently eat 2×break out of every teacher's day.
   const blockedIntervals = [
     ...[...(lessons ?? []), ...(locks ?? [])].map(r => ({
       start: DateTime.fromISO(r.start_at, { zone: 'utc' }).minus({ minutes: breakMinutes }),
       end: DateTime.fromISO(r.end_at, { zone: 'utc' }).plus({ minutes: breakMinutes }),
     })),
     ...rangedBlocks,
+    ...calendarBusy.map(b => ({
+      start: DateTime.fromISO(b.start, { zone: 'utc' }),
+      end: DateTime.fromISO(b.end, { zone: 'utc' }),
+    })),
   ]
 
   // 8. Earliest bookable time: now + min_booking_notice_hours

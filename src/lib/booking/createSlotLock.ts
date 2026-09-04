@@ -14,6 +14,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getEffectiveBreakMinutes } from '@/lib/scheduling/breaks'
+import { getExternalBusyIntervals } from '@/lib/google-calendar/getExternalBusyIntervals'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
 
 export class SlotUnavailableError extends Error {
@@ -80,6 +81,22 @@ export async function createSlotLock({
   const { breakMinutes } = await getEffectiveBreakMinutes(organizationId, teacherId)
   const isAvailable = await checkSlotAvailable(db, teacherId, startAt, endAt, breakMinutes)
   if (!isAvailable) throw new SlotUnavailableError()
+
+  // Google Calendar re-check (decision #36): a calendar event created after the
+  // slot list was rendered must not be lockable. This is the ONLY Google check
+  // on the write path — confirmBooking deliberately does not repeat it, so an
+  // external event created inside the lock's five minutes losing to the booking
+  // is an accepted race, in the same spirit as the dashboard's soft-confirm.
+  // Not break-widened, consistent with the listing. Fail-open on Google errors.
+  const externalBusy = await getExternalBusyIntervals({
+    orgId: organizationId,
+    teacherId,
+    windowStartUtc: startAt,
+    windowEndUtc: endAt,
+  })
+  if (externalBusy.some(b => b.start < endAt && b.end > startAt)) {
+    throw new SlotUnavailableError()
+  }
 
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
 

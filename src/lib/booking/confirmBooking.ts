@@ -12,6 +12,7 @@
  * Uses service role — never called from client components.
  */
 
+import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { LessonConflictError } from '@/lib/lessons/createLesson'
 import { detectDayTail } from '@/lib/scheduling/dayTail'
@@ -81,6 +82,31 @@ export async function confirmBooking({
   // because the wrong child is a perfectly valid student.
   if (requestedStudentId !== lock.student_id) throw new LockStudentMismatchError()
   const studentId = lock.student_id
+
+  // 1b. Holiday re-check. getAvailableSlots filters holidays only at listing
+  // time — a holiday added between listing and confirm (or a stale client
+  // confirming an old lock) would otherwise land a lesson on it. Both confirm
+  // actions map the resulting LessonConflictError('holiday') to 'slot_taken',
+  // which directs the parent to pick another time.
+  const { data: orgRow } = await db
+    .from('organizations')
+    .select('timezone')
+    .eq('id', organizationId)
+    .single()
+
+  const holidayDate = DateTime.fromISO(lock.start_at, { zone: 'utc' })
+    .setZone(orgRow?.timezone ?? 'UTC')
+    .toISODate()!
+
+  const { data: holiday } = await db
+    .from('organization_holidays')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .eq('date', holidayDate)
+    .limit(1)
+    .maybeSingle()
+
+  if (holiday) throw new LessonConflictError('holiday')
 
   // 2. Validate teacher is active in org
   const { data: teacher, error: teacherError } = await db

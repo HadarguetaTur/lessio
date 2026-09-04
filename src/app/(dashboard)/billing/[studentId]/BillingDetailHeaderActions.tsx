@@ -44,7 +44,10 @@ export function BillingDetailHeaderActions({
       {billingData && !billingData.is_paid && billingData.is_approved && (
         <SendBillingPaymentRequestButton billingId={billingData.id} />
       )}
-      {billingData && !billingData.is_paid && (
+      {/* Mark-paid requires approval first — the action refuses otherwise, so
+          offering it here made the click a silent no-op (UX audit 8, F-H1).
+          The list view already gated it this way. */}
+      {billingData && !billingData.is_paid && billingData.is_approved && (
         <MarkPaidButton billingId={billingData.id} />
       )}
       {billingData && (

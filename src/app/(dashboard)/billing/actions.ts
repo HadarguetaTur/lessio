@@ -563,27 +563,51 @@ export async function approveBillingAction(billingId: string) {
   return { error: null }
 }
 
-export async function sendBillingPaymentRequestAction(billingId: string) {
+export type SendPaymentRequestResult = {
+  error: string | null
+  /**
+   * What actually happened. The button must not render "sent ✓" for anything
+   * but 'sent': the org with no payment provider and no WhatsApp is the common
+   * case, and reporting success there is the product lying about money.
+   */
+  outcome: SendPaymentRequestOutcome | null
+}
+
+export async function sendBillingPaymentRequestAction(
+  billingId: string
+): Promise<SendPaymentRequestResult> {
   const session = await getSession()
   requireMutation(session)
   await assertOrgNotSaasReadOnly(session.orgId)
   const t = await getTranslations()
 
   if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: t('common.errors.noPermission') }
+    return { error: t('common.errors.noPermission'), outcome: null }
   }
 
   try {
     const outcome = await sendBillingPaymentRequestCore(billingId, session.orgId)
     if (outcome === 'opted_out') {
-      return { error: t('parents.optedOutError') }
+      return { error: t('parents.optedOutError'), outcome }
     }
-    return { error: null }
+    return { error: null, outcome }
   } catch (err) {
     console.error('[billing] sendBillingPaymentRequestAction failed', { billingId, orgId: session.orgId, err })
-    return { error: t('billing.errors.sendPaymentRequestFailed') }
+    // A missing WhatsApp connection is a specific, fixable cause with its own
+    // message — don't flatten it into the generic failure.
+    const message =
+      err instanceof WhatsAppNotConnectedError
+        ? t('common.errors.whatsappNotConnected')
+        : t('billing.errors.sendPaymentRequestFailed')
+    return { error: message, outcome: null }
   }
 }
+
+/** Raised when the org has no usable WhatsApp connection, so callers can tell
+ *  that specific cause apart from a genuine send failure. */
+class WhatsAppNotConnectedError extends Error {}
+
+export type SendPaymentRequestOutcome = 'sent' | 'opted_out' | 'no_provider'
 
 /**
  * Shared core: creates payment link + sends WhatsApp for a monthly billing record.
@@ -595,7 +619,7 @@ export async function sendBillingPaymentRequestAction(billingId: string) {
 async function sendBillingPaymentRequestCore(
   billingId: string,
   orgId: string
-): Promise<'sent' | 'opted_out' | 'skipped'> {
+): Promise<SendPaymentRequestOutcome> {
   const db = createServiceRoleClient()
   // Failures here surface to the acting dashboard user, so they use the viewer's
   // locale. The parent-facing copy below uses `tr` (the recipient's locale).
@@ -609,8 +633,9 @@ async function sendBillingPaymentRequestCore(
     .single()
 
   if (!org?.auto_send_payment_request && !org?.payment_provider) {
-    // Called from approve fire-and-forget: skip silently
-    return 'skipped'
+    // Nothing to send with. Silent when called from the approve fire-and-forget
+    // path; the button reports it, because "nothing happened" is not "sent".
+    return 'no_provider'
   }
 
   const encryptedToken = org.whatsapp_access_token as string | null
@@ -618,7 +643,7 @@ async function sendBillingPaymentRequestCore(
   const currency = (org.currency as string | null) ?? undefined
 
   if (!encryptedToken || !phoneNumberId) {
-    throw new Error(t('common.errors.whatsappNotConnected'))
+    throw new WhatsAppNotConnectedError(t('common.errors.whatsappNotConnected'))
   }
 
   // Load billing + linked charge

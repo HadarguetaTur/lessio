@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
+import { toast } from 'sonner'
 import { markBillingAsPaid } from './actions'
 
 interface Props {
@@ -14,7 +15,11 @@ export function MarkPaidButton({ billingId }: Props) {
 
   function handleClick() {
     startTransition(async () => {
-      await markBillingAsPaid(billingId)
+      // The action refuses an unapproved record; without this the click was a
+      // no-op the owner could not distinguish from success (UX audit 8, F-H1).
+      const result = await markBillingAsPaid(billingId)
+      if (result?.error) toast.error(result.error)
+      else toast.success(t('markedPaid'))
     })
   }
 

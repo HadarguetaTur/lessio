@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
+import { toast } from 'sonner'
 import { recalculateStudentBilling } from '../actions'
 
 interface Props {
@@ -15,7 +16,11 @@ export function RecalculateButton({ studentId, billingMonth }: Props) {
 
   function handleClick() {
     startTransition(async () => {
-      await recalculateStudentBilling(studentId, billingMonth)
+      // An approved record refuses recalculation — say so instead of looking
+      // like the button did nothing (UX audit 8, F-H1).
+      const result = await recalculateStudentBilling(studentId, billingMonth)
+      if (result?.error) toast.error(result.error)
+      else toast.success(t('recalculated'))
     })
   }
 

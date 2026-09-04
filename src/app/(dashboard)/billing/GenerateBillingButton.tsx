@@ -19,12 +19,16 @@ export function GenerateBillingButton({ billingMonth }: Props) {
       if (res.error) {
         setResult(res.error)
       } else {
+        const skipped = res.skipped ?? 0
+        const summary = t('generateSuccess', {
+          success: res.success ?? 0,
+          errors: res.errors ?? 0,
+          skipped,
+        })
+        // A bare "18 skipped" reads like a failure and invites a worried
+        // re-run; skipping already-approved records is the safety feature.
         setResult(
-          t('generateSuccess', {
-            success: res.success ?? 0,
-            errors: res.errors ?? 0,
-            skipped: res.skipped ?? 0,
-          })
+          skipped > 0 ? `${summary} · ${t('generateSkippedReason', { skipped })}` : summary
         )
       }
     })

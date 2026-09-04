@@ -136,7 +136,11 @@ export function BillingRecordsMobileList({
                 {record.is_paid ? (
                   <span className="text-xs text-muted-foreground">{labels.paid}</span>
                 ) : !record.is_approved ? (
-                  <ApproveBillingButton billingId={record.id} />
+                  <ApproveBillingButton
+                    billingId={record.id}
+                    studentName={studentName}
+                    amountLabel={money(Number(record.total_amount))}
+                  />
                 ) : (
                   <MarkPaidButton billingId={record.id} />
                 )}

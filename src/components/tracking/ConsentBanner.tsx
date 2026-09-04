@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -71,10 +71,36 @@ export function ConsentBanner() {
     if (analytics || marketing) window.location.reload()
   }, [])
 
+  // Publish the banner's height as `--consent-h` on the document root.
+  //
+  // A fixed overlay at bottom-0 sits on top of any fixed-height scroll region,
+  // and the billing table is one: UX audit 8 found the last row's Approve
+  // button permanently unclickable behind this banner, with the click silently
+  // swallowed. Pages with a bottom-anchored scroll area pad by this variable
+  // rather than each inventing its own offset.
+  const bannerRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const root = document.documentElement
+    const el = bannerRef.current
+    if (!visible || !el) {
+      root.style.removeProperty('--consent-h')
+      return
+    }
+    const apply = () => root.style.setProperty('--consent-h', `${el.offsetHeight}px`)
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty('--consent-h')
+    }
+  }, [visible])
+
   if (!visible) return null
 
   return (
     <div
+      ref={bannerRef}
       role="dialog"
       aria-label={t('title')}
       className={`fixed inset-x-0 z-50 border-t border-border bg-background/95 p-4 shadow-lg backdrop-blur-md ${

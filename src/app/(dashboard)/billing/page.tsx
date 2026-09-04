@@ -173,7 +173,8 @@ export default async function BillingPage(props: {
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t('summary.totalPending')}
             </p>
-            <p className="text-lg font-bold text-amber-600">{pendingApproval}</p>
+            {/* amber-600 on white is 3.19:1 — below AA for this size. */}
+            <p className="text-lg font-bold text-amber-700">{pendingApproval}</p>
           </div>
           <div>
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -204,7 +205,10 @@ export default async function BillingPage(props: {
             }}
           />
           <div className="hidden min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm md:flex md:flex-col">
-            <div className="min-h-0 flex-1 overflow-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+            {/* pb by --consent-h: the cookie banner is a fixed overlay at
+                bottom-0, and this scroll region cannot be scrolled past it, so
+                the last row's money action sat permanently underneath it. */}
+            <div className="min-h-0 flex-1 overflow-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] pb-[var(--consent-h,0px)]">
               <table className="min-w-[900px] w-full">
                 <thead>
                   <tr className="border-b border-border bg-muted/40">
@@ -259,19 +263,19 @@ export default async function BillingPage(props: {
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
+                        <td className="px-5 py-3.5 font-mono text-sm text-foreground text-end" dir="ltr">
                           {money(Number(record.lessons_amount))}
                           <span className="mr-1 text-xs text-muted-foreground">
                             ({record.lessons_count})
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
+                        <td className="px-5 py-3.5 font-mono text-sm text-foreground text-end" dir="ltr">
                           {money(Number(record.subscriptions_amount))}
                         </td>
-                        <td className="px-5 py-3.5 font-mono text-sm text-foreground" dir="ltr">
+                        <td className="px-5 py-3.5 font-mono text-sm text-foreground text-end" dir="ltr">
                           {money(Number(record.cancellations_amount))}
                         </td>
-                        <td className="px-5 py-3.5 font-mono text-sm" dir="ltr">
+                        <td className="px-5 py-3.5 font-mono text-sm text-end" dir="ltr">
                           {record.manual_adjustment_amount != null ? (
                             <span
                               className={
@@ -286,7 +290,7 @@ export default async function BillingPage(props: {
                             <span className="text-muted-foreground/30">—</span>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 font-mono text-sm font-semibold text-foreground" dir="ltr">
+                        <td className="px-5 py-3.5 font-mono text-sm font-semibold text-foreground text-end" dir="ltr">
                           {money(Number(record.total_amount))}
                         </td>
                         <td className="px-5 py-3.5">
@@ -309,7 +313,11 @@ export default async function BillingPage(props: {
                                 {t('status.paid')}
                               </span>
                             ) : !record.is_approved ? (
-                              <ApproveBillingButton billingId={record.id} />
+                              <ApproveBillingButton
+                                billingId={record.id}
+                                studentName={studentName}
+                                amountLabel={money(Number(record.total_amount))}
+                              />
                             ) : (
                               <MarkPaidButton billingId={record.id} />
                             )}

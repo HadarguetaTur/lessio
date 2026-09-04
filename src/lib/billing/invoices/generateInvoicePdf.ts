@@ -45,7 +45,7 @@ export async function generateAndStoreInvoice(
 
   const { data: student, error: studentError } = await supabase
     .from('students')
-    .select('id, first_name, last_name')
+    .select('id, full_name')
     .eq('id', billing.student_id)
     .single()
 
@@ -60,16 +60,16 @@ export async function generateAndStoreInvoice(
   if (billing.parent_id) {
     const { data: parent } = await supabase
       .from('parents')
-      .select('id, first_name, last_name, preferred_locale')
+      .select('id, full_name, preferred_locale')
       .eq('id', billing.parent_id)
       .single()
     if (parent) {
-      parentName = `${parent.first_name ?? ''} ${parent.last_name ?? ''}`.trim()
+      parentName = (parent.full_name ?? '').trim()
       parentLocale = (parent.preferred_locale as string | null) ?? null
     }
   }
   if (!parentName) {
-    parentName = `${student.first_name ?? ''} ${student.last_name ?? ''}`.trim()
+    parentName = (student.full_name ?? '').trim()
   }
 
   const { data: org, error: orgError } = await supabase
@@ -163,7 +163,7 @@ export async function generateAndStoreInvoice(
 
   const subtotal = totalAmount
   const total = Math.round((totalAmount + vatAmount) * 100) / 100
-  const studentName = `${student.first_name ?? ''} ${student.last_name ?? ''}`.trim()
+  const studentName = (student.full_name ?? '').trim()
   const invoiceDate = now.toFormat('dd/MM/yyyy')
   const currency = org.currency ?? 'ILS'
 

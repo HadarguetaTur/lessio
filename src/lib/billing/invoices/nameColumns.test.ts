@@ -67,10 +67,20 @@ describe('invoice and credit-note generators use columns that exist', () => {
     vi.clearAllMocks()
   })
 
-  it.each([
+  // Both are normalised to (billingId, orgId) — the credit note also takes a
+  // reason, which is irrelevant to the columns under test.
+  const cases: Array<[string, () => Promise<(b: string, o: string) => Promise<unknown>>]> = [
     ['invoice', async () => (await import('./generateInvoicePdf')).generateAndStoreInvoice],
-    ['credit note', async () => (await import('./generateCreditNotePdf')).generateAndStoreCreditNote],
-  ])('%s: selects full_name, never first_name/last_name', async (_label, load) => {
+    [
+      'credit note',
+      async () => {
+        const { generateAndStoreCreditNote } = await import('./generateCreditNotePdf')
+        return (b: string, o: string) => generateAndStoreCreditNote(b, o, 'test reason')
+      },
+    ],
+  ]
+
+  it.each(cases)('%s: selects full_name, never first_name/last_name', async (_label, load) => {
     const selects: Array<{ table: string; columns: string }> = []
     mockDbCapturing(selects)
 

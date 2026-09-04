@@ -31,11 +31,18 @@ export interface Charge {
   /** True when a tax invoice was already issued for the monthly bill behind this charge. */
   has_invoice: boolean
   parent: { id: string; full_name: string; phone: string | null }
+  /**
+   * Who the charge is *for*, when it came from a monthly bill. A charge belongs
+   * to the paying parent, but /billing lists the same money by student, and
+   * reconciling the two surfaces without this meant opening every row
+   * (UX audit 8, F-M6). Null for charges not tied to a monthly bill.
+   */
+  student_name: string | null
   lesson: { start_at: string } | null
 }
 
 const CHARGE_SELECT =
-  'id, amount, amount_paid, charge_type, status, notes, paid_at, due_date, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, resolved_at, resolution_reason, parents(id, full_name, phone), lessons(start_at), student_monthly_billing(invoice_number)'
+  'id, amount, amount_paid, charge_type, status, notes, paid_at, due_date, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, resolved_at, resolution_reason, parents(id, full_name, phone), lessons(start_at), student_monthly_billing(invoice_number, students(full_name))'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapChargeRow(c: any): Charge {
@@ -58,6 +65,7 @@ function mapChargeRow(c: any): Charge {
     resolved_at: c.resolved_at ?? null,
     resolution_reason: c.resolution_reason ?? null,
     has_invoice: Boolean(c.student_monthly_billing?.invoice_number),
+    student_name: c.student_monthly_billing?.students?.full_name ?? null,
     parent: {
       id: c.parents?.id,
       full_name: c.parents?.full_name,

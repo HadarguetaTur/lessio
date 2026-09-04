@@ -459,6 +459,11 @@ export default async function ChargesPage(props: {
                         <UserAvatar name={charge.parent.full_name} />
                         <div>
                           <p className="text-sm font-medium text-foreground">{charge.parent.full_name}</p>
+                          {/* The payer is not the recipient: /billing lists this
+                              same money by student. */}
+                          {charge.student_name && (
+                            <p className="text-xs text-muted-foreground">{charge.student_name}</p>
+                          )}
                           <Link
                             href={`/charges/${charge.id}`}
                             className="text-xs text-primary hover:underline"

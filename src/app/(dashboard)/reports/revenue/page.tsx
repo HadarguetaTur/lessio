@@ -67,6 +67,11 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         <RevenueChart buckets={buckets} />
       </div>
 
+      {/* Four money columns with near-identical names sat side by side with
+          nothing saying which one is "what I actually earned" — a month can
+          legitimately read ₪0 revenue beside ₪22,220 billed-and-paid. */}
+      <p className="mb-2 text-xs text-muted-foreground">{t('revenue.columnsLegend')}</p>
+
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {/* tabIndex: the table scrolls sideways on narrow screens, so it needs
             to be reachable without a pointer. */}

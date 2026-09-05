@@ -278,11 +278,13 @@ cause of a second review round.
 > Google Calendar, not in Lessio, so a lesson booked into an hour they are already busy is the
 > single most common scheduling mistake the product exists to prevent.
 >
-> A business owner, or an individual teacher, may optionally connect their own Google Calendar. When
-> a lesson is being created, Lessio calls the Calendar API's free/busy endpoint
-> (`POST https://www.googleapis.com/calendar/v3/freeBusy`) for the connected primary calendar over
-> the proposed lesson's time range, and warns if the slot overlaps a busy period. The user can then
-> pick another time or confirm anyway.
+> A business owner, or an individual teacher, may optionally connect their own Google Calendar and
+> choose which of their calendars are consulted (the primary calendar by default). When a lesson is
+> being created, Lessio calls the Calendar API's free/busy endpoint
+> (`POST https://www.googleapis.com/calendar/v3/freeBusy`) for the selected calendars over the
+> proposed lesson's time range, and warns if the slot overlaps a busy period. The user can then
+> pick another time or confirm anyway. The calendar list itself is read once, only to render that
+> choice on the settings page.
 >
 > That endpoint is the only Calendar API call in the entire product. It returns busy intervals — a
 > start time and an end time — and nothing else: no event titles, no descriptions, no attendees, no
@@ -304,13 +306,10 @@ states the encryption at rest, links the revocation path, and carries the verbat
 affirmation linking to the Google API Services User Data Policy. Point the reviewer at that anchor
 in the form.
 
-**One inconsistency to fix before submitting.** The third-party list higher up the same page says
-Google-connected data *"may be synced to Google Calendar"* (`PrivacyEn.tsx:233`), and §7.1 gives
-*"a calendar event"* as an example of what is transferred (`PrivacyEn.tsx:251`). Both describe
-writing to Calendar, which the requested `calendar.readonly` scope cannot do and the product does
-not do. A reviewer comparing the policy against the scope list will read that as either an
-under-requested scope or an inaccurate policy. Reword both to read-only before submitting, in
-`PrivacyEn.tsx` and its Hebrew twin `PrivacyHe.tsx`.
+**Resolved 04.09.2026:** the policy previously said Google-connected data *"may be synced to
+Google Calendar"* and gave *"a calendar event"* as a transfer example — both describing writes the
+`calendar.readonly` scope cannot perform. Both passages were reworded to read-only in
+`PrivacyEn.tsx` and `PrivacyHe.tsx` and are live in production.
 
 ---
 

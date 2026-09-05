@@ -229,7 +229,7 @@ export function TermsHe({ email, addr, tel, reg, pricing }: TermsDocProps) {
             </table>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            המחירים אינם כוללים מע"מ. Lessio שומרת לעצמה את הזכות לשנות מחירים בהודעה מוקדמת
+            המחירים סופיים וללא מע"מ. Lessio שומרת לעצמה את הזכות לשנות מחירים בהודעה מוקדמת
             של 30 יום.
           </p>
 

@@ -98,7 +98,10 @@ const landingEnCore = {
     perMonth: '/ month',
     perYear: '/ year',
     yearlyNote: 'Yearly billing is two months free.',
-    vatNote: 'Prices exclude VAT.',
+    // Paired with PRICES_INCLUDE_VAT in src/lib/saas/pricing.ts — the company
+    // is VAT-exempt, so the price shown is the price charged. Both change on
+    // the day it registers for VAT.
+    vatNote: 'Prices are final — no VAT is added.',
     teachersOne: '1 teacher',
     teachersUpTo: 'Up to {count} teachers',
     teachersUnlimited: 'Unlimited teachers',
@@ -265,7 +268,9 @@ const landingHeCore = {
     perMonth: '/ לחודש',
     perYear: '/ לשנה',
     yearlyNote: 'תשלום שנתי — חודשיים מתנה.',
-    vatNote: 'המחירים אינם כוללים מע"מ.',
+    // ראה PRICES_INCLUDE_VAT ב-src/lib/saas/pricing.ts — עוסק פטור, ולכן
+    // המחיר המוצג הוא המחיר הנגבה. השניים משתנים יחד ביום המעבר לעוסק מורשה.
+    vatNote: 'המחירים סופיים — ללא מע"מ.',
     teachersOne: 'מורה אחד',
     teachersUpTo: 'עד {count} מורים',
     teachersUnlimited: 'מורים ללא הגבלה',

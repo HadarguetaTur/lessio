@@ -60,7 +60,7 @@ function isLapsedReasonParam(
 export default async function AccountBillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ upgrade?: string; reason?: string }>
+  searchParams: Promise<{ upgrade?: string; reason?: string; cardUpdate?: string }>
 }) {
   const session = await getSession()
   const t = await getTranslations('saas.accountBilling')
@@ -229,7 +229,23 @@ export default async function AccountBillingPage({
           {state?.cardLastFour
             ? t('cardLastFour', { digits: state.cardLastFour })
             : t('cardUnknown')}
+          {/* Sumit hosts the card form; renewals charge the customer, so a card
+              replaced there is used by the next renewal with nothing to sync. */}
+          {!session.isSupportMode && state?.cardLastFour ? (
+            <>
+              {' · '}
+              <Link
+                href="/account/billing/payment-method"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                {t('updateCard')}
+              </Link>
+            </>
+          ) : null}
         </div>
+        {sp.cardUpdate === 'unavailable' ? (
+          <p className="text-sm text-amber-700 dark:text-amber-400">{t('updateCardUnavailable')}</p>
+        ) : null}
         {state?.cancelAtPeriodEnd ? (
           <p className="text-sm text-amber-700 dark:text-amber-400">{t('cancelPending')}</p>
         ) : null}

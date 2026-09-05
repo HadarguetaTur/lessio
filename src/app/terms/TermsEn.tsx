@@ -237,7 +237,8 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
             </table>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Prices exclude VAT. Lessio reserves the right to change prices on 30 days&apos; notice.
+            Prices are final and carry no VAT. Lessio reserves the right to change prices on 30
+            days&apos; notice.
           </p>
 
           <h3 className="font-medium text-foreground mt-4 mb-2">11.2 Late payment</h3>

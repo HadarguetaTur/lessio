@@ -21,6 +21,7 @@
  * schedule around or a bug to surface.
  */
 
+import { PRICES_INCLUDE_VAT } from './pricing'
 import {
   SumitApiError,
   normalizePayment,
@@ -188,7 +189,9 @@ export async function beginSumitRedirect(p: BeginRedirectParams): Promise<{ redi
         UnitPrice: p.amount,
       },
     ],
-    VATIncluded: true,
+    // See ./pricing.ts — true while the company is VAT-exempt (the price sent
+    // is the total), false once it registers for VAT (Sumit adds it on top).
+    VATIncluded: PRICES_INCLUDE_VAT,
     DocumentType: SUMIT_DOCUMENT_TYPE.INVOICE_AND_RECEIPT,
     DocumentDescription: p.description,
     RedirectURL: p.redirectUrl,
@@ -302,6 +305,34 @@ export async function getSumitPaymentMethodForCustomer(p: {
   }
 }
 
+/**
+ * Sumit's own hosted page for one customer: the documents it issued them and,
+ * with "עדכון אמצעי תשלום ע"י הלקוח" enabled in the clearing settings, the
+ * form that replaces their saved card.
+ *
+ * This is how an owner whose card is about to expire fixes it themselves. No
+ * follow-up is needed here: renewals charge by customer rather than by a
+ * stored token (see src/lib/saas/renewal.ts), so the new card is used the
+ * moment Sumit has it.
+ *
+ * Best-effort — any failure returns null and the caller omits the link.
+ */
+export async function getSumitCustomerHistoryUrl(customerId: string): Promise<string | null> {
+  const path = '/accounting/customers/getdetailsurl/'
+  try {
+    const data = await sumitPost<{ CustomerHistoryURL?: string | null }>(path, {
+      CustomerID: Number(customerId),
+    })
+    return data.CustomerHistoryURL?.trim() || null
+  } catch (e) {
+    console.warn('[sumit] customer page lookup failed', {
+      customerId,
+      error: e instanceof Error ? e.message : String(e),
+    })
+    return null
+  }
+}
+
 // ─── Charge a saved card ─────────────────────────────────────────────────────
 
 export interface ChargeParams {
@@ -360,7 +391,9 @@ export async function chargeSumitCustomer(p: ChargeParams): Promise<ChargeResult
         UnitPrice: p.amount,
       },
     ],
-    VATIncluded: true,
+    // See ./pricing.ts — true while the company is VAT-exempt (the price sent
+    // is the total), false once it registers for VAT (Sumit adds it on top).
+    VATIncluded: PRICES_INCLUDE_VAT,
     DocumentType: SUMIT_DOCUMENT_TYPE.INVOICE_AND_RECEIPT,
     DocumentDescription: p.description,
     DocumentLanguage: SUMIT_LANGUAGE[p.language],

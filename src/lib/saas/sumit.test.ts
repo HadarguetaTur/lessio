@@ -84,6 +84,21 @@ describe('beginSumitRedirect', () => {
     expect(body.Credentials).toEqual({ CompanyID: 12345, APIKey: 'key-abc' })
   })
 
+  it('sends the plan price as the total, with nothing added for VAT', async () => {
+    // The company is a VAT-exempt dealer (עוסק פטור), which is what
+    // PRICES_INCLUDE_VAT in ./pricing.ts encodes: VATIncluded=true tells Sumit
+    // the UnitPrice we send is the final amount. ₪199 on the pricing page must
+    // be ₪199 on the payment page — the two used to disagree, because the copy
+    // promised "prices exclude VAT" while the checkout charged the total.
+    const fetchMock = mockFetchOnce({ Status: 0, Data: { RedirectURL: 'https://pay.sumit/x' } })
+
+    await beginSumitRedirect({ ...params, amount: 199 })
+
+    const body = sentBody(fetchMock)
+    expect(body.VATIncluded).toBe(true)
+    expect((body.Items as Array<{ UnitPrice: number }>)[0].UnitPrice).toBe(199)
+  })
+
   it('sends the English payment page for an English org', async () => {
     const fetchMock = mockFetchOnce({ Status: 0, Data: { RedirectURL: 'https://pay.sumit/x' } })
     await beginSumitRedirect({ ...params, language: 'en' })

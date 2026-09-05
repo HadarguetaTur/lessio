@@ -18,7 +18,6 @@ interface InitialData {
   defaultVatRate: number
   logoUrl: string | null
   enforceWeeklyQuota: boolean
-  invoiceGenerationEnabled: boolean
   lessonDurations: unknown
 }
 
@@ -229,23 +228,6 @@ export default function BusinessProfileForm({
                 <span className="text-sm font-medium">{t('enforceWeeklyQuota')}</span>
               </label>
               <p className="text-xs text-muted-foreground">{t('enforceWeeklyQuotaHint')}</p>
-            </div>
-
-            {/* Invoice issuing — off unless the org actually wants Lessio to be
-                the system of record for tax documents. Most invoice through
-                their own provider, and a second numbered series is a hazard. */}
-            <div className="space-y-1.5 border-t border-border pt-4">
-              <label className="flex cursor-pointer select-none items-center gap-3">
-                <input
-                  id="invoice_generation_enabled"
-                  type="checkbox"
-                  name="invoice_generation_enabled"
-                  defaultChecked={initialData.invoiceGenerationEnabled}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium">{t('invoiceGeneration')}</span>
-              </label>
-              <p className="text-xs text-muted-foreground">{t('invoiceGenerationHint')}</p>
             </div>
 
             <div className="space-y-3 border-t border-border pt-4">

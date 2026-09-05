@@ -19,9 +19,7 @@ import { getLessonsReport } from '@/lib/reports/lessons'
 import { getDebtReport } from '@/lib/reports/debt'
 import { getTeachersReport } from '@/lib/reports/teachers'
 import { getStudentsReport } from '@/lib/reports/students'
-import { getAccountingExport } from '@/lib/reports/accounting'
 import { parseReportMonths } from '@/lib/reports/params'
-import { DateTime } from 'luxon'
 
 const BOM = '\uFEFF'
 
@@ -135,43 +133,6 @@ export async function GET(request: NextRequest, { params }: Context) {
           ])
         )
         filename = 'students.csv'
-        break
-      }
-      case 'accounting': {
-        const from = searchParams.get('from') ?? DateTime.now().setZone(timezone).startOf('month').toISODate()!
-        const to = searchParams.get('to') ?? DateTime.now().setZone(timezone).toISODate()!
-        const rows = await getAccountingExport(orgId, timezone, { from, to })
-        csv = toCsv(
-          [
-            tc('type'),
-            tc('date'),
-            tc('documentNumber'),
-            tc('customer'),
-            tc('taxId'),
-            tc('description'),
-            tc('net'),
-            tc('vat'),
-            tc('total'),
-            tc('status'),
-            tc('paidOn'),
-            tc('receiptNumber'),
-          ],
-          rows.map(r => [
-            r.type === 'invoice' ? tc('invoice') : tc('creditNote'),
-            r.date,
-            r.documentNumber,
-            r.customerName,
-            r.customerTaxId,
-            r.description,
-            r.amountNet,
-            r.vatAmount,
-            r.amountGross,
-            r.paymentStatus === 'paid' ? tc('paid') : tc('open'),
-            r.paymentDate,
-            r.receiptNumber,
-          ])
-        )
-        filename = 'accounting.csv'
         break
       }
       default:

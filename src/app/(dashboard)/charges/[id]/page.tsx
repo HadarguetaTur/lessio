@@ -219,17 +219,13 @@ export default async function ChargeDetailPage({
               chargeId={charge.id}
               mode="waive"
               action={waiveChargeAction}
-              hasPaymentLink={Boolean(charge.payment_link)}
-              hasInvoice={charge.has_invoice}
-            />
+              hasPaymentLink={Boolean(charge.payment_link)}            />
             {isOwner && (
               <ResolveChargeDialog
                 chargeId={charge.id}
                 mode="void"
                 action={voidChargeAction}
-                hasPaymentLink={Boolean(charge.payment_link)}
-                hasInvoice={charge.has_invoice}
-              />
+                hasPaymentLink={Boolean(charge.payment_link)}              />
             )}
           </div>
         )}

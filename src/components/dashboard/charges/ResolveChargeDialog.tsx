@@ -23,7 +23,6 @@ interface ResolveChargeDialogProps {
   /** Warn that a link already sent to the parent stays live at the provider. */
   hasPaymentLink?: boolean
   /** Warn that an issued invoice needs a credit note to be reversed properly. */
-  hasInvoice?: boolean
   size?: 'sm' | 'default'
   /**
    * Drive the dialog from outside and drop the built-in button — for callers
@@ -39,7 +38,6 @@ export function ResolveChargeDialog({
   mode,
   action,
   hasPaymentLink = false,
-  hasInvoice = false,
   size = 'sm',
   open: controlledOpen,
   onOpenChange,
@@ -99,11 +97,6 @@ export function ResolveChargeDialog({
 
           <p className="text-sm text-muted-foreground">{tm('description')}</p>
 
-          {hasInvoice && (
-            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {t('invoiceWarning')}
-            </p>
-          )}
           {hasPaymentLink && (
             <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
               {t('paymentLinkWarning')}

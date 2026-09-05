@@ -27,9 +27,7 @@ interface ChargeRowActionsProps {
   chargeId: string
   remaining: number
   isOwner: boolean
-  hasPaymentLink: boolean
-  hasInvoice: boolean
-  parent: { id: string; name: string; hasPhone: boolean }
+  hasPaymentLink: boolean  parent: { id: string; name: string; hasPhone: boolean }
   /**
    * The parent's whole open balance. The settle item shows only when it spans
    * more than this one charge — otherwise "record payment" already does it.
@@ -59,9 +57,7 @@ export function ChargeRowActions({
   chargeId,
   remaining,
   isOwner,
-  hasPaymentLink,
-  hasInvoice,
-  parent,
+  hasPaymentLink,  parent,
   parentBalance,
   defaultNotifyParent,
   recordPaymentAction,
@@ -140,9 +136,7 @@ export function ChargeRowActions({
         chargeId={chargeId}
         mode="waive"
         action={waiveAction}
-        hasPaymentLink={hasPaymentLink}
-        hasInvoice={hasInvoice}
-        open={waiveOpen}
+        hasPaymentLink={hasPaymentLink}        open={waiveOpen}
         onOpenChange={setWaiveOpen}
       />
       {isOwner && (
@@ -150,9 +144,7 @@ export function ChargeRowActions({
           chargeId={chargeId}
           mode="void"
           action={voidAction}
-          hasPaymentLink={hasPaymentLink}
-          hasInvoice={hasInvoice}
-          open={voidOpen}
+          hasPaymentLink={hasPaymentLink}          open={voidOpen}
           onOpenChange={setVoidOpen}
         />
       )}

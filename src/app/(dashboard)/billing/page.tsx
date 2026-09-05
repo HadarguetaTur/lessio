@@ -71,8 +71,6 @@ export default async function BillingPage(props: {
     total_amount: number
     lessons_count: number
     manual_adjustment_amount: number | null
-    invoice_number: string | null
-    credit_note_number: string | null
     students: { id: string; full_name: string } | null
     parents: {
       id: string
@@ -233,9 +231,6 @@ export default async function BillingPage(props: {
                     <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
                       {t('table.status')}
                     </th>
-                    <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
-                      {t('invoice.number')}
-                    </th>
                     {isOwnerOrAdmin && (
                       <th className="sticky top-0 z-10 bg-muted/95 px-5 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur">
                         {tCommon('table.actions')}
@@ -295,16 +290,6 @@ export default async function BillingPage(props: {
                         </td>
                         <td className="px-5 py-3.5">
                           <StatusBadge status={status} />
-                        </td>
-                        <td className="px-5 py-3.5">
-                          {record.invoice_number ? (
-                            <span className="text-xs font-mono text-foreground">{record.invoice_number}</span>
-                          ) : null}
-                          {record.credit_note_number ? (
-                            <span className="ms-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
-                              {t('creditNote.cancelled')}
-                            </span>
-                          ) : null}
                         </td>
                         {isOwnerOrAdmin && (
                           <td className="px-5 py-3.5">

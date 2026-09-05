@@ -700,6 +700,41 @@ Rules:
   than per day. Future work: access-token reuse and a DB TTL cache per the
   `whatsapp_usage_cache` pattern
 
+## 37. Lessio Does Not Issue Tax Documents Itself
+
+**Decision (2026-09-05, Hadar):** Lessio computes what is owed and runs
+collections; it never generates tax documents (חשבונית מס, חשבונית זיכוי) of
+its own. Documents come from exactly two places: the external licensed receipt
+providers behind `src/lib/receipts/` (Green Invoice, iCount — the org's choice),
+or the customer's own accounting system entirely outside the product (e.g. Raz
+invoices through Grow).
+
+The Sprint-27 internal PDF generator (`src/lib/billing/invoices/`, the
+`invoice_counters` table, the `invoices` bucket, the חשבונית column and
+credit-note dialog, and the accounting CSV export built on them) was removed.
+
+**Why:**
+
+* Issuing tax documents in Israel is a licensed domain: only an עוסק מורשה may
+  issue a tax invoice; software producing bookkeeping documents falls under
+  הוראות ניהול פנקסים and Tax Authority software registration; digitally
+  delivered documents require a certified digital signature; the חשבוניות
+  ישראל reform requires allocation numbers. A naive PDF generator satisfies
+  none of these and could expose customers legally.
+* It was never used: the generator had failed silently on every approval since
+  it shipped (two stacked bugs, found by UX audit 8), zero invoices were ever
+  issued in production, and the one live customer invoices through Grow. Fixing
+  the bug would have *started* issuing a second, independently numbered
+  document series in parallel to customers' real books.
+
+**Consequences:** a follow-up cleanup migration (after this code is deployed)
+drops `invoice_counters`, the nine invoice/credit-note columns on
+`student_monthly_billing`, `organizations.invoice_generation_enabled`, and the
+`invoices` bucket. `charges.document_type`, `organizations.receipt_document_type`,
+`default_vat_rate` and `parents.tax_id` stay — they belong to the receipt
+providers. Anything document-shaped that Lessio needs in the future goes through
+a `ReceiptProvider`, never through in-product generation.
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

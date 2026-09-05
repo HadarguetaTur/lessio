@@ -12,9 +12,6 @@ import { MarkPaidButton } from '../MarkPaidButton'
 import { ApproveBillingButton } from '../ApproveBillingButton'
 import { SendBillingPaymentRequestButton } from '../SendBillingPaymentRequestButton'
 import { RecalculateButton } from './RecalculateButton'
-import DownloadInvoiceButton from './DownloadInvoiceButton'
-import IssueCreditNoteDialog from './IssueCreditNoteDialog'
-import { downloadInvoiceAction, issueCreditNoteAction } from '../actions'
 
 interface Props {
   studentId: string
@@ -23,8 +20,6 @@ interface Props {
     id: string
     is_paid: boolean
     is_approved: boolean
-    invoice_number: string | null
-    credit_note_number: string | null
   } | null
 }
 
@@ -49,21 +44,6 @@ export function BillingDetailHeaderActions({
           The list view already gated it this way. */}
       {billingData && !billingData.is_paid && billingData.is_approved && (
         <MarkPaidButton billingId={billingData.id} />
-      )}
-      {billingData && (
-        <DownloadInvoiceButton
-          billingId={billingData.id}
-          hasInvoice={!!billingData.invoice_number}
-          downloadAction={downloadInvoiceAction}
-        />
-      )}
-      {billingData && (
-        <IssueCreditNoteDialog
-          billingId={billingData.id}
-          hasInvoice={!!billingData.invoice_number}
-          hasCreditNote={!!billingData.credit_note_number}
-          issueCreditNoteAction={issueCreditNoteAction}
-        />
       )}
     </>
   )

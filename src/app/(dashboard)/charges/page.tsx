@@ -565,9 +565,7 @@ export default async function ChargesPage(props: {
                             chargeId={charge.id}
                             remaining={remainingOf(charge)}
                             isOwner={isOwner}
-                            hasPaymentLink={Boolean(charge.payment_link)}
-                            hasInvoice={charge.has_invoice}
-                            parent={{
+                            hasPaymentLink={Boolean(charge.payment_link)}                            parent={{
                               id: charge.parent.id,
                               name: charge.parent.full_name,
                               hasPhone: Boolean(charge.parent.phone),

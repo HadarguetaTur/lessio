@@ -62,17 +62,6 @@ export interface MonthlyBillingRow {
   manual_adjustment_amount: number | null
   manual_adjustment_reason: string | null
   manual_adjustment_date: string | null
-  // Invoice fields (Sprint 27)
-  invoice_number: string | null
-  invoice_pdf_url: string | null
-  vat_amount: number
-  invoice_issued_at: string | null
-  // Credit note fields (Sprint 27)
-  credit_note_number: string | null
-  credit_note_pdf_url: string | null
-  credit_note_issued_at: string | null
-  credit_note_reason: string | null
-  credited_invoice_number: string | null
   created_at: string
   updated_at: string
 }

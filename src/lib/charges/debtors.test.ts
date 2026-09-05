@@ -113,20 +113,14 @@ describe('groupDebtors', () => {
     })
   })
 
-  it('carries the payment link and invoice flags onto each charge', () => {
+  it('carries the payment link flag onto each charge', () => {
     const result = groupDebtors(
-      [
-        charge({
-          payment_link: 'https://pay.example/abc',
-          student_monthly_billing: { invoice_number: 'INV-2026-0004' },
-        }),
-      ],
+      [charge({ payment_link: 'https://pay.example/abc' })],
       new Map()
     )
 
     expect(result.rows[0]?.charges[0]).toMatchObject({
       hasPaymentLink: true,
-      hasInvoice: true,
     })
   })
 })

@@ -28,10 +28,6 @@ import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { getTranslations } from 'next-intl/server'
-import { generateAndStoreInvoice } from '@/lib/billing/invoices/generateInvoicePdf'
-import { generateAndStoreCreditNote } from '@/lib/billing/invoices/generateCreditNotePdf'
-import { getInvoiceSignedUrl } from '@/lib/billing/invoices/uploadInvoicePdf'
-import { createNotification } from '@/lib/notifications'
 import { getOrgBillingPolicy } from '@/lib/billing/orgBillingPolicy'
 import {
   assertMonthlyBillingHasNoIndividualChargeConflicts,
@@ -540,24 +536,9 @@ export async function approveBillingAction(billingId: string) {
     return { error: t('billing.errors.approvedLedgerFailed') }
   }
 
-  // Fire-and-forget: generate a PDF invoice, but only for an org that asked for
-  // one. Most orgs invoice through their own provider, and issuing a second
-  // independently numbered series alongside those books is an accounting
-  // hazard, not a feature. Off unless invoice_generation_enabled is true.
-  const { data: invoiceSettings } = await supabase
-    .from('organizations')
-    .select('invoice_generation_enabled')
-    .eq('id', session.orgId)
-    .single()
-
-  if (invoiceSettings?.invoice_generation_enabled) {
-    generateAndStoreInvoice(billingId, session.orgId).catch((err) => {
-      console.error('[billing] invoice generation failed after approve', {
-        billingId, orgId: session.orgId, err,
-      })
-    })
-  }
-
+  // No document is issued here. Tax documents come only from external licensed
+  // receipt providers (decision: Lessio is not an invoicing system) — the
+  // internal PDF generator that used to fire from this point was removed.
   revalidateBillingSurfaces(billing.student_id as string)
 
   // Fire-and-forget: send payment request if enabled and charge was created
@@ -783,93 +764,4 @@ async function sendBillingPaymentRequestCore(
 
   console.info('[billing] payment request sent', { billingId, orgId, chargeId: charge.id, providerName })
   return 'sent'
-}
-
-// ─── Invoice actions ────────────────────────────────────────────────────────
-
-export async function downloadInvoiceAction(billingId: string) {
-  const session = await getSession()
-  const t = await getTranslations()
-
-  if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: t('common.errors.noPermission'), url: null }
-  }
-
-  const supabase = createServiceRoleClient()
-  const { data: billing } = await supabase
-    .from('student_monthly_billing')
-    .select('invoice_pdf_url')
-    .eq('id', billingId)
-    .eq('organization_id', session.orgId)
-    .single()
-
-  if (!billing?.invoice_pdf_url) {
-    return { error: t('billing.errors.invoiceNotFound'), url: null }
-  }
-
-  try {
-    const url = await getInvoiceSignedUrl(billing.invoice_pdf_url as string)
-    return { error: null, url }
-  } catch {
-    return { error: t('billing.errors.invoiceUrlFailed'), url: null }
-  }
-}
-
-export async function issueCreditNoteAction(billingId: string, reason: string) {
-  const session = await getSession()
-  requireMutation(session)
-  const t = await getTranslations()
-  await assertOrgNotSaasReadOnly(session.orgId)
-
-  if (session.role !== 'owner' && session.role !== 'admin') {
-    return { error: t('common.errors.noPermission') }
-  }
-
-  if (!reason || reason.trim().length === 0) {
-    return { error: t('billing.errors.creditNoteReasonRequired') }
-  }
-
-  const supabase = createServiceRoleClient()
-  const { data: billing } = await supabase
-    .from('student_monthly_billing')
-    .select('id, invoice_number, credit_note_number, student_id, parent_id')
-    .eq('id', billingId)
-    .eq('organization_id', session.orgId)
-    .single()
-
-  if (!billing) return { error: t('billing.errors.billingNotFound') }
-  if (!billing.invoice_number) return { error: t('billing.errors.noInvoiceToCredit') }
-  if (billing.credit_note_number) return { error: t('billing.errors.creditNoteAlreadyIssued') }
-
-  try {
-    await generateAndStoreCreditNote(billingId, session.orgId, reason.trim())
-  } catch (err) {
-    console.error('[billing] credit note generation failed', { billingId, orgId: session.orgId, err })
-    return { error: t('billing.errors.creditNoteFailed') }
-  }
-
-  // Notify parent
-  if (billing.parent_id) {
-    const { data: ownerProfiles } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('organization_id', session.orgId)
-      .eq('role', 'owner')
-      .limit(1)
-
-    const recipientId = ownerProfiles?.[0]?.id
-    if (recipientId) {
-      createNotification({
-        orgId: session.orgId,
-        recipientProfileId: recipientId,
-        type: 'invoice_cancelled',
-        title: t('billing.creditNoteIssuedNotification'),
-        body: reason.trim(),
-        actionUrl: `/billing/${billing.student_id}`,
-      }).catch(() => {})
-    }
-  }
-
-  revalidateBillingSurfaces(billing.student_id as string)
-  return { error: null }
 }

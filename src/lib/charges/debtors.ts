@@ -26,7 +26,6 @@ export interface DebtorCharge {
   ageDays: number
   hasPaymentLink: boolean
   sentAt: string | null
-  hasInvoice: boolean
 }
 
 export interface DebtorRow {
@@ -87,7 +86,6 @@ export function groupDebtors(
       ageDays: ageInDays(charge.created_at, now),
       hasPaymentLink: Boolean(charge.payment_link),
       sentAt: charge.sent_at ?? null,
-      hasInvoice: Boolean(charge.student_monthly_billing?.invoice_number),
     }
 
     const existing = byParent.get(parent.id)
@@ -136,7 +134,7 @@ export async function getDebtorsOverview(orgId: string): Promise<DebtorsOverview
     db
       .from('charges')
       .select(
-        'id, amount, amount_paid, charge_type, status, notes, created_at, payment_link, sent_at, parent_id, parents(id, full_name, phone, opted_out_at), student_monthly_billing(invoice_number)'
+        'id, amount, amount_paid, charge_type, status, notes, created_at, payment_link, sent_at, parent_id, parents(id, full_name, phone, opted_out_at)'
       )
       .eq('organization_id', orgId)
       .in('status', [...OPEN_CHARGE_STATUSES])

@@ -159,8 +159,8 @@ Teachers access a scoped subset of the dashboard: `/teacher/schedule`, `/teacher
 **Onboarding wizard:**
 New orgs are redirected to `/onboarding` after signup if `organizations.onboarding_completed` is false. The wizard steps: Welcome → Teachers → Settings → Import Students → Import Lessons → Complete. The import flow (`src/components/import/`) is reused inside onboarding and standalone. After completing onboarding, `onboarding_completed` is set to `true` and the org is redirected to `/dashboard`.
 
-**PDF Invoice generation (Sprint 27):**
-`src/lib/billing/invoices/` generates PDF invoices using `@react-pdf/renderer` (Heebo font for Hebrew RTL). Invoice numbers are sequential per-org per-year via `invoice_counters` table (atomic increment). PDFs are stored in `invoices` Supabase Storage bucket. Invoice generation fires on billing approval (fire-and-forget). Credit notes (חשבוניות זיכוי) follow the same pattern with `CR-YYYY-NNNN` numbering.
+**Lessio does not issue tax documents itself (decision #37):**
+The Sprint-27 internal PDF invoice/credit-note generator was removed on 2026-09-05. Issuing tax documents in Israel is a licensed domain (עוסק מורשה, הוראות ניהול פנקסים, software registration, חשבוניות ישראל allocation numbers). Documents come only from the external licensed receipt providers (`src/lib/receipts/`) or from the customer's own system outside Lessio. Do not add invoice/credit-note PDF generation back.
 
 **Receipt provider document types (Sprint 27):**
 `ReceiptProvider.issueReceipt()` accepts optional `documentType: 'receipt' | 'tax_invoice'`, `vatAmount`, and `customerTaxId`. iCount: doctype 300 (tax invoice) / 400 (receipt) / 330 (credit note). Green Invoice: type 305 / 320 / 330. Sumit: receipts only. Org setting `receipt_document_type` on organizations table controls the default.

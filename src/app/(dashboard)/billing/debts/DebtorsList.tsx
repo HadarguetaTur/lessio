@@ -438,17 +438,13 @@ export function DebtorsList({
                             chargeId={charge.id}
                             mode="waive"
                             action={waiveAction}
-                            hasPaymentLink={charge.hasPaymentLink}
-                            hasInvoice={charge.hasInvoice}
-                          />
+                            hasPaymentLink={charge.hasPaymentLink}                          />
                           {isOwner && (
                             <ResolveChargeDialog
                               chargeId={charge.id}
                               mode="void"
                               action={voidAction}
-                              hasPaymentLink={charge.hasPaymentLink}
-                              hasInvoice={charge.hasInvoice}
-                            />
+                              hasPaymentLink={charge.hasPaymentLink}                            />
                           )}
                         </div>
                       </li>

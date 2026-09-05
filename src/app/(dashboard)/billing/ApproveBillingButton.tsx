@@ -5,11 +5,11 @@
  *
  * Approval is the primary money commit of the month-end journey and it is
  * irreversible: once approved the figures freeze (recalculation is refused),
- * a ledger charge is created, an invoice is issued and — where the org is
- * configured for it — the parent is messaged. UX audit 8 found it firing on a
- * bare click with no consequence statement and no feedback at all, while the
- * sibling /charges surfaces state the consequence and toast the outcome. This
- * ports that standard onto it.
+ * a ledger charge is created and — where the org is configured for it — the
+ * parent is messaged. UX audit 8 found it firing on a bare click with no
+ * consequence statement and no feedback at all, while the sibling /charges
+ * surfaces state the consequence and toast the outcome. This ports that
+ * standard onto it.
  */
 
 import { useState, useTransition } from 'react'

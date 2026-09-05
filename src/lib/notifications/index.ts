@@ -15,7 +15,6 @@ export type NotificationType =
   | 'new_lead'
   | 'goal_achieved'
   | 'portal_message'
-  | 'invoice_cancelled'
   | 'webhook_unroutable'
   | 'day_off_requested'
   | 'day_off_decided'
@@ -159,14 +158,28 @@ export async function getUnreadCount(profileId: string, orgId: string): Promise<
 
 /**
  * Mark a single notification as read.
+ *
+ * Scoped to the recipient, like markAllRead below: the id comes from the client and
+ * this runs on the service-role client, so without the recipient filter any user
+ * could clear anyone's notifications — including another organization's.
  */
-export async function markAsRead(notificationId: string): Promise<void> {
+export async function markAsRead(
+  notificationId: string,
+  profileId: string,
+  /** Null for platform notifications, which are stored with organization_id IS NULL. */
+  orgId: string | null
+): Promise<void> {
   const db = createServiceRoleClient()
-  const { error } = await db
+  const query = db
     .from('in_app_notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('id', notificationId)
+    .eq('recipient_profile_id', profileId)
     .is('read_at', null)
+
+  const { error } = await (orgId === null
+    ? query.is('organization_id', null)
+    : query.eq('organization_id', orgId))
 
   if (error) {
     console.error('[notifications] Failed to mark as read', { notificationId, error: error.message })

@@ -727,10 +727,12 @@ credit-note dialog, and the accounting CSV export built on them) was removed.
   the bug would have *started* issuing a second, independently numbered
   document series in parallel to customers' real books.
 
-**Consequences:** a follow-up cleanup migration (after this code is deployed)
-drops `invoice_counters`, the nine invoice/credit-note columns on
-`student_monthly_billing`, `organizations.invoice_generation_enabled`, and the
-`invoices` bucket. `charges.document_type`, `organizations.receipt_document_type`,
+**Consequences:** a follow-up cleanup migration (run only after this code is
+deployed — the pre-removal code joins `invoice_number` on /charges and breaks
+on a missing column) drops `invoice_counters`, the nine invoice/credit-note
+columns on `student_monthly_billing`, and the `invoices` bucket. The short-lived
+`invoice_generation_enabled` opt-in migration was deleted before ever running
+in production, so there is nothing of it to drop. `charges.document_type`, `organizations.receipt_document_type`,
 `default_vat_rate` and `parents.tax_id` stay — they belong to the receipt
 providers. Anything document-shaped that Lessio needs in the future goes through
 a `ReceiptProvider`, never through in-product generation.

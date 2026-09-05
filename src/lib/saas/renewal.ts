@@ -175,9 +175,18 @@ async function chargeOneRenewal(
   const locale = org?.default_locale === 'en' ? 'en' : 'he'
   const planLabel = locale === 'en' ? plan.display_name_en : plan.display_name_he
 
+  // Deliberately charged by customer rather than by the stored token: Sumit
+  // then bills whatever card is currently on file for that customer. A card
+  // the owner replaced through Sumit's own customer page (or that Sumit
+  // refreshed on expiry) therefore takes effect immediately, instead of this
+  // engine retrying a dead token until the subscription lapses.
+  //
+  // `sumit_payment_token` is still stored and still gates renewal — it is the
+  // marker that this subscription has a card at all — but it no longer pins
+  // which card is charged.
   const result = await chargeSumitCustomer({
     customerId: sub.sumit_customer_id,
-    token: sub.sumit_payment_token,
+    token: null,
     amount,
     description: `LESSIO ${planLabel}`,
     language: locale,

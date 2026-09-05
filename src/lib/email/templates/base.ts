@@ -3,6 +3,22 @@
  * Plain inline-styled HTML for maximum email client compatibility.
  */
 
+/**
+ * Escapes a value interpolated into email HTML.
+ *
+ * Every template here builds HTML by string interpolation, and several of the
+ * values are tenant-supplied free text (org name, student name). Mail clients
+ * do not execute script, so an unescaped name is markup breakage and a mild
+ * spoofing vector rather than XSS — but it costs nothing to be consistent.
+ */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 export function wrapEmailHtml(body: string, locale: 'he' | 'en' = 'he'): string {
   const dir = locale === 'he' ? 'rtl' : 'ltr'
   const fontFamily = 'Arial, Helvetica, sans-serif'

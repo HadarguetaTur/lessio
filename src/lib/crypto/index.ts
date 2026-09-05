@@ -93,6 +93,44 @@ export function decryptCalendarToken(encrypted: string): string {
   return decryptWithKey(encrypted, getCalendarKey())
 }
 
+// ── SaaS payment token wrappers (security audit 2026-09-04) ──────────────────
+
+/**
+ * Reuses PAYMENT_CONFIG_ENCRYPTION_KEY rather than introducing a key of its own.
+ * The value protected here is the same class of secret the key already covers —
+ * a payment credential — and it is required in production already, so no new
+ * environment variable has to reach Vercel before this can ship.
+ */
+function getSaasPaymentKey(): string {
+  const hex = process.env.PAYMENT_CONFIG_ENCRYPTION_KEY
+  if (!hex) throw new Error('[crypto] PAYMENT_CONFIG_ENCRYPTION_KEY is not set')
+  if (hex.length !== 64) throw new Error('[crypto] PAYMENT_CONFIG_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)')
+  return hex
+}
+
+/**
+ * Encrypts the Sumit card token stored on organization_subscriptions.
+ *
+ * That row is SELECTable by an org's own owner and admin through the browser
+ * publishable key, and Postgres has no column-level RLS — so the token, which
+ * can be replayed to charge the stored card, cannot be left as plaintext there.
+ */
+export function encryptSaasPaymentToken(plaintext: string): string {
+  return encryptWithKey(plaintext, getSaasPaymentKey())
+}
+
+/**
+ * Decrypts a stored Sumit card token.
+ *
+ * Deliberately throws rather than returning null on failure. chargeSumitCustomer
+ * treats a falsy token as "charge whatever card Sumit has on file", so a decrypt
+ * regression that degraded to null would quietly bill the wrong card instead of
+ * failing the attempt.
+ */
+export function decryptSaasPaymentToken(encrypted: string): string {
+  return decryptWithKey(encrypted, getSaasPaymentKey())
+}
+
 // ── Gmail token convenience wrappers (Sprint 28) ─────────────────────────────
 
 function getGmailKey(): string {

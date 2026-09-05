@@ -99,6 +99,7 @@ import {
   type OrgSubscriptionState,
 } from './subscriptions'
 import { getSaasPlanById, getSaasPlanByName, type SaasPlanRow } from './plans'
+import { decryptSaasPaymentToken } from '@/lib/crypto'
 
 const ORG = 'org-1'
 const REF = 'ref-aaaa-bbbb'
@@ -173,9 +174,23 @@ describe('activateSubscriptionFromPayment', () => {
 
     expect(result).toEqual({ activated: true })
     expect(store.subs[0].status).toBe('active')
-    expect(store.subs[0].sumit_payment_token).toBe('tok_live_1')
     expect(store.subs[0].pending_checkout_reference).toBeNull()
     expect(store.invoices).toHaveLength(1)
+  })
+
+  it('stores the card token encrypted, never as plaintext', async () => {
+    // The row is SELECTable by the org's own owner and admin through the
+    // browser publishable key, and this token can be replayed to charge the
+    // stored card — so what lands in the column must not be readable.
+    store.subs.push(pendingRow())
+
+    await activate()
+
+    const stored = store.subs[0].sumit_payment_token as string
+    expect(stored).not.toBe('tok_live_1')
+    expect(stored).not.toContain('tok_live_1')
+    expect(stored.split(':')).toHaveLength(3) // iv:ciphertext:authTag
+    expect(decryptSaasPaymentToken(stored)).toBe('tok_live_1')
   })
 
   // A suspended org that pays should not sit silent until the next cron run:

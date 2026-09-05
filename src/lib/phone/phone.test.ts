@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizePhone, toIsraeliLocalPhone, PhoneNormalizationError } from './index'
+import { maskPhone, normalizePhone, toIsraeliLocalPhone, PhoneNormalizationError } from './index'
 
 describe('normalizePhone', () => {
   describe('valid inputs', () => {
@@ -42,9 +42,32 @@ describe('normalizePhone', () => {
       expect(() => normalizePhone('05012345678')).toThrow(PhoneNormalizationError) // 11 digits
     })
 
-    it('error message includes the offending number', () => {
-      expect(() => normalizePhone('bad')).toThrow('bad')
+    it('keeps the offending number out of the error message', () => {
+      // This error is routinely logged inside an `{ err }` payload, so echoing
+      // the input would put subscriber phone numbers in the platform logs.
+      // The length still distinguishes an empty field from a malformed one.
+      expect(() => normalizePhone('021234567')).toThrow(/9 characters/)
+      expect(() => normalizePhone('021234567')).not.toThrow(/021234567/)
     })
+  })
+})
+
+describe('maskPhone', () => {
+  it('keeps the country code, prefix and last four digits', () => {
+    expect(maskPhone('+972501234567')).toBe('+9725••••4567')
+  })
+
+  it('reveals no more for an unexpected shape than for a canonical one', () => {
+    // Unnormalized or foreign input must not fall through to a rawer form.
+    expect(maskPhone('050-123-4567')).toBe('••••4567')
+    expect(maskPhone('+14155550123')).toBe('••••0123')
+  })
+
+  it('never throws, so callers are not tempted back to the raw value', () => {
+    expect(maskPhone(null)).toBe('(none)')
+    expect(maskPhone(undefined)).toBe('(none)')
+    expect(maskPhone('')).toBe('(none)')
+    expect(maskPhone('12')).toBe('••••')
   })
 })
 

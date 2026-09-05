@@ -8,6 +8,26 @@ import { getTranslations } from 'next-intl/server'
 
 type ActionState = { error: string } | null
 
+/**
+ * Confirms a client-supplied row id really belongs to the acting org, before it is
+ * used as a foreign key. Relationship rows carry their own organization_id, so the
+ * row lands in the right tenant either way — but the id it points at would not.
+ */
+async function belongsToOrg(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  table: 'parents' | 'students',
+  id: string,
+  orgId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from(table)
+    .select('id')
+    .eq('id', id)
+    .eq('organization_id', orgId)
+    .maybeSingle()
+  return data !== null
+}
+
 export async function linkParent(
   studentId: string,
   _prevState: ActionState,
@@ -24,6 +44,16 @@ export async function linkParent(
   requireMutation(session)
   if (role !== 'owner' && role !== 'admin') return { error: await commonError('noPermission') }
   const supabase = await createClient()
+
+  // parent_id and the student route param are both client-supplied. The row's own
+  // organization_id is pinned above, but nothing stops it pointing at a parent or
+  // student from another org — a link later traversed to send that family WhatsApp.
+  if (!(await belongsToOrg(supabase, 'parents', parentId, orgId))) {
+    return { error: t('students.linkParentErrors.pickParent') }
+  }
+  if (!(await belongsToOrg(supabase, 'students', studentId, orgId))) {
+    return { error: await commonError('notFound') }
+  }
 
   // If marking as primary, clear existing primary for this student first
   if (isPrimary) {

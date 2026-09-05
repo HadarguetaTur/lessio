@@ -66,12 +66,33 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   // it the renewal cron cannot authenticate and no subscription is ever charged
   // — a silent revenue outage, so it fails the build instead.
   'LESSIO_SAAS_CRON_SECRET_SHA256',
+  // Same, for /api/internal/lessons/auto-complete. This digest used to be
+  // hardcoded in the route as a fallback, which pinned the credential to git
+  // history; the route now reads it only from here, so a missing value must
+  // stop the build rather than leave lessons silently never auto-completing.
+  'LESSIO_AUTO_COMPLETION_CRON_SECRET_SHA256',
   // OPENAI_API_KEY: optional platform-level fallback. Each org configures its own AI key.
   // RESEND_API_KEY / RESEND_FROM_EMAIL: optional. Required only when email reminders are used.
   // NEXT_PUBLIC_SENTRY_DSN: optional. Set to enable Sentry error monitoring.
   // TRACKING_CONFIG_ENCRYPTION_KEY: optional. Required only to store a
   //   server-side tracking credential (Meta CAPI token, GA4 api_secret).
   //   Browser pixels work without it; /admin/tracking reports the miss.
+]
+
+/**
+ * Secrets used to sign tokens, and the minimum length each must reach.
+ *
+ * Presence alone is not enough for a signing key: a short `PORTAL_JWT_SECRET`
+ * still signs a valid 7-day parent-portal session, and HS256 over a low-entropy
+ * secret is brute-forceable offline. The encryption keys already enforce their
+ * own 64-hex-character floor inside src/lib/crypto; these had no floor at all.
+ * 32 characters is the usual advice for an HMAC secret.
+ */
+const MIN_SECRET_LENGTH = 32
+const LENGTH_CHECKED_SECRETS: string[] = [
+  'BOOKING_JWT_SECRET',
+  'PORTAL_JWT_SECRET',
+  'SUPPORT_SESSION_SECRET',
 ]
 
 /**
@@ -100,6 +121,23 @@ export function validateEnv(): void {
       `[env] Missing required environment variable${missing.length > 1 ? 's' : ''}:\n` +
       `${list}\n\n` +
       `See .env.local.example for setup instructions.`
+    )
+  }
+
+  // Only reached once every required secret is present.
+  const tooShort = LENGTH_CHECKED_SECRETS.filter((key) => {
+    const value = process.env[key]
+    return value !== undefined && value.length < MIN_SECRET_LENGTH
+  })
+
+  if (tooShort.length > 0) {
+    const list = tooShort
+      .map(k => `  - ${k} (${process.env[k]?.length} characters)`)
+      .join('\n')
+    throw new Error(
+      `[env] Signing secret${tooShort.length > 1 ? 's' : ''} shorter than ` +
+      `${MIN_SECRET_LENGTH} characters:\n${list}\n\n` +
+      `Generate one with: openssl rand -hex 32`
     )
   }
 }

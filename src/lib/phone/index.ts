@@ -12,7 +12,11 @@
 
 export class PhoneNormalizationError extends Error {
   constructor(phone: string) {
-    super(`Cannot normalize phone number to E.164: "${phone}"`)
+    // The rejected number is deliberately not in the message: this error is
+    // routinely logged as part of an `{ err }` payload, which would put a
+    // subscriber's phone number into the platform logs by the back door.
+    // The length is enough to tell "empty field" from "wrong format".
+    super(`Cannot normalize phone number to E.164 (${phone.trim().length} characters)`)
     this.name = 'PhoneNormalizationError'
   }
 }
@@ -42,6 +46,35 @@ export function normalizePhone(phone: string): string {
   }
 
   throw new PhoneNormalizationError(raw)
+}
+
+/**
+ * A phone number reduced to what a log line legitimately needs.
+ *
+ * A subscriber's phone is personal data, and the WhatsApp webhook logs on
+ * essentially every inbound message — so the raw number was accumulating in
+ * platform logs at volume. The masked form keeps what makes a log useful
+ * (correlating lines about one conversation, eyeballing the country/prefix)
+ * without retaining the identifier itself: `+9725••••1234`.
+ *
+ * Deliberately total — it accepts anything, including null and malformed
+ * input, because a redaction helper that throws would just push callers back
+ * to logging the raw value.
+ */
+export function maskPhone(phone: string | null | undefined): string {
+  if (!phone) return '(none)'
+  const trimmed = phone.trim()
+  if (trimmed.length < 4) return '••••'
+
+  const digits = trimmed.replace(/[^0-9]/g, '')
+  const last4 = digits.slice(-4)
+
+  // Canonical Israeli mobile: keep the country code and the leading 5.
+  if (/^\+9725\d{8}$/.test(trimmed)) return `+9725••••${last4}`
+
+  // Anything else (foreign, unnormalized, malformed) keeps only the tail, so an
+  // unexpected shape cannot leak more than a canonical one.
+  return `••••${last4}`
 }
 
 /**

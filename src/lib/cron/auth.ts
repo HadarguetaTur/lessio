@@ -16,14 +16,16 @@ export function hasValidCronAuthorization(
   opts: {
     /** Env var holding the hex SHA-256 of the expected bearer token. */
     envHashVar: string
-    /** Used when the env var is unset — only for secrets already deployed this way. */
-    fallbackHash?: string
   }
 ): boolean {
   const supplied = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
   if (!supplied) return false
 
-  const expectedHash = process.env[opts.envHashVar] ?? opts.fallbackHash
+  // No in-source fallback: a digest committed to the repo pins the credential to
+  // git history for good, so rotating it would mean shipping code. Every hash
+  // lives in the environment, and env.ts fails the production build if one is
+  // missing — a loud stop rather than a cron that quietly 401s.
+  const expectedHash = process.env[opts.envHashVar]
   if (!expectedHash) return false
 
   const suppliedHash = createHash('sha256').update(supplied).digest()

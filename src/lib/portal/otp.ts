@@ -8,6 +8,13 @@
 import { timingSafeEqual } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
+/**
+ * Wrong guesses a single code tolerates before it is burned. Shared by the
+ * verifier and the rate-limit counter: a code burned this way must keep counting
+ * against the send limit, or the limit resets on demand.
+ */
+export const MAX_FAILED_ATTEMPTS = 5
+
 /** Generates a cryptographically random 6-digit OTP string. */
 export function generateOtp(): string {
   const array = new Uint32Array(1)
@@ -44,14 +51,20 @@ export async function storeOtp({ phone, orgId, otp }: StoreOtpParams): Promise<v
 }
 
 /**
- * Returns the number of *unredeemed* OTP requests for this phone+org in the last
- * `windowMinutes` minutes. Used by requestOtpAction to enforce the rate limit
- * (max 3 per 15 min).
+ * Returns the number of OTP requests for this phone+org in the last
+ * `windowMinutes` minutes that count against the rate limit. Used by
+ * requestOtpAction to enforce max 3 per 15 min.
  *
- * Consumed codes (`used = true`) are excluded on purpose: the limit exists to blunt
- * SMS/WhatsApp flooding, and a parent who actually logged in has proven they hold the
- * phone. Counting successes locked legitimate parents out after three logins in a
- * quarter hour — which on a shared family phone is an ordinary afternoon.
+ * Codes redeemed by a successful login are excluded on purpose: the limit exists to
+ * blunt SMS/WhatsApp flooding, and a parent who actually logged in has proven they
+ * hold the phone. Counting successes locked legitimate parents out after three logins
+ * in a quarter hour — which on a shared family phone is an ordinary afternoon.
+ *
+ * A code burned by MAX_FAILED_ATTEMPTS wrong guesses is *not* a success, so it stays
+ * counted. Excluding every `used` row let an attacker reset this counter at will:
+ * request a code, spend five wrong guesses to flip it to used, and the window read
+ * empty again — an unbounded loop of WhatsApp sends to any parent's phone and an
+ * unbounded supply of codes to brute-force.
  */
 export async function countRecentOtpRequests(
   phone: string,
@@ -65,7 +78,7 @@ export async function countRecentOtpRequests(
     .select('id', { count: 'exact', head: true })
     .eq('phone', phone)
     .eq('organization_id', orgId)
-    .eq('used', false)
+    .or(`used.eq.false,failed_attempts.gte.${MAX_FAILED_ATTEMPTS}`)
     .gte('created_at', since)
   if (error) throw new Error(`Rate limit check failed: ${error.message}`)
   return count ?? 0
@@ -84,7 +97,8 @@ export interface VerifyOtpParams {
  * Security properties:
  * - Single-use: row is marked used=true on success.
  * - Expiry-checked: expired rows are ignored.
- * - Attempt-limited: after 5 failed guesses the row is invalidated (used=true).
+ * - Attempt-limited: after MAX_FAILED_ATTEMPTS failed guesses the row is invalidated
+ *   (used=true) while still counting against the send rate limit.
  * - Constant-time hash comparison via timingSafeEqual.
  */
 export async function verifyOtp({ phone, orgId, otp }: VerifyOtpParams): Promise<boolean> {
@@ -107,7 +121,7 @@ export async function verifyOtp({ phone, orgId, otp }: VerifyOtpParams): Promise
   if (!record) return false
 
   // Already hit attempt limit — invalidate and reject.
-  if ((record.failed_attempts as number) >= 5) {
+  if ((record.failed_attempts as number) >= MAX_FAILED_ATTEMPTS) {
     await db.from('portal_otps').update({ used: true }).eq('id', record.id)
     return false
   }
@@ -124,8 +138,9 @@ export async function verifyOtp({ phone, orgId, otp }: VerifyOtpParams): Promise
       .from('portal_otps')
       .update({
         failed_attempts: newAttempts,
-        // Lock the OTP after 5 failures so it cannot be used even if later guessed correctly.
-        ...(newAttempts >= 5 ? { used: true } : {}),
+        // Lock the OTP after MAX_FAILED_ATTEMPTS failures so it cannot be used even if
+        // later guessed correctly.
+        ...(newAttempts >= MAX_FAILED_ATTEMPTS ? { used: true } : {}),
       })
       .eq('id', record.id)
     return false

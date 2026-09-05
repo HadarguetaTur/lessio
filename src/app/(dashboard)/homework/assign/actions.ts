@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache'
 import { runAfterResponse } from '@/lib/server/afterResponse'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { canAccessStudent } from '@/lib/auth/studentAccess'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createAssignment } from '@/lib/homework'
@@ -93,6 +94,16 @@ export async function assignHomeworkAction(
 
     if (!firstTeacher) return { error: t('homework.errors.noActiveTeachers') }
     teacherId = (firstTeacher as { id: string }).id
+  }
+
+  // The schema only proves these are UUIDs, and createAssignment writes with the
+  // service-role client and then messages each student's parent on WhatsApp. Without
+  // this check an id from another organization would put attacker-authored text in
+  // front of that org's parent, and any teacher could assign across the whole org.
+  for (const studentId of studentIds) {
+    if (!(await canAccessStudent(session, studentId))) {
+      return { error: t('lessons.newErrors.onlyOwnStudents') }
+    }
   }
 
   // Create one assignment record per student

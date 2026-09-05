@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
+import { maskPhone, normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { signBookingToken } from '@/lib/jwt'
 import { decryptToken } from '@/lib/crypto'
 import {
@@ -330,7 +330,9 @@ async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promi
     senderPhone = normalizePhone(msg.from)
   } catch (err) {
     if (err instanceof PhoneNormalizationError) {
-      console.warn('[whatsapp/webhook] Could not normalize sender phone — ignoring', { from: msg.from })
+      console.warn('[whatsapp/webhook] Could not normalize sender phone — ignoring', {
+        from: maskPhone(msg.from),
+      })
       return
     }
     throw err
@@ -401,7 +403,7 @@ async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promi
   if (await isRateLimited(org.id, senderPhone)) {
     console.warn('[whatsapp/webhook] Rate limit exceeded — dropping message', {
       orgId: org.id,
-      senderPhone,
+      senderPhone: maskPhone(senderPhone),
       messageId: msg.messageId,
     })
     return
@@ -412,7 +414,7 @@ async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promi
     console.info('[whatsapp/webhook] Duplicate inbound message ignored', {
       orgId: org.id,
       messageId: msg.messageId,
-      senderPhone,
+      senderPhone: maskPhone(senderPhone),
     })
     return
   }
@@ -951,7 +953,7 @@ async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promi
         await logExchange(org.id, senderPhone, parent.id, msg.text, reply).catch((err) => {
           console.error('[whatsapp/webhook] Failed to persist AI exchange after send', {
             orgId: org.id,
-            senderPhone,
+            senderPhone: maskPhone(senderPhone),
             err,
           })
         })
@@ -1048,7 +1050,7 @@ async function handleUnknownSender(
 ): Promise<void> {
   // Upsert lead — creates on first contact, updates updated_at only on repeat
   await upsertLead(organizationId, phone, rawMessage).catch(err => {
-    console.error('[whatsapp/webhook] Failed to upsert lead', { phone, err })
+    console.error('[whatsapp/webhook] Failed to upsert lead', { phone: maskPhone(phone), err })
   })
 
   // Fire-and-forget: in-app notification for new lead (Sprint 25 Story 4)
@@ -1065,7 +1067,11 @@ async function handleUnknownSender(
         '/leads'
       )
     } catch (err) {
-      console.error('[whatsapp/webhook] lead notification failed', { organizationId, phone, err })
+      console.error('[whatsapp/webhook] lead notification failed', {
+        organizationId,
+        phone: maskPhone(phone),
+        err,
+      })
     }
   })()
 
@@ -1408,10 +1414,18 @@ async function handleHomeworkDone(
     accessToken,
     phoneNumberId
   ).catch((err) => {
-    console.error('[whatsapp/webhook] handleHomeworkDone: failed to send parent reply', { orgId, senderPhone, err })
+    console.error('[whatsapp/webhook] handleHomeworkDone: failed to send parent reply', {
+      orgId,
+      senderPhone: maskPhone(senderPhone),
+      err,
+    })
   })
 
-  console.info('[whatsapp/webhook] Homework marked done', { orgId, assignmentId: assignment.id, senderPhone })
+  console.info('[whatsapp/webhook] Homework marked done', {
+    orgId,
+    assignmentId: assignment.id,
+    senderPhone: maskPhone(senderPhone),
+  })
 }
 
 async function handleBalanceQuery(
@@ -1451,7 +1465,10 @@ async function handleBalanceQuery(
   // would be nonsense against a zero total.
   if (total <= 0) {
     await sendTextMessage(senderPhone, botString('balance_none', locale), accessToken, phoneNumberId)
-    console.info('[whatsapp/webhook] Balance query replied — nothing open', { orgId, senderPhone })
+    console.info('[whatsapp/webhook] Balance query replied — nothing open', {
+      orgId,
+      senderPhone: maskPhone(senderPhone),
+    })
     return
   }
 
@@ -1484,7 +1501,13 @@ async function handleBalanceQuery(
       locale
     )
     await sendTextMessage(senderPhone, body, accessToken, phoneNumberId)
-    console.info('[whatsapp/webhook] Balance query replied — portal closed', { orgId, senderPhone, total })
+    // `total` is deliberately not logged: a phone number beside an outstanding
+    // balance is a financial profile of a named family sitting in the platform
+    // log. The org id and the masked number are enough to trace the reply.
+    console.info('[whatsapp/webhook] Balance query replied — portal closed', {
+      orgId,
+      senderPhone: maskPhone(senderPhone),
+    })
     return
   }
 
@@ -1507,7 +1530,11 @@ async function handleBalanceQuery(
     },
   })
 
-  console.info('[whatsapp/webhook] Balance query replied', { orgId, senderPhone, total })
+  // See the note above: no `total` beside a phone number.
+  console.info('[whatsapp/webhook] Balance query replied', {
+    orgId,
+    senderPhone: maskPhone(senderPhone),
+  })
 }
 
 async function handleScheduleQuery(
@@ -1533,7 +1560,10 @@ async function handleScheduleQuery(
   const scheduleBody = await resolveTemplate(orgId, 'schedule_reply', { lesson_lines: lessonLines }, locale)
   await sendTextMessage(senderPhone, scheduleBody, accessToken, phoneNumberId)
 
-  console.info('[whatsapp/webhook] Schedule query replied', { orgId, senderPhone })
+  console.info('[whatsapp/webhook] Schedule query replied', {
+    orgId,
+    senderPhone: maskPhone(senderPhone),
+  })
 }
 
 async function handleReceiptQuery(
@@ -1582,7 +1612,10 @@ async function handleReceiptQuery(
   }, locale)
   await sendTextMessage(senderPhone, receiptBody, accessToken, phoneNumberId)
 
-  console.info('[whatsapp/webhook] Receipt query replied', { orgId, senderPhone })
+  console.info('[whatsapp/webhook] Receipt query replied', {
+    orgId,
+    senderPhone: maskPhone(senderPhone),
+  })
 }
 
 /**
@@ -1608,7 +1641,10 @@ async function handlePortalQuery(
   // them on a "not open" screen after an OTP they cannot complete.
   if (!portalSettings.enabled) {
     await sendTextMessage(senderPhone, botString('portal_closed', locale), accessToken, phoneNumberId)
-    console.info('[whatsapp/webhook] Portal query replied — portal closed', { orgId, senderPhone })
+    console.info('[whatsapp/webhook] Portal query replied — portal closed', {
+      orgId,
+      senderPhone: maskPhone(senderPhone),
+    })
     return
   }
 
@@ -1629,5 +1665,8 @@ async function handlePortalQuery(
     phoneNumberId,
   })
 
-  console.info('[whatsapp/webhook] Portal query replied', { orgId, senderPhone })
+  console.info('[whatsapp/webhook] Portal query replied', {
+    orgId,
+    senderPhone: maskPhone(senderPhone),
+  })
 }

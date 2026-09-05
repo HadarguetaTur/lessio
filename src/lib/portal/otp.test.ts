@@ -8,7 +8,13 @@ vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: mockCreateServiceRoleClient,
 }))
 
-import { countRecentOtpRequests, generateOtp, hashOtp, verifyOtp } from './otp'
+import {
+  countRecentOtpRequests,
+  generateOtp,
+  hashOtp,
+  MAX_FAILED_ATTEMPTS,
+  verifyOtp,
+} from './otp'
 
 /**
  * Records the filters applied to a `select(..., { head: true })` count query so a
@@ -27,6 +33,10 @@ function makeCountClient(count: number) {
   Object.assign(builder, {
     eq: chain('eq'),
     gte: chain('gte'),
+    or: vi.fn((expr: string) => {
+      filters['or'] = expr
+      return builder
+    }),
     then: (resolve: (v: { count: number; error: null }) => unknown) =>
       resolve({ count, error: null }),
   })
@@ -56,18 +66,34 @@ describe('hashOtp', () => {
 describe('countRecentOtpRequests', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('counts only unredeemed codes, so a successful login does not spend the quota', async () => {
+  it('does not spend the quota on a code redeemed by a successful login', async () => {
     const db = makeCountClient(0)
     mockCreateServiceRoleClient.mockReturnValue(db.client)
 
     const count = await countRecentOtpRequests('+972500000000', 'org-1')
 
-    // Without eq(used,false) a parent who logged in 3 times in 15 minutes was locked out.
-    expect(db.filters['eq:used']).toBe(false)
+    // A redeemed code is used=true with failed_attempts below the cap, so neither
+    // arm of the OR matches it. Counting successes locked a parent out after three
+    // logins in a quarter hour.
+    expect(db.filters['or']).toContain('used.eq.false')
     expect(db.filters['eq:phone']).toBe('+972500000000')
     expect(db.filters['eq:organization_id']).toBe('org-1')
     expect(db.filters['gte:created_at']).toBeTypeOf('string')
     expect(count).toBe(0)
+  })
+
+  it('still counts a code burned by failed guesses, so the limit cannot be reset', async () => {
+    const db = makeCountClient(3)
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+
+    await countRecentOtpRequests('+972500000000', 'org-1')
+
+    // The bypass this closes: request a code, spend MAX_FAILED_ATTEMPTS wrong
+    // guesses to flip it to used=true, and a used-only filter read the window
+    // empty again — unlimited OTP sends to any parent's phone and an unlimited
+    // supply of codes to brute-force. Burned codes must stay counted.
+    expect(db.filters['or']).toBe(`used.eq.false,failed_attempts.gte.${MAX_FAILED_ATTEMPTS}`)
+    expect(db.filters['eq:used']).toBeUndefined()
   })
 
   it('scopes the window to the requested number of minutes', async () => {

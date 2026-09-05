@@ -1,8 +1,9 @@
-'use server'
-
 /**
  * stopLessonSeries — server-only series stop logic.
  * Per /docs/sprint-11-scope.md § Story 2.
+ *
+ * Not a Server Action module — see the note in createSeries.ts. `orgId` comes
+ * from the caller, so this must stay behind a session-resolving action.
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'

@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { canAccessStudent } from '@/lib/auth/studentAccess'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 import { checkLessonCalendarConflicts } from '@/lib/google-calendar/checkLessonCalendarConflicts'
@@ -37,6 +38,14 @@ export async function createTeacherLessonAction(
   if (!parsed.success) return { error: await commonError('invalidData') }
 
   const { student_id, date, start_time, duration_minutes } = parsed.data
+
+  // The schema only proves student_id is a UUID, and createLesson runs on the
+  // service-role client — without this a teacher could book (and later bill) any
+  // student id they can name, including one from another organization.
+  if (!(await canAccessStudent(session, student_id))) {
+    return { error: t('lessons.newErrors.onlyOwnStudents') }
+  }
+
   if (!(await isLessonDurationAllowed(orgId, 'teacher', duration_minutes))) {
     return { error: await commonError('invalidData') }
   }

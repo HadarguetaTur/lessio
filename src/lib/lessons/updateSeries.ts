@@ -1,9 +1,11 @@
-'use server'
-
 /**
  * Extend, shorten or delete a recurring lesson series after creation.
  * Complements createSeries.ts (initial generation) and cancelSeries.ts
  * (stopping a series from a date).
+ *
+ * Not a Server Action module — see the note in createSeries.ts. Every function
+ * here takes `orgId` from the caller, so the org must already have been
+ * resolved from the session by the calling action.
  */
 
 import { DateTime } from 'luxon'

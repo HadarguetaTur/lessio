@@ -374,6 +374,18 @@ export async function updateStudent(
   // Handle primary parent linking
   const parentId = (formData.get('parent_id') as string ?? '').trim() || null
   if (parentId) {
+    // parent_id is client-supplied and only the relationship row's own
+    // organization_id is pinned below — without this the link could point at
+    // another tenant's parent.
+    const { data: parentInOrg } = await supabase
+      .from('parents')
+      .select('id')
+      .eq('id', parentId)
+      .eq('organization_id', orgId)
+      .maybeSingle()
+
+    if (!parentInOrg) return { error: t('students.errors.studentUpdatedLinkFailed') }
+
     // Clear existing primary for this student, then upsert the chosen parent
     await supabase
       .from('relationships')

@@ -94,15 +94,17 @@ export async function requestOtpAction(
 
   const db = createServiceRoleClient()
 
-  // Verify parent exists in this org
+  // Verify an active parent exists in this org. Without the is_active filter a
+  // deactivated parent could simply log in again rather than merely riding an
+  // old cookie, which would defeat the revocation check in getPortalSession.
   const { data: parent } = await db
     .from('parents')
-    .select('id, preferred_locale')
+    .select('id, preferred_locale, is_active')
     .eq('organization_id', orgId)
     .eq('phone', phone)
     .maybeSingle()
 
-  if (!parent) {
+  if (!parent || parent.is_active === false) {
     // Security: same message regardless of whether phone exists
     return { error: 'noAccount', ...echo }
   }
@@ -161,7 +163,7 @@ export async function verifyOtpAction(
   const db = createServiceRoleClient()
   const { data: parent, error: parentError } = await db
     .from('parents')
-    .select('id')
+    .select('id, is_active')
     .eq('organization_id', orgId)
     .eq('phone', phone)
     .maybeSingle()
@@ -170,7 +172,9 @@ export async function verifyOtpAction(
     console.error('[verifyOtpAction] parent lookup failed', { org_id: orgId, error: parentError.message })
     return { error: 'generic' }
   }
-  if (!parent) return { error: 'noAccount' }
+  // Same is_active gate as requestOtpAction — a code issued before the parent
+  // was deactivated must not still mint a session.
+  if (!parent || parent.is_active === false) return { error: 'noAccount' }
 
   const valid = await verifyOtp({ phone, orgId, otp: parsed.data.otp })
   if (!valid) return { error: 'wrongCode' }

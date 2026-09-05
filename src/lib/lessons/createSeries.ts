@@ -1,8 +1,11 @@
-'use server'
-
 /**
  * createLessonSeries — server-only series creation logic.
  * Per /docs/sprint-11-scope.md § Story 2.
+ *
+ * Not a Server Action module: `orgId` is a caller-supplied argument and the
+ * queries run on the service-role client, so a `'use server'` directive here
+ * would publish an unauthenticated cross-tenant write. Call it only from an
+ * action that has resolved the org from the session.
  */
 
 import { DateTime } from 'luxon'

@@ -9,9 +9,6 @@ export async function POST(request: NextRequest) {
   if (
     !hasValidCronAuthorization(request, {
       envHashVar: 'LESSIO_AUTO_COMPLETION_CRON_SECRET_SHA256',
-      // The token already deployed for this job, kept so the cron keeps working
-      // if the env var is absent.
-      fallbackHash: '7f4a2b340daca568ec6f107f3e0501e2e0d04924df012f3701983283be96b109',
     })
   ) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

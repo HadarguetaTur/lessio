@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { canAccessStudent } from '@/lib/auth/studentAccess'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { gradeSubmission } from '@/lib/homework/submissions'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -53,6 +54,22 @@ export async function gradeSubmissionAction(
 
   const { submissionId, assignmentId, score, feedback } = parsed.data
 
+  // gradeSubmission is org-scoped, but within an org that still let any teacher grade
+  // any student's work and have the score sent to that family. Resolve whose
+  // submission this is first and apply the same rule as everywhere else.
+  const db = createServiceRoleClient()
+  const { data: target } = await db
+    .from('homework_submissions')
+    .select('student_id')
+    .eq('id', submissionId)
+    .eq('organization_id', session.orgId)
+    .maybeSingle()
+
+  if (!target) return { error: await commonError('notFound') }
+  if (!(await canAccessStudent(session, (target as { student_id: string }).student_id))) {
+    return { error: await commonError('noPermission') }
+  }
+
   const submission = await gradeSubmission({
     orgId: session.orgId,
     submissionId,
@@ -92,12 +109,14 @@ async function notifyGraded(
 ): Promise<void> {
   const db = createServiceRoleClient()
 
-  // Get assignment title
+  // Get assignment title. Org-scoped: assignmentId arrives from the form, and an
+  // unscoped read would splice another tenant's homework title into this org's message.
   const { data: assignment } = await db
     .from('homework_assignments')
     .select('title')
     .eq('id', assignmentId)
-    .single()
+    .eq('organization_id', orgId)
+    .maybeSingle()
 
   if (!assignment) return
 
@@ -166,12 +185,13 @@ async function notifyGradedEmail(
 ): Promise<void> {
   const db = createServiceRoleClient()
 
-  // Get assignment title
+  // Get assignment title — org-scoped for the same reason as notifyGraded.
   const { data: assignment } = await db
     .from('homework_assignments')
     .select('title')
     .eq('id', assignmentId)
-    .single()
+    .eq('organization_id', orgId)
+    .maybeSingle()
 
   if (!assignment) return
 

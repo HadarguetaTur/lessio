@@ -8,17 +8,13 @@
  * to what the owner needs to decide something.
  */
 
-import { wrapEmailHtml } from './base'
+import { escapeHtml as esc, wrapEmailHtml } from './base'
 
 type Locale = 'he' | 'en'
 
 export interface SaasEmail {
   subject: string
   html: string
-}
-
-function esc(v: string): string {
-  return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
 function money(amount: number): string {

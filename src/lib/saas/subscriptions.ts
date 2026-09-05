@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { encryptSaasPaymentToken } from '@/lib/crypto'
 import { AMOUNT_TOLERANCE, type CheckoutBindingRefusal } from './checkoutBinding'
 import { getSaasPlanById, getSaasPlanByName, type SaasPlanRow } from './plans'
 import { TRIAL_ENTITLEMENT_PLAN } from './planPresentation'
@@ -21,6 +22,23 @@ export type OrgSubscriptionState = {
   cancelAtPeriodEnd: boolean
   cardLastFour: string | null
   features: SaasFeatures
+}
+
+/**
+ * The Sumit customer this org's saved card is filed under, or null before it
+ * has ever paid. Kept off OrgSubscriptionState on purpose: only the billing
+ * page's "replace card" link needs it, and that state object is fetched on
+ * every dashboard render.
+ */
+export async function getSumitCustomerIdForOrg(orgId: string): Promise<string | null> {
+  const db = createServiceRoleClient()
+  const { data } = await db
+    .from('organization_subscriptions')
+    .select('sumit_customer_id')
+    .eq('organization_id', orgId)
+    .maybeSingle()
+
+  return data?.sumit_customer_id ?? null
 }
 
 export async function getOpenCustomPlanInquiry(orgId: string): Promise<{ id: string } | null> {
@@ -441,6 +459,12 @@ export async function activateSubscriptionFromPayment(params: {
   // Was always +1 month, so a customer paying the yearly price got 30 days.
   const periodEnd = addBillingPeriod(periodStart, interval)
 
+  // Only a freshly supplied token needs encrypting; sub.sumit_payment_token is
+  // already ciphertext and is carried across verbatim by the ?? chain below.
+  const newPaymentToken = params.sumitPaymentToken
+    ? encryptSaasPaymentToken(params.sumitPaymentToken)
+    : null
+
   const { data: updated, error: upErr } = await db
     .from('organization_subscriptions')
     .update({
@@ -450,7 +474,7 @@ export async function activateSubscriptionFromPayment(params: {
       // checkout wiped the token the renewal charger needs.
       sumit_customer_id: params.sumitCustomerId ?? sub.sumit_customer_id ?? null,
       sumit_subscription_id: params.sumitSubscriptionId ?? sub.sumit_subscription_id ?? null,
-      sumit_payment_token: params.sumitPaymentToken ?? sub.sumit_payment_token ?? null,
+      sumit_payment_token: newPaymentToken ?? sub.sumit_payment_token ?? null,
       card_last_four: params.cardLastFour ?? sub.card_last_four ?? null,
       card_expiry_month: params.cardExpiryMonth ?? sub.card_expiry_month ?? null,
       card_expiry_year: params.cardExpiryYear ?? sub.card_expiry_year ?? null,

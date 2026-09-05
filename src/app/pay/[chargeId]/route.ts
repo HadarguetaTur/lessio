@@ -21,6 +21,14 @@ import { getShareableBaseUrl } from '@/lib/url/appUrl'
 
 const UUID = /^[0-9a-f-]{36}$/i
 
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ chargeId: string }> }
@@ -41,8 +49,15 @@ export async function GET(
   // A charge whose provider link was never minted (or has since been cleared)
   // still has somewhere real to send the parent: their own portal, where the
   // balance is payable. Better than a dead end on a message we sent them.
+  //
+  // The same fallback covers a link that is not a plain https: URL. This route
+  // is unauthenticated and redirects wherever the column points, so it would
+  // otherwise forward to `javascript:` or `data:` if a provider integration —
+  // or anything with write access to charges — ever put one there. https: only,
+  // matching the check the invoice webhook already applies to provider URLs.
+  const link = charge.payment_link as string | null
   const destination =
-    (charge.payment_link as string | null) ??
+    (link && isHttpsUrl(link) ? link : null) ??
     `${getShareableBaseUrl()}/portal/${charge.organization_id}`
 
   return NextResponse.redirect(destination, 302)

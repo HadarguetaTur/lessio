@@ -16,10 +16,14 @@ export async function getOnboardingSession(): Promise<OnboardingSession> {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('organization_id, role')
+    .select('organization_id, role, is_active')
     .eq('id', user.id)
     .single()
   if (!profile?.organization_id) throw new Error('No profile')
+  // getSession() refuses a deactivated profile; this path did not, so a
+  // deactivated owner could still drive the onboarding SaaS actions.
+  // is_active is nullable, so compare explicitly rather than truth-testing.
+  if (profile.is_active === false) throw new Error('Not authenticated')
 
   return {
     userId: user.id,

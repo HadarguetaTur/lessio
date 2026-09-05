@@ -34,7 +34,7 @@ export async function fetchUnreadCountAction(): Promise<number> {
 export async function markAsReadAction(notificationId: string): Promise<void> {
   const session = await getSession()
   requireMutation(session, { allowWhenLapsed: true })
-  await markAsRead(notificationId)
+  await markAsRead(notificationId, session.profileId, session.orgId)
 }
 
 export async function markAllReadAction(): Promise<void> {

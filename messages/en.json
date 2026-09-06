@@ -3392,8 +3392,9 @@
     "plans": {
       "title": "Plans & features",
       "description": "Prices, quotas and what each plan unlocks",
-      "priceChangeNote": "Editing a price here re-prices every existing subscriber on this plan — no price is stored on the subscription. To change the price for new customers only: add a new plan row in a migration and deactivate this one.",
+      "priceChangeNote": "A subscription stores no price, so editing a price re-prices every existing holder. Prices are therefore locked on plans with subscribers — to change pricing, add a new plan row in a migration and deactivate this one.",
       "cannotDeactivateTrialPlan": "This plan defines what a trial is entitled to and cannot be deactivated.",
+      "priceLocked": "Price locked — orgs are subscribed to this plan.",
       "subscribers": "{count} orgs",
       "priceMonthly": "Monthly",
       "priceYearly": "Yearly",
@@ -4047,12 +4048,13 @@
               "Lesson notes and history",
               "Basic WhatsApp reminders",
               "Attendance, cancellations, and billing rhythm",
-              "Light homework"
+              "Advanced reports",
+              "Parent portal and homework"
             ]
           },
           "advanced": {
             "bullets": [
-              "Everything in Starter",
+              "Everything in Basic",
               "Full WhatsApp automation",
               "Advanced reports",
               "Parent portal and homework",
@@ -4143,8 +4145,7 @@
     "lapsedNotice": {
       "title": "This account is not active",
       "body": "This organization's subscription is not active, so some screens are unavailable. Ask the account owner to sort out the subscription."
-    },
-    "repurchaseHint": "Choose a plan to reactivate the account."
+    }
   },
   "onboarding": {
     "errors": {
@@ -4275,7 +4276,7 @@
         },
         "trial": {
           "q": "What’s in the free trial?",
-          "a": "No charge while you try: students, lessons, and calendar at a basic level. Full automation, advanced reports, parent portal, and AI are on Growth and above."
+          "a": "30 days with everything open — WhatsApp automation, billing, advanced reports, the parent portal, and the AI assistant — at the Studio level, no credit card. When the trial ends you pick a plan by number of teachers."
         },
         "choose": {
           "q": "What's the difference between Solo, Studio and Center?",
@@ -4294,9 +4295,9 @@
           "cta": "Start free",
           "bullets": [
             "Up to 30 days",
-            "Students, lessons, and calendar — essentials",
-            "Quick status at a glance",
-            "No full automation stack, advanced reports, or AI"
+            "Everything open — same as Studio",
+            "Up to 5 teachers during the trial",
+            "No credit card, no commitment"
           ]
         },
         "solo": {
@@ -4339,7 +4340,7 @@
           ]
         },
         "custom": {
-          "title": "Center",
+          "title": "Center / Custom",
           "tagline": "Tailored rollout, teams, integrations, and support — not “just another seat.”",
           "bestFor": "Learning centers, multi-teacher setups, or special requirements.",
           "cta": "Talk to us",

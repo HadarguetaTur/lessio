@@ -44,6 +44,11 @@ export function PlanEditorCard({
 
   const featureKeys = Object.keys(plan.features) as (keyof SaasFeatures)[]
 
+  // readOnly rather than disabled: a disabled input is not submitted, and the
+  // action's schema would then reject the whole form. The server re-checks the
+  // subscriber count on its own — this is presentation, not enforcement.
+  const priceLocked = plan.subscriberCount > 0
+
   return (
     <form
       action={submit}
@@ -71,6 +76,9 @@ export function PlanEditorCard({
             min={0}
             step="0.01"
             defaultValue={plan.priceMonthly}
+            readOnly={priceLocked}
+            title={priceLocked ? t('priceLocked') : undefined}
+            className={priceLocked ? 'bg-muted text-muted-foreground' : undefined}
           />
         </div>
         <div className="space-y-1.5">
@@ -83,6 +91,9 @@ export function PlanEditorCard({
             step="0.01"
             defaultValue={plan.priceYearly ?? ''}
             placeholder={t('none')}
+            readOnly={priceLocked}
+            title={priceLocked ? t('priceLocked') : undefined}
+            className={priceLocked ? 'bg-muted text-muted-foreground' : undefined}
           />
         </div>
         <div className="space-y-1.5">
@@ -120,6 +131,10 @@ export function PlanEditorCard({
           />
         </div>
       </div>
+
+      {priceLocked && (
+        <p className="mb-4 text-xs text-muted-foreground">{t('priceLocked')}</p>
+      )}
 
       <fieldset className="mb-4">
         <legend className="mb-2 text-xs font-medium text-muted-foreground">

@@ -66,6 +66,26 @@ export async function updatePlanAction(
   const before = await getSaasPlanById(parsed.data.planId)
   if (!before) return { error: 'PLAN_NOT_FOUND' }
 
+  const db = createServiceRoleClient()
+
+  // A subscription stores no price — the plan row IS the price for every org
+  // holding it. Editing a price on a subscribed plan would silently re-price
+  // all of them at their next renewal, which contradicts the grandfathering
+  // convention (see getSaasPlanById in @/lib/saas/plans): repricing means a
+  // NEW plan row in a migration plus deactivating this one. A plan with zero
+  // subscribers is fair game (pre-launch tuning).
+  const priceChanged =
+    parsed.data.priceMonthly !== before.price_monthly ||
+    (parsed.data.priceYearly ?? null) !== (before.price_yearly ?? null)
+  if (priceChanged) {
+    const { count, error: countError } = await db
+      .from('organization_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('plan_id', parsed.data.planId)
+    if (countError) return { error: countError.message }
+    if ((count ?? 0) > 0) return { error: 'PRICE_CHANGE_ON_SUBSCRIBED_PLAN' }
+  }
+
   // Deactivating the trial-entitlement plan makes getSaasPlanByName return null
   // for it, and the trial path treats null as "grant everything" — silently,
   // with no error and no failing test. This is the one deactivation that must
@@ -82,7 +102,6 @@ export async function updatePlanAction(
     features[key] = formData.get(`feature.${key}`) === 'on'
   }
 
-  const db = createServiceRoleClient()
   const { error } = await db
     .from('saas_plans')
     .update({

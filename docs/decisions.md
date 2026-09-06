@@ -755,6 +755,40 @@ Rules:
 * the dashboard attention area is exception-driven: inactive buckets are omitted
   instead of staying visible as empty cards
 
+## 39. The Final Plan Catalog Is Solo / Studio / Center, Priced by Teacher Seats
+
+✅ DECIDED (06 Sep 2026): after an end-to-end audit of every pricing surface
+(landing page, Terms table, onboarding picker, /account/billing upgrade panel,
+/admin/plans), the catalog is final:
+
+| plan | he | monthly | yearly | teachers |
+|---|---|---|---|---|
+| solo | יחיד | ₪149 | ₪1,490 | 1 |
+| studio | סטודיו | ₪349 | ₪3,490 | up to 5 |
+| center | מרכז | ₪699 | ₪6,990 | unlimited |
+
+Rules:
+
+* the value metric is teacher seats and nothing else — every paid tier carries
+  all eight feature flags, students and lessons are unlimited; a plan that
+  charges the same for one teacher and eight (the old `advanced`) is the
+  mistake this catalog replaced
+* yearly = 10 × monthly ("two months free"); prices are final, no VAT (עוסק
+  פטור) — flipping `SAAS_PRICES_INCLUDE_VAT` must land with the copy change
+* `basic` (₪99) and `advanced` (₪199) are retired in the DB
+  (`20260906120000_retire_legacy_plans.sql` sets `is_active = false`), not
+  just filtered in code; existing holders are grandfathered — their plan row
+  keeps resolving by id and their price does not change
+* the trial is 30 days of full **Studio** entitlement (features AND quotas),
+  no credit card; marketing/onboarding copy must describe it that way — never
+  as a feature-limited free tier
+* a plan with subscribers has a locked price in /admin/plans (server-enforced):
+  repricing means a new plan row in a migration plus deactivating the old one,
+  because subscriptions store no price and an in-place edit re-prices every
+  holder
+* the Hebrew word for a tier is «מסלול» everywhere in UI copy (not תוכנית or
+  חבילה)
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

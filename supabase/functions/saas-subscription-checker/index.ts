@@ -24,8 +24,9 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { authorizeCronRequest, getSupabaseSecretKey } from '../_shared/supabaseSecret.ts'
+import { serveWithErrorReporting } from '../_shared/telemetry.ts'
 
-Deno.serve(async (_req) => {
+serveWithErrorReporting('saas-subscription-checker', async (_req) => {
   const authError = authorizeCronRequest(_req)
   if (authError) return authError
 

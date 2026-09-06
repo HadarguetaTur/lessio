@@ -20,8 +20,9 @@ import { decryptToken } from '../_shared/crypto.ts'
 import { sendTextMessage } from '../_shared/whatsapp.ts'
 import { botString } from '../_shared/botStrings.ts'
 import { parseAppLocale } from '../_shared/templates.ts'
+import { reportEdgeError, serveWithErrorReporting } from '../_shared/telemetry.ts'
 
-Deno.serve(async (_req) => {
+serveWithErrorReporting('saas-renewal-reminder', async (_req) => {
   const authError = authorizeCronRequest(_req)
   if (authError) return authError
 
@@ -156,6 +157,12 @@ Deno.serve(async (_req) => {
         status: 'failed',
         error_message: msg.slice(0, 500),
       }).catch(() => { /* ignore insert failure */ })
+
+      await reportEdgeError(db, {
+        thrown: err,
+        route: 'saas-renewal-reminder',
+        organizationId: orgId,
+      })
 
       results.errors++
     }

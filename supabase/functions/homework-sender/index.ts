@@ -18,8 +18,9 @@ import { decryptToken } from '../_shared/crypto.ts'
 import { sendSmartInteractive } from '../_shared/whatsapp.ts'
 import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
 import { botString } from '../_shared/botStrings.ts'
+import { reportEdgeError, serveWithErrorReporting } from '../_shared/telemetry.ts'
 
-Deno.serve(async (_req) => {
+serveWithErrorReporting('homework-sender', async (_req) => {
   const authError = authorizeCronRequest(_req)
   if (authError) return authError
 
@@ -110,6 +111,11 @@ Deno.serve(async (_req) => {
       accessToken = await decryptToken(org.whatsapp_access_token)
     } catch (err) {
       console.error('[homework-sender] Token decryption failed', { org_id: orgId, error: String(err) })
+      await reportEdgeError(db, {
+        thrown: err,
+        route: 'homework-sender',
+        organizationId: orgId,
+      })
       continue
     }
 
@@ -170,6 +176,11 @@ Deno.serve(async (_req) => {
           org_id: orgId,
           assignment_id: assignment.id,
           error: String(err),
+        })
+        await reportEdgeError(db, {
+          thrown: err,
+          route: 'homework-sender',
+          organizationId: orgId,
         })
       }
     }

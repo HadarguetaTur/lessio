@@ -22,8 +22,9 @@ import { sendSmartInteractive } from '../_shared/whatsapp.ts'
 import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts'
 import { botString } from '../_shared/botStrings.ts'
 import { sendEmail } from '../_shared/email.ts'
+import { reportEdgeError, serveWithErrorReporting } from '../_shared/telemetry.ts'
 
-Deno.serve(async (_req) => {
+serveWithErrorReporting('lesson-reminders', async (_req) => {
   const authError = authorizeCronRequest(_req)
   if (authError) return authError
 
@@ -63,6 +64,11 @@ Deno.serve(async (_req) => {
       console.error('[lesson-reminders] Unhandled error for org', {
         org_id: org.id,
         error: String(err),
+      })
+      await reportEdgeError(db, {
+        thrown: err,
+        route: 'lesson-reminders',
+        organizationId: org.id,
       })
     }
   }

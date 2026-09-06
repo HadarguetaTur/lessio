@@ -26,8 +26,9 @@ import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts
 import { botString } from '../_shared/botStrings.ts'
 import { formatBotMoney } from '../_shared/money.ts'
 import { sendEmail } from '../_shared/email.ts'
+import { reportEdgeError, serveWithErrorReporting } from '../_shared/telemetry.ts'
 
-Deno.serve(async (_req) => {
+serveWithErrorReporting('payment-reminders', async (_req) => {
   const authError = authorizeCronRequest(_req)
   if (authError) return authError
 
@@ -67,6 +68,11 @@ Deno.serve(async (_req) => {
       console.error('[payment-reminders] Unhandled error for org', {
         org_id: org.id,
         error: String(err),
+      })
+      await reportEdgeError(db, {
+        thrown: err,
+        route: 'payment-reminders',
+        organizationId: org.id,
       })
     }
   }

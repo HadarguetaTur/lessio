@@ -14,13 +14,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { authorizeCronRequest, getSupabaseSecretKey } from '../_shared/supabaseSecret.ts'
 import { computeUpcomingHolidays } from '../_shared/hebrewHolidays.ts'
+import { reportEdgeError, serveWithErrorReporting } from '../_shared/telemetry.ts'
 
 function todayInJerusalem(): string {
   // en-CA locale formats as YYYY-MM-DD.
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date())
 }
 
-Deno.serve(async (_req) => {
+serveWithErrorReporting('holiday-sync', async (_req) => {
   const authError = authorizeCronRequest(_req)
   if (authError) return authError
 
@@ -70,6 +71,11 @@ Deno.serve(async (_req) => {
       console.error('[holiday-sync] org sync failed', {
         orgId: org.id,
         error: e instanceof Error ? e.message : String(e),
+      })
+      await reportEdgeError(db, {
+        thrown: e,
+        route: 'holiday-sync',
+        organizationId: org.id,
       })
     }
   }

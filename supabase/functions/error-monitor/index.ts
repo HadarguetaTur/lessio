@@ -15,6 +15,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { authorizeCronRequest, getSupabaseSecretKey } from '../_shared/supabaseSecret.ts'
+import { serveWithErrorReporting } from '../_shared/telemetry.ts'
 
 const WINDOW_HOURS = 24
 const RETENTION_DAYS = 30
@@ -55,7 +56,7 @@ interface Group {
   lastSeen: string
 }
 
-Deno.serve(async (_req) => {
+serveWithErrorReporting('error-monitor', async (_req) => {
   const authError = authorizeCronRequest(_req)
   if (authError) return authError
 

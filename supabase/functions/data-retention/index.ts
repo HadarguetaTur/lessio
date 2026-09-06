@@ -17,8 +17,9 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { authorizeCronRequest, getSupabaseSecretKey } from '../_shared/supabaseSecret.ts'
+import { reportEdgeError, serveWithErrorReporting } from '../_shared/telemetry.ts'
 
-Deno.serve(async (_req) => {
+serveWithErrorReporting('data-retention', async (_req) => {
   const authError = authorizeCronRequest(_req)
   if (authError) return authError
 
@@ -53,6 +54,11 @@ Deno.serve(async (_req) => {
       console.error('[data-retention] Error processing org', {
         org_id: org.id,
         error: String(err),
+      })
+      await reportEdgeError(db, {
+        thrown: err,
+        route: 'data-retention',
+        organizationId: org.id,
       })
     }
   }

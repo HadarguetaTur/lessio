@@ -84,6 +84,7 @@ export function LandingPricing({
 
               <Link
                 href={signupHref}
+                data-cta={`pricing-${row.name}`}
                 className={cn(
                   'mt-auto inline-flex h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors',
                   featured

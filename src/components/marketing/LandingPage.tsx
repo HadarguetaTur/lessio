@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 
 import { AuthPageDecorations } from '@/components/auth/AuthPageDecorations'
+import { LandingCtaTracker } from '@/components/marketing/LandingCtaTracker'
 import { LandingFaqAccordion } from '@/components/marketing/LandingFaqAccordion'
 import { LandingLocaleToggle } from '@/components/marketing/LandingLocaleToggle'
 import { LandingPricing } from '@/components/marketing/LandingPricing'
@@ -58,8 +59,9 @@ const IMAGE_CROP: Partial<Record<LandingImageKey, string>> = {
   'wa-cancel-flow': 'object-bottom',
   'wa-payment-request': 'object-bottom',
 }
-/** Human takeover → confirmations → official channel → parent control */
-const TRUST_ICONS = [UserRound, CheckCheck, BadgeCheck, ShieldCheck] as const
+
+/** Official channel → human takeover → confirmations → parent control */
+const TRUST_ICONS = [BadgeCheck, UserRound, CheckCheck, ShieldCheck] as const
 
 const HERO_MOTION =
   'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-700 motion-safe:ease-out motion-safe:fill-mode-both motion-reduce:animate-none'
@@ -351,6 +353,17 @@ export function LandingPage({
                   </a>
                 </Button>
               </div>
+
+              <p
+                className={cn(
+                  'mt-6 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground lg:justify-start',
+                  HERO_MOTION,
+                  'motion-safe:delay-500'
+                )}
+              >
+                <BadgeCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                {hero.trustLine}
+              </p>
             </div>
 
             {/* The chain, live: chat → thread → dashboard card */}
@@ -585,6 +598,9 @@ export function LandingPage({
               <h2 className="mx-auto max-w-[34rem] text-balance text-pretty text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl">
                 {audience.title}
               </h2>
+              <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
+                {audience.subtitle}
+              </p>
             </LandingReveal>
             <LandingStagger
               className="mt-10 grid gap-5 lg:grid-cols-2 lg:items-stretch lg:gap-8"
@@ -759,6 +775,7 @@ export function LandingPage({
       </footer>
 
       <LandingStickyCta href={links.signup} label={hero.ctaPrimary} note={pricing.trialNote} />
+      <LandingCtaTracker />
     </div>
   )
 }

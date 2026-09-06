@@ -13,7 +13,12 @@ vi.mock('./payments', () => ({
 
 import { settleCharges, settleParentBalance } from './settle'
 
-type Row = { id: string; parent_id: string; amount: number; amount_paid: number }
+type Row = {
+  id: string
+  parent_id: string
+  amount: number
+  amount_paid: number
+}
 type OpenRow = { parent_id: string; amount: number; amount_paid: number }
 
 /**
@@ -27,9 +32,12 @@ function mockCharges(toSettle: Row[], stillOpen: OpenRow[] = []) {
     const chain: Record<string, unknown> = {}
     let data: unknown = null
     chain['select'] = (columns: string) => {
-      data = columns === 'id' ? toSettle.map((r) => ({ id: r.id }))
-        : columns.startsWith('id,') ? toSettle
-        : stillOpen
+      data =
+        columns === 'id'
+          ? toSettle.map((r) => ({ id: r.id }))
+          : columns.startsWith('id,')
+            ? toSettle
+            : stillOpen
       return chain
     }
     chain['eq'] = () => chain
@@ -45,6 +53,7 @@ const details = {
   method: 'bank_transfer' as const,
   notes: 'העברה מ-3.9',
   actorProfileId: 'profile-1',
+  paidAt: '2026-08-28T09:00:00.000Z',
 }
 
 beforeEach(() => {
@@ -66,13 +75,26 @@ describe('settleCharges', () => {
       { id: 'c-2', parent_id: 'p-1', amount: 300, amount_paid: 100 }, // partially paid
     ])
 
-    const result = await settleCharges({ chargeIds: ['c-1', 'c-2'], ...details })
+    const result = await settleCharges({
+      chargeIds: ['c-1', 'c-2'],
+      ...details,
+    })
 
-    expect(result).toMatchObject({ ok: true, settledChargeIds: ['c-1', 'c-2'], failedChargeIds: [], total: 450 })
+    expect(result).toMatchObject({
+      ok: true,
+      settledChargeIds: ['c-1', 'c-2'],
+      failedChargeIds: [],
+      total: 450,
+    })
     expect(mockRecordChargePayment.mock.calls.map((c) => c[0])).toEqual([
       expect.objectContaining({
-        chargeId: 'c-1', amount: 250, method: 'bank_transfer',
-        notes: 'העברה מ-3.9', actorProfileId: 'profile-1', organizationId: 'org-1',
+        chargeId: 'c-1',
+        amount: 250,
+        method: 'bank_transfer',
+        notes: 'העברה מ-3.9',
+        actorProfileId: 'profile-1',
+        organizationId: 'org-1',
+        paidAt: '2026-08-28T09:00:00.000Z',
       }),
       expect.objectContaining({ chargeId: 'c-2', amount: 200 }),
     ])
@@ -89,31 +111,48 @@ describe('settleCharges', () => {
       [{ parent_id: 'p-1', amount: 400, amount_paid: 150 }]
     )
 
-    const result = await settleCharges({ chargeIds: ['c-1', 'c-2', 'c-3'], ...details })
+    const result = await settleCharges({
+      chargeIds: ['c-1', 'c-2', 'c-3'],
+      ...details,
+    })
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.byParent).toEqual([
-      { parentId: 'p-1', chargeIds: ['c-1', 'c-3'], amount: 350, remaining: 250 },
+      {
+        parentId: 'p-1',
+        chargeIds: ['c-1', 'c-3'],
+        amount: 350,
+        remaining: 250,
+      },
       { parentId: 'p-2', chargeIds: ['c-2'], amount: 175, remaining: 0 },
     ])
   })
 
   it('reports nothing_open for an empty id list, without querying', async () => {
-    expect(await settleCharges({ chargeIds: [], ...details })).toEqual({ ok: false, reason: 'nothing_open' })
+    expect(await settleCharges({ chargeIds: [], ...details })).toEqual({
+      ok: false,
+      reason: 'nothing_open',
+    })
     expect(mockFrom).not.toHaveBeenCalled()
   })
 
   it('reports nothing_open when none of the ids is still open', async () => {
     // A closed or foreign charge is filtered out by the query itself.
     mockCharges([])
-    expect(await settleCharges({ chargeIds: ['c-1'], ...details })).toEqual({ ok: false, reason: 'nothing_open' })
+    expect(await settleCharges({ chargeIds: ['c-1'], ...details })).toEqual({
+      ok: false,
+      reason: 'nothing_open',
+    })
     expect(mockRecordChargePayment).not.toHaveBeenCalled()
   })
 
   it('skips a charge whose amount is already fully covered', async () => {
     mockCharges([{ id: 'c-1', parent_id: 'p-1', amount: 100, amount_paid: 100 }])
-    expect(await settleCharges({ chargeIds: ['c-1'], ...details })).toEqual({ ok: false, reason: 'nothing_open' })
+    expect(await settleCharges({ chargeIds: ['c-1'], ...details })).toEqual({
+      ok: false,
+      reason: 'nothing_open',
+    })
   })
 
   it('keeps going after one charge fails and names it', async () => {
@@ -123,11 +162,22 @@ describe('settleCharges', () => {
       { id: 'c-3', parent_id: 'p-1', amount: 300, amount_paid: 0 },
     ])
     mockRecordChargePayment
-      .mockImplementationOnce(async () => ({ ok: true, amountPaid: 100, remaining: 0, closed: true, parentId: 'p-1' }))
+      .mockImplementationOnce(async () => ({
+        ok: true,
+        amountPaid: 100,
+        remaining: 0,
+        closed: true,
+        parentId: 'p-1',
+      }))
       .mockImplementationOnce(async () => ({ ok: false, reason: 'not_open' }))
-      .mockImplementationOnce(async () => { throw new Error('db down') })
+      .mockImplementationOnce(async () => {
+        throw new Error('db down')
+      })
 
-    const result = await settleCharges({ chargeIds: ['c-1', 'c-2', 'c-3'], ...details })
+    const result = await settleCharges({
+      chargeIds: ['c-1', 'c-2', 'c-3'],
+      ...details,
+    })
 
     expect(result).toMatchObject({
       ok: true,
@@ -137,7 +187,11 @@ describe('settleCharges', () => {
     })
     if (!result.ok) return
     expect(result.byParent).toEqual([
-      expect.objectContaining({ parentId: 'p-1', chargeIds: ['c-1'], amount: 100 }),
+      expect.objectContaining({
+        parentId: 'p-1',
+        chargeIds: ['c-1'],
+        amount: 100,
+      }),
     ])
   })
 })

@@ -25,6 +25,7 @@ export interface SettleChargesInput {
   chargeIds: string[]
   organizationId: string
   method: PaymentMethod
+  paidAt?: string
   notes?: string | null
   actorProfileId: string | null
 }
@@ -57,7 +58,7 @@ function round2(n: number): number {
 }
 
 export async function settleCharges(input: SettleChargesInput): Promise<SettleChargesResult> {
-  const { chargeIds, organizationId, method, notes, actorProfileId } = input
+  const { chargeIds, organizationId, method, notes, actorProfileId, paidAt } = input
   if (chargeIds.length === 0) return { ok: false, reason: 'nothing_open' }
 
   const db = createServiceRoleClient()
@@ -98,6 +99,7 @@ export async function settleCharges(input: SettleChargesInput): Promise<SettleCh
         method,
         notes: notes ?? null,
         actorProfileId,
+        paidAt,
       })
       if (!result.ok) {
         console.error('[settleCharges] charge not settled', {
@@ -109,7 +111,11 @@ export async function settleCharges(input: SettleChargesInput): Promise<SettleCh
         continue
       }
     } catch (err) {
-      console.error('[settleCharges] charge payment threw', { chargeId: charge.id, organizationId, err })
+      console.error('[settleCharges] charge payment threw', {
+        chargeId: charge.id,
+        organizationId,
+        err,
+      })
       failedChargeIds.push(charge.id)
       continue
     }
@@ -140,15 +146,26 @@ export async function settleCharges(input: SettleChargesInput): Promise<SettleCh
     if (openError) {
       // Not worth failing the whole settlement over: the money is written. The
       // parent just gets a confirmation without a balance line.
-      console.error('[settleCharges] remaining-balance lookup failed', { organizationId, error: openError.message })
+      console.error('[settleCharges] remaining-balance lookup failed', {
+        organizationId,
+        error: openError.message,
+      })
     } else {
       for (const entry of perParent.values()) {
-        entry.remaining = sumRemaining((stillOpen ?? []).filter((r) => r.parent_id === entry.parentId))
+        entry.remaining = sumRemaining(
+          (stillOpen ?? []).filter((r) => r.parent_id === entry.parentId)
+        )
       }
     }
   }
 
-  return { ok: true, settledChargeIds, failedChargeIds, total, byParent: [...perParent.values()] }
+  return {
+    ok: true,
+    settledChargeIds,
+    failedChargeIds,
+    total,
+    byParent: [...perParent.values()],
+  }
 }
 
 // ─── Whole balance of one parent ────────────────────────────────────────────
@@ -157,6 +174,7 @@ export interface SettleParentBalanceInput {
   parentId: string
   organizationId: string
   method: PaymentMethod
+  paidAt?: string
   notes?: string | null
   actorProfileId: string | null
 }
@@ -192,6 +210,7 @@ export async function settleParentBalance(
     method: input.method,
     notes: input.notes,
     actorProfileId: input.actorProfileId,
+    paidAt: input.paidAt,
   })
 
   if (!result.ok) return result

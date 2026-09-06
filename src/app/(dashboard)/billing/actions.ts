@@ -12,11 +12,7 @@ import { syncMonthlyCharge } from '@/lib/billing/monthly/syncMonthlyCharge'
 import { markChargeAsPaid, ChargeAlreadyResolvedError } from '@/lib/charges'
 import { logChargeAudit } from '@/lib/charges/audit'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
-import {
-  createSubscription,
-  updateSubscription,
-  deleteSubscription,
-} from '@/lib/subscriptions'
+import { createSubscription, updateSubscription, deleteSubscription } from '@/lib/subscriptions'
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
@@ -29,6 +25,8 @@ import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { getTranslations } from 'next-intl/server'
 import { getOrgBillingPolicy } from '@/lib/billing/orgBillingPolicy'
+import { getOrgTimezone } from '@/lib/organizations'
+import { DateTime } from 'luxon'
 import {
   assertMonthlyBillingHasNoIndividualChargeConflicts,
   MonthlyBillingConflictError,
@@ -94,10 +92,7 @@ export async function generateMonthlyBilling(billingMonth: string) {
   }
 }
 
-export async function recalculateStudentBilling(
-  studentId: string,
-  billingMonth: string
-) {
+export async function recalculateStudentBilling(studentId: string, billingMonth: string) {
   const session = await getSession()
   requireMutation(session)
   const t = await getTranslations()
@@ -147,7 +142,7 @@ export async function recalculateStudentBilling(
   }
 }
 
-export async function markBillingAsPaid(billingId: string) {
+export async function markBillingAsPaid(billingId: string, paymentDate: string) {
   const session = await getSession()
   requireMutation(session)
   await assertOrgNotSaasReadOnly(session.orgId)
@@ -157,11 +152,24 @@ export async function markBillingAsPaid(billingId: string) {
     return { error: t('billing.errors.markPaidOwnerOnly') }
   }
 
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate)) {
+    return { error: t('charges.errors.invalidPaymentDate') }
+  }
+  const timezone = await getOrgTimezone(session.orgId)
+  const selected = DateTime.fromISO(paymentDate, { zone: timezone })
+  const now = DateTime.now().setZone(timezone)
+  if (!selected.isValid || selected.startOf('day') > now.startOf('day')) {
+    return { error: t('charges.errors.invalidPaymentDate') }
+  }
+  const paidAt = (selected.hasSame(now, 'day') ? now : selected.set({ hour: 12 })).toUTC().toISO()!
+
   const supabase = createServiceRoleClient()
 
   const { data: billing, error: billingError } = await supabase
     .from('student_monthly_billing')
-    .select('id, student_id, parent_id, billing_month, total_amount, is_paid, is_approved, updated_at')
+    .select(
+      'id, student_id, parent_id, billing_month, total_amount, is_paid, is_approved, updated_at'
+    )
     .eq('id', billingId)
     .eq('organization_id', session.orgId)
     .single()
@@ -201,7 +209,7 @@ export async function markBillingAsPaid(billingId: string) {
   }
 
   try {
-    await markChargeAsPaid(chargeId, session.orgId, undefined, session.profileId)
+    await markChargeAsPaid(chargeId, session.orgId, undefined, session.profileId, paidAt)
   } catch (err) {
     if (err instanceof ChargeAlreadyResolvedError) {
       return { error: t('charges.errors.chargeResolved') }
@@ -231,11 +239,7 @@ const manualAdjustmentSchema = z.object({
   reason: z.string().min(1).max(500),
 })
 
-export async function setManualAdjustment(
-  billingId: string,
-  amount: number,
-  reason: string
-) {
+export async function setManualAdjustment(billingId: string, amount: number, reason: string) {
   const session = await getSession()
   requireMutation(session)
   const t = await getTranslations()
@@ -244,7 +248,11 @@ export async function setManualAdjustment(
     return { error: t('common.errors.noPermission') }
   }
 
-  const parsed = manualAdjustmentSchema.safeParse({ billingId, amount, reason })
+  const parsed = manualAdjustmentSchema.safeParse({
+    billingId,
+    amount,
+    reason,
+  })
   if (!parsed.success) return { error: t('common.errors.invalidData') }
 
   const supabase = createServiceRoleClient()
@@ -252,7 +260,9 @@ export async function setManualAdjustment(
   // Fetch current billing to recalculate total
   const { data: billing } = await supabase
     .from('student_monthly_billing')
-    .select('id, student_id, parent_id, billing_month, is_paid, is_approved, lessons_amount, subscriptions_amount, cancellations_amount, total_amount, manual_adjustment_amount')
+    .select(
+      'id, student_id, parent_id, billing_month, is_paid, is_approved, lessons_amount, subscriptions_amount, cancellations_amount, total_amount, manual_adjustment_amount'
+    )
     .eq('id', billingId)
     .eq('organization_id', session.orgId)
     .single()
@@ -276,7 +286,9 @@ export async function setManualAdjustment(
     })
     .eq('id', billingId)
     .eq('organization_id', session.orgId)
-    .select('id, student_id, parent_id, billing_month, total_amount, is_paid, is_approved, updated_at')
+    .select(
+      'id, student_id, parent_id, billing_month, total_amount, is_paid, is_approved, updated_at'
+    )
     .single()
 
   if (error) return { error: t('billing.errors.updateAdjustmentFailed') }
@@ -480,7 +492,9 @@ export async function approveBillingAction(billingId: string) {
 
   const { data: billing } = await supabase
     .from('student_monthly_billing')
-    .select('id, student_id, parent_id, billing_month, period_end, total_amount, is_paid, is_approved')
+    .select(
+      'id, student_id, parent_id, billing_month, period_end, total_amount, is_paid, is_approved'
+    )
     .eq('id', billingId)
     .eq('organization_id', session.orgId)
     .single()
@@ -584,7 +598,11 @@ export async function sendBillingPaymentRequestAction(
     }
     return { error: null, outcome }
   } catch (err) {
-    console.error('[billing] sendBillingPaymentRequestAction failed', { billingId, orgId: session.orgId, err })
+    console.error('[billing] sendBillingPaymentRequestAction failed', {
+      billingId,
+      orgId: session.orgId,
+      err,
+    })
     // A missing WhatsApp connection is a specific, fixable cause with its own
     // message — don't flatten it into the generic failure.
     const message =
@@ -620,7 +638,9 @@ async function sendBillingPaymentRequestCore(
   // Load org settings
   const { data: org } = await db
     .from('organizations')
-    .select('auto_send_payment_request, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, default_locale, currency')
+    .select(
+      'auto_send_payment_request, payment_provider, whatsapp_phone_number_id, whatsapp_access_token, default_locale, currency'
+    )
     .eq('id', orgId)
     .single()
 
@@ -678,16 +698,26 @@ async function sendBillingPaymentRequestCore(
   // here first, before the payment link is created — creating one nobody will
   // be sent is waste. The second pass is a no-op (welcome already claimed).
   const accessToken = decryptToken(encryptedToken)
-  const gate = await prepareBusinessSend({ orgId, phone: parent.phone as string, accessToken, phoneNumberId, locale })
+  const gate = await prepareBusinessSend({
+    orgId,
+    phone: parent.phone as string,
+    accessToken,
+    phoneNumberId,
+    locale,
+  })
   if (!gate.ok) {
-    console.info('[billing] payment request skipped — parent opted out', { billingId, orgId })
+    console.info('[billing] payment request skipped — parent opted out', {
+      billingId,
+      orgId,
+    })
     return 'opted_out'
   }
   // Everything below is read by the parent, not by whoever clicked Send.
   const tr = await getT('billing', locale)
-  const monthLabel = billing.period_start && billing.period_end
-    ? `${billing.period_start}–${billing.period_end}`
-    : formatBillingMonth(billing.billing_month as string, locale)
+  const monthLabel =
+    billing.period_start && billing.period_end
+      ? `${billing.period_start}–${billing.period_end}`
+      : formatBillingMonth(billing.billing_month as string, locale)
 
   // Create payment link. DEMO_PAYMENT_LINK_ENABLED=1 allows sending without a
   // configured payment provider by linking to the org's parent portal instead
@@ -700,9 +730,15 @@ async function sendBillingPaymentRequestCore(
     paymentResult = await p.provider.createPaymentLink({
       chargeId: charge.id,
       amount: Number(charge.amount),
-      description: tr('paymentDescription', { month: monthLabel, parent: parent.full_name as string }),
+      description: tr('paymentDescription', {
+        month: monthLabel,
+        parent: parent.full_name as string,
+      }),
       orgId,
-      payer: { fullName: parent.full_name as string, phone: parent.phone as string },
+      payer: {
+        fullName: parent.full_name as string,
+        phone: parent.phone as string,
+      },
     })
   } catch (err) {
     if (
@@ -758,10 +794,18 @@ async function sendBillingPaymentRequestCore(
   // Log sent_at
   await db
     .from('charges')
-    .update({ sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .update({
+      sent_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', charge.id)
     .eq('organization_id', orgId)
 
-  console.info('[billing] payment request sent', { billingId, orgId, chargeId: charge.id, providerName })
+  console.info('[billing] payment request sent', {
+    billingId,
+    orgId,
+    chargeId: charge.id,
+    providerName,
+  })
   return 'sent'
 }

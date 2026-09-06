@@ -21,6 +21,7 @@ import { PaymentDetailsFields } from './PaymentDetailsFields'
 export interface RecordPaymentInput {
   chargeId: string
   amount: number
+  paymentDate: string
   method: PaymentMethod
   notes?: string
   /**
@@ -83,6 +84,7 @@ export function RecordPaymentDialog({
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState(String(remaining))
   const [method, setMethod] = useState<PaymentMethod>('manual')
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [notes, setNotes] = useState('')
   const [notifyParent, setNotifyParent] = useState(defaultNotifyParent)
   const [isPending, startTransition] = useTransition()
@@ -98,6 +100,7 @@ export function RecordPaymentDialog({
       const result = await action({
         chargeId,
         amount: parsedAmount,
+        paymentDate,
         method,
         notes: notes.trim() || undefined,
         notifyParent: parentHasPhone && notifyParent,
@@ -109,7 +112,11 @@ export function RecordPaymentDialog({
       }
 
       toast.success(
-        paymentToast(isPartial ? t('successPartial') : t('successFull'), result.notification, tNotify)
+        paymentToast(
+          isPartial ? t('successPartial') : t('successFull'),
+          result.notification,
+          tNotify
+        )
       )
       setOpen(false)
       setNotes('')
@@ -124,6 +131,7 @@ export function RecordPaymentDialog({
         className="gap-1.5 text-emerald-700 hover:text-emerald-800"
         onClick={() => {
           setAmount(String(remaining))
+          setPaymentDate(new Date().toLocaleDateString('en-CA'))
           setOpen(true)
         }}
       >
@@ -168,6 +176,8 @@ export function RecordPaymentDialog({
               idPrefix="payment"
               method={method}
               onMethodChange={setMethod}
+              paymentDate={paymentDate}
+              onPaymentDateChange={setPaymentDate}
               notes={notes}
               onNotesChange={setNotes}
               notifyParent={notifyParent}
@@ -186,7 +196,7 @@ export function RecordPaymentDialog({
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
               {tCommon('actions.cancel')}
             </Button>
-            <Button onClick={handleSubmit} disabled={isPending || !isValid}>
+            <Button onClick={handleSubmit} disabled={isPending || !isValid || !paymentDate}>
               {isPending && <Loader2 size={14} className="animate-spin me-2" />}
               {t('confirm')}
             </Button>

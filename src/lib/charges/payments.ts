@@ -115,7 +115,10 @@ export async function recordChargePayment({
   // already in charge_payments.
   const { error: updateError } = await db
     .from('charges')
-    .update({ amount_paid: newAmountPaid, updated_at: new Date().toISOString() })
+    .update({
+      amount_paid: newAmountPaid,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', chargeId)
     .eq('organization_id', organizationId)
 
@@ -123,7 +126,7 @@ export async function recordChargePayment({
 
   if (closed) {
     // Closes the charge and carries the receipt / billing propagation with it.
-    await markChargeAsPaid(chargeId, organizationId, undefined, actorProfileId)
+    await markChargeAsPaid(chargeId, organizationId, undefined, actorProfileId, paidAtIso)
   }
 
   await logChargeAudit({

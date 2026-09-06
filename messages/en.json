@@ -379,7 +379,7 @@
       "emptyAction": "Schedule a lesson"
     },
     "attention": {
-      "title": "Needs Attention",
+      "title": "Tasks and exceptions",
       "debtors": "Debtors ({count})",
       "daysOld": "{days} days",
       "newLeads": "New leads ({count})",
@@ -1212,6 +1212,7 @@
       "chargeAlreadyResolved": "This charge was already waived or voided",
       "chargeNotOpen": "This charge is not open for payment",
       "paymentTooLarge": "The amount is larger than the open balance ({max})",
+      "invalidPaymentDate": "Choose a valid payment date that is not in the future",
       "nothingOpen": "This parent has no open charges"
     },
     "notification": {
@@ -1292,6 +1293,8 @@
       "title": "Record a payment",
       "remaining": "Remaining: {amount}",
       "amountLabel": "Amount received",
+      "dateLabel": "Date payment was received",
+      "dateHint": "This date determines which month the payment appears in.",
       "methodLabel": "Payment method",
       "notesPlaceholder": "Note (optional)",
       "invalidAmount": "Enter an amount between 0.01 and {max}",

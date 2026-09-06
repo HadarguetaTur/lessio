@@ -20,6 +20,18 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations, getLocale } from 'next-intl/server'
 import { formatMoney } from '@/lib/i18n/formatCurrency'
+import { DateTime } from 'luxon'
+import { getOrgTimezone } from '@/lib/organizations'
+
+const paymentDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+
+async function resolveManualPaidAt(orgId: string, paymentDate: string): Promise<string | null> {
+  const timezone = await getOrgTimezone(orgId)
+  const selected = DateTime.fromISO(paymentDate, { zone: timezone })
+  const now = DateTime.now().setZone(timezone)
+  if (!selected.isValid || selected.startOf('day') > now.startOf('day')) return null
+  return (selected.hasSame(now, 'day') ? now : selected.set({ hour: 12 })).toUTC().toISO()
+}
 
 function revalidateChargeSurfaces() {
   revalidatePath('/charges')
@@ -46,10 +58,17 @@ async function resolveNotificationStatus(
 
   const db = createServiceRoleClient()
   const [{ data: parent }, { data: org }] = await Promise.all([
-    db.from('parents').select('phone').eq('id', parentId).eq('organization_id', orgId).maybeSingle(),
+    db
+      .from('parents')
+      .select('phone')
+      .eq('id', parentId)
+      .eq('organization_id', orgId)
+      .maybeSingle(),
     db
       .from('organizations')
-      .select('whatsapp_phone_number_id, whatsapp_access_token, payment_confirmation_default_enabled')
+      .select(
+        'whatsapp_phone_number_id, whatsapp_access_token, payment_confirmation_default_enabled'
+      )
       .eq('id', orgId)
       .maybeSingle(),
   ])
@@ -85,7 +104,9 @@ function afterManualPayment(p: {
     (async () => {
       const receiptUrls: string[] = []
       for (const chargeId of p.closedChargeIds) {
-        const url = await issueReceiptForCharge(chargeId, p.orgId, { notifyParent: false }).catch((err) => {
+        const url = await issueReceiptForCharge(chargeId, p.orgId, {
+          notifyParent: false,
+        }).catch((err) => {
           console.error('[charges] receipt issuance failed — charge already paid', {
             chargeId,
             orgId: p.orgId,
@@ -95,7 +116,11 @@ function afterManualPayment(p: {
         })
         if (url) receiptUrls.push(url)
         await sendReceiptEmail(chargeId, p.orgId).catch((err) => {
-          console.error('[charges] receipt email failed', { chargeId, orgId: p.orgId, err })
+          console.error('[charges] receipt email failed', {
+            chargeId,
+            orgId: p.orgId,
+            err,
+          })
         })
       }
 
@@ -136,10 +161,10 @@ export async function waiveChargeAction(
     return { error: await commonError('noPermission') }
   }
 
-  return runResolve(() =>
-    waiveCharge(chargeId, session.orgId, session.profileId, reason.trim()),
-    { chargeId, reason }
-  )
+  return runResolve(() => waiveCharge(chargeId, session.orgId, session.profileId, reason.trim()), {
+    chargeId,
+    reason,
+  })
 }
 
 /**
@@ -158,10 +183,10 @@ export async function voidChargeAction(
     return { error: await commonError('ownerOnly') }
   }
 
-  return runResolve(() =>
-    voidCharge(chargeId, session.orgId, session.profileId, reason.trim()),
-    { chargeId, reason }
-  )
+  return runResolve(() => voidCharge(chargeId, session.orgId, session.profileId, reason.trim()), {
+    chargeId,
+    reason,
+  })
 }
 
 // ─── Record a payment (full or partial) ────────────────────────────────────
@@ -171,6 +196,7 @@ const paymentMethodSchema = z.enum(['manual', 'cash', 'bank_transfer', 'provider
 const recordPaymentSchema = z.object({
   chargeId: z.string().uuid(),
   amount: z.number().positive().max(1_000_000),
+  paymentDate: paymentDateSchema,
   method: paymentMethodSchema,
   notes: z.string().max(500).optional(),
   /** Omitted means "fall back to the org default" — see resolveNotificationStatus. */
@@ -186,6 +212,7 @@ const recordPaymentSchema = z.object({
 export async function recordChargePaymentAction(input: {
   chargeId: string
   amount: number
+  paymentDate: string
   method: PaymentMethod
   notes?: string
   notifyParent?: boolean
@@ -201,6 +228,8 @@ export async function recordChargePaymentAction(input: {
 
   const parsed = recordPaymentSchema.safeParse(input)
   if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
+  const paidAt = await resolveManualPaidAt(session.orgId, parsed.data.paymentDate)
+  if (!paidAt) return { error: t('invalidPaymentDate') }
 
   let result
   try {
@@ -211,9 +240,13 @@ export async function recordChargePaymentAction(input: {
       method: parsed.data.method,
       notes: parsed.data.notes ?? null,
       actorProfileId: session.profileId,
+      paidAt,
     })
   } catch (err) {
-    console.error('[charges] record payment failed', { chargeId: input.chargeId, err })
+    console.error('[charges] record payment failed', {
+      chargeId: input.chargeId,
+      err,
+    })
     return { error: t('updateStatusFailed') }
   }
 
@@ -224,7 +257,11 @@ export async function recordChargePaymentAction(input: {
       case 'not_open':
         return { error: t('chargeNotOpen') }
       case 'invalid_amount':
-        return { error: t('paymentTooLarge', { max: formatMoney(result.remaining ?? 0, await getLocale()) }) }
+        return {
+          error: t('paymentTooLarge', {
+            max: formatMoney(result.remaining ?? 0, await getLocale()),
+          }),
+        }
       default:
         return { error: t('updateStatusFailed') }
     }
@@ -256,6 +293,7 @@ export async function recordChargePaymentAction(input: {
 
 const settleBalanceSchema = z.object({
   parentId: z.string().uuid(),
+  paymentDate: paymentDateSchema,
   method: paymentMethodSchema,
   notes: z.string().max(500).optional(),
   /** Omitted means "fall back to the org default" — see resolveNotificationStatus. */
@@ -276,6 +314,7 @@ export interface SettleBalanceResult extends ManualPaymentResult {
  */
 export async function settleParentBalanceAction(input: {
   parentId: string
+  paymentDate: string
   method: PaymentMethod
   notes?: string
   notifyParent?: boolean
@@ -291,6 +330,8 @@ export async function settleParentBalanceAction(input: {
 
   const parsed = settleBalanceSchema.safeParse(input)
   if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
+  const paidAt = await resolveManualPaidAt(session.orgId, parsed.data.paymentDate)
+  if (!paidAt) return { error: t('invalidPaymentDate') }
 
   let result
   try {
@@ -300,9 +341,13 @@ export async function settleParentBalanceAction(input: {
       method: parsed.data.method,
       notes: parsed.data.notes ?? null,
       actorProfileId: session.profileId,
+      paidAt,
     })
   } catch (err) {
-    console.error('[charges] settle balance failed', { parentId: input.parentId, err })
+    console.error('[charges] settle balance failed', {
+      parentId: input.parentId,
+      err,
+    })
     return { error: t('updateStatusFailed') }
   }
 
@@ -348,6 +393,7 @@ export async function settleParentBalanceAction(input: {
 
 const settleChargesSchema = z.object({
   chargeIds: z.array(z.string().uuid()).min(1).max(200),
+  paymentDate: paymentDateSchema,
   method: paymentMethodSchema,
   notes: z.string().max(500).optional(),
   /** Omitted means "fall back to the org default" — see resolveNotificationStatus. */
@@ -374,6 +420,7 @@ export interface SettleChargesActionResult {
  */
 export async function settleChargesAction(input: {
   chargeIds: string[]
+  paymentDate: string
   method: PaymentMethod
   notes?: string
   notifyParent?: boolean
@@ -389,6 +436,8 @@ export async function settleChargesAction(input: {
 
   const parsed = settleChargesSchema.safeParse(input)
   if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
+  const paidAt = await resolveManualPaidAt(session.orgId, parsed.data.paymentDate)
+  if (!paidAt) return { error: t('invalidPaymentDate') }
 
   let result
   try {
@@ -398,9 +447,13 @@ export async function settleChargesAction(input: {
       method: parsed.data.method,
       notes: parsed.data.notes ?? null,
       actorProfileId: session.profileId,
+      paidAt,
     })
   } catch (err) {
-    console.error('[charges] settle charges failed', { count: input.chargeIds.length, err })
+    console.error('[charges] settle charges failed', {
+      count: input.chargeIds.length,
+      err,
+    })
     return { error: t('updateStatusFailed') }
   }
 
@@ -463,7 +516,10 @@ async function runResolve(
   try {
     result = await resolve()
   } catch (err) {
-    console.error('[charges] resolve failed', { chargeId: input.chargeId, err })
+    console.error('[charges] resolve failed', {
+      chargeId: input.chargeId,
+      err,
+    })
     return { error: t('updateStatusFailed') }
   }
 
@@ -497,7 +553,12 @@ async function sendReceiptEmail(chargeId: string, orgId: string): Promise<void> 
 
   if (!charge) return
 
-  type ChargeRow = { amount: number; receipt_url: string | null; parent_id: string; parents: { email: string | null } | null }
+  type ChargeRow = {
+    amount: number
+    receipt_url: string | null
+    parent_id: string
+    parents: { email: string | null } | null
+  }
   const c = charge as unknown as ChargeRow
   const parentEmail = c.parents?.email
   if (!parentEmail || !c.receipt_url) return
@@ -505,9 +566,10 @@ async function sendReceiptEmail(chargeId: string, orgId: string): Promise<void> 
   const canSend = await shouldSendEmail(orgId, 'receipt', parentEmail)
   if (!canSend) return
 
-  const { subject, html } = receiptEmail(
-    { amount: String(c.amount), receiptUrl: c.receipt_url },
-  )
+  const { subject, html } = receiptEmail({
+    amount: String(c.amount),
+    receiptUrl: c.receipt_url,
+  })
 
   await sendEmail({ orgId, to: parentEmail, subject, html })
 }

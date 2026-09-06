@@ -9,12 +9,15 @@
  */
 
 import { useTranslations } from 'next-intl'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { PAYMENT_METHODS, type PaymentMethod } from '@/lib/charges/paymentMethods'
 
 interface PaymentDetailsFieldsProps {
   method: PaymentMethod
   onMethodChange: (method: PaymentMethod) => void
+  paymentDate: string
+  onPaymentDateChange: (date: string) => void
   notes: string
   onNotesChange: (notes: string) => void
   notifyParent: boolean
@@ -30,6 +33,8 @@ interface PaymentDetailsFieldsProps {
 export function PaymentDetailsFields({
   method,
   onMethodChange,
+  paymentDate,
+  onPaymentDateChange,
   notes,
   onNotesChange,
   notifyParent,
@@ -42,6 +47,22 @@ export function PaymentDetailsFields({
 
   return (
     <>
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground" htmlFor={`${idPrefix}-date`}>
+          {t('dateLabel')}
+        </label>
+        <Input
+          id={`${idPrefix}-date`}
+          type="date"
+          value={paymentDate}
+          max={new Date().toLocaleDateString('en-CA')}
+          onChange={(e) => onPaymentDateChange(e.target.value)}
+          required
+          dir="ltr"
+        />
+        <p className="text-xs text-muted-foreground">{t('dateHint')}</p>
+      </div>
+
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-muted-foreground" htmlFor={`${idPrefix}-method`}>
           {t('methodLabel')}

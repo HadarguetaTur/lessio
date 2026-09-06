@@ -107,9 +107,7 @@ export async function getCharges(
   if (filter.dateFrom) query = query.gte('created_at', filter.dateFrom)
   if (filter.dateToExclusive) query = query.lt('created_at', filter.dateToExclusive)
   if (filter.overdueBefore) {
-    query = query
-      .in('status', [...OPEN_CHARGE_STATUSES])
-      .lt('due_date', filter.overdueBefore)
+    query = query.in('status', [...OPEN_CHARGE_STATUSES]).lt('due_date', filter.overdueBefore)
   }
 
   const { data, error } = await query
@@ -131,17 +129,19 @@ export async function findChargeParentIds(
   if (!term) return []
 
   const db = createServiceRoleClient()
-  const [{ data: parents, error: parentsError }, { data: relationships, error: relationshipsError }] =
-    await Promise.all([
-      db
-        .from('parents')
-        .select('id, full_name, phone, second_phone')
-        .eq('organization_id', organizationId),
-      db
-        .from('relationships')
-        .select('parent_id, students(full_name)')
-        .eq('organization_id', organizationId),
-    ])
+  const [
+    { data: parents, error: parentsError },
+    { data: relationships, error: relationshipsError },
+  ] = await Promise.all([
+    db
+      .from('parents')
+      .select('id, full_name, phone, second_phone')
+      .eq('organization_id', organizationId),
+    db
+      .from('relationships')
+      .select('parent_id, students(full_name)')
+      .eq('organization_id', organizationId),
+  ])
 
   if (parentsError) throw new Error(parentsError.message)
   if (relationshipsError) throw new Error(relationshipsError.message)
@@ -153,7 +153,7 @@ export async function findChargeParentIds(
     const nameMatches = searchable(parent.full_name).includes(term)
     const phoneMatches = Boolean(
       termDigits &&
-        [parent.phone, parent.second_phone].some((phone) => phoneDigits(phone).includes(termDigits))
+      [parent.phone, parent.second_phone].some((phone) => phoneDigits(phone).includes(termDigits))
     )
     if (nameMatches || phoneMatches) matches.add(parent.id)
   }
@@ -168,10 +168,7 @@ export async function findChargeParentIds(
   return [...matches]
 }
 
-export async function getParentDebt(
-  parentId: string,
-  organizationId: string
-): Promise<number> {
+export async function getParentDebt(parentId: string, organizationId: string): Promise<number> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -242,7 +239,10 @@ export function getChargeRemaining(
 }
 
 export function sumRemaining(
-  rows: Array<{ amount: number | string; amount_paid?: number | string | null }>
+  rows: Array<{
+    amount: number | string
+    amount_paid?: number | string | null
+  }>
 ): number {
   const total = rows.reduce(
     (sum, row) => sum + getChargeRemaining(row.amount, row.amount_paid ?? 0),
@@ -286,10 +286,11 @@ export async function markChargeAsPaid(
   chargeId: string,
   organizationId: string,
   notes?: string | null,
-  actorProfileId?: string | null
+  actorProfileId?: string | null,
+  paidAtHint?: string
 ): Promise<void> {
   const supabase = createServiceRoleClient()
-  const paidAt = new Date().toISOString()
+  const paidAt = paidAtHint ?? new Date().toISOString()
 
   const { data: existing, error: loadError } = await supabase
     .from('charges')

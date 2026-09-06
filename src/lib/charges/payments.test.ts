@@ -116,7 +116,13 @@ describe('recordChargePayment', () => {
     expect(result).toEqual({ ok: true, amountPaid: 450, remaining: 0, closed: true, parentId: 'parent-1' })
     // amount_paid is written before closing, so the close call adds no second payment row.
     expect(updated[0]).toMatchObject({ amount_paid: 450 })
-    expect(mockMarkChargeAsPaid).toHaveBeenCalledWith('charge-1', 'org-1', undefined, 'profile-1')
+    expect(mockMarkChargeAsPaid).toHaveBeenCalledWith(
+      'charge-1',
+      'org-1',
+      undefined,
+      'profile-1',
+      expect.any(String)
+    )
     expect(inserted).toHaveLength(1)
   })
 

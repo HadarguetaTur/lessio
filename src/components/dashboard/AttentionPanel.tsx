@@ -58,12 +58,19 @@ export async function AttentionPanel({
   const hasLeads = (data.newLeads?.count ?? 0) > 0
   const hasAtRisk = data.atRisk.count > 0
   const allClear =
-    !hasUnlogged && !hasPendingBilling && !hasDebtors && !hasOverdueHomework && !hasLeads && !hasAtRisk
+    !hasUnlogged &&
+    !hasPendingBilling &&
+    !hasDebtors &&
+    !hasOverdueHomework &&
+    !hasLeads &&
+    !hasAtRisk
 
   const formatShortDate = (iso: string) =>
-    new Intl.DateTimeFormat(intlLocale, { timeZone: timezone, day: 'numeric', month: 'short' }).format(
-      new Date(iso)
-    )
+    new Intl.DateTimeFormat(intlLocale, {
+      timeZone: timezone,
+      day: 'numeric',
+      month: 'short',
+    }).format(new Date(iso))
 
   const formatDayTime = (iso: string) =>
     new Intl.DateTimeFormat(intlLocale, {
@@ -122,129 +129,140 @@ export async function AttentionPanel({
       <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* 1 — unlogged lessons: nothing auto-completes a lesson, and an
             un-completed lesson never becomes a charge. */}
-        <AttentionCard
-          icon={BookOpen}
-          tone="amber"
-          title={t('attention.cards.unloggedLessons')}
-          count={data.unloggedLessons.count}
-          href="/lessons"
-          hasMore={data.unloggedLessons.count > ROW_LIMIT}
-          viewAllLabel={t('attention.viewAll')}
-          emptyLabel={t('attention.sectionClear')}
-        >
-          {data.unloggedLessons.top.slice(0, ROW_LIMIT).map((lesson) => (
-            <AttentionRow
-              key={lesson.lessonId}
-              href={`/lessons/${lesson.lessonId}`}
-              primary={<bdi>{lesson.studentName}</bdi>}
-              badge={<StatusBadge status="scheduled" className="shrink-0 px-1.5 text-[10px]" />}
-              trailing={formatDayTime(lesson.startAt)}
-              check={{
-                id: lesson.lessonId,
-                action: completeLessonAction,
-                label: t('attention.markLessonDone'),
-                failureLabel: t('attention.markDoneFailed'),
-              }}
-            />
-          ))}
-        </AttentionCard>
+        {hasUnlogged && (
+          <AttentionCard
+            icon={BookOpen}
+            tone="amber"
+            title={t('attention.cards.unloggedLessons')}
+            count={data.unloggedLessons.count}
+            href="/lessons"
+            hasMore={data.unloggedLessons.count > ROW_LIMIT}
+            viewAllLabel={t('attention.viewAll')}
+            emptyLabel={t('attention.sectionClear')}
+          >
+            {data.unloggedLessons.top.slice(0, ROW_LIMIT).map((lesson) => (
+              <AttentionRow
+                key={lesson.lessonId}
+                href={`/lessons/${lesson.lessonId}`}
+                primary={<bdi>{lesson.studentName}</bdi>}
+                badge={<StatusBadge status="scheduled" className="shrink-0 px-1.5 text-[10px]" />}
+                trailing={formatDayTime(lesson.startAt)}
+                check={{
+                  id: lesson.lessonId,
+                  action: completeLessonAction,
+                  label: t('attention.markLessonDone'),
+                  failureLabel: t('attention.markDoneFailed'),
+                }}
+              />
+            ))}
+          </AttentionCard>
+        )}
 
         {/* 2 — money: billing awaiting approval blocks the payment request,
             debtors already owe. Same errand, one card. */}
-        <AttentionCard
-          icon={Receipt}
-          tone="rose"
-          title={t('attention.cards.billing')}
-          count={billingCount}
-          href="/billing"
-          hasMore={
-            data.pendingBilling.count > pendingShown.length ||
-            data.debtors.count > debtorsShown.length
-          }
-          viewAllLabel={t('attention.viewAll')}
-          emptyLabel={t('attention.sectionClear')}
-        >
-          {hasPendingBilling && (
-            <>
-              <AttentionSubHeader
-                label={t('attention.pendingApproval')}
-                href="/billing"
-                trailing={formatCurrency(data.pendingBilling.total, appLocale)}
-              />
-              {pendingShown.map((row) => (
-                <AttentionRow
-                  key={row.billingId}
+        {(hasPendingBilling || hasDebtors) && (
+          <AttentionCard
+            icon={Receipt}
+            tone="rose"
+            title={t('attention.cards.billing')}
+            count={billingCount}
+            href="/billing"
+            hasMore={
+              data.pendingBilling.count > pendingShown.length ||
+              data.debtors.count > debtorsShown.length
+            }
+            viewAllLabel={t('attention.viewAll')}
+            emptyLabel={t('attention.sectionClear')}
+          >
+            {hasPendingBilling && (
+              <>
+                <AttentionSubHeader
+                  label={t('attention.pendingApproval')}
                   href="/billing"
-                  primary={<bdi>{row.studentName}</bdi>}
-                  badge={<StatusBadge status="pending_approval" className="shrink-0 px-1.5 text-[10px]" />}
-                  trailing={formatCurrency(row.amount, appLocale)}
-                  trailingStrong
+                  trailing={formatCurrency(data.pendingBilling.total, appLocale)}
                 />
-              ))}
-            </>
-          )}
+                {pendingShown.map((row) => (
+                  <AttentionRow
+                    key={row.billingId}
+                    href="/billing"
+                    primary={<bdi>{row.studentName}</bdi>}
+                    badge={
+                      <StatusBadge
+                        status="pending_approval"
+                        className="shrink-0 px-1.5 text-[10px]"
+                      />
+                    }
+                    trailing={formatCurrency(row.amount, appLocale)}
+                    trailingStrong
+                  />
+                ))}
+              </>
+            )}
 
-          {hasDebtors && (
-            <>
-              {/* No trailing total: the "still owed" KPI below owns that
+            {hasDebtors && (
+              <>
+                {/* No trailing total: the "still owed" KPI below owns that
                   number, this bucket owns the list of who. */}
-              <AttentionSubHeader label={t('attention.debtorsLabel')} href="/billing/debts" />
-              {debtorsShown.map((debtor) => (
-                <AttentionRow
-                  key={debtor.parentId}
-                  href="/billing/debts"
-                  primary={<bdi>{debtor.parentName}</bdi>}
-                  secondary={
-                    debtor.childrenNames.length > 0 ? debtor.childrenNames.join(', ') : undefined
-                  }
-                  badge={
-                    <span
-                      className={cn(
-                        'shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
-                        debtor.oldestAgeDays >= 14
-                          ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
-                          : 'bg-muted text-muted-foreground'
-                      )}
-                    >
-                      {t('attention.daysOld', { days: debtor.oldestAgeDays })}
-                    </span>
-                  }
-                  trailing={formatCurrency(debtor.totalDebt, appLocale)}
-                  trailingStrong
-                />
-              ))}
-            </>
-          )}
-        </AttentionCard>
+                <AttentionSubHeader label={t('attention.debtorsLabel')} href="/billing/debts" />
+                {debtorsShown.map((debtor) => (
+                  <AttentionRow
+                    key={debtor.parentId}
+                    href="/billing/debts"
+                    primary={<bdi>{debtor.parentName}</bdi>}
+                    secondary={
+                      debtor.childrenNames.length > 0 ? debtor.childrenNames.join(', ') : undefined
+                    }
+                    badge={
+                      <span
+                        className={cn(
+                          'shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                          debtor.oldestAgeDays >= 14
+                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
+                            : 'bg-muted text-muted-foreground'
+                        )}
+                      >
+                        {t('attention.daysOld', { days: debtor.oldestAgeDays })}
+                      </span>
+                    }
+                    trailing={formatCurrency(debtor.totalDebt, appLocale)}
+                    trailingStrong
+                  />
+                ))}
+              </>
+            )}
+          </AttentionCard>
+        )}
 
         {/* 3 — teaching follow-ups. */}
-        <AttentionCard
-          icon={ClipboardList}
-          tone="violet"
-          title={t('attention.cards.overdueHomework')}
-          count={data.overdueHomework.count}
-          href="/homework?status=overdue"
-          hasMore={data.overdueHomework.count > ROW_LIMIT}
-          viewAllLabel={t('attention.viewAll')}
-          emptyLabel={t('attention.sectionClear')}
-        >
-          {data.overdueHomework.top.slice(0, ROW_LIMIT).map((row) => (
-            <AttentionRow
-              key={row.assignmentId}
-              href={`/homework/${row.assignmentId}`}
-              primary={<bdi>{row.studentName}</bdi>}
-              secondary={row.title}
-              badge={<StatusBadge status="overdue" className="shrink-0 px-1.5 text-[10px]" />}
-              trailing={row.dueDate ? formatShortDate(`${row.dueDate}T12:00:00Z`) : undefined}
-              check={{
-                id: row.assignmentId,
-                action: markHomeworkDoneAction,
-                label: t('attention.markHomeworkDone'),
-                failureLabel: t('attention.markDoneFailed'),
-              }}
-            />
-          ))}
-        </AttentionCard>
+        {hasOverdueHomework && (
+          <AttentionCard
+            icon={ClipboardList}
+            tone="violet"
+            title={t('attention.cards.overdueHomework')}
+            count={data.overdueHomework.count}
+            href="/homework?status=overdue"
+            hasMore={data.overdueHomework.count > ROW_LIMIT}
+            viewAllLabel={t('attention.viewAll')}
+            emptyLabel={t('attention.sectionClear')}
+          >
+            {data.overdueHomework.top.slice(0, ROW_LIMIT).map((row) => (
+              <AttentionRow
+                key={row.assignmentId}
+                href={`/homework/${row.assignmentId}`}
+                primary={<bdi>{row.studentName}</bdi>}
+                secondary={row.title}
+                badge={<StatusBadge status="overdue" className="shrink-0 px-1.5 text-[10px]" />}
+                trailing={row.dueDate ? formatShortDate(`${row.dueDate}T12:00:00Z`) : undefined}
+                check={{
+                  id: row.assignmentId,
+                  action: markHomeworkDoneAction,
+                  label: t('attention.markHomeworkDone'),
+                  failureLabel: t('attention.markDoneFailed'),
+                }}
+              />
+            ))}
+          </AttentionCard>
+        )}
 
         {/* 4/5 — pipeline and retention wrap onto the next row of the same
             grid, so they keep the card rhythm instead of a second layout. */}
@@ -265,7 +283,9 @@ export async function AttentionPanel({
                 href="/leads"
                 primary={<span dir="ltr">{lead.phone}</span>}
                 secondary={lead.rawMessage || undefined}
-                trailing={t('attention.daysOld', { days: daysAgo(lead.createdAt) })}
+                trailing={t('attention.daysOld', {
+                  days: daysAgo(lead.createdAt),
+                })}
               />
             ))}
           </AttentionCard>
@@ -289,7 +309,9 @@ export async function AttentionPanel({
                 primary={<bdi>{student.studentName}</bdi>}
                 trailing={
                   student.lastLessonAt
-                    ? t('attention.lastLesson', { date: formatShortDate(student.lastLessonAt) })
+                    ? t('attention.lastLesson', {
+                        date: formatShortDate(student.lastLessonAt),
+                      })
                     : t('attention.noLesson')
                 }
               />

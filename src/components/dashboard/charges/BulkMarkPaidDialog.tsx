@@ -33,6 +33,7 @@ import { PaymentDetailsFields } from './PaymentDetailsFields'
 export interface SettleChargesInput {
   chargeIds: string[]
   method: PaymentMethod
+  paymentDate: string
   notes?: string
   /**
    * Whether to WhatsApp each parent a confirmation. Omitted means the server
@@ -72,6 +73,7 @@ export function BulkMarkPaidDialog({
   const tCommon = useTranslations('common')
   const locale = useLocale()
   const [method, setMethod] = useState<PaymentMethod>('manual')
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [notes, setNotes] = useState('')
   const [notifyParent, setNotifyParent] = useState(defaultNotifyParent)
   const [isPending, startTransition] = useTransition()
@@ -86,6 +88,7 @@ export function BulkMarkPaidDialog({
       const result = await action({
         chargeIds: [...selection.keys()],
         method,
+        paymentDate,
         notes: notes.trim() || undefined,
         notifyParent: summary.anyPhone && notifyParent,
       })
@@ -123,7 +126,10 @@ export function BulkMarkPaidDialog({
 
         <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
           <p className="font-medium text-foreground">
-            {t('summary', { count: summary.count, total: money(summary.total) })}
+            {t('summary', {
+              count: summary.count,
+              total: money(summary.total),
+            })}
           </p>
           {/* Whose money this is — the one thing a multi-parent selection can
               get wrong, so it is spelled out rather than counted. */}
@@ -139,6 +145,8 @@ export function BulkMarkPaidDialog({
             idPrefix="bulk-paid"
             method={method}
             onMethodChange={setMethod}
+            paymentDate={paymentDate}
+            onPaymentDateChange={setPaymentDate}
             notes={notes}
             onNotesChange={setNotes}
             notifyParent={notifyParent}
@@ -152,7 +160,10 @@ export function BulkMarkPaidDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
             {tCommon('actions.cancel')}
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending || summary.count === 0}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isPending || summary.count === 0 || !paymentDate}
+          >
             {isPending && <Loader2 size={14} className="animate-spin me-2" />}
             {t('confirm')}
           </Button>

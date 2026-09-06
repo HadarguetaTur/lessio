@@ -737,6 +737,24 @@ in production, so there is nothing of it to drop. `charges.document_type`, `orga
 providers. Anything document-shaped that Lessio needs in the future goes through
 a `ReceiptProvider`, never through in-product generation.
 
+## 38. Collection Date and Billing Period Are Separate Facts
+
+✅ DECIDED (Sep 2026): cash collection is reported by the date the money was
+actually received, while the lesson or monthly-billing period continues to say
+what the payment was for.
+
+Rules:
+
+* every manual payment flow asks for the date the money was received, defaulting
+  to today; the server rejects future or malformed dates
+* `charge_payments.paid_at` is the source of truth for cash collected by month;
+  a late payment for an older lesson therefore belongs to the collection month
+  in which the money arrived, without changing the lesson or billing period
+* recording a payment later must not silently replace its real receipt date with
+  the click time; provider payments keep using their provider/event timestamp
+* the dashboard attention area is exception-driven: inactive buckets are omitted
+  instead of staying visible as empty cards
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

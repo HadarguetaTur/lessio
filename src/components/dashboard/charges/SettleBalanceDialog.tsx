@@ -21,6 +21,7 @@ import { PaymentDetailsFields } from './PaymentDetailsFields'
 export interface SettleBalanceInput {
   parentId: string
   method: PaymentMethod
+  paymentDate: string
   notes?: string
   /**
    * Whether to WhatsApp the parent a confirmation. Omitted means the server
@@ -90,6 +91,7 @@ export function SettleBalanceDialog({
     onOpenChange?.(next)
   }
   const [method, setMethod] = useState<PaymentMethod>('manual')
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [notes, setNotes] = useState('')
   const [notifyParent, setNotifyParent] = useState(defaultNotifyParent)
   const [isPending, startTransition] = useTransition()
@@ -99,6 +101,7 @@ export function SettleBalanceDialog({
       const result = await action({
         parentId,
         method,
+        paymentDate,
         notes: notes.trim() || undefined,
         notifyParent: parentHasPhone && notifyParent,
       })
@@ -141,7 +144,10 @@ export function SettleBalanceDialog({
           </DialogHeader>
 
           <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
-            {t('summary', { count: chargeCount, total: formatMoney(total, locale) })}
+            {t('summary', {
+              count: chargeCount,
+              total: formatMoney(total, locale),
+            })}
           </p>
 
           <div className="space-y-3 py-1">
@@ -149,6 +155,8 @@ export function SettleBalanceDialog({
               idPrefix="settle"
               method={method}
               onMethodChange={setMethod}
+              paymentDate={paymentDate}
+              onPaymentDateChange={setPaymentDate}
               notes={notes}
               onNotesChange={setNotes}
               notifyParent={notifyParent}
@@ -161,7 +169,7 @@ export function SettleBalanceDialog({
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
               {tCommon('actions.cancel')}
             </Button>
-            <Button onClick={handleSubmit} disabled={isPending}>
+            <Button onClick={handleSubmit} disabled={isPending || !paymentDate}>
               {isPending && <Loader2 size={14} className="animate-spin me-2" />}
               {t('confirm')}
             </Button>

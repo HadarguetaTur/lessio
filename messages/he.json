@@ -379,7 +379,7 @@
       "emptyAction": "קביעת שיעור"
     },
     "attention": {
-      "title": "דורש טיפול",
+      "title": "משימות וחריגים",
       "debtors": "חייבים ({count})",
       "daysOld": "{days} ימים",
       "newLeads": "לידים חדשים ({count})",
@@ -1212,6 +1212,7 @@
       "chargeAlreadyResolved": "החיוב כבר אופס או בוטל",
       "chargeNotOpen": "החיוב אינו פתוח לתשלום",
       "paymentTooLarge": "הסכום גדול מהיתרה הפתוחה ({max})",
+      "invalidPaymentDate": "יש לבחור תאריך תשלום תקין שאינו בעתיד",
       "nothingOpen": "להורה אין חיובים פתוחים"
     },
     "notification": {
@@ -1292,6 +1293,8 @@
       "title": "רישום תשלום",
       "remaining": "נותר לתשלום: {amount}",
       "amountLabel": "סכום שהתקבל",
+      "dateLabel": "תאריך קבלת התשלום",
+      "dateHint": "לפי תאריך זה התשלום ישויך לחודש הגבייה.",
       "methodLabel": "אמצעי תשלום",
       "notesPlaceholder": "הערה (אופציונלי)",
       "invalidAmount": "יש להזין סכום בין 0.01 ל-{max}",

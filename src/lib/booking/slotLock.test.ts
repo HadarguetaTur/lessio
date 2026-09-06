@@ -102,6 +102,38 @@ describe('createSlotLock', () => {
     ).rejects.toThrow(SlotUnavailableError)
   })
 
+  it('throws SlotUnavailableError when the day was blocked after listing', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'availability_overrides') {
+        return buildChain({
+          data: [{ is_available: false, start_time: null, end_time: null, reason: 'חופשה' }],
+          error: null,
+        })
+      }
+      return buildChain({ data: [], error: null })
+    })
+
+    await expect(
+      createSlotLock({ teacherId: TEACHER_ID, startAt: START, endAt: END, organizationId: ORG_ID })
+    ).rejects.toThrow(SlotUnavailableError)
+  })
+
+  it('throws SlotUnavailableError when blocked hours cover the slot', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'availability_overrides') {
+        return buildChain({
+          data: [{ is_available: false, start_time: '12:00', end_time: '22:00', reason: null }],
+          error: null,
+        })
+      }
+      return buildChain({ data: [], error: null })
+    })
+
+    await expect(
+      createSlotLock({ teacherId: TEACHER_ID, startAt: START, endAt: END, organizationId: ORG_ID })
+    ).rejects.toThrow(SlotUnavailableError)
+  })
+
   it('throws SlotUnavailableError when Google Calendar reports the slot busy', async () => {
     mockFrom.mockImplementation(() => buildChain({ data: [], error: null }))
     mockExternalBusy.mockResolvedValueOnce([{ start: START, end: END }])

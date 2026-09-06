@@ -135,6 +135,10 @@ function setupTable(existing: Row[]) {
     const writeChain = (sink: Record<string, unknown>[], payload: Record<string, unknown>) => {
       const chain = {
         eq: () => chain,
+        in: (_column: string, values: unknown[]) => {
+          payload.in = values
+          return chain
+        },
         then: (
           resolve: (value: { error: null }) => unknown,
           reject?: (reason: unknown) => unknown
@@ -148,8 +152,8 @@ function setupTable(existing: Row[]) {
 
     return {
       select: () => readChain(),
-      insert: async (payload: Record<string, unknown>) => {
-        inserted.push(payload)
+      insert: async (payload: Record<string, unknown> | Record<string, unknown>[]) => {
+        for (const row of Array.isArray(payload) ? payload : [payload]) inserted.push(row)
         return { error: null }
       },
       update: (payload: Record<string, unknown>) => writeChain(updated, payload),
@@ -328,6 +332,114 @@ describe('updateOverrideAction', () => {
   })
 })
 
+describe('createOverrideAction — blocking a date range', () => {
+  const blockDates = (from: string, to: string) =>
+    form([
+      ['type', 'block_dates'],
+      ['override_date', from],
+      ['override_date_to', to],
+      ['reason', 'miluim'],
+    ])
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetSession.mockResolvedValue({ orgId: 'org-1', role: 'owner' })
+    setupServiceTables()
+  })
+
+  it('writes one whole-day block per date in the range', async () => {
+    const { inserted } = setupTable([])
+
+    const result = await createOverrideAction(TEACHER, null, blockDates('2026-09-15', '2026-09-17'))
+
+    expect(result).toBeNull()
+    expect(inserted).toEqual([
+      '2026-09-15',
+      '2026-09-16',
+      '2026-09-17',
+    ].map((override_date) => ({
+      organization_id: 'org-1',
+      teacher_id: TEACHER,
+      override_date,
+      is_available: false,
+      start_time: null,
+      end_time: null,
+      reason: 'miluim',
+    })))
+  })
+
+  it('supersedes whatever already sits on the dates instead of rejecting', async () => {
+    const { inserted, deleted } = setupTable([
+      row({ id: 'a', start_time: '08:00', end_time: '12:00' }),
+    ])
+
+    const result = await createOverrideAction(TEACHER, null, blockDates('2026-09-15', '2026-09-16'))
+
+    expect(result).toBeNull()
+    expect(deleted).toEqual([
+      { deleted: true, in: ['2026-09-15', '2026-09-16'] },
+    ])
+    expect(inserted).toHaveLength(2)
+  })
+
+  it('rejects an end date before the start date', async () => {
+    const { inserted } = setupTable([])
+
+    const result = await createOverrideAction(TEACHER, null, blockDates('2026-09-17', '2026-09-15'))
+
+    expect(result?.error).toBe('teacherSelf.errors.endDateBeforeStart')
+    expect(inserted).toHaveLength(0)
+  })
+
+  it('asks about lessons across the whole range before writing anything', async () => {
+    setupServiceTables([
+      {
+        id: 'lesson-1',
+        start_at: '2026-09-16T06:00:00.000Z',
+        end_at: '2026-09-16T07:00:00.000Z',
+        lesson_students: [{ student: { full_name: 'Noa' } }],
+      },
+    ])
+    const { inserted } = setupTable([])
+
+    const result = await createOverrideAction(TEACHER, null, blockDates('2026-09-15', '2026-09-17'))
+
+    expect(result?.needsLessonConfirm).toBe(true)
+    expect(result?.lessons).toEqual([
+      { id: 'lesson-1', date: '16/09', start: '09:00', end: '10:00', students: ['Noa'] },
+    ])
+    expect(inserted).toHaveLength(0)
+  })
+
+  it('cancels across the range when asked, with the range as the label', async () => {
+    setupServiceTables([
+      {
+        id: 'lesson-1',
+        start_at: '2026-09-16T06:00:00.000Z',
+        end_at: '2026-09-16T07:00:00.000Z',
+        lesson_students: [{ student: { full_name: 'Noa' } }],
+      },
+    ])
+    mockCancelAndNotify.mockResolvedValue({ cancelled: 1, notified: 1, failed: 0 })
+    const { inserted } = setupTable([])
+
+    const fd = blockDates('2026-09-15', '2026-09-17')
+    fd.append('lesson_action', 'cancel')
+    const result = await createOverrideAction(TEACHER, null, fd)
+
+    expect(inserted).toHaveLength(3)
+    expect(result).toMatchObject({ cancelled: 1, notified: 1 })
+
+    // Whole days in org time: midnight Jerusalem is 21:00 UTC the evening before.
+    const window = mockCancelAndNotify.mock.calls[0][0]
+    expect(window).toMatchObject({
+      gte: '2026-09-14T21:00:00.000Z',
+      lt: '2026-09-17T21:00:00.000Z',
+    })
+    expect(window.label).toBe('15/09/2026–17/09/2026')
+  })
+})
+
 describe('createOverrideAction — lessons already in the range', () => {
   const lesson = {
     id: 'lesson-1',
@@ -352,7 +464,7 @@ describe('createOverrideAction — lessons already in the range', () => {
 
     expect(result?.needsLessonConfirm).toBe(true)
     expect(result?.lessons).toEqual([
-      { id: 'lesson-1', start: '09:00', end: '10:00', students: ['Noa'] },
+      { id: 'lesson-1', date: '15/09', start: '09:00', end: '10:00', students: ['Noa'] },
     ])
     expect(inserted).toHaveLength(0)
     expect(mockCancelAndNotify).not.toHaveBeenCalled()

@@ -115,6 +115,7 @@ export async function createTeacherLessonAction(
         holiday:          t('lessons.conflicts.holiday'),
         teacher_conflict: t('lessons.conflicts.ownConflict'),
         student_conflict: t('lessons.conflicts.studentConflict'),
+        override_blocked: t('lessons.conflicts.overrideBlocked'),
       }
       return { error: messages[err.reason] }
     }

@@ -6,8 +6,9 @@
  *
  * It replaces a form that could only close a whole date, or describe the hours
  * that stayed open. Closing just the morning had to be expressed backwards, and
- * closing a morning AND an evening could not be expressed at all. The three
- * modes here map one-to-one onto the three row kinds the table now holds.
+ * closing a morning AND an evening could not be expressed at all. Three of the
+ * modes map one-to-one onto the three row kinds the table holds; the fourth,
+ * a date range, is expanded server-side into one whole-day block per date.
  *
  * Rows are grouped by date because a date can now hold several of them, and the
  * list is unreadable when the same date repeats down the page.
@@ -37,6 +38,8 @@ export interface EditableOverride {
 }
 
 type OverrideKind = 'block_day' | 'block_range' | 'special_hours'
+/** The form also offers a date range, which the server expands into whole-day rows. */
+type FormKind = OverrideKind | 'block_dates'
 type ActionState = {
   error?: string
   /** Lessons already booked inside the range about to be closed. */
@@ -78,11 +81,12 @@ export function OverridesEditor({
   const tCommon = useTranslations('common')
 
   const [addState, addFormAction, addPending] = useActionState(addAction, null)
-  const [kind, setKind] = useState<OverrideKind>('block_range')
+  const [kind, setKind] = useState<FormKind>('block_range')
   // Controlled on purpose: when the server comes back asking about the lessons
   // in the range, React 19 has already reset the uncontrolled fields, and the
   // second submit has to describe the same hours as the first.
   const [date, setDate] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [reason, setReason] = useState('')
@@ -98,8 +102,9 @@ export function OverridesEditor({
   }
   const dates = [...byDate.keys()].sort()
 
-  const modes: { value: OverrideKind; label: string }[] = [
+  const modes: { value: FormKind; label: string }[] = [
     { value: 'block_day', label: t('blockDay') },
+    { value: 'block_dates', label: t('blockDates') },
     { value: 'block_range', label: t('blockHours') },
     { value: 'special_hours', label: t('specialAvailability') },
   ]
@@ -175,12 +180,15 @@ export function OverridesEditor({
             {kind === 'block_day' && (
               <p className="text-xs text-muted-foreground">{t('supersedesRangesHint')}</p>
             )}
+            {kind === 'block_dates' && (
+              <p className="text-xs text-muted-foreground">{t('blockDatesHint')}</p>
+            )}
           </div>
 
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <div className="space-y-1.5">
               <label htmlFor="override_date" className="block text-sm font-medium text-foreground">
-                {t('date')}
+                {kind === 'block_dates' ? t('dateFrom') : t('date')}
               </label>
               <Input
                 id="override_date"
@@ -193,7 +201,28 @@ export function OverridesEditor({
               />
             </div>
 
-            {kind !== 'block_day' && (
+            {kind === 'block_dates' && (
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="override_date_to"
+                  className="block text-sm font-medium text-foreground"
+                >
+                  {t('dateTo')}
+                </label>
+                <Input
+                  id="override_date_to"
+                  name="override_date_to"
+                  type="date"
+                  required
+                  dir="ltr"
+                  min={date || undefined}
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
+            )}
+
+            {(kind === 'block_range' || kind === 'special_hours') && (
               <>
                 <div className="space-y-1.5">
                   <label htmlFor="start_time" className="block text-sm font-medium text-foreground">
@@ -262,7 +291,7 @@ export function OverridesEditor({
                 {addState!.lessons!.map((lesson) => (
                   <li key={lesson.id} className="flex flex-wrap items-center gap-2 text-sm">
                     <span dir="ltr" className="font-mono text-xs tabular-nums text-foreground">
-                      {lesson.start}–{lesson.end}
+                      {lesson.date} · {lesson.start}–{lesson.end}
                     </span>
                     <span className="text-muted-foreground">
                       {lesson.students.join(', ')}

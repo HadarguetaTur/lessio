@@ -18,6 +18,7 @@ import { LessonConflictError } from '@/lib/lessons/createLesson'
 import { detectDayTail } from '@/lib/scheduling/dayTail'
 import { validateSlotLock } from './validateSlotLock'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
+import { isSlotBlockedByOverride } from './isSlotBlockedByOverride'
 
 export class LockExpiredError extends Error {
   constructor(reason: string) {
@@ -107,6 +108,19 @@ export async function confirmBooking({
     .maybeSingle()
 
   if (holiday) throw new LessonConflictError('holiday')
+
+  // 1c. Availability-exception re-check, for the same reason as 1b: an
+  // exception created between listing and confirm (a blocked day, blocked
+  // hours, or an approved day off) must not be booked over. Mapped to
+  // 'slot_taken' by both confirm actions, like every non-student conflict.
+  const overrideBlocked = await isSlotBlockedByOverride({
+    orgId: organizationId,
+    teacherId,
+    startAtUtc: lock.start_at,
+    endAtUtc: lock.end_at,
+    timezone: (orgRow?.timezone as string | undefined) ?? undefined,
+  })
+  if (overrideBlocked) throw new LessonConflictError('override_blocked')
 
   // 2. Validate teacher is active in org
   const { data: teacher, error: teacherError } = await db

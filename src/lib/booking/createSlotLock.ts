@@ -16,6 +16,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getEffectiveBreakMinutes } from '@/lib/scheduling/breaks'
 import { getExternalBusyIntervals } from '@/lib/google-calendar/getExternalBusyIntervals'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
+import { isSlotBlockedByOverride } from './isSlotBlockedByOverride'
 
 export class SlotUnavailableError extends Error {
   constructor() {
@@ -81,6 +82,16 @@ export async function createSlotLock({
   const { breakMinutes } = await getEffectiveBreakMinutes(organizationId, teacherId)
   const isAvailable = await checkSlotAvailable(db, teacherId, startAt, endAt, breakMinutes)
   if (!isAvailable) throw new SlotUnavailableError()
+
+  // Availability-exception re-check: a day or hours the teacher blocked after
+  // the slot list was rendered must not be lockable, same as a holiday.
+  const overrideBlocked = await isSlotBlockedByOverride({
+    orgId: organizationId,
+    teacherId,
+    startAtUtc: startAt,
+    endAtUtc: endAt,
+  })
+  if (overrideBlocked) throw new SlotUnavailableError()
 
   // Google Calendar re-check (decision #36): a calendar event created after the
   // slot list was rendered must not be lockable. This is the ONLY Google check

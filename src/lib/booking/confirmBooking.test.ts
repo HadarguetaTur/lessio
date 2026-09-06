@@ -121,6 +121,89 @@ describe('confirmBooking', () => {
     })
   })
 
+  it('throws LessonConflictError(override_blocked) when the teacher blocked the date after listing', async () => {
+    mockValidateLock.mockResolvedValue({ valid: true, lock: validLock })
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { timezone: 'UTC' }, error: null })
+      if (table === 'availability_overrides') {
+        return buildChain({
+          data: [{ is_available: false, start_time: null, end_time: null, reason: 'miluim' }],
+          error: null,
+        })
+      }
+      if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
+      if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    await expect(confirmBooking(PARAMS)).rejects.toMatchObject({
+      name: 'LessonConflictError',
+      reason: 'override_blocked',
+    })
+  })
+
+  it('throws LessonConflictError(override_blocked) when blocked hours cover the slot', async () => {
+    mockValidateLock.mockResolvedValue({ valid: true, lock: validLock })
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { timezone: 'UTC' }, error: null })
+      if (table === 'availability_overrides') {
+        // START–END is 16:00–17:00 UTC and the org timezone is UTC.
+        return buildChain({
+          data: [{ is_available: false, start_time: '16:30', end_time: '18:00', reason: null }],
+          error: null,
+        })
+      }
+      if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
+      if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    await expect(confirmBooking(PARAMS)).rejects.toMatchObject({
+      name: 'LessonConflictError',
+      reason: 'override_blocked',
+    })
+  })
+
+  it('ignores blocked hours that do not touch the slot', async () => {
+    mockValidateLock.mockResolvedValue({ valid: true, lock: validLock })
+
+    const createdLesson = {
+      id: 'lesson-1', teacher_id: TEACHER_ID, student_id: STUDENT_ID,
+      start_at: START, end_at: END,
+    }
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { timezone: 'UTC' }, error: null })
+      if (table === 'availability_overrides') {
+        return buildChain({
+          data: [{ is_available: false, start_time: '08:00', end_time: '12:00', reason: null }],
+          error: null,
+        })
+      }
+      if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
+      if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
+      if (table === 'relationships') return buildChain({ data: { parent_id: PARENT_ID }, error: null })
+      if (table === 'lessons') {
+        const chain = buildChain({ data: [], error: null }) as Record<string, unknown>
+        chain['insert'] = () => ({
+          select: () => buildChain({ data: createdLesson, error: null }),
+        })
+        return chain
+      }
+      if (table === 'slot_locks') {
+        const chain = buildChain({ data: null, error: null }) as Record<string, unknown>
+        chain['update'] = () => chain
+        return chain
+      }
+      return buildChain({ data: null, error: null })
+    })
+
+    const result = await confirmBooking(PARAMS)
+    expect(result.lessonId).toBe('lesson-1')
+  })
+
   it('throws LockExpiredError when the lock is expired', async () => {
     mockValidateLock.mockResolvedValue({ valid: false, reason: 'expired' })
 

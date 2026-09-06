@@ -34,10 +34,21 @@ export type CreateLessonResult = {
   endAt: string           // UTC ISO
 }
 
-export class LessonConflictError extends Error {
-  reason: 'holiday' | 'teacher_conflict' | 'student_conflict'
+export type LessonConflictReason =
+  | 'holiday'
+  | 'teacher_conflict'
+  | 'student_conflict'
+  /**
+   * The slot falls inside an availability exception (blocked day/hours).
+   * Thrown only on the parent booking path — dashboard lesson creation keeps
+   * treating exceptions as an advisory notice the owner may override.
+   */
+  | 'override_blocked'
 
-  constructor(reason: 'holiday' | 'teacher_conflict' | 'student_conflict') {
+export class LessonConflictError extends Error {
+  reason: LessonConflictReason
+
+  constructor(reason: LessonConflictReason) {
     super(`Cannot create lesson: ${reason}`)
     this.name = 'LessonConflictError'
     this.reason = reason

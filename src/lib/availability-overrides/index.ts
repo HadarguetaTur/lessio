@@ -40,6 +40,8 @@ export type OverrideMutationError =
   | { key: 'pickDate' }
   | { key: 'fillTimes' }
   | { key: 'endAfterStart' }
+  | { key: 'endDateBeforeStart' }
+  | { key: 'rangeTooLong' }
   | { key: 'dayAlreadyBlocked' }
   | { key: 'overlappingRange' }
   | { key: 'overrideNotFound' }
@@ -51,6 +53,8 @@ export type OverrideMutationError =
 /** A lesson already booked inside a range about to be closed. */
 export interface ConflictingLesson {
   id: string
+  /** DD/MM in org timezone — what disambiguates the list when a block spans several dates */
+  date: string
   /** HH:MM in org timezone */
   start: string
   end: string
@@ -247,6 +251,7 @@ async function lessonsInWindow(window: AbsenceWindow, tz: string): Promise<Confl
 
   return ((data ?? []) as unknown as Row[]).map((l) => ({
     id: l.id,
+    date: DateTime.fromISO(l.start_at, { zone: 'utc' }).setZone(tz).toFormat('dd/MM'),
     start: DateTime.fromISO(l.start_at, { zone: 'utc' }).setZone(tz).toFormat('HH:mm'),
     end: DateTime.fromISO(l.end_at, { zone: 'utc' }).setZone(tz).toFormat('HH:mm'),
     students: (l.lesson_students ?? [])
@@ -255,12 +260,130 @@ async function lessonsInWindow(window: AbsenceWindow, tz: string): Promise<Confl
   }))
 }
 
+/** A calendar year is enough for any leave; beyond it a typo is more likely than a sabbatical. */
+const MAX_RANGE_DAYS = 366
+
+/** Every ISO date from start to end inclusive, or null when either does not parse. */
+function datesBetween(start: string, end: string): string[] | null {
+  const s = DateTime.fromISO(start, { zone: 'utc' })
+  const e = DateTime.fromISO(end, { zone: 'utc' })
+  if (!s.isValid || !e.isValid) return null
+
+  const out: string[] = []
+  for (let d = s; d <= e && out.length <= MAX_RANGE_DAYS; d = d.plus({ days: 1 })) {
+    out.push(d.toISODate()!)
+  }
+  return out
+}
+
+/**
+ * Blocks every date in a range outright — one whole-day row per date, the same
+ * shape an approved WhatsApp day off writes, so the readers need no new case.
+ * Like that approval, it supersedes whatever already sits on those dates.
+ */
+async function createOverrideRange(
+  organizationId: string,
+  teacherId: string,
+  formData: FormData,
+  teacherName: string | null
+): Promise<OverrideCreateResult> {
+  const dateFrom = String(formData.get('override_date') ?? '').trim()
+  const dateTo = String(formData.get('override_date_to') ?? '').trim()
+  if (!dateFrom || !dateTo) return { key: 'pickDate' }
+  if (dateTo < dateFrom) return { key: 'endDateBeforeStart' }
+
+  const dates = datesBetween(dateFrom, dateTo)
+  if (!dates || dates.length === 0) return { key: 'pickDate' }
+  if (dates.length > MAX_RANGE_DAYS) return { key: 'rangeTooLong' }
+
+  const reason = String(formData.get('reason') ?? '').trim() || null
+
+  const db = createServiceRoleClient()
+  const { data: org } = await db
+    .from('organizations')
+    .select('timezone')
+    .eq('id', organizationId)
+    .single()
+  if (!org) return { key: 'saveOverrideFailed' }
+
+  const tz = (org.timezone as string) ?? 'Asia/Jerusalem'
+  const start = DateTime.fromISO(dateFrom, { zone: tz }).startOf('day')
+  const end = DateTime.fromISO(dateTo, { zone: tz }).plus({ days: 1 }).startOf('day')
+  if (!start.isValid || !end.isValid) return { key: 'pickDate' }
+
+  const window: AbsenceWindow = {
+    orgId: organizationId,
+    teacherId,
+    gte: start.toUTC().toISO()!,
+    lt: end.toUTC().toISO()!,
+    label:
+      dates.length === 1
+        ? start.toFormat('dd/MM/yyyy')
+        : `${start.toFormat('dd/MM/yyyy')}–${end.minus({ days: 1 }).toFormat('dd/MM/yyyy')}`,
+    teacherName,
+  }
+
+  const lessonAction = String(formData.get('lesson_action') ?? '')
+  if (!lessonAction) {
+    const clashes = await lessonsInWindow(window, tz)
+    if (clashes.length > 0) return { needsLessonConfirm: true, lessons: clashes }
+  }
+
+  const supabase = await createClient()
+
+  // Delete-then-insert, never an upsert: several rows per date are legal, so
+  // there is no unique constraint an ON CONFLICT clause could name. See the
+  // identical note on `blockDays` in @/lib/day-off.
+  const { error: clearError } = await supabase
+    .from('availability_overrides')
+    .delete()
+    .eq('organization_id', organizationId)
+    .eq('teacher_id', teacherId)
+    .in('override_date', dates)
+  if (clearError) return { key: 'saveOverrideFailed' }
+
+  const { error } = await supabase.from('availability_overrides').insert(
+    dates.map((date) => ({
+      organization_id: organizationId,
+      teacher_id: teacherId,
+      override_date: date,
+      is_available: false,
+      start_time: null,
+      end_time: null,
+      reason,
+    }))
+  )
+  if (error) return { key: 'saveOverrideFailed' }
+
+  if (lessonAction === 'cancel') {
+    try {
+      const { cancelled, notified } = await cancelAndNotify(window)
+      return { created: true, cancelled, notified }
+    } catch (err) {
+      console.error('[overrides] Blocked the dates but could not cancel the lessons', {
+        orgId: organizationId,
+        err,
+      })
+      return { key: 'cancelLessonsFailed' }
+    }
+  }
+
+  return null
+}
+
 export async function createOverride(
   organizationId: string,
   teacherId: string,
   formData: FormData,
   teacherName: string | null = null
 ): Promise<OverrideCreateResult> {
+  // A date range is its own path: it writes many rows and supersedes rather
+  // than conflict-checks, so it shares the window/cancel machinery but not the
+  // single-date parse.
+  if (String(formData.get('type') ?? '') === 'block_dates') {
+    return createOverrideRange(organizationId, teacherId, formData, teacherName)
+  }
+
   const parsed = parseForm(formData)
   if ('key' in parsed) return parsed
 

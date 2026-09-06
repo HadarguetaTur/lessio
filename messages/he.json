@@ -354,7 +354,7 @@
     "settingsPrivacy": "פרטיות ונתונים",
     "settingsCalendar": "יומן Google",
     "support": "תמיכה",
-    "settingsIntegrations": "אינטגרציות"
+    "settingsIntegrations": "מפתחות API לאוטומציה"
   },
   "dashboard": {
     "title": "לוח הבקרה",
@@ -1448,10 +1448,10 @@
         "description": "הפרטים הבסיסיים של העסק, כללי הפעילות ושמירת נתונים"
       },
       "billing": {
-        "description": "מה הלקוחות משלמים, איך מחייבים אותם ואילו מסמכים הם מקבלים"
+        "description": "מה הלקוחות משלמים ואיך מחייבים אותם"
       },
       "communications": {
-        "description": "הודעות, תזכורות ואוטומציות מול תלמידים והורים"
+        "description": "תבניות הודעות, תזכורות ופורטל ההורים"
       },
       "connections": {
         "description": "כל החיבורים לשירותים חיצוניים — סליקה, קבלות, וואטסאפ, מייל, יומן ו-API — במקום אחד"
@@ -1547,7 +1547,7 @@
         "description": "אילו סוגי שיעורים מכוסים על ידי מנוי חודשי"
       },
       "integrations": {
-        "description": "מפתחות API שמאפשרים ל-Make, n8n ו-Claude לקרוא ולעדכן נתונים — לא כאן מגדירים סליקה דרך Make"
+        "description": "הפקת טוקן שנותן ל-Make, n8n ו-Claude גישה לקרוא ולעדכן נתונים בשמכם"
       }
     },
     "businessProfile": {
@@ -2496,8 +2496,8 @@
     },
     "subtitle": "כל ההגדרות של העסק במקום אחד",
     "integrations": {
-      "pageTitle": "אינטגרציות",
-      "pageSubtitle": "חברו את Lessio ל-Make, ל-n8n או ל-Claude באמצעות מפתח API",
+      "pageTitle": "מפתחות API לאוטומציה",
+      "pageSubtitle": "מפיקים כאן טוקן, מדביקים אותו ב-Make, ב-n8n או ב-Claude — והם יוכלו לקרוא ולעדכן נתונים בשמכם",
       "keysTitle": "מפתחות API",
       "keysEmpty": "עדיין לא נוצרו מפתחות. צרו מפתח כדי לחבר כלי אוטומציה.",
       "revoke": "ביטול",

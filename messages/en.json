@@ -354,7 +354,7 @@
     "settingsPrivacy": "Privacy & data",
     "settingsCalendar": "Google Calendar",
     "support": "Support",
-    "settingsIntegrations": "Integrations"
+    "settingsIntegrations": "Automation API keys"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1448,10 +1448,10 @@
         "description": "Core business details, operating rules, and data retention"
       },
       "billing": {
-        "description": "What customers pay, how they are charged, and which documents they receive"
+        "description": "What customers pay and how they are charged"
       },
       "communications": {
-        "description": "Messages, reminders, and automations for students and parents"
+        "description": "Message templates, reminders, and the parent portal"
       },
       "connections": {
         "description": "Every external service connection — payments, receipts, WhatsApp, email, calendar and API — in one place"
@@ -1547,7 +1547,7 @@
         "description": "Which lesson types a monthly subscription covers"
       },
       "integrations": {
-        "description": "API keys that let Make, n8n and Claude read and update your data — payment clearing via Make is set up elsewhere"
+        "description": "Create a token that lets Make, n8n and Claude read and update your data on your behalf"
       }
     },
     "businessProfile": {
@@ -2496,8 +2496,8 @@
     },
     "subtitle": "All your business settings in one place",
     "integrations": {
-      "pageTitle": "Integrations",
-      "pageSubtitle": "Connect Lessio to Make, n8n or Claude with an API key",
+      "pageTitle": "Automation API keys",
+      "pageSubtitle": "Create a token here, paste it into Make, n8n or Claude — and they can read and update your data on your behalf",
       "keysTitle": "API keys",
       "keysEmpty": "No keys yet. Create one to connect an automation tool.",
       "revoke": "Revoke",

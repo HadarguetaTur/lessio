@@ -559,8 +559,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       '/settings/pricing',
       '/settings/billing-policy',
       '/settings/cancellation-policy',
-      '/settings/payment',
-      '/settings/receipts',
     ].map(entryOf),
   },
   {
@@ -570,12 +568,9 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     landing: '/settings/communications',
     icon: MessageCircle,
     items: [
-      '/settings/whatsapp',
       '/settings/message-templates',
       '/settings/reminders',
       '/settings/parent-portal',
-      '/settings/email',
-      '/settings/ai-assistant',
     ].map(entryOf),
   },
   {
@@ -584,16 +579,23 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     descriptionKey: 'groups.connections.description',
     landing: '/settings/connections',
     icon: Plug,
-    items: ['/settings/calendar', '/settings/integrations'].map(entryOf),
+    items: [
+      '/settings/payment',
+      '/settings/receipts',
+      '/settings/whatsapp',
+      '/settings/email',
+      '/settings/ai-assistant',
+      '/settings/calendar',
+      '/settings/integrations',
+    ].map(entryOf),
   },
 ]
 
 /**
- * The connections tab renders as a hub aggregating every external-service
- * connection, grouped by what the service does. Group membership above stays
- * canonical (one group per page — tab highlight, breadcrumbs and search all
- * key off it); the hub only *references* entries, so a page like /settings/payment
- * appears here with a live status badge while still belonging to the billing tab.
+ * The connections tab renders as a hub: every external-service connection lives
+ * here and only here (no card appears in two tabs). CONNECTIONS_HUB is the same
+ * membership as the connections group above, but adds the purpose sections and
+ * ordering the hub page renders, plus the ids the status badges key off.
  */
 export type ConnectionId =
   | 'payment'

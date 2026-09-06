@@ -3,7 +3,10 @@ import { join } from 'node:path'
 
 import { ImageResponse } from 'next/og'
 
-export const alt = 'LESSIO — תשתית עסקית למורים פרטיים ומרכזי למידה'
+// Shared by every locale (OG routes can't read the locale cookie), so the card
+// is bilingual: Hebrew headline, English subline.
+export const alt =
+  'LESSIO — מערכת ההפעלה לעסקי הוראה · The operating system for tutoring businesses'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -107,7 +110,7 @@ export default async function OpenGraphImage() {
             justifyContent: 'center',
           }}
         >
-          הכאוס התפעולי עולה כסף. Lessio שמה לזה סוף.
+          הוואטסאפ של ההורים, מחובר לעסק.
         </div>
 
         <div
@@ -120,7 +123,7 @@ export default async function OpenGraphImage() {
             justifyContent: 'center',
           }}
         >
-          תשתית עסקית למורים פרטיים ומרכזי למידה
+          The operating system for tutoring businesses
         </div>
       </div>
     ),

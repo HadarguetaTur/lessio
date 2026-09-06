@@ -99,7 +99,7 @@ export function LandingPricing({
       </div>
 
       <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
-        {copy.trialNote} · {copy.yearlyNote} · {copy.vatNote}
+        {copy.trialNote} {copy.trialIncludes} · {copy.yearlyNote} · {copy.vatNote}
       </p>
     </div>
   )

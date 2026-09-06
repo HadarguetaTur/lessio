@@ -67,9 +67,9 @@ export type LandingChatMessage = {
 const landingEnCore = {
   hero: {
     eyebrow: 'The operating system for tutoring businesses',
-    headline: 'A parent cancels on WhatsApp. Lessio closes the loop.',
+    headline: 'What happens on WhatsApp updates your business automatically.',
     subheadline:
-      'Your cancellation policy prices it, the charge is recorded, the slot opens up — and the monthly bill already knows.',
+      'When a parent cancels a lesson, Lessio connects the WhatsApp flow to the lesson, cancellation policy, charge, and schedule, with no manual updates.',
     ctaPrimary: 'Start 30 days free',
     ctaPrimaryNote: 'No credit card.',
     ctaSecondary: 'See how it works',
@@ -370,9 +370,9 @@ const landingEnCore = {
 const landingHeCore = {
   hero: {
     eyebrow: 'מערכת ההפעלה לעסקי הוראה',
-    headline: 'הודעת ביטול נכנסת ב-21:40. עד 21:41 היא כבר מתומחרת, ביומן ובחיוב החודשי.',
+    headline: 'מה שקורה בוואטסאפ, מתעדכן אוטומטית בעסק.',
     subheadline:
-      'ההורה מבטל בוואטסאפ. Lessio מפעילה את מדיניות הביטולים שלך, רושמת את החיוב, מפנה את המשבצת — והכול כבר בחשבון החודשי.',
+      'הורה ביטל שיעור? Lessio מחברת את ה-WhatsApp לשיעור, למדיניות הביטול, לחיוב וליומן, בלי לעדכן הכול ידנית.',
     ctaPrimary: 'התחילו 30 יום ניסיון',
     ctaPrimaryNote: 'בלי כרטיס אשראי.',
     ctaSecondary: 'איך זה עובד',

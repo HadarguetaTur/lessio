@@ -546,6 +546,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       '/settings/scheduling',
       '/settings/holidays',
       '/settings/exams',
+      '/settings/privacy',
     ].map(entryOf),
   },
   {
@@ -583,7 +584,60 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     descriptionKey: 'groups.connections.description',
     landing: '/settings/connections',
     icon: Plug,
-    items: ['/settings/calendar', '/settings/integrations', '/settings/privacy'].map(entryOf),
+    items: ['/settings/calendar', '/settings/integrations'].map(entryOf),
+  },
+]
+
+/**
+ * The connections tab renders as a hub aggregating every external-service
+ * connection, grouped by what the service does. Group membership above stays
+ * canonical (one group per page — tab highlight, breadcrumbs and search all
+ * key off it); the hub only *references* entries, so a page like /settings/payment
+ * appears here with a live status badge while still belonging to the billing tab.
+ */
+export type ConnectionId =
+  | 'payment'
+  | 'receipts'
+  | 'whatsapp'
+  | 'email'
+  | 'aiAssistant'
+  | 'calendar'
+  | 'integrations'
+
+export interface ConnectionsHubSection {
+  id: 'payments' | 'communication' | 'calendar' | 'automation'
+  /** Key under `settings.connectionsHub.sections`. */
+  titleKey: string
+  items: { entry: NavEntry; connectionId: ConnectionId }[]
+}
+
+export const CONNECTIONS_HUB: ConnectionsHubSection[] = [
+  {
+    id: 'payments',
+    titleKey: 'payments',
+    items: [
+      { entry: entryOf('/settings/payment'), connectionId: 'payment' },
+      { entry: entryOf('/settings/receipts'), connectionId: 'receipts' },
+    ],
+  },
+  {
+    id: 'communication',
+    titleKey: 'communication',
+    items: [
+      { entry: entryOf('/settings/whatsapp'), connectionId: 'whatsapp' },
+      { entry: entryOf('/settings/email'), connectionId: 'email' },
+      { entry: entryOf('/settings/ai-assistant'), connectionId: 'aiAssistant' },
+    ],
+  },
+  {
+    id: 'calendar',
+    titleKey: 'calendar',
+    items: [{ entry: entryOf('/settings/calendar'), connectionId: 'calendar' }],
+  },
+  {
+    id: 'automation',
+    titleKey: 'automation',
+    items: [{ entry: entryOf('/settings/integrations'), connectionId: 'integrations' }],
   },
 ]
 

@@ -276,7 +276,7 @@
       "business": "Business",
       "billing": "Lessons & billing",
       "communications": "Communications",
-      "connections": "Connections & privacy"
+      "connections": "Connections"
     },
     "dashboard": "Dashboard",
     "students": "Students",
@@ -1445,7 +1445,7 @@
     "title": "Settings",
     "groups": {
       "business": {
-        "description": "Core business details and day-to-day operating rules"
+        "description": "Core business details, operating rules, and data retention"
       },
       "billing": {
         "description": "What customers pay, how they are charged, and which documents they receive"
@@ -1454,7 +1454,22 @@
         "description": "Messages, reminders, and automations for students and parents"
       },
       "connections": {
-        "description": "External services, permissions, and business data retention"
+        "description": "Every external service connection — payments, receipts, WhatsApp, email, calendar and API — in one place"
+      }
+    },
+    "connectionsHub": {
+      "sections": {
+        "payments": "Payments & clearing",
+        "communication": "Communication",
+        "calendar": "Calendar",
+        "automation": "Automation & API"
+      },
+      "status": {
+        "connected": "Connected",
+        "configured": "Configured",
+        "notConnected": "Not connected",
+        "viaPaymentProvider": "via payment provider",
+        "apiKeys": "{count, plural, one {1 active key} other {# active keys}}"
       }
     },
     "cardHint": "Open the setting to update the relevant configuration.",
@@ -1532,7 +1547,7 @@
         "description": "Which lesson types a monthly subscription covers"
       },
       "integrations": {
-        "description": "API keys for connecting Make, n8n and Claude"
+        "description": "API keys that let Make, n8n and Claude read and update your data — payment clearing via Make is set up elsewhere"
       }
     },
     "businessProfile": {
@@ -2518,7 +2533,7 @@
         "authLabel": "Auth header",
         "testLabel": "Quick test",
         "rateLimit": "Limit: 120 requests per minute per key.",
-        "paymentLink": "Set up payments through Make or n8n"
+        "paymentLink": "Want payment links via Make or n8n? That is set up on the customer payments page"
       },
       "activityTitle": "Recent activity",
       "activitySubtitle": "The last 20 API calls. Useful for debugging a scenario.",

@@ -1,5 +1,5 @@
-import { SettingsGroupPage } from '@/components/dashboard/settings/SettingsGroupPage'
+import { ConnectionsHubPage } from '@/components/dashboard/settings/ConnectionsHubPage'
 
 export default function ConnectionsSettingsPage() {
-  return <SettingsGroupPage groupId="connections" />
+  return <ConnectionsHubPage />
 }

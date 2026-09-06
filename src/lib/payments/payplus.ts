@@ -18,6 +18,7 @@
 
 import type { PaymentProvider } from './index'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
+import { createHmac, timingSafeEqual } from 'crypto'
 
 export interface PayPlusConfig {
   apiKey: string
@@ -46,13 +47,32 @@ export class PayPlusProvider implements PaymentProvider {
     this.config = config
   }
 
+  verifyWebhookRequest(headers: Headers, rawBody: string): boolean {
+    if (headers.get('user-agent') !== 'PayPlus') return false
+    const received = headers.get('hash')
+    if (!received) return false
+    let message: string
+    try {
+      // This mirrors PayPlus's documented JSON.stringify(response.body).
+      message = JSON.stringify(JSON.parse(rawBody))
+    } catch {
+      return false
+    }
+    const expected = createHmac('sha256', this.config.secretKey)
+      .update(message)
+      .digest('base64')
+    const a = Buffer.from(received, 'utf8')
+    const b = Buffer.from(expected, 'utf8')
+    return a.length === b.length && timingSafeEqual(a, b)
+  }
+
   async createPaymentLink(params: {
     chargeId: string
     amount: number
     description: string
     orgId: string
   }): Promise<{ url: string; reference: string }> {
-    const { chargeId, amount, description, orgId } = params
+    const { chargeId, amount, orgId } = params
     const { apiKey, secretKey, pageUid } = this.config
 
     const callbackUrl = `${getShareableBaseUrl()}/api/payments/payplus`

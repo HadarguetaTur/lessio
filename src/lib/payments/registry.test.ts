@@ -68,10 +68,16 @@ describe('payment provider registry', () => {
 
   it('allows generic settlement only for providers with webhook verification', () => {
     const enabled = ids.filter((id) => getRegistryEntry(id)?.acceptsWebhookSettlement)
-    expect(enabled).toEqual(['bit', 'paybox'])
-    for (const id of enabled) {
-      expect(getRegistryEntry(id)?.verifyWebhookRequest).toBeTypeOf('function')
-    }
+    expect(enabled).toEqual(['cardcom', 'payplus', 'bit', 'paybox', 'stripe'])
+    expect(getRegistryEntry('cardcom')?.createAdapter({
+      terminal: '1', apiName: 'u', apiPassword: 'p',
+    }).confirmTransaction).toBeTypeOf('function')
+    expect(getRegistryEntry('payplus')?.createAdapter({
+      apiKey: 'a', secretKey: 's', pageUid: 'p',
+    }).verifyWebhookRequest).toBeTypeOf('function')
+    expect(getRegistryEntry('stripe')?.createAdapter({
+      secretKey: 'sk_test_x', webhookSecret: 'whsec_x', currency: 'ILS',
+    }).verifyWebhookRequest).toBeTypeOf('function')
   })
 
   it('has catalog copy for every provider in both languages', () => {

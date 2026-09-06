@@ -8,8 +8,8 @@
  * 3. Resolve the parties printed on the document.
  * 4. Guard: if receipt_mode says someone else issues → return null silently.
  * 5. Guard: if no receipt provider configured → return null silently.
- * 6. Call provider.issueReceipt(...).
- * 7. UPDATE charges SET receipt_url, receipt_issued_at WHERE receipt_issued_at IS NULL (atomic).
+ * 6. Atomically claim receipt issuance before calling the provider.
+ * 7. Call provider and finalise our claim; release it if the provider fails.
  * 8. Send WhatsApp to parent: best-effort, catch + log.
  * 9. Return receipt URL.
  */
@@ -157,17 +157,49 @@ export async function issueReceiptForCharge(
   const vatAmount = documentType === 'tax_invoice' ? Math.round(charge.amount * vatRate) / 100 : undefined
   const customerTaxId = parent?.tax_id ?? undefined
 
-  const { receiptUrl, documentType: issuedDocType } = await provider.issueReceipt({
-    chargeId,
-    amount: charge.amount,
-    parentName,
-    description,
-    orgName,
-    date: today,
-    documentType,
-    vatAmount,
-    customerTaxId,
-  })
+  const claimTimestamp = new Date().toISOString()
+  const { data: claimedRows, error: claimError } = await db
+    .from('charges')
+    .update({ receipt_issued_at: claimTimestamp })
+    .eq('id', chargeId)
+    .eq('organization_id', orgId)
+    .is('receipt_issued_at', null)
+    .select('id')
+
+  if (claimError || !claimedRows?.length) {
+    if (claimError) {
+      console.error('[receipts] Failed to claim receipt issuance', {
+        chargeId,
+        orgId,
+        error: claimError.message,
+      })
+    }
+    return null
+  }
+
+  let issued: Awaited<ReturnType<typeof provider.issueReceipt>>
+  try {
+    issued = await provider.issueReceipt({
+      chargeId,
+      amount: charge.amount,
+      parentName,
+      description,
+      orgName,
+      date: today,
+      documentType,
+      vatAmount,
+      customerTaxId,
+    })
+  } catch (err) {
+    await db
+      .from('charges')
+      .update({ receipt_issued_at: null })
+      .eq('id', chargeId)
+      .eq('organization_id', orgId)
+      .eq('receipt_issued_at', claimTimestamp)
+    throw err
+  }
+  const { receiptUrl, documentType: issuedDocType } = issued
 
   // ── 7. Atomic update — only if not already issued ─────────────────────────
   const { data: updatedRows, error: updateError } = await db
@@ -178,7 +210,8 @@ export async function issueReceiptForCharge(
       document_type: issuedDocType,
     })
     .eq('id', chargeId)
-    .is('receipt_issued_at', null) // atomic guard against concurrent calls
+    .eq('organization_id', orgId)
+    .eq('receipt_issued_at', claimTimestamp)
     .select('id')
 
   if (updateError) {

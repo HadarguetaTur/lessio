@@ -52,3 +52,6 @@ video-assets/
 
 # UX-audit scratch (screenshots, captures)
 .audit/
+
+# Cardcom preview E2E scratch (browser profiles + secrets env)
+.tmp-cardcom-*

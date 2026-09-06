@@ -17,15 +17,16 @@ export function webhookBodyFromPayload(
   if (ct.includes('application/json')) {
     const parsed = JSON.parse(rawBody) as Record<string, unknown>
     const flat: Record<string, string> = {}
-    for (const [k, v] of Object.entries(parsed)) {
-      if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
-        for (const [k2, v2] of Object.entries(v as Record<string, unknown>)) {
-          flat[k2] = v2 === undefined || v2 === null ? '' : String(v2)
+    function visit(value: unknown, path: string): void {
+      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+          visit(child, path ? `${path}.${key}` : key)
         }
-      } else {
-        flat[k] = v === undefined || v === null ? '' : String(v)
+        return
       }
+      flat[path] = value === undefined || value === null ? '' : String(value)
     }
+    visit(parsed, '')
     return flat
   }
   return Object.fromEntries(new URLSearchParams(rawBody))

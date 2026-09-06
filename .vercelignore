@@ -1,0 +1,8 @@
+video-assets/
+.audit/
+.next/
+node_modules/
+coverage/
+.env*
+*.tsbuildinfo
+.tmp-cardcom-*

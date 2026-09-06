@@ -64,7 +64,12 @@ export interface RegistryEntry {
    */
   parseWebhookBody(
     body: Record<string, string>
-  ): { reference: string; isSuccess: boolean } | null
+  ): {
+    reference: string
+    isSuccess: boolean
+    amount?: number
+    merchantReference?: string
+  } | null
 
   /**
    * When present, must return true before the webhook mutates DB state.
@@ -94,6 +99,7 @@ export interface RegistryEntry {
 
 const cardcomEntry: RegistryEntry = {
   id: 'cardcom',
+  acceptsWebhookSettlement: true,
 
   validateConfig(data) {
     const schema = z.object({
@@ -117,8 +123,8 @@ const cardcomEntry: RegistryEntry = {
   },
 
   parseWebhookBody(body) {
-    // Cardcom sends: lowProfileCode (= reference), ResponseCode (0 = success)
-    const reference = body.lowProfileCode ?? body.LowProfileCode
+    // V11 sends LowProfileId; keep the V10 name for existing terminals.
+    const reference = body.LowProfileId ?? body.lowProfileId ?? body.lowProfileCode ?? body.LowProfileCode
     const responseCode = body.ResponseCode ?? body.responseCode
     if (!reference) return null
     return { reference, isSuccess: responseCode === '0' }
@@ -129,6 +135,7 @@ const cardcomEntry: RegistryEntry = {
 
 const payPlusEntry: RegistryEntry = {
   id: 'payplus',
+  acceptsWebhookSettlement: true,
 
   validateConfig(data) {
     const schema = z.object({
@@ -152,11 +159,21 @@ const payPlusEntry: RegistryEntry = {
   },
 
   parseWebhookBody(body) {
-    // PayPlus sends: page_request_uid (= reference), status ("success" | "failure")
-    const reference = body.page_request_uid
-    const status = body.status
+    // The callback contract calls this payment_request_uid; older GenerateLink
+    // examples used page_request_uid, so accept both during the transition.
+    const reference = body.payment_request_uid ?? body.page_request_uid
+    const status = (body.status ?? '').toLowerCase()
+    const transactionType = (body.transaction_type ?? body.type ?? '').toLowerCase()
+    const chargeMethod = body.charge_method
     if (!reference) return null
-    return { reference, isSuccess: status === 'success' }
+    const explicitlyFailed = ['failure', 'failed', 'declined', 'cancelled', 'canceled'].includes(status)
+    const isRefund = transactionType.includes('refund') || chargeMethod === '4'
+    // By default PayPlus sends this callback only for successful transactions.
+    // Its authenticated hash is what makes that provider statement trustworthy.
+    const amount = Number(body.amount)
+    const merchantReference = body.more_info
+    if (!Number.isFinite(amount) || amount <= 0 || !merchantReference) return null
+    return { reference, isSuccess: !explicitlyFailed && !isRefund, amount, merchantReference }
   },
 }
 
@@ -276,6 +293,7 @@ const payboxEntry: RegistryEntry = {
 
 const stripeEntry: RegistryEntry = {
   id: 'stripe',
+  acceptsWebhookSettlement: true,
 
   validateConfig(data) {
     const schema = z.object({
@@ -298,39 +316,30 @@ const stripeEntry: RegistryEntry = {
     })
   },
 
-  // Stripe signature verification requires the per-org webhookSecret from the
-  // encrypted payment config. Full async verification is not possible in this
-  // sync interface — the event is instead validated by its type and structure.
-  // TODO: Implement per-org async webhook verification in a future sprint.
-  verifyWebhookRequest(_headers, _rawBody) {
-    return true
-  },
-
   parseWebhookBody(body) {
     // Stripe sends JSON events. We look for checkout.session.completed.
     // The reference is the Checkout Session ID stored in charges.payment_reference.
     const type = body.type
     if (type !== 'checkout.session.completed') return null
 
-    const sessionId =
-      body.id ||                    // top-level event id (not session id)
-      body['data.object.id'] ||     // after flatten
-      body.session_id
+    const sessionId = body['data.object.id'] || body.session_id
 
-    // After webhookBodyFromPayload flattening, checkout.session fields land at top level
-    const reference = sessionId ?? body.client_reference_id
+    // webhookBodyFromPayload preserves the nested path as dotted keys.
+    const reference = sessionId
     if (!reference) return null
 
-    const paymentStatus = (body.payment_status ?? '').toLowerCase()
+    const paymentStatus = (
+      body['data.object.payment_status'] ?? body.payment_status ?? ''
+    ).toLowerCase()
     const isSuccess = paymentStatus === 'paid' || paymentStatus === 'complete'
 
     if (!isSuccess) return null
 
-    // Use client_reference_id (= chargeId) as the reconciliation key if present,
-    // otherwise fall back to the session ID stored in charges.payment_reference
-    const reconciliationRef = body.client_reference_id || reference
-
-    return { reference: reconciliationRef, isSuccess: true }
+    const amountMinor = Number(body['data.object.amount_total'])
+    const merchantReference =
+      body['data.object.client_reference_id'] ?? body['data.object.metadata.charge_id']
+    if (!Number.isFinite(amountMinor) || amountMinor <= 0 || !merchantReference) return null
+    return { reference, isSuccess: true, amount: amountMinor / 100, merchantReference }
   },
 }
 

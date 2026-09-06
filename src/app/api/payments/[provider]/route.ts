@@ -65,17 +65,12 @@ export async function POST(
   // A payment reference identifies a checkout; it does not prove payment.
   // Fail closed for providers whose generic callback is not cryptographically
   // authenticated. They must use a server-confirmed or API-key settlement path.
-  if (!entry.acceptsWebhookSettlement || !entry.verifyWebhookRequest) {
+  if (!entry.acceptsWebhookSettlement) {
     console.error('[payments/webhook] Provider has no authenticated settlement path', { provider })
     return NextResponse.json({ ok: false }, { status: 200 })
   }
 
   const rawBody = await req.text()
-
-  if (!entry.verifyWebhookRequest(req.headers, rawBody)) {
-    console.error('[payments/webhook] Webhook verification failed', { provider })
-    return NextResponse.json({ ok: false }, { status: 200 })
-  }
 
   let body: Record<string, string>
   try {
@@ -149,6 +144,63 @@ export async function POST(
     return NextResponse.json({ ok: false }, { status: 200 })
   }
 
+  // Resolve the org's encrypted provider credentials only after the untrusted
+  // reference has identified an org. The callback body is not authoritative.
+  let adapter: Awaited<ReturnType<typeof getPaymentProvider>>['provider']
+  try {
+    adapter = (await getPaymentProvider(charges[0]!.organization_id)).provider
+  } catch (err) {
+    console.error('[payments/webhook] Failed to resolve payment adapter', { provider, err })
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
+
+  const { data: paymentRequest } = await db
+    .from('payment_requests')
+    .select('id')
+    .eq('payment_reference', paymentReference)
+    .maybeSingle()
+  const merchantReferences = charges.map((charge) => charge.id as string)
+  if (paymentRequest?.id) merchantReferences.push(paymentRequest.id as string)
+  const expectedAmount = charges.reduce((sum, charge) => sum + Number(charge.amount), 0)
+
+  if ((provider === 'stripe' || provider === 'payplus') && (
+    parsed.amount === undefined ||
+    Math.round(parsed.amount * 100) !== Math.round(expectedAmount * 100) ||
+    !parsed.merchantReference ||
+    !merchantReferences.includes(parsed.merchantReference)
+  )) {
+    console.error('[payments/webhook] Authenticated event does not match checkout', {
+      provider,
+      paymentReference,
+    })
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
+
+  const requestVerified = adapter.verifyWebhookRequest
+    ? adapter.verifyWebhookRequest(req.headers, rawBody)
+    : entry.verifyWebhookRequest
+      ? entry.verifyWebhookRequest(req.headers, rawBody)
+      : false
+
+  const providerConfirmed = adapter.confirmTransaction
+    ? await adapter.confirmTransaction({
+        reference: paymentReference,
+        expectedAmount,
+        chargeIds: merchantReferences,
+      }).catch((err) => {
+        console.error('[payments/webhook] Server confirmation failed', { provider, err })
+        return false
+      })
+    : false
+
+  if (!requestVerified && !providerConfirmed) {
+    console.error('[payments/webhook] Webhook authenticity/transaction verification failed', {
+      provider,
+      paymentReference,
+    })
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
+
   // ── Mark pending charges as paid (idempotent) ─────────────────────────────
 
   const chargeIds = charges.map(c => c.id)
@@ -172,6 +224,33 @@ export async function POST(
     if (status !== 'pending' && status !== 'invoiced') continue
 
     const outstanding = Math.max(0, Number(charge.amount) - Number(charge.amount_paid ?? 0))
+
+    if (outstanding > 0) {
+      const { error: paymentError } = await db.from('charge_payments').upsert({
+        organization_id: charge.organization_id,
+        charge_id: charge.id,
+        parent_id: (charge.parent_id as string | null) ?? null,
+        amount: outstanding,
+        method: 'provider',
+        paid_at: now,
+        notes: `${provider}:${paymentReference}`,
+        provider_reference: paymentReference,
+      }, {
+        onConflict: 'charge_id,provider_reference',
+        ignoreDuplicates: true,
+      })
+
+      if (paymentError) {
+        updateFailed = true
+        console.error('[payments/webhook] Failed to record payment row', {
+          provider,
+          orgId,
+          chargeId: charge.id,
+          error: paymentError.message,
+        })
+        continue
+      }
+    }
 
     const { data: updated, error: updateError } = await db
       .from('charges')
@@ -198,26 +277,7 @@ export async function POST(
       continue
     }
 
-    if (!updated || outstanding <= 0) continue
-
-    const { error: paymentError } = await db.from('charge_payments').insert({
-      organization_id: charge.organization_id,
-      charge_id: charge.id,
-      parent_id: (charge.parent_id as string | null) ?? null,
-      amount: outstanding,
-      method: 'provider',
-      paid_at: now,
-      notes: `${provider}:${paymentReference}`,
-    })
-
-    if (paymentError) {
-      console.error('[payments/webhook] Failed to record payment row', {
-        provider,
-        orgId,
-        chargeId: charge.id,
-        error: paymentError.message,
-      })
-    }
+    if (!updated) continue
   }
 
   if (updateFailed) {

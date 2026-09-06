@@ -27,6 +27,7 @@ import { issueReceiptForCharge } from './issueReceiptForCharge'
 
 /** A paid, not-yet-receipted charge whose org carries the given receipt_mode. */
 function makeDb(receiptMode: string | null) {
+  let claimed = false
   const charge = {
     id: 'charge-1',
     amount: 100,
@@ -49,10 +50,19 @@ function makeDb(receiptMode: string | null) {
     },
   }
 
-  const updateSelect = vi.fn().mockResolvedValue({ data: [{ id: 'charge-1' }], error: null })
-  const update = vi.fn(() => ({
-    eq: vi.fn(() => ({ is: vi.fn(() => ({ select: updateSelect })) })),
-  }))
+  const update = vi.fn((values: Record<string, unknown>) => {
+    const isClaim = Object.keys(values).length === 1 && values.receipt_issued_at !== null
+    const chain: Record<string, unknown> = {}
+    chain.eq = vi.fn(() => chain)
+    chain.is = vi.fn(() => chain)
+    chain.select = vi.fn(async () => {
+      if (isClaim && claimed) return { data: [], error: null }
+      if (isClaim) claimed = true
+      return { data: [{ id: 'charge-1' }], error: null }
+    })
+    chain.then = (resolve: (value: unknown) => unknown) => resolve({ data: null, error: null })
+    return chain
+  })
 
   const select = vi.fn(() => ({
     eq: vi.fn(() => ({
@@ -113,6 +123,18 @@ describe('issueReceiptForCharge — who issues the document', () => {
     const result = await issueReceiptForCharge('charge-1', 'org-1')
 
     expect(result).toBe('https://doc')
+    expect(mockIssueReceipt).toHaveBeenCalledOnce()
+  })
+
+  it('claims before the provider call so concurrent callbacks issue only once', async () => {
+    mockCreateServiceRoleClient.mockReturnValue(makeDb('external'))
+
+    const [first, second] = await Promise.all([
+      issueReceiptForCharge('charge-1', 'org-1'),
+      issueReceiptForCharge('charge-1', 'org-1'),
+    ])
+
+    expect([first, second].filter(Boolean)).toEqual(['https://doc'])
     expect(mockIssueReceipt).toHaveBeenCalledOnce()
   })
 })

@@ -27,6 +27,16 @@ export interface PaymentProvider {
     payer?: PaymentPayer
   }): Promise<{ url: string; reference: string }>
 
+  /** Verify a provider-authenticated callback using this org's credentials. */
+  verifyWebhookRequest?(headers: Headers, rawBody: string): boolean
+
+  /** Confirm an unauthenticated callback with the provider before mutation. */
+  confirmTransaction?(params: {
+    reference: string
+    expectedAmount: number
+    chargeIds: string[]
+  }): Promise<boolean>
+
   /**
    * Optional: called by the webhook route after a payment has been reconciled,
    * for providers that require the merchant to confirm receipt of the

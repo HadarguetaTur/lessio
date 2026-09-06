@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { ArrowLeft } from 'lucide-react'
 import {
@@ -80,6 +80,22 @@ export function AvailabilityCalendar({
 
   const timezone = summary?.timezone ?? 'UTC'
 
+  // The calendar opens on the current week (or ?week=), which for a busy
+  // teacher is often already spent — every day full or the week quota-capped —
+  // so all seven days render "no availability" and the screen reads as "the
+  // teacher is never available". Until the first bookable week is shown, an
+  // empty summary silently advances to the next week (the loading state stays
+  // up in between). The cap keeps a teacher with no availability at all from
+  // sending the calendar months ahead: when it runs out the view returns to
+  // the home week. Cleared on the first bookable week and on manual
+  // navigation, so paging through empty weeks by hand never yanks the user
+  // elsewhere. Mirrors PortalBookingFlow; homeWeek starts null because without
+  // ?week= the client only learns the week start from the first response.
+  const autoAdvance = useRef<{ weeksLeft: number; homeWeek: string | null } | null>({
+    weeksLeft: 8,
+    homeWeek: initialWeekStart ?? null,
+  })
+
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true)
     setSummaryError(false)
@@ -93,6 +109,25 @@ export function AvailabilityCalendar({
       )
 
       if (result.success) {
+        const bookable =
+          !result.data.quotaExceeded &&
+          result.data.days.some((day) => day.freeIntervals.length > 0)
+        const scan = autoAdvance.current
+        if (scan && !bookable) {
+          if (scan.homeWeek === null) scan.homeWeek = result.data.weekStart
+          if (scan.weeksLeft > 0) {
+            scan.weeksLeft -= 1
+            setWeekStart(addDays(result.data.weekStart, 7))
+            return // still scanning — leave the loading state up
+          }
+          autoAdvance.current = null
+          if (scan.homeWeek !== result.data.weekStart) {
+            setWeekStart(scan.homeWeek ?? undefined) // nothing found — come back to the real week
+            return
+          }
+        } else {
+          autoAdvance.current = null
+        }
         // Deliberately NOT syncing weekStart state from the result: doing so
         // recreates this callback and re-fires the mount effect, doubling every
         // summary load. Navigation always sets weekStart explicitly.
@@ -101,13 +136,14 @@ export function AvailabilityCalendar({
         onError('token_expired')
         return
       } else {
+        autoAdvance.current = null
         setSummaryError(true)
       }
     } catch {
+      autoAdvance.current = null
       setSummaryError(true)
-    } finally {
-      setSummaryLoading(false)
     }
+    setSummaryLoading(false)
   }, [durationMinutes, onError, teacherId, token, weekStart])
 
   const loadSlotsForDate = useCallback(
@@ -223,6 +259,7 @@ export function AvailabilityCalendar({
   function handleWeekChange(delta: number) {
     if (!summary || activeLock) return
 
+    autoAdvance.current = null
     const nextWeekStart = addDays(summary.weekStart, delta * 7)
     setWeekStart(nextWeekStart)
     setSelectedDate(null)

@@ -3,6 +3,8 @@ import {
   SETTINGS_NAV,
   ACCOUNT_NAV,
   SETTINGS_GROUPS,
+  CONNECTIONS_HUB,
+  settingsGroupFor,
   REPORTS_NAV,
   MAIN_NAV,
   SEARCHABLE_PAGES,
@@ -343,5 +345,65 @@ describe('settings groups', () => {
       sectionHref: '/settings',
       pageKey: 'settingsGroups.billing',
     })
+  })
+
+  it('keeps privacy under business and only true connections in the connections group', () => {
+    const business = SETTINGS_GROUPS.find((g) => g.id === 'business')!
+    expect(business.items.map((i) => i.href)).toContain('/settings/privacy')
+    const connections = SETTINGS_GROUPS.find((g) => g.id === 'connections')!
+    expect(connections.items.map((i) => i.href)).toEqual([
+      '/settings/calendar',
+      '/settings/integrations',
+    ])
+    expect(settingsGroupFor('/settings/privacy')?.id).toBe('business')
+  })
+})
+
+describe('connections hub', () => {
+  const hubEntries = CONNECTIONS_HUB.flatMap((section) => section.items)
+
+  it('references only real settings routes, each exactly once', () => {
+    const hrefs = hubEntries.map((item) => item.entry.href)
+    expect(new Set(hrefs).size).toBe(hrefs.length)
+    const settingsHrefs = new Set(SETTINGS_NAV.map((entry) => entry.href))
+    for (const href of hrefs) expect(settingsHrefs.has(href), href).toBe(true)
+    expect(new Set(hrefs)).toEqual(
+      new Set([
+        '/settings/payment',
+        '/settings/receipts',
+        '/settings/whatsapp',
+        '/settings/email',
+        '/settings/ai-assistant',
+        '/settings/calendar',
+        '/settings/integrations',
+      ])
+    )
+  })
+
+  it('inherits role and plan gating from the referenced entries', () => {
+    const features = {
+      whatsapp_automation: false,
+      ai_assistant: false,
+      full_reports: false,
+      leads: true,
+      homework: true,
+      parent_portal: true,
+      integrations: false,
+      data_retention: false,
+    }
+    const visible = filterNav(hubEntries.map((i) => i.entry), 'owner', features).map(
+      (e) => e.href
+    )
+    expect(visible).not.toContain('/settings/whatsapp')
+    expect(visible).not.toContain('/settings/ai-assistant')
+    expect(visible).not.toContain('/settings/integrations')
+    expect(visible).toContain('/settings/payment')
+  })
+
+  it('does not steal tab highlight from the functional groups', () => {
+    // /settings/payment appears on the hub but still belongs to the billing tab.
+    expect(settingsGroupFor('/settings/payment')?.id).toBe('billing')
+    expect(settingsGroupFor('/settings/whatsapp')?.id).toBe('communications')
+    expect(settingsGroupFor('/settings/calendar')?.id).toBe('connections')
   })
 })

@@ -276,7 +276,7 @@
       "business": "העסק",
       "billing": "שיעורים וחיוב",
       "communications": "תקשורת",
-      "connections": "חיבורים ופרטיות"
+      "connections": "חיבורים"
     },
     "dashboard": "לוח הבקרה",
     "students": "תלמידים",
@@ -1445,7 +1445,7 @@
     "title": "הגדרות",
     "groups": {
       "business": {
-        "description": "הפרטים הבסיסיים של העסק וכללי הפעילות השוטפת"
+        "description": "הפרטים הבסיסיים של העסק, כללי הפעילות ושמירת נתונים"
       },
       "billing": {
         "description": "מה הלקוחות משלמים, איך מחייבים אותם ואילו מסמכים הם מקבלים"
@@ -1454,7 +1454,22 @@
         "description": "הודעות, תזכורות ואוטומציות מול תלמידים והורים"
       },
       "connections": {
-        "description": "שירותים חיצוניים, הרשאות ושמירת נתוני העסק"
+        "description": "כל החיבורים לשירותים חיצוניים — סליקה, קבלות, וואטסאפ, מייל, יומן ו-API — במקום אחד"
+      }
+    },
+    "connectionsHub": {
+      "sections": {
+        "payments": "תשלומים וסליקה",
+        "communication": "תקשורת",
+        "calendar": "יומן",
+        "automation": "אוטומציה ו-API"
+      },
+      "status": {
+        "connected": "מחובר",
+        "configured": "מוגדר",
+        "notConnected": "לא מחובר",
+        "viaPaymentProvider": "דרך ספק הסליקה",
+        "apiKeys": "{count, plural, one {מפתח פעיל אחד} other {# מפתחות פעילים}}"
       }
     },
     "cardHint": "פתחו את ההגדרה כדי לעדכן את התצורה הרלוונטית.",
@@ -1532,7 +1547,7 @@
         "description": "אילו סוגי שיעורים מכוסים על ידי מנוי חודשי"
       },
       "integrations": {
-        "description": "מפתחות API לחיבור Make, n8n וClaude"
+        "description": "מפתחות API שמאפשרים ל-Make, n8n ו-Claude לקרוא ולעדכן נתונים — לא כאן מגדירים סליקה דרך Make"
       }
     },
     "businessProfile": {
@@ -2518,7 +2533,7 @@
         "authLabel": "כותרת אימות",
         "testLabel": "בדיקה מהירה",
         "rateLimit": "מגבלה: 120 בקשות לדקה לכל מפתח.",
-        "paymentLink": "הגדרת סליקה דרך Make או n8n"
+        "paymentLink": "רוצים לקבל קישורי תשלום דרך Make או n8n? זה מוגדר בעמוד סליקה מלקוחות"
       },
       "activityTitle": "פעילות אחרונה",
       "activitySubtitle": "20 הקריאות האחרונות ל-API. שימושי לאיתור תקלות בתרחיש.",

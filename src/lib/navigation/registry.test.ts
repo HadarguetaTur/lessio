@@ -347,15 +347,35 @@ describe('settings groups', () => {
     })
   })
 
-  it('keeps privacy under business and only true connections in the connections group', () => {
+  it('gives every external connection exactly one home: the connections group', () => {
     const business = SETTINGS_GROUPS.find((g) => g.id === 'business')!
     expect(business.items.map((i) => i.href)).toContain('/settings/privacy')
+    expect(settingsGroupFor('/settings/privacy')?.id).toBe('business')
+
+    const billing = SETTINGS_GROUPS.find((g) => g.id === 'billing')!
+    expect(billing.items.map((i) => i.href)).toEqual([
+      '/settings/pricing',
+      '/settings/billing-policy',
+      '/settings/cancellation-policy',
+    ])
+    const communications = SETTINGS_GROUPS.find((g) => g.id === 'communications')!
+    expect(communications.items.map((i) => i.href)).toEqual([
+      '/settings/message-templates',
+      '/settings/reminders',
+      '/settings/parent-portal',
+    ])
     const connections = SETTINGS_GROUPS.find((g) => g.id === 'connections')!
     expect(connections.items.map((i) => i.href)).toEqual([
+      '/settings/payment',
+      '/settings/receipts',
+      '/settings/whatsapp',
+      '/settings/email',
+      '/settings/ai-assistant',
       '/settings/calendar',
       '/settings/integrations',
     ])
-    expect(settingsGroupFor('/settings/privacy')?.id).toBe('business')
+    expect(settingsGroupFor('/settings/payment')?.id).toBe('connections')
+    expect(settingsGroupFor('/settings/whatsapp')?.id).toBe('connections')
   })
 })
 
@@ -400,10 +420,10 @@ describe('connections hub', () => {
     expect(visible).toContain('/settings/payment')
   })
 
-  it('does not steal tab highlight from the functional groups', () => {
-    // /settings/payment appears on the hub but still belongs to the billing tab.
-    expect(settingsGroupFor('/settings/payment')?.id).toBe('billing')
-    expect(settingsGroupFor('/settings/whatsapp')?.id).toBe('communications')
-    expect(settingsGroupFor('/settings/calendar')?.id).toBe('connections')
+  it('mirrors the connections group exactly — same pages, no card in two tabs', () => {
+    const connections = SETTINGS_GROUPS.find((g) => g.id === 'connections')!
+    expect(new Set(hubEntries.map((item) => item.entry.href))).toEqual(
+      new Set(connections.items.map((item) => item.href))
+    )
   })
 })

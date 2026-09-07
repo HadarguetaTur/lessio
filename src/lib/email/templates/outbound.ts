@@ -22,7 +22,7 @@ const BLUE = '#2563eb'
 const INK = '#111827'
 const MUTED = '#6b7280'
 const LINE = '#e5e7eb'
-const FONT = 'Arial, Helvetica, sans-serif'
+const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
 
 function button(label: string, url: string, variant: 'primary' | 'secondary'): string {
   const style =
@@ -117,16 +117,16 @@ export function demoEmail(
   if (locale === 'en') {
     const name = vars.firstName ? esc(vars.firstName) : ''
     return {
-      subject: 'Lessio in 75 seconds — the demo you asked for',
+      subject: 'The Lessio demo you asked for, in 75 seconds',
       html: shell({
         locale,
         preheader: 'One parent cancellation, from WhatsApp message to bill, with no manual updates.',
         greeting: name ? `Hi ${name},` : 'Hi,',
         intro:
-          'Thanks for the reply. Rather than a long explanation, here is Lessio doing the one thing every tutoring business fights with: a parent cancelling on WhatsApp, and everything that has to happen after.',
+          'Thanks for replying. Instead of a long explanation, here is Lessio handling the moment every tutoring business knows: a parent cancels a lesson on WhatsApp, and everything that has to happen next happens on its own.',
         videoKicker: 'Watch the demo',
-        videoTitle: 'What happens on WhatsApp updates your business automatically.',
-        videoCta: 'Watch the 75-second demo',
+        videoTitle: 'What happens on WhatsApp updates your business automatically',
+        videoCta: 'Watch, 75 seconds',
         outcomesTitle: 'What you get',
         outcomes: [
           ['Parents run their side on WhatsApp', 'Booking, cancelling, paying and homework, through your own business number. No app to install, no calls to you.'],
@@ -138,35 +138,35 @@ export function demoEmail(
         signupUrl: vars.signupUrl,
         walkthrough: 'Prefer a 15-minute walkthrough on your own schedule first? Just reply to this email with a time that suits you.',
         signoff: 'Hadar<br><span style="color:#6b7280;font-size:14px;">Founder, Lessio</span>',
-        footer: 'You are receiving this because you replied to our email. Reply "remove" and you will not hear from us again.',
+        footer: 'You got this because you replied to our email. Not relevant? Reply "remove" and we will not write again.',
       }),
     }
   }
 
   const name = vars.firstName ? esc(vars.firstName) : ''
   return {
-    subject: 'Lessio ב-75 שניות — הדמו שביקשת',
+    subject: 'הדמו של Lessio שביקשת, ב-75 שניות',
     html: shell({
       locale,
-      preheader: 'ביטול אחד של הורה, מהודעת וואטסאפ ועד החשבון, בלי לעדכן כלום ידנית.',
+      preheader: 'הורה מבטל בוואטסאפ. היומן, החיוב והחשבון מתעדכנים לבד.',
       greeting: name ? `היי ${name},` : 'היי,',
       intro:
-        'תודה על התשובה. במקום הסבר ארוך, הנה Lessio עושה את הדבר האחד שכל עסק הוראה נלחם בו: הורה שמבטל בוואטסאפ, וכל מה שצריך לקרות אחרי זה.',
-      videoKicker: 'צפו בדמו',
-      videoTitle: 'מה שקורה בוואטסאפ, מתעדכן אוטומטית בעסק.',
-      videoCta: 'לצפייה בדמו של 75 שניות',
-      outcomesTitle: 'מה מקבלים',
+        'תודה שענית. במקום הסבר ארוך, הנה Lessio בפעולה על הסיטואציה שכל עסק הוראה מכיר: הורה מבטל שיעור בוואטסאפ, וכל מה שצריך לקרות אחרי זה קורה לבד.',
+      videoKicker: 'דמו קצר',
+      videoTitle: 'מה שקורה בוואטסאפ מתעדכן אוטומטית בעסק',
+      videoCta: 'לצפייה, 75 שניות',
+      outcomesTitle: 'מה זה נותן לך',
       outcomes: [
-        ['ההורים מנהלים את הצד שלהם בוואטסאפ', 'קביעה, ביטול, תשלום ושיעורי בית, דרך המספר העסקי שלך. בלי אפליקציה להתקין, בלי טלפונים אליך.'],
-        ['החשבון נכון בסוף החודש', 'כל שיעור, ביטול וחיוב לפי מדיניות נוחתים על החשבון הנכון. בקשת התשלום יוצאת לבד; הקבלה מופקת אצל ספק החשבונאות שלך.'],
-        ['כל מורה רואה רק את היום שלו', 'יומן אחד, זמינות לכל מורה, והתנגשויות נתפסות לפני שנקבעות. את/ה רואה את כל העסק במסך אחד.'],
+        ['ההורים מסתדרים לבד בוואטסאפ', 'קובעים, מבטלים, משלמים ורואים שיעורי בית מול המספר העסקי שלך. בלי אפליקציה, בלי טלפונים אלייך.'],
+        ['סוף החודש כבר סגור', 'כל שיעור, ביטול וחיוב לפי המדיניות שלך נרשמים על החשבון הנכון. בקשת התשלום יוצאת לבד, והקבלה מופקת אצל ספק החשבונאות שלך.'],
+        ['כל מורה רואה רק את היום שלו', 'יומן אחד לכל הצוות, זמינות לכל מורה, והתנגשויות נתפסות לפני שנקבעות. את רואה את כל העסק במסך אחד.'],
       ],
-      trialLine: '<strong>אפשר לנסות על התלמידים שלך.</strong> 30 יום ניסיון, בלי כרטיס אשראי, והניסיון כולל את מסלול סטודיו המלא.',
+      trialLine: '<strong>הכי פשוט לנסות על התלמידים שלך.</strong> 30 יום ניסיון, בלי כרטיס אשראי, כולל מסלול סטודיו המלא.',
       trialCta: 'התחילו 30 יום ניסיון',
       signupUrl: vars.signupUrl,
-      walkthrough: 'מעדיפים קודם הדרכה קצרה של 15 דקות, בזמן שנוח לכם? פשוט השיבו למייל הזה עם שעה שמתאימה.',
+      walkthrough: 'מעדיפה קודם סיור קצר של 15 דקות איתי? פשוט השיבי למייל הזה עם שעה שנוחה לך.',
       signoff: 'הדר<br><span style="color:#6b7280;font-size:14px;">מייסדת, Lessio</span>',
-      footer: 'המייל הזה הגיע כי השבת למייל שלנו. השיבו "הסר" ולא תשמעו מאיתנו שוב.',
+      footer: 'קיבלת את המייל הזה כי ענית למייל שלנו. לא רלוונטי? השיבי "הסר" ולא נכתוב שוב.',
     }),
   }
 }

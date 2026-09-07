@@ -7,7 +7,7 @@
  * disappears and the punctuation/blank line it would have left is tidied.
  */
 
-import { escapeHtml, wrapEmailHtml } from '@/lib/email/templates/base'
+import { escapeHtml } from '@/lib/email/templates/base'
 import type { Campaign, Prospect } from './types'
 
 export type TemplateVars = Record<string, string | number | null | undefined | Record<string, unknown>>
@@ -64,14 +64,26 @@ export function textToHtml(text: string): string {
   return text
     .split(/\n{2,}/)
     .map((para) => escapeHtml(para).replace(/\n/g, '<br>'))
-    .map((para) => `<p style="margin:0 0 14px;color:#111827;font-size:15px;line-height:1.6;">${para}</p>`)
+    .map((para) => `<p style="margin:0 0 1em;">${para}</p>`)
     .join('')
+}
+
+/**
+ * The cold email must look like a person typed it in Gmail: no card, no
+ * grey backdrop, no logo footer — just paragraphs in the mail client's own
+ * font, with the right direction. `wrapEmailHtml` (the branded card) is for
+ * the demo email that follows a "yes", not for the first touch.
+ */
+export function personalEmailHtml(text: string, locale: 'he' | 'en'): string {
+  const dir = locale === 'he' ? 'rtl' : 'ltr'
+  const align = locale === 'he' ? 'right' : 'left'
+  return `<!DOCTYPE html><html lang="${locale}" dir="${dir}"><head><meta charset="utf-8"></head><body dir="${dir}" style="margin:0;padding:0;"><div dir="${dir}" style="text-align:${align};font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#111827;">${textToHtml(text)}</div></body></html>`
 }
 
 export function renderCampaignMessage(campaign: Campaign, prospect: Prospect): RenderedMessage {
   const vars = prospectVars(prospect)
   const subject = renderTemplate(campaign.subject, vars).replace(/\s*\n+\s*/g, ' ')
   const bodyText = renderTemplate(campaign.body_text, vars)
-  const bodyHtml = wrapEmailHtml(textToHtml(bodyText), prospect.locale ?? campaign.locale)
+  const bodyHtml = personalEmailHtml(bodyText, prospect.locale ?? campaign.locale)
   return { subject, bodyText, bodyHtml }
 }

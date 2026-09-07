@@ -18,6 +18,7 @@ export type AdminAuditAction =
   | 'org.update'
   | 'org.export'
   | 'org.deletion_request'
+  | 'org.delete'
   | 'subscription.change_plan'
   | 'subscription.extend_trial'
   | 'subscription.set_status'

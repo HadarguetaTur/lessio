@@ -3178,7 +3178,37 @@
           "landingPath": "Landing page"
         }
       },
-      "count": "{count} organizations"
+      "count": "{count} organizations",
+      "danger": {
+        "title": "Delete this organization permanently",
+        "description": "Removes the organization and everything it owns from the database: teachers, students, parents, lessons, charges, payments, WhatsApp messages, stored files and the staff login accounts. There is no backup and no undo.",
+        "hint": "Consider downloading a data export first (button above). The platform audit log is kept, with a record of this deletion.",
+        "button": "Delete organization permanently",
+        "counts": {
+          "teachers": "{count} teachers",
+          "students": "{count} students",
+          "parents": "{count} parents",
+          "lessons": "{count} lessons",
+          "users": "{count} staff users"
+        },
+        "dialog": {
+          "title": "Delete {name} permanently?",
+          "description": "This wipes all of the organization’s data from the database, its stored files and its staff login accounts. It cannot be recovered afterwards.",
+          "typeSlug": "To continue, type the organization’s slug: <slug></slug>",
+          "cancel": "Cancel",
+          "confirm": "Yes, delete permanently",
+          "deleting": "Deleting…"
+        },
+        "toast": {
+          "done": "{name} deleted. {rows} rows removed.",
+          "partial": "{name} deleted, but {count} login accounts could not be removed. Check the server log."
+        },
+        "errors": {
+          "confirmationMismatch": "The slug you typed does not match this organization.",
+          "notFound": "This organization no longer exists.",
+          "inSupportMode": "You cannot delete an organization while in support mode for it. Exit support mode first."
+        }
+      }
     },
     "billing": {
       "title": "Billing",

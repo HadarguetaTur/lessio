@@ -49,7 +49,7 @@ describe('the capability matrix', () => {
   })
 
   it('lets only superadmin manage staff or touch a tenant record', () => {
-    for (const cap of ['staff.manage', 'orgs.write', 'orgs.export'] as PlatformCapability[]) {
+    for (const cap of ['staff.manage', 'orgs.write', 'orgs.export', 'orgs.delete'] as PlatformCapability[]) {
       const allowed = PLATFORM_ROLES.filter((r) => hasCapability(ROLE_CAPABILITIES[r], cap))
       expect(allowed).toEqual(['superadmin'])
     }

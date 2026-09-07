@@ -162,7 +162,10 @@ export async function proxy(request: NextRequest) {
     // holds (src/lib/cron/auth.ts). They run in Next.js because this runtime
     // owns the billing and payment-provider adapters.
     request.nextUrl.pathname.startsWith('/api/internal/lessons/auto-complete') ||
-    request.nextUrl.pathname.startsWith('/api/internal/saas/')
+    request.nextUrl.pathname.startsWith('/api/internal/saas/') ||
+    // Outbound engine crons (send run, reply poll). Same bearer scheme as the
+    // other cron routes; never a Supabase session.
+    request.nextUrl.pathname.startsWith('/api/internal/outbound/')
   ) {
     // Bypassed routes are still real landing surfaces for a campaign, so they
     // get the attribution cookie too — just not the Supabase session round-trip.

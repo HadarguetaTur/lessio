@@ -573,6 +573,61 @@ but they still render their schedule as `undefined`.
 
 ---
 
+## Outbound acquisition engine V1 (2026-09-07)
+
+**Status:** Built (migration `20260907120000` applied locally, not yet in production)
+**Track:** standalone; pulls the `platform_leads` table forward from Sprint 34 M3
+**Setup:** `docs/outbound-gmail-setup.md`
+
+Lessio had no cold-lead path at all. This adds the minimum for
+**CSV → first email → reply "כן" → Lead → demo email**, with every piece of
+state and copy inside Lessio. The transport is Lessio too (decision #40): a
+Google service account with domain-wide delegation sends as each outreach
+mailbox and reads its inbox for replies. No Make/n8n layer. Several mailboxes
+share the load under per-mailbox daily caps (`outbound_mailboxes`).
+
+Tables: `outbound_campaigns` (the copy, with `{{first_name}}` /
+`{{personal_line}}` / `{{metadata.*}}` placeholders — personalisation comes in
+with the CSV, not from AI), `outbound_prospects` (the queue; one row per
+address globally; the status column is the state machine in
+`src/lib/outbound/transitions.ts`), `outbound_messages` (every send and reply,
+unique on the transport's message id so a retried POST is a no-op),
+`outbound_suppressions` (global do-not-email, checked at import, at claim and
+on manual add), and `platform_leads` + `platform_lead_events` created with M3's
+exact names and a column subset so M3 only adds. `claim_next_outbound_prospects`
+claims a batch under `FOR UPDATE SKIP LOCKED` with a 30-minute lease, so a send
+run that dies mid-send heals itself.
+
+Crons (`/api/internal/outbound/{run-send,run-replies}`, bearer digest in
+`LESSIO_OUTBOUND_CRON_SECRET_SHA256`): `run-send` (every 10 min, Sun–Thu
+working hours, re-checked in code) claims up to 5, sends each from the mailbox
+with the most room today with a 20–60 s pause between, and marks sent or
+requeues (three failures → `failed`); `run-replies` (every 5 min) reads each
+mailbox's inbox since its last poll and matches by from-address (thread /
+In-Reply-To as a fallback), classifies with a deterministic bilingual keyword scorer
+(quoted text stripped first; positive and negative scored independently so
+"לא רע בכלל, אשמח" never lands in suppression — ambiguity is `unknown` for a
+human to read), moves the prospect, and on `interested` upserts the lead and
+sends the demo email once through Resend.
+
+UI: `/admin/outbound` (four counters, the mailbox pool with a test send,
+campaign copy, CSV upload, suppression box, prospects, latest replies) and a
+read-only `/admin/leads`.
+
+**Phase B (deliberately not built):** lead status controls and
+`prospect → converted`, nav count badge, requeue action, campaign list polish,
+reply-rate math, `docs/schema.md` / decision entry. Once the flow has run on
+two real addresses, real prospects go in before any of this.
+
+**Ops outstanding:** apply migrations `20260907120000` and `20260907140000`
+to production; create the service account and delegate it (setup doc §1–2);
+reactivate the suspended outreach users in the Workspace; set
+`GOOGLE_SA_CLIENT_EMAIL`, `GOOGLE_SA_PRIVATE_KEY` and
+`LESSIO_OUTBOUND_CRON_SECRET_SHA256` in Vercel; re-run `scripts/setup-crons.sql`;
+walk the first-run checklist (setup doc §6).
+
+---
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

@@ -3050,7 +3050,8 @@
         "platform_viewer": "צפייה בלבד"
       },
       "openNavigation": "פתיחת ניווט",
-      "staff": "צוות"
+      "staff": "צוות",
+      "outbound": "אאוטבאונד"
     },
     "saasInquiries": {
       "title": "פניות תוכנית מותאמת",
@@ -3178,7 +3179,37 @@
           "landingPath": "דף נחיתה"
         }
       },
-      "count": "{count} ארגונים"
+      "count": "{count} ארגונים",
+      "danger": {
+        "title": "מחיקת הארגון לצמיתות",
+        "description": "מוחק את הארגון ואת כל מה ששייך לו מהמסד: מורים, תלמידים, הורים, שיעורים, חיובים, תשלומים, הודעות וואטסאפ, קבצים ב-Storage ומשתמשי ההתחברות של הצוות. אין גיבוי ואין ביטול.",
+        "hint": "לפני מחיקה שווה להוריד ייצוא של הנתונים (הכפתור למעלה). יומן הפעולות של הפלטפורמה נשאר, עם רישום של המחיקה.",
+        "button": "מחק ארגון לצמיתות",
+        "counts": {
+          "teachers": "{count} מורים",
+          "students": "{count} תלמידים",
+          "parents": "{count} הורים",
+          "lessons": "{count} שיעורים",
+          "users": "{count} משתמשי צוות"
+        },
+        "dialog": {
+          "title": "למחוק את {name} לצמיתות?",
+          "description": "הפעולה תמחק את כל הנתונים של הארגון מהמסד, את הקבצים שלו ואת חשבונות ההתחברות של הצוות. אי אפשר לשחזר אחרי זה.",
+          "typeSlug": "להמשך, הקלד את ה-slug של הארגון: <slug></slug>",
+          "cancel": "ביטול",
+          "confirm": "כן, מחק לצמיתות",
+          "deleting": "מוחק..."
+        },
+        "toast": {
+          "done": "{name} נמחק. {rows} רשומות הוסרו.",
+          "partial": "{name} נמחק, אבל {count} משתמשי התחברות לא נמחקו. ראה לוג השרת."
+        },
+        "errors": {
+          "confirmationMismatch": "ה-slug שהוקלד לא תואם לארגון.",
+          "notFound": "הארגון כבר לא קיים.",
+          "inSupportMode": "אי אפשר למחוק ארגון בזמן שאתה במצב תמיכה עבורו. צא ממצב תמיכה קודם."
+        }
+      }
     },
     "billing": {
       "title": "בילינג",
@@ -3553,6 +3584,141 @@
         "INVALID_INPUT": "בדוק את הספק, השם והמזהה.",
         "PROVIDER_ALREADY_ENABLED": "כבר קיים יעד מופעל לספק הזה.",
         "MISSING_ENCRYPTION_KEY": "המשתנה TRACKING_CONFIG_ENCRYPTION_KEY לא מוגדר בשרת."
+      }
+    },
+    "outbound": {
+      "title": "אאוטבאונד",
+      "description": "מיילים קרים ללקוחות פוטנציאליים. הקופי, התור והתשובות חיים כאן; השליחה והקריאה נעשות ישירות מתיבות ה-Workspace.",
+      "saved": "נשמר",
+      "save": "שמירה",
+      "stats": {
+        "queued": "בתור",
+        "sent7d": "נשלחו, 7 ימים",
+        "replies7d": "תשובות, 7 ימים",
+        "interested7d": "מעוניינים, 7 ימים"
+      },
+      "campaign": {
+        "add": "קמפיין חדש",
+        "name": "שם",
+        "locale": "שפה",
+        "subject": "נושא",
+        "body": "גוף ההודעה (טקסט)",
+        "placeholders": "Placeholders",
+        "isActive": "פעיל — לקוחות פוטנציאליים של הקמפיין הזה נשלחים במחזור הבא",
+        "active": "פעיל",
+        "paused": "מושהה"
+      },
+      "import": {
+        "title": "ייבוא לקוחות פוטנציאליים (CSV)",
+        "description": "כתובת אימייל אחת = לקוח פוטנציאלי אחד, גלובלית. כתובות שכבר מוכרות או חסומות מדולגות.",
+        "campaign": "קמפיין",
+        "file": "קובץ CSV",
+        "columns": "עמודות: email (חובה), first_name, last_name, company, phone, locale, personal_line, subject_area, source_url. כל עמודה אחרת נשמרת כ-metadata.",
+        "needCampaign": "קודם יוצרים קמפיין.",
+        "submit": "ייבוא",
+        "result": "{inserted} בתור · {suppressed} חסומים · {duplicates} כבר מוכרים · {invalid} לא תקינים"
+      },
+      "suppression": {
+        "title": "רשימת אל-תשלחו",
+        "description": "גלובלית. כתובת שנמצאת כאן לא תקבל מייל משום קמפיין; לקוחות פוטנציאליים בתור עם הכתובת הזו מוצאים מהתור.",
+        "email": "כתובת אימייל",
+        "add": "חסימה"
+      },
+      "prospects": {
+        "title": "לקוחות פוטנציאליים",
+        "filter": "סינון לפי סטטוס",
+        "all": "הכול"
+      },
+      "replies": {
+        "title": "תשובות אחרונות"
+      },
+      "columns": {
+        "email": "אימייל",
+        "name": "שם",
+        "company": "עסק",
+        "campaign": "קמפיין",
+        "status": "סטטוס",
+        "sentAt": "נשלח",
+        "reply": "תשובה אחרונה",
+        "when": "מתי",
+        "from": "מאת",
+        "classification": "סיווג",
+        "snippet": "טקסט"
+      },
+      "status": {
+        "queued": "בתור",
+        "claimed": "נלקח",
+        "sent": "נשלח",
+        "failed": "נכשל",
+        "replied": "השיב/ה",
+        "interested": "מעוניין/ת",
+        "not_interested": "לא מעוניין/ת",
+        "unsubscribed": "ביקש/ה הסרה",
+        "bounced": "חזר",
+        "suppressed": "חסום",
+        "converted": "הומר"
+      },
+      "classification": {
+        "interested": "מעוניין/ת",
+        "not_interested": "לא מעוניין/ת",
+        "unsubscribe": "הסרה",
+        "auto_reply": "מענה אוטומטי",
+        "bounce": "חזר",
+        "unknown": "דורש מבט",
+        "unmatched": "ללא התאמה"
+      },
+      "errors": {
+        "INVALID_INPUT": "בדקו את השדות.",
+        "NO_FILE": "בחרו קובץ CSV.",
+        "FILE_TOO_LARGE": "הקובץ גדול מ-5 MB.",
+        "NOT_CSV": "נתמכים רק קובצי .csv.",
+        "IMPORT_FAILED": "הייבוא נכשל. בדקו את הקובץ ונסו שוב.",
+        "SAVE_FAILED": "השמירה נכשלה.",
+        "NOT_FOUND": "לא נמצא.",
+        "INVALID_EMAIL": "זו לא כתובת אימייל.",
+        "DUPLICATE": "התיבה כבר קיימת.",
+        "SA_NOT_CONFIGURED": "חשבון השירות של גוגל לא מוגדר בסביבה.",
+        "TEST_SEND_FAILED": "השליחה נכשלה."
+      },
+      "mailboxes": {
+        "title": "תיבות שליחה",
+        "description": "כתובות ב-Google Workspace שהמנוע שולח מהן ומהן קורא תשובות. הסבב יומי: התיבה עם הכי הרבה מקום היום שולחת ראשונה.",
+        "notConfigured": "חשבון השירות של גוגל לא מוגדר (GOOGLE_SA_CLIENT_EMAIL / GOOGLE_SA_PRIVATE_KEY). ראו docs/outbound-gmail-setup.md.",
+        "email": "כתובת",
+        "displayName": "שם מוצג",
+        "dailyCap": "מכסה יומית",
+        "active": "פעילה",
+        "save": "שמירה",
+        "add": "הוספת תיבה",
+        "sentToday": "נשלחו היום: {sent}/{cap}",
+        "lastPolled": "נבדקה: {when}",
+        "lastError": "שגיאה אחרונה",
+        "testTo": "כתובת לבדיקה",
+        "sendTest": "שליחת מייל בדיקה",
+        "testSent": "נשלח אל {to}"
+      }
+    },
+    "leads": {
+      "title": "לידים",
+      "description": "הלידים של Lessio עצמה. לקוח פוטנציאלי שענה בחיוב למייל קר מופיע כאן לבד.",
+      "empty": "אין לידים עדיין",
+      "newCount": "{count} חדשים",
+      "columns": {
+        "name": "שם",
+        "email": "אימייל",
+        "company": "עסק",
+        "status": "סטטוס",
+        "source": "מקור",
+        "createdAt": "נוצר",
+        "notes": "הערות"
+      },
+      "status": {
+        "new": "חדש",
+        "contacted": "נוצר קשר",
+        "qualified": "מתאים",
+        "trial": "בניסיון",
+        "won": "נסגר",
+        "lost": "אבד"
       }
     }
   },

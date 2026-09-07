@@ -77,6 +77,13 @@ const HEBREW_ALLOWED = [
   // from real customer spreadsheets — input-side, not output.
   "src/lib/import/parseFile.ts",
   "src/lib/import/validators.ts",
+  // Same for the outbound prospect CSV (Hebrew column headers, input-side).
+  "src/lib/outbound/normalizeProspects.ts",
+  // Reply classification keywords: what a Hebrew prospect *writes back* must
+  // keep being recognised — input-side, never rendered.
+  "src/lib/outbound/classifyReply.ts",
+  // Language picker: each option is written in the language it selects.
+  "src/components/admin/OutboundCampaignForm.tsx",
   // Hebrew skip-words the exam-report bot flow must keep accepting ("דלג") —
   // input-side, not output; the prompts themselves live in botString().
   "src/lib/exam-report-flow/parseExamDate.ts",

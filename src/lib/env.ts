@@ -71,9 +71,16 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   // history; the route now reads it only from here, so a missing value must
   // stop the build rather than leave lessons silently never auto-completing.
   'LESSIO_AUTO_COMPLETION_CRON_SECRET_SHA256',
+  // Same, for /api/internal/outbound/run-send and run-replies. Without it no
+  // cold email goes out and no reply is ever read.
+  'LESSIO_OUTBOUND_CRON_SECRET_SHA256',
   // OPENAI_API_KEY: optional platform-level fallback. Each org configures its own AI key.
   // RESEND_API_KEY / RESEND_FROM_EMAIL: optional. Required only when email reminders are used.
   // NEXT_PUBLIC_SENTRY_DSN: optional. Set to enable Sentry error monitoring.
+  // GOOGLE_SA_CLIENT_EMAIL / GOOGLE_SA_PRIVATE_KEY: optional. The service
+  //   account with domain-wide delegation the outbound engine sends cold email
+  //   through (docs/outbound-gmail-setup.md). The key is the PEM with literal
+  //   backslash-n sequences. /admin/outbound reports the miss; nothing else needs them.
   // TRACKING_CONFIG_ENCRYPTION_KEY: optional. Required only to store a
   //   server-side tracking credential (Meta CAPI token, GA4 api_secret).
   //   Browser pixels work without it; /admin/tracking reports the miss.

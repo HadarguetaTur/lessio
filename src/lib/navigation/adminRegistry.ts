@@ -26,8 +26,10 @@ import {
   LifeBuoy,
   Megaphone,
   ScrollText,
+  Send,
   ShieldCheck,
   SlidersHorizontal,
+  UserPlus,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -63,6 +65,20 @@ export const ADMIN_OVERVIEW: AdminNavEntry = {
  * keeps the nav honest.
  */
 export const ADMIN_NAV: AdminNavEntry[] = [
+  {
+    href: '/admin/leads',
+    navKey: 'leads',
+    icon: UserPlus,
+    capability: 'growth.read',
+    synonyms: ['leads', 'crm', 'prospects', 'pipeline', 'sales'],
+  },
+  {
+    href: '/admin/outbound',
+    navKey: 'outbound',
+    icon: Send,
+    capability: 'growth.read',
+    synonyms: ['outbound', 'cold email', 'campaign', 'prospects', 'mailbox', 'gmail', 'suppression'],
+  },
   {
     href: '/admin/tracking',
     navKey: 'tracking',
@@ -162,8 +178,8 @@ export const ADMIN_CATEGORIES: AdminCategory[] = [
     id: 'growth',
     sectionKey: 'sections.growth',
     icon: Megaphone,
-    // Leads, campaigns and attribution join in § D.
-    items: ['/admin/tracking'].map(entryOf),
+    // Campaigns and attribution join in § D.
+    items: ['/admin/leads', '/admin/outbound', '/admin/tracking'].map(entryOf),
   },
   {
     id: 'customers',

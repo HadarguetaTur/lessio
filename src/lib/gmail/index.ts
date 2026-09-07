@@ -167,68 +167,96 @@ export async function sendViaGmail(params: GmailSendParams): Promise<boolean> {
 
 // ── RFC 2822 builder ─────────────────────────────────────────────────────────
 
-function buildRfc2822Message(opts: {
+export interface Rfc2822MessageOptions {
   from: string
   to: string
   subject: string
   html: string
+  /** Plain-text alternative. Cold emails should always carry one. */
+  text?: string
+  /** RFC Message-ID, angle brackets included. Omitted when absent. */
+  messageId?: string
   attachments?: { filename: string; content: string }[]
-}): string {
-  const boundary = `boundary_${Date.now()}`
-  const hasAttachments = opts.attachments && opts.attachments.length > 0
+}
 
-  const subjectEncoded = `=?utf-8?B?${Buffer.from(opts.subject).toString('base64')}?=`
+function encodeHeader(value: string): string {
+  return /^[\x20-\x7e]*$/.test(value) ? value : `=?utf-8?B?${Buffer.from(value).toString('base64')}?=`
+}
 
-  let message: string
+function base64Lines(input: string): string {
+  // RFC 2045: encoded lines no longer than 76 characters.
+  return Buffer.from(input).toString('base64').replace(/(.{76})/g, '$1\r\n')
+}
 
-  if (hasAttachments) {
-    const parts = [
-      `--${boundary}`,
-      'Content-Type: text/html; charset="UTF-8"',
+/**
+ * Builds a base64url-encoded RFC 2822 message for `users.messages.send`.
+ *
+ * Body layout: text/html alone when there is no text part; multipart/alternative
+ * (text first, html second) when there is; either wrapped in multipart/mixed
+ * when attachments follow. Exported for the outbound engine, which sends from
+ * a delegated mailbox but wants the same wire format.
+ */
+export function buildRfc2822Message(opts: Rfc2822MessageOptions): string {
+  const stamp = Date.now()
+  const altBoundary = `alt_${stamp}`
+  const mixedBoundary = `mixed_${stamp}`
+  const hasAttachments = Boolean(opts.attachments && opts.attachments.length > 0)
+
+  const headers = [
+    `From: ${opts.from}`,
+    `To: ${opts.to}`,
+    `Subject: ${encodeHeader(opts.subject)}`,
+    'MIME-Version: 1.0',
+  ]
+  if (opts.messageId) headers.push(`Message-ID: ${opts.messageId}`)
+
+  const htmlHeaders = ['Content-Type: text/html; charset="UTF-8"', 'Content-Transfer-Encoding: base64']
+  const htmlBody = base64Lines(opts.html)
+
+  let bodyHeaders: string[]
+  let bodyLines: string[]
+  if (opts.text) {
+    bodyHeaders = [`Content-Type: multipart/alternative; boundary="${altBoundary}"`]
+    bodyLines = [
+      `--${altBoundary}`,
+      'Content-Type: text/plain; charset="UTF-8"',
       'Content-Transfer-Encoding: base64',
       '',
-      Buffer.from(opts.html).toString('base64'),
+      base64Lines(opts.text),
+      `--${altBoundary}`,
+      ...htmlHeaders,
+      '',
+      htmlBody,
+      `--${altBoundary}--`,
     ]
-
-    for (const att of opts.attachments!) {
-      parts.push(
-        `--${boundary}`,
-        `Content-Type: application/octet-stream`,
-        `Content-Transfer-Encoding: base64`,
-        `Content-Disposition: attachment; filename="${att.filename}"`,
-        '',
-        att.content,
-      )
-    }
-
-    parts.push(`--${boundary}--`)
-
-    message = [
-      `From: ${opts.from}`,
-      `To: ${opts.to}`,
-      `Subject: ${subjectEncoded}`,
-      'MIME-Version: 1.0',
-      `Content-Type: multipart/mixed; boundary="${boundary}"`,
-      '',
-      ...parts,
-    ].join('\r\n')
   } else {
-    message = [
-      `From: ${opts.from}`,
-      `To: ${opts.to}`,
-      `Subject: ${subjectEncoded}`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset="UTF-8"',
-      'Content-Transfer-Encoding: base64',
-      '',
-      Buffer.from(opts.html).toString('base64'),
-    ].join('\r\n')
+    bodyHeaders = htmlHeaders
+    bodyLines = [htmlBody]
   }
 
-  // Gmail API requires base64url encoding (no padding, + → -, / → _)
-  return Buffer.from(message)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
+  let message: string
+  if (hasAttachments) {
+    const parts = [`--${mixedBoundary}`, ...bodyHeaders, '', ...bodyLines]
+    for (const att of opts.attachments!) {
+      parts.push(
+        `--${mixedBoundary}`,
+        'Content-Type: application/octet-stream',
+        'Content-Transfer-Encoding: base64',
+        `Content-Disposition: attachment; filename="${att.filename}"`,
+        '',
+        att.content
+      )
+    }
+    parts.push(`--${mixedBoundary}--`)
+    message = [...headers, `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`, '', ...parts].join('\r\n')
+  } else {
+    message = [...headers, ...bodyHeaders, '', ...bodyLines].join('\r\n')
+  }
+
+  return toBase64Url(message)
+}
+
+/** Gmail API wants base64url: no padding, + → -, / → _. */
+export function toBase64Url(input: string): string {
+  return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }

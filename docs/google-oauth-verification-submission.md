@@ -345,5 +345,9 @@ above and then asks for the video link and the per-scope justifications.
 - **Writing lessons back to Google Calendar** (decision #27, phase 2) needs
   `calendar.events` — still sensitive rather than restricted, but a different scope, so it means a
   fresh justification, a fresh video and another review round. Plan it as one submission, not two.
+- **The outbound engine's service account is separate.** It sends and reads the platform's own
+  outreach mailboxes through domain-wide delegation granted in the Workspace Admin console
+  (`docs/outbound-gmail-setup.md`). Those scopes (`gmail.send`, `gmail.readonly`) are not on the
+  public OAuth client and do not change this submission's scope list or classification.
 - **Supabase Auth custom domain** would put `getlessio.com` on the sign-in consent screen instead
   of the project ref. Cosmetic; does not block this submission.

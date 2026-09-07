@@ -789,6 +789,32 @@ Rules:
 * the Hebrew word for a tier is «מסלול» everywhere in UI copy (not תוכנית or
   חבילה)
 
+## 40. The Outbound Engine Sends and Reads Through the Workspace Itself
+
+✅ DECIDED (07 Sep 2026): cold-email transport is Lessio calling the Gmail API
+directly, as a Google **service account with domain-wide delegation** over the
+Workspace's outreach mailboxes. No Make.com / n8n layer.
+
+* delegation is authorised once by the Workspace admin; no consent screen, no
+  Google OAuth verification (it is internal to the domain), no refresh token
+  that expires after 7 days — and it may include `gmail.readonly`, which on
+  the public OAuth app would be a *restricted* scope (CASA audit), so reading
+  replies is possible at all only this way
+* the delegation scopes live outside the public OAuth app and do not touch its
+  verification (`docs/google-oauth-verification-submission.md`)
+* several mailboxes share the load: `outbound_mailboxes` with a per-mailbox
+  daily cap counted in Asia/Jerusalem days; the box with the most room today
+  sends first (`src/lib/outbound/mailboxes.ts`)
+* the send window (Sun–Thu 08:00–18:00 Israel) is enforced in code as well as
+  in the cron schedule; batches are small with a random pause between sends
+* `outbound_messages.transport` is `gmail` or `resend` — the `make` value and
+  the three Make-facing endpoints (`/next`, `/sent`, `/replies`) are gone;
+  the engine is driven by two cron routes, `run-send` and `run-replies`
+* the `make` **payment provider** (Grow via Make, decision in Sprint 33) is a
+  different thing and is unaffected
+
+Setup: `docs/outbound-gmail-setup.md`.
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

@@ -30,6 +30,11 @@ export type AdminAuditAction =
   | 'staff.reactivate'
   | 'tracking.destination_save'
   | 'tracking.destination_delete'
+  | 'outbound.import'
+  | 'outbound.campaign_save'
+  | 'outbound.suppression_add'
+  | 'outbound.mailbox_save'
+  | 'outbound.mailbox_test'
 
 export type AdminAuditEntry = {
   id: string

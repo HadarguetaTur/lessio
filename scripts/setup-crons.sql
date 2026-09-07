@@ -67,18 +67,27 @@ end $$;
 --                                 than waiting a day.
 --   saas-lifecycle-emails      — trial warnings (T-7/T-3/T-1/T0), renewal
 --                                 notice, cancellation confirmation. Daily 08:00 UTC.
+--   outbound-send              — cold emails from the Workspace outreach
+--                                 mailboxes. Every 10 minutes, Sun–Thu,
+--                                 05:00–15:50 UTC (≈ 08:00–18:50 Israel; the
+--                                 route re-checks the local window itself).
+--   outbound-replies           — reads the outreach inboxes for replies.
+--                                 Every 5 minutes, all day.
 --
--- Both send the same SERVICE_KEY_PLACEHOLDER bearer token. The app never sees
--- the token itself, only its SHA-256, so set BOTH env vars to the hex sha256 of
--- whatever you substitute here:
+-- All send the same SERVICE_KEY_PLACEHOLDER bearer token. The app never sees
+-- the token itself, only its SHA-256, so set ALL of these env vars to the hex
+-- sha256 of whatever you substitute here:
 --   LESSIO_AUTO_COMPLETION_CRON_SECRET_SHA256
 --   LESSIO_SAAS_CRON_SECRET_SHA256
+--   LESSIO_OUTBOUND_CRON_SECRET_SHA256
 do $$
 declare
   http_jobs jsonb := '[
     {"name": "automatic-lesson-completion", "cron": "*/5 * * * *",   "path": "/api/internal/lessons/auto-complete"},
     {"name": "saas-renew",                  "cron": "*/15 2-3 * * *","path": "/api/internal/saas/renew"},
-    {"name": "saas-lifecycle-emails",       "cron": "0 8 * * *",     "path": "/api/internal/saas/lifecycle-emails"}
+    {"name": "saas-lifecycle-emails",       "cron": "0 8 * * *",     "path": "/api/internal/saas/lifecycle-emails"},
+    {"name": "outbound-send",               "cron": "*/10 5-15 * * 0-4", "path": "/api/internal/outbound/run-send"},
+    {"name": "outbound-replies",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-replies"}
   ]'::jsonb;
   job jsonb;
 begin

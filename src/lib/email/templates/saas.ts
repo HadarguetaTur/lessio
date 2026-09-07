@@ -32,7 +32,7 @@ function fmtDate(iso: string, locale: Locale): string {
   })
 }
 
-function layout(locale: Locale, title: string, lines: string[], cta: { label: string; url: string } | null): string {
+export function layout(locale: Locale, title: string, lines: string[], cta: { label: string; url: string } | null): string {
   const paragraphs = lines
     .map((l) => `<p style="margin:0 0 12px;color:#374151;font-size:15px;line-height:1.6;">${l}</p>`)
     .join('')

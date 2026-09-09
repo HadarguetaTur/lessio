@@ -10,6 +10,7 @@
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { assertParticipantsInOrg } from '@/lib/lessons/assertParticipantsInOrg'
 import type { LessonType } from '@/lib/lessons/types'
 
 export type SeriesFrequency = 'weekly' | 'biweekly'
@@ -69,6 +70,13 @@ export async function createLessonSeries(
   const db = createServiceRoleClient()
 
   if (studentIds.length === 0) throw new Error('At least one student is required')
+
+  // Before the lesson_series row, not after: this function inserts the series
+  // first and generates occurrences in a loop, so a request naming another
+  // org's teacher would otherwise leave a series row behind even when every
+  // occurrence failed.
+  await assertParticipantsInOrg(orgId, teacherId, studentIds)
+
   const seriesGroupId = lessonType === 'group' ? groupId : null
 
   // 1. Fetch org timezone

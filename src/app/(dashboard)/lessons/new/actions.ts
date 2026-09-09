@@ -8,6 +8,7 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
+import { ParticipantNotInOrgError } from '@/lib/lessons/assertParticipantsInOrg'
 import { getGroupRosterServiceRole } from '@/lib/groups/roster'
 import {
   buildAvailabilityNotice,
@@ -343,6 +344,16 @@ export async function createLessonAction(
       lessonId = result.lessonId
     }
   } catch (err) {
+    // An id from another tenant is not a scheduling outcome to explain — it is
+    // a request that should never have arrived.
+    if (err instanceof ParticipantNotInOrgError) {
+      return {
+        error:
+          err.participant === 'teacher'
+            ? await commonError('noPermission')
+            : t('lessons.newErrors.studentNotFound'),
+      }
+    }
     if (err instanceof LessonConflictError) {
       const teacherConflict =
         role === 'teacher'

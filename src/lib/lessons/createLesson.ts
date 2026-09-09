@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { assertOrgNotSaasReadOnly } from '@/lib/saas/subscriptions'
+import { assertParticipantsInOrg } from '@/lib/lessons/assertParticipantsInOrg'
 import { detectDayTail } from '@/lib/scheduling/dayTail'
 import type { LessonStatus, LessonType } from '@/lib/lessons/types'
 
@@ -85,6 +86,12 @@ export async function createLesson(
   if (studentIds.length === 0) throw new Error('At least one student is required')
 
   await assertOrgNotSaasReadOnly(orgId)
+
+  // teacherId and studentIds arrive as bare UUIDs from a form, and everything
+  // below runs on the service-role client. Prove they are this org's before a
+  // single row is written — see assertParticipantsInOrg for what a cross-tenant
+  // teacher_id does to the overlap constraint.
+  await assertParticipantsInOrg(orgId, teacherId, studentIds)
 
   const db = createServiceRoleClient()
 

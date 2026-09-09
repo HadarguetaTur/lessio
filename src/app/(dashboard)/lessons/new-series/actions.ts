@@ -8,6 +8,7 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createLessonSeries } from '@/lib/lessons/createSeries'
+import { ParticipantNotInOrgError } from '@/lib/lessons/assertParticipantsInOrg'
 import { getGroupRosterServiceRole } from '@/lib/groups/roster'
 import {
   deleteLessonSeries,
@@ -166,7 +167,15 @@ export async function createSeriesAction(
     revalidatePath('/lessons')
 
     return { error: null, result }
-  } catch {
+  } catch (err) {
+    if (err instanceof ParticipantNotInOrgError) {
+      return {
+        error:
+          err.participant === 'teacher'
+            ? await commonError('noPermission')
+            : t('lessons.newErrors.studentNotFound'),
+      }
+    }
     return { error: t('lessons.seriesErrors.createSeriesFailed') }
   }
 }

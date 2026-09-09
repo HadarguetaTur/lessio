@@ -45,6 +45,8 @@ export type BotStringKey =
   | 'portal_closed'
   | 'opt_out_confirmed'
   | 'opt_out_already'
+  | 'broadcast_updates_stopped'
+  | 'broadcast_promos_stopped'
   | 'opt_in_confirmed'
   | 'opt_in_already'
   // Fragments injected into template variables
@@ -280,6 +282,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'סגור, הפסקנו לשלוח 👍\nלא יישלחו אליך יותר תזכורות, בקשות תשלום או עדכונים אוטומטיים.\nאפשר תמיד לכתוב "התחל" כדי לחדש, ואם תכתבו לנו — נענה תמיד.',
     opt_out_already:
       'ההודעות האוטומטיות כבר מושבתות עבורך 👍\nכדי לחדש אותן אפשר לכתוב "התחל".',
+    broadcast_updates_stopped:
+      'סגור, הסרנו אתכם מהעדכונים הכלליים 👍\nתזכורות לשיעורים, שיעורי בית ובקשות תשלום ימשיכו להגיע כרגיל.',
+    broadcast_promos_stopped:
+      'סגור, לא נשלח לכם יותר הצעות 👍\nעדכונים על השיעורים עצמם ימשיכו להגיע כרגיל.',
     opt_in_confirmed: 'מעולה, חידשנו את ההודעות 🎉\nתקבלו שוב תזכורות ועדכונים על השיעורים.',
     opt_in_already: 'ההודעות כבר פעילות אצלך 🙂',
 
@@ -540,6 +546,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       "Done — we've stopped 👍\nYou will no longer receive reminders, payment requests or any automated updates from us.\nReply START at any time to turn them back on, and if you message us we will always reply.",
     opt_out_already:
       'Automated messages are already switched off for you 👍\nReply START to turn them back on.',
+    broadcast_updates_stopped:
+      "Done — you're off the general updates 👍\nLesson reminders, homework and payment requests will keep arriving as usual.",
+    broadcast_promos_stopped:
+      'Done — no more offers from us 👍\nUpdates about your actual lessons will keep arriving as usual.',
     opt_in_confirmed:
       'Great — messages are back on 🎉\nYou will receive lesson reminders and updates again.',
     opt_in_already: 'Your messages are already switched on 🙂',

@@ -15,7 +15,7 @@
 
 import { AsyncLocalStorage } from 'async_hooks'
 
-export type WaLogOrigin = 'bot' | 'ai' | 'staff' | 'cron'
+export type WaLogOrigin = 'bot' | 'ai' | 'staff' | 'cron' | 'broadcast'
 
 export type WaLogContext = {
   /** Null until the conversation is known — see bindWaLogTarget. */

@@ -83,6 +83,10 @@ end $$;
 --   whatsapp-health            — refreshes every connected number's quality
 --                                 rating, messaging tier and verification
 --                                 status from Meta. Daily 03:30 UTC.
+--   whatsapp-broadcast         — drains broadcast campaigns: claims a small
+--                                 batch and sends it with a pause between
+--                                 messages. Every 2 minutes; the route itself
+--                                 honours the org's quiet hours.
 --
 -- All send the same SERVICE_KEY_PLACEHOLDER bearer token. The app never sees
 -- the token itself, only its SHA-256, so set ALL of these env vars to the hex
@@ -101,7 +105,8 @@ declare
     {"name": "outbound-replies",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-replies"},
     {"name": "outbound-followups",          "cron": "5,20,35,50 5-15 * * 0-4", "path": "/api/internal/outbound/run-followups"},
     {"name": "outbound-openers",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-openers"},
-    {"name": "whatsapp-health",             "cron": "30 3 * * *",    "path": "/api/internal/whatsapp/health"}
+    {"name": "whatsapp-health",             "cron": "30 3 * * *",    "path": "/api/internal/whatsapp/health"},
+    {"name": "whatsapp-broadcast",          "cron": "*/2 * * * *",   "path": "/api/internal/whatsapp/broadcast"}
   ]'::jsonb;
   job jsonb;
 begin

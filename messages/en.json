@@ -5592,7 +5592,8 @@
       "bot": "Bot",
       "ai": "AI assistant",
       "staff": "Staff",
-      "cron": "Automated message"
+      "cron": "Automated message",
+      "broadcast": "Broadcast"
     },
     "badges": {
       "takenOver": "Handled by a person",

@@ -43,6 +43,7 @@ import { upsertTemplateStatus } from '@/lib/whatsapp/templateStatus'
 import { refreshPhoneHealth, storePhoneHealth, type PhoneHealth } from '@/lib/whatsapp/health'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { isOptedOut, setParentOptOut } from '@/lib/whatsapp/optOut'
+import { decodeBroadcastPayload } from '@/lib/whatsapp/broadcast/payloads'
 import { recordParentConsent } from '@/lib/whatsapp/consent'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
 import { sendLinkReply } from '@/lib/whatsapp/sendLinkReply'
@@ -231,6 +232,75 @@ export async function POST(request: NextRequest) {
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+/**
+ * A parent tapped "stop updates" or "stop offers" on a broadcast.
+ *
+ * Which category to refuse comes from the campaign the button belonged to, not
+ * from the button's own label — Meta stores only labels, and the payload is
+ * ours. The campaign is re-read and checked against the receiving org first:
+ * reply ids come from the handset and are not to be trusted with a write.
+ *
+ * The refusal is per category on purpose. A parent leaving the offers list must
+ * keep getting lesson reminders, so this never touches `opted_out_at`.
+ */
+async function handleBroadcastOptOut(params: {
+  db: ReturnType<typeof createServiceRoleClient>
+  orgId: string
+  senderPhone: string
+  accessToken: string
+  phoneNumberId: string
+  locale: AppLocale
+  campaignId: string
+}): Promise<void> {
+  const { db, orgId, senderPhone, accessToken, phoneNumberId, locale, campaignId } = params
+
+  const { data: campaign } = await db
+    .from('broadcast_campaigns')
+    .select('id, organization_id, template_type')
+    .eq('id', campaignId)
+    .eq('organization_id', orgId)
+    .maybeSingle()
+
+  if (!campaign) {
+    console.warn('[whatsapp/webhook] Broadcast opt-out for an unknown campaign', {
+      orgId,
+      campaignId,
+      phone: maskPhone(senderPhone),
+    })
+    return
+  }
+
+  const isPromo = (campaign as { template_type: string }).template_type === 'promo'
+  const column = isPromo ? 'marketing_opted_out_at' : 'updates_opted_out_at'
+
+  const { error } = await db
+    .from('parents')
+    .update({ [column]: new Date().toISOString() })
+    .eq('organization_id', orgId)
+    .eq('phone', senderPhone)
+
+  if (error) {
+    console.error('[whatsapp/webhook] Broadcast opt-out failed', { orgId, campaignId, error: error.message })
+    return
+  }
+
+  console.info('[whatsapp/webhook] Broadcast opt-out recorded', {
+    orgId,
+    campaignId,
+    category: isPromo ? 'promo' : 'updates',
+    phone: maskPhone(senderPhone),
+  })
+
+  // Plain text, not sendSmartMessage: the parent just wrote to us, the window
+  // is open, and this reply must never itself be a template.
+  await sendTextMessage(
+    senderPhone,
+    botString(isPromo ? 'broadcast_promos_stopped' : 'broadcast_updates_stopped', locale),
+    accessToken,
+    phoneNumberId
+  )
+}
 
 /**
  * What the transcript shows for an inbound message.
@@ -870,6 +940,20 @@ async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promi
   //        are addressed to a phone, not to a capacity: a number that is both a
   //        parent and a teacher, with teacher preferred, would otherwise land in
   //        the teacher flow, which has no idea what an `att:` payload is.
+  const broadcastPayload = decodeBroadcastPayload(msg.replyId)
+  if (broadcastPayload) {
+    await handleBroadcastOptOut({
+      db,
+      orgId: org.id,
+      senderPhone,
+      accessToken,
+      phoneNumberId,
+      locale,
+      campaignId: broadcastPayload.campaignId,
+    })
+    return
+  }
+
   const entityPayload = decodeEntityPayload(msg.replyId)
   if (entityPayload) {
     const handled = await handleEntityPayload({

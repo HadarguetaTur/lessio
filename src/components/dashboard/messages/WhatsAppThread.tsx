@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { DateTime } from 'luxon'
-import { AlertCircle, Bot, Check, CheckCheck, Send, Sparkles, Undo2 } from 'lucide-react'
+import { AlertCircle, Bot, Check, CheckCheck, Megaphone, Send, Sparkles, Undo2 } from 'lucide-react'
 import type { ThreadMessage } from '@/lib/whatsapp/conversations'
 
 type ActionResult = { error: string | null }
@@ -63,6 +63,7 @@ export function WhatsAppThread({
                 <p className="text-[11px] font-medium mb-0.5 flex items-center gap-1 opacity-90">
                   {msg.origin === 'ai' && <Sparkles size={10} />}
                   {(msg.origin === 'bot' || msg.origin === 'cron') && <Bot size={10} />}
+                  {msg.origin === 'broadcast' && <Megaphone size={10} />}
                   {msg.origin === 'staff'
                     ? (msg.senderName ?? t('origins.staff'))
                     : t(`origins.${msg.origin ?? 'bot'}`)}

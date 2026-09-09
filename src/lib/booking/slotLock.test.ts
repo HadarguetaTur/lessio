@@ -21,8 +21,12 @@ vi.mock('@/lib/google-calendar/getExternalBusyIntervals', () => ({
 
 const ORG_ID = 'org-1'
 const TEACHER_ID = 'teacher-1'
-const START = '2026-03-23T16:00:00.000Z'
-const END = '2026-03-23T17:00:00.000Z'
+// A future instant: createSlotLock now refuses a slot already behind us, so a
+// hard-coded past date would make every case here pass on the wrong assertion.
+// 16:00Z is 18:00 in Asia/Jerusalem on this date (still UTC+2 — DST starts on
+// the 26th), which is what the availability fixture below has to cover.
+const START = '2027-03-23T16:00:00.000Z'
+const END = '2027-03-23T17:00:00.000Z'
 const LOCK_ID = 'lock-1'
 
 /** A future expiry — lock is still valid */
@@ -33,7 +37,7 @@ const pastExpiry = new Date(Date.now() - 1000).toISOString()
 function buildChain(result: unknown) {
   const self: Record<string, unknown> = {}
   const pass = () => self
-  ;['select', 'eq', 'gte', 'lte', 'gt', 'lt', 'neq', 'insert', 'update'].forEach(m => { self[m] = pass })
+  ;['select', 'eq', 'gte', 'lte', 'gt', 'lt', 'neq', 'in', 'order', 'limit', 'insert', 'update'].forEach(m => { self[m] = pass })
   self['single'] = () => Promise.resolve(result)
   self['maybeSingle'] = () => Promise.resolve(result)
   self['then'] = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
@@ -47,6 +51,29 @@ function breakRows(orgBreak: number, teacherBreak: number | null) {
     organizations: buildChain({ data: { break_duration_minutes: orgBreak }, error: null }),
     teachers: buildChain({ data: { break_duration_minutes: teacherBreak }, error: null }),
   }
+}
+
+/**
+ * What a bookable slot looks like to assertSlotBookable: an open weekly window
+ * around the slot, no override, no holiday.
+ *
+ * Every case below routes its unmatched tables through here, because the
+ * write-time validator now asks these questions before anything else runs —
+ * without them each test would pass on 'outside_availability' rather than on
+ * the collision it means to prove.
+ */
+function fallback(table: string) {
+  if (table === 'availability') {
+    return buildChain({ data: [{ start_time: '08:00:00', end_time: '22:00:00' }], error: null })
+  }
+  if (table === 'organization_holidays') return buildChain({ data: null, error: null })
+  // An object, not a list: the org row is read with .single() for the timezone,
+  // the notice horizon and the duration whitelist. An empty array there reads as
+  // "no allowed durations" and rejects every slot for the wrong reason.
+  if (table === 'organizations') {
+    return buildChain({ data: { break_duration_minutes: 0 }, error: null })
+  }
+  return buildChain({ data: [], error: null })
 }
 
 // ── createSlotLock tests ──────────────────────────────────────────────────────
@@ -72,7 +99,7 @@ describe('createSlotLock', () => {
         })
         return chain
       }
-      return buildChain({ data: [], error: null })
+      return fallback(table)
     })
 
     const lock = await createSlotLock({
@@ -94,7 +121,7 @@ describe('createSlotLock', () => {
           error: null,
         })
       }
-      return buildChain({ data: [], error: null })
+      return fallback(table)
     })
 
     await expect(
@@ -110,7 +137,7 @@ describe('createSlotLock', () => {
           error: null,
         })
       }
-      return buildChain({ data: [], error: null })
+      return fallback(table)
     })
 
     await expect(
@@ -126,7 +153,7 @@ describe('createSlotLock', () => {
           error: null,
         })
       }
-      return buildChain({ data: [], error: null })
+      return fallback(table)
     })
 
     await expect(
@@ -135,7 +162,7 @@ describe('createSlotLock', () => {
   })
 
   it('throws SlotUnavailableError when Google Calendar reports the slot busy', async () => {
-    mockFrom.mockImplementation(() => buildChain({ data: [], error: null }))
+    mockFrom.mockImplementation((table: string) => fallback(table))
     mockExternalBusy.mockResolvedValueOnce([{ start: START, end: END }])
 
     await expect(
@@ -155,7 +182,7 @@ describe('createSlotLock', () => {
       if (table === 'slot_locks') {
         return buildChain({ data: [{ id: 'existing-lock' }], error: null })
       }
-      return buildChain({ data: [], error: null })
+      return fallback(table)
     })
 
     await expect(
@@ -180,7 +207,7 @@ describe('createSlotLock', () => {
         })
         return chain
       }
-      return buildChain({ data: [], error: null })
+      return fallback(table)
     })
 
     await expect(
@@ -207,7 +234,7 @@ describe('createSlotLock', () => {
         }
         return chain
       }
-      return buildChain({ data: [], error: null })
+      return fallback(table)
     })
 
     await expect(
@@ -215,7 +242,7 @@ describe('createSlotLock', () => {
     ).rejects.toThrow(SlotUnavailableError)
 
     // 17:00 end + 30-minute break
-    expect(lessonQueryEnd).toBe('2026-03-23T17:30:00.000Z')
+    expect(lessonQueryEnd).toBe('2027-03-23T17:30:00.000Z')
   })
 
   it('does not widen the conflict window when no break is configured', async () => {
@@ -233,7 +260,7 @@ describe('createSlotLock', () => {
         }
         return chain
       }
-      return buildChain({ data: [], error: null })
+      return fallback(table)
     })
 
     await expect(

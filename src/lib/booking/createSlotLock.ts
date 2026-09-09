@@ -16,7 +16,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getEffectiveBreakMinutes } from '@/lib/scheduling/breaks'
 import { getExternalBusyIntervals } from '@/lib/google-calendar/getExternalBusyIntervals'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
-import { isSlotBlockedByOverride } from './isSlotBlockedByOverride'
+import { assertSlotBookable, SlotNotBookableError } from './assertSlotBookable'
 
 export class SlotUnavailableError extends Error {
   constructor() {
@@ -52,6 +52,25 @@ export async function createSlotLock({
 }: CreateSlotLockParams): Promise<SlotLock> {
   const db = createServiceRoleClient()
 
+  // The client picked these three values off a page that may be minutes or days
+  // old. Re-derive the answer from the database before anything is reserved:
+  // in the future, past the minimum notice, an allowed duration, not a holiday,
+  // and inside an open availability window. A stale page must not be able to
+  // reserve — let alone persist — a slot the teacher no longer offers.
+  try {
+    await assertSlotBookable({
+      orgId: organizationId,
+      teacherId,
+      startUtc: startAt,
+      endUtc: endAt,
+      audience: 'bot',
+    })
+  } catch (err) {
+    // Every rejection reads the same way to a parent: pick another time.
+    if (err instanceof SlotNotBookableError) throw new SlotUnavailableError()
+    throw err
+  }
+
   // Fail fast when the student has already used up the week — no point holding
   // a slot they cannot confirm.
   if (studentId) {
@@ -82,16 +101,6 @@ export async function createSlotLock({
   const { breakMinutes } = await getEffectiveBreakMinutes(organizationId, teacherId)
   const isAvailable = await checkSlotAvailable(db, teacherId, startAt, endAt, breakMinutes)
   if (!isAvailable) throw new SlotUnavailableError()
-
-  // Availability-exception re-check: a day or hours the teacher blocked after
-  // the slot list was rendered must not be lockable, same as a holiday.
-  const overrideBlocked = await isSlotBlockedByOverride({
-    orgId: organizationId,
-    teacherId,
-    startAtUtc: startAt,
-    endAtUtc: endAt,
-  })
-  if (overrideBlocked) throw new SlotUnavailableError()
 
   // Google Calendar re-check (decision #36): a calendar event created after the
   // slot list was rendered must not be lockable. This is the ONLY Google check

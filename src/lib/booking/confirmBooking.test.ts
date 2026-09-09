@@ -34,8 +34,8 @@ const LOCK_ID = 'lock-1'
 const TEACHER_ID = 'teacher-1'
 const STUDENT_ID = 'student-1'
 const PARENT_ID = 'parent-1'
-const START = '2026-03-23T16:00:00.000Z'
-const END = '2026-03-23T17:00:00.000Z'
+const START = '2027-03-23T16:00:00.000Z'
+const END = '2027-03-23T17:00:00.000Z'
 const futureExpiry = new Date(Date.now() + 5 * 60 * 1000).toISOString()
 
 const validLock = {
@@ -54,6 +54,22 @@ function buildChain(result: unknown) {
   self['then'] = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
     Promise.resolve(result).then(res, rej)
   return self
+}
+
+/**
+ * The rows assertSlotBookable needs before confirmBooking reaches the check a
+ * given case is about: an open weekly window around the slot, no holiday, and
+ * an org row (read with .single()) carrying the timezone and duration
+ * whitelist. Without these every case would pass on 'outside_availability'
+ * instead of on what it means to prove.
+ */
+function fallback(table: string) {
+  if (table === 'availability') {
+    return buildChain({ data: [{ start_time: '08:00:00', end_time: '22:00:00' }], error: null })
+  }
+  if (table === 'availability_overrides') return buildChain({ data: [], error: null })
+  if (table === 'organizations') return buildChain({ data: { timezone: 'Asia/Jerusalem' }, error: null })
+  return buildChain({ data: null, error: null })
 }
 
 const PARAMS = {
@@ -92,7 +108,7 @@ describe('confirmBooking', () => {
         chain['update'] = () => chain
         return chain
       }
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     const result = await confirmBooking(PARAMS)
@@ -112,7 +128,7 @@ describe('confirmBooking', () => {
       if (table === 'organization_holidays') return buildChain({ data: { id: 'holiday-1' }, error: null })
       if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
       if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toMatchObject({
@@ -134,7 +150,7 @@ describe('confirmBooking', () => {
       }
       if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
       if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toMatchObject({
@@ -157,7 +173,7 @@ describe('confirmBooking', () => {
       }
       if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
       if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toMatchObject({
@@ -197,7 +213,7 @@ describe('confirmBooking', () => {
         chain['update'] = () => chain
         return chain
       }
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     const result = await confirmBooking(PARAMS)
@@ -227,7 +243,7 @@ describe('confirmBooking', () => {
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: false }, error: null })
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toThrow(InactiveParticipantError)
@@ -238,7 +254,7 @@ describe('confirmBooking', () => {
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'teachers') return buildChain({ data: null, error: { message: 'not found' } })
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toThrow(InactiveParticipantError)
@@ -250,7 +266,7 @@ describe('confirmBooking', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
       if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: false }, error: null })
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toThrow(InactiveParticipantError)
@@ -263,7 +279,7 @@ describe('confirmBooking', () => {
       if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
       if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
       if (table === 'relationships') return buildChain({ data: null, error: null }) // no primary parent
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toThrow(NoPrimaryParentError)
@@ -276,7 +292,7 @@ describe('confirmBooking', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'teachers') return buildChain({ data: { id: TEACHER_ID, is_active: true }, error: null })
       if (table === 'students') return buildChain({ data: { id: STUDENT_ID, is_active: true }, error: null })
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toThrow(WeeklyQuotaExceededError)
@@ -304,7 +320,7 @@ describe('confirmBooking', () => {
           error: null,
         })
       }
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toMatchObject({
@@ -328,7 +344,7 @@ describe('confirmBooking', () => {
         })
         return chain
       }
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toThrow(LessonConflictError)
@@ -361,7 +377,7 @@ describe('confirmBooking', () => {
         chain['delete'] = lessonDelete
         return chain
       }
-      return buildChain({ data: null, error: null })
+      return fallback(table)
     })
 
     await expect(confirmBooking(PARAMS)).rejects.toThrow('Failed to link student to lesson')

@@ -12,13 +12,12 @@
  * Uses service role — never called from client components.
  */
 
-import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { LessonConflictError } from '@/lib/lessons/createLesson'
 import { detectDayTail } from '@/lib/scheduling/dayTail'
 import { validateSlotLock } from './validateSlotLock'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
-import { isSlotBlockedByOverride } from './isSlotBlockedByOverride'
+import { assertSlotBookable, SlotNotBookableError } from './assertSlotBookable'
 
 export class LockExpiredError extends Error {
   constructor(reason: string) {
@@ -84,43 +83,25 @@ export async function confirmBooking({
   if (requestedStudentId !== lock.student_id) throw new LockStudentMismatchError()
   const studentId = lock.student_id
 
-  // 1b. Holiday re-check. getAvailableSlots filters holidays only at listing
-  // time — a holiday added between listing and confirm (or a stale client
-  // confirming an old lock) would otherwise land a lesson on it. Both confirm
-  // actions map the resulting LessonConflictError('holiday') to 'slot_taken',
-  // which directs the parent to pick another time.
-  const { data: orgRow } = await db
-    .from('organizations')
-    .select('timezone')
-    .eq('id', organizationId)
-    .single()
-
-  const holidayDate = DateTime.fromISO(lock.start_at, { zone: 'utc' })
-    .setZone(orgRow?.timezone ?? 'UTC')
-    .toISODate()!
-
-  const { data: holiday } = await db
-    .from('organization_holidays')
-    .select('id')
-    .eq('organization_id', organizationId)
-    .eq('date', holidayDate)
-    .limit(1)
-    .maybeSingle()
-
-  if (holiday) throw new LessonConflictError('holiday')
-
-  // 1c. Availability-exception re-check, for the same reason as 1b: an
-  // exception created between listing and confirm (a blocked day, blocked
-  // hours, or an approved day off) must not be booked over. Mapped to
-  // 'slot_taken' by both confirm actions, like every non-student conflict.
-  const overrideBlocked = await isSlotBlockedByOverride({
-    orgId: organizationId,
-    teacherId,
-    startAtUtc: lock.start_at,
-    endAtUtc: lock.end_at,
-    timezone: (orgRow?.timezone as string | undefined) ?? undefined,
-  })
-  if (overrideBlocked) throw new LessonConflictError('override_blocked')
+  // 1b. Commit-time re-validation of the slot itself. A lock is a five-minute
+  // reservation, not a promise: a holiday, an availability exception, a weekly
+  // grid edit or a narrowed duration list between lock and confirm all have to
+  // land here, and so does a lock replayed after its slot has passed. Both
+  // confirm actions map these to 'slot_taken', which asks for another time.
+  try {
+    await assertSlotBookable({
+      orgId: organizationId,
+      teacherId,
+      startUtc: lock.start_at,
+      endUtc: lock.end_at,
+      audience: 'bot',
+    })
+  } catch (err) {
+    if (err instanceof SlotNotBookableError) {
+      throw new LessonConflictError(err.reason === 'holiday' ? 'holiday' : 'override_blocked')
+    }
+    throw err
+  }
 
   // 2. Validate teacher is active in org
   const { data: teacher, error: teacherError } = await db

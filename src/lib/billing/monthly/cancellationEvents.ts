@@ -41,7 +41,7 @@ export async function createCancellationEvent(opts: {
   const lessonLocal = DateTime.fromISO(opts.lessonStartAt, { zone: opts.timezone })
   const billingMonth = getCurrentBillingMonth(opts.timezone, lessonLocal, policy.cycleStartDay)
 
-  await supabase.from('student_cancellation_events').upsert(
+  const { error } = await supabase.from('student_cancellation_events').upsert(
     {
       organization_id: opts.organizationId,
       lesson_id: opts.lessonId,
@@ -56,5 +56,41 @@ export async function createCancellationEvent(opts: {
       billing_month: billingMonth,
     },
     { onConflict: 'lesson_id,student_id', ignoreDuplicates: true }
+  )
+
+  if (error) {
+    // supabase-js does NOT throw on a PostgREST failure — it returns { error }.
+    // Discarding it made the caller's try/catch dead code and told the operator
+    // the fee was booked when nothing was written. Propagate, always.
+    if (isMissingCancellationEventIndex(error)) {
+      throw new Error(
+        '[createCancellationEvent] student_cancellation_events_lesson_student_unique is missing — ' +
+          'migration 20260909160000 has not been applied to this environment. ' +
+          'Cancellation events cannot be recorded idempotently; apply the migration before ' +
+          `deploying this code. (${error.code ?? 'no code'}: ${error.message})`
+      )
+    }
+    throw new Error(`[createCancellationEvent] failed to record cancellation event: ${error.message}`)
+  }
+}
+
+/**
+ * True when Postgres says the ON CONFLICT target has no matching constraint —
+ * i.e. this environment is behind on migration `20260909160000`, which creates
+ * `student_cancellation_events_lesson_student_unique`.
+ *
+ * Same shape and same reasoning as `isMissingIdempotencyKey` in
+ * `src/lib/payments/settlement.ts`: a missing idempotency index must fail loudly
+ * rather than silently skip the write.
+ */
+export function isMissingCancellationEventIndex(
+  error: { code?: string; message?: string } | null
+): boolean {
+  if (!error) return false
+  if (error.code === '42P10' || error.code === '42703' || error.code === 'PGRST204') return true
+  const message = (error.message ?? '').toLowerCase()
+  return (
+    message.includes('no unique or exclusion constraint') ||
+    (message.includes('on conflict') && message.includes('does not exist'))
   )
 }

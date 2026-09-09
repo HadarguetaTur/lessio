@@ -9,13 +9,15 @@
  * Slot formula (decisions.md #2):
  *   next_slot_start = current_slot_start + lesson_duration + break
  *
- * This function serves the PARENT-FACING booking surfaces only — the WebView at
- * /book/[token] and the portal, which is also where the WhatsApp bot's link
- * lands. Nothing on the dashboard calls it; teachers and admins create lessons
- * through createLesson, which checks conflicts but not availability. That is
- * what lets the break be enforced here without a flag: a parent may never be
- * offered a slot that leaves the teacher no gap, while the teacher remains free
- * to book back-to-back by hand.
+ * This function serves the booking surfaces — the WebView at /book/[token] and
+ * the portal (where the WhatsApp bot's link lands), plus the dashboard's
+ * "recommended slots" list in the new-lesson sheet. It is a suggestion engine:
+ * createLesson itself checks conflicts and blocked overrides but not weekly
+ * availability, so a teacher remains free to book back-to-back by hand, while a
+ * parent may never be offered a slot that leaves the teacher no gap.
+ *
+ * It does not know which audience is asking. Callers must gate the duration
+ * with isLessonDurationAllowed(orgId, audience, minutes) first.
  */
 
 import { DateTime } from 'luxon'

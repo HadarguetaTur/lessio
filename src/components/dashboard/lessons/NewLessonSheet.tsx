@@ -18,6 +18,7 @@ export interface NewLessonSheetProps {
   teachers: { id: string; full_name: string }[]
   students: { id: string; full_name: string }[]
   groups: StudentGroup[]
+  durationValues: number[]
   defaultTeacherId?: string
   allowGroupLessons?: boolean
   pricingDefaults?: PricingDefaults
@@ -31,6 +32,7 @@ export function NewLessonSheet({
   teachers,
   students,
   groups,
+  durationValues,
   defaultTeacherId,
   allowGroupLessons = true,
   pricingDefaults,
@@ -80,6 +82,7 @@ export function NewLessonSheet({
               students={students}
               groups={groups}
               teachers={teachers}
+              durationValues={durationValues}
               fixedTeacherId={allowGroupLessons ? undefined : defaultTeacherId}
               action={createLessonAction}
               getRecommendedSlots={getRecommendedLessonSlotsAction}

@@ -87,6 +87,7 @@ export function LessonScheduleSheetProvider({
           teachers={scheduleForm.teachers}
           students={scheduleForm.students}
           groups={scheduleForm.groups}
+          durationValues={scheduleForm.durationValues}
           defaultTeacherId={defaultTeacherId}
           allowGroupLessons={allowGroupLessons}
         />

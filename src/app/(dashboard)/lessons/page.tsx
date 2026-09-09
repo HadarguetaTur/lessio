@@ -27,6 +27,7 @@ import {
   type ScheduleFormResources,
 } from '@/components/dashboard/lessons/LessonsScheduleSection'
 import { LessonScheduleSheetProvider } from '@/components/dashboard/lessons/LessonScheduleSheetProvider'
+import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
 import { LessonsScheduleHeaderActions } from '@/components/dashboard/lessons/LessonsScheduleHeaderActions'
 import { DayView } from '@/components/dashboard/lessons/DayView'
 import { PageHeader } from '@/components/ui/page-header'
@@ -84,13 +85,18 @@ export default async function LessonsPage(props: {
 
   let scheduleForm: ScheduleFormResources | null = null
   if (isAdmin) {
-    const [students, groups] = await Promise.all([getStudents(orgId), getGroups(orgId)])
+    const [students, groups, durations] = await Promise.all([
+      getStudents(orgId),
+      getGroups(orgId),
+      getOrgLessonDurations(orgId, 'admin'),
+    ])
     scheduleForm = {
       teachers: activeTeachers,
       students: students
         .filter((s) => s.is_active)
         .map((s) => ({ id: s.id, full_name: s.full_name })),
       groups,
+      durationValues: durations.map((d) => d.minutes),
     }
   }
 

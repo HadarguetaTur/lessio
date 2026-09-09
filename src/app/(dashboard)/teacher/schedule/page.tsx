@@ -26,6 +26,7 @@ import {
   type ScheduleFormResources,
 } from '@/components/dashboard/lessons/LessonsScheduleSection'
 import { LessonScheduleSheetProvider } from '@/components/dashboard/lessons/LessonScheduleSheetProvider'
+import { getOrgLessonDurations } from '@/lib/organizations/lessonDurations'
 import { LessonsScheduleHeaderActions } from '@/components/dashboard/lessons/LessonsScheduleHeaderActions'
 import { DayView } from '@/components/dashboard/lessons/DayView'
 import { PageHeader } from '@/components/ui/page-header'
@@ -81,9 +82,10 @@ export default async function TeacherSchedulePage(props: {
   const currentWeekStr = getCurrentWeekSunday(timezone)
   const currentMonthStr = todayStr.substring(0, 7)
 
-  const [students, holidays] = await Promise.all([
+  const [students, holidays, durations] = await Promise.all([
     getStudents(orgId, { teacherId: teacher.id }),
     getOrgHolidays(orgId, { from: calendarHolidaysFrom() }),
+    getOrgLessonDurations(orgId, 'teacher'),
   ])
 
   const roster = students.filter((s) => s.is_active)
@@ -95,6 +97,7 @@ export default async function TeacherSchedulePage(props: {
     teachers: [{ id: teacher.id, full_name: teacher.profile.full_name }],
     students: roster.map((s) => ({ id: s.id, full_name: s.full_name })),
     groups: [],
+    durationValues: durations.map((d) => d.minutes),
   }
 
   const headerActions = (

@@ -146,7 +146,8 @@ interface Props {
   variant?: 'page' | 'sheet'
   onCancel?: () => void
   onSuccess?: () => void
-  durationValues?: number[]
+  /** Durations open to the current audience — load via getOrgLessonDurations(orgId, audience). */
+  durationValues: number[]
 }
 
 const initialState: NewLessonState = { error: null }
@@ -168,7 +169,7 @@ export function NewLessonForm({
   variant = 'page',
   onCancel,
   onSuccess,
-  durationValues = [30, 45, 60, 90],
+  durationValues,
 }: Props) {
   const t = useTranslations('lessons')
   const tCommon = useTranslations('common')

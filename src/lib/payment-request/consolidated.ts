@@ -15,7 +15,6 @@ import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
-import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { logChargeAudit } from '@/lib/charges/audit'
 import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import { getPendingChargesForParent, logPaymentRequestSent } from './index'
@@ -113,18 +112,13 @@ export async function sendConsolidatedPaymentRequest(
     paymentUrl = result.url
     paymentReference = result.reference
   } catch (err) {
-    if (
-      process.env.DEMO_PAYMENT_LINK_ENABLED === '1' &&
-      err instanceof PaymentProviderNotConfiguredError
-    ) {
-      providerName = 'demo'
-      paymentUrl = `${getShareableBaseUrl()}/portal/${orgId}`
-      paymentReference = `demo-${requestId}`
-    } else {
-      await db.from('payment_requests').update({ status: 'failed' }).eq('id', requestId)
-      if (err instanceof PaymentProviderNotConfiguredError) return 'no_payment_provider'
-      throw err
-    }
+    // An org with no configured provider has nothing to send. The demo
+    // fallback that used to fire here handed the parent a portal link under
+    // reference `demo-<id>`, which no webhook or reconciliation could ever
+    // settle — the request looked sent and stayed unpaid forever.
+    await db.from('payment_requests').update({ status: 'failed' }).eq('id', requestId)
+    if (err instanceof PaymentProviderNotConfiguredError) return 'no_payment_provider'
+    throw err
   }
 
   // Any earlier open request covering these charges is replaced by this one.

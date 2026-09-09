@@ -15,13 +15,11 @@ import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import { createSubscription, updateSubscription, deleteSubscription } from '@/lib/subscriptions'
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
-import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { formatBillingMonth } from '@/lib/i18n/formatBillingMonth'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { formatBotMoney } from '@/lib/i18n/formatCurrency'
-import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { getTranslations } from 'next-intl/server'
 import { getOrgBillingPolicy } from '@/lib/billing/orgBillingPolicy'
@@ -719,41 +717,23 @@ async function sendBillingPaymentRequestCore(
       ? `${billing.period_start}–${billing.period_end}`
       : formatBillingMonth(billing.billing_month as string, locale)
 
-  // Create payment link. DEMO_PAYMENT_LINK_ENABLED=1 allows sending without a
-  // configured payment provider by linking to the org's parent portal instead
-  // (Meta App Review demo — dead branch in normal production operation).
-  let paymentResult: { url: string; reference: string }
-  let providerName: string
-  try {
-    const p = await getPaymentProvider(orgId)
-    providerName = p.providerName
-    paymentResult = await p.provider.createPaymentLink({
-      chargeId: charge.id,
-      amount: Number(charge.amount),
-      description: tr('paymentDescription', {
-        month: monthLabel,
-        parent: parent.full_name as string,
-      }),
-      orgId,
-      payer: {
-        fullName: parent.full_name as string,
-        phone: parent.phone as string,
-      },
-    })
-  } catch (err) {
-    if (
-      process.env.DEMO_PAYMENT_LINK_ENABLED === '1' &&
-      err instanceof PaymentProviderNotConfiguredError
-    ) {
-      providerName = 'demo'
-      paymentResult = {
-        url: `${getShareableBaseUrl()}/portal/${orgId}`,
-        reference: `demo-${charge.id}`,
-      }
-    } else {
-      throw err
-    }
-  }
+  // Create payment link. An org with no configured provider has nothing to
+  // send: PaymentProviderNotConfiguredError propagates and the caller reports
+  // it, rather than a portal link carrying a reference that can never settle.
+  const { provider, providerName } = await getPaymentProvider(orgId)
+  const paymentResult = await provider.createPaymentLink({
+    chargeId: charge.id,
+    amount: Number(charge.amount),
+    description: tr('paymentDescription', {
+      month: monthLabel,
+      parent: parent.full_name as string,
+    }),
+    orgId,
+    payer: {
+      fullName: parent.full_name as string,
+      phone: parent.phone as string,
+    },
+  })
 
   // Persist link on charge
   await db

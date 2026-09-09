@@ -24,13 +24,20 @@ export interface ReceiptProvider {
    */
   issueReceipt(params: {
     chargeId: string        // stored as external reference in the document
-    amount: number          // in org currency
+    /**
+     * What was actually collected, in org currency, VAT INCLUSIVE — Israeli
+     * consumer prices are quoted with VAT in them. The document total must
+     * equal this figure; an adapter that lets its provider add VAT on top is
+     * issuing a tax document for money nobody paid.
+     */
+    amount: number
     parentName: string      // recipient name on the receipt
     description: string     // line item description (e.g. "שיעור - Maya Cohen")
     orgName: string         // issuing business name
     date: string            // YYYY-MM-DD in org timezone
     documentType?: DocumentType  // default 'receipt'
-    vatAmount?: number           // required when documentType = 'tax_invoice'
+    /** The VAT CONTAINED IN `amount` (amount − amount / (1 + rate)), not added to it. */
+    vatAmount?: number
     customerTaxId?: string       // optional, for B2B invoices
   }): Promise<{ receiptUrl: string; receiptId: string; documentType: DocumentType }>
 

@@ -69,6 +69,16 @@ export interface RegistryEntry {
     isSuccess: boolean
     amount?: number
     merchantReference?: string
+    /**
+     * The provider says this event is money going BACK. Never a settlement, so
+     * always accompanied by isSuccess: false — but distinct from a decline,
+     * because a decline changes nothing while a refund means a charge Lessio
+     * still reads as paid no longer is. There is no ledger for that
+     * (charge_payments.amount is CHECK (amount > 0), so a reversal row cannot
+     * exist), so the route reports it loudly for manual reconciliation instead
+     * of dropping it into the generic no-op branch.
+     */
+    isRefund?: boolean
   } | null
 
   /**
@@ -173,7 +183,7 @@ const payPlusEntry: RegistryEntry = {
     const amount = Number(body.amount)
     const merchantReference = body.more_info
     if (!Number.isFinite(amount) || amount <= 0 || !merchantReference) return null
-    return { reference, isSuccess: !explicitlyFailed && !isRefund, amount, merchantReference }
+    return { reference, isSuccess: !explicitlyFailed && !isRefund, amount, merchantReference, isRefund }
   },
 }
 
@@ -369,9 +379,15 @@ const growEntry: RegistryEntry = {
     })
   },
 
-  // No verifyWebhookRequest: Grow signs nothing. The reference itself is the
-  // shared secret — processToken is minted by Grow and known only to us — and
-  // the adapter's acknowledgeWebhook closes the loop with approveTransaction.
+  // Settles on the adapter's confirmTransaction, not on the callback body: Grow
+  // signs nothing, so authenticity comes from the approveTransaction round-trip
+  // made with this org's own API key. Without this flag the route rejected every
+  // Grow callback before reading it, and no Grow payment could ever be
+  // collected — the parent paid and Lessio kept chasing them.
+  acceptsWebhookSettlement: true,
+
+  // No verifyWebhookRequest: there is no signature to verify. See
+  // GrowProvider.confirmTransaction.
   parseWebhookBody: parseGrowWebhookBody,
   webhookTransactionIds: growWebhookTransactionIds,
   parseInvoiceWebhookBody: parseGrowInvoiceWebhookBody,

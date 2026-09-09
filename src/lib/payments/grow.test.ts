@@ -194,15 +194,20 @@ describe('GrowProvider.createPaymentLink', () => {
   })
 })
 
-describe('GrowProvider.acknowledgeWebhook', () => {
-  it('calls approveTransaction with the process identifiers from the webhook', async () => {
+describe('GrowProvider.confirmTransaction', () => {
+  const CALLBACK = { processId: '332002', processToken: 'tok-long-random', statusCode: '2' }
+
+  it('approves the transaction with Grow and settles on its answer', async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ status: 1 }))
 
-    await new GrowProvider(CONFIG).acknowledgeWebhook({
-      processId: '332002',
-      processToken: 'tok-long-random',
+    const confirmed = await new GrowProvider(CONFIG).confirmTransaction({
+      reference: 'tok-long-random',
+      expectedAmount: 100,
+      chargeIds: ['charge-1'],
+      body: CALLBACK,
     })
 
+    expect(confirmed).toBe(true)
     expect(vi.mocked(fetch).mock.calls[0]![0]).toBe(
       'https://secure.meshulam.co.il/api/light/server/1.0/approveTransaction'
     )
@@ -212,21 +217,47 @@ describe('GrowProvider.acknowledgeWebhook', () => {
     expect(form.userId).toBe('u-123')
   })
 
-  it('does not call Grow when the webhook has no process identifiers', async () => {
+  it('does not call Grow when the callback carries no process identifiers', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    await new GrowProvider(CONFIG).acknowledgeWebhook({ statusCode: '2' })
+    const confirmed = await new GrowProvider(CONFIG).confirmTransaction({
+      reference: 'tok', expectedAmount: 100, chargeIds: ['charge-1'], body: { statusCode: '2' },
+    })
 
+    expect(confirmed).toBe(false)
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('swallows an approveTransaction failure — the charge is already paid', async () => {
+  it('refuses a callback whose token is not the reference the charge was minted with', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const confirmed = await new GrowProvider(CONFIG).confirmTransaction({
+      reference: 'tok-for-another-charge',
+      expectedAmount: 100,
+      chargeIds: ['charge-1'],
+      body: CALLBACK,
+    })
+
+    expect(confirmed).toBe(false)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('refuses when Grow rejects the approval', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ status: 0, err: 'boom' }))
+
+    await expect(new GrowProvider(CONFIG).confirmTransaction({
+      reference: 'tok-long-random', expectedAmount: 100, chargeIds: ['charge-1'], body: CALLBACK,
+    })).resolves.toBe(false)
+  })
+
+  it('refuses rather than throwing when Grow cannot be reached', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ err: 'boom' }, false, 500))
 
-    await expect(
-      new GrowProvider(CONFIG).acknowledgeWebhook({ processId: '1', processToken: 't' })
-    ).resolves.toBeUndefined()
+    await expect(new GrowProvider(CONFIG).confirmTransaction({
+      reference: 'tok-long-random', expectedAmount: 100, chargeIds: ['charge-1'], body: CALLBACK,
+    })).resolves.toBe(false)
   })
 })
 

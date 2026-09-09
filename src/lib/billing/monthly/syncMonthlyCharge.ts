@@ -36,6 +36,8 @@ type ExistingMonthlyCharge = {
   id: string
   status: ChargeStatus
   paid_at: string | null
+  amount: number | string | null
+  amount_paid: number | string | null
 }
 
 export async function syncMonthlyCharge({
@@ -54,7 +56,7 @@ export async function syncMonthlyCharge({
 
   const { data: existingCharge, error: existingChargeError } = await db
     .from('charges')
-    .select('id, status, paid_at')
+    .select('id, status, paid_at, amount, amount_paid')
     .eq('organization_id', organizationId)
     .eq('billing_record_id', billingRecordId)
     .maybeSingle()
@@ -73,6 +75,43 @@ export async function syncMonthlyCharge({
       chargeId: existing.id,
       chargeStatus: existing.status,
       isPaid: effectiveIsPaid,
+    }
+  }
+
+  // A paid charge deliberately falls through the guard above so that a bill
+  // flipped to paid still propagates — but its AMOUNT is settled money and must
+  // not move. Rewriting it leaves amount_paid behind at the old figure, which
+  // no screen shows because 'paid' is excluded from the open-charge queries,
+  // and contradicts any receipt already issued. The caller is refused a silent
+  // change; the correct route for one is a void or a credit note.
+  if (existing && existing.status === 'paid') {
+    const settledAmount = Number(existing.amount ?? 0)
+    if (Math.round(settledAmount * 100) !== Math.round(amount * 100)) {
+      console.error('[syncMonthlyCharge] refused to change the amount of a paid charge', {
+        organizationId,
+        billingRecordId,
+        chargeId: existing.id,
+        settledAmount,
+        requestedAmount: amount,
+      })
+      await logChargeAudit({
+        organizationId,
+        chargeId: existing.id,
+        parentId,
+        eventType: 'sync_conflict',
+        beforeAmount: settledAmount,
+        afterAmount: amount,
+        metadata: {
+          source: 'monthly_billing',
+          billing_month: billingMonth,
+          refused: 'amount_change_on_paid_charge',
+        },
+      })
+      return {
+        chargeId: existing.id,
+        chargeStatus: 'paid',
+        isPaid: true,
+      }
     }
   }
 

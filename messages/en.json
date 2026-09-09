@@ -4189,6 +4189,9 @@
       "error": "Error submitting request. Please try again.",
       "noPhone": "We couldn't find your phone number"
     },
+    "session": {
+      "logOut": "Log out"
+    },
     "nav": {
       "home": "Home",
       "schedule": "Schedule",

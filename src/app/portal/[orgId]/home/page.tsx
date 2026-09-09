@@ -13,7 +13,8 @@ import { OPEN_CHARGE_STATUSES } from '@/lib/charges'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
 import { DeletionRequestButton } from '@/components/portal/DeletionRequestButton'
 import { getActiveGoalsForStudents } from '@/lib/goals'
-import { requestDeletionAction, setMarketingOptInAction } from './actions'
+import { PortalLogoutButton } from '@/components/portal/PortalLogoutButton'
+import { portalLogoutAction, requestDeletionAction, setMarketingOptInAction } from './actions'
 import { MarketingOptInToggle } from '@/components/portal/MarketingOptInToggle'
 
 export default async function PortalHomePage({
@@ -259,8 +260,10 @@ export default async function PortalHomePage({
         />
       </div>
 
-      {/* GDPR deletion request */}
-      <div className="px-4 pb-4 flex justify-center">
+      {/* Ending the session, and GDPR deletion. Logging out sits first: it is
+          the routine one, on a product whose login is a shared family phone. */}
+      <div className="px-4 pb-4 flex flex-col items-center gap-1">
+        <PortalLogoutButton action={portalLogoutAction.bind(null, orgId)} />
         <DeletionRequestButton
           action={requestDeletionAction.bind(null, orgId)}
         />

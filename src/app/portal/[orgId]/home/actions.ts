@@ -1,12 +1,32 @@
 'use server'
 
-import { getPortalSession } from '@/lib/portal/session'
+import { clearPortalSessionCookie, getPortalSession } from '@/lib/portal/session'
 import { createDeletionRequest } from '@/lib/superadmin/dataDeletion'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 
 /** `error` is a key under the portal.gdpr namespace, translated by the client. */
 export type DeletionRequestState = { error: 'noPhone' | 'error' | null; success?: boolean }
+
+/**
+ * Ends the portal session on this device.
+ *
+ * The portal's login model is a phone number, and in this product a family
+ * phone is routinely shared or handed around — a parent signs in on a
+ * partner's handset, or on the one the child uses for homework. The session
+ * cookie lasts seven days and until now there was no way to end it:
+ * clearPortalSessionCookie existed but had no callers anywhere in the
+ * codebase, so the only exit was clearing site data.
+ *
+ * Deliberately unconditional. Logging out is the one action that must work
+ * even when the cookie is already invalid, expired, or names another org —
+ * refusing to clear a cookie because it looks wrong is exactly backwards.
+ * redirect() signals by throwing, so it stays outside any try/catch.
+ */
+export async function portalLogoutAction(orgId: string): Promise<void> {
+  await clearPortalSessionCookie()
+  redirect(`/portal/${orgId}/login`)
+}
 
 /**
  * Inserts a GDPR data deletion request for the current portal session's phone number.

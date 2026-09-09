@@ -114,6 +114,23 @@ export function nextSendableTime(
 }
 
 /**
+ * The opening of the NEXT sending window — tomorrow morning, org-local.
+ *
+ * Where `nextSendableTime` answers "when may this campaign start?",
+ * this answers "when may the part the cap held back be reconsidered?". It is
+ * always the following day, never later today: today's allowance is spent, and
+ * a remainder promoted an hour from now would spend it twice.
+ */
+export function nextDailyWindow(now: Date, timezone: string, quietStart: number): Date {
+  const local = DateTime.fromJSDate(now).setZone(timezone)
+  const base = local.isValid ? local : DateTime.fromJSDate(now).setZone('Asia/Jerusalem')
+  return base
+    .plus({ days: 1 })
+    .set({ hour: quietStart, minute: 0, second: 0, millisecond: 0 })
+    .toJSDate()
+}
+
+/**
  * How many messages this line may still start today, and half of that as the
  * campaign's share — the other half is reserved so a big announcement cannot
  * starve tomorrow morning's lesson reminders.

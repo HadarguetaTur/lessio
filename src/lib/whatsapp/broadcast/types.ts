@@ -7,6 +7,7 @@
  */
 
 import type { AppLocale } from '@/lib/i18n/locale'
+import type { ConsentFacts } from '@/lib/whatsapp/consentRules'
 
 /** The three broadcast template types, as stored on broadcast_campaigns. */
 export type BroadcastType = 'class_update' | 'promo' | 'group_invite'
@@ -40,7 +41,14 @@ export type AudienceFilter =
 
 export type AudienceKind = AudienceFilter['kind']
 
-/** Why a resolved person will not be messaged. Stored on broadcast_recipients. */
+/**
+ * Why a resolved person will NOT be messaged — every value here is terminal.
+ *
+ * There is deliberately no reason for "past today's cap": that person is still
+ * going to be messaged, just not today, and they are held as
+ * `status = 'deferred'` instead. A skip reason that secretly meant "maybe later"
+ * is how 350 of a 400-parent audience were quietly dropped.
+ */
 export type SkipReason =
   | 'opted_out'
   | 'updates_opted_out'
@@ -50,7 +58,6 @@ export type SkipReason =
   | 'per_user_limit'
   | 'already_invited'
   | 'no_phone'
-  | 'over_cap'
 
 export interface BroadcastRecipient {
   parentId: string | null
@@ -66,18 +73,19 @@ export interface AudienceResult {
   skipped: Array<{ reason: SkipReason; count: number }>
 }
 
-/** One person as the resolver reads them, before consent is applied. */
-export interface AudienceCandidate {
+/**
+ * One person as the resolver reads them, before consent is applied.
+ *
+ * It extends `ConsentFacts` rather than restating the four columns, so the
+ * resolver and the send-time gate are typed against the same evidence.
+ */
+export interface AudienceCandidate extends ConsentFacts {
   parentId: string | null
   studentId: string | null
   phone: string | null
   displayName: string | null
   locale: AppLocale | null
   isActive: boolean
-  optedOutAt: string | null
-  updatesOptedOutAt: string | null
-  marketingOptInAt: string | null
-  marketingOptedOutAt: string | null
   /** Only meaningful for a group invite: has this parent already been invited? */
   alreadyInvited?: boolean
 }

@@ -73,9 +73,16 @@ CREATE TABLE broadcast_recipients (
   phone           text NOT NULL,
   display_name    text,
   locale          text NOT NULL DEFAULT 'he' CHECK (locale IN ('he','en')),
+  -- 'deferred' is the honest state for the part of an audience today's cap
+  -- cannot cover. It is NOT a skip: skips are terminal and mean "this person
+  -- will not be messaged", whereas a deferred row is queued for the next daily
+  -- window. Writing these as skipped lost them permanently.
   status          text NOT NULL DEFAULT 'pending'
-                    CHECK (status IN ('pending','claimed','sent','skipped','failed')),
+                    CHECK (status IN ('pending','deferred','claimed','sent','skipped','failed')),
   skip_reason     text,
+  -- When a deferred row may be reconsidered. The drain re-asks the guard then,
+  -- because a new day is a new allowance.
+  deferred_until  timestamptz,
   wa_message_id   text,
   error_code      integer,
   error           text,
@@ -93,9 +100,12 @@ CREATE INDEX idx_broadcast_recipients_history ON broadcast_recipients (organizat
   WHERE status = 'sent';
 CREATE INDEX idx_broadcast_recipients_wamid ON broadcast_recipients (wa_message_id)
   WHERE wa_message_id IS NOT NULL;
+-- The promotion pass reads exactly this: remainders whose day has come.
+CREATE INDEX idx_broadcast_recipients_deferred ON broadcast_recipients (deferred_until)
+  WHERE status = 'deferred';
 
 COMMENT ON COLUMN broadcast_recipients.skip_reason IS
-  'opted_out | updates_opted_out | marketing_opted_out | no_marketing_opt_in | frequency_capped | per_user_limit | already_invited | no_phone | over_cap';
+  'opted_out | updates_opted_out | marketing_opted_out | no_marketing_opt_in | frequency_capped | per_user_limit | already_invited | no_phone. Every one of these is terminal — a capped remainder is status = deferred, not a skip.';
 
 -- ─── Claim: recipients this tick may send ───────────────────────────────────
 -- Same shape as claim_next_outbound_prospects: FOR UPDATE SKIP LOCKED plus a

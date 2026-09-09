@@ -14,7 +14,6 @@
  * /messages/whatsapp/<phone> without this module writing a single log row.
  */
 
-import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { prepareBusinessSend } from '@/lib/whatsapp/consent'
@@ -31,6 +30,7 @@ import {
   checkCampaignAllowed,
   classifyMetaError,
   frequencySkip,
+  nextDailyWindow,
   type GuardBlockReason,
   type GuardOrg,
 } from './guard'
@@ -170,14 +170,27 @@ async function recentSendsByPhone(
 }
 
 export type StartCampaignResult =
-  | { ok: true; recipients: number; skipped: number; scheduledFor: string | null }
+  | {
+      ok: true
+      recipients: number
+      skipped: number
+      /** Materialised but held back for a later day by the guard's cap. */
+      deferred: number
+      scheduledFor: string | null
+    }
   | { ok: false; reason: GuardBlockReason }
+  | { ok: false; reason: 'already_started' }
 
 /**
  * Materialises the audience and puts the campaign in flight.
  *
  * Skipped people are written as rows too, not dropped: the delivery report has
  * to be able to answer "why didn't Dana's mother get this?" a week later.
+ *
+ * Runs at most once per campaign. The claim below is the whole guard: only the
+ * caller whose UPDATE actually flips `started_at` from NULL proceeds. Without
+ * it a second call would overwrite the counters of a campaign already in
+ * flight, or raise a cancelled one from the dead.
  */
 export async function startCampaign(
   campaignId: string,
@@ -186,12 +199,16 @@ export async function startCampaign(
   const db = createServiceRoleClient()
   const now = opts.now ?? new Date()
 
-  const { data: campaign, error: campaignError } = await db
+  const { data: claimed, error: claimError } = await db
     .from('broadcast_campaigns')
-    .select('*')
+    .update({ started_at: now.toISOString() })
     .eq('id', campaignId)
-    .maybeSingle()
-  if (campaignError || !campaign) throw new Error(`startCampaign: campaign ${campaignId} not found`)
+    .eq('status', 'draft')
+    .is('started_at', null)
+    .select('*')
+  if (claimError) throw new Error(`startCampaign: claim failed: ${claimError.message}`)
+  const campaign = (claimed ?? [])[0]
+  if (!campaign) return { ok: false, reason: 'already_started' }
   const c = campaign as CampaignRow
 
   const { data: orgData, error: orgError } = await db
@@ -236,14 +253,20 @@ export async function startCampaign(
   const tallySkip = (reason: SkipReason) => skippedTally.set(reason, (skippedTally.get(reason) ?? 0) + 1)
   for (const { reason, count } of audience.skipped) skippedTally.set(reason, count)
 
+  // Everything past the guard's cap waits for another day rather than spending
+  // an allowance that lesson reminders also need — and "waits" has to mean it.
+  // These rows used to be written `skipped/over_cap`, a terminal state nothing
+  // ever re-queued, so a 400-parent update on a warm-up-capped number lost 350
+  // people permanently with no way to reach them.
+  const deferUntil = nextDailyWindow(now, guardOrg.timezone, guardOrg.quietStart)
+
   let allowed = 0
+  let deferred = 0
   for (const recipient of audience.included) {
     const capped = frequencySkip(guardOrg, category, history.get(recipient.phone) ?? 0)
-    // Everything past the guard's cap waits for another day rather than
-    // spending an allowance that lesson reminders also need.
     const overCap = !capped && allowed >= decision.cap
-    const skipReason: SkipReason | null = capped ?? (overCap ? 'over_cap' : null)
-    if (skipReason) tallySkip(skipReason)
+    if (capped) tallySkip(capped)
+    else if (overCap) deferred += 1
     else allowed += 1
 
     rows.push({
@@ -254,9 +277,10 @@ export async function startCampaign(
       phone: recipient.phone,
       display_name: recipient.displayName,
       locale: recipient.locale,
-      status: skipReason ? 'skipped' : 'pending',
-      skip_reason: skipReason,
-      sent_at: skipReason ? now.toISOString() : null,
+      status: capped ? 'skipped' : overCap ? 'deferred' : 'pending',
+      skip_reason: capped ?? null,
+      deferred_until: overCap ? deferUntil.toISOString() : null,
+      sent_at: capped ? now.toISOString() : null,
     })
   }
 
@@ -271,16 +295,18 @@ export async function startCampaign(
   const skippedTotal = [...skippedTally.values()].reduce((a, b) => a + b, 0)
   const scheduledFor = decision.deferUntil ?? (c.scheduled_at ? new Date(c.scheduled_at) : null)
   const future = scheduledFor && scheduledFor.getTime() > now.getTime()
+  // A campaign with deferred rows still owes work, so it is not 'sent'.
+  const done = allowed === 0 && deferred === 0
 
   await db
     .from('broadcast_campaigns')
     .update({
-      status: allowed === 0 ? 'sent' : future ? 'scheduled' : 'sending',
+      status: done ? 'sent' : future ? 'scheduled' : 'sending',
       scheduled_at: future ? scheduledFor!.toISOString() : null,
       recipients_total: rows.length,
       skipped_count: skippedTotal,
       started_at: future ? null : now.toISOString(),
-      sent_at: allowed === 0 ? now.toISOString() : null,
+      sent_at: done ? now.toISOString() : null,
       paused_reason: null,
     })
     .eq('id', campaignId)
@@ -289,6 +315,7 @@ export async function startCampaign(
     ok: true,
     recipients: allowed,
     skipped: skippedTotal,
+    deferred,
     scheduledFor: future ? scheduledFor!.toISOString() : null,
   }
 }
@@ -308,7 +335,93 @@ export interface TickResult {
   skipped: number
   failed: number
   requeued: number
+  /** Rows the cap held back on an earlier day and this tick let through. */
+  promoted: number
   stopped: boolean
+}
+
+/**
+ * Lets through the part of a campaign yesterday's cap held back.
+ *
+ * A fresh day is a fresh allowance, so the guard is asked again — the number's
+ * quality, tier and remaining daily budget have all moved since. Whatever
+ * today's cap does not cover is pushed to tomorrow rather than promoted and
+ * left to spend an allowance the lesson reminders need.
+ */
+export async function promoteDeferredRecipients(db: Db, now: Date): Promise<number> {
+  const { data: due, error } = await db
+    .from('broadcast_recipients')
+    .select('id, campaign_id')
+    .eq('status', 'deferred')
+    .lte('deferred_until', now.toISOString())
+    .order('created_at', { ascending: true })
+    .limit(1000)
+
+  if (error) {
+    console.warn('[broadcast] deferred lookup failed', { error: error.message })
+    return 0
+  }
+
+  const byCampaign = new Map<string, string[]>()
+  for (const row of (due ?? []) as Array<{ id: string; campaign_id: string }>) {
+    const list = byCampaign.get(row.campaign_id) ?? []
+    list.push(row.id)
+    byCampaign.set(row.campaign_id, list)
+  }
+
+  let promoted = 0
+  for (const [campaignId, ids] of byCampaign) {
+    const campaign = await loadCampaign(db, new Map(), campaignId)
+    // A paused, cancelled or finished campaign keeps its remainder frozen.
+    if (!campaign || (campaign.status !== 'sending' && campaign.status !== 'scheduled')) continue
+
+    const { data: orgData } = await db
+      .from('organizations')
+      .select(ORG_COLUMNS)
+      .eq('id', campaign.organization_id)
+      .maybeSingle()
+    const org = orgData as OrgRow | null
+    if (!org) continue
+
+    const guardOrg = toGuardOrg(org, false)
+    const decision = checkCampaignAllowed({
+      org: guardOrg,
+      category: categoryOf(campaign.template_type),
+      recipientCount: ids.length,
+      conversationsLast24h: await countConversationsLast24h(db, campaign.organization_id, now),
+      now,
+    })
+
+    // The guard refusing today is not a reason to lose the remainder — it is a
+    // reason to say so on the campaign and look again tomorrow.
+    const cap = decision.ok ? decision.cap : 0
+    if (!decision.ok) {
+      await db
+        .from('broadcast_campaigns')
+        .update({ status: 'paused', paused_reason: decision.reason })
+        .eq('id', campaignId)
+        .in('status', ['sending', 'scheduled'])
+    }
+
+    const release = ids.slice(0, cap)
+    const hold = ids.slice(cap)
+
+    if (release.length > 0) {
+      await db
+        .from('broadcast_recipients')
+        .update({ status: 'pending', deferred_until: null })
+        .in('id', release)
+      promoted += release.length
+    }
+    if (hold.length > 0) {
+      await db
+        .from('broadcast_recipients')
+        .update({ deferred_until: nextDailyWindow(now, guardOrg.timezone, guardOrg.quietStart).toISOString() })
+        .in('id', hold)
+    }
+  }
+
+  return promoted
 }
 
 /**
@@ -322,7 +435,15 @@ export async function runBroadcastTick(
 ): Promise<TickResult> {
   const db = createServiceRoleClient()
   const now = opts.now ?? new Date()
-  const result: TickResult = { claimed: 0, sent: 0, skipped: 0, failed: 0, requeued: 0, stopped: false }
+  const result: TickResult = {
+    claimed: 0,
+    sent: 0,
+    skipped: 0,
+    failed: 0,
+    requeued: 0,
+    promoted: 0,
+    stopped: false,
+  }
 
   // Scheduled campaigns whose time has come.
   await db
@@ -330,6 +451,9 @@ export async function runBroadcastTick(
     .update({ status: 'sending', started_at: now.toISOString() })
     .eq('status', 'scheduled')
     .lte('scheduled_at', now.toISOString())
+
+  // Then yesterday's remainder, before the claim so it can go out this tick.
+  result.promoted = await promoteDeferredRecipients(db, now)
 
   const { data: claimed, error } = await db.rpc('claim_broadcast_recipients', {
     p_now: now.toISOString(),
@@ -437,17 +561,29 @@ async function sendOne(
   const locale = (recipient.locale as AppLocale) ?? 'he'
   const type = campaign.template_type as BroadcastTemplateType
 
-  // The opt-out check and the one-time welcome notice, exactly as every other
-  // business-initiated send does it.
+  // Consent, re-read on the live parent row at the last safe moment.
+  //
+  // This is the authority, not the recipient row: the row was materialised when
+  // the campaign started, and a campaign drains over many ticks and can pause
+  // overnight under the daily budget. A parent who taps "stop offers" halfway
+  // through gets nothing more from this campaign, because the answer is looked
+  // up again here rather than trusted from yesterday.
   const gate = await prepareBusinessSend({
     orgId: org.id,
     phone: recipient.phone,
     accessToken: token,
     phoneNumberId,
     locale,
+    category: categoryOf(campaign.template_type),
   })
   if (!gate.ok) {
-    await markRecipient(db, campaign, recipient.id, { status: 'skipped', skip_reason: 'opted_out' }, now)
+    // 'unknown' means consent could not be read, not that it was withdrawn.
+    // Put the row back rather than libel the parent in the delivery report.
+    if (gate.reason === 'unknown') {
+      await releaseRecipient(db, recipient.id)
+      return 'retry'
+    }
+    await markRecipient(db, campaign, recipient.id, { status: 'skipped', skip_reason: gate.reason }, now)
     return 'skipped'
   }
 
@@ -607,14 +743,20 @@ async function bumpFailureStreak(db: Db, campaign: CampaignRow, code: number | n
   await db.from('broadcast_campaigns').update(patch).eq('id', campaign.id)
 }
 
-/** Marks as sent any campaign this tick emptied. */
+/**
+ * Marks as sent any campaign this tick emptied.
+ *
+ * `deferred` counts as outstanding: a campaign whose remainder is waiting for
+ * tomorrow's allowance is not finished, and calling it 'sent' would both lie to
+ * the owner and stop the drain from ever coming back to it.
+ */
 async function finishCompletedCampaigns(db: Db, campaignIds: string[], now: Date): Promise<void> {
   for (const id of campaignIds) {
     const { count } = await db
       .from('broadcast_recipients')
       .select('*', { count: 'exact', head: true })
       .eq('campaign_id', id)
-      .in('status', ['pending', 'claimed'])
+      .in('status', ['pending', 'claimed', 'deferred'])
 
     if ((count ?? 0) === 0) {
       await db
@@ -626,7 +768,8 @@ async function finishCompletedCampaigns(db: Db, campaignIds: string[], now: Date
   }
 }
 
-/** The org-local month a quota is measured in — exported for the usage screens. */
-export function currentMonthLabel(timezone: string, now = new Date()): string {
-  return DateTime.fromJSDate(now).setZone(timezone).toFormat('yyyy-MM')
-}
+// There was a `currentMonthLabel(timezone)` here that computed the org-local
+// month. Nothing called it, and it disagreed with `src/lib/saas/quota.ts`, which
+// measures every monthly quota — broadcast recipients included — against the UTC
+// month. One authority is better than two that agree by luck, so the quota
+// module keeps it and this one is gone.

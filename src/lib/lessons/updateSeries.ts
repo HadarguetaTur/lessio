@@ -14,6 +14,7 @@ import { MAX_SERIES_OCCURRENCES } from '@/lib/lessons/createSeries'
 import { normalizeSeriesRule, type SeriesRule } from '@/lib/lessons/seriesRule'
 import { stopLessonSeries } from '@/lib/lessons/cancelSeries'
 import { EMPTY_FOOTPRINT, loadSeriesFootprint, SeriesHasHistoryError } from '@/lib/lessons/seriesFootprint'
+import { assertSlotBookable, SlotNotBookableError } from '@/lib/booking/assertSlotBookable'
 
 export type UpdateSeriesResult = {
   /** Lessons newly created (extend) or removed (shorten). */
@@ -164,6 +165,35 @@ export async function extendLessonSeries(
     const end = start.plus({ minutes: rule.duration_minutes })
     const startUtc = start.toISO()!
     const endUtc = end.toISO()!
+
+    // The SAME write-time authority the parent booking path uses. Extend used
+    // to check only `organization_holidays`, student overlap and slot locks —
+    // it never read `availability_overrides` and never asked Google, so
+    // pushing a series' `until` forward minted up to MAX_SERIES_OCCURRENCES
+    // lessons straight through an approved teacher vacation, at whatever
+    // duration the stored rule happened to hold. The widest scheduling hole in
+    // the product, and reachable from one form field.
+    //
+    // A failed occurrence is a CONFLICT, not a thrown error: extend already
+    // reports the dates it could not fill, and one blocked week must not
+    // abandon the other twenty-nine.
+    try {
+      await assertSlotBookable({
+        orgId,
+        teacherId: series.teacher_id,
+        startUtc,
+        endUtc,
+        audience: 'admin',
+        // Staff diary, not a parent booking — see the note on the option.
+        skipMinNotice: true,
+      })
+    } catch (err) {
+      if (err instanceof SlotNotBookableError) {
+        conflicts.push(dateStr)
+        continue
+      }
+      throw err
+    }
 
     // Every student on the roster must be free — the same check the create
     // path runs. Without it an extension was the one way to put a student in

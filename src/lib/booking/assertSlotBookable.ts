@@ -72,6 +72,16 @@ export interface AssertSlotBookableParams {
   endUtc: string
   /** Whose duration whitelist applies. Parent surfaces are always 'bot'. */
   audience: LessonDurationAudience
+  /**
+   * `min_booking_notice_hours` is a rule about how late a PARENT may book, not
+   * about when the studio may put a lesson in its own diary. Staff paths pass
+   * true so the notice window stops applying to them — every other check here
+   * (holiday, open availability window, duration whitelist, past) still does.
+   *
+   * Nothing else may be opted out of: the point of this function is that a
+   * caller cannot pick which of the questions it feels like answering.
+   */
+  skipMinNotice?: boolean
   /** Injected by tests; defaults to now. */
   now?: DateTime
 }
@@ -107,7 +117,7 @@ export async function assertSlotBookable(params: AssertSlotBookableParams): Prom
   // 2. Minimum notice, expressed exactly as the slot generator expresses it
   // (`slotEnd > now + notice`), so a slot that was legitimately offered can
   // never be refused here for a rounding difference.
-  if (noticeHours > 0 && end <= now.plus({ hours: noticeHours })) {
+  if (!params.skipMinNotice && noticeHours > 0 && end <= now.plus({ hours: noticeHours })) {
     throw new SlotNotBookableError('min_notice')
   }
 

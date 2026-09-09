@@ -10,15 +10,11 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
 import { OrgScopeError } from '@/lib/auth/orgScope'
 import { getGroupRosterServiceRole } from '@/lib/groups/roster'
-import {
-  buildAvailabilityNotice,
-  type AvailabilityNotice,
-} from '@/lib/availability/availabilityNotice'
-import { checkLessonCalendarConflicts, CalendarConflict } from '@/lib/google-calendar/checkLessonCalendarConflicts'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 import { isLessonDurationAllowed } from '@/lib/organizations/lessonDurations'
-import { analyzeScheduleImpact, type ScheduleImpact } from '@/lib/scheduling/scheduleImpact'
+import { runScheduleGuards, type NewLessonState } from '@/lib/lessons/scheduleGuards'
+import { SCHEDULE_ACK_FIELD } from '@/lib/lessons/scheduleAck'
 
 const lessonStatusZ = z.enum(['scheduled', 'completed', 'cancelled', 'no_show'])
 
@@ -85,38 +81,10 @@ const MULTI_STUDENT_SCHEMAS = {
   custom: CustomLessonSchema,
 } as const
 
-export type NewLessonState = {
-  error: string | null
-  success?: boolean
-  /**
-   * Set when the requested slot is outside the teacher's availability windows.
-   * The UI surfaces a confirmation dialog; resubmitting with
-   * `confirm_outside_availability=1` skips the soft check.
-   */
-  needsAvailabilityConfirm?: boolean
-  /**
-   * What the teacher's availability actually says for that day, so the
-   * confirmation dialog can show it instead of a bare "not available".
-   */
-  availabilityInfo?: AvailabilityNotice
-  /**
-   * Set when a Google Calendar event overlaps the requested slot.
-   * The UI surfaces a warning dialog; resubmitting with
-   * `confirm_calendar_conflict=1` skips the soft check.
-   */
-  needsCalendarConfirm?: boolean
-  calendarConflicts?: CalendarConflict[]
-  /**
-   * Google answered neither "free" nor "busy" — a revoked token, a 403, an
-   * outage or the 8s timeout. The dialog says so, and the same
-   * `confirm_calendar_conflict=1` acknowledgement lets staff proceed anyway.
-   * Silence used to be rendered as "no conflicts".
-   */
-  calendarCheckFailed?: boolean
-  /** The lesson is legal, but would strand time too short for another lesson. */
-  needsScheduleImpactConfirm?: boolean
-  scheduleImpact?: ScheduleImpact
-}
+// The state shape and the three guards live in @/lib/lessons/scheduleGuards,
+// shared with the teacher shell so the two cannot drift apart again.
+export type { NewLessonState }
+
 
 async function assertStudentsAssignedToTeacher(
   orgId: string,
@@ -159,12 +127,8 @@ export async function createLessonAction(
   ).includes(rawType)
     ? (rawType as MultiStudentType)
     : 'individual'
-  const confirmedOutsideAvailability =
-    formData.get('confirm_outside_availability') === '1'
-  const confirmedCalendarConflict =
-    formData.get('confirm_calendar_conflict') === '1'
-  const confirmedScheduleImpact =
-    formData.get('confirm_schedule_impact') === '1'
+  // One server-signed token, not three client-asserted booleans.
+  const ackToken = (formData.get(SCHEDULE_ACK_FIELD) as string | null) ?? null
 
   if (lessonType !== 'custom') {
     const requestedDuration = Number(formData.get('duration_minutes'))
@@ -201,26 +165,13 @@ export async function createLessonAction(
       const assignErr = await assertStudentsAssignedToTeacher(orgId, teacher.id, [student_id])
       if (assignErr) return { error: assignErr }
 
-      if (!confirmedOutsideAvailability && status === 'scheduled') {
-        const avail = await assertWithinTeacherAvailability({
-          orgId,
-          teacherId: teacher_id,
-          date,
-          startTime: start_time,
-          durationMinutes: duration_minutes,
-          role,
-        })
-        if (avail) return avail
-      }
-
-      if (!confirmedScheduleImpact && status === 'scheduled') {
-        const impact = await assertCompactSchedule({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes, audience: 'teacher' })
-        if (impact) return impact
-      }
-      if (!confirmedCalendarConflict && status === 'scheduled') {
-        const cal = await assertNoCalendarConflicts({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes })
-        if (cal) return cal
-      }
+      const guarded = await runScheduleGuards({
+        slot: { orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes },
+        role,
+        audience: 'teacher',
+        ackToken,
+      })
+      if (guarded) return guarded
 
       const result = await createLesson({
         orgId,
@@ -267,26 +218,13 @@ export async function createLessonAction(
         student_ids = parsed.data.student_ids
       }
 
-      if (!confirmedOutsideAvailability && status === 'scheduled') {
-        const avail = await assertWithinTeacherAvailability({
-          orgId,
-          teacherId: teacher_id,
-          date,
-          startTime: start_time,
-          durationMinutes: duration_minutes,
-          role,
-        })
-        if (avail) return avail
-      }
-
-      if (!confirmedScheduleImpact && status === 'scheduled') {
-        const impact = await assertCompactSchedule({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes, audience: 'admin' })
-        if (impact) return impact
-      }
-      if (!confirmedCalendarConflict && status === 'scheduled') {
-        const cal = await assertNoCalendarConflicts({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes })
-        if (cal) return cal
-      }
+      const guarded = await runScheduleGuards({
+        slot: { orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes },
+        role,
+        audience: 'admin',
+        ackToken,
+      })
+      if (guarded) return guarded
 
       const result = await createLesson({
         orgId,
@@ -316,26 +254,13 @@ export async function createLessonAction(
 
       const { teacher_id, student_id, date, start_time, duration_minutes, status } = parsed.data
 
-      if (!confirmedOutsideAvailability && status === 'scheduled') {
-        const avail = await assertWithinTeacherAvailability({
-          orgId,
-          teacherId: teacher_id,
-          date,
-          startTime: start_time,
-          durationMinutes: duration_minutes,
-          role,
-        })
-        if (avail) return avail
-      }
-
-      if (!confirmedScheduleImpact && status === 'scheduled') {
-        const impact = await assertCompactSchedule({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes, audience: 'admin' })
-        if (impact) return impact
-      }
-      if (!confirmedCalendarConflict && status === 'scheduled') {
-        const cal = await assertNoCalendarConflicts({ orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes })
-        if (cal) return cal
-      }
+      const guarded = await runScheduleGuards({
+        slot: { orgId, teacherId: teacher_id, date, startTime: start_time, durationMinutes: duration_minutes },
+        role,
+        audience: 'admin',
+        ackToken,
+      })
+      if (guarded) return guarded
 
       const result = await createLesson({
         orgId,
@@ -393,73 +318,3 @@ export async function createLessonAction(
   redirect(`/lessons/${lessonId}`)
 }
 
-async function assertCompactSchedule(params: Parameters<typeof analyzeScheduleImpact>[0]): Promise<NewLessonState | null> {
-  const impact = await analyzeScheduleImpact(params)
-  if (!impact) return null
-  const t = await getTranslations()
-  return {
-    error: t('lessons.scheduleImpact.description'),
-    needsScheduleImpactConfirm: true,
-    scheduleImpact: impact,
-  }
-}
-
-/**
- * Helper: returns a `NewLessonState` describing Google Calendar conflicts, or
- * null when no conflicts are found (or no calendars are connected).
- */
-async function assertNoCalendarConflicts(params: {
-  orgId:           string
-  teacherId:       string
-  date:            string
-  startTime:       string
-  durationMinutes: number
-}): Promise<NewLessonState | null> {
-  const t = await getTranslations()
-  const { conflicts, status } = await checkLessonCalendarConflicts(params)
-
-  // Not free, not busy: we could not read the calendar. Staff may still book —
-  // this is their own diary and they can see it — but they say so explicitly
-  // rather than being shown a silence that looks like a clean check.
-  if (status === 'unknown_provider_error') {
-    return {
-      error: t('lessons.conflicts.googleCalendarUnavailable'),
-      needsCalendarConfirm: true,
-      calendarCheckFailed: true,
-      calendarConflicts: conflicts,
-    }
-  }
-
-  if (conflicts.length === 0) return null
-  return {
-    error: t('lessons.conflicts.googleCalendar'),
-    needsCalendarConfirm: true,
-    calendarConflicts: conflicts,
-  }
-}
-
-/**
- * Helper: returns a `NewLessonState` describing the availability conflict, or
- * null when the slot fits inside the teacher's availability. Used by every
- * branch of `createLessonAction` before persisting.
- *
- * The wording and the "here is what your availability actually says" payload
- * live in `buildAvailabilityNotice`, shared with the teacher's own route.
- */
-async function assertWithinTeacherAvailability(params: {
-  orgId: string
-  teacherId: string
-  date: string
-  startTime: string
-  durationMinutes: number
-  role: string
-}): Promise<NewLessonState | null> {
-  const built = await buildAvailabilityNotice(params)
-  if (!built) return null
-
-  return {
-    error: built.message,
-    needsAvailabilityConfirm: true,
-    availabilityInfo: built.notice,
-  }
-}

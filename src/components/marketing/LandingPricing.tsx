@@ -61,11 +61,19 @@ export function LandingPricing({
                 featured && 'border-2 border-violet-500/45 shadow-lg ring-2 ring-violet-500/10'
               )}
             >
+              {featured ? (
+                <p className="absolute -top-3 start-5 rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                  {copy.featuredLabel}
+                </p>
+              ) : null}
               <h3 className="text-lg font-semibold tracking-tight text-foreground">
                 {isHe ? row.labelHe : row.labelEn}
               </h3>
 
               <p className="text-sm font-medium text-muted-foreground">{seats(row.teachersQuota)}</p>
+              <p className="-mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                {copy.featureLine}
+              </p>
 
               <div className="tabular-nums" dir="ltr">
                 <span className="text-3xl font-bold leading-none tracking-tight text-foreground">

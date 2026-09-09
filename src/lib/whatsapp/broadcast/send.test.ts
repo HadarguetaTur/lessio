@@ -48,6 +48,8 @@ describe('toGuardOrg', () => {
     wa_messaging_limit_tier: 'TIER_2K',
     wa_business_verification_status: 'verified',
     wa_connected_at: null,
+    wa_health_error: null,
+    wa_account_restricted: null,
     broadcasts_enabled: null,
     broadcast_quiet_start: null,
     broadcast_quiet_end: null,

@@ -92,15 +92,28 @@ export function ExamFormSheet({
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">{t('examDate')}</label>
-            <input
-              name="examDate"
-              type="date"
-              required
-              defaultValue={exam?.examDate ?? ''}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">{t('examDate')}</label>
+              <input
+                name="examDate"
+                type="date"
+                required
+                defaultValue={exam?.examDate ?? ''}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              {/* Optional: with a time, the good-luck message goes out ahead of
+                  the exam instead of at the org's morning hour. */}
+              <label className="text-xs font-medium text-muted-foreground">{t('examTime')}</label>
+              <input
+                name="examTime"
+                type="time"
+                defaultValue={exam?.examTime ?? ''}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

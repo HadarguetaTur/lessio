@@ -67,15 +67,28 @@ export function PortalExamReportForm({ action, students }: Props) {
         className="w-full border border-border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
       />
 
-      <div>
-        <label htmlFor="exam-date" className="text-xs text-muted-foreground">{t('examDate')}</label>
-        <input
-          id="exam-date"
-          name="examDate"
-          type="date"
-          required
-          className="mt-1 w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="exam-date" className="text-xs text-muted-foreground">{t('examDate')}</label>
+          <input
+            id="exam-date"
+            name="examDate"
+            type="date"
+            required
+            className="mt-1 w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+        <div>
+          {/* Optional. With a time we can wish the student luck ahead of the
+              exam rather than first thing in the morning. */}
+          <label htmlFor="exam-time" className="text-xs text-muted-foreground">{t('examTime')}</label>
+          <input
+            id="exam-time"
+            name="examTime"
+            type="time"
+            className="mt-1 w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
       </div>
 
       <label className="flex items-center gap-2 cursor-pointer border border-dashed border-border rounded-lg p-3 hover:bg-accent/30 transition-colors">

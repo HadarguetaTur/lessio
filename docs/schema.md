@@ -48,6 +48,13 @@ lesson_reminder_hours         smallint not null default 24
                               check (lesson_reminder_hours in (2, 4, 12, 24, 48))
 payment_reminder_days         smallint not null default 7
                               check (payment_reminder_days > 0 and payment_reminder_days <= 30)
+-- Exam good-luck message (2026-09)
+automation_exam_good_luck_enabled boolean not null default true
+exam_good_luck_hour           smallint not null default 7 check (between 5 and 12)
+                              -- org-local hour of the send on the exam day
+exam_good_luck_hours_before   smallint not null default 2 check (in (1,2,3))
+                              -- used only when student_exams.exam_time is set;
+                              -- never sends before exam_good_luck_hour
 -- Timestamps
 created_at                    timestamptz default now()
 updated_at                    timestamptz default now()
@@ -138,6 +145,48 @@ index: (organization_id)
 
 When `phone` is set, WhatsApp messages (homework, reminders) go directly to the student.
 When null, messages go to the primary parent via `relationships`.
+
+---
+
+## student_exams
+
+Exams and test grades. One table for two shapes: a graded exam the teacher
+recorded (`status = 'scored'`), and an upcoming exam a parent or student
+reported (`status = 'reported'`, no score yet).
+
+```sql
+id              uuid pk
+organization_id uuid not null references organizations(id)
+student_id      uuid not null references students(id)
+subject         text not null
+title           text not null
+exam_date       date not null
+exam_time       time                                -- 2026-09, optional
+score           smallint check (score >= 0)         -- null until scored
+max_score       smallint not null default 100
+notes           text
+description     text
+source          text not null default 'staff' check (in ('staff','parent','student'))
+status          text not null default 'scored' check (in ('reported','scored'))
+storage_path    text                                -- bucket exam-files
+file_name       text
+mime_type       text
+reported_by_parent_id uuid references parents(id) on delete set null
+created_by      uuid references profiles(id)
+created_at      timestamptz not null default now()
+updated_at      timestamptz not null default now()
+
+check: status <> 'scored' or score is not null
+index: (organization_id, student_id)
+index: (organization_id, student_id, exam_date)
+index: (organization_id, exam_date)
+```
+
+RLS denies everything; all access is service-role. A reported exam runs the org's
+exam policy (`organizations.exam_policy_mode`) and, from 2026-09, is what the
+hourly `exam-good-luck` cron reads. `exam_time` is optional everywhere it is
+entered — null means the good-luck message goes out at
+`organizations.exam_good_luck_hour` instead of ahead of the exam.
 
 ---
 

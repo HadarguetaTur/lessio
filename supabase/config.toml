@@ -374,8 +374,9 @@ inspector_port = 8083
 deno_version = 2
 
 # Sprint 12: Automated reminder cron jobs
-# The 'schedule' key is not supported by CLI v2.x — register schedules manually
-# in the Supabase Dashboard under Edge Functions → Schedules:
+# The 'schedule' key is not supported by CLI v2.x — schedules are registered in
+# pg_cron by scripts/setup-crons.sql, and ONLY there. A Dashboard schedule on top
+# of it is a second pg_cron job, and every reminder goes out twice.
 #   lesson-reminders:  "0 * * * *"   (every hour)
 #   payment-reminders: "0 9 * * *"   (daily at 09:00 UTC)
 [functions.lesson-reminders]
@@ -428,6 +429,14 @@ verify_jwt = false
 #   supabase secrets set GITHUB_ISSUES_TOKEN=<fine-grained PAT, issues:write>
 #   supabase secrets set GITHUB_ISSUES_REPO=<owner/repo>
 [functions.error-monitor]
+verify_jwt = false
+
+# Exam good-luck message — wishes a student luck on the morning of an exam, or a
+# few hours before it when the exam time is known. The hour test lives in the
+# function (supabase/functions/_shared/examGoodLuckTiming.ts), so the schedule is
+# simply hourly.
+#   exam-good-luck: "0 * * * *"  (every hour)
+[functions.exam-good-luck]
 verify_jwt = false
 
 # Automatic lesson completion runs in the Next.js runtime so it can reuse the

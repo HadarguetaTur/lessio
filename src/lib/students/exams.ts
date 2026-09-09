@@ -17,6 +17,7 @@ export type StudentExam = {
   subject: string
   title: string
   examDate: string // YYYY-MM-DD
+  examTime: string | null // HH:MM, org-local; null = unknown
   score: number | null
   maxScore: number
   notes: string | null
@@ -39,6 +40,7 @@ type ExamRow = {
   subject: string
   title: string
   exam_date: string
+  exam_time: string | null
   score: number | null
   max_score: number
   notes: string | null
@@ -54,6 +56,17 @@ type ExamRow = {
   updated_at: string
 }
 
+/**
+ * Postgres returns a `time` column as "HH:MM:SS"; every form and every reader
+ * here works in "HH:MM". An empty string from an untouched <input type="time">
+ * is the same answer as no time at all.
+ */
+function normalizeTime(value: string | null | undefined): string | null {
+  if (!value) return null
+  const m = value.match(/^(\d{2}):(\d{2})/)
+  return m ? `${m[1]}:${m[2]}` : null
+}
+
 function mapExam(row: ExamRow): StudentExam {
   return {
     id: row.id,
@@ -62,6 +75,7 @@ function mapExam(row: ExamRow): StudentExam {
     subject: row.subject,
     title: row.title,
     examDate: row.exam_date,
+    examTime: normalizeTime(row.exam_time),
     score: row.score,
     maxScore: row.max_score,
     notes: row.notes,
@@ -78,11 +92,24 @@ function mapExam(row: ExamRow): StudentExam {
   }
 }
 
+/**
+ * Optional exam start time, "HH:MM". An untouched <input type="time"> posts an
+ * empty string, which means the same as no time: send on the exam morning.
+ */
+const ExamTimeSchema = z
+  .string()
+  .trim()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+  .optional()
+  .nullable()
+  .or(z.literal('').transform(() => null))
+
 export const ExamCreateSchema = z.object({
   studentId: z.string().uuid(),
   subject: z.string().trim().min(1).max(100),
   title: z.string().trim().min(1).max(200),
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  examTime: ExamTimeSchema,
   score: z.coerce.number().int().min(0),
   maxScore: z.coerce.number().int().min(1).max(1000).default(100),
   notes: z.string().trim().max(2000).optional().nullable(),
@@ -92,6 +119,7 @@ export const ExamUpdateSchema = z.object({
   subject: z.string().trim().min(1).max(100),
   title: z.string().trim().min(1).max(200),
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  examTime: ExamTimeSchema,
   score: z.coerce.number().int().min(0),
   maxScore: z.coerce.number().int().min(1).max(1000),
   notes: z.string().trim().max(2000).optional().nullable(),
@@ -103,6 +131,7 @@ export const ExamReportSchema = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().max(2000).optional().nullable(),
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  examTime: ExamTimeSchema,
 })
 
 export async function getExam(orgId: string, examId: string): Promise<StudentExam | null> {
@@ -174,6 +203,7 @@ export async function createExam(params: {
       subject: d.subject,
       title: d.title,
       exam_date: d.examDate,
+      exam_time: d.examTime ?? null,
       score: d.score,
       max_score: d.maxScore,
       notes: d.notes ?? null,
@@ -226,6 +256,7 @@ export async function createExamReport(params: {
       subject: d.subject,
       title: d.title,
       exam_date: d.examDate,
+      exam_time: d.examTime ?? null,
       description: d.description ?? null,
       score: null,
       source: params.source,
@@ -287,6 +318,7 @@ export async function updateExam(params: {
       subject: d.subject,
       title: d.title,
       exam_date: d.examDate,
+      exam_time: d.examTime ?? null,
       score: d.score,
       max_score: d.maxScore,
       notes: d.notes ?? null,

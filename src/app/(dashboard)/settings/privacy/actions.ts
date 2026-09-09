@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
@@ -28,6 +29,12 @@ export async function saveDataRetentionAction(
   if (session.role !== 'owner') {
     return { error: await commonError('noPermission') }
   }
+
+  // The page hides the retention control when the plan lacks the feature, but
+  // the action is a live endpoint regardless of what the page rendered — and a
+  // plan downgrade left the previous UI's form working. Outside the try/catch:
+  // requireFeature answers with redirect(), which signals by throwing.
+  await requireFeature(session.orgId, 'data_retention')
 
   try {
     requireMutation(session)

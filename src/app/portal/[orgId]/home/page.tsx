@@ -13,7 +13,9 @@ import { OPEN_CHARGE_STATUSES } from '@/lib/charges'
 import { PortalTabBar } from '@/components/portal/PortalTabBar'
 import { DeletionRequestButton } from '@/components/portal/DeletionRequestButton'
 import { getActiveGoalsForStudents } from '@/lib/goals'
-import { requestDeletionAction } from './actions'
+import { PortalLogoutButton } from '@/components/portal/PortalLogoutButton'
+import { portalLogoutAction, requestDeletionAction, setMarketingOptInAction } from './actions'
+import { MarketingOptInToggle } from '@/components/portal/MarketingOptInToggle'
 
 export default async function PortalHomePage({
   params,
@@ -47,7 +49,11 @@ export default async function PortalHomePage({
   const studentIds = (relationships ?? []).map((r) => r.student_id)
 
   const [parentResult, orgResult, balanceResult, goals] = await Promise.all([
-    db.from('parents').select('full_name').eq('id', session.parentId).single(),
+    db
+      .from('parents')
+      .select('full_name, marketing_opt_in_at')
+      .eq('id', session.parentId)
+      .single(),
     db.from('organizations').select('name').eq('id', orgId).single(),
     // Same definition of "owed" as /payments: every open status, and what is
     // left after partial payments. Summing raw `amount` over `pending` alone
@@ -84,6 +90,7 @@ export default async function PortalHomePage({
 
   const parentName = parentResult.data?.full_name ?? ''
   const orgName = orgResult.data?.name ?? ''
+  const marketingOptIn = Boolean(parentResult.data?.marketing_opt_in_at)
   const lessons = lessonsResult.data ?? []
   const formatGoalDate = (isoDate: string) =>
     new Intl.DateTimeFormat(toIntlLocale(appLocale), {
@@ -244,8 +251,19 @@ export default async function PortalHomePage({
         )}
       </main>
 
-      {/* GDPR deletion request */}
-      <div className="px-4 pb-4 flex justify-center">
+      {/* Marketing consent, per Meta's per-category opt-in guidance */}
+      <div className="px-4 pb-3">
+        <MarketingOptInToggle
+          initial={marketingOptIn}
+          orgName={orgName}
+          action={setMarketingOptInAction.bind(null, orgId)}
+        />
+      </div>
+
+      {/* Ending the session, and GDPR deletion. Logging out sits first: it is
+          the routine one, on a product whose login is a shared family phone. */}
+      <div className="px-4 pb-4 flex flex-col items-center gap-1">
+        <PortalLogoutButton action={portalLogoutAction.bind(null, orgId)} />
         <DeletionRequestButton
           action={requestDeletionAction.bind(null, orgId)}
         />

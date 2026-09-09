@@ -248,12 +248,27 @@ export async function portalConfirmBookingAction(
  * the slot they were just holding is missing from the list they return to.
  */
 export async function portalReleaseSlotLockAction(orgId: string, lockId: string): Promise<void> {
-  await requirePortalSession(orgId)
+  const session = await requirePortalSession(orgId)
   const db = createServiceRoleClient()
+
+  // Scoping by id + org alone let any signed-in parent in the org expire a
+  // lock they had merely guessed the id of — dropping another family's slot
+  // mid-flow, right before they confirmed. A lock names the student it was
+  // taken for, so the release is scoped to this parent's own children.
+  const { data: mine } = await db
+    .from('relationships')
+    .select('student_id')
+    .eq('parent_id', session.parentId)
+    .eq('organization_id', orgId)
+
+  const studentIds = (mine ?? []).map((r) => r.student_id as string)
+  if (studentIds.length === 0) return
+
   await db
     .from('slot_locks')
     .update({ status: 'expired' })
     .eq('id', lockId)
     .eq('organization_id', orgId)
     .eq('status', 'active')
+    .in('student_id', studentIds)
 }

@@ -770,6 +770,131 @@ routes), re-run `scripts/setup-crons.sql`, tick the three new webhook fields
 in the Meta App Dashboard, and register the templates on Brightpath's WABA from
 the settings page.
 
+## WhatsApp broadcasts + linked group — Phase 1 & 2 (2026-09-09)
+
+**Status:** Built, not yet deployed (migration `20260909140000` local only)
+**Track:** continues "WhatsApp broadcasts + group channel (2026-09-08)"; decision #42
+**Plan:** `~/.claude/plans/pure-moseying-raccoon.md`
+
+Phase 0 (number health, the three templates, the verification card) shipped on
+09.09. This is the engine and the screens on top of it.
+
+**Where it lives.** `/messages/broadcasts` is a third tab beside the portal and
+WhatsApp conversations, for owners and admins. A student group row gains
+"message the group's parents", which opens the composer with the audience ready.
+A teacher gets a single box on their own lesson page. The linked WhatsApp group
+lives in the group's edit sheet.
+
+**The campaign object.** `broadcast_campaigns` stores the audience as a FILTER
+and materialises it into `broadcast_recipients` only at send time, so a campaign
+scheduled for next week never reaches a student who left. Skipped people are
+written as rows too — the delivery report has to answer "why didn't Dana's
+mother get this?" a week later. `claim_broadcast_recipients` is the same
+`FOR UPDATE SKIP LOCKED` lease as the outbound engine, drained by
+`/api/internal/whatsapp/broadcast` (cron `whatsapp-broadcast`, every 2 min)
+twenty at a time with a pause between messages.
+
+**The guard** (`src/lib/whatsapp/broadcast/guard.ts`) is the single gate. It
+refuses on RED quality, a lapsed subscription, an unverified business sending
+marketing, or a promotion written into a service update; caps on YELLOW, on a
+warm-up number, and at half the remaining daily allowance so an announcement
+cannot starve tomorrow's reminders; and defers past quiet hours rather than
+refusing. Meta's error codes are mapped once — the per-user marketing cap
+(131049) is a skip and never a retry, a throughput error requeues and ends the
+tick, three failures in a row pause the campaign.
+
+**Consent is per category.** `parents.marketing_opt_in_at` is required (not
+merely un-refused) for a promo; `updates_opted_out_at` and
+`marketing_opted_out_at` are separate, so leaving the offers list keeps lesson
+reminders. Collected three ways: the portal switch (source `portal`), the
+owner's attestation on a promo campaign, and the `bc:stop` button on every
+broadcast. The bot prompt is deliberately deferred.
+
+**The linked group.** Meta's Groups API needs an Official Business Account, so
+the default is a group the teacher already has: they paste its invite link, and
+Lessio sends it to each parent privately on the `group_invite` template.
+`onlyUninvited` makes the button safe to press twice and makes adding a student
+invite that student's parent alone. The card says on screen that messages reach
+parents privately rather than landing in the group.
+
+**To deploy:** apply `20260909140000_whatsapp_broadcasts.sql`; register the
+`whatsapp-broadcast` cron in prod with the Vault bearer (not the whole
+`setup-crons.sql`, which would overwrite the Edge Function jobs); the
+`LESSIO_WHATSAPP_CRON_SECRET_SHA256` env var is already set. Templates must be
+registered per WABA from the settings page before anything can send.
+
+**Not built:** the bot's one-time opt-in prompt, media in broadcasts, recurring
+campaigns, and Phase 3 (the real Groups API) which waits on a tenant with OBA.
+
+## WhatsApp UX readiness (2026-09-09)
+
+**Status:** ✅ Built — ships with the broadcasts branch; migration `20260909120000` not yet in production
+**Source:** End-to-end WhatsApp UX audit, 2026-09-09 (25 findings; the artifact is linked from the support notes)
+
+The audit scored the WhatsApp experience 58/100. The connection flow itself was
+strong — every branch of Meta's popup already resolved to a sentence, and the
+save blocked on both WABA subscription and Cloud API registration. What failed
+was **truth after connection**: eight surfaces each derived "connected" from
+`whatsapp_phone_number_id != null`, a field that only answers "are credentials
+stored". An expired token, a Meta-restricted account and a healthy number all
+satisfied it, so all three rendered as one green ✓.
+
+**The resolver (`src/lib/whatsapp/connectionState.ts`)** is now the single
+answer, and the reason the rest was possible. `computeWaState` is pure and
+precedence-ordered — `plan_locked > not_connected > reconnect_required >
+blocked_by_meta > at_risk > limited > active` — so the state matrix is a unit
+test rather than a hope. **Green means operational; nothing else paints green.**
+Read by the connections hub, the settings page, the setup checklist, the
+dashboard banner, the conversation pages and the broadcast guard.
+
+To answer without calling Graph on every page load, the reasons are persisted:
+migration `20260909120000` adds `wa_health_error` (`token_invalid` vs
+`unreachable` — terminal vs a blip), `wa_account_restricted`, and a cached
+`wa_display_phone_number` / `wa_verified_name`. `health.ts` classifies a Graph
+190 as a dead token and clears it on a read that works; the `account_update`
+webhook sets the restriction and an APPROVED `account_review_status` lifts it;
+`getPhoneIdentity` feeds the same column from the settings page's own lookup.
+
+**Also fixed**
+- Disconnect had no confirmation — one click unsubscribed the WABA, cleared the
+  credentials and stopped every automation. (The confirmation string had been
+  written and translated and was referenced by nothing.)
+- The plan wall moved in front of the Connect button: an org without
+  `whatsapp_automation` used to complete Meta's entire popup and then be
+  redirected to billing with a burnt OAuth code and no explanation.
+- `saveAutomationSettings` had no `requireFeature` at all — the only WhatsApp
+  write action without one.
+- `requireMutation` threw out of five actions, so support mode and a lapsed
+  subscription presented a billing problem as a crash. One
+  `mutationBlockedError` helper now distinguishes the two.
+- The trust card rendered only `verified`/`pending`, so a business Meta had
+  **refused** looked identical to one that had never applied.
+- A broken WhatsApp was invisible outside settings. One dashboard banner, for
+  exactly three states: `reconnect_required`, `blocked_by_meta`, `at_risk`.
+- Admins receive the `whatsapp_health` notification and its link landed on a red
+  403. The page now renders read-only for them.
+- Six connection errors spoke Meta (OAuth code, token, webhook, Cloud API, raw
+  scope names, an env var name); Meta's English is no longer spliced into
+  Hebrew. Delivery failures show a reason, not error 131047.
+- Prerequisites listed Meta Business Verification as required *to connect*,
+  contradicting the trust card on the same page. Split into "to start ~10
+  minutes" and "what comes later".
+- The broadcast guard gained `reconnect_required` / `blocked_by_meta`: it
+  protected the number's quality but not its ability to send at all, so a
+  campaign on a dead token marched through the whole audience marking every row
+  failed — and the audience is not reusable.
+
+**Deliberately not done:** the audit's F5 (the trust card promising broadcasts
+that did not exist) was closed by Phase 1 shipping rather than by rewording.
+
+**To deploy:** apply `20260908150000` **and** `20260909120000`, set
+`LESSIO_WHATSAPP_CRON_SECRET_SHA256` in Vercel, re-run `scripts/setup-crons.sql`,
+tick the three webhook fields in the Meta App Dashboard. Until the first
+migration lands, `TrustCard` returns `null` in production and the resolver falls
+back to `not_connected` for every org.
+
+---
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

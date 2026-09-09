@@ -41,13 +41,24 @@ export async function getMonthlyRevenueTrend(
   // charge_payments rather than by the charge's closing date. With partial
   // payments those differ: 200 in July and 250 in August on one charge belong
   // to two different months.
-  const { data, error } = await db
-    .from('charge_payments')
-    .select('amount, paid_at')
-    .eq('organization_id', orgId)
-    .gte('paid_at', from)
+  const [{ data, error }, refundsRes] = await Promise.all([
+    db
+      .from('charge_payments')
+      .select('amount, paid_at')
+      .eq('organization_id', orgId)
+      .gte('paid_at', from),
+    // Net of refunds recorded in the same bucket — charge_payments only grows,
+    // so money that went back would otherwise stay on the chart forever.
+    db
+      .from('charges')
+      .select('refunded_amount, refunded_at')
+      .eq('organization_id', orgId)
+      .not('refunded_at', 'is', null)
+      .gte('refunded_at', from),
+  ])
 
   if (error) throw new Error(`Revenue trend query failed: ${error.message}`)
+  if (refundsRes.error) throw new Error(`Revenue trend refund query failed: ${refundsRes.error.message}`)
 
   // Pre-populate all months with zero
   const bucketMap = new Map<string, number>()
@@ -66,7 +77,34 @@ export async function getMonthlyRevenueTrend(
     }
   }
 
+  subtractRefunds(bucketMap, refundsRes.data, timezone)
+
   return [...bucketMap.entries()].map(([month, amount]) => ({ month, amount }))
+}
+
+/**
+ * Nets refunds out of month buckets, in place.
+ *
+ * A refund lands in the month it was RECORDED, not the month the original
+ * payment arrived — the same rule that puts a payment in the month it arrived.
+ * Reports for closed months therefore stay stable instead of silently changing
+ * when someone records a refund for an old charge. Buckets are floored at zero
+ * so a heavy refund month never renders as a negative bar.
+ */
+function subtractRefunds(
+  bucketMap: Map<string, number>,
+  refunds: Array<{ refunded_amount: number | string | null; refunded_at: string | null }> | null,
+  timezone: string
+): void {
+  for (const refund of refunds ?? []) {
+    if (!refund.refunded_at) continue
+    const key = DateTime.fromISO(refund.refunded_at, { zone: 'utc' })
+      .setZone(timezone)
+      .toFormat('yyyy-MM')
+    if (!bucketMap.has(key)) continue
+    const next = (bucketMap.get(key) ?? 0) - Number(refund.refunded_amount ?? 0)
+    bucketMap.set(key, Math.max(0, Math.round(next * 100) / 100))
+  }
 }
 
 export async function getRevenueReport(
@@ -83,7 +121,7 @@ export async function getRevenueReport(
     .startOf('month')
     .toFormat('yyyy-MM')
 
-  const [chargesRes, billingRes] = await Promise.all([
+  const [chargesRes, billingRes, refundsRes] = await Promise.all([
     // Bucketed by when the money arrived — see getMonthlyRevenueTrend.
     db
       .from('charge_payments')
@@ -95,12 +133,22 @@ export async function getRevenueReport(
       .select('billing_month, total_amount, is_paid')
       .eq('organization_id', orgId)
       .gte('billing_month', fromBillingMonth),
+    // Netted out below — see subtractRefunds.
+    db
+      .from('charges')
+      .select('refunded_amount, refunded_at')
+      .eq('organization_id', orgId)
+      .not('refunded_at', 'is', null)
+      .gte('refunded_at', from),
   ])
 
   const data = chargesRes.data
   if (chargesRes.error) throw new Error(`Revenue report query failed: ${chargesRes.error.message}`)
   if (billingRes.error) {
     throw new Error(`Revenue report billing query failed: ${billingRes.error.message}`)
+  }
+  if (refundsRes.error) {
+    throw new Error(`Revenue report refund query failed: ${refundsRes.error.message}`)
   }
 
   // Pre-populate all months with zero so gaps render correctly
@@ -123,6 +171,8 @@ export async function getRevenueReport(
       bucketMap.set(key, (bucketMap.get(key) ?? 0) + Number(payment.amount))
     }
   }
+
+  subtractRefunds(bucketMap, refundsRes.data, timezone)
 
   for (const b of billingRes.data ?? []) {
     const key = b.billing_month as string

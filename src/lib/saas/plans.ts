@@ -17,6 +17,8 @@ export type SaasPlanRow = {
   lessons_monthly_quota: number | null
   /** null = unlimited. Read by requireQuotaCapacity in ./quota.ts. */
   teachers_quota: number | null
+  /** Broadcast messages per calendar month. null = unlimited. */
+  broadcast_recipients_monthly: number | null
 }
 
 /**
@@ -26,7 +28,7 @@ export type SaasPlanRow = {
  * requireQuotaCapacity treated every plan as unlimited and enforced nothing.
  */
 const PLAN_COLUMNS =
-  'id, name, display_name_he, display_name_en, price_monthly, price_yearly, features, sort_order, students_quota, lessons_monthly_quota, teachers_quota'
+  'id, name, display_name_he, display_name_en, price_monthly, price_yearly, features, sort_order, students_quota, lessons_monthly_quota, teachers_quota, broadcast_recipients_monthly'
 
 type PlanQueryRow = {
   id: string
@@ -40,6 +42,7 @@ type PlanQueryRow = {
   students_quota: number | null
   lessons_monthly_quota: number | null
   teachers_quota: number | null
+  broadcast_recipients_monthly: number | null
 }
 
 function mapPlanRow(row: PlanQueryRow): SaasPlanRow {
@@ -56,6 +59,8 @@ function mapPlanRow(row: PlanQueryRow): SaasPlanRow {
     lessons_monthly_quota:
       row.lessons_monthly_quota != null ? Number(row.lessons_monthly_quota) : null,
     teachers_quota: row.teachers_quota != null ? Number(row.teachers_quota) : null,
+    broadcast_recipients_monthly:
+      row.broadcast_recipients_monthly != null ? Number(row.broadcast_recipients_monthly) : null,
   }
 }
 

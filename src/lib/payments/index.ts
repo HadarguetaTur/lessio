@@ -30,11 +30,19 @@ export interface PaymentProvider {
   /** Verify a provider-authenticated callback using this org's credentials. */
   verifyWebhookRequest?(headers: Headers, rawBody: string): boolean
 
-  /** Confirm an unauthenticated callback with the provider before mutation. */
+  /**
+   * Confirm an unauthenticated callback with the provider before mutation.
+   *
+   * `body` is the parsed callback, for providers whose confirmation call needs
+   * an identifier the reference alone does not carry (Grow's processId). It is
+   * untrusted input: an adapter may pass values from it to the provider, but a
+   * confirmation must never be derived from it alone.
+   */
   confirmTransaction?(params: {
     reference: string
     expectedAmount: number
     chargeIds: string[]
+    body?: Record<string, string>
   }): Promise<boolean>
 
   /**

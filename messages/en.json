@@ -245,6 +245,7 @@
       "noPermission": "You don't have permission to perform this action",
       "ownerOnly": "Only the business owner can perform this action",
       "supportModeReadOnly": "Support mode is read-only. Editing is not allowed.",
+      "saasReadOnly": "Your subscription is not active, so changes cannot be saved. You can still view and export your data.",
       "invalidData": "Invalid data",
       "notFound": "The requested item was not found",
       "saveFailed": "Could not save. Please try again.",
@@ -432,6 +433,12 @@
       "projected": "Projected remaining",
       "total": "Total projected",
       "atRisk": "At risk"
+    },
+    "whatsappBanner": {
+      "reconnect_required": "Your WhatsApp connection has expired — reminders, payment requests and automatic replies to parents are paused.",
+      "blocked_by_meta": "Meta has restricted your WhatsApp number. Some messages to parents are not being sent.",
+      "at_risk": "Your WhatsApp number's quality rating has dropped. If it continues, Meta will lower how many messages you can send per day.",
+      "action": "See details and fix"
     }
   },
   "students": {
@@ -571,7 +578,8 @@
       "noStudentsFound": "No students found",
       "saving": "Saving...",
       "createGroup": "Create Group",
-      "namePlaceholder": "E.g. Grade 7 Math"
+      "namePlaceholder": "E.g. Grade 7 Math",
+      "messageParents": "Message the group's parents"
     },
     "parents": {
       "title": "Linked Parents",
@@ -614,7 +622,8 @@
       "loadSubscriptionsFailed": "Could not load the subscriptions",
       "loadGoalsFailed": "Could not load the goals",
       "loadExamsFailed": "Could not load the exams",
-      "loadEmailsFailed": "Could not load the emails"
+      "loadEmailsFailed": "Could not load the emails",
+      "teacherNotInOrg": "The selected teacher was not found in this organization"
     },
     "goalErrors": {
       "createFailed": "Could not create the goal",
@@ -680,6 +689,37 @@
       "discountPercent": "Discount (%)",
       "discountReason": "Discount reason",
       "discountReasonPlaceholder": "e.g. sibling discount"
+    },
+    "waGroup": {
+      "title": "WhatsApp group",
+      "howto": {
+        "1": "Open a group in WhatsApp on your own phone and give it a name.",
+        "2": "In the group info, choose \"Invite via link\" and copy the link.",
+        "3": "Paste it here — we will send it to each parent privately."
+      },
+      "link": "Link",
+      "unlink": "Unlink",
+      "invite": "Invite parents",
+      "open": "Open in WhatsApp",
+      "invitedCount": "{invited} of {total} parents invited",
+      "pendingInvites": "{count} parents have not been invited yet.",
+      "inviteSent": "Invitations sent to {count} parents.",
+      "notInGroupNote": "Messages you send from Lessio reach each parent privately from your business number — never inside the group itself.",
+      "errors": {
+        "INVALID_LINK": "That is not a WhatsApp invite link. It should start with https://chat.whatsapp.com/",
+        "SAVE_FAILED": "Could not save. Try again.",
+        "NOT_LINKED": "Link a WhatsApp group first.",
+        "CREATE_FAILED": "Could not send the invitations. Try again.",
+        "already_started": "This campaign has already been started.",
+        "not_connected": "WhatsApp is not connected. Connect a number in settings first.",
+        "quality_red": "Sending is paused while your number’s quality rating recovers.",
+        "broadcasts_disabled": "Broadcasts are switched off for this account.",
+        "subscription_lapsed": "Your subscription is not active, so sending is paused.",
+        "no_daily_budget": "Today’s message allowance is used up. Try again tomorrow.",
+        "promo_needs_verification": "Your business needs to be verified with Meta first.",
+        "promotional_content_in_update": "The message reads as promotional.",
+        "template_paused": "Meta paused the invitation template."
+      }
     }
   },
   "parents": {
@@ -1030,7 +1070,9 @@
       "reminderOnlyScheduled": "Reminders can only be sent for a scheduled lesson",
       "reminderLessonPast": "A reminder cannot be sent for a lesson that has already passed",
       "noPrimaryParentPhone": "No active primary parent with a phone number was found",
-      "reminderSendFailed": "Could not send the reminder"
+      "reminderSendFailed": "Could not send the reminder",
+      "alreadyDelivered": "A lesson that already took place cannot be cancelled. Change its status instead.",
+      "noLinkedStudents": "Cannot cancel — this lesson has no linked students"
     },
     "chargeAlerts": {
       "noLinkedStudents": "Cannot create a cancellation charge — the lesson has no students linked",
@@ -1049,6 +1091,7 @@
     "lessonHistory": "Lesson history",
     "seriesErrors": {
       "endDateFuture": "The end date must be in the future",
+      "endDateTooFar": "A series can run at most {months} months ahead. You can extend it later.",
       "createSeriesFailed": "Could not create the series",
       "updateSeriesFailed": "Could not update the series",
       "seriesHasHistory": "This series has {count} lessons that already happened or were charged, so it cannot be removed. You can stop it instead.",
@@ -1069,6 +1112,7 @@
       "overrideBlocked": "The teacher has blocked this time — a lesson cannot be scheduled",
       "studentConflict": "The student already has a lesson at this time",
       "googleCalendar": "There is a Google Calendar event at the requested time. Schedule the lesson anyway?",
+      "googleCalendarUnavailable": "We could not read the Google Calendar, so we do not know whether this time is free — the calendar connection may have expired. Schedule the lesson anyway?",
       "outsideWindows": "The teacher is not available at this time. Schedule the lesson anyway?",
       "markedUnavailable": "The teacher marked this date as unavailable. Schedule the lesson anyway?",
       "outsideDayWindow": "The requested time is outside the availability window set for this date. Schedule the lesson anyway?",
@@ -1211,10 +1255,14 @@
       "chargeResolved": "This charge was waived or voided and cannot be marked paid",
       "chargeAlreadyPaid": "This charge is already paid. Refunds and credits are handled in your invoicing system, outside Lessio",
       "chargeAlreadyResolved": "This charge was already waived or voided",
+      "chargeSharedPaymentLink": "A payment request already sent covers this charge together with others. Handle those first, or send a new payment request, then try again",
       "chargeNotOpen": "This charge is not open for payment",
       "paymentTooLarge": "The amount is larger than the open balance ({max})",
       "invalidPaymentDate": "Choose a valid payment date that is not in the future",
-      "nothingOpen": "This parent has no open charges"
+      "nothingOpen": "This parent has no open charges",
+      "refundNotPaid": "No money was collected on this charge, so there is nothing to refund",
+      "refundAlreadyRecorded": "A refund has already been recorded on this charge",
+      "refundExceedsPaid": "The refund is larger than the amount that was collected"
     },
     "notification": {
       "queued": "A confirmation was sent to the parent on WhatsApp",
@@ -1319,7 +1367,19 @@
     },
     "partiallyPaid": "Paid {paid} of {total}",
     "filterFrom": "From date",
-    "filterTo": "To date"
+    "filterTo": "To date",
+    "refund": {
+      "action": "Record refund",
+      "title": "Record a refund",
+      "description": "The money goes back to the parent through your payment provider or bank, not through Lessio. Recording it here stops the amount counting as revenue and stops telling the parent the charge is paid.",
+      "receiptWarning": "A receipt was issued for this charge. The credit note is issued in your receipt system, not in Lessio.",
+      "amountLabel": "Refund amount (up to {max})",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Why was the money returned?",
+      "confirm": "Record refund",
+      "success": "Refund recorded",
+      "banner": "{amount} refunded on {date}. It no longer counts as revenue."
+    }
   },
   "billing": {
     "title": "Monthly Billing",
@@ -1603,8 +1663,12 @@
           "forbidden": "Only the organization owner can register templates.",
           "notConnected": "No WhatsApp Business Account is connected yet.",
           "decryptFailed": "Could not read the stored WhatsApp credentials — reconnect your number.",
-          "registerFailed": "Meta rejected the request. Please try again."
-        }
+          "registerFailed": "Meta rejected the request. Please try again.",
+          "readOnly": "Read-only mode — templates cannot be registered right now."
+        },
+        "approvedCount": "{approved} of {total} message types approved by Meta",
+        "approvedConsequence": "Until they are approved, the remaining types only reach parents who wrote to you in the last 24 hours.",
+        "approvedLink": "View and edit message wordings"
       }
     },
     "payment": {
@@ -2059,8 +2123,10 @@
       "errors": {
         "ownerOnly": "Only the business owner can change automation settings",
         "hoursInvalid": "Must be 2, 12 or 24",
-        "saveFailed": "Could not save the settings"
-      }
+        "saveFailed": "Could not save the settings",
+        "aiNotOnPlan": "The AI assistant is not included in your plan. Nothing was saved — switch it off and save again, or upgrade your plan."
+      },
+      "aiNotOnPlanHint": "Not included in your plan."
     },
     "googleOAuthErrors": {
       "denied": "You did not grant access to Google. You can try again.",
@@ -2321,14 +2387,19 @@
     "whatsappActions": {
       "errors": {
         "missingMetaConfig": "Meta settings are missing on the server — contact your system administrator",
-        "exchangeFailed": "Exchanging the code for a token failed — please try again",
-        "webhookRegisterFailed": "Registering the webhook with Meta failed — please try connecting again",
-        "encryptFailed": "Could not encrypt the token — check that the encryption key is set",
+        "exchangeFailed": "Meta didn't complete the connection. Nothing was saved — you can try again.",
+        "webhookRegisterFailed": "We couldn't set up receiving messages from Meta. Try connecting again; if it keeps happening, write to us.",
+        "encryptFailed": "A technical problem stopped us saving the connection. Write to us and we will sort it.",
         "saveFailed": "Could not save the data",
-        "debugTokenFailed": "Could not verify which permissions Meta granted — please try connecting again",
-        "scopeMissing": "Meta did not grant the permissions this connection needs ({scopes}). The Lessio app is still awaiting Meta App Review approval for them.",
+        "debugTokenFailed": "We couldn't confirm what Meta approved. Try connecting again.",
+        "scopeMissing": "Setup didn't finish — Meta hasn't granted Lessio the permissions this number needs. That's a problem on our side, not yours. Write to us and we'll sort it.",
         "wabaMismatch": "The WhatsApp Business account returned by Meta is not one this connection was authorised for — please start the connection again.",
-        "phoneRegisterFailed": "The phone number could not be registered with WhatsApp Cloud API — please try connecting again",
+        "phoneRegisterPinRequired": "Meta would not activate this number: it has two-step verification switched on with your own PIN, which Lessio cannot know. Turn two-step verification off for the number (WhatsApp Manager > number settings > two-step verification) and connect again. Retrying without turning it off will fail the same way.",
+        "phoneRegisterPinLocked": "Meta has temporarily locked activation for this number after too many PIN attempts. Wait about 12 hours and connect again.",
+        "phoneRegisterReverify": "Meta needs this number verified again. Verify it in WhatsApp Manager, then connect again.",
+        "numberInUse": "This WhatsApp number is already connected to another Lessio account. Disconnect it there, or write to us and we will sort it.",
+        "metaSaid": "Meta said: {detail}",
+        "phoneRegisterFailed": "Meta didn't approve this number for sending. Try again, or check the number isn't active in the WhatsApp app.",
         "disconnectFailed": "Could not disconnect the account"
       }
     },
@@ -2450,26 +2521,33 @@
       "connectedSuccess": "WhatsApp connected successfully. Refreshing the number details...",
       "subtitle": "Connect your organization WhatsApp number to send and receive messages. Each organization is connected to its own number.",
       "portalUrlHint": "Share this link with parents so they can reach their personal portal.",
-      "requirementsTitle": "Before you start — about 2–3 days",
+      "requirementsTitle": "What you need to start — about 10 minutes",
       "req1": "A Meta Business account with access to the WhatsApp Business API",
       "req2": "A phone number not already registered on WhatsApp",
-      "req3": "Meta Business Verification",
       "identityLoading": "Loading the number details from Meta...",
-      "identityUnverified": "We could not confirm the connection with Meta — the connection may have expired. If this persists, disconnect and reconnect.",
       "verifiedName": "Verified business name",
       "phoneNumber": "Phone number",
       "disconnectHint": "Disconnecting stops WhatsApp messages being sent and received until you reconnect.",
+      "disconnectImpact": "From this moment, every automatic message to parents stops:",
+      "disconnectKeeps": "Your existing conversations and templates are kept, not deleted.",
+      "disconnectReturn": "To come back you'll have to go through Meta's connection flow again.",
       "disconnectedHint": "Click the button to start the connection process through Meta. You will be taken to Meta to choose the number you want to connect.",
-      "missingVar": "{name} is not configured on the server — the connection process cannot start.",
       "signupHint": "Sign in to your Meta account and choose the number you want to connect to this organization.",
       "sdkNotLoaded": "Facebook’s login script did not load. Disable any ad or content blocker for this page and reload.",
       "popupClosed": "The Meta window closed before the connection finished. Nothing was saved — you can try again.",
-      "cancelledAtStep": "The connection was not completed. Meta stopped at: {step}.",
-      "metaError": "Meta reported an error: {message}",
+      "cancelledAtStep": "Setup stopped before the number was connected. Nothing was saved — you can start again.",
+      "metaError": "Meta didn't complete the connection. Nothing was saved — you can try again.",
       "noPhoneNumber": "A WhatsApp Business account was selected but no phone number was connected. Reopen the flow and add a phone number to finish.",
       "missingIds": "Meta finished without returning the account details needed to connect. Nothing was saved — please try again.",
       "req2Hint": "A number that is already active in the WhatsApp app can't be connected. Use a second number, or migrate your existing one — it will then stop working in the app.",
-      "requirementsHelp": "Not sure? Write to us"
+      "requirementsHelp": "Not sure? Write to us",
+      "phoneNumberId": "Number's technical ID",
+      "identityUnavailable": "We couldn't read this number's details from Meta right now.",
+      "adminReadOnly": "Only the account owner can change the WhatsApp connection.",
+      "valueSummary": "With a WhatsApp number connected, Lessio sends lesson reminders, payment requests and cancellation links — and answers parents automatically.",
+      "setupUnavailable": "WhatsApp setup isn't available right now because of a technical problem on our side. We're on it — please try again later.",
+      "laterTitle": "What comes later",
+      "laterVerification": "Verifying your business with Meta raises your daily limit from 250 to 2,000 conversations. Not needed to start, and you can do it at any point from the card on this page."
     },
     "remindersPage": {
       "subtitle": "Set automatic WhatsApp reminders to parents before lessons and about open charges.",
@@ -2564,6 +2642,7 @@
         "RED": "Quality: low",
         "UNKNOWN": "Quality: not checked yet"
       },
+      "staleSnapshot": "These figures are from the last successful check with Meta. They stop updating while the connection is broken.",
       "limitPerDay": "Up to {n} conversations per day",
       "limitUnknown": "Daily limit not checked yet",
       "limitUnlimited": "Unlimited conversations per day",
@@ -2583,7 +2662,9 @@
           "done": "Verified at Meta. Daily limit 2,000 and up.",
           "howto": "Meta only accepts documents from a person of the business, in Security Centre. Prepare these first, then submit there. Approval usually takes a few days.",
           "openSecurityCentre": "Open Security Centre",
-          "noUpload": "Lessio never collects your documents. Meta does not allow a software provider to submit verification on your behalf."
+          "noUpload": "Lessio never collects your documents. Meta does not allow a software provider to submit verification on your behalf.",
+          "rejected": "Meta refused your verification request. Your daily limit stays at 250 conversations until you reapply and are approved.",
+          "rejectedHowto": "You can reapply once the reason is fixed. The most common one is a mismatch between the business name on your documents and the name in Business Manager — make sure all three match, then resubmit in Security Centre."
         },
         "oba": {
           "title": "Official Business Account (green tick)",
@@ -2592,8 +2673,10 @@
           "reqVerified": "Business verified",
           "reqAge": "30 days on the platform ({days} left)",
           "reqName": "Display name approved",
-          "notability": "Meta also looks for a website, social profiles and press mentions. A rejection can be resubmitted after 30 days.",
-          "request": "Request in WhatsApp Manager"
+          "notability": "Meta also looks for a website, social profiles and press mentions.",
+          "request": "Request in WhatsApp Manager",
+          "rejected": "Meta refused your Official Business Account request.",
+          "reapply": "You can reapply 30 days after a refusal."
         }
       },
       "checklist": {
@@ -2616,10 +2699,64 @@
       },
       "errors": {
         "ownerOnly": "Only the owner can do this.",
-        "refreshFailed": "Meta could not be reached. Try again in a minute.",
         "invalid": "Invalid request.",
-        "saveFailed": "Saving failed. Try again."
-      }
+        "saveFailed": "Saving failed. Try again.",
+        "refresh": {
+          "not_connected": "No WhatsApp number is connected, so there is nothing to check.",
+          "token_invalid": "The WhatsApp connection has expired. Connect the number again to keep sending and receiving messages.",
+          "unreachable": "We could not reach Meta. Try again in a minute."
+        }
+      },
+      "states": {
+        "done": "Done",
+        "pending": "Meta is reviewing",
+        "rejected": "Refused",
+        "todo": "Not submitted yet"
+      },
+      "neverChecked": "Not checked yet"
+    },
+    "whatsappState": {
+      "active": {
+        "label": "WhatsApp is active",
+        "description": "Messages are being sent and received normally."
+      },
+      "limited": {
+        "label": "Active with limits",
+        "description": "Sending works, but not everything is open yet."
+      },
+      "at_risk": {
+        "label": "Needs your attention",
+        "description": "Parents are blocking or reporting your messages. If it continues, Meta will lower your daily limit."
+      },
+      "blocked_by_meta": {
+        "label": "Meta has restricted your number",
+        "description": "Some messages will not be sent until the restriction is lifted."
+      },
+      "reconnect_required": {
+        "label": "The connection has expired",
+        "description": "Messages are not being sent or received. Connect the number again."
+      },
+      "not_connected": {
+        "label": "Not connected",
+        "description": "You haven't connected a WhatsApp number yet."
+      },
+      "plan_locked": {
+        "label": "Not included in your plan",
+        "description": "Upgrade to connect WhatsApp and send reminders, payment requests and automatic replies to parents."
+      },
+      "noActionNeeded": "Nothing for you to do.",
+      "reasons": {
+        "token_invalid": "Meta no longer accepts the saved connection details.",
+        "unreachable": "We could not reach Meta on the last check, so the figures here may be out of date.",
+        "restricted": "Meta has restricted your business's WhatsApp account.",
+        "quality_red": "Your number's quality rating is low.",
+        "quality_yellow": "Your number's quality rating has dropped. Send fewer proactive messages until it recovers.",
+        "warm_up": "The number is new — Meta limits it for its first two weeks.",
+        "verification_pending": "Meta is reviewing your business verification.",
+        "unverified_business": "Your business is not verified with Meta yet, so the daily limit stays at 250 conversations.",
+        "templates_unapproved": "Some message wordings are still waiting for Meta approval — until then they only reach parents who wrote to you in the last 24 hours."
+      },
+      "viewPlans": "View plans"
     }
   },
   "quota": {
@@ -3087,7 +3224,29 @@
     "noTeacherRecordContact": "No active teacher record found. Contact your system administrator.",
     "availabilityHint": "Set the weekly windows in which students can book lessons.",
     "overridesHint": "Exceptions for a specific date — block the whole day, block part of the hours, or set special hours.",
-    "reminderSent": "Reminder sent"
+    "reminderSent": "Reminder sent",
+    "lessonUpdate": {
+      "title": "Tell the parents",
+      "subtitle": "Reaches the {count} parents of this lesson, each one privately.",
+      "placeholder": "This week we are in room 3 instead of room 1.",
+      "note": "Sent from the school’s WhatsApp number.",
+      "send": "Send",
+      "sent": "Sent to {count} parents.",
+      "errors": {
+        "noPermission": "This lesson is not yours.",
+        "empty": "Write something first.",
+        "tooLong": "That is too long for one WhatsApp message.",
+        "failed": "Could not send. Try again.",
+        "not_connected": "The school has not connected WhatsApp yet.",
+        "quality_red": "Sending is paused while the school’s number recovers its quality rating.",
+        "broadcasts_disabled": "Sending is switched off for this account.",
+        "subscription_lapsed": "The school’s subscription is not active.",
+        "no_daily_budget": "Today’s message allowance is used up. Try again tomorrow.",
+        "promo_needs_verification": "The school’s business is not verified with Meta yet.",
+        "promotional_content_in_update": "This reads like an offer rather than a lesson update. Registration and offers are sent by the office.",
+        "template_paused": "WhatsApp paused the template this uses."
+      }
+    }
   },
   "admin": {
     "nav": {
@@ -3277,7 +3436,9 @@
         },
         "toast": {
           "done": "{name} deleted. {rows} rows removed.",
-          "partial": "{name} deleted, but {count} login accounts could not be removed. Check the server log."
+          "partial": "{name} deleted, but {count} login accounts could not be removed. Check the server log.",
+          "noSnapshot": "The pre-delete snapshot could not be taken. No copy of this tenant exists.",
+          "storageLeftBehind": "{count} files could not be removed from storage and are orphaned. Check the server log."
         },
         "errors": {
           "confirmationMismatch": "The slug you typed does not match this organization.",
@@ -4058,6 +4219,9 @@
       "error": "Error submitting request. Please try again.",
       "noPhone": "We couldn't find your phone number"
     },
+    "session": {
+      "logOut": "Log out"
+    },
     "nav": {
       "home": "Home",
       "schedule": "Schedule",
@@ -4172,7 +4336,8 @@
         "generic": "Cancellation failed"
       },
       "cancelledWithCharge": "The lesson was cancelled. Cancellation charge: {amount}",
-      "cancelledOk": "The lesson was cancelled successfully"
+      "cancelledOk": "The lesson was cancelled successfully",
+      "cancelledPendingCharge": "Lesson cancelled. A {amount} cancellation fee will be added to your monthly bill once the school approves it."
     },
     "payments": {
       "title": "Payments",
@@ -4197,7 +4362,8 @@
       "forMonth": "Monthly bill — {month}",
       "forPeriod": "Billing period {start}–{end}",
       "waived": "Written off",
-      "voided": "Voided"
+      "voided": "Voided",
+      "refunded": "Refunded"
     },
     "homework": {
       "title": "Homework",
@@ -4271,6 +4437,13 @@
     "serviceUnavailable": {
       "unavailableTitle": "This portal is not available right now",
       "unavailableBody": "The parent portal is inactive at the moment. For scheduling, cancellations or any question, please contact your teacher directly."
+    },
+    "marketingOptIn": {
+      "title": "Offers and news",
+      "description": "Let {org} send you news about new classes, registration and offers.",
+      "serviceNote": "Lesson reminders, homework and payment requests always keep arriving, whichever way this is set.",
+      "saving": "Saving…",
+      "failed": "Could not save. Try again."
     }
   },
   "saas": {
@@ -4726,7 +4899,7 @@
     "uploadFile": "Upload another file",
     "dropzone": {
       "title": "Drag a file here or click to browse",
-      "formats": "XLSX, XLS, CSV — up to {maxSize}MB"
+      "formats": "CSV — up to {maxSize}MB"
     },
     "preview": {
       "title": "Preview — {entity}",
@@ -4760,6 +4933,8 @@
       "errorDetails": "Error details:",
       "row": "Row {row}",
       "importMore": "Import More",
+      "rolledBackNotice": "Nothing was imported. The run hit an error and was rolled back completely, so your data is exactly as it was — fix the rows listed below and upload the file again.",
+      "alreadyRanNotice": "This file was already imported. These are the results of that run — nothing was imported twice.",
       "linkedRelationships": "Relationships linked",
       "failedLinks": "Failed links (student not found):",
       "failedLinkDetail": "Link to \"{name}\" failed — student not found in the system"
@@ -4778,7 +4953,7 @@
       "duplicate": "Duplicate"
     },
     "fileErrors": {
-      "unsupportedFormat": "Unsupported file format. Upload XLSX, XLS, or CSV.",
+      "unsupportedFormat": "Only CSV files can be imported. In Excel choose File → Save As → CSV UTF-8, then upload that.",
       "fileTooLarge": "File is too large (max {maxSize}MB)"
     },
     "flowErrors": {
@@ -4792,7 +4967,12 @@
       "noFile": "No file uploaded",
       "invalidEntity": "Invalid entity type",
       "fileTooLarge": "File is too large (max 5MB)",
-      "unsupportedFormat": "Unsupported file format. Upload XLSX, XLS, or CSV.",
+      "unsupportedFormat": "Only CSV files can be imported. In Excel choose File → Save As → CSV UTF-8, then upload that.",
+      "unterminatedQuote": "A quoted value in the file is never closed. Check for a stray \" and try again.",
+      "unreadableFile": "We couldn't read that file. Make sure it is a valid CSV and try again.",
+      "noRecognisedColumns": "None of the required columns were recognised. Required: {expected}. Found in the file: {found}. Download the template and try again.",
+      "importAlreadyRan": "This import already ran. The results shown are from the original run — nothing was duplicated.",
+      "quotaExceeded": "This import exceeds your plan quota. Upgrade your plan or import fewer rows.",
       "emptyFile": "The file is empty or has no data",
       "parseError": "Failed to process file. Make sure it is valid and try again.",
       "noRowsToImport": "No rows to import",
@@ -4801,6 +4981,7 @@
     "warnings": {
       "existingRecord": "Record already exists in the system",
       "studentNotFound": "Student \"{name}\" was not found — the link will not be created",
+      "duplicateInFile": "Appears earlier in this file, on row {row}",
       "roleParent": " (parent)",
       "roleParent2": " (parent 2)",
       "roleStudent": " (student)"
@@ -4878,7 +5059,10 @@
       "teacherNotFound": "Teacher \"{name}\" was not found",
       "studentNotFound": "Student \"{name}\" was not found",
       "invalidDayOfWeek": "Invalid day of week",
-      "dbError": "{message}"
+      "dbError": "{message}",
+      "invalidStartTime": "Invalid start time",
+      "invalidDate": "Invalid date",
+      "rolledBack": "The whole import was rolled back after an error — nothing was created. Fix the errors and try again."
     },
     "templates": {
       "dataSheet": "Data",
@@ -5340,6 +5524,8 @@
     "supportTicketReply": "Support replied to your request",
     "supportTicketResolved": "Your request was resolved",
     "devIssueFixed": "The problem you reported was fixed",
+    "waTokenExpired": "Your WhatsApp connection has stopped — nothing is being sent",
+    "waTokenExpiredBody": "Meta rejected Lessio’s permission for your number. Reminders, payment requests and bot replies will not go out until you reconnect in Settings > WhatsApp.",
     "waHealthFlagged": "Your WhatsApp number was flagged by Meta",
     "waHealthFlaggedBody": "Parents are blocking or reporting messages. Sending is limited until the rating recovers.",
     "waHealthUnflagged": "Your WhatsApp number is back in good standing",
@@ -5579,7 +5765,8 @@
     "takeoverNotice": "The bot is paused on this conversation and will not reply automatically.",
     "tabs": {
       "portal": "Portal messages",
-      "whatsapp": "WhatsApp"
+      "whatsapp": "WhatsApp",
+      "broadcasts": "Broadcasts"
     },
     "roles": {
       "parent": "Parent",
@@ -5592,7 +5779,8 @@
       "bot": "Bot",
       "ai": "AI assistant",
       "staff": "Staff",
-      "cron": "Automated message"
+      "cron": "Automated message",
+      "broadcast": "Broadcast"
     },
     "badges": {
       "takenOver": "Handled by a person",
@@ -5615,7 +5803,171 @@
       "delivered": "Delivered",
       "read": "Read",
       "failed": "Failed",
-      "failedWithCode": "Failed ({code})"
+      "reasons": {
+        "outside_window": "Not delivered — the parent hasn't written in the last 24 hours",
+        "undeliverable": "Not delivered — the number is not active on WhatsApp",
+        "per_user_limit": "Not delivered — Meta capped marketing messages to this person today",
+        "marketing_opted_out": "Not delivered — this person opted out of marketing messages",
+        "rate_limited": "Not delivered — temporary load. It will be retried"
+      }
+    },
+    "emptyNotConnectedTitle": "You haven't connected a WhatsApp number yet",
+    "emptyReconnectTitle": "The WhatsApp connection has expired",
+    "emptyNotConnectedOwner": "Once connected, every parent's conversation with the bot appears here and you can step in and reply yourself at any point.",
+    "emptyNotConnectedStaff": "The business's WhatsApp number isn't connected right now, so there are no conversations to show. The account owner can sort this out in settings.",
+    "emptyNotConnectedAction": "Go to WhatsApp settings"
+  },
+  "broadcasts": {
+    "title": "Broadcasts",
+    "subtitle": "One message to many parents, sent from your business number.",
+    "new": "New broadcast",
+    "newTitle": "New broadcast",
+    "newSubtitle": "Every message goes to each parent privately, one at a time.",
+    "emptyTitle": "No broadcasts yet",
+    "emptySubtitle": "Tell a whole group about a change of room, a cancelled class or a new term.",
+    "colName": "Name",
+    "colType": "Type",
+    "colStatus": "Status",
+    "colResult": "Result",
+    "colDate": "Date",
+    "colRecipient": "Recipient",
+    "colDelivery": "Delivery",
+    "resultSummary": "{sent} sent · {skipped} skipped · {failed} failed",
+    "deferredNote": "{count} recipients are over today's safe limit for your number. They go out at the next opening, automatically — nothing to do.",
+    "scheduledFor": "Scheduled for {when}",
+    "failedWithCode": "Failed (error {code})",
+    "types": {
+      "class_update": "Class update",
+      "promo": "Offer",
+      "group_invite": "Group invite"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "sending": "Sending",
+      "paused": "Paused",
+      "sent": "Sent",
+      "cancelled": "Cancelled",
+      "failed": "Failed"
+    },
+    "recipientStatuses": {
+      "pending": "Waiting",
+      "deferred": "Waiting for tomorrow",
+      "claimed": "Sending",
+      "sent": "Sent",
+      "skipped": "Skipped",
+      "failed": "Failed"
+    },
+    "delivery": {
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "read": "Read",
+      "failed": "Failed"
+    },
+    "stats": {
+      "total": "Recipients",
+      "sent": "Sent",
+      "deferred": "Waiting for tomorrow",
+      "skipped": "Skipped",
+      "failed": "Failed"
+    },
+    "typeChoice": {
+      "class_update": {
+        "title": "Update about something existing",
+        "hint": "A change of time or room, a cancellation, a reminder about a lesson the family already has."
+      },
+      "promo": {
+        "title": "Offer, registration or promotion",
+        "hint": "Something new to sign up for. Only reaches parents who agreed to marketing messages."
+      }
+    },
+    "audiences": {
+      "allActive": "All active students",
+      "openDebt": "Parents with an open balance",
+      "group": "{name} ({count} students)",
+      "teacher": "{name}'s students",
+      "lesson": "The parents of this lesson"
+    },
+    "form": {
+      "name": "Name (for you only)",
+      "namePlaceholder": "Room change, Sunday guitar",
+      "type": "What kind of message is this?",
+      "audience": "Who receives it",
+      "topic": "What it is about",
+      "topicPlaceholder": "Sunday guitar class",
+      "message": "Message",
+      "messagePlaceholder": "This week the class meets in room 3 instead of room 1.",
+      "oneParagraph": "One paragraph — WhatsApp removes line breaks from this field.",
+      "schedule": "Send later (optional)",
+      "scheduleHint": "Leave empty to send now. Outside your quiet hours it waits for the morning either way.",
+      "consentAttest": "I confirm these parents agreed to receive offers and marketing messages from my business.",
+      "submitNow": "Send now",
+      "submitScheduled": "Schedule"
+    },
+    "preview": {
+      "title": "What a parent receives",
+      "he": "Hebrew",
+      "en": "English",
+      "note": "The wording around your message is the template Meta approved and cannot be edited.",
+      "orgSample": "Your business",
+      "topicSample": "the class",
+      "messageSample": "your message"
+    },
+    "side": {
+      "audienceTitle": "Audience",
+      "counting": "Counting…",
+      "willReceive": "will receive this",
+      "healthTitle": "Your number",
+      "quality": "Quality",
+      "dailyLeft": "Conversations left today",
+      "verified": "Business verified",
+      "unknown": "Not checked",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "quality": {
+      "GREEN": "High",
+      "YELLOW": "Medium",
+      "RED": "Low",
+      "UNKNOWN": "Not checked"
+    },
+    "skipReasons": {
+      "opted_out": "Opted out of all messages",
+      "updates_opted_out": "Opted out of updates",
+      "marketing_opted_out": "Opted out of offers",
+      "no_marketing_opt_in": "No marketing consent",
+      "frequency_capped": "Had one too recently",
+      "per_user_limit": "WhatsApp daily limit for this person",
+      "already_invited": "Already invited",
+      "no_phone": "No phone number"
+    },
+    "blocked": {
+      "not_connected": "WhatsApp is not connected. Connect a number in settings first.",
+      "reconnect_required": "The WhatsApp connection has expired, so no message would go out. Reconnect the number in settings and send then — that way the campaign isn't spent on recipients who would never receive it.",
+      "blocked_by_meta": "Meta has restricted your WhatsApp number. Sending is paused until the restriction is lifted. The \"Verification & trust\" card in WhatsApp settings shows the current state.",
+      "quality_red": "Meta has lowered your number’s quality rating. Broadcasts are paused until it recovers; reminders and payment requests keep going.",
+      "broadcasts_disabled": "Broadcasts are switched off for this account. Contact support.",
+      "subscription_lapsed": "Your subscription is not active, so sending is paused.",
+      "no_daily_budget": "Today’s message allowance is used up. Schedule this for tomorrow and it will go out then.",
+      "promo_needs_verification": "Offers can only be sent once your business is verified with Meta. Open the verification card in WhatsApp settings.",
+      "promotional_content_in_update": "This reads like an offer rather than a service update. Choose \"Offer, registration or promotion\" — sending it as an update breaks WhatsApp’s rules and puts your number at risk.",
+      "template_paused": "Meta paused the template this uses. It will resume once Meta restores it.",
+      "repeated_failure": "Sending stopped after several failures in a row. Check the connection."
+    },
+    "errors": {
+      "INVALID_INPUT": "Something in the form is not valid.",
+      "INVALID_AUDIENCE": "Pick who should receive this.",
+      "CONSENT_REQUIRED": "Confirm the parents agreed to marketing messages.",
+      "QUOTA_EXCEEDED": "You have used this month’s broadcast allowance.",
+      "CREATE_FAILED": "Could not save the broadcast. Try again.",
+      "UPDATE_FAILED": "Could not update the broadcast. Try again.",
+      "BLOCKED": "This broadcast cannot be sent right now."
+    },
+    "controls": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "cancel": "Cancel",
+      "confirmCancel": "Cancel this broadcast? Parents already messaged will keep their message."
     }
   }
 }

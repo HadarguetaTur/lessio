@@ -32,6 +32,11 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
     teachers: string[]
     students: string[]
   }>({ teachers: [], students: [] })
+  /**
+   * Stamped once per preview and reused by every retry of it. The preview goes
+   * stale as soon as the first execute lands — its rows all still say "new" —
+   * so re-posting it without this key duplicated whatever already imported.
+   */
 
   /** Only these imports create parent rows, so only they ask about consent. */
   const createsParents = entityType === 'parents' || entityType === 'family-list'
@@ -127,7 +132,11 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
       const res = await fetch('/api/import/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entityType, rows: rowsToImport, attestConsent }),
+        body: JSON.stringify({
+          entityType,
+          rows: rowsToImport,
+          attestConsent,
+        }),
       })
 
       const data = await res.json()

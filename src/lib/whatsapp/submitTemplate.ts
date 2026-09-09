@@ -48,6 +48,26 @@ export function isSubmittableType(type: string): type is MessageTemplateType {
   return (SUBMITTABLE_TYPES as string[]).includes(type)
 }
 
+/**
+ * Every type that can go out while the 24h window is closed, and therefore
+ * needs a Meta-approved template to arrive at all.
+ *
+ * Wider than SUBMITTABLE_TYPES by two: `lesson_cancelled_by_teacher` carries a
+ * quick-reply button and `payment_received` collapses two optional tails into
+ * one parameter, so neither can be expressed as an org-authored body-only
+ * submission — but both are still sent out of window on Lessio's own template,
+ * so both still count when asking "can this org reach a quiet parent?".
+ *
+ * Lives here rather than in the settings page that used to own it because
+ * connectionState.ts asks the same question to decide whether a working
+ * connection is `active` or merely `limited`.
+ */
+export const OUT_OF_WINDOW_TYPES: MessageTemplateType[] = [
+  ...SUBMITTABLE_TYPES,
+  'lesson_cancelled_by_teacher',
+  'payment_received',
+]
+
 // ── Validation ────────────────────────────────────────────────────────────────
 
 /**

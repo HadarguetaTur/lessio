@@ -105,7 +105,9 @@ export const SETTINGS_NAV: NavEntry[] = [
     navKey: 'settingsWhatsApp',
     cardKey: 'whatsapp',
     icon: MessageCircle,
-    roles: ['owner'],
+    // Admins too: they receive the whatsapp_health notification, whose action
+    // link lands here. The page renders read-only for them (UX audit F20).
+    roles: ['owner', 'admin'],
     saasFeature: 'whatsapp_automation',
     synonyms: ['whatsapp', 'bot', 'בוט', 'וואטסאפ', 'ווטסאפ', 'connect', 'חיבור', 'מספר'],
   },

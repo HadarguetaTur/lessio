@@ -1,37 +1,43 @@
 /**
- * Executes a WhatsApp-initiated lesson cancellation.
- * Revalidates lesson eligibility, cancels lesson, applies charge, returns outcome.
+ * A parent cancelling their own lesson — the WhatsApp bot and the parent portal.
  *
- * Per /docs/sprint-4-scope.md § WhatsApp Cancellation — Charge Rules.
- * Per /docs/decisions.md #14.
+ * A thin adapter over `cancelLessonCore`, which owns the whole cancellation
+ * rule. This file used to own a second copy of it, and the copy differed: it
+ * billed whoever tapped cancel instead of the student's primary parent, covered
+ * only the first student of a group lesson, wrote no record at all in
+ * monthly-billing orgs, and returned a fee to quote the family that it had not
+ * necessarily charged.
  *
- * calculateCancellationCharge() is reused from Sprint 3 — never reimplemented here.
+ * `chargeResult` is now what was actually billed. Callers must render the
+ * family's confirmation from it and nothing else.
  */
 
-import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { createCancellationCharge } from '@/lib/billing/createCharge'
+import {
+  cancelLessonCore,
+  type CancellationLine,
+  type CancellationSource as CoreSource,
+} from './cancelLessonCore'
 import type { CancellationChargeResult } from '@/lib/billing/calculateCancellationCharge'
-import { getOrgPricing } from '@/lib/organizations/pricing'
-import { toStudentPricing } from '@/lib/billing/lessonPricing'
-import { getCancellationPolicyServiceRole } from '@/lib/cancellation-policy/service'
-import { previewCancellationCharge, isCancellableByParent } from './previewCancellationCharge'
 
 export type CancellationError = 'already_cancelled' | 'not_eligible' | 'not_found'
 
 /** Where the cancellation came from — recorded on the lesson. */
 export type CancellationSource = 'whatsapp' | 'portal'
 
-const CANCEL_REASON: Record<CancellationSource, string> = {
-  whatsapp: 'CANCELLED_VIA_WHATSAPP',
-  portal: 'CANCELLED_VIA_PORTAL',
-}
-
 export interface ExecuteCancellationResult {
   success: true
   lessonStartAt: string
   studentName: string
   teacherName: string
+  /** What the family was actually charged. Zero is zero — never quote around it. */
   chargeResult: CancellationChargeResult
+  /**
+   * A fee recorded against the org's monthly bill instead of charged now. It
+   * still needs an admin's confirmation, so it is not something to bill the
+   * family for in the confirmation message.
+   */
+  pendingTotal: number
+  lines: CancellationLine[]
 }
 
 export interface ExecuteCancellationFailure {
@@ -41,115 +47,39 @@ export interface ExecuteCancellationFailure {
 
 export type ExecuteCancellationOutcome = ExecuteCancellationResult | ExecuteCancellationFailure
 
-/**
- * Revalidates and executes a lesson cancellation.
- * Idempotent: if the lesson is already cancelled, returns already_cancelled (no charge).
- */
 export async function executeCancellation(
   lessonId: string,
   parentId: string,
   orgId: string,
   source: CancellationSource = 'whatsapp'
 ): Promise<ExecuteCancellationOutcome> {
-  const db = createServiceRoleClient()
-  const now = new Date()
+  const outcome = await cancelLessonCore({
+    lessonId,
+    orgId,
+    actor: { kind: 'parent', parentId },
+    source: source as CoreSource,
+  })
 
-  // 1. Load lesson with teacher rate and names; student comes via lesson_students
-  const { data: lesson, error: lessonError } = await db
-    .from('lessons')
-    .select(
-      'id, start_at, end_at, status, lesson_type, price_per_student, lesson_students(student_id, students(full_name, hourly_rate, discount_percent)), teachers(id, hourly_rate, profiles(full_name))'
-    )
-    .eq('id', lessonId)
-    .eq('organization_id', orgId)
-    .single()
-
-  if (lessonError || !lesson) return { success: false, error: 'not_found' }
-
-  // 2. Idempotency: already cancelled — safe return, no duplicate charge
-  if (lesson.status === 'cancelled') return { success: false, error: 'already_cancelled' }
-
-  // 3. Revalidate: must still be scheduled
-  if (lesson.status !== 'scheduled') return { success: false, error: 'not_eligible' }
-
-  // Resolve primary student for this lesson
-  const lessonStudents = lesson.lesson_students as unknown as Array<{
-    student_id: string
-    students: { full_name: string; hourly_rate: number | null; discount_percent: number | null }
-  }>
-  const primaryStudentId = lessonStudents[0]?.student_id
-
-  if (!primaryStudentId) return { success: false, error: 'not_eligible' }
-
-  // 4. Revalidate: still belongs to this parent
-  const { data: rel } = await db
-    .from('relationships')
-    .select('id')
-    .eq('organization_id', orgId)
-    .eq('parent_id', parentId)
-    .eq('student_id', primaryStudentId)
-    .maybeSingle()
-
-  if (!rel) return { success: false, error: 'not_eligible' }
-
-  // 5. Revalidate: still within the self-service window and in the future
-  if (!isCancellableByParent(lesson.start_at, now)) {
-    return { success: false, error: 'not_eligible' }
-  }
-
-  // 6. Price the cancellation BEFORE cancelling.
-  // These reads can fail — a missing pricing row, a network blip. If they ran
-  // after the update, a throw here would leave the lesson cancelled with no
-  // charge, and the parent's retry would get `already_cancelled`: the lesson is
-  // gone and nobody is billed for it.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const teacher = (lesson.teachers as any) as { id: string; hourly_rate: number | null; profiles: { full_name: string } }
-  const studentName = lessonStudents[0]?.students.full_name ?? '—'
-
-  const [pricing, policy] = await Promise.all([
-    getOrgPricing(orgId),
-    getCancellationPolicyServiceRole(orgId),
-  ])
-
-  const chargeResult = previewCancellationCharge(
-    {
-      start_at: lesson.start_at,
-      end_at: lesson.end_at,
-      lesson_type: lesson.lesson_type as string | null,
-      price_per_student: (lesson.price_per_student as number | null) ?? null,
-      teacherHourlyRate: teacher?.hourly_rate ?? null,
-      studentPricing: toStudentPricing(lessonStudents[0]?.students),
-    },
-    now,
-    pricing,
-    policy
-  )
-
-  // 7. Cancel the lesson
-  const { error: cancelError } = await db
-    .from('lessons')
-    .update({
-      status: 'cancelled',
-      cancel_reason: CANCEL_REASON[source],
-      updated_at: now.toISOString(),
-    })
-    .eq('id', lessonId)
-    .eq('organization_id', orgId)
-
-  if (cancelError) {
-    throw new Error(`[executeCancellation] Failed to cancel lesson: ${cancelError.message}`)
-  }
-
-  // 8. Create charge record if applicable
-  if (chargeResult.shouldCharge && chargeResult.amount > 0) {
-    await createCancellationCharge(lessonId, orgId, parentId, chargeResult)
+  if (!outcome.success) {
+    // The core distinguishes more failures than a parent-facing surface needs.
+    // 'already_delivered', 'forbidden' and 'no_students' all mean the same thing
+    // to a parent: this is not yours to cancel any more.
+    const error: CancellationError =
+      outcome.error === 'not_found'
+        ? 'not_found'
+        : outcome.error === 'already_cancelled'
+          ? 'already_cancelled'
+          : 'not_eligible'
+    return { success: false, error }
   }
 
   return {
     success: true,
-    lessonStartAt: lesson.start_at,
-    studentName,
-    teacherName: teacher.profiles.full_name,
-    chargeResult,
+    lessonStartAt: outcome.lessonStartAt,
+    studentName: outcome.studentName,
+    teacherName: outcome.teacherName,
+    chargeResult: outcome.chargeResult,
+    pendingTotal: outcome.pendingTotal,
+    lines: outcome.lines,
   }
 }

@@ -109,6 +109,8 @@ describe('createLessonCharge', () => {
 
       if (table === 'charges') {
         return {
+          // The existing-charge dedupe read: no rows for this lesson yet.
+          select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) }),
           insert: (payload: Record<string, unknown>) => {
             inserted.push(payload)
             return {
@@ -150,6 +152,8 @@ describe('createLessonCharge', () => {
 
       if (table === 'charges') {
         return {
+          // The existing-charge dedupe read: no rows for this lesson yet.
+          select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) }),
           insert: () => ({
             select: () => ({
               single: async () => ({
@@ -179,6 +183,9 @@ describe('createLessonCharge', () => {
         })
       }
 
+      // The existing-charge dedupe read runs before pricing.
+      if (table === 'charges') return { select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) }) }
+
       throw new Error(`Unexpected table: ${table}`)
     })
 
@@ -201,6 +208,9 @@ describe('createLessonCharge', () => {
           teachers: { id: 'teacher-1', hourly_rate: 200 },
         })
       }
+
+      // The existing-charge dedupe read runs before pricing.
+      if (table === 'charges') return { select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) }) }
 
       throw new Error(`Unexpected table: ${table}`)
     })
@@ -231,6 +241,8 @@ describe('createLessonCharge', () => {
       if (table === 'charge_audit_log') return { insert: async () => ({ error: null }) }
       if (table === 'charges') {
         return {
+          // The existing-charge dedupe read: no rows for this lesson yet.
+          select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) }),
           insert: (payload: Record<string, unknown>) => {
             inserted.push(payload)
             return {
@@ -269,6 +281,8 @@ describe('createLessonCharge', () => {
       if (table === 'charge_audit_log') return { insert: async () => ({ error: null }) }
       if (table === 'charges') {
         return {
+          // The existing-charge dedupe read: no rows for this lesson yet.
+          select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) }),
           insert: (payload: Record<string, unknown>) => {
             inserted.push(payload)
             return {
@@ -307,6 +321,8 @@ describe('createLessonCharge', () => {
       if (table === 'charge_audit_log') return { insert: async () => ({ error: null }) }
       if (table === 'charges') {
         return {
+          // The existing-charge dedupe read: no rows for this lesson yet.
+          select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) }),
           insert: (payload: Record<string, unknown>) => {
             inserted.push(payload)
             return {
@@ -346,6 +362,8 @@ describe('createLessonCharge', () => {
         if (table === 'charge_audit_log') return { insert: async () => ({ error: null }) }
         if (table === 'charges') {
           return {
+            // The existing-charge dedupe read: no rows for this lesson yet.
+            select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) }),
             insert: (payload: Record<string, unknown>) => {
               inserted.push(payload)
               return {
@@ -482,6 +500,9 @@ describe('createLessonCharge', () => {
       // The price is resolved per student now, inside the loop that follows the
       // coverage lookup, so the lookup runs even when no price can be found.
       if (table === 'subscriptions') return subscriptionList([])
+      // The existing-charge dedupe read runs before pricing.
+      if (table === 'charges') return { select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) }) }
+
       throw new Error(`Unexpected table: ${table}`)
     })
 
@@ -489,6 +510,157 @@ describe('createLessonCharge', () => {
       type: 'missing_price',
       message: 'validation.noLessonPrice',
     })
+  })
+})
+
+describe('re-completion against a legacy charge with a NULL student_id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetOrgBillingPolicy.mockResolvedValue({ billingMode: 'per_lesson', cycleStartDay: 1, dueDays: 7 })
+    mockGetOrgPricing.mockResolvedValue(NO_ORG_RATE)
+  })
+
+  /**
+   * Group lesson, siblings A and B sharing one primary parent P. Under the old
+   * charges(lesson_id, parent_id) index only ONE row ever existed — the
+   * under-billing bug 20260909160000 exists to fix. Its backfill leaves that row
+   * student_id NULL on purpose (there is no way to say which child it was for).
+   *
+   * The new partial unique index on (lesson_id, student_id) cannot dedupe a
+   * NULL, so a fresh per-student insert collides with nothing. Re-tapping "mark
+   * completed", or the auto-completion retry cron, used to leave parent P with
+   * THREE charges for one lesson.
+   */
+  it('mints nothing beside a legacy NULL row for the same parent', async () => {
+    mockResolveBillingParent.mockResolvedValue('parent-1')
+    const inserted: Record<string, unknown>[] = []
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'lessons') {
+        return single({
+          id: 'lesson-1',
+          start_at: '2026-04-01T10:00:00.000Z',
+          end_at: '2026-04-01T11:00:00.000Z',
+          lesson_type: 'group',
+          lesson_students: [{ student_id: 'student-a' }, { student_id: 'student-b' }],
+          teachers: { id: 'teacher-1', hourly_rate: 200 },
+        })
+      }
+      if (table === 'subscriptions') return subscriptionList([])
+      if (table === 'charge_audit_log') return { insert: async () => ({ error: null }) }
+      if (table === 'charges') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                eq: async () => ({
+                  // The legacy row: parent P, this lesson, no student_id.
+                  data: [{ student_id: null, parent_id: 'parent-1' }],
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+          insert: (payload: Record<string, unknown>) => {
+            inserted.push(payload)
+            return {
+              select: () => ({ single: async () => ({ data: { id: 'charge-x' }, error: null }) }),
+            }
+          },
+        }
+      }
+      throw new Error(`Unexpected table: ${table}`)
+    })
+
+    await createLessonCharge('lesson-1', 'org-1')
+
+    expect(inserted).toHaveLength(0)
+  })
+
+  it('still mints for a student nobody has been charged for', async () => {
+    mockResolveBillingParent.mockResolvedValue('parent-2')
+    const inserted: Record<string, unknown>[] = []
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'lessons') {
+        return single({
+          id: 'lesson-1',
+          start_at: '2026-04-01T10:00:00.000Z',
+          end_at: '2026-04-01T11:00:00.000Z',
+          lesson_students: [{ student_id: 'student-c' }],
+          teachers: { id: 'teacher-1', hourly_rate: 200 },
+        })
+      }
+      if (table === 'charge_audit_log') return { insert: async () => ({ error: null }) }
+      if (table === 'charges') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                eq: async () => ({
+                  // A legacy row for a DIFFERENT family on the same lesson.
+                  data: [{ student_id: null, parent_id: 'parent-1' }],
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+          insert: (payload: Record<string, unknown>) => {
+            inserted.push(payload)
+            return {
+              select: () => ({ single: async () => ({ data: { id: 'charge-y' }, error: null }) }),
+            }
+          },
+        }
+      }
+      throw new Error(`Unexpected table: ${table}`)
+    })
+
+    await createLessonCharge('lesson-1', 'org-1')
+
+    expect(inserted).toHaveLength(1)
+    expect(inserted[0]).toMatchObject({ student_id: 'student-c', parent_id: 'parent-2' })
+  })
+
+  it('does not charge at all when the dedupe read fails', async () => {
+    mockResolveBillingParent.mockResolvedValue('parent-1')
+    const inserted: Record<string, unknown>[] = []
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'lessons') {
+        return single({
+          id: 'lesson-1',
+          start_at: '2026-04-01T10:00:00.000Z',
+          end_at: '2026-04-01T11:00:00.000Z',
+          lesson_students: [{ student_id: 'student-a' }],
+          teachers: { id: 'teacher-1', hourly_rate: 200 },
+        })
+      }
+      if (table === 'charge_audit_log') return { insert: async () => ({ error: null }) }
+      if (table === 'charges') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                eq: async () => ({ data: null, error: { code: 'XX000', message: 'boom' } }),
+              }),
+            }),
+          }),
+          insert: (payload: Record<string, unknown>) => {
+            inserted.push(payload)
+            return {
+              select: () => ({ single: async () => ({ data: { id: 'charge-z' }, error: null }) }),
+            }
+          },
+        }
+      }
+      throw new Error(`Unexpected table: ${table}`)
+    })
+
+    const result = await createLessonCharge('lesson-1', 'org-1')
+
+    expect(inserted).toHaveLength(0)
+    expect(result).toEqual({ type: 'error', message: 'validation.createChargeFailed' })
   })
 })
 
@@ -501,6 +673,8 @@ describe('createCancellationCharge', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'charges') {
         return {
+          // The existing-charge dedupe read: no rows for this lesson yet.
+          select: () => ({ eq: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) }),
           insert: () => ({
             select: () => ({
               single: async () => ({
@@ -521,7 +695,7 @@ describe('createCancellationCharge', () => {
         chargeType: 'full',
         amount: 120,
         reasonCode: 'late_cancel',
-      })
+      }, 'student-1')
     ).resolves.toBeNull()
   })
 })

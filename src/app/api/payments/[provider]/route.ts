@@ -25,6 +25,16 @@ import { webhookBodyFromPayload } from '@/lib/payments/webhookBody'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import { logChargeAudit } from '@/lib/charges/audit'
+import { markChargeRefunded } from '@/lib/charges/refunds'
+import { resolveChargesForReference } from '@/lib/payments/references'
+import {
+  SETTLEABLE_STATUSES,
+  allocateProviderPayment,
+  chargeOutstanding,
+  isMissingIdempotencyKey,
+} from '@/lib/payments/settlement'
+import type { ReferenceCharge } from '@/lib/payments/settlement'
+import { round2 } from '@/lib/charges/paymentMethods'
 
 /**
  * Confirms receipt of the notification back to the provider, for the ones that
@@ -93,32 +103,42 @@ export async function POST(
   const { reference: paymentReference, isSuccess } = parsed
 
   if (!isSuccess) {
-    console.info('[payments/webhook] Non-success payment event — no action taken', {
-      provider,
-      paymentReference,
-    })
+    if (parsed.isRefund) {
+      // The provider says money went back to the parent. Record the marker so
+      // revenue stops counting it and the portal stops calling it paid — the
+      // signal used to be detected here and then thrown away. Lessio does not
+      // move the money and does not issue the credit note; see
+      // src/lib/charges/refunds.ts for what stays manual.
+      await recordProviderRefund({ provider, paymentReference, amount: parsed.amount })
+    } else {
+      console.info('[payments/webhook] Non-success payment event — no action taken', {
+        provider,
+        paymentReference,
+      })
+    }
     return NextResponse.json({ ok: true }, { status: 200 })
   }
 
-  // ── Look up charges by payment_reference ──────────────────────────────────
+  // ── Look up the charges this reference was minted for ─────────────────────
+  // Through the reference history, not only the reference a charge carries
+  // right now: every resend mints a new link and overwrites that column, and a
+  // parent paying last week's message must still be recognised.
 
   const db = createServiceRoleClient()
 
-  const { data: charges, error: fetchError } = await db
-    .from('charges')
-    .select('id, organization_id, status, amount, amount_paid, parent_id')
-    .eq('payment_reference', paymentReference)
+  const resolved = await resolveChargesForReference(db, paymentReference)
+  const charges = resolved.charges
 
-  if (fetchError) {
+  if (resolved.error) {
     console.error('[payments/webhook] DB lookup failed', {
       provider,
       paymentReference,
-      error: fetchError.message,
+      error: resolved.error,
     })
     return NextResponse.json({ ok: false }, { status: 200 })
   }
 
-  if (!charges || charges.length === 0) {
+  if (charges.length === 0) {
     console.error('[payments/webhook] No charges found for payment_reference', {
       provider,
       paymentReference,
@@ -161,7 +181,25 @@ export async function POST(
     .maybeSingle()
   const merchantReferences = charges.map((charge) => charge.id as string)
   if (paymentRequest?.id) merchantReferences.push(paymentRequest.id as string)
-  const expectedAmount = charges.reduce((sum, charge) => sum + Number(charge.amount), 0)
+
+  // What the parent was asked for, which is not the gross charge total: a link
+  // is minted for what is still outstanding, so a charge with ₪50 of cash
+  // already recorded goes out at ₪150, and the provider reports ₪150. Checking
+  // ₪200 here rejected every such payment and left the dunning cron chasing
+  // money that had already arrived.
+  // Snapshot state, used only to validate the amount the provider reports. The
+  // write path below re-reads instead — see the freshness re-read.
+  const settleableAtLookup = charges.filter((charge) =>
+    SETTLEABLE_STATUSES.has(String(charge.status))
+  )
+  const outstandingTotal = round2(
+    settleableAtLookup.reduce((sum, charge) => sum + chargeOutstanding(charge), 0)
+  )
+  const expectedAmount =
+    resolved.mintedAmount ??
+    (outstandingTotal > 0
+      ? outstandingTotal
+      : round2(charges.reduce((sum, charge) => sum + Number(charge.amount), 0)))
 
   if ((provider === 'stripe' || provider === 'payplus') && (
     parsed.amount === undefined ||
@@ -187,6 +225,7 @@ export async function POST(
         reference: paymentReference,
         expectedAmount,
         chargeIds: merchantReferences,
+        body,
       }).catch((err) => {
         console.error('[payments/webhook] Server confirmation failed', { provider, err })
         return false
@@ -209,28 +248,90 @@ export async function POST(
   // A charge waived or voided after the link was minted stays settled: the
   // status filter below skips it, and the audit row records the mismatch so the
   // payment can be reconciled by hand.
-  const resolvedCharges = charges.filter(
-    (c) => c.status === 'waived' || c.status === 'voided'
-  )
+  // Includes 'paid': a callback for a charge someone already settled by hand is
+  // the same reconciliation problem — real money that our ledger will not
+  // record, because recording it would count it twice.
+  // ── Freshness re-read ─────────────────────────────────────────────────────
+  // Everything above ran against the snapshot taken at `resolveChargesForReference`,
+  // and between then and here the handler performed an organizations read, a
+  // credential decryption, a payment_requests read and — critically — a network
+  // round-trip to the provider (`confirmTransaction`). Seconds, not milliseconds.
+  //
+  // An owner tapping "mark paid" inside that window sets status='paid' and
+  // inserts a method:'manual' charge_payments row. The webhook, still holding
+  // its stale 'pending' snapshot, used to upsert a method:'provider' row under a
+  // DIFFERENT unique key — ₪400 of charge_payments against a ₪200 charge —
+  // while charges.amount_paid stayed correct, so nothing in `charges` revealed
+  // it. `markChargeAsPaid` guards on (status, amount_paid); this side now reads
+  // the same state so both check the same thing.
+  const { data: freshRows, error: freshError } = await db
+    .from('charges')
+    .select('id, organization_id, parent_id, amount, amount_paid, status')
+    .in('id', chargeIds)
+    .eq('organization_id', orgId)
 
-  // Per charge rather than one bulk update: each carries its own outstanding
-  // balance, which becomes a charge_payments row. The `.eq('status', …)` filter
-  // keeps it idempotent — a redelivered webhook updates zero rows.
+  if (freshError) {
+    console.error('[payments/webhook] Failed to re-read charge state before settling', {
+      provider,
+      orgId,
+      paymentReference,
+      error: freshError.message,
+    })
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
+
+  const freshById = new Map(
+    ((freshRows ?? []) as ReferenceCharge[]).map((row) => [row.id, row])
+  )
+  // Fall back to the snapshot only for a row that vanished, which the status
+  // filter then treats as unsettleable.
+  const currentCharges = charges.map((c) => freshById.get(c.id as string) ?? c)
+
+  const resolvedCharges = currentCharges.filter(
+    (c) => !SETTLEABLE_STATUSES.has(String(c.status))
+  )
+  const settleable = currentCharges.filter((c) => SETTLEABLE_STATUSES.has(String(c.status)))
+
+  // Per charge rather than one bulk update: each absorbs its own share of the
+  // payment, which becomes a charge_payments row keyed by (charge, reference) —
+  // that unique key, not the charge status, is what makes a redelivery a no-op.
   const now = new Date().toISOString()
   let updateFailed = false
 
-  for (const charge of charges) {
-    const status = charge.status as string
-    if (status !== 'pending' && status !== 'invoiced') continue
+  // What actually arrived. Providers that report an amount are believed; the
+  // ones that do not (their callback was already confirmed server-side above)
+  // are taken to have collected what the link was minted for.
+  const collected = parsed.amount ?? expectedAmount
+  const { allocations, surplus } = allocateProviderPayment(
+    settleable.map((charge) => ({ id: charge.id, outstanding: chargeOutstanding(charge) })),
+    collected
+  )
+  const allocationByCharge = new Map(allocations.map((a) => [a.chargeId, a.amount]))
 
-    const outstanding = Math.max(0, Number(charge.amount) - Number(charge.amount_paid ?? 0))
+  if (surplus > 0) {
+    // More money than debt: usually cash recorded by hand after the link went
+    // out. The charge cannot absorb it, so it is reported rather than written —
+    // a payment row larger than the charge it settles would corrupt every
+    // revenue figure that sums charge_payments.
+    console.error('[payments/webhook] Payment exceeds the open balance — surplus not recorded', {
+      provider,
+      orgId,
+      paymentReference,
+      collected,
+      surplus,
+      chargeIds: settleable.map((c) => c.id),
+    })
+  }
 
-    if (outstanding > 0) {
+  for (const charge of settleable) {
+    const share = allocationByCharge.get(charge.id) ?? 0
+
+    if (share > 0) {
       const { error: paymentError } = await db.from('charge_payments').upsert({
         organization_id: charge.organization_id,
         charge_id: charge.id,
         parent_id: (charge.parent_id as string | null) ?? null,
-        amount: outstanding,
+        amount: share,
         method: 'provider',
         paid_at: now,
         notes: `${provider}:${paymentReference}`,
@@ -242,28 +343,101 @@ export async function POST(
 
       if (paymentError) {
         updateFailed = true
-        console.error('[payments/webhook] Failed to record payment row', {
-          provider,
-          orgId,
-          chargeId: charge.id,
-          error: paymentError.message,
-        })
+        // A schema without the idempotency key cannot dedupe a redelivery, so
+        // settling anyway would either double-count the money or mark a charge
+        // paid with no ledger row behind it. Stop, and say why in one line
+        // someone can act on.
+        if (isMissingIdempotencyKey(paymentError)) {
+          console.error(
+            '[payments/webhook] FATAL: charge_payments.provider_reference is missing — ' +
+            'this environment is behind on migrations and payments cannot be recorded safely. ' +
+            'Apply 20260906090000_payment_webhook_idempotency.sql.',
+            { provider, orgId, chargeId: charge.id, paymentReference, error: paymentError.message }
+          )
+        } else {
+          console.error('[payments/webhook] Failed to record payment row', {
+            provider,
+            orgId,
+            chargeId: charge.id,
+            error: paymentError.message,
+          })
+        }
         continue
       }
     }
 
-    const { data: updated, error: updateError } = await db
-      .from('charges')
-      .update({
-        status: 'paid',
-        paid_at: now,
-        amount_paid: Number(charge.amount),
-        updated_at: now,
+    // amount_paid is a denormalised copy of the ledger, so it is recomputed
+    // from the ledger rather than incremented here. That is what makes a
+    // duplicate, a late callback, or a retry after an interrupted run converge
+    // on the same figure instead of stacking.
+    const { data: ledger, error: ledgerError } = await db
+      .from('charge_payments')
+      .select('amount')
+      .eq('charge_id', charge.id)
+
+    if (ledgerError) {
+      updateFailed = true
+      console.error('[payments/webhook] Failed to read the payment ledger', {
+        provider,
+        orgId,
+        chargeId: charge.id,
+        error: ledgerError.message,
       })
+      continue
+    }
+
+    const recorded = round2(
+      ((ledger ?? []) as Array<{ amount: number | string }>).reduce(
+        (sum, row) => sum + Number(row.amount),
+        0
+      )
+    )
+    const total = Number(charge.amount)
+    const settled = recorded + 0.005 >= total
+
+    const update: Record<string, unknown> = {
+      amount_paid: Math.min(recorded, total),
+      updated_at: now,
+    }
+    if (settled) {
+      update.status = 'paid'
+      update.paid_at = now
+    }
+
+    // Both terms are the state this iteration read and priced against. Guarding
+    // on status alone let an owner's "mark paid" land in between: their update
+    // moved amount_paid without moving it off a status this WHERE still matched.
+    // The zero-row outcome is now looked at rather than discarded.
+    const { data: updatedRow, error: updateError } = await db
+      .from('charges')
+      .update(update)
       .eq('id', charge.id)
-      .eq('status', status)
+      .eq('organization_id', charge.organization_id)
+      .eq('status', charge.status)
+      .eq('amount_paid', charge.amount_paid ?? 0)
       .select('id')
       .maybeSingle()
+
+    if (!updateError && !updatedRow) {
+      // Someone settled this charge between the re-read and here. The ledger row
+      // is already written, so the money is not lost — but amount_paid was set
+      // by the other writer and may now disagree with SUM(charge_payments).
+      updateFailed = true
+      console.error(
+        '[payments/webhook] Charge changed underneath the settlement — amount_paid not updated. ' +
+        'Reconcile charges.amount_paid against SUM(charge_payments) for this charge.',
+        {
+          provider,
+          orgId,
+          chargeId: charge.id,
+          paymentReference,
+          expectedStatus: charge.status,
+          expectedAmountPaid: charge.amount_paid ?? 0,
+          recorded,
+        }
+      )
+      continue
+    }
 
     if (updateError) {
       updateFailed = true
@@ -276,8 +450,6 @@ export async function POST(
       })
       continue
     }
-
-    if (!updated) continue
   }
 
   if (updateFailed) {
@@ -322,25 +494,33 @@ export async function POST(
 
   await Promise.all(
     charges
-      .filter((c) => c.status !== 'paid')
-      .map((c) =>
-        logChargeAudit({
-          organizationId: c.organization_id as string,
-          chargeId: c.id as string,
-          parentId: (c.parent_id as string | null) ?? null,
-          eventType: 'webhook_paid',
-          beforeStatus: c.status as string,
-          afterStatus:
-            c.status === 'pending' || c.status === 'invoiced' ? 'paid' : (c.status as string),
-          beforeAmount: c.amount == null ? null : Number(c.amount),
-          afterAmount: c.amount == null ? null : Number(c.amount),
-          metadata: {
-            provider,
-            payment_reference: paymentReference,
-            skipped_terminal: c.status === 'waived' || c.status === 'voided',
-          },
-        })
-      )
+      // Nothing applied to an already-closed charge is nothing to say: a
+      // redelivered callback would otherwise write an audit row every time.
+      .filter((c) => (allocationByCharge.get(c.id as string) ?? 0) > 0 || c.status !== 'paid')
+      .map((c) => {
+      const applied = allocationByCharge.get(c.id as string) ?? 0
+      const settledNow = applied > 0 && applied + 0.005 >= chargeOutstanding(c)
+      return logChargeAudit({
+        organizationId: c.organization_id as string,
+        chargeId: c.id as string,
+        parentId: (c.parent_id as string | null) ?? null,
+        eventType: 'webhook_paid',
+        beforeStatus: c.status as string,
+        afterStatus: settledNow ? 'paid' : (c.status as string),
+        beforeAmount: c.amount == null ? null : Number(c.amount),
+        afterAmount: c.amount == null ? null : Number(c.amount),
+        metadata: {
+          provider,
+          payment_reference: paymentReference,
+          applied,
+          collected,
+          surplus,
+          // The link that was paid is no longer the one this charge carries.
+          superseded_reference: resolved.supersededOnly,
+          skipped_terminal: !SETTLEABLE_STATUSES.has(String(c.status)),
+        },
+      })
+    })
   )
 
   // A consolidated request (one link, several charges) is settled by the same
@@ -386,4 +566,91 @@ export async function POST(
   )
 
   return NextResponse.json({ ok: true }, { status: 200 })
+}
+
+/**
+ * Records a provider-reported reversal against the charge it paid.
+ *
+ * PayPlus's adapter detects refunds (`isRefund` in src/lib/payments/registry.ts)
+ * and folds them into `isSuccess: false`. That signal used to be logged and
+ * dropped: charge_payments has CHECK (amount > 0) so no reversal row was
+ * possible, amount_paid never decremented, and the charge went on reading as
+ * paid in the revenue KPI and in the parent portal. It now writes the refund
+ * marker instead — see src/lib/charges/refunds.ts for what the marker does and
+ * does not do (it does not move money, issue a credit note, or re-open debt).
+ *
+ * Never throws: a webhook must answer 200 whatever happens here.
+ */
+async function recordProviderRefund(params: {
+  provider: string
+  paymentReference: string
+  amount: number | null | undefined
+}): Promise<void> {
+  const { provider, paymentReference } = params
+  try {
+    const db = createServiceRoleClient()
+    const resolved = await resolveChargesForReference(db, paymentReference)
+
+    if (resolved.error || resolved.charges.length === 0) {
+      console.error(
+        '[payments/webhook] REFUND reported for a reference that resolves to no charge — ' +
+        'reconcile by hand.',
+        { provider, paymentReference, error: resolved.error ?? null }
+      )
+      return
+    }
+
+    // One reference can cover several charges (a settle-the-balance link). The
+    // provider tells us one total, and splitting it across charges would be a
+    // guess about which one was reversed. Refuse to guess: log it loudly for a
+    // person rather than writing a marker that might be wrong.
+    if (resolved.charges.length > 1) {
+      console.error(
+        '[payments/webhook] REFUND reported for a reference covering several charges — ' +
+        'Lessio cannot tell which one was reversed. Record it by hand on /charges.',
+        {
+          provider,
+          paymentReference,
+          amount: params.amount ?? null,
+          chargeIds: resolved.charges.map((c) => c.id),
+        }
+      )
+      return
+    }
+
+    const charge = resolved.charges[0]!
+    const result = await markChargeRefunded({
+      chargeId: charge.id,
+      organizationId: charge.organization_id,
+      // Nobody in Lessio did this; the provider reported it.
+      actorProfileId: null,
+      amount: typeof params.amount === 'number' && params.amount > 0 ? params.amount : null,
+      reason: `Refund reported by ${provider}`,
+      source: 'provider_webhook',
+      paymentReference,
+    })
+
+    if (!result.ok && result.reason !== 'already_refunded') {
+      console.error('[payments/webhook] REFUND could not be recorded — reconcile by hand.', {
+        provider,
+        paymentReference,
+        chargeId: charge.id,
+        reason: result.reason,
+      })
+      return
+    }
+
+    console.warn('[payments/webhook] Refund recorded from a provider callback', {
+      provider,
+      paymentReference,
+      chargeId: charge.id,
+      alreadyRecorded: !result.ok,
+    })
+  } catch (err) {
+    console.error('[payments/webhook] REFUND handling threw — reconcile by hand.', {
+      provider,
+      paymentReference,
+      err,
+    })
+  }
 }

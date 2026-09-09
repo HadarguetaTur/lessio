@@ -6,7 +6,7 @@ import type { SaasPlanRow } from '@/lib/saas/plans'
  * The dimensions a plan can cap. `teachers` is the value metric — the others
  * are generous ceilings that only the trial and the retired tiers still hit.
  */
-export type QuotaKind = 'students' | 'lessons_monthly' | 'teachers'
+export type QuotaKind = 'students' | 'lessons_monthly' | 'teachers' | 'broadcast_recipients_monthly'
 
 export class QuotaExceededError extends Error {
   constructor(
@@ -59,6 +59,19 @@ const QUOTA_SPECS: Record<
         .neq('status', 'cancelled')
         .gte('start_at', currentMonthStart())
         .lt('start_at', nextMonthStart()),
+  },
+  // Counted as messages actually sent this calendar month, not campaigns:
+  // what costs the org (and Meta's allowance) is the per-recipient send.
+  broadcast_recipients_monthly: {
+    limitOf: (plan) => plan.broadcast_recipients_monthly,
+    count: async (db, orgId) =>
+      db
+        .from('broadcast_recipients')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
+        .eq('status', 'sent')
+        .gte('sent_at', currentMonthStart())
+        .lt('sent_at', nextMonthStart()),
   },
   teachers: {
     limitOf: (plan) => plan.teachers_quota,

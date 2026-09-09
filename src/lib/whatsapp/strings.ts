@@ -45,6 +45,8 @@ export type BotStringKey =
   | 'portal_closed'
   | 'opt_out_confirmed'
   | 'opt_out_already'
+  | 'broadcast_updates_stopped'
+  | 'broadcast_promos_stopped'
   | 'opt_in_confirmed'
   | 'opt_in_already'
   // Fragments injected into template variables
@@ -61,6 +63,7 @@ export type BotStringKey =
   | 'charge_partial'
   | 'charge_line_label'
   | 'charge_none'
+  | 'charge_pending'
   // Fragments composed into the {{charge_lines}} variable of payment_request.
   // They used to live in a private table inside payment-request/index.ts, which
   // is how the automatic payment request ended up ignoring the body an owner
@@ -280,6 +283,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       'סגור, הפסקנו לשלוח 👍\nלא יישלחו אליך יותר תזכורות, בקשות תשלום או עדכונים אוטומטיים.\nאפשר תמיד לכתוב "התחל" כדי לחדש, ואם תכתבו לנו — נענה תמיד.',
     opt_out_already:
       'ההודעות האוטומטיות כבר מושבתות עבורך 👍\nכדי לחדש אותן אפשר לכתוב "התחל".',
+    broadcast_updates_stopped:
+      'סגור, הסרנו אתכם מהעדכונים הכלליים 👍\nתזכורות לשיעורים, שיעורי בית ובקשות תשלום ימשיכו להגיע כרגיל.',
+    broadcast_promos_stopped:
+      'סגור, לא נשלח לכם יותר הצעות 👍\nעדכונים על השיעורים עצמם ימשיכו להגיע כרגיל.',
     opt_in_confirmed: 'מעולה, חידשנו את ההודעות 🎉\nתקבלו שוב תזכורות ועדכונים על השיעורים.',
     opt_in_already: 'ההודעות כבר פעילות אצלך 🙂',
 
@@ -297,6 +304,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_partial: 'חיוב ביטול חלקי',
     charge_line_label: 'חיוב',
     charge_none: 'ללא חיוב ביטול',
+    charge_pending: 'דמי ביטול לפי המדיניות, ממתינים לאישור לחשבון החודשי',
 
     charge_type_lesson: 'שיעור',
     charge_type_cancellation: 'חיוב ביטול',
@@ -540,6 +548,10 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
       "Done — we've stopped 👍\nYou will no longer receive reminders, payment requests or any automated updates from us.\nReply START at any time to turn them back on, and if you message us we will always reply.",
     opt_out_already:
       'Automated messages are already switched off for you 👍\nReply START to turn them back on.',
+    broadcast_updates_stopped:
+      "Done — you're off the general updates 👍\nLesson reminders, homework and payment requests will keep arriving as usual.",
+    broadcast_promos_stopped:
+      'Done — no more offers from us 👍\nUpdates about your actual lessons will keep arriving as usual.',
     opt_in_confirmed:
       'Great — messages are back on 🎉\nYou will receive lesson reminders and updates again.',
     opt_in_already: 'Your messages are already switched on 🙂',
@@ -559,6 +571,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_partial: 'Partial cancellation charge',
     charge_line_label: 'Charge',
     charge_none: 'No cancellation charge',
+    charge_pending: 'Cancellation fee per policy, pending approval onto the monthly bill',
 
     charge_type_lesson: 'Lesson',
     charge_type_cancellation: 'Cancellation charge',

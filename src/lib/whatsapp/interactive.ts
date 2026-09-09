@@ -12,6 +12,7 @@
 
 import { META_API_VERSION } from './graphVersion'
 import { recordOutboundSend } from './messageLog'
+import { reportSendFailure } from './sendFailure'
 
 // Meta interactive-message limits.
 export const LIST_BUTTON_MAX = 20
@@ -62,6 +63,7 @@ async function postInteractive(
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
     console.error(`[whatsapp] ${label} API error`, { to, status: res.status, detail })
+    await reportSendFailure(res.status, detail)
     throw new Error(`WhatsApp ${label} API error ${res.status}: ${detail}`)
   }
 
@@ -172,6 +174,7 @@ export async function sendTemplateWithQuickReplies(
       status: res.status,
       detail,
     })
+    await reportSendFailure(res.status, detail)
     throw new Error(`WhatsApp quick-reply template API error ${res.status}: ${detail}`)
   }
 

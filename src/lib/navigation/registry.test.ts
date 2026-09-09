@@ -57,11 +57,16 @@ describe('filterNav', () => {
     parent_portal: true,
     integrations: false,
     data_retention: false,
+    broadcasts: false,
   }
 
   it('hides owner-only entries from an admin', () => {
     const admin = filterNav(SETTINGS_NAV, 'admin').map((e) => e.href)
     expect(admin).toEqual([
+      // Admins receive the whatsapp_health notification, whose action link
+      // lands here, so the entry is visible to them. The page itself renders
+      // read-only for a non-owner and the write actions refuse them.
+      '/settings/whatsapp',
       '/settings/exams',
       '/settings/scheduling',
       '/settings/holidays',
@@ -410,6 +415,7 @@ describe('connections hub', () => {
       parent_portal: true,
       integrations: false,
       data_retention: false,
+      broadcasts: false,
     }
     const visible = filterNav(hubEntries.map((i) => i.entry), 'owner', features).map(
       (e) => e.href

@@ -28,7 +28,12 @@ function calculateCancellationEventAmount(
   pricing: OrgPricing,
   studentPricing: StudentPricing
 ): number | MissingFieldsError {
+  // An admin's correction wins; otherwise the fee the cancellation policy
+  // produced when the lesson was cancelled. Only events written before the
+  // policy reached this path fall through to the legacy full-price rule below,
+  // which ignores notice_hours_partial and partial_charge_percent entirely.
   if (event.charge_override != null) return event.charge_override
+  if (event.policy_amount != null) return event.policy_amount
 
   if (!lesson) {
     return {

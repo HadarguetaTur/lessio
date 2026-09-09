@@ -42,11 +42,13 @@ function plan(overrides: Partial<SaasPlanRow>): SaasPlanRow {
       parent_portal: true,
       integrations: true,
       data_retention: true,
+      broadcasts: true,
     },
     sort_order: 20,
     students_quota: null,
     lessons_monthly_quota: null,
     teachers_quota: null,
+    broadcast_recipients_monthly: null,
     ...overrides,
   }
 }

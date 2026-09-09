@@ -332,8 +332,10 @@ export async function approveDayOffRequest(params: {
     //    filter no longer matches them and the parents are unreachable.
     const affected = await loadAffectedLessons(db, window)
 
-    // 3. Cancel. No charge and no cancellation event, by design.
-    lessonsCancelled = await cancelLessons(db, window)
+    // 3. Cancel through `cancelLessonCore` as staff-with-waive: an APPROVED
+    //    absence is free, and the cancellation event it now writes is the only
+    //    audit record that a monthly bill lost the lesson on purpose.
+    lessonsCancelled = await cancelLessons(db, window, affected.map((l) => l.id))
 
     // 4. Tell the parents.
     ;({ notified, failed } = await notifyParents(window, ctx, affected))
@@ -499,6 +501,10 @@ function absenceWindowFor(request: DayOffRequest, timezone: string): AbsenceWind
     lt,
     label: formatDateRange(request.startDate, request.endDate, timezone),
     teacherName: request.teacherName,
+    // A day off only reaches here through an owner/admin APPROVAL — the caller
+    // has already claimed the request with `decidedByProfileId`. That sign-off
+    // is what makes waiving the fee legitimate.
+    authority: { kind: 'staff' },
   }
 }
 

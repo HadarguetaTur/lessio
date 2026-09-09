@@ -3,8 +3,9 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { DateTime } from 'luxon'
-import { AlertCircle, Bot, Check, CheckCheck, Send, Sparkles, Undo2 } from 'lucide-react'
+import { AlertCircle, Bot, Check, CheckCheck, Megaphone, Send, Sparkles, Undo2 } from 'lucide-react'
 import type { ThreadMessage } from '@/lib/whatsapp/conversations'
+import { deliveryFailureReason } from '@/lib/whatsapp/deliveryErrorCopy'
 
 type ActionResult = { error: string | null }
 
@@ -63,6 +64,7 @@ export function WhatsAppThread({
                 <p className="text-[11px] font-medium mb-0.5 flex items-center gap-1 opacity-90">
                   {msg.origin === 'ai' && <Sparkles size={10} />}
                   {(msg.origin === 'bot' || msg.origin === 'cron') && <Bot size={10} />}
+                  {msg.origin === 'broadcast' && <Megaphone size={10} />}
                   {msg.origin === 'staff'
                     ? (msg.senderName ?? t('origins.staff'))
                     : t(`origins.${msg.origin ?? 'bot'}`)}
@@ -167,10 +169,15 @@ function DeliveryMark({
   const t = useTranslations('waConversations')
 
   if (status === 'failed') {
+    // Meta's numeric code is precise and useless to whoever is reading the
+    // inbox: 131047 means "the parent hasn't written in 24 hours", which is the
+    // one failure that is nobody's fault (UX audit F18). Unmapped codes stay a
+    // plain "failed" — the number is in the logs either way.
+    const reason = deliveryFailureReason(errorCode)
     return (
       <span className="inline-flex items-center gap-0.5 text-red-600 font-medium">
-        <AlertCircle size={11} />
-        {errorCode ? t('delivery.failedWithCode', { code: errorCode }) : t('delivery.failed')}
+        <AlertCircle size={11} aria-hidden />
+        {reason ? t(`delivery.reasons.${reason}`) : t('delivery.failed')}
       </span>
     )
   }

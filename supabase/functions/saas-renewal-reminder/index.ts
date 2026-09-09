@@ -11,11 +11,18 @@
  *   4. Send a WhatsApp reminder to the owner
  *   5. Dedup via notification_log (type = 'saas_renewal_reminder')
  *
+ * Step 5 is a claim, not a check. The original code did
+ * SELECT -> send -> INSERT, so two overlapping runs (a schedule registered
+ * twice, a retry, a deploy mid-run) both saw no row and both messaged the
+ * owner. Every other sender in this directory already uses the atomic
+ * insert-as-claim in ../_shared/notificationClaim.ts; this one now does too.
+ *
  * Failures are isolated per org — one failure does not stop others.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { authorizeCronRequest, getSupabaseSecretKey } from '../_shared/supabaseSecret.ts'
+import { claimNotification, settleNotification } from '../_shared/notificationClaim.ts'
 import { decryptToken } from '../_shared/crypto.ts'
 import { sendTextMessage } from '../_shared/whatsapp.ts'
 import { botString } from '../_shared/botStrings.ts'
@@ -59,24 +66,10 @@ serveWithErrorReporting('saas-renewal-reminder', async (_req) => {
   for (const sub of subs) {
     const orgId = sub.organization_id
 
+    const dedupKey = `saas_renewal_reminder:${sub.id}:${sub.current_period_end?.slice(0, 10)}`
+
     try {
-      // ── 2. Dedup check ─────────────────────────────────────────────────────
-      const dedupKey = `saas_renewal_reminder:${sub.id}:${sub.current_period_end?.slice(0, 10)}`
-      const { data: existing } = await db
-        .from('notification_log')
-        .select('id')
-        .eq('organization_id', orgId)
-        .eq('type', 'saas_renewal_reminder')
-        .eq('entity_id', dedupKey)
-        .maybeSingle()
-
-      if (existing) {
-        console.info('[saas-renewal-reminder] Already sent for this period — skipping', { orgId, dedupKey })
-        results.skipped++
-        continue
-      }
-
-      // ── 3. Get owner phone ─────────────────────────────────────────────────
+      // ── 2. Get owner phone ─────────────────────────────────────────────────
       const { data: owner } = await db
         .from('profiles')
         .select('phone')
@@ -91,7 +84,7 @@ serveWithErrorReporting('saas-renewal-reminder', async (_req) => {
         continue
       }
 
-      // ── 4. Get org WhatsApp credentials ────────────────────────────────────
+      // ── 3. Get org WhatsApp credentials ────────────────────────────────────
       const { data: org } = await db
         .from('organizations')
         .select('name, whatsapp_phone_number_id, whatsapp_access_token, default_locale')
@@ -104,7 +97,7 @@ serveWithErrorReporting('saas-renewal-reminder', async (_req) => {
         continue
       }
 
-      // ── 5. Resolve plan display name ───────────────────────────────────────
+      // ── 4. Resolve plan display name ───────────────────────────────────────
       const { data: plan } = await db
         .from('saas_plans')
         .select('display_name_he, display_name_en')
@@ -131,16 +124,34 @@ serveWithErrorReporting('saas-renewal-reminder', async (_req) => {
         date: renewalDate,
       })
 
+      // ── 5. Claim the send ──────────────────────────────────────────────────
+      // Last step before the message goes out, so nothing above can leave a
+      // pending row behind. The insert is the lock: a concurrent run gets
+      // 23505 and stands down rather than sending a second reminder.
+      const claim = await claimNotification(db, {
+        orgId,
+        type: 'saas_renewal_reminder',
+        entityId: dedupKey,
+      })
+      if (claim !== 'claimed') {
+        // Already sent, in flight, or the ledger is unavailable. All three mean
+        // "not ours to send" — a missed reminder beats a duplicate one.
+        console.info('[saas-renewal-reminder] Not claimed — skipping', { orgId, dedupKey, claim })
+        results.skipped++
+        continue
+      }
+
       // ── 6. Decrypt token and send WhatsApp ─────────────────────────────────
       const accessToken = await decryptToken(org.whatsapp_access_token)
       await sendTextMessage(owner.phone, message, accessToken, org.whatsapp_phone_number_id)
 
-      // ── 7. Log notification (dedup) ────────────────────────────────────────
-      await db.from('notification_log').insert({
-        organization_id: orgId,
+      // ── 7. Settle the claim ────────────────────────────────────────────────
+      await settleNotification(db, {
+        orgId,
         type: 'saas_renewal_reminder',
-        entity_id: dedupKey,
+        entityId: dedupKey,
         status: 'sent',
+        errorMessage: null,
       })
 
       console.info('[saas-renewal-reminder] Reminder sent', { orgId, renewalDate })
@@ -149,14 +160,16 @@ serveWithErrorReporting('saas-renewal-reminder', async (_req) => {
       const msg = err instanceof Error ? err.message : String(err)
       console.error('[saas-renewal-reminder] Failed for org', { orgId, error: msg })
 
-      // Log failure for observability (non-fatal)
-      await db.from('notification_log').insert({
-        organization_id: orgId,
+      // Settle the claim as failed so the next run may retake it. If the throw
+      // happened before the claim there is no row and this updates nothing —
+      // which is correct: nothing was sent and nothing is held.
+      await settleNotification(db, {
+        orgId,
         type: 'saas_renewal_reminder',
-        entity_id: `saas_renewal_reminder:${sub.id}:${sub.current_period_end?.slice(0, 10)}`,
+        entityId: dedupKey,
         status: 'failed',
-        error_message: msg.slice(0, 500),
-      }).catch(() => { /* ignore insert failure */ })
+        errorMessage: msg.slice(0, 500),
+      })
 
       await reportEdgeError(db, {
         thrown: err,

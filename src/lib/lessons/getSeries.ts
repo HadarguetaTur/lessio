@@ -1,6 +1,6 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import type { SeriesRule } from '@/lib/lessons/createSeries'
 import { loadSeriesFootprint } from '@/lib/lessons/seriesFootprint'
+import { readSeriesRuleForDisplay, type SeriesRule } from '@/lib/lessons/seriesRule'
 
 export interface LessonSeriesListItem {
   id: string
@@ -9,7 +9,16 @@ export interface LessonSeriesListItem {
   studentNames: string[]
   /** Name of the student group a group series was built from; null otherwise or once the group is deleted. */
   groupName: string | null
+  /**
+   * Always a complete rule — read through normalizeSeriesRule, never raw. The
+   * column is jsonb, and the schedule importer used to write a camelCase shape
+   * with no `frequency` and no `until`; one such row used to throw
+   * "Cannot read properties of undefined" out of the sort below and take down
+   * the whole list, including the page an owner would use to repair it.
+   */
   rule: SeriesRule
+  /** False when the stored rule was legacy or unreadable and had to be filled in. */
+  ruleIsComplete: boolean
   upcomingCount: number
   /** When an admin stopped the series; null while it is active or simply ran out. */
   stoppedAt: string | null
@@ -83,12 +92,14 @@ export async function getLessonSeriesList(organizationId: string): Promise<Lesso
     const fallback = fallbackNames.get(s.student_id)
     const footprint = footprints.get(s.id)
     const historyCount = footprint?.blocking.length ?? 0
+    const { rule, isComplete } = readSeriesRuleForDisplay(s.rule)
     return {
       id: s.id,
       teacherName: teacher?.profiles?.full_name ?? '',
       studentNames: derived.length ? derived.sort() : fallback ? [fallback] : [],
       groupName: group?.name ?? null,
-      rule: s.rule as SeriesRule,
+      rule,
+      ruleIsComplete: isComplete,
       upcomingCount: countBySeries.get(s.id) ?? 0,
       stoppedAt: (s.stopped_at as string | null) ?? null,
       canDelete: historyCount === 0,

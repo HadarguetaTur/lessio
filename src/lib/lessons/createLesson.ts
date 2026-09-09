@@ -1,8 +1,10 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { assertOrgNotSaasReadOnly } from '@/lib/saas/subscriptions'
+import { reconcileStudentOverlap } from '@/lib/booking/reconcileStudentOverlap'
 import { detectDayTail } from '@/lib/scheduling/dayTail'
 import type { LessonStatus, LessonType } from '@/lib/lessons/types'
+import { assertLessonPeopleBelongToOrg } from './assertLessonPeople'
 
 export type CreateLessonParams = {
   orgId: string
@@ -85,6 +87,17 @@ export async function createLesson(
   if (studentIds.length === 0) throw new Error('At least one student is required')
 
   await assertOrgNotSaasReadOnly(orgId)
+
+
+  // teacherId and studentIds reach every caller of this function straight from
+  // a form. The insert below stamps organization_id from the session, so a
+  // foreign teacher or student id produced a row that claimed to be this org's
+  // while pointing at another tenant's people — which then surfaced their
+  // names in this org's lesson lists and billing. The teacher-facing callers
+  // already check (assertStudentsAssignedToTeacher, canAccessStudent); the
+  // owner/admin paths did not, so the check belongs here, at the choke point
+  // every path shares.
+  await assertLessonPeopleBelongToOrg(orgId, teacherId, studentIds, groupId)
 
   const db = createServiceRoleClient()
 
@@ -185,6 +198,21 @@ export async function createLesson(
   if (lsError) {
     await db.from('lessons').delete().eq('id', lesson.id)
     throw new Error(`Failed to link students: ${lsError.message}`)
+  }
+
+  // Step 5's student check is read-then-insert with nothing serialising it —
+  // there is no EXCLUDE for students the way there is for teachers. The rows
+  // are visible now, so look again and withdraw if this lesson lost the race.
+  if (status !== 'cancelled') {
+    const withdrawn = await reconcileStudentOverlap({
+      db,
+      orgId,
+      lessonId: lesson.id,
+      studentIds,
+      startUtc,
+      endUtc,
+    })
+    if (withdrawn) throw new LessonConflictError('student_conflict')
   }
 
   console.log('[createLesson] created', {

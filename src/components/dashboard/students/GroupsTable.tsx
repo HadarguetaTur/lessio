@@ -1,11 +1,18 @@
 'use client'
 
 import { useTransition } from 'react'
-import { PauseCircle, PlayCircle, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { MessageSquare, PauseCircle, PlayCircle, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { deleteGroup, toggleGroupStatus, updateGroup } from '@/app/(dashboard)/students/group-actions'
 import { EditGroupSheet } from './GroupFormSheet'
+import { WhatsAppGroupCard } from './WhatsAppGroupCard'
+import {
+  inviteGroupParentsAction,
+  linkWhatsAppGroupAction,
+  unlinkWhatsAppGroupAction,
+} from '@/app/(dashboard)/students/wa-group-actions'
 import type { StudentGroup } from '@/lib/groups'
 
 interface Student {
@@ -108,7 +115,23 @@ export function GroupsTable({ groups, students }: GroupsTableProps) {
                         students={students}
                         action={updateAction}
                         group={group}
+                        waGroupCard={
+                          <WhatsAppGroupCard
+                            group={group}
+                            linkAction={linkWhatsAppGroupAction}
+                            unlinkAction={unlinkWhatsAppGroupAction}
+                            inviteAction={inviteGroupParentsAction}
+                          />
+                        }
                       />
+
+                      <Link
+                        href={`/messages/broadcasts/new?audience=student_group:${group.id}`}
+                        className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        title={t('groups.messageParents')}
+                      >
+                        <MessageSquare size={15} />
+                      </Link>
 
                       <button
                         onClick={() => handleToggleStatus(group.id, group.status)}

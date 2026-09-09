@@ -21,7 +21,11 @@ export interface ChargesSummary {
   /** The part of `openTotal` whose due date has already passed. */
   overdueTotal: number
   overdueCount: number
-  /** Payments received month-to-date, partial payments included. */
+  /**
+   * Payments received month-to-date, partial payments included, NET of refunds
+   * recorded this month — otherwise the figure keeps counting money that has
+   * gone back to the parent.
+   */
   collectedThisMonth: number
 }
 
@@ -42,7 +46,8 @@ export interface OpenChargeRow {
 export function summarizeCharges(
   openCharges: OpenChargeRow[],
   payments: Array<{ amount: number | string }>,
-  todayLocal: string
+  todayLocal: string,
+  refunds: Array<{ refunded_amount: number | string | null }> = []
 ): ChargesSummary {
   let openTotal = 0
   let openCount = 0
@@ -64,7 +69,11 @@ export function summarizeCharges(
     }
   }
 
-  const collectedThisMonth = payments.reduce((sum, p) => sum + Number(p.amount), 0)
+  const received = payments.reduce((sum, p) => sum + Number(p.amount), 0)
+  const returned = refunds.reduce((sum, r) => sum + Number(r.refunded_amount ?? 0), 0)
+  // Floored at zero for the same reason as the dashboard KPI: a negative
+  // "collected" figure reads as a bug, and the refund is on the charge anyway.
+  const collectedThisMonth = Math.max(0, received - returned)
 
   return {
     openTotal: round2(openTotal),
@@ -84,7 +93,7 @@ export async function getChargesSummary(orgId: string, timezone: string): Promis
   const monthStart = now.startOf('month').toUTC().toISO()!
   const nowISO = now.toUTC().toISO()!
 
-  const [chargesRes, paymentsRes] = await Promise.all([
+  const [chargesRes, paymentsRes, refundsRes] = await Promise.all([
     db
       .from('charges')
       .select('amount, amount_paid, parent_id, due_date')
@@ -96,15 +105,24 @@ export async function getChargesSummary(orgId: string, timezone: string): Promis
       .eq('organization_id', orgId)
       .gte('paid_at', monthStart)
       .lt('paid_at', nowISO),
+    db
+      .from('charges')
+      .select('refunded_amount')
+      .eq('organization_id', orgId)
+      .not('refunded_at', 'is', null)
+      .gte('refunded_at', monthStart)
+      .lt('refunded_at', nowISO),
   ])
 
   if (chargesRes.error) throw new Error(`[getChargesSummary] ${chargesRes.error.message}`)
   if (paymentsRes.error) throw new Error(`[getChargesSummary] ${paymentsRes.error.message}`)
+  if (refundsRes.error) throw new Error(`[getChargesSummary] ${refundsRes.error.message}`)
 
   return summarizeCharges(
     (chargesRes.data ?? []) as OpenChargeRow[],
     paymentsRes.data ?? [],
-    todayLocal
+    todayLocal,
+    refundsRes.data ?? []
   )
 }
 

@@ -11,6 +11,7 @@ import type { AttentionActionResult } from '@/app/(dashboard)/dashboard/actions'
 import { getMonthlyRevenueTrend } from '@/lib/reports/revenue'
 import { getMonthForecast } from '@/lib/reports/forecast'
 import { getOrgSetupProgress } from '@/lib/organizations/readiness'
+import { getWaConnectionState } from '@/lib/whatsapp/connectionState'
 import { KpiCard } from '@/components/dashboard/KpiCard'
 import { SetupChecklistCard } from '@/components/dashboard/SetupChecklistCard'
 import { TodayLessonsList } from '@/components/dashboard/TodayLessonsList'
@@ -45,8 +46,9 @@ interface SectionProps {
  * covers it, and it is optional in a way payments and WhatsApp are not.
  */
 export async function SetupSection({ orgId }: { orgId: string }) {
-  const [progress, t] = await Promise.all([
+  const [progress, waState, t] = await Promise.all([
     getOrgSetupProgress(orgId),
+    getWaConnectionState(orgId),
     getTranslations('dashboard'),
   ])
 
@@ -54,7 +56,23 @@ export async function SetupSection({ orgId }: { orgId: string }) {
     { key: 'teacher', done: progress.hasTeacher, href: '/teachers' },
     { key: 'student', done: progress.hasStudent, href: '/students' },
     { key: 'lesson', done: progress.hasLesson, href: '/lessons/new' },
-    { key: 'whatsapp', done: progress.hasWhatsApp, href: '/settings/whatsapp' },
+    // Not progress.hasWhatsApp: that is only "a number is stored". A number
+    // whose credentials Meta rejects is not a finished setup step, and ticking
+    // it removed the whole band from the dashboard — which is how a broken
+    // connection stayed invisible (UX audit F1/F6).
+    //
+    // Dropped entirely on a plan without WhatsApp: a step the org cannot take
+    // would keep the band on screen forever, nagging about something we do not
+    // sell them.
+    ...(waState.state === 'plan_locked'
+      ? []
+      : [
+          {
+            key: 'whatsapp',
+            done: waState.state === 'active' || waState.state === 'limited',
+            href: '/settings/whatsapp',
+          },
+        ]),
     { key: 'payment', done: progress.hasPayment, href: '/settings/payment' },
   ].map((item) => ({ ...item, label: t(`setup.items.${item.key}`) }))
 

@@ -126,11 +126,13 @@ const ADVANCED: SaasPlanRow = {
     parent_portal: true,
     integrations: true,
     data_retention: true,
+    broadcasts: true,
   },
   sort_order: 15,
   students_quota: null,
   lessons_monthly_quota: null,
   teachers_quota: null,
+  broadcast_recipients_monthly: null,
 }
 
 function pendingRow(overrides: Row = {}): Row {

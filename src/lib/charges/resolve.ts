@@ -16,6 +16,11 @@ export type ResolveChargeFailure =
   | 'already_paid'
   /** Already waived or voided; nothing left to resolve. */
   | 'already_resolved'
+  /**
+   * A live payment link covers this charge AND at least one other open charge.
+   * Resolving it here would make its share of that link's total unplaceable.
+   */
+  | 'shared_payment_link'
   | 'update_failed'
 
 export type ResolveChargeResult =
@@ -51,7 +56,7 @@ async function resolveCharge({
 
   const { data: charge, error: loadError } = await db
     .from('charges')
-    .select('id, parent_id, status, amount, payment_link, billing_record_id')
+    .select('id, parent_id, status, amount, payment_link, payment_reference, billing_record_id')
     .eq('id', chargeId)
     .eq('organization_id', organizationId)
     .maybeSingle()
@@ -64,6 +69,46 @@ async function resolveCharge({
   if (previousStatus === 'paid') return { ok: false, reason: 'already_paid' }
   if (!canTransition(previousStatus, kind)) {
     return { ok: false, reason: 'already_resolved' }
+  }
+
+  // A consolidated link is minted for A + B together and the trigger records a
+  // history row per charge. Void B and the parent still pays the full total:
+  // `mintedAmount` in the webhook still counts B's share, `settleable` no longer
+  // does, A absorbs what it can, and the difference becomes `surplus > 0` — a
+  // console.error with NO ledger row. Real money into a log line.
+  //
+  // Refuse rather than reallocate silently. The owner resolves the other charge
+  // first, or re-sends the payment request, which mints a fresh link for what is
+  // actually owed.
+  const reference = charge.payment_reference as string | null
+  if (reference) {
+    const { data: shared, error: sharedError } = await db
+      .from('charges')
+      .select('id, status')
+      .eq('organization_id', organizationId)
+      .eq('payment_reference', reference)
+      .neq('id', chargeId)
+      .in('status', ['pending', 'invoiced'])
+
+    if (sharedError) {
+      console.error('[resolveCharge] shared-link lookup failed', {
+        chargeId,
+        organizationId,
+        error: sharedError.message,
+      })
+      return { ok: false, reason: 'update_failed' }
+    }
+
+    if ((shared ?? []).length > 0) {
+      console.warn('[resolveCharge] refused — a live payment link also covers other open charges', {
+        chargeId,
+        organizationId,
+        kind,
+        reference,
+        otherOpenChargeIds: (shared as Array<{ id: string }>).map((c) => c.id),
+      })
+      return { ok: false, reason: 'shared_payment_link' }
+    }
   }
 
   const now = new Date().toISOString()

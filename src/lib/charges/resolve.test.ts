@@ -168,3 +168,100 @@ describe('waiveCharge / voidCharge', () => {
     expect(auditRows[0]?.metadata).toMatchObject({ had_payment_link: true })
   })
 })
+
+/**
+ * A consolidated link is minted for A + B together, and the reference-history
+ * trigger records a row per charge. Void B and the parent still pays the full
+ * total: `mintedAmount` in the webhook still counts B's share, `settleable` no
+ * longer does, A absorbs what it can, and the remainder becomes `surplus > 0` —
+ * a console.error with NO ledger row. Real money into a log line.
+ */
+describe('resolving a charge that shares a live payment link', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    auditRows.length = 0
+  })
+
+  /** Adds the shared-reference lookup: select().eq().eq().neq().in() → rows. */
+  function mockWithSharedLookup(
+    charge: ChargeRow & { payment_reference: string | null },
+    othersOpen: Array<{ id: string; status: string }>
+  ) {
+    const updatePayloads: Record<string, unknown>[] = []
+    let selectCall = 0
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'charge_audit_log') {
+        return {
+          insert: async (payload: Record<string, unknown>) => {
+            auditRows.push(payload)
+            return { error: null }
+          },
+        }
+      }
+      if (table !== 'charges') throw new Error(`Unexpected table: ${table}`)
+
+      return {
+        select: () => {
+          selectCall += 1
+          if (selectCall === 1) {
+            const load: Record<string, unknown> = {}
+            load['eq'] = () => load
+            load['maybeSingle'] = async () => ({ data: charge, error: null })
+            return load
+          }
+          const shared: Record<string, unknown> = {}
+          shared['eq'] = () => shared
+          shared['neq'] = () => shared
+          shared['in'] = async () => ({ data: othersOpen, error: null })
+          return shared
+        },
+        update: (payload: Record<string, unknown>) => {
+          updatePayloads.push(payload)
+          const chain: Record<string, unknown> = {}
+          chain['eq'] = () => chain
+          chain['in'] = () => chain
+          chain['select'] = () => chain
+          chain['maybeSingle'] = async () => ({ data: { id: charge.id }, error: null })
+          return chain
+        },
+      }
+    })
+
+    return updatePayloads
+  }
+
+  const shared = {
+    ...openCharge,
+    payment_link: 'https://pay/link',
+    payment_reference: 'ref-shared',
+  }
+
+  it('refuses to void while another open charge is on the same link', async () => {
+    const updates = mockWithSharedLookup(shared, [{ id: 'charge-2', status: 'pending' }])
+
+    const result = await voidCharge('charge-1', 'org-1', 'profile-1', 'טעות')
+
+    expect(result).toEqual({ ok: false, reason: 'shared_payment_link' })
+    expect(updates).toHaveLength(0)
+    expect(auditRows).toHaveLength(0)
+  })
+
+  it('refuses to waive under the same conditions', async () => {
+    mockWithSharedLookup(shared, [{ id: 'charge-2', status: 'invoiced' }])
+
+    const result = await waiveCharge('charge-1', 'org-1', 'profile-1', 'הנחה')
+
+    expect(result).toEqual({ ok: false, reason: 'shared_payment_link' })
+  })
+
+  it('allows it when the link covers this charge alone', async () => {
+    const updates = mockWithSharedLookup(shared, [])
+
+    const result = await voidCharge('charge-1', 'org-1', 'profile-1', 'טעות')
+
+    expect(result).toMatchObject({ ok: true })
+    expect(updates).toHaveLength(1)
+    expect(auditRows[0]?.metadata).toMatchObject({ had_payment_link: true })
+  })
+})

@@ -38,9 +38,31 @@ const EXAM_HOURS_BEFORE = [1, 2, 3]
 
 const initialState: AutomationSettingsResult = { error: null }
 
-export function AutomationsSettings({ org }: { org: OrgAutomations }) {
+export function AutomationsSettings({
+  org,
+  aiAssistantOnPlan = true,
+  readOnly = false,
+  readOnlyReason,
+}: {
+  org: OrgAutomations
+  /**
+   * The AI assistant is a separate plan entitlement that happens to be toggled
+   * from this page. Off-plan, the row is disabled with the reason rather than
+   * silently accepting a switch the save will refuse (UX audit F4/F7).
+   */
+  aiAssistantOnPlan?: boolean
+  readOnly?: boolean
+  readOnlyReason?: string
+}) {
   const t = useTranslations('settings.automations')
   const [state, formAction, isPending] = useActionState(saveAutomationSettings, initialState)
+
+  /** Why a given row cannot be touched, or null when it can. */
+  const blockedReason = (key: (typeof FLOWS)[number]['key']): string | null => {
+    if (readOnly) return readOnlyReason ?? null
+    if (key === 'ai_assistant_enabled' && !aiAssistantOnPlan) return t('aiNotOnPlanHint')
+    return null
+  }
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -67,6 +89,14 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
               <p id={`${flow.key}-description`} className="text-xs text-muted-foreground mt-0.5">
                 {t(`flows.${flow.key}.description`)}
               </p>
+
+              {/* Never a disabled control with no explanation — the rule the
+                  audit found AutoSendToggle already following and this form not. */}
+              {blockedReason(flow.key) && (
+                <p id={`${flow.key}-blocked`} className="mt-1.5 text-xs text-amber-700">
+                  {blockedReason(flow.key)}
+                </p>
+              )}
 
               {flow.hasHours && org[flow.key] && (
                 <div className="mt-2 flex items-center gap-2">
@@ -137,14 +167,24 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
               )}
             </div>
 
-            <label htmlFor={flow.key} className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+            <label
+              htmlFor={flow.key}
+              className={`relative inline-flex items-center shrink-0 mt-0.5 ${
+                blockedReason(flow.key) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+              }`}
+            >
               <input
                 type="checkbox"
                 id={flow.key}
                 name={flow.key}
                 value="on"
                 defaultChecked={org[flow.key]}
-                aria-describedby={`${flow.key}-description`}
+                disabled={Boolean(blockedReason(flow.key))}
+                aria-describedby={
+                  blockedReason(flow.key)
+                    ? `${flow.key}-description ${flow.key}-blocked`
+                    : `${flow.key}-description`
+                }
                 className="sr-only peer"
               />
               <div className="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-700" />
@@ -158,15 +198,21 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
         <input type="hidden" name="exam_good_luck_hours_before" value={org.exam_good_luck_hours_before} />
 
         <div className="pt-4 flex items-center justify-between">
-          {state.error && (
-            <p className="text-sm text-red-600">{state.error}</p>
-          )}
-          {!state.error && (
+          {state.error ? (
+            <p role="alert" className="text-sm text-red-600">
+              {state.error}
+            </p>
+          ) : readOnly && readOnlyReason ? (
+            <p id="automations-readonly" className="text-sm text-muted-foreground">
+              {readOnlyReason}
+            </p>
+          ) : (
             <span />
           )}
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || readOnly}
+            aria-describedby={readOnly ? 'automations-readonly' : undefined}
             className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {isPending ? t('saving') : t('save')}

@@ -16,11 +16,13 @@ export function MessagesTabs({ showPortal = true }: { showPortal?: boolean }) {
   if (!showPortal) return null
 
   const onWhatsApp = pathname.startsWith('/messages/whatsapp')
+  const onBroadcasts = pathname.startsWith('/messages/broadcasts')
 
   return (
     <div className="flex gap-1 border-b border-border">
-      <TabLink href="/messages" label={t('tabs.portal')} active={!onWhatsApp} />
+      <TabLink href="/messages" label={t('tabs.portal')} active={!onWhatsApp && !onBroadcasts} />
       <TabLink href="/messages/whatsapp" label={t('tabs.whatsapp')} active={onWhatsApp} />
+      <TabLink href="/messages/broadcasts" label={t('tabs.broadcasts')} active={onBroadcasts} />
     </div>
   )
 }

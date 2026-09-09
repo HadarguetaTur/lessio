@@ -16,7 +16,7 @@ import {
   TEMPLATE_PREVIEW_VARS,
   type MessageTemplateType,
 } from '@/lib/whatsapp/templates'
-import { SUBMITTABLE_TYPES } from '@/lib/whatsapp/submitTemplate'
+import { SUBMITTABLE_TYPES, OUT_OF_WINDOW_TYPES } from '@/lib/whatsapp/submitTemplate'
 import {
   getTemplateStatuses,
   refreshTemplateStatusesFromMeta,
@@ -47,20 +47,6 @@ import { decryptToken } from '@/lib/crypto'
  */
 
 const ALL_TYPES = Object.keys(DEFAULT_TEMPLATES.he) as MessageTemplateType[]
-
-/**
- * Sent outside the 24h window, so Meta approval applies.
- * `lesson_cancelled_by_teacher` is here for its status only — its Meta template
- * carries a quick-reply button, which is a different submission shape, so it
- * stays on Lessio's built-in copy. `payment_received` likewise: its two optional
- * tails (balance, receipt) collapse into one Meta parameter, which an org-authored
- * body-only submission cannot express.
- */
-const OUT_OF_WINDOW_TYPES: MessageTemplateType[] = [
-  ...SUBMITTABLE_TYPES,
-  'lesson_cancelled_by_teacher',
-  'payment_received',
-]
 
 const LANG_TABS: Array<{ locale: AppLocale; label: string }> = [
   { locale: 'he', label: 'עברית' },

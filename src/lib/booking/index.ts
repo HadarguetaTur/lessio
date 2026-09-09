@@ -9,6 +9,9 @@ export type {
   GetAvailabilitySummaryParams,
 } from './getAvailabilitySummary'
 
+export { assertSlotBookable, SlotNotBookableError } from './assertSlotBookable'
+export type { AssertSlotBookableParams, SlotRejectionReason } from './assertSlotBookable'
+
 export { createSlotLock, SlotUnavailableError } from './createSlotLock'
 export type { CreateSlotLockParams, SlotLock } from './createSlotLock'
 

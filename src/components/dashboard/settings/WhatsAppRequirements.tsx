@@ -23,33 +23,46 @@ export function WhatsAppRequirements({ className }: { className?: string }) {
   const linkCls = 'underline hover:text-amber-900'
 
   return (
-    <div
-      className={`rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 ${className ?? ''}`}
-    >
-      <p className="font-medium mb-1">{tp('whatsappPage.requirementsTitle')}</p>
-      <ul className="list-disc list-inside space-y-1 text-amber-700">
-        <li>
-          <a href={META_BUSINESS_URL} target="_blank" rel="noopener noreferrer" className={linkCls}>
-            {tp('whatsappPage.req1')}
+    <div className={`space-y-3 ${className ?? ''}`}>
+      {/*
+       * Two blocks, because the old single list was wrong in the direction that
+       * costs sign-ups: it headed itself "before you start — about 2–3 days" and
+       * listed Meta Business Verification as a prerequisite. Verification is not
+       * required to connect or to send; the trust card on this same page
+       * correctly presents it as the second rung, unlocked later. The screen a
+       * new customer met first was the pessimistic and inaccurate one
+       * (UX audit F15).
+       */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-medium mb-1">{tp('whatsappPage.requirementsTitle')}</p>
+        <ul className="list-disc list-inside space-y-1 text-amber-700">
+          <li>
+            <a href={META_BUSINESS_URL} target="_blank" rel="noopener noreferrer" className={linkCls}>
+              {tp('whatsappPage.req1')}
+            </a>
+          </li>
+          <li>
+            {tp('whatsappPage.req2')}
+            <span className="mt-0.5 block ps-5 text-xs text-amber-800">
+              {tp('whatsappPage.req2Hint')}
+            </span>
+          </li>
+        </ul>
+        <p className="mt-3 text-xs text-amber-800">
+          <a href={`mailto:${email}`} className={linkCls}>
+            {tp('whatsappPage.requirementsHelp')}
           </a>
-        </li>
-        <li>
-          {tp('whatsappPage.req2')}
-          <span className="mt-0.5 block ps-5 text-xs text-amber-800">
-            {tp('whatsappPage.req2Hint')}
-          </span>
-        </li>
-        <li>
-          <a href={META_VERIFICATION_URL} target="_blank" rel="noopener noreferrer" className={linkCls}>
-            {tp('whatsappPage.req3')}
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+        <p className="font-medium mb-1 text-gray-900">{tp('whatsappPage.laterTitle')}</p>
+        <p className="text-gray-600">
+          <a href={META_VERIFICATION_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-900">
+            {tp('whatsappPage.laterVerification')}
           </a>
-        </li>
-      </ul>
-      <p className="mt-3 text-xs text-amber-800">
-        <a href={`mailto:${email}`} className={linkCls}>
-          {tp('whatsappPage.requirementsHelp')}
-        </a>
-      </p>
+        </p>
+      </div>
     </div>
   )
 }

@@ -7,7 +7,8 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
-import { createLessonSeries } from '@/lib/lessons/createSeries'
+import { createLessonSeries, MAX_SERIES_HORIZON_MONTHS } from '@/lib/lessons/createSeries'
+import { OrgScopeError } from '@/lib/auth/orgScope'
 import { getGroupRosterServiceRole } from '@/lib/groups/roster'
 import {
   deleteLessonSeries,
@@ -32,7 +33,7 @@ const SeriesFormSchema = z.discriminatedUnion('lesson_type', [
     ...seriesBase,
     lesson_type: z.literal('individual'),
     student_ids: z.array(z.string().uuid()).length(1, 'validation.atLeastOneStudent'),
-    duration_minutes: z.coerce.number().int().positive(),
+    duration_minutes: z.coerce.number().int().min(5).max(480),
     price_per_student: z.null(),
   }),
   z.object({
@@ -42,7 +43,7 @@ const SeriesFormSchema = z.discriminatedUnion('lesson_type', [
       .array(z.string().uuid())
       .length(2, 'validation.pairNeedsTwoStudents')
       .refine((ids) => new Set(ids).size === 2, 'validation.pairDistinctStudents'),
-    duration_minutes: z.coerce.number().int().positive(),
+    duration_minutes: z.coerce.number().int().min(5).max(480),
     price_per_student: z.coerce.number().positive().optional().nullable(),
   }),
   z.object({
@@ -50,7 +51,7 @@ const SeriesFormSchema = z.discriminatedUnion('lesson_type', [
     lesson_type: z.literal('group'),
     // The roster is resolved server-side from the group, never taken from the form.
     group_id: z.string().uuid('validation.pickGroupWithStudent'),
-    duration_minutes: z.coerce.number().int().positive(),
+    duration_minutes: z.coerce.number().int().min(5).max(480),
     price_per_student: z.coerce.number().positive().optional().nullable(),
   }),
   z.object({
@@ -150,6 +151,8 @@ export async function createSeriesAction(
   if (until <= todayStr) {
     return { error: t('lessons.seriesErrors.endDateFuture') }
   }
+  const horizonErr = await tooFarAhead(until, timezone)
+  if (horizonErr) return { error: horizonErr }
 
   try {
     const result = await createLessonSeries({
@@ -166,9 +169,36 @@ export async function createSeriesAction(
     revalidatePath('/lessons')
 
     return { error: null, result }
-  } catch {
+  } catch (err) {
+    if (err instanceof OrgScopeError) {
+      return {
+        error:
+          err.table === 'teachers'
+            ? await commonError('noPermission')
+            : t('lessons.newErrors.studentNotFound'),
+      }
+    }
     return { error: t('lessons.seriesErrors.createSeriesFailed') }
   }
+}
+
+/**
+ * A series end date the schema alone would accept (SCHED-08): `until` was
+ * bounded below by "must be in the future" and not at all above, so a typo of
+ * 2099 generated thousands of lessons one INSERT at a time, timed the request
+ * out, and left behind a lesson_series row plus however many occurrences the
+ * loop had managed — with no transaction to roll any of it back.
+ */
+async function tooFarAhead(until: string, timezone: string): Promise<string | null> {
+  const t = await getTranslations()
+  const horizon = DateTime.now()
+    .setZone(timezone)
+    .plus({ months: MAX_SERIES_HORIZON_MONTHS })
+    .toFormat('yyyy-MM-dd')
+  if (until > horizon) {
+    return t('lessons.seriesErrors.endDateTooFar', { months: MAX_SERIES_HORIZON_MONTHS })
+  }
+  return null
 }
 
 // ── Series management (existing-series list) ──────────────────────────────────
@@ -207,10 +237,15 @@ export async function updateSeriesUntilAction(
   const { series_id, until } = parsed.data
 
   const currentUntil = String(formData.get('current_until') ?? '')
-  const todayStr = new Date().toISOString().substring(0, 10)
+  const timezone = await getOrgTimezone(session.orgId)
+  const todayStr = DateTime.now().setZone(timezone).toFormat('yyyy-MM-dd')
   if (until <= todayStr) {
     return { error: t('lessons.seriesErrors.endDateFuture') }
   }
+  // The same upper bound as creation: extending is the other way to generate an
+  // unbounded run of lessons.
+  const horizonErr = await tooFarAhead(until, timezone)
+  if (horizonErr) return { error: horizonErr }
 
   try {
     const extending = !currentUntil || until >= currentUntil

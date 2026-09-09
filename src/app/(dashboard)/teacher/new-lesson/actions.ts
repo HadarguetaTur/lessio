@@ -6,13 +6,11 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { canAccessStudent } from '@/lib/auth/studentAccess'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
-import { checkLessonCalendarConflicts } from '@/lib/google-calendar/checkLessonCalendarConflicts'
-import type { NewLessonState } from '@/app/(dashboard)/lessons/new/actions'
+import { runScheduleGuards, type NewLessonState } from '@/lib/lessons/scheduleGuards'
+import { SCHEDULE_ACK_FIELD } from '@/lib/lessons/scheduleAck'
 import { commonError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 import { isLessonDurationAllowed } from '@/lib/organizations/lessonDurations'
-import { buildAvailabilityNotice } from '@/lib/availability/availabilityNotice'
-import { analyzeScheduleImpact } from '@/lib/scheduling/scheduleImpact'
 
 const TeacherLessonSchema = z.object({
   student_id:       z.string().uuid(),
@@ -49,53 +47,22 @@ export async function createTeacherLessonAction(
   if (!(await isLessonDurationAllowed(orgId, 'teacher', duration_minutes))) {
     return { error: await commonError('invalidData') }
   }
-  const confirmedCalendarConflict = formData.get('confirm_calendar_conflict') === '1'
-  const confirmedOutsideAvailability = formData.get('confirm_outside_availability') === '1'
-  const confirmedScheduleImpact = formData.get('confirm_schedule_impact') === '1'
-
-  if (!confirmedOutsideAvailability) {
-    const availability = await buildAvailabilityNotice({
-      orgId, teacherId: teacher.id, date, startTime: start_time, durationMinutes: duration_minutes, role,
-    })
-    if (availability) {
-      return {
-        error: availability.message,
-        needsAvailabilityConfirm: true,
-        availabilityInfo: availability.notice,
-      }
-    }
-  }
-
-  if (!confirmedScheduleImpact) {
-    const impact = await analyzeScheduleImpact({
-      orgId, teacherId: teacher.id, date, startTime: start_time,
-      durationMinutes: duration_minutes, audience: 'teacher',
-    })
-    if (impact) {
-      return {
-        error: t('lessons.scheduleImpact.description'),
-        needsScheduleImpactConfirm: true,
-        scheduleImpact: impact,
-      }
-    }
-  }
-
-  if (!confirmedCalendarConflict) {
-    const conflicts = await checkLessonCalendarConflicts({
+  // The same server-signed acknowledgement the dashboard form uses, through the
+  // same runner — this shell used to carry its own copy of all three guards
+  // behind its own three forgeable booleans.
+  const guarded = await runScheduleGuards({
+    slot: {
       orgId,
       teacherId: teacher.id,
       date,
       startTime: start_time,
       durationMinutes: duration_minutes,
-    })
-    if (conflicts.length > 0) {
-      return {
-        error: t('lessons.conflicts.googleCalendar'),
-        needsCalendarConfirm: true,
-        calendarConflicts: conflicts,
-      }
-    }
-  }
+    },
+    role,
+    audience: 'teacher',
+    ackToken: (formData.get(SCHEDULE_ACK_FIELD) as string | null) ?? null,
+  })
+  if (guarded) return guarded
 
   let lessonId: string
   try {

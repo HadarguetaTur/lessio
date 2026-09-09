@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { createHmac } from 'crypto'
 
@@ -388,13 +388,20 @@ function makeRequest(body: object, { signed = true } = {}): NextRequest {
   })
 }
 
-function buildChain(result: unknown) {
+/**
+ * `listResult` is what an awaited query with no .single()/.maybeSingle()
+ * resolves to — PostgREST returns rows, not a row. One fixture can now answer
+ * both shapes, which matters where the same table is read one way by the
+ * inbound-message path and the other by the WABA lookup.
+ */
+function buildChain(result: unknown, listResult?: unknown) {
   const self: Record<string, unknown> = {}
   const pass = () => self
   ;['select', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'order', 'limit', 'insert', 'update', 'delete', 'upsert'].forEach(m => { self[m] = pass })
   self['maybeSingle'] = () => Promise.resolve(result)
   self['single'] = () => Promise.resolve(result)
-  self['then'] = (res: (v: unknown) => unknown) => Promise.resolve(result).then(res)
+  self['then'] = (res: (v: unknown) => unknown) =>
+    Promise.resolve(listResult ?? result).then(res)
   return self
 }
 
@@ -1217,6 +1224,8 @@ describe('WhatsApp cancellation intent', () => {
         studentName: 'יעל',
         teacherName: 'מיכל',
         chargeResult: { shouldCharge: false, amount: 0, chargeType: null, reasonCode: 'no_policy' },
+        pendingTotal: 0,
+        lines: [],
       })
 
       const res = await POST(makeRequest(makeInteractivePayload(`c:confirm:${OWN_LESSON_ID}`)))
@@ -1404,6 +1413,25 @@ describe('WhatsApp webhook hardening (Sprint 31 Story 4)', () => {
       return buildChain({ data: null, error: null })
     })
   }
+
+  it('lets a foreign or landline number reach org resolution', async () => {
+    // normalizePhone accepted +9725 mobiles only, and the drop happened before
+    // the org was resolved — so a US reviewer, an English tenant's overseas
+    // parent and an Israeli landline all vanished: no reply, no lead, no
+    // transcript, and nothing in the logs but a warning.
+    mockKnownOrgAndParent()
+
+    for (const [from, expected] of [
+      ['14155551234', '+14155551234'],
+      ['97235551234', '+97235551234'],
+    ] as const) {
+      mockIsRateLimited.mockClear()
+      const res = await POST(makeRequest(makeWebhookPayload(NEUTRAL_TEXT, from)))
+
+      expect(res.status).toBe(200)
+      expect(mockIsRateLimited).toHaveBeenCalledWith(ORG_ID, expected)
+    }
+  })
 
   it('drops the message without claiming when the phone is rate limited', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -2339,6 +2367,8 @@ describe('WhatsApp sender roles', () => {
         studentName: 'יעל',
         teacherName: 'מיכל',
         chargeResult: { shouldCharge: false, amount: 0, chargeType: null, reasonCode: 'no_policy' },
+        pendingTotal: 0,
+        lines: [],
       })
 
       const res = await POST(makeRequest(makeWebhookPayload('1')))
@@ -2395,6 +2425,8 @@ describe('WhatsApp sender roles', () => {
         studentName: 'יעל',
         teacherName: 'מיכל',
         chargeResult: { shouldCharge: false, amount: 0, chargeType: null, reasonCode: 'no_policy' },
+        pendingTotal: 0,
+        lines: [],
       })
 
       const res = await POST(makeRequest(makeInteractivePayload(`c:confirm:${OWN_LESSON_ID}`)))
@@ -2849,7 +2881,7 @@ describe('POST /api/whatsapp/webhook — template status updates', () => {
   it('records the new status against the org that owns the WABA', async () => {
     const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID }, error: null })
+      if (table === 'organizations') return buildChain({ data: [{ id: ORG_ID }], error: null })
       if (table === 'whatsapp_template_statuses') return { upsert }
       return buildChain({ data: null, error: null })
     })
@@ -2872,7 +2904,7 @@ describe('POST /api/whatsapp/webhook — template status updates', () => {
   it('stores the rejection reason Meta gave', async () => {
     const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID }, error: null })
+      if (table === 'organizations') return buildChain({ data: [{ id: ORG_ID }], error: null })
       if (table === 'whatsapp_template_statuses') return { upsert }
       return buildChain({ data: null, error: null })
     })
@@ -2881,6 +2913,35 @@ describe('POST /api/whatsapp/webhook — template status updates', () => {
 
     expect(upsert).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'REJECTED', reason: 'INVALID_FORMAT' }),
+      expect.anything()
+    )
+  })
+
+  it('records the update for every org sharing the WABA', async () => {
+    // Meta allows several phone numbers under one WhatsApp Business Account, so
+    // a customer with two studios produces two Lessio orgs on one waba_id. The
+    // lookup used .maybeSingle(), which errors on a second row — so from the day
+    // the second studio connected, BOTH orgs silently stopped receiving every
+    // template-approval and health update.
+    const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({ data: [{ id: ORG_ID }, { id: 'org-2' }], error: null })
+      }
+      if (table === 'whatsapp_template_statuses') return { upsert }
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeStatusPayload()))
+
+    expect(res.status).toBe(200)
+    expect(upsert).toHaveBeenCalledTimes(2)
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ organization_id: ORG_ID }),
+      expect.anything()
+    )
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ organization_id: 'org-2' }),
       expect.anything()
     )
   })
@@ -2908,10 +2969,18 @@ describe('POST /api/whatsapp/webhook — template status updates', () => {
     const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
     mockFrom.mockImplementation((table: string) => {
       if (table === 'organizations') {
-        return buildChain({
-          data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' },
-          error: null,
-        })
+        return buildChain(
+          {
+            data: {
+              id: ORG_ID,
+              whatsapp_access_token: 'encrypted-token',
+              timezone: 'Asia/Jerusalem',
+            },
+            error: null,
+          },
+          // The same table, read as a list by the WABA lookup.
+          { data: [{ id: ORG_ID }], error: null }
+        )
       }
       if (table === 'whatsapp_template_statuses') return { upsert }
       return buildChain({ data: null, error: null })
@@ -3013,5 +3082,114 @@ describe('POST /api/whatsapp/webhook — delivery statuses', () => {
     expect(res.status).toBe(200)
     expect(applyDeliveryStatus).not.toHaveBeenCalled()
     warnSpy.mockRestore()
+  })
+})
+
+/**
+ * The App Review demo reschedule handler (src/lib/whatsapp/demoReschedule.ts)
+ * was deleted on 2026-09-05, after Meta approved the submission. It moved a
+ * lesson straight from a plain sentence with no availability, notice, holiday
+ * or duration validation whatsoever — a stale message could persist an invalid
+ * lesson, which is precisely what commit-time validation exists to prevent.
+ *
+ * These tests set DEMO_RESCHEDULE_ENABLED=1 on purpose: a Vercel variable left
+ * behind must not be able to bring the path back.
+ */
+describe('a reschedule-shaped message cannot move a lesson', () => {
+  const RESCHEDULE_TEXTS = [
+    'אפשר להזיז את השיעור ל-18:00?',
+    'צריך לדחות את השיעור של מחר',
+    'can you reschedule my lesson to 18:00',
+  ]
+
+  /** Every write issued while the message was handled, as `table:op`. */
+  let writes: string[]
+
+  function recordingChain(table: string, result: unknown) {
+    const self: Record<string, unknown> = {}
+    const pass = () => self
+    ;['select', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'order', 'limit'].forEach((m) => {
+      self[m] = pass
+    })
+    ;['insert', 'update', 'delete', 'upsert'].forEach((m) => {
+      self[m] = () => {
+        writes.push(`${table}:${m}`)
+        return self
+      }
+    })
+    self['maybeSingle'] = () => Promise.resolve(result)
+    self['single'] = () => Promise.resolve(result)
+    self['then'] = (res: (v: unknown) => unknown) => Promise.resolve(result).then(res)
+    return self
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    writes = []
+    process.env.WHATSAPP_APP_SECRET = APP_SECRET
+    process.env.WHATSAPP_VERIFY_TOKEN = VERIFY_TOKEN
+    process.env.WHATSAPP_ACCESS_TOKEN = 'test-access-token'
+    process.env.WHATSAPP_PHONE_NUMBER_ID = 'test-phone-number-id'
+    process.env.DEMO_RESCHEDULE_ENABLED = '1'
+
+    mockClaimIncomingMessage.mockResolvedValue(true)
+    mockReleaseIncomingMessageClaim.mockResolvedValue(undefined)
+    mockIsTakenOver.mockResolvedValue(false)
+    mockGetActiveCancellationSession.mockResolvedValue(null)
+    mockAiAssistantConfigured.mockReturnValue(true)
+    mockAiAssistant.mockResolvedValue({
+      reply: 'ai-reply',
+      promptTokens: 1,
+      completionTokens: 1,
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+    })
+    mockLogExchange.mockResolvedValue(undefined)
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return recordingChain(table, {
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') {
+        return recordingChain(table, { data: { id: PARENT_ID }, error: null })
+      }
+      if (table === 'relationships') {
+        return recordingChain(table, { data: [{ student_id: STUDENT_ID }], error: null })
+      }
+      return recordingChain(table, { data: null, error: null })
+    })
+  })
+
+  afterEach(() => {
+    delete process.env.DEMO_RESCHEDULE_ENABLED
+  })
+
+  it.each(RESCHEDULE_TEXTS)('writes nothing to lessons for "%s"', async (text) => {
+    const res = await POST(makeRequest(makeWebhookPayload(text)))
+
+    expect(res.status).toBe(200)
+    expect(writes.filter((w) => w.startsWith('lessons:'))).toEqual([])
+  })
+
+  it('falls through to the ordinary intent dispatch instead', async () => {
+    await POST(makeRequest(makeWebhookPayload(RESCHEDULE_TEXTS[0])))
+
+    // The assistant answers it, exactly as it answers any other sentence the
+    // detectors do not claim. Answering is the whole capability; nothing acts.
+    expect(mockAiAssistant).toHaveBeenCalledWith(
+      ORG_ID,
+      SENDER_PHONE_E164,
+      PARENT_ID,
+      RESCHEDULE_TEXTS[0],
+      'he'
+    )
   })
 })

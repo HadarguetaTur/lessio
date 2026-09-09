@@ -13,6 +13,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { mutationBlockedError } from '@/lib/i18n/actionErrors'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { refreshPhoneHealth } from '@/lib/whatsapp/health'
 import { getTranslations } from 'next-intl/server'
@@ -26,13 +27,24 @@ export async function refreshWhatsAppHealth(
   _formData: FormData
 ): Promise<TrustActionResult> {
   const session = await getSession()
-  requireMutation(session)
+  try {
+    requireMutation(session)
+  } catch (err) {
+    return { error: await mutationBlockedError(err) }
+  }
   const t = await getTranslations('settings.whatsappTrust')
 
   if (session.role !== 'owner') return { error: t('errors.ownerOnly') }
 
-  const health = await refreshPhoneHealth(session.orgId)
-  if (!health) return { error: t('errors.refreshFailed') }
+  const result = await refreshPhoneHealth(session.orgId)
+
+  // Three different sentences, not one. The old code reported "we could not
+  // reach Meta" for an org that had simply never connected a number, and said
+  // nothing at all about a dead token (UX audit F12).
+  if (!result.ok) {
+    revalidatePath('/settings/whatsapp')
+    return { error: t(`errors.refresh.${result.reason}`) }
+  }
 
   revalidatePath('/settings/whatsapp')
   return { error: null }
@@ -48,7 +60,11 @@ export async function toggleVerificationChecklistItem(
   formData: FormData
 ): Promise<TrustActionResult> {
   const session = await getSession()
-  requireMutation(session)
+  try {
+    requireMutation(session)
+  } catch (err) {
+    return { error: await mutationBlockedError(err) }
+  }
   const t = await getTranslations('settings.whatsappTrust')
 
   if (session.role !== 'owner') return { error: t('errors.ownerOnly') }

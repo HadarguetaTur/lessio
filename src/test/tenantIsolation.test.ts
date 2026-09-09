@@ -105,7 +105,7 @@ vi.mock('@/lib/scheduling/scheduleImpact', () => ({
   analyzeScheduleImpact: vi.fn().mockResolvedValue(null),
 }))
 vi.mock('@/lib/google-calendar/checkLessonCalendarConflicts', () => ({
-  checkLessonCalendarConflicts: vi.fn().mockResolvedValue([]),
+  checkLessonCalendarConflicts: vi.fn().mockResolvedValue({ conflicts: [], status: 'free' }),
 }))
 
 import { createTeacherLessonAction } from '@/app/(dashboard)/teacher/new-lesson/actions'

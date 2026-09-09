@@ -12,6 +12,7 @@ const FEATURES = {
   parent_portal: true,
   integrations: true,
   data_retention: true,
+  broadcasts: true,
 }
 
 function planRow(over: Partial<SaasPlanRow> & Pick<SaasPlanRow, 'name' | 'sort_order'>): SaasPlanRow {
@@ -25,6 +26,7 @@ function planRow(over: Partial<SaasPlanRow> & Pick<SaasPlanRow, 'name' | 'sort_o
     students_quota: null,
     lessons_monthly_quota: null,
     teachers_quota: null,
+    broadcast_recipients_monthly: null,
     ...over,
   }
 }

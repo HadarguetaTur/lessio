@@ -393,12 +393,27 @@ function formatWhen(
   }
 }
 
-/** The charge line for the family's confirmation — empty when nothing was charged. */
+/**
+ * The charge line for the family's confirmation.
+ *
+ * Built from what `executeCancellation` actually billed, never from a second
+ * calculation. It used to quote a policy figure computed alongside the charge,
+ * which in a monthly-billing org was a number nobody had been charged: the
+ * family was told "cancellation charge: ₪150" while the charge writer silently
+ * declined to write anything at all.
+ *
+ * A monthly org's fee is real but not yet owed — it reaches the family through
+ * the monthly bill, and only once an admin confirms it — so it is described,
+ * not billed.
+ */
 function chargeLineFor(outcome: ExecuteCancellationResult, locale: AppLocale): string {
   const { chargeType, amount } = outcome.chargeResult
-  if (!chargeType || amount <= 0) return ''
-  const label = botString(chargeType === 'full' ? 'charge_full' : 'charge_partial', locale)
-  return `\n${label}: ${formatBotMoney(amount, locale)}`
+  if (chargeType && amount > 0) {
+    const label = botString(chargeType === 'full' ? 'charge_full' : 'charge_partial', locale)
+    return `\n${label}: ${formatBotMoney(amount, locale)}`
+  }
+  if (outcome.pendingTotal > 0) return `\n${botString('charge_pending', locale)}`
+  return ''
 }
 
 /**
@@ -489,7 +504,11 @@ async function notifyCancelled(
           chargeType === 'full' ? 'charge_full' : 'charge_partial',
           adminLocale
         )})`
-      : `\n${botString('charge_none', adminLocale)}`
+      : // A monthly org charges nothing now, but the fee is waiting on the
+        // owner's approval — telling them "no charge" would hide it.
+        outcome.pendingTotal > 0
+        ? `\n${botString('charge_line_label', adminLocale)}: ${formatBotMoney(outcome.pendingTotal, adminLocale)} (${botString('charge_pending', adminLocale)})`
+        : `\n${botString('charge_none', adminLocale)}`
 
   const adminBody = await resolveTemplate(
     orgId,

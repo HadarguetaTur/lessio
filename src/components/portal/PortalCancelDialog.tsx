@@ -81,7 +81,11 @@ export function PortalCancelDialog({ target, orgId, onClose, cancelAction }: Pro
                     ? tSchedule('cancelledWithCharge', {
                         amount: formatCurrency(result.amount, appLocale, 2),
                       })
-                    : tSchedule('cancelledOk')
+                    : result.pendingAmount > 0
+                      ? tSchedule('cancelledPendingCharge', {
+                          amount: formatCurrency(result.pendingAmount, appLocale, 2),
+                        })
+                      : tSchedule('cancelledOk')
                   : tSchedule(`errors.${result.error}`)}
               </AlertDialogTitle>
             </AlertDialogHeader>

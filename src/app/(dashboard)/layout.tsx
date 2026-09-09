@@ -20,6 +20,7 @@ import { getActiveSupportSession } from '@/lib/support-session'
 import { PATHNAME_HEADER } from '@/proxy'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { SaasOwnerBanners } from '@/components/dashboard/SaasOwnerBanners'
+import { WhatsAppHealthBanner } from '@/components/dashboard/WhatsAppHealthBanner'
 import { NotificationBell } from '@/components/dashboard/NotificationBell'
 import { getUnreadCount } from '@/lib/notifications'
 import {
@@ -108,6 +109,7 @@ export default async function DashboardLayout({
               className="mx-auto flex w-full max-w-[1440px] flex-1 min-h-0 flex-col overflow-y-auto px-4 py-4 max-lg:scroll-pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] max-lg:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 sm:px-6 sm:py-5 lg:px-8 lg:py-6"
             >
               <SaasOwnerBanners orgId={supportSession.targetOrgId} />
+              <WhatsAppHealthBanner orgId={supportSession.targetOrgId} />
               {children}
             </div>
             <MobileAdminQuickSheet />
@@ -265,7 +267,12 @@ export default async function DashboardLayout({
           dir={dir}
           className="mx-auto flex w-full max-w-[1440px] flex-1 min-h-0 flex-col overflow-y-auto px-4 py-4 max-lg:scroll-pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] max-lg:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] animate-in fade-in-0 slide-in-from-bottom-2 duration-300 sm:px-6 sm:py-5 lg:px-8 lg:py-6"
         >
-          {showSaasBanners ? <SaasOwnerBanners orgId={profile!.organization_id as string} /> : null}
+          {showSaasBanners ? (
+            <>
+              <SaasOwnerBanners orgId={profile!.organization_id as string} />
+              <WhatsAppHealthBanner orgId={profile!.organization_id as string} />
+            </>
+          ) : null}
           {/*
             A non-owner on a blocked surface gets an explanation instead of the
             page: only the owner can pay, so redirecting an admin or teacher to

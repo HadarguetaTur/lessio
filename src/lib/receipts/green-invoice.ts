@@ -85,8 +85,12 @@ export class GreenInvoiceProvider implements ReceiptProvider {
       ],
       payment: [
         {
+          // What the parent actually paid. `vatType: 1` above already tells
+          // Green Invoice the income line is VAT-inclusive, so adding the VAT
+          // here made the document claim a payment of ₪1,180 against ₪1,000 of
+          // income — an unbalanced tax document for money that never moved.
           type: 5,
-          price: params.amount + (params.vatAmount ?? 0),
+          price: params.amount,
           currency: 'ILS',
           date: params.date,
           ref: params.chargeId,

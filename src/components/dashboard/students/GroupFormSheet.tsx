@@ -65,12 +65,15 @@ function GroupForm({
   group,
   onSuccess,
   onCancel,
+  footer,
 }: {
   students: Student[]
   action: FormAction
   group?: StudentGroup
   onSuccess: () => void
   onCancel: () => void
+  /** Rendered below the roster, outside this form's own fields. */
+  footer?: React.ReactNode
 }) {
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
@@ -266,6 +269,8 @@ function GroupForm({
         {Array.from(selectedIds).map((id) => (
           <input key={id} type="hidden" name="student_ids" value={id} />
         ))}
+
+        {footer}
       </div>
 
       {/* ── Sticky footer ── */}
@@ -326,10 +331,16 @@ export function EditGroupSheet({
   students,
   action,
   group,
+  waGroupCard,
 }: {
   students: Student[]
   action: FormAction
   group: StudentGroup
+  /**
+   * The WhatsApp-group panel, passed in rather than imported: it needs server
+   * actions, and this component is shared by screens that do not have them.
+   */
+  waGroupCard?: React.ReactNode
 }) {
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
@@ -358,6 +369,7 @@ export function EditGroupSheet({
             group={group}
             onSuccess={() => setOpen(false)}
             onCancel={() => setOpen(false)}
+            footer={waGroupCard}
           />
         </SheetContent>
       </Sheet>

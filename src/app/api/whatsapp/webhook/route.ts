@@ -84,6 +84,7 @@ import {
 } from './shared'
 import {
   detectLocaleFromText,
+  resolvePersistedLocale,
   resolveRecipientLocale,
   type AppLocale,
 } from '@/lib/i18n/locale'
@@ -831,10 +832,21 @@ async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promi
   }
 
   // Remember the language for proactive sends (reminders) that have no inbound
-  // text to infer from. Only on a real signal — a bare "2" must not flip it.
+  // text to infer from. Far stricter than `detected` above: replying in the
+  // language someone wrote in is reversible, rewriting their profile is not.
   // Await the write so the next interactive tap cannot race a stale preference
   // in a serverless runtime that freezes work after the response is returned.
-  await persistSenderLocale(db, org.id, sender, detected)
+  await persistSenderLocale(
+    db,
+    org.id,
+    sender,
+    resolvePersistedLocale({
+      role: sender.role,
+      stored: sender.role === 'unknown' ? null : sender.preferredLocale,
+      text: msg.text,
+      isInteractiveReply: Boolean(msg.replyId),
+    })
+  )
 
   // A parent writing to the business number is opt-in under Meta's policy.
   // Recorded once (never overwrites an earlier source), and marks the welcome
@@ -1411,7 +1423,12 @@ async function sendMenuWithFallback(params: {
 /**
  * Persists the language detected from this message on the sender's own row.
  * Awaited before replying so a following interactive tap sees the new value.
- * Students have no locale column; their language is inferred per typed message.
+ *
+ * Parents only. `resolvePersistedLocale` is the rule — see its comment for why
+ * a staff member's `profiles.preferred_locale` is off limits from here (it
+ * seeds the dashboard's own language cookie at login) and why a single word is
+ * never enough. This function trusts that decision and only writes it; the
+ * guard below is a belt-and-braces assertion, not a second policy.
  */
 async function persistSenderLocale(
   db: ReturnType<typeof createServiceRoleClient>,
@@ -1419,16 +1436,12 @@ async function persistSenderLocale(
   sender: ResolvedSender,
   detected: AppLocale | null
 ): Promise<void> {
-  if (!detected || sender.role === 'unknown' || sender.role === 'student') return
-  if (sender.preferredLocale === detected) return
-
-  const table = sender.role === 'parent' ? 'parents' : 'profiles'
-  const id = sender.role === 'parent' ? sender.parentId : sender.profileId
+  if (!detected || sender.role !== 'parent') return
 
   const { error } = await db
-    .from(table)
+    .from('parents')
     .update({ preferred_locale: detected })
-    .eq('id', id)
+    .eq('id', sender.parentId)
     .eq('organization_id', orgId)
   if (error) {
     console.warn('[whatsapp/webhook] Failed to persist sender locale', {

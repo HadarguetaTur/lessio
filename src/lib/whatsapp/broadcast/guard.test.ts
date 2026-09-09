@@ -23,6 +23,8 @@ import {
 function org(over: Partial<GuardOrg> = {}): GuardOrg {
   return {
     whatsappPhoneNumberId: 'pn-1',
+    waHealthError: null,
+    waAccountRestricted: false,
     waQualityRating: 'GREEN',
     waMessagingLimitTier: 'TIER_10K',
     waBusinessVerificationStatus: 'verified',
@@ -54,6 +56,8 @@ const allow = (over: Partial<Parameters<typeof checkCampaignAllowed>[0]> = {}) =
 describe('blocks that stop a campaign outright', () => {
   const cases: Array<[string, Partial<Parameters<typeof checkCampaignAllowed>[0]>, string]> = [
     ['no WhatsApp connected', { org: org({ whatsappPhoneNumberId: null }) }, 'not_connected'],
+    ['a dead access token', { org: org({ waHealthError: 'token_invalid' }) }, 'reconnect_required'],
+    ['an account Meta restricted', { org: org({ waAccountRestricted: true }) }, 'blocked_by_meta'],
     ['quality already RED', { org: org({ waQualityRating: 'RED' }) }, 'quality_red'],
     ['superadmin kill switch', { org: org({ broadcastsEnabled: false }) }, 'broadcasts_disabled'],
     ['lapsed subscription', { org: org({ subscriptionLapsed: true }) }, 'subscription_lapsed'],
@@ -224,5 +228,20 @@ describe('classifyMetaError', () => {
     const r = classifyMetaError(131047)
     expect(r).toMatchObject({ outcome: 'failed', stopRun: false })
     expect(classifyMetaError(null).outcome).toBe('failed')
+  })
+})
+
+describe('a transient Meta outage is not a broken line', () => {
+  it('lets a campaign run when the last health read merely timed out', () => {
+    // 'unreachable' means we could not ask, not that the answer was bad. A slow
+    // Graph read must not stop an announcement the owner already approved.
+    const decision = checkCampaignAllowed({
+      org: org({ waHealthError: 'unreachable' }),
+      category: 'update',
+      recipientCount: 20,
+      conversationsLast24h: 0,
+      now: NOON,
+    })
+    expect(decision.ok).toBe(true)
   })
 })

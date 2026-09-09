@@ -5852,6 +5852,8 @@
     },
     "blocked": {
       "not_connected": "WhatsApp is not connected. Connect a number in settings first.",
+      "reconnect_required": "The WhatsApp connection has expired, so no message would go out. Reconnect the number in settings and send then — that way the campaign isn't spent on recipients who would never receive it.",
+      "blocked_by_meta": "Meta has restricted your WhatsApp number. Sending is paused until the restriction is lifted. The \"Verification & trust\" card in WhatsApp settings shows the current state.",
       "quality_red": "Meta has lowered your number’s quality rating. Broadcasts are paused until it recovers; reminders and payment requests keep going.",
       "broadcasts_disabled": "Broadcasts are switched off for this account. Contact support.",
       "subscription_lapsed": "Your subscription is not active, so sending is paused.",

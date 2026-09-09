@@ -20,6 +20,8 @@ import type { BroadcastCategory, SkipReason } from './types'
 /** Why a whole campaign is refused. Each maps to a sentence in the UI. */
 export type GuardBlockReason =
   | 'not_connected'
+  | 'reconnect_required'
+  | 'blocked_by_meta'
   | 'quality_red'
   | 'broadcasts_disabled'
   | 'subscription_lapsed'
@@ -32,6 +34,15 @@ export type GuardWarning = 'quality_yellow' | 'warm_up' | 'capped_by_budget' | '
 
 export interface GuardOrg {
   whatsappPhoneNumberId: string | null
+  /**
+   * Why the last read of Meta failed, if it did (`organizations.wa_health_error`).
+   * 'token_invalid' means the credentials are dead: a campaign launched on them
+   * would march through the whole audience marking every row failed, and burn
+   * the campaign's one shot at those recipients.
+   */
+  waHealthError: 'token_invalid' | 'unreachable' | null
+  /** Meta has restricted or disabled the account. Sending is not available. */
+  waAccountRestricted: boolean
   waQualityRating: WaQualityRating | null
   waMessagingLimitTier: string | null
   waBusinessVerificationStatus: string | null
@@ -119,6 +130,12 @@ export function checkCampaignAllowed(input: GuardInput): GuardDecision {
   const { org, category, recipientCount, now } = input
 
   if (!org.whatsappPhoneNumberId) return { ok: false, reason: 'not_connected' }
+  // Ahead of every other rule for the same reason `not_connected` is: these two
+  // mean no message can leave at all, so running the campaign would only spend
+  // the audience and fill the report with failures. 'unreachable' deliberately
+  // does not block — a slow Graph read is not a broken line.
+  if (org.waHealthError === 'token_invalid') return { ok: false, reason: 'reconnect_required' }
+  if (org.waAccountRestricted) return { ok: false, reason: 'blocked_by_meta' }
   if (!org.broadcastsEnabled) return { ok: false, reason: 'broadcasts_disabled' }
   if (org.subscriptionLapsed) return { ok: false, reason: 'subscription_lapsed' }
   if (org.waQualityRating === 'RED') return { ok: false, reason: 'quality_red' }

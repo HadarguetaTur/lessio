@@ -51,7 +51,7 @@ const ORG_COLUMNS = `
   id, name, timezone, default_locale,
   whatsapp_phone_number_id, whatsapp_access_token,
   wa_quality_rating, wa_messaging_limit_tier, wa_business_verification_status,
-  wa_connected_at, broadcasts_enabled,
+  wa_connected_at, broadcasts_enabled, wa_health_error, wa_account_restricted,
   broadcast_quiet_start, broadcast_quiet_end,
   broadcast_max_promo_per_week, broadcast_max_updates_per_week
 `
@@ -67,6 +67,8 @@ type OrgRow = {
   wa_messaging_limit_tier: string | null
   wa_business_verification_status: string | null
   wa_connected_at: string | null
+  wa_health_error: string | null
+  wa_account_restricted: boolean | null
   broadcasts_enabled: boolean | null
   broadcast_quiet_start: number | null
   broadcast_quiet_end: number | null
@@ -99,6 +101,8 @@ export function toGuardOrg(org: OrgRow, subscriptionLapsed: boolean): GuardOrg {
     waMessagingLimitTier: org.wa_messaging_limit_tier,
     waBusinessVerificationStatus: org.wa_business_verification_status,
     waConnectedAt: org.wa_connected_at,
+    waHealthError: (org.wa_health_error as GuardOrg['waHealthError']) ?? null,
+    waAccountRestricted: org.wa_account_restricted === true,
     broadcastsEnabled: org.broadcasts_enabled !== false,
     timezone: org.timezone ?? 'Asia/Jerusalem',
     quietStart: org.broadcast_quiet_start ?? 8,

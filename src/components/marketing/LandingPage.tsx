@@ -245,10 +245,8 @@ export function LandingPage({
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-slate-950 shadow-sm shadow-violet-500/15 ring-1 ring-violet-500/10">
-              <span className="absolute start-[10px] top-[9px] h-4 w-1.5 rounded-full bg-teal-400" />
-              <span className="absolute bottom-[9px] start-[10px] h-1.5 w-4 rounded-full bg-gradient-to-l from-violet-400 to-teal-400" />
-              <span className="absolute end-[8px] top-[8px] size-1.5 rounded-full bg-violet-400" />
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-violet-600 shadow-sm shadow-violet-500/15 ring-1 ring-violet-500/10">
+              <span className="text-sm font-bold leading-none text-white">L</span>
             </div>
             <span className="truncate text-sm font-semibold tracking-tight text-foreground">
               LESSIO

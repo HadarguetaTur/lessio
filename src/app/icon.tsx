@@ -13,17 +13,15 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#0f172a',
-          border: '1px solid #334155',
-          borderRadius: 9,
-          position: 'relative',
+          background: 'linear-gradient(135deg, #14b8a6 0%, #7c3aed 100%)',
+          color: 'white',
+          fontSize: 22,
+          fontWeight: 700,
+          borderRadius: 7,
+          letterSpacing: '-0.02em',
         }}
       >
-        <div style={{ width: 16, height: 18, display: 'flex', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: 1, left: 1, width: 5, height: 16, borderRadius: 4, background: '#2dd4bf' }} />
-          <div style={{ position: 'absolute', bottom: 1, left: 1, width: 14, height: 5, borderRadius: 4, background: 'linear-gradient(90deg, #2dd4bf 0%, #8b5cf6 100%)' }} />
-          <div style={{ position: 'absolute', top: 0, right: 0, width: 5, height: 5, borderRadius: 99, background: '#a78bfa' }} />
-        </div>
+        L
       </div>
     ),
     { ...size },

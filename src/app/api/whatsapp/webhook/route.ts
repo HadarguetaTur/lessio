@@ -842,7 +842,7 @@ async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promi
     sender,
     resolvePersistedLocale({
       role: sender.role,
-      stored: sender.role === 'unknown' ? null : sender.preferredLocale,
+      stored: sender.preferredLocale,
       text: msg.text,
       isInteractiveReply: Boolean(msg.replyId),
     })

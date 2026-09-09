@@ -90,6 +90,34 @@ export function tierDailyLimit(tier: string | null | undefined): number | null {
   }
 }
 
+/**
+ * Whether a WABA's `account_review_status` means Meta has stopped this account.
+ *
+ * Meta fires account_update when it restricts an account and does not reliably
+ * fire anything when it lifts one, so the daily health read is the other half
+ * of the pair. Before this, the review status was fetched, returned — and then
+ * never turned into the flag the UI reads, so a restricted account that missed
+ * the webhook (or was restricted before the org was ever connected) stayed
+ * green while every send failed.
+ *
+ * Null/unknown deliberately answers null rather than false: "Meta did not say"
+ * must not clear a restriction the webhook recorded.
+ */
+export function isRestrictedReviewStatus(status: string | null | undefined): boolean | null {
+  const value = (status ?? '').toUpperCase()
+  if (value === 'APPROVED' || value === 'VERIFIED') return false
+  if (
+    value === 'REJECTED' ||
+    value === 'RESTRICTED' ||
+    value === 'DISABLED' ||
+    value === 'VIOLATION' ||
+    value === 'BANNED'
+  ) {
+    return true
+  }
+  return null
+}
+
 /** Numbers connected less than this many days ago are in warm-up. */
 export const WARM_UP_DAYS = 14
 
@@ -302,15 +330,17 @@ export async function refreshPhoneHealth(orgId: string): Promise<RefreshResult> 
       accessToken: decryptToken(org.whatsapp_access_token),
     })
     // A read that worked is also proof the credentials are good, so it clears
-    // any error a previous run recorded. An APPROVED review status additionally
-    // lifts a restriction the webhook set — otherwise a restored account would
-    // wear the red banner until someone reconnected it.
+    // any error a previous run recorded. The review status sets the restriction
+    // flag in both directions: APPROVED lifts one the webhook set (otherwise a
+    // restored account wears the red banner until someone reconnects it), and a
+    // REJECTED/RESTRICTED/DISABLED account is recorded even though the Graph
+    // read itself succeeded — a restricted account answers reads perfectly well
+    // and only fails when it tries to send.
+    const restricted = isRestrictedReviewStatus(health.accountReviewStatus)
     await storePhoneHealth(orgId, {
       ...health,
       healthError: null,
-      ...((health.accountReviewStatus ?? '').toUpperCase() === 'APPROVED'
-        ? { accountRestricted: false }
-        : {}),
+      ...(restricted === null ? {} : { accountRestricted: restricted }),
     })
     return { ok: true, health }
   } catch (err) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeTrend, computeCancellationRate, sumAmounts } from './stats'
+import { computeTrend, computeCancellationRate, sumAmounts, netRevenue } from './stats'
 
 const NOW = '2026-08-15T12:00:00.000Z'
 
@@ -80,5 +80,22 @@ describe('sumAmounts', () => {
   it('returns 0 for null or empty input', () => {
     expect(sumAmounts(null)).toBe(0)
     expect(sumAmounts([])).toBe(0)
+  })
+})
+
+describe('netRevenue', () => {
+  it('subtracts refunds recorded in the same window', () => {
+    // charge_payments only grows and amount_paid never decrements, so the KPI
+    // used to keep counting money that had gone back to the parent.
+    expect(netRevenue([{ amount: 1000 }, { amount: '250.50' }], [{ refunded_amount: 250.5 }])).toBe(1000)
+  })
+
+  it('is unchanged when nothing was refunded', () => {
+    expect(netRevenue([{ amount: 400 }], [])).toBe(400)
+    expect(netRevenue([{ amount: 400 }], null)).toBe(400)
+  })
+
+  it('floors at zero rather than rendering a negative KPI', () => {
+    expect(netRevenue([{ amount: 100 }], [{ refunded_amount: 900 }])).toBe(0)
   })
 })

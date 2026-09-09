@@ -193,3 +193,90 @@ describe('syncMonthlyCharge', () => {
     })
   })
 })
+
+describe('syncMonthlyCharge and settled money', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function paidCharge(amount: number, options: { update?: unknown } = {}) {
+    const audit: Record<string, unknown>[] = []
+    const update = options.update ?? vi.fn()
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'charge_audit_log') {
+        return {
+          insert: async (row: Record<string, unknown>) => {
+            audit.push(row)
+            return { error: null }
+          },
+        }
+      }
+      if (table !== 'charges') throw new Error(`Unexpected table: ${table}`)
+
+      const selectChain: Record<string, unknown> = {}
+      selectChain['eq'] = () => selectChain
+      selectChain['maybeSingle'] = async () => ({
+        data: {
+          id: 'charge-1',
+          status: 'paid',
+          paid_at: '2026-05-10T00:00:00.000Z',
+          amount,
+          amount_paid: amount,
+        },
+        error: null,
+      })
+
+      return { select: () => selectChain, update }
+    })
+
+    return { audit, update }
+  }
+
+  it('refuses to change the amount of a paid charge, and says so in the audit log', async () => {
+    // The bug: an adjustment on a paid bill produced amount 950 with
+    // amount_paid 800 and status 'paid' — money changed after the fact, on a
+    // row no open-charge query shows, behind a receipt already issued.
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { audit, update } = paidCharge(800)
+
+    const result = await syncMonthlyCharge({
+      organizationId: 'org-1',
+      billingRecordId: 'billing-1',
+      parentId: 'parent-1',
+      billingMonth: '2026-05',
+      amount: 950,
+      isApproved: true,
+      isPaid: true,
+    })
+
+    expect(result).toEqual({ chargeId: 'charge-1', chargeStatus: 'paid', isPaid: true })
+    expect(update).not.toHaveBeenCalled()
+    expect(audit[0]).toMatchObject({
+      event_type: 'sync_conflict',
+      before_amount: 800,
+      after_amount: 950,
+    })
+    errors.mockRestore()
+  })
+
+  it('still propagates a recalculation that leaves the paid amount alone', async () => {
+    const updateEq2 = vi.fn(async () => ({ error: null }))
+    const updateEq1 = vi.fn(() => ({ eq: updateEq2 }))
+    const update = vi.fn(() => ({ eq: updateEq1 }))
+    paidCharge(800, { update })
+
+    const result = await syncMonthlyCharge({
+      organizationId: 'org-1',
+      billingRecordId: 'billing-1',
+      parentId: 'parent-1',
+      billingMonth: '2026-05',
+      amount: 800,
+      isApproved: true,
+      isPaid: true,
+    })
+
+    expect(result).toEqual({ chargeId: 'charge-1', chargeStatus: 'paid', isPaid: true })
+    expect(update).toHaveBeenCalled()
+  })
+})

@@ -549,11 +549,21 @@ export async function approveBillingAction(billingId: string) {
     })
     chargeId = syncResult.chargeId
   } catch (error) {
-    await supabase
+    // The compensating un-approve. supabase-js returns { error } rather than
+    // throwing, and a swallowed failure here leaves the month APPROVED with no
+    // ledger charge behind it — the owner sees an approved bill nobody can pay.
+    const { error: revertError } = await supabase
       .from('student_monthly_billing')
       .update({ is_approved: false, updated_at: new Date().toISOString() })
       .eq('id', billingId)
       .eq('organization_id', session.orgId)
+    if (revertError) {
+      console.error(
+        '[billing] FAILED TO UN-APPROVE after a ledger sync error — this billing row is approved ' +
+        'with no charge behind it and needs a person.',
+        { billingId, orgId: session.orgId, error: revertError.message }
+      )
+    }
     if (error instanceof MonthlyBillingConflictError) {
       return { error: t('billing.errors.individualChargeConflict') }
     }

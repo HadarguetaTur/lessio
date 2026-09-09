@@ -45,11 +45,22 @@ export async function completeLesson(params: {
   }
 
   const alert = await createLessonCharge(lessonId, organizationId)
-  await db
+  // completion_error is what the retry cron scans for. supabase-js returns
+  // { error } rather than throwing, so a swallowed failure here loses the retry
+  // entirely: the charge never happened and nothing will ever look again.
+  const { error: markError } = await db
     .from('lessons')
     .update({ completion_error: alert?.message ?? null })
     .eq('id', lessonId)
     .eq('organization_id', organizationId)
+
+  if (markError) {
+    console.error(
+      '[completeLesson] could not record completion_error — the auto-completion retry cron will ' +
+      'not see this lesson',
+      { lessonId, organizationId, alert: alert?.message ?? null, error: markError.message }
+    )
+  }
 
   if (!alert) await autoSendPaymentRequest(lessonId, organizationId)
   return { claimed: true, chargeAlert: alert }

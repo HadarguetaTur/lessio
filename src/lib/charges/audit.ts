@@ -12,6 +12,8 @@ export type ChargeAuditEventType =
   | 'reminder_sent'
   | 'payment_request_sent'
   | 'sync_conflict'
+  /** Money went back to the parent. See ./refunds.ts. */
+  | 'refunded'
 
 export interface ChargeAuditEntry {
   organizationId: string

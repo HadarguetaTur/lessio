@@ -67,6 +67,21 @@ export function sumAmounts(rows: Array<{ amount: number | string }> | null | und
 }
 
 /**
+ * Money received minus money sent back, never below zero. A period whose
+ * refunds exceed its receipts is a real bookkeeping event, but a negative
+ * revenue KPI reads as a bug to the person looking at it, and the refund is
+ * visible on the charge itself either way.
+ */
+export function netRevenue(
+  payments: Array<{ amount: number | string }> | null | undefined,
+  refunds: Array<{ refunded_amount: number | string | null }> | null | undefined
+): number {
+  const received = sumAmounts(payments)
+  const returned = (refunds ?? []).reduce((sum, row) => sum + Number(row.refunded_amount ?? 0), 0)
+  return Math.max(0, Math.round((received - returned) * 100) / 100)
+}
+
+/**
  * Cancellation rate over lessons that have already started.
  * ISO-8601 UTC strings compare correctly as plain strings.
  */
@@ -94,8 +109,16 @@ export async function getDashboardSummary(orgId: string, timezone: string): Prom
 
   const currentBillingMonth = getCurrentBillingMonth(timezone, now)
 
-  const [revenueRes, prevRevenueRes, debtRes, lessonsRes, prevLessonsRes, billingRes] =
-    await Promise.all([
+  const [
+    revenueRes,
+    prevRevenueRes,
+    refundsRes,
+    prevRefundsRes,
+    debtRes,
+    lessonsRes,
+    prevLessonsRes,
+    billingRes,
+  ] = await Promise.all([
       // Money received month-to-date. Read from charge_payments so a partial
       // payment counts in the month it arrived, not when the charge closes.
       db
@@ -112,6 +135,27 @@ export async function getDashboardSummary(orgId: string, timezone: string): Prom
         .eq('organization_id', orgId)
         .gte('paid_at', prevMonthStart)
         .lt('paid_at', prevNowISO),
+
+      // Refunds recorded in the same two windows. Revenue is NET: charge_payments
+      // only ever grows, so without this the KPI keeps counting money that went
+      // back to the parent. Bucketed by when the refund was recorded, the same
+      // way payments are bucketed by when they arrived — so a closed month does
+      // not change retroactively.
+      db
+        .from('charges')
+        .select('refunded_amount')
+        .eq('organization_id', orgId)
+        .not('refunded_at', 'is', null)
+        .gte('refunded_at', monthStart)
+        .lt('refunded_at', nowISO),
+
+      db
+        .from('charges')
+        .select('refunded_amount')
+        .eq('organization_id', orgId)
+        .not('refunded_at', 'is', null)
+        .gte('refunded_at', prevMonthStart)
+        .lt('refunded_at', prevNowISO),
 
       // All open charges (all-time debt) — net of partial payments. parent_id
       // rides along so the "who owes it" count comes from this query rather
@@ -148,8 +192,8 @@ export async function getDashboardSummary(orgId: string, timezone: string): Prom
         .eq('billing_month', currentBillingMonth),
     ])
 
-  const monthlyRevenue = sumAmounts(revenueRes.data)
-  const prevRevenue = sumAmounts(prevRevenueRes.data)
+  const monthlyRevenue = netRevenue(revenueRes.data, refundsRes.data)
+  const prevRevenue = netRevenue(prevRevenueRes.data, prevRefundsRes.data)
   const openCharges = debtRes.data ?? []
   const pendingDebt = sumRemaining(openCharges)
   const debtorCount = new Set(

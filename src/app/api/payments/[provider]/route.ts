@@ -25,6 +25,7 @@ import { webhookBodyFromPayload } from '@/lib/payments/webhookBody'
 import { getPaymentProvider } from '@/lib/payments/factory'
 import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import { logChargeAudit } from '@/lib/charges/audit'
+import { markChargeRefunded } from '@/lib/charges/refunds'
 import { resolveChargesForReference } from '@/lib/payments/references'
 import {
   SETTLEABLE_STATUSES,
@@ -103,15 +104,12 @@ export async function POST(
 
   if (!isSuccess) {
     if (parsed.isRefund) {
-      // Money went back to the parent and Lessio cannot say so: charge_payments
-      // has CHECK (amount > 0), so a reversal row is impossible, and amount_paid
-      // never decrements. The charge will keep reading as paid. Reported at
-      // error level because it needs a person, not because anything failed.
-      console.error(
-        '[payments/webhook] REFUND reported by the provider — Lessio has no refund ledger, ' +
-        'so the charge still reads as paid. Reconcile this one by hand.',
-        { provider, paymentReference, amount: parsed.amount }
-      )
+      // The provider says money went back to the parent. Record the marker so
+      // revenue stops counting it and the portal stops calling it paid — the
+      // signal used to be detected here and then thrown away. Lessio does not
+      // move the money and does not issue the credit note; see
+      // src/lib/charges/refunds.ts for what stays manual.
+      await recordProviderRefund({ provider, paymentReference, amount: parsed.amount })
     } else {
       console.info('[payments/webhook] Non-success payment event — no action taken', {
         provider,
@@ -568,4 +566,91 @@ export async function POST(
   )
 
   return NextResponse.json({ ok: true }, { status: 200 })
+}
+
+/**
+ * Records a provider-reported reversal against the charge it paid.
+ *
+ * PayPlus's adapter detects refunds (`isRefund` in src/lib/payments/registry.ts)
+ * and folds them into `isSuccess: false`. That signal used to be logged and
+ * dropped: charge_payments has CHECK (amount > 0) so no reversal row was
+ * possible, amount_paid never decremented, and the charge went on reading as
+ * paid in the revenue KPI and in the parent portal. It now writes the refund
+ * marker instead — see src/lib/charges/refunds.ts for what the marker does and
+ * does not do (it does not move money, issue a credit note, or re-open debt).
+ *
+ * Never throws: a webhook must answer 200 whatever happens here.
+ */
+async function recordProviderRefund(params: {
+  provider: string
+  paymentReference: string
+  amount: number | null | undefined
+}): Promise<void> {
+  const { provider, paymentReference } = params
+  try {
+    const db = createServiceRoleClient()
+    const resolved = await resolveChargesForReference(db, paymentReference)
+
+    if (resolved.error || resolved.charges.length === 0) {
+      console.error(
+        '[payments/webhook] REFUND reported for a reference that resolves to no charge — ' +
+        'reconcile by hand.',
+        { provider, paymentReference, error: resolved.error ?? null }
+      )
+      return
+    }
+
+    // One reference can cover several charges (a settle-the-balance link). The
+    // provider tells us one total, and splitting it across charges would be a
+    // guess about which one was reversed. Refuse to guess: log it loudly for a
+    // person rather than writing a marker that might be wrong.
+    if (resolved.charges.length > 1) {
+      console.error(
+        '[payments/webhook] REFUND reported for a reference covering several charges — ' +
+        'Lessio cannot tell which one was reversed. Record it by hand on /charges.',
+        {
+          provider,
+          paymentReference,
+          amount: params.amount ?? null,
+          chargeIds: resolved.charges.map((c) => c.id),
+        }
+      )
+      return
+    }
+
+    const charge = resolved.charges[0]!
+    const result = await markChargeRefunded({
+      chargeId: charge.id,
+      organizationId: charge.organization_id,
+      // Nobody in Lessio did this; the provider reported it.
+      actorProfileId: null,
+      amount: typeof params.amount === 'number' && params.amount > 0 ? params.amount : null,
+      reason: `Refund reported by ${provider}`,
+      source: 'provider_webhook',
+      paymentReference,
+    })
+
+    if (!result.ok && result.reason !== 'already_refunded') {
+      console.error('[payments/webhook] REFUND could not be recorded — reconcile by hand.', {
+        provider,
+        paymentReference,
+        chargeId: charge.id,
+        reason: result.reason,
+      })
+      return
+    }
+
+    console.warn('[payments/webhook] Refund recorded from a provider callback', {
+      provider,
+      paymentReference,
+      chargeId: charge.id,
+      alreadyRecorded: !result.ok,
+    })
+  } catch (err) {
+    console.error('[payments/webhook] REFUND handling threw — reconcile by hand.', {
+      provider,
+      paymentReference,
+      err,
+    })
+  }
 }

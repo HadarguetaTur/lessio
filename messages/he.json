@@ -1259,7 +1259,10 @@
       "chargeNotOpen": "החיוב אינו פתוח לתשלום",
       "paymentTooLarge": "הסכום גדול מהיתרה הפתוחה ({max})",
       "invalidPaymentDate": "יש לבחור תאריך תשלום תקין שאינו בעתיד",
-      "nothingOpen": "להורה אין חיובים פתוחים"
+      "nothingOpen": "להורה אין חיובים פתוחים",
+      "refundNotPaid": "לא התקבל כסף על חיוב זה, אז אין מה להחזיר",
+      "refundAlreadyRecorded": "כבר נרשם החזר על החיוב הזה",
+      "refundExceedsPaid": "סכום ההחזר גדול מהסכום שהתקבל"
     },
     "notification": {
       "queued": "אישור נשלח להורה בוואטסאפ",
@@ -1364,7 +1367,19 @@
     },
     "partiallyPaid": "שולם {paid} מתוך {total}",
     "filterFrom": "מתאריך",
-    "filterTo": "עד תאריך"
+    "filterTo": "עד תאריך",
+    "refund": {
+      "action": "רישום החזר",
+      "title": "רישום החזר כספי",
+      "description": "הכסף חוזר להורה דרך ספק הסליקה או הבנק — לא דרך Lessio. הרישום כאן מפסיק לספור את הסכום כהכנסה ומפסיק להציג להורה שהחיוב שולם.",
+      "receiptWarning": "הופקה קבלה על החיוב הזה. זיכוי מס מונפק במערכת הקבלות שלכם, לא ב-Lessio.",
+      "amountLabel": "סכום ההחזר (עד {max})",
+      "reasonLabel": "סיבה",
+      "reasonPlaceholder": "למה הכסף הוחזר?",
+      "confirm": "רישום ההחזר",
+      "success": "ההחזר נרשם",
+      "banner": "הוחזרו {amount} בתאריך {date}. הסכום אינו נספר כהכנסה."
+    }
   },
   "billing": {
     "title": "חיוב חודשי",
@@ -3415,7 +3430,9 @@
         },
         "toast": {
           "done": "{name} נמחק. {rows} רשומות הוסרו.",
-          "partial": "{name} נמחק, אבל {count} משתמשי התחברות לא נמחקו. ראה לוג השרת."
+          "partial": "{name} נמחק, אבל {count} משתמשי התחברות לא נמחקו. ראה לוג השרת.",
+          "noSnapshot": "לא הצלחנו להפיק גיבוי לפני המחיקה. אין עותק של הארגון.",
+          "storageLeftBehind": "{count} קבצים לא נמחקו מהאחסון ונשארו יתומים. ראה לוג השרת."
         },
         "errors": {
           "confirmationMismatch": "ה-slug שהוקלד לא תואם לארגון.",
@@ -4339,7 +4356,8 @@
       "forMonth": "חיוב חודשי — {month}",
       "forPeriod": "חיוב לתקופה {start}–{end}",
       "waived": "בוטל חיוב",
-      "voided": "מבוטל"
+      "voided": "מבוטל",
+      "refunded": "הוחזר"
     },
     "homework": {
       "title": "שיעורי בית",

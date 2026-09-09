@@ -1259,7 +1259,10 @@
       "chargeNotOpen": "This charge is not open for payment",
       "paymentTooLarge": "The amount is larger than the open balance ({max})",
       "invalidPaymentDate": "Choose a valid payment date that is not in the future",
-      "nothingOpen": "This parent has no open charges"
+      "nothingOpen": "This parent has no open charges",
+      "refundNotPaid": "No money was collected on this charge, so there is nothing to refund",
+      "refundAlreadyRecorded": "A refund has already been recorded on this charge",
+      "refundExceedsPaid": "The refund is larger than the amount that was collected"
     },
     "notification": {
       "queued": "A confirmation was sent to the parent on WhatsApp",
@@ -1364,7 +1367,19 @@
     },
     "partiallyPaid": "Paid {paid} of {total}",
     "filterFrom": "From date",
-    "filterTo": "To date"
+    "filterTo": "To date",
+    "refund": {
+      "action": "Record refund",
+      "title": "Record a refund",
+      "description": "The money goes back to the parent through your payment provider or bank, not through Lessio. Recording it here stops the amount counting as revenue and stops telling the parent the charge is paid.",
+      "receiptWarning": "A receipt was issued for this charge. The credit note is issued in your receipt system, not in Lessio.",
+      "amountLabel": "Refund amount (up to {max})",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Why was the money returned?",
+      "confirm": "Record refund",
+      "success": "Refund recorded",
+      "banner": "{amount} refunded on {date}. It no longer counts as revenue."
+    }
   },
   "billing": {
     "title": "Monthly Billing",
@@ -3415,7 +3430,9 @@
         },
         "toast": {
           "done": "{name} deleted. {rows} rows removed.",
-          "partial": "{name} deleted, but {count} login accounts could not be removed. Check the server log."
+          "partial": "{name} deleted, but {count} login accounts could not be removed. Check the server log.",
+          "noSnapshot": "The pre-delete snapshot could not be taken. No copy of this tenant exists.",
+          "storageLeftBehind": "{count} files could not be removed from storage and are orphaned. Check the server log."
         },
         "errors": {
           "confirmationMismatch": "The slug you typed does not match this organization.",
@@ -4339,7 +4356,8 @@
       "forMonth": "Monthly bill — {month}",
       "forPeriod": "Billing period {start}–{end}",
       "waived": "Written off",
-      "voided": "Voided"
+      "voided": "Voided",
+      "refunded": "Refunded"
     },
     "homework": {
       "title": "Homework",

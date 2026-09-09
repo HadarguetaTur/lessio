@@ -28,6 +28,9 @@ export interface Charge {
   receipt_issued_at: string | null
   resolved_at: string | null
   resolution_reason: string | null
+  /** Money went back to the parent. Status stays as it was — see lib/charges/refunds.ts. */
+  refunded_at: string | null
+  refunded_amount: number | null
   parent: { id: string; full_name: string; phone: string | null }
   /**
    * Who the charge is *for*, when it came from a monthly bill. A charge belongs
@@ -40,7 +43,7 @@ export interface Charge {
 }
 
 const CHARGE_SELECT =
-  'id, amount, amount_paid, charge_type, status, notes, paid_at, due_date, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, resolved_at, resolution_reason, parents(id, full_name, phone), lessons(start_at), student_monthly_billing(students(full_name))'
+  'id, amount, amount_paid, charge_type, status, notes, paid_at, due_date, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, resolved_at, resolution_reason, refunded_at, refunded_amount, parents(id, full_name, phone), lessons(start_at), student_monthly_billing(students(full_name))'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapChargeRow(c: any): Charge {
@@ -62,6 +65,8 @@ function mapChargeRow(c: any): Charge {
     receipt_issued_at: c.receipt_issued_at ?? null,
     resolved_at: c.resolved_at ?? null,
     resolution_reason: c.resolution_reason ?? null,
+    refunded_at: c.refunded_at ?? null,
+    refunded_amount: c.refunded_amount == null ? null : Number(c.refunded_amount),
     student_name: c.student_monthly_billing?.students?.full_name ?? null,
     parent: {
       id: c.parents?.id,

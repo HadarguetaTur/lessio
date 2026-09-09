@@ -81,6 +81,17 @@ describe('summarizeCharges', () => {
     expect(result.collectedThisMonth).toBe(200)
   })
 
+  it('nets refunds recorded this month out of what was collected', () => {
+    // charge_payments only ever grows, so without this the figure keeps
+    // counting money that has gone back to the parent.
+    const result = summarizeCharges([], [{ amount: 500 }], TODAY, [{ refunded_amount: 200 }])
+    expect(result.collectedThisMonth).toBe(300)
+  })
+
+  it('floors at zero when the month refunded more than it collected', () => {
+    const result = summarizeCharges([], [{ amount: 100 }], TODAY, [{ refunded_amount: 400 }])
+    expect(result.collectedThisMonth).toBe(0)
+  })
   it('returns zeros for an org with nothing open', () => {
     expect(summarizeCharges([], [], TODAY)).toEqual({
       openTotal: 0,

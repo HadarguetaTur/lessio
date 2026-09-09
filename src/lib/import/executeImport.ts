@@ -12,6 +12,10 @@ export interface ImportResult {
   updated: number
   skipped: number
   errors: { row: number; message: string }[]
+  /** True when a failure rolled the whole run back and nothing was created. */
+  rolledBack?: boolean
+  /** True when this result is replayed from an earlier run of the same batch. */
+  alreadyRan?: boolean
   /** Number of parent–student relationships created (parents and family-list imports) */
   linkedRelationships?: number
   /** Student names that could not be linked because they don't exist in the DB */
@@ -134,6 +138,53 @@ const BATCH_SIZE = 50
  */
 export const SCHEDULE_WEEKS_AHEAD = 4
 
+/**
+ * Raised when a run cannot continue safely — a database error rather than a
+ * problem with one row's data. It aborts the import so the tracked writes can
+ * be undone, instead of leaving half a spreadsheet in the org.
+ */
+export class ImportAbortedError extends Error {
+  readonly rowNumber: number | null
+  readonly detail: string
+  constructor(rowNumber: number | null, detail: string) {
+    super(detail)
+    this.name = 'ImportAbortedError'
+    this.rowNumber = rowNumber
+    this.detail = detail
+  }
+}
+
+/**
+ * Records everything a run inserted so it can be undone.
+ *
+ * Supabase's REST client cannot open a transaction, so "all or nothing" is
+ * compensating deletes: rows are removed in reverse insertion order, which
+ * respects the foreign keys between lesson_students → lessons → lesson_series.
+ */
+export class ImportRollback {
+  private readonly writes: { table: string; ids: string[] }[] = []
+
+  record(table: string, ids: (string | undefined | null)[]): void {
+    const clean = ids.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    if (clean.length > 0) this.writes.push({ table, ids: clean })
+  }
+
+  get isEmpty(): boolean {
+    return this.writes.length === 0
+  }
+
+  async undo(db: ReturnType<typeof createServiceRoleClient>): Promise<void> {
+    for (let i = this.writes.length - 1; i >= 0; i--) {
+      const { table, ids } = this.writes[i]
+      const { error } = await db.from(table).delete().in('id', ids)
+      if (error) {
+        // Keep unwinding: leaving even more behind helps nobody.
+        console.error(`[import] rollback failed for ${table}`, error.message)
+      }
+    }
+  }
+}
+
 /** Translator scoped to `import` namespace (e.g. `executeErrors.invalidPhone`). */
 export type ImportTranslateFn = (
   key: string,
@@ -168,19 +219,47 @@ export async function executeImport(
 
   if (rows.length === 0) return result
 
-  switch (entityType) {
-    case 'students':
-      return importStudents(db, orgId, rows, result, tImport)
-    case 'parents':
-      return importParents(db, orgId, rows, result, tImport, consent)
-    case 'teachers':
-      return importTeachers(db, orgId, rows, result, tImport)
-    case 'lessons-schedule':
-      return importLessonSchedule(db, orgId, rows, result, timezone, tImport)
-    case 'lessons-history':
-      return importLessonHistory(db, orgId, rows, result, timezone, tImport)
-    case 'family-list':
-      return importFamilyList(db, orgId, rows, result, tImport, consent)
+  const rollback = new ImportRollback()
+
+  try {
+    switch (entityType) {
+      case 'students':
+        return await importStudents(db, orgId, rows, result, tImport, rollback)
+      case 'parents':
+        return await importParents(db, orgId, rows, result, tImport, consent, rollback)
+      case 'teachers':
+        return await importTeachers(db, orgId, rows, result, tImport)
+      case 'lessons-schedule':
+        return await importLessonSchedule(db, orgId, rows, result, timezone, tImport, rollback)
+      case 'lessons-history':
+        return await importLessonHistory(db, orgId, rows, result, timezone, tImport, rollback)
+      case 'family-list':
+        return await importFamilyList(db, orgId, rows, result, tImport, consent, rollback)
+    }
+  } catch (e) {
+    // A database failure leaves a half-imported org that nobody can see or
+    // undo, and the natural retry re-posts the same preview and duplicates
+    // whatever did land. Undo this run's writes so the retry starts clean.
+    await rollback.undo(db)
+
+    if (e instanceof ImportAbortedError) {
+      return {
+        ...result,
+        inserted: 0,
+        updated: 0,
+        skipped: rows.length,
+        rolledBack: true,
+        errors: [
+          ...result.errors,
+          {
+            row: e.rowNumber ?? 0,
+            message: tImport('executeErrors.dbError', { message: e.detail }),
+          },
+          { row: 0, message: tImport('executeErrors.rolledBack') },
+        ],
+      }
+    }
+    throw e
   }
 }
 
@@ -235,7 +314,8 @@ async function importStudents(
   orgId: string,
   rows: ValidatedRow[],
   result: ImportResult,
-  t: ImportTranslateFn
+  t: ImportTranslateFn,
+  rollback: ImportRollback
 ): Promise<ImportResult> {
   // Pre-fetch teachers for name matching
   const { data: teachers } = await db
@@ -276,16 +356,13 @@ async function importStudents(
       .select('id')
 
     if (error) {
-      for (const row of batch) {
-        result.errors.push({
-          row: row.rowIndex + 2,
-          message: t('executeErrors.dbError', { message: error.message }),
-        })
-      }
-      result.skipped += batch.length
-    } else {
-      result.inserted += data?.length ?? 0
+      // Skipping the chunk and carrying on used to commit the chunks either
+      // side of it, with no batch id and no undo.
+      throw new ImportAbortedError(batch[0].rowIndex + 2, error.message)
     }
+
+    rollback.record('students', (data ?? []).map((r) => r.id))
+    result.inserted += data?.length ?? 0
   }
 
   // Update existing rows one by one
@@ -326,7 +403,8 @@ async function importParents(
   rows: ValidatedRow[],
   result: ImportResult,
   t: ImportTranslateFn,
-  consent?: ImportConsent
+  consent: ImportConsent | undefined,
+  rollback: ImportRollback
 ): Promise<ImportResult> {
   // Pre-fetch students for student_names linking
   const { data: students } = await db
@@ -430,6 +508,7 @@ async function importParents(
       }
 
       parentId = parent.id
+      rollback.record('parents', [parentId])
       result.inserted++
     }
 
@@ -587,7 +666,8 @@ async function importLessonSchedule(
   rows: ValidatedRow[],
   result: ImportResult,
   timezone: string,
-  t: ImportTranslateFn
+  t: ImportTranslateFn,
+  rollback: ImportRollback
 ): Promise<ImportResult> {
   // Pre-fetch teachers and students
   const { data: teachers } = await db
@@ -678,14 +758,10 @@ async function importLessonSchedule(
       .single()
 
     if (seriesError) {
-      result.errors.push({
-        row: row.rowIndex + 2,
-        message: t('executeErrors.dbError', { message: seriesError.message }),
-      })
-      result.skipped++
-      continue
+      throw new ImportAbortedError(row.rowIndex + 2, seriesError.message)
     }
 
+    rollback.record('lesson_series', [series.id])
     let lessonsCreated = 0
 
     for (const day of occurrences) {
@@ -708,15 +784,30 @@ async function importLessonSchedule(
         .select('id')
         .single()
 
-      if (!lessonError && lesson) {
-        await db.from('lesson_students').insert({
+      // A lesson that silently failed to insert used to leave a series that
+      // claims more lessons than exist, with nothing reported to the owner.
+      if (lessonError || !lesson) {
+        throw new ImportAbortedError(row.rowIndex + 2, lessonError?.message ?? 'lesson insert failed')
+      }
+
+      rollback.record('lessons', [lesson.id])
+
+      const { data: enrolment, error: enrolmentError } = await db
+        .from('lesson_students')
+        .insert({
           lesson_id: lesson.id,
           student_id: studentId,
           organization_id: orgId,
           status: 'enrolled',
         })
-        lessonsCreated++
+        .select('id')
+        .single()
+
+      if (enrolmentError) {
+        throw new ImportAbortedError(row.rowIndex + 2, enrolmentError.message)
       }
+      rollback.record('lesson_students', [enrolment?.id])
+      lessonsCreated++
     }
 
     result.inserted += lessonsCreated
@@ -731,7 +822,8 @@ async function importLessonHistory(
   rows: ValidatedRow[],
   result: ImportResult,
   timezone: string,
-  t: ImportTranslateFn
+  t: ImportTranslateFn,
+  rollback: ImportRollback
 ): Promise<ImportResult> {
   const { data: teachers } = await db
     .from('teachers')
@@ -815,23 +907,29 @@ async function importLessonHistory(
       .select('id')
       .single()
 
-    if (error) {
-      result.errors.push({
-        row: row.rowIndex + 2,
-        message: t('executeErrors.dbError', { message: error.message }),
-      })
-      result.skipped++
-      continue
+    if (error || !lesson) {
+      throw new ImportAbortedError(row.rowIndex + 2, error?.message ?? 'lesson insert failed')
     }
 
-    if (lesson) {
-      await db.from('lesson_students').insert({
+    rollback.record('lessons', [lesson.id])
+
+    const { data: enrolment, error: enrolmentError } = await db
+      .from('lesson_students')
+      .insert({
         lesson_id: lesson.id,
         student_id: studentId,
         organization_id: orgId,
         status: status === 'cancelled' ? 'cancelled' : 'enrolled',
       })
+      .select('id')
+      .single()
+
+    if (enrolmentError) {
+      // A lesson with nobody enrolled on it is invisible on the student's
+      // page and uncharged by billing — worse than not importing the row.
+      throw new ImportAbortedError(row.rowIndex + 2, enrolmentError.message)
     }
+    rollback.record('lesson_students', [enrolment?.id])
 
     result.inserted++
   }
@@ -857,6 +955,7 @@ async function upsertParent(
   result: ImportResult,
   rowIndex: number,
   t: ImportTranslateFn,
+  rollback: ImportRollback,
   extras?: ParentUpsertExtras | null,
   consentCols?: Record<string, string | null>
 ): Promise<string | null> {
@@ -925,6 +1024,7 @@ async function upsertParent(
   }
 
   result.inserted++
+  rollback.record('parents', [parent.id])
   phoneToParentId.set(phone, parent.id)
   return parent.id
 }
@@ -935,7 +1035,8 @@ async function importFamilyList(
   rows: ValidatedRow[],
   result: ImportResult,
   t: ImportTranslateFn,
-  consent?: ImportConsent
+  consent: ImportConsent | undefined,
+  rollback: ImportRollback
 ): Promise<ImportResult> {
   result.linkedRelationships = 0
 
@@ -981,6 +1082,7 @@ async function importFamilyList(
       result,
       row.rowIndex + 2,
       t,
+      rollback,
       parentExtrasPrimary,
       consentColumns(consent, row.data.parent_whatsapp_consent ?? row.data.whatsapp_consent)
     )
@@ -1000,6 +1102,7 @@ async function importFamilyList(
           result,
           row.rowIndex + 2,
           t,
+          rollback,
           null,
           consentColumns(consent, row.data.parent_whatsapp_consent ?? row.data.whatsapp_consent)
         )
@@ -1030,6 +1133,7 @@ async function importFamilyList(
         continue
       }
       studentId = student.id
+      rollback.record('students', [studentId])
       result.inserted++
     }
 

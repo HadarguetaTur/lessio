@@ -46,3 +46,29 @@ describe('buildRfc2822Message', () => {
     expect(msg).toContain('Content-Disposition: attachment; filename="f.pdf"')
   })
 })
+
+describe('extra headers', () => {
+  const base = { from: 'a@x.com', to: 'b@y.com', subject: 'Hi', html: '<p>hi</p>' }
+
+  it('emits List-Unsubscribe and the threading headers', () => {
+    const msg = decode(
+      buildRfc2822Message({
+        ...base,
+        extraHeaders: {
+          'List-Unsubscribe': '<https://x.test/u/abc>',
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          'In-Reply-To': '<prev@mail.gmail.com>',
+        },
+      })
+    )
+    expect(msg).toContain('List-Unsubscribe: <https://x.test/u/abc>')
+    expect(msg).toContain('List-Unsubscribe-Post: List-Unsubscribe=One-Click')
+    expect(msg).toContain('In-Reply-To: <prev@mail.gmail.com>')
+  })
+
+  it('refuses a header value that would inject a header of its own', () => {
+    expect(() =>
+      buildRfc2822Message({ ...base, extraHeaders: { 'X-Evil': 'ok\r\nBcc: someone@else.com' } })
+    ).toThrow(/line break/)
+  })
+})

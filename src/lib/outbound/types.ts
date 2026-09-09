@@ -34,6 +34,14 @@ export type ReplyClassification = (typeof REPLY_CLASSIFICATIONS)[number]
 
 export type SuppressionReason = 'unsubscribed' | 'bounced' | 'manual' | 'replied_negative'
 
+export const OPENER_STATUSES = ['none', 'pending', 'generated', 'approved', 'failed'] as const
+export type OpenerStatus = (typeof OPENER_STATUSES)[number]
+
+/** Hebrew addresses a person by gender; unknown means the copy stays neutral. */
+export type ProspectGender = 'f' | 'm'
+
+export type MessageKind = 'cold_email' | 'reply' | 'demo_email' | 'followup'
+
 export interface Campaign {
   id: string
   name: string
@@ -68,6 +76,20 @@ export interface Prospect {
   demo_email_sent_at: string | null
   import_batch_id: string | null
   notes: string | null
+  mailbox_id: string | null
+  gender: ProspectGender | null
+  opener_status: OpenerStatus
+  opener_generated: string | null
+  opener_model: string | null
+  opener_error: string | null
+  opener_claimed_at: string | null
+  /** Bearer of /u/<token>; the row is deleted when it is used. */
+  unsubscribe_token: string
+  followup_stage: number
+  next_followup_at: string | null
+  followup_claimed_at: string | null
+  followup_attempts: number
+  last_inbound_at: string | null
   created_at: string
   updated_at: string
 }

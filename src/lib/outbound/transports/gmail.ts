@@ -10,6 +10,7 @@
  */
 
 import { sendAsUser } from '@/lib/gmail/serviceAccount'
+import { unsubscribeHeaders } from '../unsubscribe'
 import { describeThrown, reportError } from '@/lib/telemetry/reportError'
 import { claimNextProspects, recordSendResult } from '../queue'
 import {
@@ -95,6 +96,7 @@ async function sendOne(
       subject: item.message.subject,
       html: item.message.bodyHtml,
       text: item.message.bodyText,
+      headers: unsubscribeHeaders(item.prospect.unsubscribe_token),
     })
     await recordSendResult({
       prospectId: item.prospect.id,

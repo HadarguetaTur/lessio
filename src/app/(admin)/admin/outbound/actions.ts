@@ -8,6 +8,7 @@ import { recordAdminAction } from '@/lib/superadmin/audit'
 import { importProspects, type ImportProspectsResult } from '@/lib/outbound/importProspects'
 import { saveCampaign } from '@/lib/outbound/campaigns'
 import { addSuppression } from '@/lib/outbound/suppressions'
+import { approveOpener, regenerateOpener } from '@/lib/outbound/opener'
 import { saveMailbox } from '@/lib/outbound/mailboxes'
 import { isServiceAccountConfigured, sendAsUser } from '@/lib/gmail/serviceAccount'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -35,6 +36,7 @@ const MAX_CSV_BYTES = 5 * 1024 * 1024
 
 const importSchema = z.object({
   campaignId: z.string().uuid(),
+  generateOpeners: z.boolean(),
 })
 
 export async function importProspectsAction(
@@ -43,7 +45,10 @@ export async function importProspectsAction(
 ): Promise<OutboundActionState> {
   const session = await requirePlatformSession('growth.write')
 
-  const parsed = importSchema.safeParse({ campaignId: formData.get('campaignId') })
+  const parsed = importSchema.safeParse({
+    campaignId: formData.get('campaignId'),
+    generateOpeners: formData.get('generateOpeners') === 'on',
+  })
   if (!parsed.success) return { error: 'INVALID_INPUT' }
 
   const file = formData.get('file')
@@ -57,6 +62,7 @@ export async function importProspectsAction(
       campaignId: parsed.data.campaignId,
       file: await file.arrayBuffer(),
       filename: file.name,
+      generateOpeners: parsed.data.generateOpeners,
     })
   } catch (err) {
     console.error('[admin/outbound] import failed', err)
@@ -266,4 +272,75 @@ export async function sendMailboxTestAction(
     revalidatePath('/admin/outbound')
     return { error: 'TEST_SEND_FAILED', detail: detail.slice(0, 300) }
   }
+}
+
+// ── Opener review ────────────────────────────────────────────────────────────
+// The AI drafts, a person decides. Until one of these runs, the prospect is
+// invisible to the send claim.
+
+const openerSchema = z.object({
+  prospectId: z.string().uuid(),
+  text: z.string().max(300).optional(),
+})
+
+export async function approveOpenerAction(
+  _prev: OutboundActionState | null,
+  formData: FormData
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+
+  const parsed = openerSchema.safeParse({
+    prospectId: formData.get('prospectId'),
+    text: typeof formData.get('text') === 'string' ? String(formData.get('text')) : undefined,
+  })
+  if (!parsed.success) return { error: 'INVALID_INPUT' }
+
+  try {
+    await approveOpener(parsed.data.prospectId, parsed.data.text ?? null)
+  } catch (err) {
+    console.error('[admin/outbound] opener approve failed', err)
+    return { error: 'SAVE_FAILED' }
+  }
+
+  await recordAdminAction({
+    actorProfileId: session.profileId,
+    action: 'outbound.opener_approve',
+    targetType: 'outbound_prospects',
+    targetId: parsed.data.prospectId,
+    metadata: { empty: !parsed.data.text?.trim() },
+  })
+
+  revalidatePath('/admin/outbound')
+  return { ok: true }
+}
+
+export async function regenerateOpenerAction(
+  _prev: OutboundActionState | null,
+  formData: FormData
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+
+  const parsed = z.object({ prospectId: z.string().uuid() }).safeParse({
+    prospectId: formData.get('prospectId'),
+  })
+  if (!parsed.success) return { error: 'INVALID_INPUT' }
+
+  let outcome: Awaited<ReturnType<typeof regenerateOpener>>
+  try {
+    outcome = await regenerateOpener(parsed.data.prospectId)
+  } catch (err) {
+    console.error('[admin/outbound] opener regenerate failed', err)
+    return { error: 'SAVE_FAILED' }
+  }
+
+  await recordAdminAction({
+    actorProfileId: session.profileId,
+    action: 'outbound.opener_regenerate',
+    targetType: 'outbound_prospects',
+    targetId: parsed.data.prospectId,
+    metadata: { ok: outcome.ok },
+  })
+
+  revalidatePath('/admin/outbound')
+  return outcome.ok ? { ok: true, detail: outcome.text } : { error: `OPENER_${outcome.error}` }
 }

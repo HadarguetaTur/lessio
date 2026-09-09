@@ -8,6 +8,7 @@
  */
 
 import { escapeHtml } from '@/lib/email/templates/base'
+import { unsubscribeFooter, unsubscribeUrl } from './unsubscribe'
 import type { Campaign, Prospect } from './types'
 
 export type TemplateVars = Record<string, string | number | null | undefined | Record<string, unknown>>
@@ -49,6 +50,7 @@ export function prospectVars(prospect: Prospect): TemplateVars {
     personal_line: prospect.personal_line,
     subject_area: prospect.subject_area,
     source_url: prospect.source_url,
+    unsubscribe_url: unsubscribeUrl(prospect.unsubscribe_token),
     metadata: prospect.metadata ?? {},
   }
 }
@@ -74,16 +76,48 @@ export function textToHtml(text: string): string {
  * font, with the right direction. `wrapEmailHtml` (the branded card) is for
  * the demo email that follows a "yes", not for the first touch.
  */
-export function personalEmailHtml(text: string, locale: 'he' | 'en'): string {
+export function personalEmailHtml(
+  text: string,
+  locale: 'he' | 'en',
+  footerHtml?: string
+): string {
   const dir = locale === 'he' ? 'rtl' : 'ltr'
   const align = locale === 'he' ? 'right' : 'left'
-  return `<!DOCTYPE html><html lang="${locale}" dir="${dir}"><head><meta charset="utf-8"></head><body dir="${dir}" style="margin:0;padding:0;"><div dir="${dir}" style="text-align:${align};font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#111827;">${textToHtml(text)}</div></body></html>`
+  return `<!DOCTYPE html><html lang="${locale}" dir="${dir}"><head><meta charset="utf-8"></head><body dir="${dir}" style="margin:0;padding:0;"><div dir="${dir}" style="text-align:${align};font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#111827;">${textToHtml(text)}${footerHtml ?? ''}</div></body></html>`
+}
+
+/**
+ * Renders a personal-looking email and appends the unsubscribe line.
+ *
+ * A body that places `{{unsubscribe_url}}` itself keeps control of where the
+ * link sits; everything else gets it appended, because every cold email must
+ * carry a way out.
+ */
+export function renderPersonalEmail(
+  bodyText: string,
+  locale: 'he' | 'en',
+  unsubUrl: string,
+  bodyUsesUnsubscribe: boolean
+): { bodyText: string; bodyHtml: string } {
+  if (bodyUsesUnsubscribe) {
+    return { bodyText, bodyHtml: personalEmailHtml(bodyText, locale) }
+  }
+  const footer = unsubscribeFooter(unsubUrl, locale)
+  return {
+    bodyText: `${bodyText}\n\n${footer.text}`,
+    bodyHtml: personalEmailHtml(bodyText, locale, footer.html),
+  }
 }
 
 export function renderCampaignMessage(campaign: Campaign, prospect: Prospect): RenderedMessage {
   const vars = prospectVars(prospect)
+  const locale = prospect.locale ?? campaign.locale
   const subject = renderTemplate(campaign.subject, vars).replace(/\s*\n+\s*/g, ' ')
-  const bodyText = renderTemplate(campaign.body_text, vars)
-  const bodyHtml = personalEmailHtml(bodyText, prospect.locale ?? campaign.locale)
-  return { subject, bodyText, bodyHtml }
+  const rendered = renderPersonalEmail(
+    renderTemplate(campaign.body_text, vars),
+    locale,
+    unsubscribeUrl(prospect.unsubscribe_token),
+    /\{\{\s*unsubscribe_url\s*\}\}/.test(campaign.body_text)
+  )
+  return { subject, ...rendered }
 }

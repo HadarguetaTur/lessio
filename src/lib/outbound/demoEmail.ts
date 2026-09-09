@@ -13,6 +13,8 @@ import { sendPlatformEmail } from '@/lib/email'
 import { demoEmail } from '@/lib/email/templates/outbound'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { reportError } from '@/lib/telemetry/reportError'
+import { scheduleFollowup } from './followups'
+import { unsubscribeHeaders, unsubscribeUrl } from './unsubscribe'
 import type { Prospect } from './types'
 
 export type DemoEmailOutcome = 'sent' | 'duplicate' | 'failed'
@@ -33,11 +35,20 @@ export async function sendDemoEmailOnce(prospect: Prospect): Promise<DemoEmailOu
   if (!claimed || claimed.length === 0) return 'duplicate'
 
   const email = demoEmail(
-    { firstName: prospect.first_name, signupUrl: `${getShareableBaseUrl()}/signup?ref=outbound` },
+    {
+      firstName: prospect.first_name,
+      signupUrl: `${getShareableBaseUrl()}/signup?ref=outbound`,
+      unsubscribeUrl: unsubscribeUrl(prospect.unsubscribe_token),
+    },
     prospect.locale === 'en' ? 'en' : 'he'
   )
 
-  const ok = await sendPlatformEmail({ to: prospect.email, subject: email.subject, html: email.html })
+  const ok = await sendPlatformEmail({
+    to: prospect.email,
+    subject: email.subject,
+    html: email.html,
+    headers: unsubscribeHeaders(prospect.unsubscribe_token),
+  })
 
   await db.from('outbound_messages').insert({
     prospect_id: prospect.id,
@@ -61,5 +72,18 @@ export async function sendDemoEmailOnce(prospect: Prospect): Promise<DemoEmailOu
     })
     return 'failed'
   }
+
+  // The demo is the last thing that happens on its own; from here a follow-up
+  // is the only way the conversation continues if they go quiet.
+  await db
+    .from('outbound_prospects')
+    .update({
+      followup_stage: 0,
+      next_followup_at: scheduleFollowup('interested', 0, new Date())?.toISOString() ?? null,
+      followup_claimed_at: null,
+      followup_attempts: 0,
+    })
+    .eq('id', prospect.id)
+
   return 'sent'
 }

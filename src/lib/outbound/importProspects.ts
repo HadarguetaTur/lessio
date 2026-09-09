@@ -11,6 +11,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { parseFile } from '@/lib/import/parseFile'
 import { normalizeProspectRows, type NormalizeResult } from './normalizeProspects'
 import { findSuppressed } from './suppressions'
+import { newUnsubscribeToken } from './unsubscribe'
 
 export interface ImportProspectsResult {
   batchId: string
@@ -27,6 +28,8 @@ export async function importProspects(input: {
   campaignId: string
   file: ArrayBuffer
   filename: string
+  /** Draft an opening line with the AI for rows that carry a source. */
+  generateOpeners?: boolean
 }): Promise<ImportProspectsResult> {
   const { headers, rows } = parseFile(input.file, input.filename)
   const normalized = normalizeProspectRows(headers, rows)
@@ -53,7 +56,13 @@ export async function importProspects(input: {
       company: p.company,
       phone: p.phone,
       locale: p.locale,
+      gender: p.gender,
       personal_line: p.personal_line,
+      unsubscribe_token: newUnsubscribeToken(),
+      // A row the AI will draft for is parked until a person approves it; the
+      // send claim skips every opener_status other than none/approved.
+      opener_status:
+        input.generateOpeners && p.source_url && !p.personal_line ? 'pending' : 'none',
       subject_area: p.subject_area,
       source_url: p.source_url,
       metadata: p.metadata,

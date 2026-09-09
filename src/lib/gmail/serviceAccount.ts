@@ -52,20 +52,37 @@ export interface SendAsUserParams {
   subject: string
   html: string
   text?: string
+  /** Reply inside an existing Gmail conversation. */
+  threadId?: string | null
+  /** RFC Message-ID of the message being answered. */
+  inReplyTo?: string | null
+  /** RFC Message-IDs of the conversation so far, oldest first. */
+  references?: (string | null | undefined)[]
+  /** List-Unsubscribe and friends. */
+  headers?: Record<string, string>
 }
 
 export interface SendAsUserResult {
   /** Gmail's internal message id (not the RFC Message-ID). */
   id: string
   threadId: string | null
-  /** The Message-ID header we set, angle brackets included. */
+  /**
+   * The Message-ID the message actually carries. Gmail rewrites ours, so this
+   * is read back after the send — a follow-up that wants to thread must quote
+   * the id the recipient's client will see, not the one we proposed.
+   */
   rfcMessageId: string
 }
 
 export async function sendAsUser(params: SendAsUserParams): Promise<SendAsUserResult> {
   const gmail = gmailAsUser(params.from)
-  const rfcMessageId = `<${randomUUID()}@${MESSAGE_ID_DOMAIN}>`
+  const proposedMessageId = `<${randomUUID()}@${MESSAGE_ID_DOMAIN}>`
   const from = params.fromName ? `${encodeDisplayName(params.fromName)} <${params.from}>` : params.from
+
+  const extraHeaders: Record<string, string> = { ...params.headers }
+  if (params.inReplyTo) extraHeaders['In-Reply-To'] = params.inReplyTo
+  const references = (params.references ?? []).filter((r): r is string => Boolean(r))
+  if (references.length > 0) extraHeaders['References'] = references.join(' ')
 
   const raw = buildRfc2822Message({
     from,
@@ -73,13 +90,39 @@ export async function sendAsUser(params: SendAsUserParams): Promise<SendAsUserRe
     subject: params.subject,
     html: params.html,
     text: params.text,
-    messageId: rfcMessageId,
+    messageId: proposedMessageId,
+    extraHeaders,
   })
 
-  const res = await gmail.users.messages.send({ userId: 'me', requestBody: { raw } })
+  const res = await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: { raw, ...(params.threadId ? { threadId: params.threadId } : {}) },
+  })
   const id = res.data.id
   if (!id) throw new Error('[gmail/sa] send returned no message id')
-  return { id, threadId: res.data.threadId ?? null, rfcMessageId }
+
+  return {
+    id,
+    threadId: res.data.threadId ?? null,
+    rfcMessageId: (await readBackMessageId(gmail, id)) ?? proposedMessageId,
+  }
+}
+
+/** The header Gmail actually stamped. Never fails a send that already went out. */
+async function readBackMessageId(gmail: gmail_v1.Gmail, id: string): Promise<string | null> {
+  try {
+    const res = await gmail.users.messages.get({
+      userId: 'me',
+      id,
+      format: 'metadata',
+      metadataHeaders: ['Message-ID'],
+    })
+    const header = res.data.payload?.headers?.find((h) => h.name?.toLowerCase() === 'message-id')
+    return header?.value ?? null
+  } catch (err) {
+    console.warn('[gmail/sa] could not read back the Message-ID', { id, err: String(err) })
+    return null
+  }
 }
 
 function encodeDisplayName(name: string): string {

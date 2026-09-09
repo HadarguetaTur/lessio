@@ -75,3 +75,15 @@ export async function findSuppressed(emails: string[]): Promise<Set<string>> {
   }
   return found
 }
+
+/** True when this address asked out, or bounced, or was blocked by hand. */
+export async function isSuppressed(email: string): Promise<boolean> {
+  const db = createServiceRoleClient()
+  const { data, error } = await db
+    .from('outbound_suppressions')
+    .select('email')
+    .eq('email', normalizeEmail(email))
+    .maybeSingle()
+  if (error) throw new Error(`[outbound/suppressions] lookup failed: ${error.message}`)
+  return Boolean(data)
+}

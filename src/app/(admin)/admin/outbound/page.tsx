@@ -6,6 +6,7 @@ import { requirePlatformSession } from '@/lib/superadmin/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { listCampaigns } from '@/lib/outbound/campaigns'
 import { getOutboundStats } from '@/lib/outbound/stats'
+import { listOpenersToReview } from '@/lib/outbound/opener'
 import { listMailboxesWithUsage } from '@/lib/outbound/mailboxes'
 import { isServiceAccountConfigured } from '@/lib/gmail/serviceAccount'
 import { PROSPECT_STATUSES, type InboundMessageRow, type Prospect, type ProspectStatus } from '@/lib/outbound/types'
@@ -14,12 +15,15 @@ import { AdminTable, type AdminTableRow } from '@/components/admin/AdminTable'
 import { OutboundCampaignForm } from '@/components/admin/OutboundCampaignForm'
 import { OutboundImportForm } from '@/components/admin/OutboundImportForm'
 import { OutboundMailboxesCard } from '@/components/admin/OutboundMailboxesCard'
+import { OutboundOpenerReview } from '@/components/admin/OutboundOpenerReview'
 import { OutboundSuppressionForm } from '@/components/admin/OutboundSuppressionForm'
 import { ProspectStatusBadge } from '@/components/admin/ProspectStatusBadge'
 import { cn } from '@/lib/utils'
 import {
   addSuppressionAction,
+  approveOpenerAction,
   importProspectsAction,
+  regenerateOpenerAction,
   saveCampaignAction,
   saveMailboxAction,
   sendMailboxTestAction,
@@ -64,10 +68,11 @@ export default async function AdminOutboundPage({
     .limit(500)
   if (statusFilter) prospectsQuery = prospectsQuery.eq('status', statusFilter)
 
-  const [stats, campaigns, mailboxes, prospectsRes, repliesRes] = await Promise.all([
+  const [stats, campaigns, mailboxes, openers, prospectsRes, repliesRes] = await Promise.all([
     getOutboundStats(),
     listCampaigns(),
     listMailboxesWithUsage(),
+    listOpenersToReview(),
     prospectsQuery,
     db
       .from('outbound_messages')
@@ -193,6 +198,14 @@ export default async function AdminOutboundPage({
 
       <div className="mb-8">
         <OutboundImportForm campaigns={campaigns} action={importProspectsAction} />
+      </div>
+
+      <div className="mb-8">
+        <OutboundOpenerReview
+          rows={openers}
+          approveAction={approveOpenerAction}
+          regenerateAction={regenerateOpenerAction}
+        />
       </div>
 
       <div className="mb-8 rounded-xl border border-border bg-card p-5">

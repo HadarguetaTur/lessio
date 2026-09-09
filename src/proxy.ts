@@ -153,6 +153,9 @@ export async function proxy(request: NextRequest) {
     // Anyone holding the link is the parent who was sent it; it only ever
     // forwards to the provider's own checkout, which does its own auth.
     request.nextUrl.pathname.startsWith('/pay/') ||
+    // /u/<token> — the one-click unsubscribe every cold email carries. The
+    // token is the credential, and the row it names is deleted when it is used.
+    request.nextUrl.pathname.startsWith('/u/') ||
     // Client error reports. Unauthenticated on purpose: the boundary that most
     // needs to report is the one that fired because the session or the shell
     // itself broke, and an auth round-trip here would silently drop exactly

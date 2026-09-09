@@ -176,6 +176,11 @@ export interface Rfc2822MessageOptions {
   text?: string
   /** RFC Message-ID, angle brackets included. Omitted when absent. */
   messageId?: string
+  /**
+   * Extra RFC 2822 headers: List-Unsubscribe, In-Reply-To, References.
+   * A line break in a name or value would inject headers, so it throws.
+   */
+  extraHeaders?: Record<string, string>
   attachments?: { filename: string; content: string }[]
 }
 
@@ -209,6 +214,12 @@ export function buildRfc2822Message(opts: Rfc2822MessageOptions): string {
     'MIME-Version: 1.0',
   ]
   if (opts.messageId) headers.push(`Message-ID: ${opts.messageId}`)
+  for (const [name, value] of Object.entries(opts.extraHeaders ?? {})) {
+    if (/[\r\n]/.test(name) || /[\r\n]/.test(value)) {
+      throw new Error(`[gmail] header ${name} contains a line break`)
+    }
+    headers.push(`${name}: ${value}`)
+  }
 
   const htmlHeaders = ['Content-Type: text/html; charset="UTF-8"', 'Content-Transfer-Encoding: base64']
   const htmlBody = base64Lines(opts.html)

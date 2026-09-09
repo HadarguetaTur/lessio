@@ -123,6 +123,54 @@ receive and `resend` for the platform demo email; `mailbox_id` says which box.
 A reply is matched by from-address first, then by Gmail thread id, then by the
 `In-Reply-To` header against the `Message-ID` Lessio generated on send.
 
+## 8. Opening lines drafted by the AI
+
+Give the CSV a `website` column (a URL, a profile link, or just a sentence you
+typed) and tick **"let the AI draft an opening line"** on import. Those rows land
+as `pending` and the `outbound-openers` cron reads the page and asks the platform
+model for one sentence in the prospect's language.
+
+**A drafted line cannot be sent.** The send claim only ever picks up a prospect
+whose opener is `none` (the CSV already had a `personal_line`, or there is no
+source) or `approved`. Everything else waits in **"opening lines to review"** on
+`/admin/outbound`, where you edit, approve, redraft, or skip (skip sends the
+campaign body with no opener).
+
+An optional `gender` column (`f`/`m`, `נ`/`ז`) tells the Hebrew copy how to
+address the person. Without it, the wording avoids the choice rather than
+guessing. `OPENAI_API_KEY` is optional; without it a row simply fails to
+`NO_API_KEY` and you write the line yourself.
+
+## 9. Follow-ups
+
+Only for people who already answered. Nobody who ignored the first email is
+mailed twice.
+
+| After | Then | And |
+|---|---|---|
+| the demo email went out | +3 days: "did you get to watch?" | +4 more days: a last note with the trial link |
+| a reply nobody could read as yes or no | +2 days: one clarification | nothing further |
+
+Each touch goes out from the mailbox that sent the cold email, inside the same
+Gmail conversation (`threadId` + `In-Reply-To` + a `Re:` subject), and counts
+against that mailbox's daily cap. Any real reply cancels what is queued; an
+out-of-office does not. If the mailbox is full or switched off, the touch waits
+instead of arriving from a stranger.
+
+## 10. Unsubscribe means deleted
+
+Every email the engine sends — cold, follow-up, demo — carries a one-click link
+(`/u/<token>`) and the RFC 8058 headers, so Gmail and Outlook show their own
+Unsubscribe button. A reply like "תסירי אותי" or "unsubscribe" does the same.
+
+Either way the address goes onto `outbound_suppressions` and **everything else
+is deleted**: the prospect row, the whole conversation, the platform lead and
+its events. There is nothing left to restore, which is the point. A later CSV
+carrying that address imports it as `suppressed` and it is never mailed.
+
+Opening the link never unsubscribes anyone by itself — mail scanners follow
+links — so the page asks first and the button does the work.
+
 ## Troubleshooting
 
 | Symptom | Cause |

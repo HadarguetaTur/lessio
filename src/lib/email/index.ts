@@ -98,6 +98,8 @@ export async function sendPlatformEmail(params: {
   to: string
   subject: string
   html: string
+  /** Extra RFC headers, e.g. List-Unsubscribe on an outbound demo email. */
+  headers?: Record<string, string>
 }): Promise<boolean> {
   const resend = getResend()
   if (!resend) {
@@ -110,6 +112,7 @@ export async function sendPlatformEmail(params: {
       to: params.to,
       subject: params.subject,
       html: params.html,
+      ...(params.headers ? { headers: params.headers } : {}),
     })
     console.info('[email] Platform email sent', { to: params.to, subject: params.subject })
     return true

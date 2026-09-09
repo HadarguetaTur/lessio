@@ -82,6 +82,20 @@ const HEBREW_ALLOWED = [
   // Reply classification keywords: what a Hebrew prospect *writes back* must
   // keep being recognised — input-side, never rendered.
   "src/lib/outbound/classifyReply.ts",
+  // Cold-outreach copy is bilingual by its own branch (he/en per prospect
+  // locale), exactly like src/lib/email/templates/**, and is addressed to
+  // strangers rather than to a signed-in user whose locale next-intl knows.
+  "src/lib/outbound/followups.ts",
+  "src/lib/outbound/unsubscribe.ts",
+  // The one-click unsubscribe page. A recipient of a Hebrew cold email is the
+  // only person who ever opens it, and it must render before any locale
+  // negotiation — it is a bare route handler, not part of the app shell.
+  // Globbed as a directory: the literal path holds `[token]`, which minimatch
+  // would read as a character class.
+  "src/app/u/**",
+  // Test fixture data (Hebrew names), sitting outside *.test.ts so several
+  // suites can share one builder.
+  "src/lib/outbound/testFixtures.ts",
   // Language picker: each option is written in the language it selects.
   "src/components/admin/OutboundCampaignForm.tsx",
   // Hebrew skip-words the exam-report bot flow must keep accepting ("דלג") —

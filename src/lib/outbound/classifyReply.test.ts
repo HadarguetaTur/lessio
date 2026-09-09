@@ -47,6 +47,14 @@ describe('classifyReply — hard classes', () => {
     expect(cls('no, unsubscribe me')).toBe('unsubscribe')
     expect(cls('STOP')).toBe('unsubscribe')
   })
+  it('the feminine singular the founder actually receives', () => {
+    // The regex only had the plural forms; a real 'תסירי אותי' was read as unknown.
+    expect(cls('תסירי אותי בבקשה')).toBe('unsubscribe')
+    expect(cls('תסיר אותי')).toBe('unsubscribe')
+    expect(cls('הסירי אותי מהרשימה')).toBe('unsubscribe')
+    expect(cls('תורידו אותי מהרשימה')).toBe('unsubscribe')
+  })
+
   it('unsubscribe (he)', () => {
     expect(cls('תסירו אותי מהרשימה')).toBe('unsubscribe')
     expect(cls('אל תשלחו לי יותר')).toBe('unsubscribe')

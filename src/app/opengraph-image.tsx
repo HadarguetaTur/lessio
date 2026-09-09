@@ -72,19 +72,18 @@ export default async function OpenGraphImage() {
               width: 120,
               height: 120,
               borderRadius: 32,
-              background: '#111c32',
-              border: '2px solid #475569',
+              background: 'rgba(255,255,255,0.18)',
+              border: '2px solid rgba(255,255,255,0.4)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              position: 'relative',
+              fontSize: 80,
+              fontWeight: 700,
+              color: 'white',
+              lineHeight: 1,
             }}
           >
-            <div style={{ width: 58, height: 68, display: 'flex', position: 'relative' }}>
-              <div style={{ position: 'absolute', top: 2, left: 2, width: 18, height: 60, borderRadius: 14, background: '#2dd4bf' }} />
-              <div style={{ position: 'absolute', bottom: 2, left: 2, width: 54, height: 18, borderRadius: 14, background: 'linear-gradient(90deg, #2dd4bf 0%, #8b5cf6 100%)' }} />
-              <div style={{ position: 'absolute', top: 0, right: 0, width: 18, height: 18, borderRadius: 99, background: '#a78bfa' }} />
-            </div>
+            L
           </div>
           <div
             style={{

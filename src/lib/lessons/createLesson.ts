@@ -2,6 +2,7 @@ import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { assertOrgNotSaasReadOnly } from '@/lib/saas/subscriptions'
 import { assertParticipantsInOrg } from '@/lib/lessons/assertParticipantsInOrg'
+import { reconcileStudentOverlap } from '@/lib/booking/reconcileStudentOverlap'
 import { detectDayTail } from '@/lib/scheduling/dayTail'
 import type { LessonStatus, LessonType } from '@/lib/lessons/types'
 
@@ -192,6 +193,21 @@ export async function createLesson(
   if (lsError) {
     await db.from('lessons').delete().eq('id', lesson.id)
     throw new Error(`Failed to link students: ${lsError.message}`)
+  }
+
+  // Step 5's student check is read-then-insert with nothing serialising it —
+  // there is no EXCLUDE for students the way there is for teachers. The rows
+  // are visible now, so look again and withdraw if this lesson lost the race.
+  if (status !== 'cancelled') {
+    const withdrawn = await reconcileStudentOverlap({
+      db,
+      orgId,
+      lessonId: lesson.id,
+      studentIds,
+      startUtc,
+      endUtc,
+    })
+    if (withdrawn) throw new LessonConflictError('student_conflict')
   }
 
   console.log('[createLesson] created', {

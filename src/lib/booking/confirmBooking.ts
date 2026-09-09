@@ -18,6 +18,7 @@ import { detectDayTail } from '@/lib/scheduling/dayTail'
 import { validateSlotLock } from './validateSlotLock'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
 import { assertSlotBookable, SlotNotBookableError } from './assertSlotBookable'
+import { reconcileStudentOverlap } from './reconcileStudentOverlap'
 
 export class LockExpiredError extends Error {
   constructor(reason: string) {
@@ -219,6 +220,20 @@ export async function confirmBooking({
     await db.from('lessons').delete().eq('id', lesson.id)
     throw new Error(`Failed to link student to lesson: ${lsError.message}`)
   }
+
+  // 5d. The student check above is read-then-insert with nothing serialising
+  // it — unlike the teacher, who is protected by the overlap EXCLUDE. Now that
+  // the row exists it is visible, so look again: if another booking took this
+  // child for the same hour, the older lesson wins and this one withdraws.
+  const withdrawn = await reconcileStudentOverlap({
+    db,
+    orgId: organizationId,
+    lessonId: lesson.id,
+    studentIds: [studentId],
+    startUtc: lock.start_at,
+    endUtc: lock.end_at,
+  })
+  if (withdrawn) throw new LessonConflictError('student_conflict')
 
   // 6. Mark slot lock as consumed
   await db

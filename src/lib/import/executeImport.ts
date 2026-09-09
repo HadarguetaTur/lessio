@@ -1,4 +1,6 @@
+import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { normalizeClockTime, type SeriesRule } from '@/lib/lessons/seriesRule'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { z } from 'zod'
 import type { EntityType, ValidatedRow } from './validators'
@@ -123,6 +125,14 @@ function findInMap(map: NameIdMap, name: string | null | undefined): string | nu
 }
 
 const BATCH_SIZE = 50
+
+/**
+ * How many weekly occurrences an imported timetable row generates.
+ *
+ * Nothing extends a series after the fact, so this is also the horizon written
+ * into `rule.until` — the stored rule and the created lessons agree.
+ */
+export const SCHEDULE_WEEKS_AHEAD = 4
 
 /** Translator scoped to `import` namespace (e.g. `executeErrors.invalidPhone`). */
 export type ImportTranslateFn = (
@@ -576,7 +586,7 @@ async function importLessonSchedule(
   orgId: string,
   rows: ValidatedRow[],
   result: ImportResult,
-  _timezone: string,
+  timezone: string,
   t: ImportTranslateFn
 ): Promise<ImportResult> {
   // Pre-fetch teachers and students
@@ -601,8 +611,6 @@ async function importLessonSchedule(
   const studentMap = buildNameLookup(
     (students ?? []).map((s) => ({ id: s.id, name: s.full_name }))
   )
-
-  const WEEKS_AHEAD = 4
 
   for (const row of rows) {
     const teacherId = findInMap(teacherMap, row.data.teacher_name)
@@ -632,15 +640,30 @@ async function importLessonSchedule(
       continue
     }
 
-    const startTime = row.data.start_time!
+    const startTime = normalizeClockTime(row.data.start_time)
+    if (startTime === null) {
+      result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidStartTime') })
+      result.skipped++
+      continue
+    }
+
     const duration = parseInt(row.data.duration_minutes!)
     const lessonType = normalizeLessonType(row.data.lesson_type)
 
-    // Create lesson_series
-    const rule = {
-      dayOfWeek,
-      startTime,
-      durationMinutes: duration,
+    // Occurrence dates, computed in the ORGANIZATION's timezone. Doing this
+    // with server-local Date arithmetic put every imported lesson on Vercel's
+    // UTC clock, so a 16:00 Jerusalem lesson landed at 19:00 local.
+    const occurrences = scheduleOccurrences(timezone, dayOfWeek, SCHEDULE_WEEKS_AHEAD)
+
+    // Canonical rule shape — snake_case, with the frequency and the horizon
+    // every reader expects. `until` is the last occurrence we actually create,
+    // so the stored rule never promises lessons that do not exist.
+    const rule: SeriesRule = {
+      frequency: 'weekly',
+      day_of_week: dayOfWeek,
+      start_time: startTime,
+      duration_minutes: duration,
+      until: occurrences[occurrences.length - 1].toISODate()!,
     }
 
     const { data: series, error: seriesError } = await db
@@ -663,26 +686,20 @@ async function importLessonSchedule(
       continue
     }
 
-    // Generate lessons for the next N weeks
-    const now = new Date()
     let lessonsCreated = 0
 
-    for (let w = 0; w < WEEKS_AHEAD; w++) {
-      const lessonDate = getNextDayOfWeek(now, dayOfWeek, w)
-      const [hours, minutes] = startTime.split(':').map(Number)
-
-      const startAt = new Date(lessonDate)
-      startAt.setHours(hours, minutes, 0, 0)
-
-      const endAt = new Date(startAt.getTime() + duration * 60 * 1000)
+    for (const day of occurrences) {
+      // Interpret the wall-clock time in the org timezone, then convert to UTC.
+      const startAt = DateTime.fromISO(`${day.toISODate()}T${startTime}`, { zone: timezone })
+      const endAt = startAt.plus({ minutes: duration })
 
       const { data: lesson, error: lessonError } = await db
         .from('lessons')
         .insert({
           organization_id: orgId,
           teacher_id: teacherId,
-          start_at: startAt.toISOString(),
-          end_at: endAt.toISOString(),
+          start_at: startAt.toUTC().toISO()!,
+          end_at: endAt.toUTC().toISO()!,
           status: 'scheduled',
           lesson_type: lessonType,
           max_students: lessonType === 'individual' ? 1 : lessonType === 'pair' ? 2 : 10,
@@ -759,22 +776,27 @@ async function importLessonHistory(
       continue
     }
 
-    // Parse date (DD/MM/YYYY or YYYY-MM-DD)
-    const dateStr = row.data.date!
-    let dateParts: [number, number, number]
-    if (dateStr.includes('/')) {
-      const [d, m, y] = dateStr.split('/').map(Number)
-      dateParts = [y, m - 1, d]
-    } else {
-      const [y, m, d] = dateStr.split('-').map(Number)
-      dateParts = [y, m - 1, d]
+    // Parse date (DD/MM/YYYY or YYYY-MM-DD) in the ORGANIZATION's timezone.
+    const day = parseImportDate(row.data.date, timezone)
+    if (day === null) {
+      result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidDate') })
+      result.skipped++
+      continue
     }
 
-    const [startH, startM] = row.data.start_time!.split(':').map(Number)
-    const [endH, endM] = row.data.end_time!.split(':').map(Number)
+    const startTime = normalizeClockTime(row.data.start_time)
+    const endTime = normalizeClockTime(row.data.end_time)
+    if (startTime === null || endTime === null) {
+      result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidStartTime') })
+      result.skipped++
+      continue
+    }
 
-    const startAt = new Date(dateParts[0], dateParts[1], dateParts[2], startH, startM)
-    const endAt = new Date(dateParts[0], dateParts[1], dateParts[2], endH, endM)
+    const dateStr = day.toISODate()!
+    const startAt = DateTime.fromISO(`${dateStr}T${startTime}`, { zone: timezone })
+    let endAt = DateTime.fromISO(`${dateStr}T${endTime}`, { zone: timezone })
+    // A lesson that runs past midnight (23:30–00:30) ends on the next day.
+    if (endAt <= startAt) endAt = endAt.plus({ days: 1 })
 
     const status = normalizeStatus(row.data.status) || 'completed'
 
@@ -783,8 +805,8 @@ async function importLessonHistory(
       .insert({
         organization_id: orgId,
         teacher_id: teacherId,
-        start_at: startAt.toISOString(),
-        end_at: endAt.toISOString(),
+        start_at: startAt.toUTC().toISO()!,
+        end_at: endAt.toUTC().toISO()!,
         status,
         lesson_type: 'individual',
         max_students: 1,
@@ -1046,12 +1068,46 @@ async function importFamilyList(
   return result
 }
 
-function getNextDayOfWeek(from: Date, dayOfWeek: number, weeksAhead: number): Date {
-  const date = new Date(from)
-  const currentDay = date.getDay()
-  let daysUntil = dayOfWeek - currentDay
-  if (daysUntil < 0) daysUntil += 7
-  daysUntil += weeksAhead * 7
-  date.setDate(date.getDate() + daysUntil)
-  return date
+/**
+ * The first `count` weekly occurrences of `dayOfWeek` (0=Sun … 6=Sat) starting
+ * from today, as calendar days in `timezone`.
+ *
+ * Everything here is org-timezone: which day is "today", and which day is the
+ * next Tuesday, both differ between the server's clock and the org's.
+ */
+export function scheduleOccurrences(
+  timezone: string,
+  dayOfWeek: number,
+  count: number,
+  now: DateTime = DateTime.now()
+): DateTime[] {
+  // Luxon weekday: 1=Mon … 7=Sun. Ours: 0=Sun … 6=Sat.
+  const luxonWeekday = dayOfWeek === 0 ? 7 : dayOfWeek
+
+  let cursor = now.setZone(timezone).startOf('day')
+  while (cursor.weekday !== luxonWeekday) {
+    cursor = cursor.plus({ days: 1 })
+  }
+
+  const out: DateTime[] = []
+  for (let w = 0; w < count; w++) {
+    out.push(cursor.plus({ weeks: w }))
+  }
+  return out
+}
+
+/**
+ * Parse an imported date cell as a calendar day in the organization's timezone.
+ * Accepts DD/MM/YYYY (what Israeli spreadsheets write) and YYYY-MM-DD.
+ */
+export function parseImportDate(raw: string | null | undefined, timezone: string): DateTime | null {
+  const value = raw?.trim()
+  if (!value) return null
+
+  const opts = { zone: timezone }
+  const parsed = value.includes('/')
+    ? DateTime.fromFormat(value, 'd/M/yyyy', opts)
+    : DateTime.fromFormat(value, 'yyyy-M-d', opts)
+
+  return parsed.isValid ? parsed.startOf('day') : null
 }

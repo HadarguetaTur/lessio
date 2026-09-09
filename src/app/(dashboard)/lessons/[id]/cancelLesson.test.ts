@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * Authorization around `cancelLesson`.
+ * Authorization around `cancelLesson` and `setLessonStatus`.
  *
- * Two things are covered that nothing covered before:
+ * The billing rule moved into `cancelLessonCore`, so what this file guards is
+ * the action's own job: who may cancel, who may waive, and that the status
+ * dropdown reaches the same rule as the cancel panel rather than quietly
+ * flipping a status and charging nothing.
+ *
  *   1. Support mode is read-only. Cancelling bills a parent, so a superadmin
  *      impersonating an org must not be able to do it.
  *   2. A teacher may cancel her own lesson and only her own — and may not
@@ -15,22 +19,14 @@ const {
   mockRequireMutation,
   mockGetTeacherByProfileId,
   mockCreateServiceRoleClient,
-  mockGetCancellationPolicy,
-  mockCalculateCancellationCharge,
-  mockCreateCancellationCharge,
-  mockResolveBillingParent,
-  mockGetOrgPricing,
+  mockCancelLessonCore,
   mockCommonError,
 } = vi.hoisted(() => ({
   mockGetSession: vi.fn(),
   mockRequireMutation: vi.fn(),
   mockGetTeacherByProfileId: vi.fn(),
   mockCreateServiceRoleClient: vi.fn(),
-  mockGetCancellationPolicy: vi.fn(),
-  mockCalculateCancellationCharge: vi.fn(),
-  mockCreateCancellationCharge: vi.fn(),
-  mockResolveBillingParent: vi.fn(),
-  mockGetOrgPricing: vi.fn(),
+  mockCancelLessonCore: vi.fn(),
   mockCommonError: vi.fn(),
 }))
 
@@ -41,27 +37,10 @@ vi.mock('@/lib/auth/session', () => ({
 }))
 vi.mock('@/lib/teachers', () => ({ getTeacherByProfileId: mockGetTeacherByProfileId }))
 vi.mock('@/lib/supabase/service-role', () => ({ createServiceRoleClient: mockCreateServiceRoleClient }))
-vi.mock('@/lib/cancellation-policy', () => ({ getCancellationPolicy: mockGetCancellationPolicy }))
-vi.mock('@/lib/billing/calculateCancellationCharge', () => ({
-  calculateCancellationCharge: mockCalculateCancellationCharge,
+vi.mock('@/lib/cancellation-flow/cancelLessonCore', () => ({
+  cancelLessonCore: mockCancelLessonCore,
 }))
-vi.mock('@/lib/billing/createCharge', () => ({
-  createCancellationCharge: mockCreateCancellationCharge,
-  createLessonCharge: vi.fn(),
-}))
-vi.mock('@/lib/billing/resolveBillingParent', () => ({
-  resolveBillingParent: mockResolveBillingParent,
-  MissingPrimaryParentError: class MissingPrimaryParentError extends Error {},
-}))
-vi.mock('@/lib/organizations/pricing', () => ({ getOrgPricing: mockGetOrgPricing }))
-vi.mock('@/lib/billing/lessonPricing', () => ({
-  resolveLessonBaseAmount: vi.fn(() => 100),
-  isMissingPrice: vi.fn(() => false),
-  toStudentPricing: vi.fn((row) => ({
-    hourlyRate: row?.hourly_rate ?? null,
-    discountPercent: row?.discount_percent ?? null,
-  })),
-}))
+vi.mock('@/lib/billing/createCharge', () => ({ createLessonCharge: vi.fn() }))
 vi.mock('@/lib/i18n/actionErrors', () => ({ commonError: mockCommonError, zodError: vi.fn() }))
 vi.mock('next-intl/server', () => ({ getTranslations: vi.fn(async () => (k: string) => k) }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
@@ -69,7 +48,6 @@ vi.mock('@/lib/server/afterResponse', () => ({ runAfterResponse: vi.fn() }))
 vi.mock('@/lib/lessons', () => ({ updateLessonStatus: vi.fn() }))
 vi.mock('@/lib/lessons/notes', () => ({ createNote: vi.fn(), deleteNote: vi.fn() }))
 vi.mock('@/lib/lessons/cancelSeries', () => ({ stopLessonSeries: vi.fn() }))
-vi.mock('@/lib/billing/monthly/cancellationEvents', () => ({ createCancellationEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/notifications', () => ({
   notifyMultiple: vi.fn(async () => {}),
   getOwnerAndAdminProfileIds: vi.fn(async () => []),
@@ -83,42 +61,32 @@ vi.mock('@/lib/i18n/locale', () => ({
   resolveRecipientLocale: vi.fn(() => 'he'),
   toLuxonLocale: vi.fn(() => 'he'),
 }))
-vi.mock('@/lib/organizations', () => ({ getOrgTimezone: vi.fn(async () => 'Asia/Jerusalem') }))
 
-import { cancelLesson } from './actions'
+import { cancelLesson, setLessonStatus } from './actions'
 
-const LESSON = {
-  id: 'lesson-1',
-  start_at: '2026-09-01T10:00:00Z',
-  end_at: '2026-09-01T11:00:00Z',
-  status: 'scheduled',
-  lesson_type: 'individual',
-  price_per_student: 100,
-  lesson_students: [{ student_id: 'student-1' }],
-  teachers: { id: 'teacher-1', hourly_rate: 200 },
+const CORE_OK = {
+  success: true,
+  billingMode: 'per_lesson',
+  lessonId: 'lesson-1',
+  lessonStartAt: '2026-09-01T10:00:00Z',
+  lessonEndAt: '2026-09-01T11:00:00Z',
+  studentName: 'דנה',
+  teacherName: 'שרה',
+  lines: [],
+  billedTotal: 0,
+  pendingTotal: 0,
+  chargeResult: { shouldCharge: false, chargeType: null, amount: 0, reasonCode: 'no_charge' },
+  alerts: [],
 }
 
-/**
- * Chain-agnostic supabase stub. The action uses several different builder
- * shapes (`.eq().eq().single()` for the lesson, `.eq().single()` for the org
- * timezone), so every method returns the same chainable object and the
- * terminals resolve per table.
- */
-function stubDb(lesson: unknown) {
-  const rowFor = (table: string) =>
-    table === 'lessons' ? lesson : { timezone: 'Asia/Jerusalem' }
-
+/** Only the teacher_id lookup for the cancellation notification. */
+function stubDb() {
   return {
-    from: vi.fn((table: string) => {
+    from: vi.fn(() => {
       const chain: Record<string, unknown> = {}
-      const link = () => chain
-      for (const m of ['select', 'eq', 'in', 'is', 'order', 'limit', 'update', 'insert', 'neq', 'gte', 'lte']) {
-        chain[m] = vi.fn(link)
-      }
-      chain.single = vi.fn(async () => ({ data: rowFor(table), error: null }))
-      chain.maybeSingle = chain.single
-      // `await db.from(...).update(...).eq(...).eq(...)` — the chain itself is awaited.
-      chain.then = (resolve: (v: unknown) => unknown) => resolve({ data: null, error: null })
+      for (const m of ['select', 'eq']) chain[m] = vi.fn(() => chain)
+      chain.maybeSingle = vi.fn(async () => ({ data: { teacher_id: 'teacher-1' }, error: null }))
+      chain.single = chain.maybeSingle
       return chain
     }),
   }
@@ -137,11 +105,8 @@ describe('cancelLesson — authorization', () => {
     mockRequireMutation.mockImplementation(() => {})
     mockCommonError.mockImplementation(async (k: string) => `common.${k}`)
     mockGetSession.mockResolvedValue({ userId: 'p-1', orgId: 'org-1', role: 'owner', isSupportMode: false })
-    mockCreateServiceRoleClient.mockReturnValue(stubDb(LESSON))
-    mockGetCancellationPolicy.mockResolvedValue(null)
-    mockGetOrgPricing.mockResolvedValue({})
-    mockCalculateCancellationCharge.mockReturnValue({ shouldCharge: false, amount: 0, reasonCode: null })
-    mockResolveBillingParent.mockResolvedValue('parent-1')
+    mockCreateServiceRoleClient.mockReturnValue(stubDb())
+    mockCancelLessonCore.mockResolvedValue(CORE_OK)
     mockGetTeacherByProfileId.mockResolvedValue({ id: 'teacher-1' })
   })
 
@@ -149,8 +114,8 @@ describe('cancelLesson — authorization', () => {
     mockRequireMutation.mockImplementation(() => { throw new Error('SUPPORT_MODE_READ_ONLY') })
     const res = await cancelLesson('lesson-1', { error: null }, formData())
     expect(res.error).toBe('common.supportModeReadOnly')
-    // It must bail before reading, let alone writing, the lesson.
-    expect(mockCreateServiceRoleClient).not.toHaveBeenCalled()
+    // It must bail before cancelling anything.
+    expect(mockCancelLessonCore).not.toHaveBeenCalled()
   })
 
   it('requires a reason', async () => {
@@ -158,6 +123,7 @@ describe('cancelLesson — authorization', () => {
     fd.set('cancel_reason', '   ')
     const res = await cancelLesson('lesson-1', { error: null }, fd)
     expect(res.error).toBe('lessons.errors.reasonRequired')
+    expect(mockCancelLessonCore).not.toHaveBeenCalled()
   })
 
   it('lets a teacher cancel her own lesson', async () => {
@@ -165,12 +131,19 @@ describe('cancelLesson — authorization', () => {
     mockGetTeacherByProfileId.mockResolvedValue({ id: 'teacher-1' })
     const res = await cancelLesson('lesson-1', { error: null }, formData())
     expect(res.error).toBeNull()
+    expect(mockCancelLessonCore.mock.calls[0][0]).toMatchObject({
+      actor: { kind: 'teacher', teacherId: 'teacher-1' },
+      source: 'teacher',
+    })
   })
 
   it("refuses a teacher on another teacher's lesson", async () => {
     mockGetSession.mockResolvedValue({ userId: 'p-1', orgId: 'org-1', role: 'teacher', isSupportMode: false })
     mockGetTeacherByProfileId.mockResolvedValue({ id: 'teacher-99' })
+    // Ownership is the core's call now; it sees the lesson row.
+    mockCancelLessonCore.mockResolvedValue({ success: false, error: 'forbidden' })
     const res = await cancelLesson('lesson-1', { error: null }, formData())
+    expect(mockCancelLessonCore.mock.calls[0][0].actor).toEqual({ kind: 'teacher', teacherId: 'teacher-99' })
     expect(res.error).toBe('lessons.errors.noCancelPermission')
   })
 
@@ -179,17 +152,60 @@ describe('cancelLesson — authorization', () => {
     mockGetTeacherByProfileId.mockResolvedValue(null)
     const res = await cancelLesson('lesson-1', { error: null }, formData())
     expect(res.error).toBe('lessons.errors.noCancelPermission')
+    expect(mockCancelLessonCore).not.toHaveBeenCalled()
   })
 
   it('ignores waive=true from a teacher, so the policy still runs', async () => {
     mockGetSession.mockResolvedValue({ userId: 'p-1', orgId: 'org-1', role: 'teacher', isSupportMode: false })
     await cancelLesson('lesson-1', { error: null }, formData({ waive: 'true' }))
-    // waive would have skipped the policy read entirely.
-    expect(mockGetCancellationPolicy).toHaveBeenCalledWith('org-1')
+    expect(mockCancelLessonCore.mock.calls[0][0].waive).toBe(false)
   })
 
   it('honours waive=true from an owner', async () => {
     await cancelLesson('lesson-1', { error: null }, formData({ waive: 'true' }))
-    expect(mockGetCancellationPolicy).not.toHaveBeenCalled()
+    expect(mockCancelLessonCore.mock.calls[0][0].waive).toBe(true)
+  })
+
+  it('refuses to cancel a lesson that already took place', async () => {
+    mockCancelLessonCore.mockResolvedValue({ success: false, error: 'already_delivered' })
+    const res = await cancelLesson('lesson-1', { error: null }, formData())
+    expect(res.error).toBe('lessons.errors.alreadyDelivered')
+  })
+})
+
+describe('setLessonStatus — cancelling from the dropdown', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRequireMutation.mockImplementation(() => {})
+    mockCommonError.mockImplementation(async (k: string) => `common.${k}`)
+    mockGetSession.mockResolvedValue({ userId: 'p-1', orgId: 'org-1', role: 'owner', isSupportMode: false })
+    mockCreateServiceRoleClient.mockReturnValue(stubDb())
+    mockCancelLessonCore.mockResolvedValue(CORE_OK)
+  })
+
+  it('runs the cancellation rule instead of just flipping the status', async () => {
+    const fd = new FormData()
+    fd.set('status', 'cancelled')
+    fd.set('cancel_reason', 'מחלה')
+
+    const res = await setLessonStatus('lesson-1', { error: null }, fd)
+
+    expect(res.error).toBeNull()
+    // The dropdown used to charge nothing in either billing mode.
+    expect(mockCancelLessonCore).toHaveBeenCalledTimes(1)
+    expect(mockCancelLessonCore.mock.calls[0][0]).toMatchObject({
+      lessonId: 'lesson-1',
+      orgId: 'org-1',
+      actor: { kind: 'staff' },
+      reason: 'מחלה',
+    })
+  })
+
+  it('surfaces the same refusal the cancel panel gives for a delivered lesson', async () => {
+    mockCancelLessonCore.mockResolvedValue({ success: false, error: 'already_delivered' })
+    const fd = new FormData()
+    fd.set('status', 'cancelled')
+    const res = await setLessonStatus('lesson-1', { error: null }, fd)
+    expect(res.error).toBe('lessons.errors.alreadyDelivered')
   })
 })

@@ -440,14 +440,26 @@ async function recordAccountHealthUpdate(update: AccountHealthUpdate): Promise<v
 
   // What the event states outright. The refresh below overwrites it with
   // Meta's full view when it succeeds; when it does not, this is still true.
-  const patch: Partial<PhoneHealth> & { checkedAt: string } = {
+  const patch: Partial<PhoneHealth> & { checkedAt: string; accountRestricted?: boolean } = {
     checkedAt: new Date().toISOString(),
   }
   if (update.field === 'phone_number_quality_update') {
     if (update.event === 'FLAGGED') patch.qualityRating = 'RED'
     if (update.currentLimit) patch.messagingLimitTier = update.currentLimit
-  } else if (update.field === 'account_update' && update.event === 'VERIFIED_ACCOUNT') {
-    patch.businessVerificationStatus = 'verified'
+  } else if (update.field === 'account_update') {
+    // The restriction flag is what turns the dashboard banner on, so it is set
+    // from the event itself rather than inferred from the refresh below — a
+    // Graph read can succeed perfectly well on a restricted account.
+    if (update.event === 'VERIFIED_ACCOUNT') {
+      patch.businessVerificationStatus = 'verified'
+      patch.accountRestricted = false
+    } else if (
+      update.event === 'ACCOUNT_RESTRICTION' ||
+      update.event === 'ACCOUNT_VIOLATION' ||
+      update.event === 'DISABLED_UPDATE'
+    ) {
+      patch.accountRestricted = true
+    }
   } else if (update.field === 'phone_number_name_update') {
     patch.nameStatus = update.event
   }

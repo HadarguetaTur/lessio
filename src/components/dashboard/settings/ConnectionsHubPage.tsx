@@ -12,6 +12,8 @@ import {
 } from '@/lib/navigation/registry'
 import { getProviderUI } from '@/lib/payments/registry-ui'
 import { listApiKeys } from '@/lib/api/store'
+import { getWaConnectionState, type WaConnectionState } from '@/lib/whatsapp/connectionState'
+import { WaStatusBadge } from './WaStatusBadge'
 import { PageHeader } from '@/components/ui/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,6 +22,14 @@ type ConnectionStatus = {
   /** 'configured' = credentials saved but never verified (payment/receipts honesty). */
   state: 'connected' | 'configured' | 'none'
   detail?: string
+  /**
+   * WhatsApp alone renders its own badge. Every other connection here can only
+   * report whether credentials exist; WhatsApp is the one Lessio actually knows
+   * the operational health of, and the audit's first finding was this card
+   * painting a dead number green because it asked the same question of it as of
+   * the others (F1). When set, this wins over `state`.
+   */
+  wa?: WaConnectionState
 }
 
 /**
@@ -48,7 +58,7 @@ export async function ConnectionsHubPage() {
   )
 
   const db = createServiceRoleClient()
-  const [{ data: org }, apiKeys] = await Promise.all([
+  const [{ data: org }, apiKeys, waState] = await Promise.all([
     db
       .from('organizations')
       .select(
@@ -57,6 +67,11 @@ export async function ConnectionsHubPage() {
       .eq('id', orgId)
       .single(),
     visibleIds.has('integrations') ? listApiKeys(orgId) : Promise.resolve([]),
+    // Templates included: this card is where an owner comes to ask "is my
+    // WhatsApp fine?", so it should say "limited" when it is.
+    visibleIds.has('whatsapp')
+      ? getWaConnectionState(orgId, { checkTemplates: true, features })
+      : Promise.resolve(null),
   ])
 
   const paymentProviderUI = org?.payment_provider ? getProviderUI(org.payment_provider) : null
@@ -82,7 +97,9 @@ export async function ConnectionsHubPage() {
               ),
             }
           : { state: 'none' },
-    whatsapp: org?.whatsapp_phone_number_id ? { state: 'connected' } : { state: 'none' },
+    whatsapp: waState
+      ? { state: waState.state === 'active' ? 'connected' : 'none', wa: waState }
+      : { state: org?.whatsapp_phone_number_id ? 'connected' : 'none' },
     email: org?.gmail_connected_email
       ? { state: 'connected', detail: org.gmail_connected_email }
       : { state: 'none' },
@@ -129,7 +146,12 @@ export async function ConnectionsHubPage() {
                               {t(`cards.${cardKey}.description` as Parameters<typeof t>[0])}
                             </CardDescription>
                             <div className="mt-2.5">
-                              {isOn ? (
+                              {status.wa ? (
+                                <WaStatusBadge
+                                  state={status.wa.state}
+                                  detail={status.wa.displayPhoneNumber}
+                                />
+                              ) : isOn ? (
                                 <Badge className="border-green-200 bg-green-50 text-green-700">
                                   <Check aria-hidden />
                                   <span className="truncate">

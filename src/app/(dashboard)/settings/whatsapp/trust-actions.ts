@@ -31,8 +31,15 @@ export async function refreshWhatsAppHealth(
 
   if (session.role !== 'owner') return { error: t('errors.ownerOnly') }
 
-  const health = await refreshPhoneHealth(session.orgId)
-  if (!health) return { error: t('errors.refreshFailed') }
+  const result = await refreshPhoneHealth(session.orgId)
+
+  // Three different sentences, not one. The old code reported "we could not
+  // reach Meta" for an org that had simply never connected a number, and said
+  // nothing at all about a dead token (UX audit F12).
+  if (!result.ok) {
+    revalidatePath('/settings/whatsapp')
+    return { error: t(`errors.refresh.${result.reason}`) }
+  }
 
   revalidatePath('/settings/whatsapp')
   return { error: null }

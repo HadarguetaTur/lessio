@@ -154,7 +154,15 @@ export async function issueReceiptForCharge(
 
   const documentType = (org?.receipt_document_type === 'tax_invoice' ? 'tax_invoice' : 'receipt') as import('./index').DocumentType
   const vatRate = Number(org?.default_vat_rate ?? 0)
-  const vatAmount = documentType === 'tax_invoice' ? Math.round(charge.amount * vatRate) / 100 : undefined
+  // VAT is CONTAINED IN the amount, never added to it. An Israeli consumer
+  // price is quoted VAT-inclusive: ₪1,000 billed is ₪1,000 collected, and the
+  // tax invoice for it reads base ₪847.46 + VAT ₪152.54 at 18%. Multiplying by
+  // the rate instead produced a ₪1,180 document for ₪1,000 of money — a tax
+  // document describing a payment that never happened.
+  const vatAmount =
+    documentType === 'tax_invoice' && vatRate > 0
+      ? Math.round((Number(charge.amount) - Number(charge.amount) / (1 + vatRate / 100)) * 100) / 100
+      : undefined
   const customerTaxId = parent?.tax_id ?? undefined
 
   const claimTimestamp = new Date().toISOString()
@@ -191,12 +199,35 @@ export async function issueReceiptForCharge(
       customerTaxId,
     })
   } catch (err) {
-    await db
+    // The payment stands; only the document failed. Releasing the claim lets a
+    // retry through, and the failure is written down rather than left as a line
+    // in a log nobody reads — a paid charge with no tax document is a
+    // compliance problem someone has to be able to find.
+    const { data: released } = await db
       .from('charges')
-      .update({ receipt_issued_at: null })
+      .update({
+        receipt_issued_at: null,
+        receipt_error: String(err instanceof Error ? err.message : err).slice(0, 500),
+        receipt_failed_at: new Date().toISOString(),
+      })
       .eq('id', chargeId)
       .eq('organization_id', orgId)
       .eq('receipt_issued_at', claimTimestamp)
+      .select('receipt_attempts')
+      .maybeSingle()
+
+    await db
+      .from('charges')
+      .update({ receipt_attempts: Number(released?.receipt_attempts ?? 0) + 1 })
+      .eq('id', chargeId)
+      .eq('organization_id', orgId)
+
+    console.error('[receipts] Receipt issuance failed for a paid charge', {
+      chargeId,
+      orgId,
+      attempts: Number(released?.receipt_attempts ?? 0) + 1,
+      err,
+    })
     throw err
   }
   const { receiptUrl, documentType: issuedDocType } = issued
@@ -208,6 +239,9 @@ export async function issueReceiptForCharge(
       receipt_url: receiptUrl,
       receipt_issued_at: new Date().toISOString(),
       document_type: issuedDocType,
+      // An earlier failure on this charge is resolved by this document.
+      receipt_error: null,
+      receipt_failed_at: null,
     })
     .eq('id', chargeId)
     .eq('organization_id', orgId)

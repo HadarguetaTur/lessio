@@ -2625,6 +2625,7 @@
         "RED": "Quality: low",
         "UNKNOWN": "Quality: not checked yet"
       },
+      "staleSnapshot": "These figures are from the last successful check with Meta. They stop updating while the connection is broken.",
       "limitPerDay": "Up to {n} conversations per day",
       "limitUnknown": "Daily limit not checked yet",
       "limitUnlimited": "Unlimited conversations per day",

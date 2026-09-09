@@ -11,9 +11,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
-import { parseFile, normalizeHeaders } from '@/lib/import/parseFile'
+import { parseFile, normalizeHeaders, ImportParseError } from '@/lib/import/parseFile'
 import { validateRows, type EntityType } from '@/lib/import/validators'
 import { detectDuplicates } from '@/lib/import/detectDuplicates'
+import { getRequiredFieldKeys } from '@/lib/import/entityMeta'
 import { getImportTranslator } from '@/lib/i18n/serverTranslator'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -59,6 +60,24 @@ export async function POST(request: NextRequest) {
     }
 
     const { normalizedRows, mappedHeaders } = normalizeHeaders(rows, headers)
+
+    // If not one required column was recognised, the file is mis-shaped (or the
+    // headers were mangled). Say so, with the headers we actually saw — far more
+    // useful than N rows each reporting every required field as missing.
+    const required = getRequiredFieldKeys(entityType as EntityType)
+    const mapped = new Set(Object.values(mappedHeaders))
+    if (!required.some((key) => mapped.has(key))) {
+      return NextResponse.json(
+        {
+          error: t('apiErrors.noRecognisedColumns', {
+            expected: required.map((k) => t(`fields.${k}`)).join(', '),
+            found: headers.join(', '),
+          } as Record<string, string>),
+        },
+        { status: 400 }
+      )
+    }
+
     const m = (key: string) => t(key)
     const validatedRows = validateRows(normalizedRows, entityType as EntityType, m)
     const existingWarning = t('warnings.existingRecord')
@@ -106,7 +125,12 @@ export async function POST(request: NextRequest) {
       missingDependencies,
       mappedHeaders,
     })
-  } catch {
+  } catch (e) {
+    if (e instanceof ImportParseError) {
+      // A bad file is the caller's input, not a server fault — name the reason.
+      return NextResponse.json({ error: t(`apiErrors.${e.code}`) }, { status: 400 })
+    }
+    console.error('[import/parse] unexpected failure', e)
     return NextResponse.json({ error: t('apiErrors.parseError') }, { status: 500 })
   }
 }

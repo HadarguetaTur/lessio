@@ -16,7 +16,7 @@ import { getT } from '@/lib/i18n/serverTranslator'
  * Hebrew sentence.
  */
 export type CancelLessonResult =
-  | { ok: true; charged: boolean; amount: number }
+  | { ok: true; charged: boolean; amount: number; pendingAmount: number }
   | { ok: false; error: 'unauthorized' | 'already_cancelled' | 'not_eligible' | 'not_found' | 'generic' }
 
 export async function cancelLessonAction(
@@ -81,10 +81,14 @@ export async function cancelLessonAction(
     )
   }
 
+  // Built from what was actually billed, never recomputed here. In a monthly
+  // org nothing is charged now — the policy's fee waits on the monthly bill —
+  // so the parent is told that rather than told there was no fee.
   const charged = outcome.chargeResult.shouldCharge && outcome.chargeResult.amount > 0
   return {
     ok: true,
     charged,
     amount: charged ? outcome.chargeResult.amount : 0,
+    pendingAmount: outcome.pendingTotal,
   }
 }

@@ -4305,7 +4305,8 @@
         "generic": "שגיאה בביטול"
       },
       "cancelledWithCharge": "השיעור בוטל. חיוב ביטול: {amount}",
-      "cancelledOk": "השיעור בוטל בהצלחה"
+      "cancelledOk": "השיעור בוטל בהצלחה",
+      "cancelledPendingCharge": "השיעור בוטל. דמי ביטול בסך {amount} יתווספו לחשבון החודשי לאחר אישור בית הספר."
     },
     "payments": {
       "title": "תשלומים",

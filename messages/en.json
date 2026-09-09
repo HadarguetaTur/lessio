@@ -4305,7 +4305,8 @@
         "generic": "Cancellation failed"
       },
       "cancelledWithCharge": "The lesson was cancelled. Cancellation charge: {amount}",
-      "cancelledOk": "The lesson was cancelled successfully"
+      "cancelledOk": "The lesson was cancelled successfully",
+      "cancelledPendingCharge": "Lesson cancelled. A {amount} cancellation fee will be added to your monthly bill once the school approves it."
     },
     "payments": {
       "title": "Payments",

@@ -87,11 +87,6 @@ import {
   type AppLocale,
 } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
-import {
-  isDemoRescheduleEnabled,
-  hasRescheduleIntent,
-  handleRescheduleIntent,
-} from '@/lib/whatsapp/demoReschedule'
 import { upsertLead } from '@/lib/leads'
 import {
   getActiveCancellationSession,
@@ -1047,21 +1042,6 @@ async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promi
       orgId: org.id,
       senderPhone,
       timezone,
-      accessToken,
-      phoneNumberId,
-      locale,
-    })
-    return
-  }
-
-  // 8b. Demo reschedule intent (DEMO_RESCHEDULE_ENABLED only — Meta App Review demo)
-  if (isDemoRescheduleEnabled() && hasRescheduleIntent(msg.text)) {
-    await handleRescheduleIntent({
-      parentId: parent.id,
-      orgId: org.id,
-      senderPhone,
-      text: msg.text,
-      timezone: (org.timezone as string | null) ?? 'Asia/Jerusalem',
       accessToken,
       phoneNumberId,
       locale,

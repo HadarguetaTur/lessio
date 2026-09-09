@@ -252,8 +252,12 @@ export function hasBalanceIntent(text: string): boolean {
  * guard below steps aside for it. This detector is an early return before both
  * the parent AI assistant (route.ts § 9c) and the staff copilot (staff.ts), so
  * "אני רוצה לשנות את הזמינות של השיעורים שלי" must fall through to them rather
- * than be answered with a summary or lesson list. The verb list mirrors
- * hasRescheduleIntent (demoReschedule.ts), which the webhook checks first.
+ * than be answered with a summary or lesson list.
+ *
+ * Nothing downstream of this detector can move a lesson: the App Review demo
+ * handler that once acted on these verbs was deleted after approval
+ * (2026-09-05), and rescheduling is not a bot capability. A reschedule-shaped
+ * message is answered — by the assistant or the menu — never executed.
  */
 export function hasScheduleIntent(text: string): boolean {
   if (/לשנות|לעדכן|להזיז|להעביר|לדחות|זמינות|\b(change|update|modify|reschedule|move|availability)\b/i.test(text)) {

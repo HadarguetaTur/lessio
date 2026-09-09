@@ -1,4 +1,6 @@
+import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { normalizeClockTime, type SeriesRule } from '@/lib/lessons/seriesRule'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { z } from 'zod'
 import type { EntityType, ValidatedRow } from './validators'
@@ -10,6 +12,10 @@ export interface ImportResult {
   updated: number
   skipped: number
   errors: { row: number; message: string }[]
+  /** True when a failure rolled the whole run back and nothing was created. */
+  rolledBack?: boolean
+  /** True when this result is replayed from an earlier run of the same batch. */
+  alreadyRan?: boolean
   /** Number of parent–student relationships created (parents and family-list imports) */
   linkedRelationships?: number
   /** Student names that could not be linked because they don't exist in the DB */
@@ -124,6 +130,61 @@ function findInMap(map: NameIdMap, name: string | null | undefined): string | nu
 
 const BATCH_SIZE = 50
 
+/**
+ * How many weekly occurrences an imported timetable row generates.
+ *
+ * Nothing extends a series after the fact, so this is also the horizon written
+ * into `rule.until` — the stored rule and the created lessons agree.
+ */
+export const SCHEDULE_WEEKS_AHEAD = 4
+
+/**
+ * Raised when a run cannot continue safely — a database error rather than a
+ * problem with one row's data. It aborts the import so the tracked writes can
+ * be undone, instead of leaving half a spreadsheet in the org.
+ */
+export class ImportAbortedError extends Error {
+  readonly rowNumber: number | null
+  readonly detail: string
+  constructor(rowNumber: number | null, detail: string) {
+    super(detail)
+    this.name = 'ImportAbortedError'
+    this.rowNumber = rowNumber
+    this.detail = detail
+  }
+}
+
+/**
+ * Records everything a run inserted so it can be undone.
+ *
+ * Supabase's REST client cannot open a transaction, so "all or nothing" is
+ * compensating deletes: rows are removed in reverse insertion order, which
+ * respects the foreign keys between lesson_students → lessons → lesson_series.
+ */
+export class ImportRollback {
+  private readonly writes: { table: string; ids: string[] }[] = []
+
+  record(table: string, ids: (string | undefined | null)[]): void {
+    const clean = ids.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    if (clean.length > 0) this.writes.push({ table, ids: clean })
+  }
+
+  get isEmpty(): boolean {
+    return this.writes.length === 0
+  }
+
+  async undo(db: ReturnType<typeof createServiceRoleClient>): Promise<void> {
+    for (let i = this.writes.length - 1; i >= 0; i--) {
+      const { table, ids } = this.writes[i]
+      const { error } = await db.from(table).delete().in('id', ids)
+      if (error) {
+        // Keep unwinding: leaving even more behind helps nobody.
+        console.error(`[import] rollback failed for ${table}`, error.message)
+      }
+    }
+  }
+}
+
 /** Translator scoped to `import` namespace (e.g. `executeErrors.invalidPhone`). */
 export type ImportTranslateFn = (
   key: string,
@@ -158,19 +219,47 @@ export async function executeImport(
 
   if (rows.length === 0) return result
 
-  switch (entityType) {
-    case 'students':
-      return importStudents(db, orgId, rows, result, tImport)
-    case 'parents':
-      return importParents(db, orgId, rows, result, tImport, consent)
-    case 'teachers':
-      return importTeachers(db, orgId, rows, result, tImport)
-    case 'lessons-schedule':
-      return importLessonSchedule(db, orgId, rows, result, timezone, tImport)
-    case 'lessons-history':
-      return importLessonHistory(db, orgId, rows, result, timezone, tImport)
-    case 'family-list':
-      return importFamilyList(db, orgId, rows, result, tImport, consent)
+  const rollback = new ImportRollback()
+
+  try {
+    switch (entityType) {
+      case 'students':
+        return await importStudents(db, orgId, rows, result, tImport, rollback)
+      case 'parents':
+        return await importParents(db, orgId, rows, result, tImport, consent, rollback)
+      case 'teachers':
+        return await importTeachers(db, orgId, rows, result, tImport)
+      case 'lessons-schedule':
+        return await importLessonSchedule(db, orgId, rows, result, timezone, tImport, rollback)
+      case 'lessons-history':
+        return await importLessonHistory(db, orgId, rows, result, timezone, tImport, rollback)
+      case 'family-list':
+        return await importFamilyList(db, orgId, rows, result, tImport, consent, rollback)
+    }
+  } catch (e) {
+    // A database failure leaves a half-imported org that nobody can see or
+    // undo, and the natural retry re-posts the same preview and duplicates
+    // whatever did land. Undo this run's writes so the retry starts clean.
+    await rollback.undo(db)
+
+    if (e instanceof ImportAbortedError) {
+      return {
+        ...result,
+        inserted: 0,
+        updated: 0,
+        skipped: rows.length,
+        rolledBack: true,
+        errors: [
+          ...result.errors,
+          {
+            row: e.rowNumber ?? 0,
+            message: tImport('executeErrors.dbError', { message: e.detail }),
+          },
+          { row: 0, message: tImport('executeErrors.rolledBack') },
+        ],
+      }
+    }
+    throw e
   }
 }
 
@@ -225,7 +314,8 @@ async function importStudents(
   orgId: string,
   rows: ValidatedRow[],
   result: ImportResult,
-  t: ImportTranslateFn
+  t: ImportTranslateFn,
+  rollback: ImportRollback
 ): Promise<ImportResult> {
   // Pre-fetch teachers for name matching
   const { data: teachers } = await db
@@ -266,16 +356,13 @@ async function importStudents(
       .select('id')
 
     if (error) {
-      for (const row of batch) {
-        result.errors.push({
-          row: row.rowIndex + 2,
-          message: t('executeErrors.dbError', { message: error.message }),
-        })
-      }
-      result.skipped += batch.length
-    } else {
-      result.inserted += data?.length ?? 0
+      // Skipping the chunk and carrying on used to commit the chunks either
+      // side of it, with no batch id and no undo.
+      throw new ImportAbortedError(batch[0].rowIndex + 2, error.message)
     }
+
+    rollback.record('students', (data ?? []).map((r) => r.id))
+    result.inserted += data?.length ?? 0
   }
 
   // Update existing rows one by one
@@ -316,7 +403,8 @@ async function importParents(
   rows: ValidatedRow[],
   result: ImportResult,
   t: ImportTranslateFn,
-  consent?: ImportConsent
+  consent: ImportConsent | undefined,
+  rollback: ImportRollback
 ): Promise<ImportResult> {
   // Pre-fetch students for student_names linking
   const { data: students } = await db
@@ -420,6 +508,7 @@ async function importParents(
       }
 
       parentId = parent.id
+      rollback.record('parents', [parentId])
       result.inserted++
     }
 
@@ -576,8 +665,9 @@ async function importLessonSchedule(
   orgId: string,
   rows: ValidatedRow[],
   result: ImportResult,
-  _timezone: string,
-  t: ImportTranslateFn
+  timezone: string,
+  t: ImportTranslateFn,
+  rollback: ImportRollback
 ): Promise<ImportResult> {
   // Pre-fetch teachers and students
   const { data: teachers } = await db
@@ -601,8 +691,6 @@ async function importLessonSchedule(
   const studentMap = buildNameLookup(
     (students ?? []).map((s) => ({ id: s.id, name: s.full_name }))
   )
-
-  const WEEKS_AHEAD = 4
 
   for (const row of rows) {
     const teacherId = findInMap(teacherMap, row.data.teacher_name)
@@ -632,15 +720,30 @@ async function importLessonSchedule(
       continue
     }
 
-    const startTime = row.data.start_time!
+    const startTime = normalizeClockTime(row.data.start_time)
+    if (startTime === null) {
+      result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidStartTime') })
+      result.skipped++
+      continue
+    }
+
     const duration = parseInt(row.data.duration_minutes!)
     const lessonType = normalizeLessonType(row.data.lesson_type)
 
-    // Create lesson_series
-    const rule = {
-      dayOfWeek,
-      startTime,
-      durationMinutes: duration,
+    // Occurrence dates, computed in the ORGANIZATION's timezone. Doing this
+    // with server-local Date arithmetic put every imported lesson on Vercel's
+    // UTC clock, so a 16:00 Jerusalem lesson landed at 19:00 local.
+    const occurrences = scheduleOccurrences(timezone, dayOfWeek, SCHEDULE_WEEKS_AHEAD)
+
+    // Canonical rule shape — snake_case, with the frequency and the horizon
+    // every reader expects. `until` is the last occurrence we actually create,
+    // so the stored rule never promises lessons that do not exist.
+    const rule: SeriesRule = {
+      frequency: 'weekly',
+      day_of_week: dayOfWeek,
+      start_time: startTime,
+      duration_minutes: duration,
+      until: occurrences[occurrences.length - 1].toISODate()!,
     }
 
     const { data: series, error: seriesError } = await db
@@ -655,34 +758,24 @@ async function importLessonSchedule(
       .single()
 
     if (seriesError) {
-      result.errors.push({
-        row: row.rowIndex + 2,
-        message: t('executeErrors.dbError', { message: seriesError.message }),
-      })
-      result.skipped++
-      continue
+      throw new ImportAbortedError(row.rowIndex + 2, seriesError.message)
     }
 
-    // Generate lessons for the next N weeks
-    const now = new Date()
+    rollback.record('lesson_series', [series.id])
     let lessonsCreated = 0
 
-    for (let w = 0; w < WEEKS_AHEAD; w++) {
-      const lessonDate = getNextDayOfWeek(now, dayOfWeek, w)
-      const [hours, minutes] = startTime.split(':').map(Number)
-
-      const startAt = new Date(lessonDate)
-      startAt.setHours(hours, minutes, 0, 0)
-
-      const endAt = new Date(startAt.getTime() + duration * 60 * 1000)
+    for (const day of occurrences) {
+      // Interpret the wall-clock time in the org timezone, then convert to UTC.
+      const startAt = DateTime.fromISO(`${day.toISODate()}T${startTime}`, { zone: timezone })
+      const endAt = startAt.plus({ minutes: duration })
 
       const { data: lesson, error: lessonError } = await db
         .from('lessons')
         .insert({
           organization_id: orgId,
           teacher_id: teacherId,
-          start_at: startAt.toISOString(),
-          end_at: endAt.toISOString(),
+          start_at: startAt.toUTC().toISO()!,
+          end_at: endAt.toUTC().toISO()!,
           status: 'scheduled',
           lesson_type: lessonType,
           max_students: lessonType === 'individual' ? 1 : lessonType === 'pair' ? 2 : 10,
@@ -691,15 +784,30 @@ async function importLessonSchedule(
         .select('id')
         .single()
 
-      if (!lessonError && lesson) {
-        await db.from('lesson_students').insert({
+      // A lesson that silently failed to insert used to leave a series that
+      // claims more lessons than exist, with nothing reported to the owner.
+      if (lessonError || !lesson) {
+        throw new ImportAbortedError(row.rowIndex + 2, lessonError?.message ?? 'lesson insert failed')
+      }
+
+      rollback.record('lessons', [lesson.id])
+
+      const { data: enrolment, error: enrolmentError } = await db
+        .from('lesson_students')
+        .insert({
           lesson_id: lesson.id,
           student_id: studentId,
           organization_id: orgId,
           status: 'enrolled',
         })
-        lessonsCreated++
+        .select('id')
+        .single()
+
+      if (enrolmentError) {
+        throw new ImportAbortedError(row.rowIndex + 2, enrolmentError.message)
       }
+      rollback.record('lesson_students', [enrolment?.id])
+      lessonsCreated++
     }
 
     result.inserted += lessonsCreated
@@ -714,7 +822,8 @@ async function importLessonHistory(
   rows: ValidatedRow[],
   result: ImportResult,
   timezone: string,
-  t: ImportTranslateFn
+  t: ImportTranslateFn,
+  rollback: ImportRollback
 ): Promise<ImportResult> {
   const { data: teachers } = await db
     .from('teachers')
@@ -759,22 +868,27 @@ async function importLessonHistory(
       continue
     }
 
-    // Parse date (DD/MM/YYYY or YYYY-MM-DD)
-    const dateStr = row.data.date!
-    let dateParts: [number, number, number]
-    if (dateStr.includes('/')) {
-      const [d, m, y] = dateStr.split('/').map(Number)
-      dateParts = [y, m - 1, d]
-    } else {
-      const [y, m, d] = dateStr.split('-').map(Number)
-      dateParts = [y, m - 1, d]
+    // Parse date (DD/MM/YYYY or YYYY-MM-DD) in the ORGANIZATION's timezone.
+    const day = parseImportDate(row.data.date, timezone)
+    if (day === null) {
+      result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidDate') })
+      result.skipped++
+      continue
     }
 
-    const [startH, startM] = row.data.start_time!.split(':').map(Number)
-    const [endH, endM] = row.data.end_time!.split(':').map(Number)
+    const startTime = normalizeClockTime(row.data.start_time)
+    const endTime = normalizeClockTime(row.data.end_time)
+    if (startTime === null || endTime === null) {
+      result.errors.push({ row: row.rowIndex + 2, message: t('executeErrors.invalidStartTime') })
+      result.skipped++
+      continue
+    }
 
-    const startAt = new Date(dateParts[0], dateParts[1], dateParts[2], startH, startM)
-    const endAt = new Date(dateParts[0], dateParts[1], dateParts[2], endH, endM)
+    const dateStr = day.toISODate()!
+    const startAt = DateTime.fromISO(`${dateStr}T${startTime}`, { zone: timezone })
+    let endAt = DateTime.fromISO(`${dateStr}T${endTime}`, { zone: timezone })
+    // A lesson that runs past midnight (23:30–00:30) ends on the next day.
+    if (endAt <= startAt) endAt = endAt.plus({ days: 1 })
 
     const status = normalizeStatus(row.data.status) || 'completed'
 
@@ -783,8 +897,8 @@ async function importLessonHistory(
       .insert({
         organization_id: orgId,
         teacher_id: teacherId,
-        start_at: startAt.toISOString(),
-        end_at: endAt.toISOString(),
+        start_at: startAt.toUTC().toISO()!,
+        end_at: endAt.toUTC().toISO()!,
         status,
         lesson_type: 'individual',
         max_students: 1,
@@ -793,23 +907,29 @@ async function importLessonHistory(
       .select('id')
       .single()
 
-    if (error) {
-      result.errors.push({
-        row: row.rowIndex + 2,
-        message: t('executeErrors.dbError', { message: error.message }),
-      })
-      result.skipped++
-      continue
+    if (error || !lesson) {
+      throw new ImportAbortedError(row.rowIndex + 2, error?.message ?? 'lesson insert failed')
     }
 
-    if (lesson) {
-      await db.from('lesson_students').insert({
+    rollback.record('lessons', [lesson.id])
+
+    const { data: enrolment, error: enrolmentError } = await db
+      .from('lesson_students')
+      .insert({
         lesson_id: lesson.id,
         student_id: studentId,
         organization_id: orgId,
         status: status === 'cancelled' ? 'cancelled' : 'enrolled',
       })
+      .select('id')
+      .single()
+
+    if (enrolmentError) {
+      // A lesson with nobody enrolled on it is invisible on the student's
+      // page and uncharged by billing — worse than not importing the row.
+      throw new ImportAbortedError(row.rowIndex + 2, enrolmentError.message)
     }
+    rollback.record('lesson_students', [enrolment?.id])
 
     result.inserted++
   }
@@ -835,6 +955,7 @@ async function upsertParent(
   result: ImportResult,
   rowIndex: number,
   t: ImportTranslateFn,
+  rollback: ImportRollback,
   extras?: ParentUpsertExtras | null,
   consentCols?: Record<string, string | null>
 ): Promise<string | null> {
@@ -903,6 +1024,7 @@ async function upsertParent(
   }
 
   result.inserted++
+  rollback.record('parents', [parent.id])
   phoneToParentId.set(phone, parent.id)
   return parent.id
 }
@@ -913,7 +1035,8 @@ async function importFamilyList(
   rows: ValidatedRow[],
   result: ImportResult,
   t: ImportTranslateFn,
-  consent?: ImportConsent
+  consent: ImportConsent | undefined,
+  rollback: ImportRollback
 ): Promise<ImportResult> {
   result.linkedRelationships = 0
 
@@ -959,6 +1082,7 @@ async function importFamilyList(
       result,
       row.rowIndex + 2,
       t,
+      rollback,
       parentExtrasPrimary,
       consentColumns(consent, row.data.parent_whatsapp_consent ?? row.data.whatsapp_consent)
     )
@@ -978,6 +1102,7 @@ async function importFamilyList(
           result,
           row.rowIndex + 2,
           t,
+          rollback,
           null,
           consentColumns(consent, row.data.parent_whatsapp_consent ?? row.data.whatsapp_consent)
         )
@@ -1008,6 +1133,7 @@ async function importFamilyList(
         continue
       }
       studentId = student.id
+      rollback.record('students', [studentId])
       result.inserted++
     }
 
@@ -1046,12 +1172,46 @@ async function importFamilyList(
   return result
 }
 
-function getNextDayOfWeek(from: Date, dayOfWeek: number, weeksAhead: number): Date {
-  const date = new Date(from)
-  const currentDay = date.getDay()
-  let daysUntil = dayOfWeek - currentDay
-  if (daysUntil < 0) daysUntil += 7
-  daysUntil += weeksAhead * 7
-  date.setDate(date.getDate() + daysUntil)
-  return date
+/**
+ * The first `count` weekly occurrences of `dayOfWeek` (0=Sun … 6=Sat) starting
+ * from today, as calendar days in `timezone`.
+ *
+ * Everything here is org-timezone: which day is "today", and which day is the
+ * next Tuesday, both differ between the server's clock and the org's.
+ */
+export function scheduleOccurrences(
+  timezone: string,
+  dayOfWeek: number,
+  count: number,
+  now: DateTime = DateTime.now()
+): DateTime[] {
+  // Luxon weekday: 1=Mon … 7=Sun. Ours: 0=Sun … 6=Sat.
+  const luxonWeekday = dayOfWeek === 0 ? 7 : dayOfWeek
+
+  let cursor = now.setZone(timezone).startOf('day')
+  while (cursor.weekday !== luxonWeekday) {
+    cursor = cursor.plus({ days: 1 })
+  }
+
+  const out: DateTime[] = []
+  for (let w = 0; w < count; w++) {
+    out.push(cursor.plus({ weeks: w }))
+  }
+  return out
+}
+
+/**
+ * Parse an imported date cell as a calendar day in the organization's timezone.
+ * Accepts DD/MM/YYYY (what Israeli spreadsheets write) and YYYY-MM-DD.
+ */
+export function parseImportDate(raw: string | null | undefined, timezone: string): DateTime | null {
+  const value = raw?.trim()
+  if (!value) return null
+
+  const opts = { zone: timezone }
+  const parsed = value.includes('/')
+    ? DateTime.fromFormat(value, 'd/M/yyyy', opts)
+    : DateTime.fromFormat(value, 'yyyy-M-d', opts)
+
+  return parsed.isValid ? parsed.startOf('day') : null
 }

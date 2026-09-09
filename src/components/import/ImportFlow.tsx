@@ -32,6 +32,12 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
     teachers: string[]
     students: string[]
   }>({ teachers: [], students: [] })
+  /**
+   * Stamped once per preview and reused by every retry of it. The preview goes
+   * stale as soon as the first execute lands — its rows all still say "new" —
+   * so re-posting it without this key duplicated whatever already imported.
+   */
+  const [batchKey, setBatchKey] = useState<string | null>(null)
 
   /** Only these imports create parent rows, so only they ask about consent. */
   const createsParents = entityType === 'parents' || entityType === 'family-list'
@@ -93,6 +99,7 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
           }
         }
         setExcludedRows(autoExclude)
+        setBatchKey(crypto.randomUUID())
         setStep('preview')
       } catch {
         setError(t('flowErrors.parseFailedRetry'))
@@ -127,7 +134,12 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
       const res = await fetch('/api/import/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entityType, rows: rowsToImport, attestConsent }),
+        body: JSON.stringify({
+          entityType,
+          rows: rowsToImport,
+          attestConsent,
+          idempotencyKey: batchKey,
+        }),
       })
 
       const data = await res.json()
@@ -155,6 +167,7 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
     setError(null)
     setAttestConsent(false)
     setMissingDependencies({ teachers: [], students: [] })
+    setBatchKey(null)
   }
 
   const validCount = rows.filter(

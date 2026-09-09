@@ -4873,7 +4873,7 @@
     "uploadFile": "העלה קובץ אחר",
     "dropzone": {
       "title": "גרור קובץ לכאן או לחץ לבחירה",
-      "formats": "XLSX, XLS, CSV — עד {maxSize}MB"
+      "formats": "CSV — עד {maxSize}MB"
     },
     "preview": {
       "title": "תצוגה מקדימה — {entity}",
@@ -4907,6 +4907,8 @@
       "errorDetails": "פירוט שגיאות:",
       "row": "שורה {row}",
       "importMore": "ייבוא נוסף",
+      "rolledBackNotice": "לא יובא כלום. ההרצה נתקלה בשגיאה ובוטלה במלואה, כך שהנתונים שלך נשארו בדיוק כפי שהיו — תקן את השורות המפורטות למטה והעלה את הקובץ שוב.",
+      "alreadyRanNotice": "הקובץ הזה כבר יובא. אלו התוצאות של אותה הרצה — שום דבר לא יובא פעמיים.",
       "linkedRelationships": "קישורים נוצרו",
       "failedLinks": "קישורים שנכשלו (תלמיד לא נמצא):",
       "failedLinkDetail": "הקישור ל-\"{name}\" לא נוצר — תלמיד לא נמצא במערכת"
@@ -4925,7 +4927,7 @@
       "duplicate": "כפול"
     },
     "fileErrors": {
-      "unsupportedFormat": "פורמט קובץ לא נתמך. יש להעלות XLSX, XLS או CSV",
+      "unsupportedFormat": "אפשר לייבא קובצי CSV בלבד. באקסל: קובץ ← שמירה בשם ← CSV UTF-8, ואז להעלות את הקובץ הזה.",
       "fileTooLarge": "הקובץ גדול מדי (מקסימום {maxSize}MB)"
     },
     "flowErrors": {
@@ -4939,7 +4941,12 @@
       "noFile": "לא הועלה קובץ",
       "invalidEntity": "סוג ישות לא תקין",
       "fileTooLarge": "הקובץ גדול מדי (מקסימום 5MB)",
-      "unsupportedFormat": "פורמט קובץ לא נתמך. יש להעלות XLSX, XLS או CSV",
+      "unsupportedFormat": "אפשר לייבא קובצי CSV בלבד. באקסל: קובץ ← שמירה בשם ← CSV UTF-8, ואז להעלות את הקובץ הזה.",
+      "unterminatedQuote": "ערך במרכאות בקובץ לא נסגר. בדוק אם יש מרכאה מיותרת ונסה שוב.",
+      "unreadableFile": "לא הצלחנו לקרוא את הקובץ. ודא שזהו קובץ CSV תקין ונסה שוב.",
+      "noRecognisedColumns": "לא זוהתה אף עמודת חובה בקובץ. נדרשות: {expected}. בקובץ נמצאו: {found}. הורד את התבנית ונסה שוב.",
+      "importAlreadyRan": "הייבוא הזה כבר בוצע. התוצאות שמוצגות הן של ההרצה המקורית — לא נוצרו רשומות כפולות.",
+      "quotaExceeded": "הייבוא חורג ממכסת החבילה שלך. שדרג חבילה או ייבא פחות שורות.",
       "emptyFile": "הקובץ ריק או לא מכיל נתונים",
       "parseError": "שגיאה בעיבוד הקובץ. ודא שהוא תקין ונסה שוב.",
       "noRowsToImport": "אין שורות לייבוא",
@@ -4948,6 +4955,7 @@
     "warnings": {
       "existingRecord": "רשומה קיימת במערכת",
       "studentNotFound": "התלמיד \"{name}\" לא נמצא — הקישור לא ייווצר",
+      "duplicateInFile": "מופיע כבר בקובץ הזה, בשורה {row}",
       "roleParent": " (הורה)",
       "roleParent2": " (הורה 2)",
       "roleStudent": " (תלמיד)"
@@ -5025,7 +5033,10 @@
       "teacherNotFound": "מורה \"{name}\" לא נמצא",
       "studentNotFound": "תלמיד \"{name}\" לא נמצא",
       "invalidDayOfWeek": "יום בשבוע לא תקין",
-      "dbError": "{message}"
+      "dbError": "{message}",
+      "invalidStartTime": "שעת התחלה לא תקינה",
+      "invalidDate": "תאריך לא תקין",
+      "rolledBack": "הייבוא בוטל כולו בעקבות שגיאה — לא נוצרה אף רשומה. תקן את השגיאות ונסה שוב."
     },
     "templates": {
       "dataSheet": "נתונים",

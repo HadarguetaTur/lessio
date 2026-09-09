@@ -4873,7 +4873,7 @@
     "uploadFile": "Upload another file",
     "dropzone": {
       "title": "Drag a file here or click to browse",
-      "formats": "XLSX, XLS, CSV — up to {maxSize}MB"
+      "formats": "CSV — up to {maxSize}MB"
     },
     "preview": {
       "title": "Preview — {entity}",
@@ -4907,6 +4907,8 @@
       "errorDetails": "Error details:",
       "row": "Row {row}",
       "importMore": "Import More",
+      "rolledBackNotice": "Nothing was imported. The run hit an error and was rolled back completely, so your data is exactly as it was — fix the rows listed below and upload the file again.",
+      "alreadyRanNotice": "This file was already imported. These are the results of that run — nothing was imported twice.",
       "linkedRelationships": "Relationships linked",
       "failedLinks": "Failed links (student not found):",
       "failedLinkDetail": "Link to \"{name}\" failed — student not found in the system"
@@ -4925,7 +4927,7 @@
       "duplicate": "Duplicate"
     },
     "fileErrors": {
-      "unsupportedFormat": "Unsupported file format. Upload XLSX, XLS, or CSV.",
+      "unsupportedFormat": "Only CSV files can be imported. In Excel choose File → Save As → CSV UTF-8, then upload that.",
       "fileTooLarge": "File is too large (max {maxSize}MB)"
     },
     "flowErrors": {
@@ -4939,7 +4941,12 @@
       "noFile": "No file uploaded",
       "invalidEntity": "Invalid entity type",
       "fileTooLarge": "File is too large (max 5MB)",
-      "unsupportedFormat": "Unsupported file format. Upload XLSX, XLS, or CSV.",
+      "unsupportedFormat": "Only CSV files can be imported. In Excel choose File → Save As → CSV UTF-8, then upload that.",
+      "unterminatedQuote": "A quoted value in the file is never closed. Check for a stray \" and try again.",
+      "unreadableFile": "We couldn't read that file. Make sure it is a valid CSV and try again.",
+      "noRecognisedColumns": "None of the required columns were recognised. Required: {expected}. Found in the file: {found}. Download the template and try again.",
+      "importAlreadyRan": "This import already ran. The results shown are from the original run — nothing was duplicated.",
+      "quotaExceeded": "This import exceeds your plan quota. Upgrade your plan or import fewer rows.",
       "emptyFile": "The file is empty or has no data",
       "parseError": "Failed to process file. Make sure it is valid and try again.",
       "noRowsToImport": "No rows to import",
@@ -4948,6 +4955,7 @@
     "warnings": {
       "existingRecord": "Record already exists in the system",
       "studentNotFound": "Student \"{name}\" was not found — the link will not be created",
+      "duplicateInFile": "Appears earlier in this file, on row {row}",
       "roleParent": " (parent)",
       "roleParent2": " (parent 2)",
       "roleStudent": " (student)"
@@ -5025,7 +5033,10 @@
       "teacherNotFound": "Teacher \"{name}\" was not found",
       "studentNotFound": "Student \"{name}\" was not found",
       "invalidDayOfWeek": "Invalid day of week",
-      "dbError": "{message}"
+      "dbError": "{message}",
+      "invalidStartTime": "Invalid start time",
+      "invalidDate": "Invalid date",
+      "rolledBack": "The whole import was rolled back after an error — nothing was created. Fix the errors and try again."
     },
     "templates": {
       "dataSheet": "Data",

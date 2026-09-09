@@ -10,7 +10,8 @@
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { MAX_SERIES_OCCURRENCES, type SeriesRule } from '@/lib/lessons/createSeries'
+import { MAX_SERIES_OCCURRENCES } from '@/lib/lessons/createSeries'
+import { normalizeSeriesRule, type SeriesRule } from '@/lib/lessons/seriesRule'
 import { stopLessonSeries } from '@/lib/lessons/cancelSeries'
 import { EMPTY_FOOTPRINT, loadSeriesFootprint, SeriesHasHistoryError } from '@/lib/lessons/seriesFootprint'
 
@@ -31,7 +32,15 @@ async function getSeriesOrThrow(db: ReturnType<typeof createServiceRoleClient>, 
     .eq('organization_id', orgId)
     .single()
   if (error || !series) throw new Error(`Series not found: ${error?.message}`)
-  return { ...series, rule: series.rule as SeriesRule }
+
+  // Casting the jsonb blindly was not merely wrong on a legacy camelCase row —
+  // `rule.day_of_week` came back undefined, so the "advance to the target
+  // weekday" loop below compared against NaN and never terminated. Refusing the
+  // mutation with a named error is the safe failure.
+  const rule = normalizeSeriesRule(series.rule)
+  if (!rule) throw new Error(`Series ${seriesId} has an unreadable rule and cannot be modified`)
+
+  return { ...series, rule }
 }
 
 /**

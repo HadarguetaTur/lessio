@@ -63,6 +63,10 @@ describe('filterNav', () => {
   it('hides owner-only entries from an admin', () => {
     const admin = filterNav(SETTINGS_NAV, 'admin').map((e) => e.href)
     expect(admin).toEqual([
+      // Admins receive the whatsapp_health notification, whose action link
+      // lands here, so the entry is visible to them. The page itself renders
+      // read-only for a non-owner and the write actions refuse them.
+      '/settings/whatsapp',
       '/settings/exams',
       '/settings/scheduling',
       '/settings/holidays',

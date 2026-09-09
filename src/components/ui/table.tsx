@@ -6,11 +6,17 @@ import { cn } from "@/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <table
-      data-slot="table"
-      className={cn("w-full caption-bottom text-sm", className)}
-      {...props}
-    />
+    // The scroll container is part of the component, as upstream shadcn has it.
+    // Without it every table in the product compressed its columns on a phone
+    // instead of scrolling — worst on the WhatsApp inbox, which is exactly the
+    // screen most likely to be opened from one (UX audit F26).
+    <div data-slot="table-container" className="relative w-full overflow-x-auto">
+      <table
+        data-slot="table"
+        className={cn("w-full caption-bottom text-sm", className)}
+        {...props}
+      />
+    </div>
   )
 }
 

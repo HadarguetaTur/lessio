@@ -5755,7 +5755,13 @@
       "delivered": "Delivered",
       "read": "Read",
       "failed": "Failed",
-      "failedWithCode": "Failed ({code})"
+      "reasons": {
+        "outside_window": "Not delivered — the parent hasn't written in the last 24 hours",
+        "undeliverable": "Not delivered — the number is not active on WhatsApp",
+        "per_user_limit": "Not delivered — Meta capped marketing messages to this person today",
+        "marketing_opted_out": "Not delivered — this person opted out of marketing messages",
+        "rate_limited": "Not delivered — temporary load. It will be retried"
+      }
     },
     "emptyNotConnectedTitle": "You haven't connected a WhatsApp number yet",
     "emptyReconnectTitle": "The WhatsApp connection has expired",

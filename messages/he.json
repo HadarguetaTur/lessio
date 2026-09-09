@@ -5755,7 +5755,13 @@
       "delivered": "נמסר",
       "read": "נקרא",
       "failed": "נכשל",
-      "failedWithCode": "נכשל ({code})"
+      "reasons": {
+        "outside_window": "לא נמסר — ההורה לא כתב ב-24 השעות האחרונות",
+        "undeliverable": "לא נמסר — המספר לא פעיל ב-WhatsApp",
+        "per_user_limit": "לא נמסר — מטא הגבילה הודעות שיווקיות לנמען הזה היום",
+        "marketing_opted_out": "לא נמסר — הנמען ביקש לא לקבל הודעות שיווקיות",
+        "rate_limited": "לא נמסר — עומס זמני. יישלח שוב"
+      }
     },
     "emptyNotConnectedTitle": "עוד לא חיברתם מספר WhatsApp",
     "emptyReconnectTitle": "החיבור ל-WhatsApp פג",

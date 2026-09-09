@@ -6,6 +6,8 @@ import { getLocale, getTranslations } from 'next-intl/server'
 
 import { getOrganizationDetail } from '@/lib/superadmin/organizations'
 import { listDeletionRequests } from '@/lib/superadmin/dataDeletion'
+import { getOrganizationFootprint } from '@/lib/superadmin/deleteOrganization'
+import { hasCapability } from '@/lib/superadmin/capabilities'
 import { listSubscriptions } from '@/lib/superadmin/metrics'
 import { listSaasInvoicesForPlatform } from '@/lib/superadmin/revenue'
 import { listAdminAuditLog } from '@/lib/superadmin/audit'
@@ -20,9 +22,14 @@ import { OrgUsagePanel } from '@/components/admin/OrgUsagePanel'
 import { OrgAuditPanel } from '@/components/admin/OrgAuditPanel'
 import { DeletionRequestsSection } from '@/components/admin/DeletionRequestsSection'
 import { OrgDataExportButton } from '@/components/admin/OrgDataExportButton'
+import { DeleteOrganizationCard } from '@/components/admin/DeleteOrganizationCard'
 import { StartSupportModeButton } from './StartSupportModeButton'
 import { updateOrganizationAction } from '../actions'
-import { processDeletionRequestAction, exportOrgDataAction } from './actions'
+import {
+  processDeletionRequestAction,
+  exportOrgDataAction,
+  deleteOrganizationAction,
+} from './actions'
 import {
   cancelSubscriptionAction,
   changePlanAction,
@@ -48,7 +55,7 @@ interface Props {
 }
 
 export default async function AdminOrgDetailPage({ params, searchParams }: Props) {
-  await requirePlatformSession('orgs.read')
+  const session = await requirePlatformSession('orgs.read')
 
   const t = await getTranslations('common')
   const tOrgs = await getTranslations('admin.orgs')
@@ -96,7 +103,12 @@ export default async function AdminOrgDetailPage({ params, searchParams }: Props
       )}
 
       {tab === 'danger' && (
-        <DangerTab orgId={org.id} />
+        <DangerTab
+          orgId={org.id}
+          orgName={org.name}
+          orgSlug={org.slug}
+          canDelete={hasCapability(session.capabilities, 'orgs.delete')}
+        />
       )}
     </div>
   )
@@ -138,10 +150,21 @@ async function UsageTab({
   return <OrgUsagePanel quota={quota} attribution={attribution} />
 }
 
-async function DangerTab({ orgId }: { orgId: string }) {
-  const [deletionRequests, auditEntries] = await Promise.all([
+async function DangerTab({
+  orgId,
+  orgName,
+  orgSlug,
+  canDelete,
+}: {
+  orgId: string
+  orgName: string
+  orgSlug: string
+  canDelete: boolean
+}) {
+  const [deletionRequests, auditEntries, footprint] = await Promise.all([
     listDeletionRequests(orgId),
     listAdminAuditLog({ organizationId: orgId, limit: 50 }),
+    canDelete ? getOrganizationFootprint(orgId) : null,
   ])
 
   return (
@@ -157,6 +180,16 @@ async function DangerTab({ orgId }: { orgId: string }) {
       </div>
 
       <OrgAuditPanel entries={auditEntries} />
+
+      {canDelete && footprint && (
+        <DeleteOrganizationCard
+          orgId={orgId}
+          orgName={orgName}
+          orgSlug={orgSlug}
+          counts={footprint}
+          deleteAction={deleteOrganizationAction}
+        />
+      )}
     </div>
   )
 }

@@ -10,6 +10,10 @@ import {
 } from '@/lib/support-session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { processDeletionRequest } from '@/lib/superadmin/dataDeletion'
+import {
+  deleteOrganizationCompletely,
+  OrganizationDeleteError,
+} from '@/lib/superadmin/deleteOrganization'
 import { recordAdminAction } from '@/lib/superadmin/audit'
 import { getTranslations } from 'next-intl/server'
 
@@ -131,4 +135,74 @@ export async function exportOrgDataAction(orgId: string): Promise<{ json: string
   })
 
   return { json: JSON.stringify(payload, null, 2) }
+}
+
+// ── Danger zone: hard-delete a tenant ────────────────────────────────────────
+
+export type DeleteOrganizationActionResult =
+  | { ok: true; orgName: string; deletedRows: number; authUsersFailed: string[] }
+  | { ok: false; error: string }
+
+/**
+ * Hard-deletes an organization, its rows, its files and its auth users.
+ * Superadmin only (orgs.delete); the operator must type the slug. Redirects
+ * to the tenant list on success, since the page being viewed no longer exists.
+ */
+export async function deleteOrganizationAction(
+  orgId: string,
+  confirmation: string
+): Promise<DeleteOrganizationActionResult> {
+  const t = await getTranslations()
+  const session = await requirePlatformSession('orgs.delete')
+
+  // Refuse while impersonating: support mode targets this org and would be
+  // left pointing at nothing.
+  const support = await getSupportSession()
+  if (support?.targetOrgId === orgId) {
+    return { ok: false, error: t('admin.orgs.danger.errors.inSupportMode') }
+  }
+
+  let result
+  try {
+    result = await deleteOrganizationCompletely({ orgId, confirmation })
+  } catch (err) {
+    if (err instanceof OrganizationDeleteError) {
+      console.error('[admin/deleteOrganization] failed', { orgId, code: err.code, message: err.message })
+      if (err.code === 'confirmation_mismatch') {
+        return { ok: false, error: t('admin.orgs.danger.errors.confirmationMismatch') }
+      }
+      if (err.code === 'not_found') {
+        return { ok: false, error: t('admin.orgs.danger.errors.notFound') }
+      }
+    } else {
+      console.error('[admin/deleteOrganization] threw', { orgId, err })
+    }
+    return { ok: false, error: t('admin.errors.requestFailed') }
+  }
+
+  // organization_id is left null on purpose: the org row is gone and the
+  // audit FK is ON DELETE SET NULL anyway. Identity lives in metadata.
+  await recordAdminAction({
+    actorProfileId: session.profileId,
+    action: 'org.delete',
+    targetType: 'organizations',
+    targetId: orgId,
+    organizationId: null,
+    metadata: {
+      orgName: result.orgName,
+      deletedRows: result.deletedRows,
+      storageObjectsRemoved: result.storageObjectsRemoved,
+      authUsersDeleted: result.authUsersDeleted,
+      authUsersFailed: result.authUsersFailed,
+    },
+  })
+
+  revalidatePath('/admin/orgs')
+
+  return {
+    ok: true,
+    orgName: result.orgName,
+    deletedRows: Object.values(result.deletedRows).reduce((a, b) => a + b, 0),
+    authUsersFailed: result.authUsersFailed,
+  }
 }

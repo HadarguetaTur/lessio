@@ -32,6 +32,8 @@ export type PlatformCapability =
   | 'orgs.write'
   /** Download a tenant's parents, students, lessons and charges. */
   | 'orgs.export'
+  /** Hard-delete a tenant and everything it owns. Superadmin only. */
+  | 'orgs.delete'
   | 'support.read'
   | 'support.reply'
   /** Impersonate a tenant and browse its dashboard read-only. */
@@ -51,6 +53,7 @@ const ALL: PlatformCapability[] = [
   'orgs.read',
   'orgs.write',
   'orgs.export',
+  'orgs.delete',
   'support.read',
   'support.reply',
   'support_mode.enter',

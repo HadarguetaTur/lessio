@@ -52,11 +52,25 @@ Nothing ships to production without passing staging first (Decision #24).
 ## Phase 2 — Staging E2E Smoke Tests
 
 All 12 scenarios must pass on staging. Mark each as Pass / Fail / Blocked.
-Also verify that all crons are registered in Supabase Dashboard: `lesson-reminders`, `payment-reminders`, `homework-reminders`, `saas-subscription-checker`, `saas-renewal-reminder`, `data-retention`, `homework-sender`, `notification-cleanup`.
+Also verify that every cron is registered **exactly once**, in pg_cron only.
+`scripts/setup-crons.sql` is the single source of truth for all of them — the
+Edge Functions (`lesson-reminders`, `payment-reminders`, `homework-reminders`,
+`saas-subscription-checker`, `saas-renewal-reminder`, `data-retention`,
+`homework-sender`, `notification-cleanup`, `holiday-sync`) and the Next.js HTTP
+jobs (`automatic-lesson-completion`, `saas-renew` every 15 min 02:00–03:45 UTC,
+`saas-lifecycle-emails` 08:00 UTC). Do **not** also add a schedule from the
+Supabase Dashboard: the Dashboard creates its own pg_cron job under a generated
+name, and two jobs firing the same function in the same minute is how every
+reminder went out twice (2026-09-07). Confirm there is one job per function:
 
-And that `scripts/setup-crons.sql` has been run for the pg_cron HTTP jobs:
-`automatic-lesson-completion`, `saas-renew` (every 15 min, 02:00–03:45 UTC),
-`saas-lifecycle-emails` (08:00 UTC). Confirm with `select jobname, schedule from cron.job`.
+```sql
+select jobname, schedule, active, left(command, 120) as command
+from cron.job order by jobname;
+
+-- Any row here is a duplicate schedule — unschedule the extra jobid.
+select substring(command from '/functions/v1/([a-z-]+)') as fn, count(*)
+from cron.job group by 1 having count(*) > 1;
+```
 
 | # | Scenario | Steps | Result |
 |---|---|---|---|

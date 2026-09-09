@@ -330,6 +330,15 @@ above and then asks for the video link and the per-scope justifications.
 
 ## 6. After approval
 
+**Status: approved 2026-09-09.** Submitted 2026-09-05; one review round on 2026-09-07 (templated
+"video does not sufficiently demonstrate" reply, the original video had 0 views). A new video
+recorded to the shot list above plus three additions was sent on 2026-09-08 and approved the next
+day: every consent screen with *Show all services* expanded and held 5+ seconds; the sent email
+shown in the **Sent folder of the connected Google account**; the Google Calendar event shown
+*before* the conflict warning. The reply also carried timestamps per shot, the reviewer
+credentials inline, and a paragraph on why narrower scopes cannot be used. Video v2:
+https://youtu.be/hVg54eMAvUM. Keep both videos unlisted; do not delete.
+
 - Re-run the two connect flows on production to confirm the interstitial is gone.
 - Verify a refresh token now survives past 7 days — that is the real proof that In-production
   status took effect. Connect an account, then check it still sends 10 days later.

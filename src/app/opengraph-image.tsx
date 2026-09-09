@@ -6,7 +6,7 @@ import { ImageResponse } from 'next/og'
 // Shared by every locale (OG routes can't read the locale cookie), so the card
 // is bilingual: Hebrew headline, English subline.
 export const alt =
-  'LESSIO — מערכת ההפעלה לעסקי הוראה · The operating system for tutoring businesses'
+  'LESSIO. מערכת ההפעלה למרכזי למידה. The operating system for tutoring centres'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -27,8 +27,7 @@ export default async function OpenGraphImage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background:
-            'linear-gradient(135deg, #0d9488 0%, #059669 45%, #7c3aed 100%)',
+          background: '#0f172a',
           padding: '80px',
           fontFamily: 'Heebo',
           color: 'white',
@@ -73,18 +72,19 @@ export default async function OpenGraphImage() {
               width: 120,
               height: 120,
               borderRadius: 32,
-              background: 'rgba(255,255,255,0.18)',
-              border: '2px solid rgba(255,255,255,0.4)',
+              background: '#111c32',
+              border: '2px solid #475569',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 80,
-              fontWeight: 700,
-              color: 'white',
-              lineHeight: 1,
+              position: 'relative',
             }}
           >
-            L
+            <div style={{ width: 58, height: 68, display: 'flex', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 2, left: 2, width: 18, height: 60, borderRadius: 14, background: '#2dd4bf' }} />
+              <div style={{ position: 'absolute', bottom: 2, left: 2, width: 54, height: 18, borderRadius: 14, background: 'linear-gradient(90deg, #2dd4bf 0%, #8b5cf6 100%)' }} />
+              <div style={{ position: 'absolute', top: 0, right: 0, width: 18, height: 18, borderRadius: 99, background: '#a78bfa' }} />
+            </div>
           </div>
           <div
             style={{
@@ -110,7 +110,7 @@ export default async function OpenGraphImage() {
             justifyContent: 'center',
           }}
         >
-          הוואטסאפ של ההורים, מחובר לעסק.
+          מרכז למידה, בשליטה.
         </div>
 
         <div
@@ -123,7 +123,7 @@ export default async function OpenGraphImage() {
             justifyContent: 'center',
           }}
         >
-          The operating system for tutoring businesses
+          Lessons, parents, WhatsApp and billing in one system
         </div>
       </div>
     ),

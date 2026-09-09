@@ -41,6 +41,12 @@ export type MessageTemplateType =
   | 'lesson_rescheduled'
   | 'day_off_decision'
   | 'welcome_notice'
+  | 'exam_good_luck'
+  // Broadcasts (Phase 0, 2026-09-08): a service update to a group of parents, a
+  // marketing message (separate opt-in), and the invite to a linked WhatsApp group.
+  | 'class_update'
+  | 'promo'
+  | 'group_invite'
 
 /**
  * System-default strings per language (used when no custom template is
@@ -107,6 +113,14 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'עדכון לגבי בקשת החופש שלך לתאריכים {{date_range}}:\nהבקשה {{decision}}.',
     welcome_notice:
       'שלום! ההודעות בערוץ זה נשלחות מטעם {{org_name}} באמצעות Lessio — תזכורות לשיעורים, שיעורי בית ובקשות תשלום.\nאפשר להפסיק אותן בכל עת בתשובה "הסר".',
+    exam_good_luck:
+      'היי {{student_name}} 👋\nהיום המבחן ב{{subject}} ({{title}}).\nבהצלחה גדולה, אנחנו מאמינים בך! 🍀',
+    class_update:
+      'עדכון מ-{{org_name}} לגבי {{topic}}:\n{{message}}\nלשאלות אפשר להשיב כאן.',
+    promo:
+      'הודעה מ-{{org_name}}:\n{{message}}\nלפרטים והרשמה אפשר להשיב כאן.',
+    group_invite:
+      'שלום! {{org_name}} פתחו קבוצת ואטסאפ להורי {{group_name}}. ההצטרפות רשות, וכל העדכונים ממשיכים להגיע גם כאן.\n{{invite_url}}',
   },
   en: {
     booking_link:
@@ -155,6 +169,14 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'An update on your time-off request for {{date_range}}:\nthe request was {{decision}}.',
     welcome_notice:
       'Hi! Messages in this chat are sent on behalf of {{org_name}} via Lessio — lesson reminders, homework and payment requests.\nReply "stop" at any time to opt out.',
+    exam_good_luck:
+      'Hi {{student_name}} 👋\nYour {{subject}} exam ({{title}}) is today.\nGood luck, we believe in you! 🍀',
+    class_update:
+      'An update from {{org_name}} about {{topic}}:\n{{message}}\nFeel free to reply here with any questions.',
+    promo:
+      'A message from {{org_name}}:\n{{message}}\nReply here for details and to sign up.',
+    group_invite:
+      'Hi! {{org_name}} opened a WhatsApp group for the parents of {{group_name}}. Joining is optional, and every update keeps arriving here too.\n{{invite_url}}',
   },
 }
 
@@ -334,6 +356,10 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   lesson_rescheduled: ['student_name', 'teacher_name', 'old_date', 'old_time', 'date', 'time'],
   day_off_decision: ['date_range', 'decision'],
   welcome_notice: ['org_name'],
+  exam_good_luck: ['student_name', 'subject', 'title'],
+  class_update: ['org_name', 'topic', 'message'],
+  promo: ['org_name', 'message'],
+  group_invite: ['org_name', 'group_name', 'invite_url'],
 }
 
 /**
@@ -367,6 +393,10 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
     lesson_rescheduled: 'עדכון מועד שיעור (להורה/תלמיד)',
     day_off_decision: 'החלטה על בקשת חופש (למורה)',
     welcome_notice: 'הודעת פתיחה (נשלחת פעם אחת לפני ההודעה הראשונה להורה)',
+    exam_good_luck: 'בהצלחה במבחן (לתלמיד)',
+    class_update: 'עדכון להורי קבוצה או שיעור (תפוצה)',
+    promo: 'הודעה שיווקית (תפוצה, דורשת הסכמה נפרדת)',
+    group_invite: 'הזמנה לקבוצת ואטסאפ של הקבוצה',
   },
   en: {
     booking_link: 'Booking link',
@@ -392,6 +422,10 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
     lesson_rescheduled: 'Lesson time update',
     day_off_decision: 'Time-off request decision (to teacher)',
     welcome_notice: 'Welcome notice (sent once, before the first message to a parent)',
+    exam_good_luck: 'Exam good luck (to student)',
+    class_update: 'Update to the parents of a group or lesson (broadcast)',
+    promo: 'Marketing message (broadcast, separate opt-in)',
+    group_invite: 'Invite to the group\'s WhatsApp group',
   },
 }
 
@@ -434,6 +468,10 @@ export const TEMPLATE_PREVIEW_VARS: Record<
     lesson_rescheduled: { student_name: 'דנה', teacher_name: 'אהרון כהן', old_date: 'יום שני, 21.4', old_time: '17:00', date: 'יום שלישי, 22.4', time: '17:30' },
     day_off_decision: { date_range: '20/08–22/08', decision: 'אושרה ✅' },
     welcome_notice: { org_name: 'מרכז הלמידה של אהרון' },
+    exam_good_luck: { student_name: 'דנה', subject: 'מתמטיקה', title: 'מבחן פרק ג' },
+    class_update: { org_name: 'מרכז הלמידה של אהרון', topic: 'חוג גיטרה יום ראשון', message: 'השיעור השבוע יתקיים בחדר 3 במקום בחדר 1.' },
+    promo: { org_name: 'מרכז הלמידה של אהרון', message: 'נפתחה ההרשמה לסדנת הקיץ. מספר המקומות מוגבל.' },
+    group_invite: { org_name: 'מרכז הלמידה של אהרון', group_name: 'חוג גיטרה יום ראשון', invite_url: 'https://chat.whatsapp.com/ExampleInviteCode' },
   },
   en: {
     booking_link: { booking_url: 'https://www.getlessio.com/book/example-token' },
@@ -459,5 +497,9 @@ export const TEMPLATE_PREVIEW_VARS: Record<
     lesson_rescheduled: { student_name: 'Dana', teacher_name: 'Aaron Cohen', old_date: 'Monday, 21 Apr', old_time: '17:00', date: 'Tuesday, 22 Apr', time: '17:30' },
     day_off_decision: { date_range: '20/08–22/08', decision: 'approved ✅' },
     welcome_notice: { org_name: "Aaron's Learning Centre" },
+    exam_good_luck: { student_name: 'Dana', subject: 'Maths', title: 'Chapter 3 test' },
+    class_update: { org_name: "Aaron's Learning Centre", topic: 'Sunday guitar class', message: 'This week the class meets in room 3 instead of room 1.' },
+    promo: { org_name: "Aaron's Learning Centre", message: 'Registration for the summer workshop is open. Places are limited.' },
+    group_invite: { org_name: "Aaron's Learning Centre", group_name: 'Sunday guitar class', invite_url: 'https://chat.whatsapp.com/ExampleInviteCode' },
   },
 }

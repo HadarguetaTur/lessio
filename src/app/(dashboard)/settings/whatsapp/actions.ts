@@ -23,6 +23,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { encryptToken, decryptToken } from '@/lib/crypto'
 import { registerTemplatesForWABA } from '@/lib/whatsapp/registerTemplates'
 import { subscribeAppToWABA, unsubscribeAppFromWABA } from '@/lib/whatsapp/subscribeApp'
+import { refreshPhoneHealth } from '@/lib/whatsapp/health'
 import { META_API_VERSION } from '@/lib/whatsapp/graphVersion'
 import { inspectAccessToken, type TokenGrant } from '@/lib/whatsapp/debugToken'
 import { registerPhoneNumber, isValidRegisterPin } from '@/lib/whatsapp/registerPhone'
@@ -198,6 +199,10 @@ export async function saveWhatsAppConnection(
       whatsapp_access_token:    encryptedToken,
       whatsapp_waba_id:         wabaId,
       whatsapp_business_id:     businessId,
+      // Anchors the warm-up window (src/lib/whatsapp/health.ts). A reconnect
+      // of the same number is a fresh anchor on purpose: Meta treats a
+      // re-registered number as young again.
+      wa_connected_at:          new Date().toISOString(),
     })
     .eq('id', orgId)
 
@@ -211,6 +216,12 @@ export async function saveWhatsAppConnection(
   // Register all message templates on the org's WABA (fire-and-forget)
   registerTemplatesForWABA(wabaId, accessToken).catch((err) =>
     console.error('[whatsapp/settings] Template registration failed', { orgId, err })
+  )
+
+  // First health snapshot (quality rating, tier, verification) — fire-and-forget,
+  // the daily cron and the webhooks keep it current from here.
+  refreshPhoneHealth(orgId).catch((err) =>
+    console.error('[whatsapp/settings] Health refresh failed', { orgId, err })
   )
 
   revalidatePath('/settings/whatsapp')

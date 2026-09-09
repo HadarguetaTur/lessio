@@ -168,7 +168,9 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/api/internal/saas/') ||
     // Outbound engine crons (send run, reply poll). Same bearer scheme as the
     // other cron routes; never a Supabase session.
-    request.nextUrl.pathname.startsWith('/api/internal/outbound/')
+    request.nextUrl.pathname.startsWith('/api/internal/outbound/') ||
+    // WhatsApp number-health refresh (and, from Phase 1, the broadcast drain).
+    request.nextUrl.pathname.startsWith('/api/internal/whatsapp/')
   ) {
     // Bypassed routes are still real landing surfaces for a campaign, so they
     // get the attribution cookie too — just not the Supabase session round-trip.

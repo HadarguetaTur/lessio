@@ -98,6 +98,35 @@ export const TEMPLATE_BUTTONS: Partial<Record<MessageTemplateType, TemplateButto
     },
   ],
 
+  // Broadcast templates (registerTemplates.ts, BROADCAST_TEMPLATES in
+  // approvedTemplates.ts). Every one carries the opt-out Meta's policy asks
+  // for — by category, so leaving marketing keeps lesson reminders coming.
+  class_update: [
+    {
+      kind: 'quick_reply',
+      labelKey: 'btn_stop_updates',
+      editable: false,
+      lockedReason: 'meta_approved',
+    },
+  ],
+  promo: [
+    {
+      kind: 'quick_reply',
+      labelKey: 'btn_stop_offers',
+      editable: false,
+      lockedReason: 'meta_approved',
+    },
+  ],
+  group_invite: [
+    {
+      kind: 'url',
+      labelKey: 'btn_join_group',
+      editable: false,
+      lockedReason: 'meta_approved',
+      urlVar: 'invite_url',
+    },
+  ],
+
   // In-window replies. These go out as free-form interactive messages, never
   // through Meta review, so the wording is the org's to choose.
   booking_link: [

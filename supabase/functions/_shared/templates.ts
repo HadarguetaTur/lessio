@@ -59,6 +59,12 @@ export type MessageTemplateType =
   | 'lesson_rescheduled'
   | 'day_off_decision'
   | 'welcome_notice'
+  | 'exam_good_luck'
+  // Broadcasts (Phase 0, 2026-09-08): a service update to a group of parents, a
+  // marketing message (separate opt-in), and the invite to a linked WhatsApp group.
+  | 'class_update'
+  | 'promo'
+  | 'group_invite'
 
 /**
  * System-default strings per language (used when no custom template is
@@ -112,6 +118,14 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'עדכון לגבי בקשת החופש שלך לתאריכים {{date_range}}:\nהבקשה {{decision}}.',
     welcome_notice:
       'שלום! ההודעות בערוץ זה נשלחות מטעם {{org_name}} באמצעות Lessio — תזכורות לשיעורים, שיעורי בית ובקשות תשלום.\nאפשר להפסיק אותן בכל עת בתשובה "הסר".',
+    exam_good_luck:
+      'היי {{student_name}} 👋\nהיום המבחן ב{{subject}} ({{title}}).\nבהצלחה גדולה, אנחנו מאמינים בך! 🍀',
+    class_update:
+      'עדכון מ-{{org_name}} לגבי {{topic}}:\n{{message}}\nלשאלות אפשר להשיב כאן.',
+    promo:
+      'הודעה מ-{{org_name}}:\n{{message}}\nלפרטים והרשמה אפשר להשיב כאן.',
+    group_invite:
+      'שלום! {{org_name}} פתחו קבוצת ואטסאפ להורי {{group_name}}. ההצטרפות רשות, וכל העדכונים ממשיכים להגיע גם כאן.\n{{invite_url}}',
   },
   en: {
     booking_link:
@@ -160,6 +174,14 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'An update on your time-off request for {{date_range}}:\nthe request was {{decision}}.',
     welcome_notice:
       'Hi! Messages in this chat are sent on behalf of {{org_name}} via Lessio — lesson reminders, homework and payment requests.\nReply "stop" at any time to opt out.',
+    exam_good_luck:
+      'Hi {{student_name}} 👋\nYour {{subject}} exam ({{title}}) is today.\nGood luck, we believe in you! 🍀',
+    class_update:
+      'An update from {{org_name}} about {{topic}}:\n{{message}}\nFeel free to reply here with any questions.',
+    promo:
+      'A message from {{org_name}}:\n{{message}}\nReply here for details and to sign up.',
+    group_invite:
+      'Hi! {{org_name}} opened a WhatsApp group for the parents of {{group_name}}. Joining is optional, and every update keeps arriving here too.\n{{invite_url}}',
   },
 }
 

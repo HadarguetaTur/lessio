@@ -1469,7 +1469,7 @@
         "configured": "Configured",
         "notConnected": "Not connected",
         "viaPaymentProvider": "via payment provider",
-        "apiKeys": "{count, plural, one {1 active key} other {# active keys}}"
+        "apiKeys": "{count, plural, one {# active key} other {# active keys}}"
       }
     },
     "cardHint": "Open the setting to update the relevant configuration.",

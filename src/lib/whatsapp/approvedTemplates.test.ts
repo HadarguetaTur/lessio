@@ -45,9 +45,9 @@ describe('approved templates registry consistency', () => {
     }
   })
 
-  it('covers all 23 message template types with defaults in every language', () => {
+  it('covers all 27 message template types with defaults in every language', () => {
     for (const locale of LOCALES) {
-      expect(Object.keys(DEFAULT_TEMPLATES[locale])).toHaveLength(23)
+      expect(Object.keys(DEFAULT_TEMPLATES[locale])).toHaveLength(27)
     }
     expect(Object.keys(DEFAULT_TEMPLATES.en).sort()).toEqual(
       Object.keys(DEFAULT_TEMPLATES.he).sort()

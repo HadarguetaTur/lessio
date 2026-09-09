@@ -63,6 +63,10 @@ vi.mock('@/lib/whatsapp/debugToken', () => ({
   inspectAccessToken: mockInspectAccessToken,
 }))
 
+vi.mock('@/lib/whatsapp/health', () => ({
+  refreshPhoneHealth: vi.fn().mockResolvedValue(null),
+}))
+
 vi.mock('@/lib/whatsapp/registerPhone', () => ({
   registerPhoneNumber: mockRegisterPhoneNumber,
   // Kept real: the action uses it to reject a malformed env var before any
@@ -163,6 +167,7 @@ describe('saveWhatsAppConnection', () => {
       whatsapp_access_token: 'encrypted-token',
       whatsapp_waba_id: 'waba-1',
       whatsapp_business_id: 'biz-1',
+      wa_connected_at: expect.any(String),
     })
     expect(db.spies.eq).toHaveBeenCalledWith('id', 'org-1')
     expect(mockRegisterTemplatesForWABA).toHaveBeenCalledWith('waba-1', 'token-1')

@@ -101,10 +101,22 @@ export async function POST(
   const { reference: paymentReference, isSuccess } = parsed
 
   if (!isSuccess) {
-    console.info('[payments/webhook] Non-success payment event — no action taken', {
-      provider,
-      paymentReference,
-    })
+    if (parsed.isRefund) {
+      // Money went back to the parent and Lessio cannot say so: charge_payments
+      // has CHECK (amount > 0), so a reversal row is impossible, and amount_paid
+      // never decrements. The charge will keep reading as paid. Reported at
+      // error level because it needs a person, not because anything failed.
+      console.error(
+        '[payments/webhook] REFUND reported by the provider — Lessio has no refund ledger, ' +
+        'so the charge still reads as paid. Reconcile this one by hand.',
+        { provider, paymentReference, amount: parsed.amount }
+      )
+    } else {
+      console.info('[payments/webhook] Non-success payment event — no action taken', {
+        provider,
+        paymentReference,
+      })
+    }
     return NextResponse.json({ ok: true }, { status: 200 })
   }
 

@@ -90,6 +90,36 @@ export function normalizeSeriesRule(raw: unknown): SeriesRule | null {
   }
 }
 
+/**
+ * A total, harmless stand-in for a rule that cannot be read at all.
+ *
+ * Every field is present and of the right type, so sorting, formatting and
+ * string methods are safe. It is deliberately not plausible data — a series
+ * rendered with this is flagged as incomplete, not presented as a real
+ * Sunday-midnight slot.
+ */
+export const UNREADABLE_SERIES_RULE: SeriesRule = {
+  frequency: 'weekly',
+  day_of_week: 0,
+  start_time: '00:00',
+  duration_minutes: 0,
+  until: '',
+}
+
+/**
+ * Read a rule for display: never null, never throws, and tells the caller
+ * whether what came back is trustworthy.
+ */
+export function readSeriesRuleForDisplay(raw: unknown): {
+  rule: SeriesRule
+  isComplete: boolean
+} {
+  const normalized = normalizeSeriesRule(raw)
+  return normalized === null
+    ? { rule: UNREADABLE_SERIES_RULE, isComplete: false }
+    : { rule: normalized, isComplete: !isLegacySeriesRule(raw) }
+}
+
 /** True when the stored value is missing fields the canonical shape requires. */
 export function isLegacySeriesRule(raw: unknown): boolean {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return true

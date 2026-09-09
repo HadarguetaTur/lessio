@@ -8,6 +8,7 @@ import { getTeacherByProfileId } from '@/lib/teachers'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createLesson, LessonConflictError } from '@/lib/lessons/createLesson'
+import { OrgScopeError } from '@/lib/auth/orgScope'
 import { getGroupRosterServiceRole } from '@/lib/groups/roster'
 import {
   buildAvailabilityNotice,
@@ -105,6 +106,13 @@ export type NewLessonState = {
    */
   needsCalendarConfirm?: boolean
   calendarConflicts?: CalendarConflict[]
+  /**
+   * Google answered neither "free" nor "busy" — a revoked token, a 403, an
+   * outage or the 8s timeout. The dialog says so, and the same
+   * `confirm_calendar_conflict=1` acknowledgement lets staff proceed anyway.
+   * Silence used to be rendered as "no conflicts".
+   */
+  calendarCheckFailed?: boolean
   /** The lesson is legal, but would strand time too short for another lesson. */
   needsScheduleImpactConfirm?: boolean
   scheduleImpact?: ScheduleImpact
@@ -343,6 +351,16 @@ export async function createLessonAction(
       lessonId = result.lessonId
     }
   } catch (err) {
+    // An id from another tenant is not a scheduling outcome to explain — it is
+    // a request that should never have arrived.
+    if (err instanceof OrgScopeError) {
+      return {
+        error:
+          err.table === 'teachers'
+            ? await commonError('noPermission')
+            : t('lessons.newErrors.studentNotFound'),
+      }
+    }
     if (err instanceof LessonConflictError) {
       const teacherConflict =
         role === 'teacher'
@@ -398,7 +416,20 @@ async function assertNoCalendarConflicts(params: {
   durationMinutes: number
 }): Promise<NewLessonState | null> {
   const t = await getTranslations()
-  const conflicts = await checkLessonCalendarConflicts(params)
+  const { conflicts, status } = await checkLessonCalendarConflicts(params)
+
+  // Not free, not busy: we could not read the calendar. Staff may still book —
+  // this is their own diary and they can see it — but they say so explicitly
+  // rather than being shown a silence that looks like a clean check.
+  if (status === 'unknown_provider_error') {
+    return {
+      error: t('lessons.conflicts.googleCalendarUnavailable'),
+      needsCalendarConfirm: true,
+      calendarCheckFailed: true,
+      calendarConflicts: conflicts,
+    }
+  }
+
   if (conflicts.length === 0) return null
   return {
     error: t('lessons.conflicts.googleCalendar'),

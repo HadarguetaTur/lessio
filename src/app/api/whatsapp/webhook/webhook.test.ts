@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { createHmac } from 'crypto'
 
@@ -3019,5 +3019,114 @@ describe('POST /api/whatsapp/webhook — delivery statuses', () => {
     expect(res.status).toBe(200)
     expect(applyDeliveryStatus).not.toHaveBeenCalled()
     warnSpy.mockRestore()
+  })
+})
+
+/**
+ * The App Review demo reschedule handler (src/lib/whatsapp/demoReschedule.ts)
+ * was deleted on 2026-09-05, after Meta approved the submission. It moved a
+ * lesson straight from a plain sentence with no availability, notice, holiday
+ * or duration validation whatsoever — a stale message could persist an invalid
+ * lesson, which is precisely what commit-time validation exists to prevent.
+ *
+ * These tests set DEMO_RESCHEDULE_ENABLED=1 on purpose: a Vercel variable left
+ * behind must not be able to bring the path back.
+ */
+describe('a reschedule-shaped message cannot move a lesson', () => {
+  const RESCHEDULE_TEXTS = [
+    'אפשר להזיז את השיעור ל-18:00?',
+    'צריך לדחות את השיעור של מחר',
+    'can you reschedule my lesson to 18:00',
+  ]
+
+  /** Every write issued while the message was handled, as `table:op`. */
+  let writes: string[]
+
+  function recordingChain(table: string, result: unknown) {
+    const self: Record<string, unknown> = {}
+    const pass = () => self
+    ;['select', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'order', 'limit'].forEach((m) => {
+      self[m] = pass
+    })
+    ;['insert', 'update', 'delete', 'upsert'].forEach((m) => {
+      self[m] = () => {
+        writes.push(`${table}:${m}`)
+        return self
+      }
+    })
+    self['maybeSingle'] = () => Promise.resolve(result)
+    self['single'] = () => Promise.resolve(result)
+    self['then'] = (res: (v: unknown) => unknown) => Promise.resolve(result).then(res)
+    return self
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    writes = []
+    process.env.WHATSAPP_APP_SECRET = APP_SECRET
+    process.env.WHATSAPP_VERIFY_TOKEN = VERIFY_TOKEN
+    process.env.WHATSAPP_ACCESS_TOKEN = 'test-access-token'
+    process.env.WHATSAPP_PHONE_NUMBER_ID = 'test-phone-number-id'
+    process.env.DEMO_RESCHEDULE_ENABLED = '1'
+
+    mockClaimIncomingMessage.mockResolvedValue(true)
+    mockReleaseIncomingMessageClaim.mockResolvedValue(undefined)
+    mockIsTakenOver.mockResolvedValue(false)
+    mockGetActiveCancellationSession.mockResolvedValue(null)
+    mockAiAssistantConfigured.mockReturnValue(true)
+    mockAiAssistant.mockResolvedValue({
+      reply: 'ai-reply',
+      promptTokens: 1,
+      completionTokens: 1,
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+    })
+    mockLogExchange.mockResolvedValue(undefined)
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return recordingChain(table, {
+          data: {
+            id: ORG_ID,
+            whatsapp_access_token: 'encrypted-token',
+            timezone: 'Asia/Jerusalem',
+            ai_assistant_enabled: true,
+          },
+          error: null,
+        })
+      }
+      if (table === 'parents') {
+        return recordingChain(table, { data: { id: PARENT_ID }, error: null })
+      }
+      if (table === 'relationships') {
+        return recordingChain(table, { data: [{ student_id: STUDENT_ID }], error: null })
+      }
+      return recordingChain(table, { data: null, error: null })
+    })
+  })
+
+  afterEach(() => {
+    delete process.env.DEMO_RESCHEDULE_ENABLED
+  })
+
+  it.each(RESCHEDULE_TEXTS)('writes nothing to lessons for "%s"', async (text) => {
+    const res = await POST(makeRequest(makeWebhookPayload(text)))
+
+    expect(res.status).toBe(200)
+    expect(writes.filter((w) => w.startsWith('lessons:'))).toEqual([])
+  })
+
+  it('falls through to the ordinary intent dispatch instead', async () => {
+    await POST(makeRequest(makeWebhookPayload(RESCHEDULE_TEXTS[0])))
+
+    // The assistant answers it, exactly as it answers any other sentence the
+    // detectors do not claim. Answering is the whole capability; nothing acts.
+    expect(mockAiAssistant).toHaveBeenCalledWith(
+      ORG_ID,
+      SENDER_PHONE_E164,
+      PARENT_ID,
+      RESCHEDULE_TEXTS[0],
+      'he'
+    )
   })
 })

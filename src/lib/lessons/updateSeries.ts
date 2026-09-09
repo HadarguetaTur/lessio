@@ -10,7 +10,7 @@
 
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import type { SeriesRule } from '@/lib/lessons/createSeries'
+import { MAX_SERIES_OCCURRENCES, type SeriesRule } from '@/lib/lessons/createSeries'
 import { stopLessonSeries } from '@/lib/lessons/cancelSeries'
 import { EMPTY_FOOTPRINT, loadSeriesFootprint, SeriesHasHistoryError } from '@/lib/lessons/seriesFootprint'
 
@@ -34,6 +34,40 @@ async function getSeriesOrThrow(db: ReturnType<typeof createServiceRoleClient>, 
   return { ...series, rule: series.rule as SeriesRule }
 }
 
+/**
+ * Whether any student on the roster already has a non-cancelled lesson
+ * overlapping [startUtc, endUtc). Mirrors the create path's check, including
+ * its org scoping — the junction read is by student id, so the org filter on
+ * `lessons` is what keeps the answer inside this tenant.
+ */
+async function anyStudentBusy(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string,
+  studentIds: string[],
+  startUtc: string,
+  endUtc: string
+): Promise<boolean> {
+  for (const studentId of studentIds) {
+    const { data: junction } = await db
+      .from('lesson_students')
+      .select('lesson_id')
+      .eq('student_id', studentId)
+    if (!junction?.length) continue
+
+    const { data: clash } = await db
+      .from('lessons')
+      .select('id')
+      .in('id', junction.map((r) => r.lesson_id))
+      .eq('organization_id', orgId)
+      .neq('status', 'cancelled')
+      .lt('start_at', endUtc)
+      .gt('end_at', startUtc)
+      .limit(1)
+    if (clash?.length) return true
+  }
+  return false
+}
+
 async function setSeriesUntil(
   db: ReturnType<typeof createServiceRoleClient>,
   seriesId: string,
@@ -53,6 +87,14 @@ async function setSeriesUntil(
  * lesson and `newUntil`. Participants, type and price are copied from the most
  * recent non-cancelled lesson of the series, so pair/group series extend with
  * everyone on board.
+ *
+ * SCHED-04: this ran only a holiday check. The create path checks the student's
+ * other lessons and any slot lock a parent is holding, and an extension writes
+ * exactly the same rows — so extending a series was the one way to book a
+ * student into two places at once, or to land on top of a slot a parent was
+ * five minutes from confirming. Teacher overlap was already covered, but only
+ * by the no_teacher_lesson_overlap EXCLUDE rejecting the insert; that stays the
+ * backstop and is deliberately not replaced by a query.
  */
 export async function extendLessonSeries(
   seriesId: string,
@@ -100,8 +142,10 @@ export async function extendLessonSeries(
   const holidaySet = new Set((holidays ?? []).map((h) => h.date))
 
   let created = 0
+  let generated = 0
   const conflicts: string[] = []
-  for (; cursor <= until; cursor = cursor.plus({ days: stepDays })) {
+  for (; cursor <= until && generated < MAX_SERIES_OCCURRENCES; cursor = cursor.plus({ days: stepDays })) {
+    generated++
     const dateStr = cursor.toISODate()!
     if (holidaySet.has(dateStr)) {
       conflicts.push(dateStr)
@@ -109,6 +153,34 @@ export async function extendLessonSeries(
     }
     const start = DateTime.fromISO(`${dateStr}T${rule.start_time}`, { zone: timezone }).toUTC()
     const end = start.plus({ minutes: rule.duration_minutes })
+    const startUtc = start.toISO()!
+    const endUtc = end.toISO()!
+
+    // Every student on the roster must be free — the same check the create
+    // path runs. Without it an extension was the one way to put a student in
+    // two places at once.
+    if (await anyStudentBusy(db, orgId, studentIds, startUtc, endUtc)) {
+      conflicts.push(dateStr)
+      continue
+    }
+
+    // And a slot a parent is actively holding is not free either, even though
+    // no lesson row exists for it yet.
+    const { data: lockConflict } = await db
+      .from('slot_locks')
+      .select('id')
+      .eq('teacher_id', series.teacher_id)
+      .eq('organization_id', orgId)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .lt('start_at', endUtc)
+      .gt('end_at', startUtc)
+      .limit(1)
+    if (lockConflict?.length) {
+      conflicts.push(dateStr)
+      continue
+    }
+
     // The no_teacher_lesson_overlap EXCLUDE constraint rejects clashes for us.
     const { data: lesson, error: lErr } = await db
       .from('lessons')
@@ -116,8 +188,8 @@ export async function extendLessonSeries(
         organization_id: orgId,
         teacher_id: series.teacher_id,
         series_id: seriesId,
-        start_at: start.toISO()!,
-        end_at: end.toISO()!,
+        start_at: startUtc,
+        end_at: endUtc,
         status: 'scheduled',
         lesson_type: template.lesson_type,
         max_students: template.max_students,

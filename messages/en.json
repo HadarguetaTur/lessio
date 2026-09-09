@@ -1089,6 +1089,7 @@
     "lessonHistory": "Lesson history",
     "seriesErrors": {
       "endDateFuture": "The end date must be in the future",
+      "endDateTooFar": "A series can run at most {months} months ahead. You can extend it later.",
       "createSeriesFailed": "Could not create the series",
       "updateSeriesFailed": "Could not update the series",
       "seriesHasHistory": "This series has {count} lessons that already happened or were charged, so it cannot be removed. You can stop it instead.",
@@ -1109,6 +1110,7 @@
       "overrideBlocked": "The teacher has blocked this time — a lesson cannot be scheduled",
       "studentConflict": "The student already has a lesson at this time",
       "googleCalendar": "There is a Google Calendar event at the requested time. Schedule the lesson anyway?",
+      "googleCalendarUnavailable": "We could not read the Google Calendar, so we do not know whether this time is free — the calendar connection may have expired. Schedule the lesson anyway?",
       "outsideWindows": "The teacher is not available at this time. Schedule the lesson anyway?",
       "markedUnavailable": "The teacher marked this date as unavailable. Schedule the lesson anyway?",
       "outsideDayWindow": "The requested time is outside the availability window set for this date. Schedule the lesson anyway?",

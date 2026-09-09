@@ -81,13 +81,22 @@ export async function createTeacherLessonAction(
   }
 
   if (!confirmedCalendarConflict) {
-    const conflicts = await checkLessonCalendarConflicts({
+    const { conflicts, status } = await checkLessonCalendarConflicts({
       orgId,
       teacherId: teacher.id,
       date,
       startTime: start_time,
       durationMinutes: duration_minutes,
     })
+    // "We could not read your calendar" is not "your calendar is clear".
+    if (status === 'unknown_provider_error') {
+      return {
+        error: t('lessons.conflicts.googleCalendarUnavailable'),
+        needsCalendarConfirm: true,
+        calendarCheckFailed: true,
+        calendarConflicts: conflicts,
+      }
+    }
     if (conflicts.length > 0) {
       return {
         error: t('lessons.conflicts.googleCalendar'),

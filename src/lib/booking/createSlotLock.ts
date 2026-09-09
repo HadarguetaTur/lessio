@@ -14,9 +14,9 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getEffectiveBreakMinutes } from '@/lib/scheduling/breaks'
-import { getExternalBusyIntervals } from '@/lib/google-calendar/getExternalBusyIntervals'
+import { getExternalBusy } from '@/lib/google-calendar/getExternalBusyIntervals'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
-import { isSlotBlockedByOverride } from './isSlotBlockedByOverride'
+import { assertSlotBookable, SlotNotBookableError } from './assertSlotBookable'
 
 export class SlotUnavailableError extends Error {
   constructor() {
@@ -52,6 +52,25 @@ export async function createSlotLock({
 }: CreateSlotLockParams): Promise<SlotLock> {
   const db = createServiceRoleClient()
 
+  // The client picked these three values off a page that may be minutes or days
+  // old. Re-derive the answer from the database before anything is reserved:
+  // in the future, past the minimum notice, an allowed duration, not a holiday,
+  // and inside an open availability window. A stale page must not be able to
+  // reserve — let alone persist — a slot the teacher no longer offers.
+  try {
+    await assertSlotBookable({
+      orgId: organizationId,
+      teacherId,
+      startUtc: startAt,
+      endUtc: endAt,
+      audience: 'bot',
+    })
+  } catch (err) {
+    // Every rejection reads the same way to a parent: pick another time.
+    if (err instanceof SlotNotBookableError) throw new SlotUnavailableError()
+    throw err
+  }
+
   // Fail fast when the student has already used up the week — no point holding
   // a slot they cannot confirm.
   if (studentId) {
@@ -83,29 +102,36 @@ export async function createSlotLock({
   const isAvailable = await checkSlotAvailable(db, teacherId, startAt, endAt, breakMinutes)
   if (!isAvailable) throw new SlotUnavailableError()
 
-  // Availability-exception re-check: a day or hours the teacher blocked after
-  // the slot list was rendered must not be lockable, same as a holiday.
-  const overrideBlocked = await isSlotBlockedByOverride({
-    orgId: organizationId,
-    teacherId,
-    startAtUtc: startAt,
-    endAtUtc: endAt,
-  })
-  if (overrideBlocked) throw new SlotUnavailableError()
-
   // Google Calendar re-check (decision #36): a calendar event created after the
   // slot list was rendered must not be lockable. This is the ONLY Google check
   // on the write path — confirmBooking deliberately does not repeat it, so an
   // external event created inside the lock's five minutes losing to the booking
   // is an accepted race, in the same spirit as the dashboard's soft-confirm.
-  // Not break-widened, consistent with the listing. Fail-open on Google errors.
-  const externalBusy = await getExternalBusyIntervals({
+  // Not break-widened, consistent with the listing.
+  //
+  // Fail-CLOSED on a Google error (INT-01). It used to fail open, and because
+  // checkCalendarConflicts swallowed every failure into an empty array, a
+  // revoked refresh token was indistinguishable from an empty calendar: a
+  // teacher whose Google connection had quietly died was double-booked over
+  // every real event in their diary, indefinitely. Listing still fails open —
+  // an outage must not close the booking book — but a write does not get to
+  // assume. 'unavailable' asks the parent to pick another time, which is an
+  // honest retry rather than a silent overwrite.
+  const external = await getExternalBusy({
     orgId: organizationId,
     teacherId,
     windowStartUtc: startAt,
     windowEndUtc: endAt,
   })
-  if (externalBusy.some(b => b.start < endAt && b.end > startAt)) {
+  if (external.status === 'unknown_provider_error') {
+    console.warn('[createSlotLock] refusing the lock — Google Calendar could not be read', {
+      orgId: organizationId,
+      teacherId,
+      startAt,
+    })
+    throw new SlotUnavailableError()
+  }
+  if (external.intervals.some(b => b.start < endAt && b.end > startAt)) {
     throw new SlotUnavailableError()
   }
 

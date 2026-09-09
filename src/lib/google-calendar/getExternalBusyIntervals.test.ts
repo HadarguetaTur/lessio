@@ -12,7 +12,7 @@ vi.mock('./index', async (importOriginal) => ({
 }))
 
 import { checkCalendarConflicts } from './index'
-import { getExternalBusyIntervals, mergeBusyIntervals } from './getExternalBusyIntervals'
+import { getExternalBusy, getExternalBusyIntervals, mergeBusyIntervals } from './getExternalBusyIntervals'
 
 const mockCheck = vi.mocked(checkCalendarConflicts)
 
@@ -94,10 +94,15 @@ describe('getExternalBusyIntervals', () => {
           : { data: { google_calendar_refresh_token: 'enc-teacher', google_calendar_selected_calendars: null }, error: null }
       )
     )
-    mockCheck.mockResolvedValue([
-      { start: '2026-09-06T10:00:00Z', end: '2026-09-06T11:00:00Z', calendar: 'org', label: null },
-      { start: '2026-09-06T10:30:00Z', end: '2026-09-06T12:00:00Z', calendar: 'teacher', label: null },
-    ])
+    mockCheck.mockResolvedValue({
+      status: 'busy',
+      conflicts: [
+        { start: '2026-09-06T10:00:00Z', end: '2026-09-06T11:00:00Z', calendar: 'org', label: null },
+        { start: '2026-09-06T10:30:00Z', end: '2026-09-06T12:00:00Z', calendar: 'teacher', label: null },
+      ],
+      unreachable: [],
+      erroredCalendarIds: [],
+    })
 
     const busy = await getExternalBusyIntervals(PARAMS)
 
@@ -121,9 +126,77 @@ describe('getExternalBusyIntervals', () => {
           : { data: null, error: null }
       )
     )
-    mockCheck.mockResolvedValue([])
+    mockCheck.mockResolvedValue({
+      status: 'free',
+      conflicts: [],
+      unreachable: [],
+      erroredCalendarIds: [],
+    })
 
     expect(await getExternalBusyIntervals(PARAMS)).toEqual([])
     expect(mockCheck).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * INT-01. A revoked refresh token, a 403, an outage and the timeout used to
+ * arrive as an empty array, exactly like a genuinely empty calendar.
+ */
+describe('getExternalBusy — the tri-state', () => {
+  const PARAMS = {
+    orgId: 'org-1',
+    teacherId: 'teacher-1',
+    windowStartUtc: '2026-09-06T00:00:00Z',
+    windowEndUtc: '2026-09-06T23:59:59Z',
+  }
+
+  function connected() {
+    mockFrom.mockImplementation(() =>
+      buildChain({
+        data: {
+          google_calendar_refresh_token: 'enc',
+          google_calendar_selected_calendars: null,
+        },
+        error: null,
+      })
+    )
+  }
+
+  beforeEach(() => vi.clearAllMocks())
+
+  it('reports free when no calendar is connected, without asking Google', async () => {
+    mockFrom.mockImplementation(() => buildChain({ data: null, error: null }))
+
+    expect(await getExternalBusy(PARAMS)).toEqual({ intervals: [], status: 'free' })
+    expect(mockCheck).not.toHaveBeenCalled()
+  })
+
+  it('carries an unknown_provider_error through instead of reporting free', async () => {
+    connected()
+    mockCheck.mockResolvedValue({
+      status: 'unknown_provider_error',
+      conflicts: [],
+      unreachable: ['teacher'],
+      erroredCalendarIds: [],
+    })
+
+    const result = await getExternalBusy(PARAMS)
+
+    expect(result.status).toBe('unknown_provider_error')
+    expect(result.intervals).toEqual([])
+  })
+
+  it('the advisory shorthand still fails open on the listing surfaces', async () => {
+    // Deliberate: a Google outage must not empty the calendar a parent is
+    // browsing. Only the write path refuses.
+    connected()
+    mockCheck.mockResolvedValue({
+      status: 'unknown_provider_error',
+      conflicts: [],
+      unreachable: ['org'],
+      erroredCalendarIds: [],
+    })
+
+    expect(await getExternalBusyIntervals(PARAMS)).toEqual([])
   })
 })

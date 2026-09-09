@@ -15,6 +15,23 @@ import { assertLessonPeopleBelongToOrg } from './assertLessonPeople'
 
 export type SeriesFrequency = 'weekly' | 'biweekly'
 
+/**
+ * How far ahead a series may run, and how many occurrences it may generate.
+ *
+ * `until` was unbounded (SCHED-08): the schema proved it was a date and
+ * nothing else, so "2099-12-31" generated ~3,800 lessons one INSERT at a time.
+ * The request times out long before it finishes, and because the lesson_series
+ * row is written first and there is no transaction, what survives is a series
+ * with an arbitrary number of occurrences that nobody asked for and nothing
+ * rolls back.
+ *
+ * The occurrence cap is the backstop, not the message: the actions reject a
+ * too-far `until` with something a person can read. Two years of weekly
+ * lessons is 105 occurrences, so the cap only bites on input the UI refuses.
+ */
+export const MAX_SERIES_HORIZON_MONTHS = 24
+export const MAX_SERIES_OCCURRENCES = 130
+
 /** Series can repeat any lesson type; a group series enrols the group's roster at creation time. */
 export type SeriesLessonType = LessonType
 
@@ -74,8 +91,10 @@ export async function createLessonSeries(
   // Same reasoning as createLesson: teacherId and studentIds arrive from the
   // new-series form and every row written below is stamped with orgId, so a
   // foreign id would mint a whole recurring series against another tenant's
-  // teacher or students. Checked before the lesson_series row is inserted, so
-  // a rejection leaves nothing behind.
+  // teacher or students. Checked before the lesson_series row is inserted —
+  // this function writes the series first and generates occurrences in a
+  // loop, so a late rejection would leave a series row behind even when
+  // every occurrence failed.
   await assertLessonPeopleBelongToOrg(orgId, teacherId, studentIds)
 
   const seriesGroupId = lessonType === 'group' ? groupId : null
@@ -128,7 +147,7 @@ export async function createLessonSeries(
   }
 
   const candidates: DateTime[] = []
-  while (cursor <= until) {
+  while (cursor <= until && candidates.length < MAX_SERIES_OCCURRENCES) {
     candidates.push(cursor)
     cursor = cursor.plus({ days: stepDays })
   }

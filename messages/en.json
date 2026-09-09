@@ -1254,6 +1254,7 @@
       "chargeResolved": "This charge was waived or voided and cannot be marked paid",
       "chargeAlreadyPaid": "This charge is already paid. Refunds and credits are handled in your invoicing system, outside Lessio",
       "chargeAlreadyResolved": "This charge was already waived or voided",
+      "chargeSharedPaymentLink": "A payment request already sent covers this charge together with others. Handle those first, or send a new payment request, then try again",
       "chargeNotOpen": "This charge is not open for payment",
       "paymentTooLarge": "The amount is larger than the open balance ({max})",
       "invalidPaymentDate": "Choose a valid payment date that is not in the future",

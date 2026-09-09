@@ -531,6 +531,8 @@ async function runResolve(
         return { error: t('chargeAlreadyPaid') }
       case 'already_resolved':
         return { error: t('chargeAlreadyResolved') }
+      case 'shared_payment_link':
+        return { error: t('chargeSharedPaymentLink') }
       default:
         return { error: t('updateStatusFailed') }
     }

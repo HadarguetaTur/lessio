@@ -573,6 +573,51 @@ but they still render their schedule as `undefined`.
 
 ---
 
+## Exam good-luck message (2026-09-08)
+
+**Status:** Built (migration `20260908100000` applied locally, not yet in production)
+**Track:** standalone; no sprint dependency
+
+Exams have been in the product since the progress-report work — `student_exams`,
+the dashboard tab, the parent portal form and the student bot's four-step report
+flow — but nothing ever reached the student before one. This adds the seventh
+automated message: a good-luck note on the day of the exam.
+
+**When it goes out.** `exam_date` is a date, so most exams have no time at all.
+The org picks an hour for the morning send (`exam_good_luck_hour`, default 07:00
+org-local). Where a time *is* known, the message goes out
+`exam_good_luck_hours_before` hours ahead of it (default 2), never earlier than
+the morning hour — a 07:30 exam must not wake anyone at 05:30 — and never once
+the exam has started. That whole rule is one pure function,
+`src/lib/exams/goodLuckTiming.ts`, mirrored for Deno and unit-tested on the Node
+side, because the Edge Functions have no test harness here.
+
+`exam_time` is optional on all three entry points: the dashboard exam sheet, the
+portal report form, and the bot, where it is read off the same answer as the date
+("15/9 10:00") rather than costing a fifth conversation step.
+
+**How it sends.** The hourly `exam-good-luck` Edge Function is a sibling of
+`homework-reminders`: same org gates (`reminders_enabled`, `service_state`, a
+connected number, plus `automation_exam_good_luck_enabled`), the same
+claim-before-send through `notification_log` (new type `exam_good_luck`, keyed by
+exam id, so a missed cron run catches up later in the day without a second send),
+and the same recipient rule — the student's own phone, else the primary parent.
+Copy is a new `exam_good_luck` template type, editable per org and per language,
+with `lessio_exam_good_luck_{he,en}_v2` registered at Meta for the out-of-window
+case, which is the normal case here.
+
+The settings live in the automations list on `/settings/whatsapp`, next to the
+lesson reminder, rather than on `/settings/exams` — one home per setting.
+
+**Ops outstanding:** apply migration `20260908100000` to production; deploy the
+function; re-run `scripts/setup-crons.sql`; register the two new Meta templates
+on each connected WABA.
+
+**Known gaps:** no email channel (WhatsApp only); the message is not offered as a
+copilot action; a group of exams on one day sends one message each.
+
+---
+
 ## Outbound acquisition engine V1 (2026-09-07)
 
 **Status:** Built (migration `20260907120000` applied locally, not yet in production)
@@ -619,14 +664,111 @@ read-only `/admin/leads`.
 reply-rate math, `docs/schema.md` / decision entry. Once the flow has run on
 two real addresses, real prospects go in before any of this.
 
-**Ops outstanding:** apply migrations `20260907120000` and `20260907140000`
-to production; create the service account and delegate it (setup doc §1–2);
-reactivate the suspended outreach users in the Workspace; set
-`GOOGLE_SA_CLIENT_EMAIL`, `GOOGLE_SA_PRIVATE_KEY` and
-`LESSIO_OUTBOUND_CRON_SECRET_SHA256` in Vercel; re-run `scripts/setup-crons.sql`;
-walk the first-run checklist (setup doc §6).
+**Ops:** all done 2026-09-07. Migrations `20260907120000` and `20260907140000`
+applied to production, service account created and delegated, three mailboxes
+registered (`cs@hadarturgemanautomations.com` plus two on `getlessio.com` with
+SPF and DKIM), env set in Vercel, crons registered, and the acceptance path ran
+end to end on a real address: cold email → "כן" → lead → demo email.
 
 ---
+
+## Outbound V2: AI openers, follow-ups, real unsubscribe (2026-09-08)
+
+**Status:** Shipped. Migration `20260908130000` applied to production; the
+`outbound-followups` and `outbound-openers` crons are registered and live.
+
+Three gaps the first real send exposed.
+
+**The opening line is drafted, then approved.** A `website` column (a URL, a
+profile, or a sentence typed by hand) is read by the platform model, which
+writes one sentence in the prospect's language. It cannot be sent on its own:
+the send claim only picks up prospects whose `opener_status` is `none` or
+`approved`, so everything else waits in "opening lines to review" on
+`/admin/outbound`, where it is edited, approved, redrafted or skipped. An
+optional `gender` column tells the Hebrew copy how to address the person;
+without it the wording avoids the choice instead of guessing.
+
+**Follow-ups, only for people who answered.** Nobody who ignored the first
+email is mailed twice. After the demo: +3 days, then +7. After a reply the
+classifier could not read: one clarification at +2 days. Each goes from the
+mailbox that sent the original, inside the same Gmail conversation
+(`threadId` + `In-Reply-To` + a `Re:` subject), and counts against that
+mailbox's daily cap. Any real reply cancels what is queued; an out-of-office
+does not. A full or disabled mailbox defers the touch rather than sending it
+from a stranger.
+
+**Unsubscribe erases.** Every email now carries a one-click link (`/u/<token>`)
+and the RFC 8058 headers, so Gmail and Outlook show their own button; a reply
+like "תסירי אותי" does the same (the regex had only the plural forms). Either
+path keeps the address on `outbound_suppressions` and deletes the prospect, the
+whole conversation, the platform lead and its events in one transaction. The
+migration also erased the rows V1 had left behind in `unsubscribed`. The reply
+poller drops mail from a suppressed sender *before* storing it, so its 10-minute
+overlap cannot re-create what was just deleted. Opening the link never
+unsubscribes anyone — scanners follow links — so the page asks and the button acts.
+
+**Still deliberately not built:** lead status controls and `prospect → converted`,
+nav count badge, requeue, campaign list polish, reply-rate math, `docs/schema.md`.
+
+---
+
+## WhatsApp broadcasts + group channel (2026-09-08)
+
+**Status:** 📋 Specced — Phase 0 built (migration `20260908150000` local only, templates not yet submitted)
+**Track:** standalone; replaces the shelved "distribution lists" spec of 2026-09-05
+**Plan:** `~/.claude/plans/pure-moseying-raccoon.md` (decision #42)
+
+Every WhatsApp send today is 1:1 and event-driven. There is no way for an owner
+to tell the parents of a group one thing, and no link between `student_groups`
+and WhatsApp — so it happens from the personal phone, with no opt-out, no
+transcript and no protection for the business number Lessio is connected to.
+
+Checked against Meta's documentation on 2026-09-08, and shaping everything here:
+the **Groups API is open only to Official Business Accounts** (green tick —
+30 days on the platform, business verification, public notability; a studio
+almost never gets it), groups hold 8 participants including the business, and a
+tech provider **may not submit Business Verification on a customer's behalf**.
+
+**Phase 0 — protect the number (built).**
+- `organizations.wa_quality_rating / wa_messaging_limit_tier / wa_is_oba /
+  wa_business_verification_status / wa_connected_at / broadcasts_enabled`,
+  refreshed by `src/lib/whatsapp/health.ts` on connect, daily
+  (`/api/internal/whatsapp/health`, cron `whatsapp-health`,
+  `LESSIO_WHATSAPP_CRON_SECRET_SHA256`) and by the new webhook fields
+  `phone_number_quality_update` / `account_update` /
+  `phone_number_name_update`. Owners get an in-app alert (`whatsapp_health`)
+  on FLAGGED, tier change, restriction, verification, and on a template Meta
+  pauses.
+- Three template types, registered on every WABA: `class_update` (UTILITY,
+  opt-out button), `promo` (MARKETING, separate opt-in, opt-out button),
+  `group_invite` (UTILITY, URL button on `chat.whatsapp.com/{{1}}`).
+  `BROADCAST_TEMPLATES` / `broadcastBodyParams` in `approvedTemplates.ts`.
+- Verification & trust card on `/settings/whatsapp`: health badges, the
+  connected → verified → OBA ladder with what each unlocks, an Israeli
+  document checklist, a link into Security Centre, OBA prerequisites.
+
+**Phase 1 — broadcast engine + guard (next).** `broadcast_campaigns` /
+`broadcast_recipients`, audience as a filter (student group, lesson, teacher,
+debt, manual) materialised at send time, one `guard.ts` with the rules that
+keep a number out of RED (quality, warm-up, daily budget, per-parent
+frequency, quiet hours, marketing opt-in, AI category check, Meta error
+mapping, template pausing), cron drain with `SKIP LOCKED` claims, per-category
+opt-out (`updates_opted_out_at` / `marketing_opted_out_at`), marketing opt-in
+via bot + portal + attestation. Owners/admins send anything; a teacher sends
+service updates to the parents of their own lessons only.
+
+**Phase 2 — linked WhatsApp group.** The teacher opens the group on their own
+phone and pastes the invite link into the student group; Lessio invites the
+parents 1:1 with `group_invite` and "message the group" is a broadcast to the
+group's parents. Honest about it in the UI.
+
+**Phase 3 — Groups API**, only behind `wa_is_oba`. Not before a tenant has it.
+
+**To go live with Phase 0:** apply the migration to production, set
+`LESSIO_WHATSAPP_CRON_SECRET_SHA256` in Vercel (same token as the other cron
+routes), re-run `scripts/setup-crons.sql`, tick the three new webhook fields
+in the Meta App Dashboard, and register the templates on Brightpath's WABA from
+the settings page.
 
 ## Full Roadmap Summary
 

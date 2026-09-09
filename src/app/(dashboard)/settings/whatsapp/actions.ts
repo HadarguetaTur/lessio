@@ -27,7 +27,7 @@ import { refreshPhoneHealth } from '@/lib/whatsapp/health'
 import { META_API_VERSION } from '@/lib/whatsapp/graphVersion'
 import { inspectAccessToken, type TokenGrant } from '@/lib/whatsapp/debugToken'
 import { registerPhoneNumber, isValidRegisterPin } from '@/lib/whatsapp/registerPhone'
-import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { commonError, mutationBlockedError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
@@ -70,7 +70,11 @@ export async function saveWhatsAppConnection(
 ): Promise<WhatsAppActionResult> {
   const t = await getTranslations()
   const session = await getSession()
-  requireMutation(session)
+  try {
+    requireMutation(session)
+  } catch (err) {
+    return { error: await mutationBlockedError(err) }
+  }
   const { orgId, role } = session
 
   if (role !== 'owner') {
@@ -243,7 +247,11 @@ export async function disconnectWhatsApp(
 ): Promise<WhatsAppActionResult> {
   const t = await getTranslations()
   const session = await getSession()
-  requireMutation(session)
+  try {
+    requireMutation(session)
+  } catch (err) {
+    return { error: await mutationBlockedError(err) }
+  }
   const { orgId, role } = session
 
   if (role !== 'owner') {
@@ -312,10 +320,16 @@ export async function registerTemplates(
   _formData: FormData
 ): Promise<RegisterTemplatesResult> {
   const session = await getSession()
-  requireMutation(session)
+
   const { orgId, role } = session
 
   const empty = { registered: [], failed: [] }
+
+  try {
+    requireMutation(session)
+  } catch {
+    return { error: 'readOnly', ...empty }
+  }
 
   if (role !== 'owner') {
     return { error: 'forbidden', ...empty }

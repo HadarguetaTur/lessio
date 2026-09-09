@@ -13,6 +13,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { mutationBlockedError } from '@/lib/i18n/actionErrors'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { refreshPhoneHealth } from '@/lib/whatsapp/health'
 import { getTranslations } from 'next-intl/server'
@@ -26,7 +27,11 @@ export async function refreshWhatsAppHealth(
   _formData: FormData
 ): Promise<TrustActionResult> {
   const session = await getSession()
-  requireMutation(session)
+  try {
+    requireMutation(session)
+  } catch (err) {
+    return { error: await mutationBlockedError(err) }
+  }
   const t = await getTranslations('settings.whatsappTrust')
 
   if (session.role !== 'owner') return { error: t('errors.ownerOnly') }
@@ -55,7 +60,11 @@ export async function toggleVerificationChecklistItem(
   formData: FormData
 ): Promise<TrustActionResult> {
   const session = await getSession()
-  requireMutation(session)
+  try {
+    requireMutation(session)
+  } catch (err) {
+    return { error: await mutationBlockedError(err) }
+  }
   const t = await getTranslations('settings.whatsappTrust')
 
   if (session.role !== 'owner') return { error: t('errors.ownerOnly') }

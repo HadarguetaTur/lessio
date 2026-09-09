@@ -17,7 +17,10 @@ import { registerTemplates, type RegisterTemplatesResult } from './actions'
 
 const initialState: RegisterTemplatesResult = { error: null, registered: [], failed: [] }
 
-export function RegisterTemplatesButton() {
+export function RegisterTemplatesButton({ disabled, disabledReason }: {
+  disabled?: boolean
+  disabledReason?: string
+} = {}) {
   const t = useTranslations('settings.whatsapp')
   const [state, formAction, isPending] = useActionState(registerTemplates, initialState)
 
@@ -30,11 +33,18 @@ export function RegisterTemplatesButton() {
 
       <button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || disabled}
+        aria-describedby={disabled && disabledReason ? 'register-templates-blocked' : undefined}
         className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
       >
         {isPending ? `${t('templates.action')}…` : t('templates.action')}
       </button>
+
+      {disabled && disabledReason && (
+        <p id="register-templates-blocked" className="mt-2 text-xs text-muted-foreground">
+          {disabledReason}
+        </p>
+      )}
 
       {state.error && (
         <p className="text-sm text-red-600 mt-3">{t(`templates.errors.${state.error}`)}</p>

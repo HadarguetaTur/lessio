@@ -19,6 +19,7 @@ export type CommonErrorKey =
   | 'noPermission'
   | 'ownerOnly'
   | 'supportModeReadOnly'
+  | 'saasReadOnly'
   | 'invalidData'
   | 'notFound'
   | 'saveFailed'
@@ -29,6 +30,30 @@ export type CommonErrorKey =
 export async function commonError(key: CommonErrorKey): Promise<string> {
   const t = await getTranslations('common.errors')
   return t(key)
+}
+
+/**
+ * Turns a thrown `requireMutation` into a sentence.
+ *
+ * `requireMutation` throws a bare Error with a stable code because it is
+ * synchronous and cannot await a translator. Actions that let that throw escape
+ * hand the customer a generic server-action failure that reads as a crash —
+ * which is what every button on the WhatsApp settings page did for a superadmin
+ * in support mode and for an owner whose subscription had lapsed (UX audit F3).
+ *
+ * The two codes are different situations and get different sentences: one is a
+ * deliberate read-only view, the other is a billing problem the owner can fix.
+ * Anything else is rethrown, because it is not ours to swallow.
+ *
+ * Usage:
+ *   try { requireMutation(session) }
+ *   catch (err) { return { error: await mutationBlockedError(err) } }
+ */
+export async function mutationBlockedError(err: unknown): Promise<string> {
+  const code = err instanceof Error ? err.message : ''
+  if (code === 'SUPPORT_MODE_READ_ONLY') return commonError('supportModeReadOnly')
+  if (code === 'SAAS_READ_ONLY') return commonError('saasReadOnly')
+  throw err
 }
 
 /** Looks like `students.errors.fullNameRequired` rather than display copy. */

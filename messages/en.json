@@ -245,6 +245,7 @@
       "noPermission": "You don't have permission to perform this action",
       "ownerOnly": "Only the business owner can perform this action",
       "supportModeReadOnly": "Support mode is read-only. Editing is not allowed.",
+      "saasReadOnly": "Your subscription is not active, so changes cannot be saved. You can still view and export your data.",
       "invalidData": "Invalid data",
       "notFound": "The requested item was not found",
       "saveFailed": "Could not save. Please try again.",
@@ -1634,7 +1635,8 @@
           "forbidden": "Only the organization owner can register templates.",
           "notConnected": "No WhatsApp Business Account is connected yet.",
           "decryptFailed": "Could not read the stored WhatsApp credentials — reconnect your number.",
-          "registerFailed": "Meta rejected the request. Please try again."
+          "registerFailed": "Meta rejected the request. Please try again.",
+          "readOnly": "Read-only mode — templates cannot be registered right now."
         }
       }
     },
@@ -2090,8 +2092,10 @@
       "errors": {
         "ownerOnly": "Only the business owner can change automation settings",
         "hoursInvalid": "Must be 2, 12 or 24",
-        "saveFailed": "Could not save the settings"
-      }
+        "saveFailed": "Could not save the settings",
+        "aiNotOnPlan": "The AI assistant is not included in your plan. Nothing was saved — switch it off and save again, or upgrade your plan."
+      },
+      "aiNotOnPlanHint": "Not included in your plan."
     },
     "googleOAuthErrors": {
       "denied": "You did not grant access to Google. You can try again.",
@@ -2489,6 +2493,9 @@
       "verifiedName": "Verified business name",
       "phoneNumber": "Phone number",
       "disconnectHint": "Disconnecting stops WhatsApp messages being sent and received until you reconnect.",
+      "disconnectImpact": "From this moment, every automatic message to parents stops:",
+      "disconnectKeeps": "Your existing conversations and templates are kept, not deleted.",
+      "disconnectReturn": "To come back you'll have to go through Meta's connection flow again.",
       "disconnectedHint": "Click the button to start the connection process through Meta. You will be taken to Meta to choose the number you want to connect.",
       "missingVar": "{name} is not configured on the server — the connection process cannot start.",
       "signupHint": "Sign in to your Meta account and choose the number you want to connect to this organization.",
@@ -2615,7 +2622,9 @@
           "done": "Verified at Meta. Daily limit 2,000 and up.",
           "howto": "Meta only accepts documents from a person of the business, in Security Centre. Prepare these first, then submit there. Approval usually takes a few days.",
           "openSecurityCentre": "Open Security Centre",
-          "noUpload": "Lessio never collects your documents. Meta does not allow a software provider to submit verification on your behalf."
+          "noUpload": "Lessio never collects your documents. Meta does not allow a software provider to submit verification on your behalf.",
+          "rejected": "Meta refused your verification request. Your daily limit stays at 250 conversations until you reapply and are approved.",
+          "rejectedHowto": "You can reapply once the reason is fixed. The most common one is a mismatch between the business name on your documents and the name in Business Manager — make sure all three match, then resubmit in Security Centre."
         },
         "oba": {
           "title": "Official Business Account (green tick)",
@@ -2624,8 +2633,10 @@
           "reqVerified": "Business verified",
           "reqAge": "30 days on the platform ({days} left)",
           "reqName": "Display name approved",
-          "notability": "Meta also looks for a website, social profiles and press mentions. A rejection can be resubmitted after 30 days.",
-          "request": "Request in WhatsApp Manager"
+          "notability": "Meta also looks for a website, social profiles and press mentions.",
+          "request": "Request in WhatsApp Manager",
+          "rejected": "Meta refused your Official Business Account request.",
+          "reapply": "You can reapply 30 days after a refusal."
         }
       },
       "checklist": {
@@ -2655,6 +2666,12 @@
           "token_invalid": "The WhatsApp connection has expired. Connect the number again to keep sending and receiving messages.",
           "unreachable": "We could not reach Meta. Try again in a minute."
         }
+      },
+      "states": {
+        "done": "Done",
+        "pending": "Meta is reviewing",
+        "rejected": "Refused",
+        "todo": "Not submitted yet"
       }
     },
     "whatsappState": {

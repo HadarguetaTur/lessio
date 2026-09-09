@@ -1,4 +1,4 @@
-import { CheckCircle, Circle, ShieldCheck, ExternalLink } from 'lucide-react'
+import { CheckCircle, Circle, Clock, XCircle, ShieldCheck, ExternalLink } from 'lucide-react'
 import { getTranslations, getLocale } from 'next-intl/server'
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -33,9 +33,28 @@ export async function TrustCard({ orgId }: { orgId: string }) {
 
   const quality = (org.wa_quality_rating ?? 'UNKNOWN') as WaQualityRating
   const dailyLimit = tierDailyLimit(org.wa_messaging_limit_tier)
-  const verified = (org.wa_business_verification_status ?? '').toLowerCase() === 'verified'
-  const verificationPending = (org.wa_business_verification_status ?? '').toLowerCase() === 'pending'
+
+  // Meta's full vocabulary, not just the two happy values. `rejected`/`failed`
+  // gets its own branch below rather than reading as "you haven't started".
+  const verification = (org.wa_business_verification_status ?? '').toLowerCase()
+  const verified = verification === 'verified'
+  const verificationState: RungState = verified
+    ? 'done'
+    : verification === 'pending'
+      ? 'pending'
+      : verification === 'rejected' || verification === 'failed'
+        ? 'rejected'
+        : 'todo'
+
   const isOba = Boolean(org.wa_is_oba)
+  const obaStatus = (org.wa_oba_status ?? '').toUpperCase()
+  const obaState: RungState = isOba
+    ? 'done'
+    : obaStatus === 'PENDING'
+      ? 'pending'
+      : obaStatus === 'REJECTED' || obaStatus === 'DECLINED'
+        ? 'rejected'
+        : 'todo'
   const warmUp = isInWarmUp(org.wa_connected_at)
   const ticked = (org.wa_verification_checklist ?? {}) as Partial<Record<VerificationChecklistId, string>>
 
@@ -105,16 +124,31 @@ export async function TrustCard({ orgId }: { orgId: string }) {
 
       {/* Ladder */}
       <ol className="space-y-4">
-        <Rung done label={t('rungs.connected.title')} detail={t('rungs.connected.detail')} />
         <Rung
-          done={verified}
-          pending={verificationPending}
+          state="done"
+          stateLabel={t('states.done')}
+          label={t('rungs.connected.title')}
+          detail={t('rungs.connected.detail')}
+        />
+        <Rung
+          state={verificationState}
+          stateLabel={t(`states.${verificationState}`)}
           label={t('rungs.verified.title')}
-          detail={verified ? t('rungs.verified.done') : t('rungs.verified.detail')}
+          detail={
+            verified
+              ? t('rungs.verified.done')
+              : verificationState === 'rejected'
+                ? t('rungs.verified.rejected')
+                : t('rungs.verified.detail')
+          }
         >
           {!verified && (
             <div className="mt-3 space-y-3">
-              <p className="text-xs text-gray-700">{t('rungs.verified.howto')}</p>
+              <p className="text-xs text-gray-700">
+                {verificationState === 'rejected'
+                  ? t('rungs.verified.rejectedHowto')
+                  : t('rungs.verified.howto')}
+              </p>
               <TrustChecklist ticked={ticked} />
               <a
                 href={securityCentreUrl}
@@ -130,10 +164,16 @@ export async function TrustCard({ orgId }: { orgId: string }) {
           )}
         </Rung>
         <Rung
-          done={isOba}
-          pending={(org.wa_oba_status ?? '').toUpperCase() === 'PENDING'}
+          state={obaState}
+          stateLabel={t(`states.${obaState}`)}
           label={t('rungs.oba.title')}
-          detail={isOba ? t('rungs.oba.done') : t('rungs.oba.detail')}
+          detail={
+            isOba
+              ? t('rungs.oba.done')
+              : obaState === 'rejected'
+                ? t('rungs.oba.rejected')
+                : t('rungs.oba.detail')
+          }
         >
           {!isOba && (
             <div className="mt-3 space-y-2">
@@ -148,6 +188,11 @@ export async function TrustCard({ orgId }: { orgId: string }) {
                   label={t('rungs.oba.reqName')}
                 />
               </ul>
+              {/* Only shown to someone Meta actually refused — it used to be
+                  displayed to every org, including those that never applied. */}
+              {obaState === 'rejected' && (
+                <p className="text-[11px] text-red-700">{t('rungs.oba.reapply')}</p>
+              )}
               <p className="text-[11px] text-muted-foreground">{t('rungs.oba.notability')}</p>
               {obaEligible && (
                 <a
@@ -168,30 +213,60 @@ export async function TrustCard({ orgId }: { orgId: string }) {
   )
 }
 
+/**
+ * A rung's four states. `rejected` used to be missing entirely: Meta returns
+ * failed / rejected as well as verified / pending, and everything that was not
+ * one of the latter two fell through to the same grey circle and the same
+ * "prepare these documents" instruction as a business that had never applied.
+ * An owner Meta had refused was told to go and prepare the documents they had
+ * already submitted (UX audit F8).
+ */
+export type RungState = 'done' | 'pending' | 'rejected' | 'todo'
+
+const RUNG_ICON: Record<RungState, { icon: typeof CheckCircle; className: string }> = {
+  done: { icon: CheckCircle, className: 'text-green-600' },
+  pending: { icon: Clock, className: 'text-amber-500' },
+  rejected: { icon: XCircle, className: 'text-red-600' },
+  todo: { icon: Circle, className: 'text-gray-300' },
+}
+
 function Rung({
-  done,
-  pending = false,
+  state,
+  stateLabel,
   label,
   detail,
   children,
 }: {
-  done: boolean
-  pending?: boolean
+  state: RungState
+  /** Says the state in words. Icon colour alone is not a status (UX audit F25). */
+  stateLabel: string
   label: string
   detail: string
   children?: React.ReactNode
 }) {
+  const { icon: Icon, className } = RUNG_ICON[state]
   return (
     <li className="flex gap-3">
       <div className="mt-0.5 shrink-0">
-        {done ? (
-          <CheckCircle size={18} className="text-green-600" />
-        ) : (
-          <Circle size={18} className={pending ? 'text-amber-500' : 'text-gray-300'} />
-        )}
+        <Icon size={18} className={className} aria-hidden />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900">{label}</p>
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <p className="text-sm font-medium text-gray-900">{label}</p>
+          <span
+            className={`text-xs font-medium ${
+              state === 'done'
+                ? 'text-green-700'
+                : state === 'pending'
+                  ? 'text-amber-700'
+                  : state === 'rejected'
+                    ? 'text-red-700'
+                    : 'text-muted-foreground'
+            }`}
+          >
+            {stateLabel}
+          </span>
+        </div>
         <p className="text-xs text-muted-foreground">{detail}</p>
         {children}
       </div>

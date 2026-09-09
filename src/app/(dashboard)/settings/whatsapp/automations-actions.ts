@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { commonError, mutationBlockedError, zodError } from '@/lib/i18n/actionErrors'
+import { requireFeature, assertFeature, FeatureNotAvailableError } from '@/lib/saas/featureGate'
 import { getTranslations } from 'next-intl/server'
 
 const Schema = z.object({
@@ -34,13 +35,23 @@ export async function saveAutomationSettings(
   formData: FormData
 ): Promise<AutomationSettingsResult> {
   const session = await getSession()
-  requireMutation(session)
+  try {
+    requireMutation(session)
+  } catch (err) {
+    return { error: await mutationBlockedError(err) }
+  }
   const { orgId, role } = session
   const t = await getTranslations('settings.automations')
 
   if (role !== 'owner') {
     return { error: t('errors.ownerOnly') }
   }
+
+  // This was the one WhatsApp write action with no plan gate at all, against
+  // the project's own rule that every gated action calls requireFeature. An org
+  // whose plan does not include WhatsApp could still save these toggles by
+  // deep-linking the page (UX audit F4). Outside any try/catch — it redirects.
+  await requireFeature(orgId, 'whatsapp_automation')
 
   const raw = {
     automation_lesson_reminder_enabled:   formData.get('automation_lesson_reminder_enabled') ?? 'off',
@@ -63,6 +74,20 @@ export async function saveAutomationSettings(
         parsed.error.issues[0]?.message === 'AUTOMATION_HOURS_INVALID'
           ? t('errors.hoursInvalid')
           : await commonError('invalidData'),
+    }
+  }
+
+  // The AI assistant is a separate entitlement that happens to be toggled from
+  // this page. assertFeature rather than requireFeature: redirecting to billing
+  // mid-save would silently discard the other nine toggles the owner just set.
+  if (parsed.data.ai_assistant_enabled) {
+    try {
+      await assertFeature(orgId, 'ai_assistant')
+    } catch (err) {
+      if (err instanceof FeatureNotAvailableError) {
+        return { error: t('errors.aiNotOnPlan') }
+      }
+      throw err
     }
   }
 

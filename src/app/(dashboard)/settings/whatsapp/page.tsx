@@ -4,6 +4,7 @@ import { forbidden } from 'next/navigation'
 import { AlertCircle } from 'lucide-react'
 import { getPhoneIdentity } from '@/lib/whatsapp/phoneIdentity'
 import { getSession } from '@/lib/auth/session'
+import { commonError } from '@/lib/i18n/actionErrors'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getEffectiveSaasFeatures } from '@/lib/saas/subscriptions'
 import { getWaConnectionState, type WaConnectionState } from '@/lib/whatsapp/connectionState'
@@ -42,7 +43,8 @@ export default async function WhatsAppSettingsPage({
   searchParams: Promise<{ tab?: string; days?: string }>
 }) {
   const tp = await getTranslations('settings')
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
 
   if (role !== 'owner') {
     forbidden()
@@ -84,6 +86,16 @@ export default async function WhatsAppSettingsPage({
   const isConnected = Boolean(phoneNumberId)
   const planLocked = waState.state === 'plan_locked'
   const showConnectedBlocks = isConnected && !planLocked
+
+  // A superadmin in support mode and an owner whose subscription lapsed can
+  // both read this page and neither may write. Saying so on the controls beats
+  // letting the click through to an action that throws (UX audit F3).
+  const readOnly = Boolean(session.isSupportMode || session.isSaasReadOnly)
+  const readOnlyReason = session.isSupportMode
+    ? await commonError('supportModeReadOnly')
+    : session.isSaasReadOnly
+      ? await commonError('saasReadOnly')
+      : undefined
 
   const metaAppId = process.env.META_APP_ID ?? ''
   const metaConfigId = process.env.NEXT_PUBLIC_META_CONFIG_ID ?? ''
@@ -146,7 +158,13 @@ export default async function WhatsAppSettingsPage({
         {planLocked ? (
           <PlanLockedState />
         ) : isConnected ? (
-          <ConnectedState orgId={orgId} phoneNumberId={phoneNumberId!} status={waState} />
+          <ConnectedState
+            orgId={orgId}
+            phoneNumberId={phoneNumberId!}
+            status={waState}
+            readOnly={readOnly}
+            readOnlyReason={readOnlyReason}
+          />
         ) : (
           <DisconnectedState metaAppId={metaAppId} metaConfigId={metaConfigId} />
         )}
@@ -158,7 +176,7 @@ export default async function WhatsAppSettingsPage({
       {/* Message templates — shown when WhatsApp is connected */}
       {showConnectedBlocks && (
         <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
-          <RegisterTemplatesButton />
+          <RegisterTemplatesButton disabled={readOnly} disabledReason={readOnlyReason} />
         </div>
       )}
 
@@ -170,6 +188,9 @@ export default async function WhatsAppSettingsPage({
       {showConnectedBlocks && org && (
         <div className="mt-6">
           <AutomationsSettings
+            aiAssistantOnPlan={features.ai_assistant}
+            readOnly={readOnly}
+            readOnlyReason={readOnlyReason}
             org={{
               automation_lesson_reminder_enabled:   org.automation_lesson_reminder_enabled ?? true,
               automation_cancellation_enabled:      org.automation_cancellation_enabled ?? true,
@@ -197,10 +218,14 @@ async function ConnectedState({
   orgId,
   phoneNumberId,
   status,
+  readOnly,
+  readOnlyReason,
 }: {
   orgId: string
   phoneNumberId: string
   status: WaConnectionState
+  readOnly: boolean
+  readOnlyReason?: string
 }) {
   const tp = await getTranslations('settings')
   return (
@@ -230,7 +255,7 @@ async function ConnectedState({
 
       <div>
         <p className="text-xs text-muted-foreground mb-2">{tp('whatsappPage.disconnectHint')}</p>
-        <DisconnectButton />
+        <DisconnectButton disabled={readOnly} disabledReason={readOnlyReason} />
       </div>
     </div>
   )

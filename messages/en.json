@@ -1049,6 +1049,7 @@
     "lessonHistory": "Lesson history",
     "seriesErrors": {
       "endDateFuture": "The end date must be in the future",
+      "endDateTooFar": "A series can run at most {months} months ahead. You can extend it later.",
       "createSeriesFailed": "Could not create the series",
       "updateSeriesFailed": "Could not update the series",
       "seriesHasHistory": "This series has {count} lessons that already happened or were charged, so it cannot be removed. You can stop it instead.",

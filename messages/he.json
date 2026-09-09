@@ -1049,6 +1049,7 @@
     "lessonHistory": "היסטוריית שיעורים",
     "seriesErrors": {
       "endDateFuture": "תאריך הסיום חייב להיות בעתיד",
+      "endDateTooFar": "אפשר לקבוע סדרה לכל היותר {months} חודשים קדימה. אפשר להאריך אותה בהמשך.",
       "createSeriesFailed": "שגיאה ביצירת הסדרה",
       "updateSeriesFailed": "שגיאה בעדכון הסדרה",
       "seriesHasHistory": "הסדרה כוללת {count} שיעורים שכבר התקיימו או חויבו, ולכן לא ניתן להסיר אותה. אפשר לעצור אותה במקום.",

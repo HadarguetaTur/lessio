@@ -20,7 +20,7 @@ const STAGGER_BASE =
 type LandingStaggerProps = {
   children: ReactNode
   className?: string
-  as?: 'div' | 'ul'
+  as?: 'div' | 'ul' | 'ol'
   /** ms between each child */
   stepMs?: number
   threshold?: number
@@ -39,7 +39,7 @@ export function LandingStagger({
   threshold = 0.08,
   rootMargin = '0px 0px -6% 0px',
 }: LandingStaggerProps) {
-  const ref = useRef<HTMLDivElement | HTMLUListElement | null>(null)
+  const ref = useRef<HTMLDivElement | HTMLUListElement | HTMLOListElement | null>(null)
   const [on, setOn] = useState(false)
 
   useEffect(() => {

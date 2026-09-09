@@ -40,7 +40,14 @@ export interface CancellationEventRow {
   hours_before: number
   is_lt_24h: boolean
   is_charged: boolean
+  /** An admin's manual correction. Wins over everything. */
   charge_override: number | null
+  /**
+   * What the org's cancellation policy said this cancellation costs, recorded
+   * at the moment of cancellation. NULL only on rows written before the policy
+   * was applied here, which fall back to the legacy full-price rule.
+   */
+  policy_amount?: number | null
   billing_month: string
 }
 

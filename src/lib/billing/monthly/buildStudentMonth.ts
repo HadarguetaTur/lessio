@@ -137,7 +137,7 @@ export async function buildStudentMonth(
     // Fetch cancellation events
     const { data: cancelData, error: cancelError } = await supabase
       .from('student_cancellation_events')
-      .select('id, lesson_id, student_id, cancellation_date, hours_before, is_lt_24h, is_charged, charge_override, billing_month')
+      .select('id, lesson_id, student_id, cancellation_date, hours_before, is_lt_24h, is_charged, charge_override, policy_amount, billing_month')
       .eq('organization_id', organizationId)
       .eq('student_id', studentId)
       .eq('billing_month', billingMonth)

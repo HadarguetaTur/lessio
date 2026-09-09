@@ -6,6 +6,7 @@ import { runAfterResponse } from '@/lib/server/afterResponse'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { assertOrgNotSaasReadOnly } from '@/lib/saas/featureGate'
 import { waiveCharge, voidCharge, type ResolveChargeResult } from '@/lib/charges/resolve'
+import { markChargeRefunded } from '@/lib/charges/refunds'
 import { recordChargePayment, type PaymentMethod } from '@/lib/charges/payments'
 import { settleCharges, settleParentBalance } from '@/lib/charges/settle'
 import { notifyParentOfPayment } from '@/lib/charges/notifyParentOfPayment'
@@ -187,6 +188,84 @@ export async function voidChargeAction(
     chargeId,
     reason,
   })
+}
+
+// ─── Mark refunded ─────────────────────────────────────────────────────────
+
+const markRefundedSchema = z.object({
+  chargeId: z.string().uuid(),
+  /** Omitted means "everything that was collected". */
+  amount: z.number().positive().max(1_000_000).optional(),
+  reason: z.string().min(1).max(500),
+})
+
+/**
+ * Records that money was sent back to the parent.
+ *
+ * Lessio does not move the money and does not issue the credit note — the
+ * provider or the bank does the first, the org's licensed receipt provider the
+ * second (decision #37). This marker exists so the rest of the product stops
+ * counting refunded money as revenue and stops telling the parent the charge
+ * is paid. See src/lib/charges/refunds.ts for what stays manual.
+ *
+ * Owner and admin: it rewrites a bookkeeping fact, the same bar as waiving.
+ */
+export async function markChargeRefundedAction(input: {
+  chargeId: string
+  amount?: number
+  reason: string
+}): Promise<{ error: string | null }> {
+  const session = await getSession()
+  requireMutation(session)
+  await assertOrgNotSaasReadOnly(session.orgId)
+
+  if (session.role !== 'owner' && session.role !== 'admin') {
+    return { error: await commonError('noPermission') }
+  }
+
+  const t = await getTranslations('charges.errors')
+
+  const parsed = markRefundedSchema.safeParse({
+    chargeId: input.chargeId,
+    amount: input.amount,
+    reason: input.reason.trim(),
+  })
+  if (!parsed.success) return { error: await zodError(parsed.error.issues[0]) }
+
+  let result: Awaited<ReturnType<typeof markChargeRefunded>>
+  try {
+    result = await markChargeRefunded({
+      chargeId: parsed.data.chargeId,
+      organizationId: session.orgId,
+      actorProfileId: session.profileId,
+      amount: parsed.data.amount ?? null,
+      reason: parsed.data.reason,
+      source: 'manual',
+    })
+  } catch (err) {
+    console.error('[charges] mark refunded failed', { chargeId: input.chargeId, err })
+    return { error: t('updateStatusFailed') }
+  }
+
+  if (!result.ok) {
+    switch (result.reason) {
+      case 'not_found':
+        return { error: await commonError('notFound') }
+      case 'not_paid':
+        return { error: t('refundNotPaid') }
+      case 'already_refunded':
+        return { error: t('refundAlreadyRecorded') }
+      case 'amount_exceeds_paid':
+        return { error: t('refundExceedsPaid') }
+      default:
+        return { error: t('updateStatusFailed') }
+    }
+  }
+
+  revalidatePath('/charges')
+  revalidatePath(`/charges/${parsed.data.chargeId}`)
+  revalidatePath('/dashboard')
+  return { error: null }
 }
 
 // ─── Record a payment (full or partial) ────────────────────────────────────

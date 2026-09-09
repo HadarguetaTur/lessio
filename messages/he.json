@@ -1257,7 +1257,10 @@
       "chargeNotOpen": "החיוב אינו פתוח לתשלום",
       "paymentTooLarge": "הסכום גדול מהיתרה הפתוחה ({max})",
       "invalidPaymentDate": "יש לבחור תאריך תשלום תקין שאינו בעתיד",
-      "nothingOpen": "להורה אין חיובים פתוחים"
+      "nothingOpen": "להורה אין חיובים פתוחים",
+      "refundNotPaid": "לא התקבל כסף על חיוב זה, אז אין מה להחזיר",
+      "refundAlreadyRecorded": "כבר נרשם החזר על החיוב הזה",
+      "refundExceedsPaid": "סכום ההחזר גדול מהסכום שהתקבל"
     },
     "notification": {
       "queued": "אישור נשלח להורה בוואטסאפ",
@@ -4339,7 +4342,8 @@
       "forMonth": "חיוב חודשי — {month}",
       "forPeriod": "חיוב לתקופה {start}–{end}",
       "waived": "בוטל חיוב",
-      "voided": "מבוטל"
+      "voided": "מבוטל",
+      "refunded": "הוחזר"
     },
     "homework": {
       "title": "שיעורי בית",

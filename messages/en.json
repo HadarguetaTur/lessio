@@ -1257,7 +1257,10 @@
       "chargeNotOpen": "This charge is not open for payment",
       "paymentTooLarge": "The amount is larger than the open balance ({max})",
       "invalidPaymentDate": "Choose a valid payment date that is not in the future",
-      "nothingOpen": "This parent has no open charges"
+      "nothingOpen": "This parent has no open charges",
+      "refundNotPaid": "No money was collected on this charge, so there is nothing to refund",
+      "refundAlreadyRecorded": "A refund has already been recorded on this charge",
+      "refundExceedsPaid": "The refund is larger than the amount that was collected"
     },
     "notification": {
       "queued": "A confirmation was sent to the parent on WhatsApp",
@@ -4339,7 +4342,8 @@
       "forMonth": "Monthly bill — {month}",
       "forPeriod": "Billing period {start}–{end}",
       "waived": "Written off",
-      "voided": "Voided"
+      "voided": "Voided",
+      "refunded": "Refunded"
     },
     "homework": {
       "title": "Homework",

@@ -269,6 +269,17 @@ export async function setManualAdjustment(billingId: string, amount: number, rea
 
   if (!billing) return { error: t('billing.errors.billingNotFound') }
 
+  // Same guard recalculateStudentBilling has, for the same reason: an approved
+  // bill has been sent, and a paid one has a receipt behind it. Without it,
+  // syncMonthlyCharge would rewrite the amount of a charge whose status stays
+  // 'paid' and whose amount_paid stays at the old figure — a bill of 950 with
+  // 800 collected, sitting outside every open-charge query because 'paid' is
+  // not an open status, and contradicting a tax document already issued at the
+  // old amount. Changing settled money goes through void or credit.
+  if (billing.is_approved || billing.is_paid) {
+    return { error: t('billing.errors.approvedRecalculationBlocked') }
+  }
+
   const computedTotal =
     Number(billing.lessons_amount) +
     Number(billing.subscriptions_amount) +

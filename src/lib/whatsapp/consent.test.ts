@@ -1,21 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const {
-  mockCreateServiceRoleClient,
-  mockIsOptedOut,
-  mockSendTemplateMessage,
-} = vi.hoisted(() => ({
+const { mockCreateServiceRoleClient, mockSendTemplateMessage } = vi.hoisted(() => ({
   mockCreateServiceRoleClient: vi.fn(),
-  mockIsOptedOut: vi.fn(),
   mockSendTemplateMessage: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: mockCreateServiceRoleClient,
-}))
-
-vi.mock('./optOut', () => ({
-  isOptedOut: mockIsOptedOut,
 }))
 
 vi.mock('./index', () => ({
@@ -32,9 +23,9 @@ const BASE = {
 }
 
 /**
- * The gate touches two tables: `parents` is updated (the welcome claim, the
- * claim release, the consent record) and `organizations` is read for the name
- * that goes into the notice.
+ * The gate touches two tables: `parents` is read (the live consent columns) and
+ * updated (the welcome claim, the claim release, the consent record), and
+ * `organizations` is read for the name that goes into the notice.
  */
 function mockDb(
   options: {
@@ -43,6 +34,9 @@ function mockDb(
     claimError?: { message: string } | null
     orgName?: string | null
     orgDefaultLocale?: string | null
+    /** The parent's live consent columns, as `loadConsentFacts` reads them. */
+    consent?: Record<string, string | null> | null
+    consentError?: { message: string } | null
   } = {}
 ) {
   const parentsUpdates: Array<Record<string, unknown>> = []
@@ -58,6 +52,11 @@ function mockDb(
     chain.select = vi.fn(async () => ({
       data: options.claimed ?? [],
       error: options.claimError ?? null,
+    }))
+    // The consent read is the only `parents` query that ends in maybeSingle().
+    chain.maybeSingle = vi.fn(async () => ({
+      data: options.consent === undefined ? {} : options.consent,
+      error: options.consentError ?? null,
     }))
     // A terminal update (claim release, consent record) is awaited directly
     // rather than through .select().

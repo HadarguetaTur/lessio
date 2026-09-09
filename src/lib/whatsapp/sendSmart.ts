@@ -88,7 +88,10 @@ async function smartSend(params: {
   const gate = await prepareBusinessSend({ orgId, phone, accessToken, phoneNumberId, locale })
   if (!gate.ok) {
     console.info('[sendSmart] Recipient opted out — not sending', { orgId, templateType })
-    return { sent: false, reason: gate.reason }
+    // These sends are transactional, so the only refusal the gate can give
+    // back is the global opt-out; the per-category ones and 'unknown' belong to
+    // the broadcast path, which passes a category.
+    return { sent: false, reason: 'opted_out' }
   }
 
   const inWindow = await isInSessionWindow(orgId, phone)
@@ -207,7 +210,10 @@ async function payWithButton(params: {
   const gate = await prepareBusinessSend({ orgId, phone, accessToken, phoneNumberId, locale })
   if (!gate.ok) {
     console.info('[sendSmart] Recipient opted out — not sending', { orgId, templateType })
-    return { sent: false, reason: gate.reason }
+    // These sends are transactional, so the only refusal the gate can give
+    // back is the global opt-out; the per-category ones and 'unknown' belong to
+    // the broadcast path, which passes a category.
+    return { sent: false, reason: 'opted_out' }
   }
 
   try {

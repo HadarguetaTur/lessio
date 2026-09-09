@@ -15,6 +15,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { parseAppLocale, type AppLocale } from '@/lib/i18n/locale'
 import { getGroupRosterServiceRole } from '@/lib/groups/roster'
+import { consentRefusal } from '@/lib/whatsapp/consentRules'
 import {
   categoryOf,
   type AudienceCandidate,
@@ -31,12 +32,16 @@ type Db = ReturnType<typeof createServiceRoleClient>
 /**
  * Applies opt-out and opt-in rules to loaded candidates and dedupes by phone.
  *
- * Order matters and is the policy itself:
+ * The consent rule itself is `consentRefusal` in ../consentRules — the same
+ * function the send path asks a second time, immediately before each message
+ * goes out. What this produces is a preview and a report, never a permission:
+ * a recipient materialised on Monday is not proof of consent on Tuesday.
+ *
+ * What is left here is the part that is genuinely about audience shape:
  *   1. no phone at all — nothing to send to
- *   2. `opted_out_at` — the hard block, every category
- *   3. the category's own opt-out
- *   4. for marketing, an explicit opt-in is REQUIRED, not merely un-refused
- *   5. for an invite, skip anyone already invited
+ *   2. dedup by phone
+ *   3. the consent rule
+ *   4. for an invite, skip anyone already invited
  */
 export function applyConsent(
   candidates: AudienceCandidate[],
@@ -65,23 +70,10 @@ export function applyConsent(
       // the audience, and saying "3 skipped" for them would be noise.
       continue
     }
-    if (c.optedOutAt) {
-      skip('opted_out')
+    const refusal = consentRefusal(c, category)
+    if (refusal) {
+      skip(refusal)
       continue
-    }
-    if (category !== 'promo' && c.updatesOptedOutAt) {
-      skip('updates_opted_out')
-      continue
-    }
-    if (category === 'promo') {
-      if (c.marketingOptedOutAt) {
-        skip('marketing_opted_out')
-        continue
-      }
-      if (!c.marketingOptInAt) {
-        skip('no_marketing_opt_in')
-        continue
-      }
     }
     if (category === 'invite' && c.alreadyInvited) {
       skip('already_invited')

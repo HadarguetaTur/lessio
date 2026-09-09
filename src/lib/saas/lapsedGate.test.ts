@@ -32,6 +32,7 @@ function state(over: Partial<OrgSubscriptionState> = {}): OrgSubscriptionState {
       parent_portal: true,
       integrations: true,
       data_retention: true,
+      broadcasts: true,
     },
     ...over,
   }

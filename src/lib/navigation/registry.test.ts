@@ -57,6 +57,7 @@ describe('filterNav', () => {
     parent_portal: true,
     integrations: false,
     data_retention: false,
+    broadcasts: false,
   }
 
   it('hides owner-only entries from an admin', () => {
@@ -410,6 +411,7 @@ describe('connections hub', () => {
       parent_portal: true,
       integrations: false,
       data_retention: false,
+      broadcasts: false,
     }
     const visible = filterNav(hubEntries.map((i) => i.entry), 'owner', features).map(
       (e) => e.href

@@ -41,6 +41,12 @@ export type SaasFeatures = {
    * catalog. Now a real flag.
    */
   data_retention: boolean
+  /**
+   * WhatsApp broadcasts: distribution lists, group announcements and the
+   * linked-WhatsApp-group invites. Gated because a broadcast spends the org's
+   * Meta messaging allowance and its number's quality rating.
+   */
+  broadcasts: boolean
 }
 
 export const DEFAULT_SAAS_FEATURES: SaasFeatures = {
@@ -52,6 +58,7 @@ export const DEFAULT_SAAS_FEATURES: SaasFeatures = {
   parent_portal: true,
   integrations: true,
   data_retention: true,
+  broadcasts: true,
 }
 
 /** Summary shown before redirecting to hosted checkout (or mock payment page). */
@@ -75,5 +82,6 @@ export function parseSaasFeatures(raw: unknown): SaasFeatures {
     parent_portal: Boolean(o.parent_portal),
     integrations: Boolean(o.integrations),
     data_retention: Boolean(o.data_retention),
+    broadcasts: Boolean(o.broadcasts),
   }
 }

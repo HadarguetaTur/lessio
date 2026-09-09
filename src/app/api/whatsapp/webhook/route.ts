@@ -31,7 +31,9 @@ import {
   hasResumeIntent,
 } from '@/lib/whatsapp'
 import {
+  parseDeliveryStatuses,
   parseTemplateStatusUpdates,
+  type DeliveryStatusUpdate,
   type TemplateStatusUpdate,
   type WhatsAppMessage,
 } from '@/lib/whatsapp/parsePayload'
@@ -105,7 +107,7 @@ import { findRecentUsageLog, updateSatisfaction } from '@/lib/ai-assistant/usage
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { DateTime } from 'luxon'
 import { claimIncomingMessage, claimSuspendedNotice, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
-import { logInboundMessage, attachInboundSender } from '@/lib/whatsapp/messageLog'
+import { logInboundMessage, attachInboundSender, applyDeliveryStatus } from '@/lib/whatsapp/messageLog'
 import { bindWaLogTarget, runWithWaLogContext, setWaLogOrigin } from '@/lib/whatsapp/logContext'
 import { isTakenOver } from '@/lib/whatsapp/takeover'
 import {
@@ -169,6 +171,7 @@ export async function POST(request: NextRequest) {
 
   const messages = parseWebhookPayload(body)
   const templateStatusUpdates = parseTemplateStatusUpdates(body)
+  const deliveryStatuses = parseDeliveryStatuses(body)
 
   // Process messages in the background so Meta gets its 200 immediately —
   // slow handlers (AI assistant, outbound sends) must not delay the ack,
@@ -179,6 +182,15 @@ export async function POST(request: NextRequest) {
     for (const msg of messages) {
       await processMessage(msg, origin).catch(err => {
         console.error('[whatsapp/webhook] Error processing message', { messageId: msg.messageId, err })
+      })
+    }
+
+    for (const status of deliveryStatuses) {
+      await recordDeliveryStatus(status).catch(err => {
+        console.error('[whatsapp/webhook] Error recording delivery status', {
+          waMessageId: status.waMessageId,
+          err,
+        })
       })
     }
 
@@ -305,6 +317,58 @@ async function recordTemplateStatusUpdate(update: TemplateStatusUpdate): Promise
     language: update.language,
     status: update.status,
   })
+}
+
+/**
+ * Records what became of a message we sent: delivered, read, or failed.
+ *
+ * Routed by phone_number_id like an inbound message. A failure is logged as an
+ * error with Meta's code so it shows up in runtime logs and Sentry — before
+ * this, a reply Meta accepted and then dropped left no trace anywhere.
+ */
+async function recordDeliveryStatus(update: DeliveryStatusUpdate): Promise<void> {
+  const db = createServiceRoleClient()
+
+  const { data: org, error } = await db
+    .from('organizations')
+    .select('id')
+    .eq('whatsapp_phone_number_id', update.phoneNumberId)
+    .maybeSingle()
+
+  if (error || !org) {
+    console.warn('[whatsapp/webhook] Delivery status for unknown phone_number_id — ignoring', {
+      phoneNumberId: update.phoneNumberId,
+      waMessageId: update.waMessageId,
+    })
+    return
+  }
+
+  const applied = await applyDeliveryStatus({
+    orgId: org.id,
+    waMessageId: update.waMessageId,
+    status: update.status,
+    errorCode: update.errorCode,
+    errorMessage: update.errorMessage,
+  })
+
+  if (update.status === 'failed') {
+    console.error('[whatsapp/webhook] Outbound message failed at Meta', {
+      orgId: org.id,
+      waMessageId: update.waMessageId,
+      errorCode: update.errorCode,
+      errorMessage: update.errorMessage,
+      matchedTranscriptRow: applied,
+    })
+    Sentry.captureMessage('WhatsApp outbound message failed', {
+      level: 'warning',
+      extra: {
+        orgId: org.id,
+        waMessageId: update.waMessageId,
+        errorCode: update.errorCode,
+        errorMessage: update.errorMessage,
+      },
+    })
+  }
 }
 
 /**

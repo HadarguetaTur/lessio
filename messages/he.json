@@ -5489,6 +5489,13 @@
       "windowClosed": "חלון 24 השעות נסגר. ההודעה לא נשלחה.",
       "notConnected": "WhatsApp אינו מחובר לארגון",
       "sendFailed": "שליחת ההודעה נכשלה"
+    },
+    "delivery": {
+      "sent": "נשלח",
+      "delivered": "נמסר",
+      "read": "נקרא",
+      "failed": "נכשל",
+      "failedWithCode": "נכשל ({code})"
     }
   }
 }

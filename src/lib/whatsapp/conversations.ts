@@ -12,7 +12,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getActiveTakeovers, getTakeover } from './takeover'
-import type { SenderRole, WaMessageKind } from './messageLog'
+import type { OutboundDeliveryStatus, SenderRole, WaMessageKind } from './messageLog'
 import type { WaLogOrigin } from './logContext'
 
 export type ConversationSummary = {
@@ -36,6 +36,10 @@ export type ThreadMessage = {
   /** Name of the staff member who sent this, when a person did. */
   senderName: string | null
   createdAt: string
+  /** Outbound only: what Meta reported last. Null on inbound. */
+  deliveryStatus: OutboundDeliveryStatus | null
+  /** Meta's error code when deliveryStatus is 'failed'. */
+  errorCode: number | null
 }
 
 type MessageRow = {
@@ -47,6 +51,8 @@ type MessageRow = {
   sent_by_profile_id: string | null
   kind: WaMessageKind
   body: string
+  status: string
+  error_code: number | null
   created_at: string
 }
 
@@ -78,7 +84,7 @@ export async function getConversationSummaries(
 
   const { data, error } = await db
     .from('whatsapp_messages')
-    .select('id, phone, direction, origin, sender_role, sent_by_profile_id, kind, body, created_at')
+    .select('id, phone, direction, origin, sender_role, sent_by_profile_id, kind, body, status, error_code, created_at')
     .eq('organization_id', orgId)
     .gte('created_at', since)
     .order('created_at', { ascending: false })
@@ -140,7 +146,7 @@ export async function getThread(
 
   const { data, error } = await db
     .from('whatsapp_messages')
-    .select('id, phone, direction, origin, sender_role, sent_by_profile_id, kind, body, created_at')
+    .select('id, phone, direction, origin, sender_role, sent_by_profile_id, kind, body, status, error_code, created_at')
     .eq('organization_id', orgId)
     .eq('phone', phone)
     .order('created_at', { ascending: false })
@@ -166,6 +172,8 @@ export async function getThread(
     body: row.body,
     senderName: row.sent_by_profile_id ? (names.get(row.sent_by_profile_id) ?? null) : null,
     createdAt: row.created_at,
+    deliveryStatus: row.direction === 'out' ? (row.status as OutboundDeliveryStatus) : null,
+    errorCode: row.direction === 'out' ? (row.error_code ?? null) : null,
   }))
 }
 

@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { DateTime } from 'luxon'
-import { Bot, Send, Sparkles, Undo2 } from 'lucide-react'
+import { AlertCircle, Bot, Check, CheckCheck, Send, Sparkles, Undo2 } from 'lucide-react'
 import type { ThreadMessage } from '@/lib/whatsapp/conversations'
 
 type ActionResult = { error: string | null }
@@ -69,8 +69,13 @@ export function WhatsAppThread({
                 </p>
               )}
               <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
-              <p className="text-[11px] mt-1 opacity-90">
-                {DateTime.fromISO(msg.createdAt).setZone(timezone).toFormat('dd/MM HH:mm')}
+              <p className="text-[11px] mt-1 opacity-90 flex items-center gap-1.5">
+                <span>
+                  {DateTime.fromISO(msg.createdAt).setZone(timezone).toFormat('dd/MM HH:mm')}
+                </span>
+                {!msg.isInbound && msg.deliveryStatus && (
+                  <DeliveryMark status={msg.deliveryStatus} errorCode={msg.errorCode} />
+                )}
               </p>
             </div>
           </div>
@@ -144,4 +149,34 @@ function bubbleClasses(msg: ThreadMessage): string {
   if (msg.isInbound) return 'bg-muted text-foreground rounded-es-sm'
   if (msg.origin === 'staff') return 'bg-primary text-primary-foreground rounded-ee-sm'
   return 'bg-secondary text-secondary-foreground rounded-ee-sm'
+}
+
+/**
+ * WhatsApp's own vocabulary: one tick accepted, two delivered, two (solid) read.
+ * A failure names Meta's code, because the code is what tells an owner whether
+ * the number is wrong (131026), the window closed (131047) or a template is
+ * missing (132001) — and it is what support will ask for.
+ */
+function DeliveryMark({
+  status,
+  errorCode,
+}: {
+  status: NonNullable<ThreadMessage['deliveryStatus']>
+  errorCode: number | null
+}) {
+  const t = useTranslations('waConversations')
+
+  if (status === 'failed') {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-red-600 font-medium">
+        <AlertCircle size={11} />
+        {errorCode ? t('delivery.failedWithCode', { code: errorCode }) : t('delivery.failed')}
+      </span>
+    )
+  }
+  if (status === 'read') return <CheckCheck size={12} aria-label={t('delivery.read')} />
+  if (status === 'delivered') {
+    return <CheckCheck size={12} aria-label={t('delivery.delivered')} className="opacity-60" />
+  }
+  return <Check size={12} aria-label={t('delivery.sent')} className="opacity-60" />
 }

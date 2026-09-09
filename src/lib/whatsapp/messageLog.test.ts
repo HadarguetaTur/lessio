@@ -8,7 +8,12 @@ vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: mockCreateServiceRoleClient,
 }))
 
-import { logInboundMessage, logOutboundMessage, recordOutboundSend } from './messageLog'
+import {
+  applyDeliveryStatus,
+  logInboundMessage,
+  logOutboundMessage,
+  recordOutboundSend,
+} from './messageLog'
 import { runWithWaLogContext, setWaLogOrigin, bindWaLogTarget } from './logContext'
 
 function mockInsert(result: { error: { message: string } | null } = { error: null }) {
@@ -160,5 +165,99 @@ describe('recordOutboundSend()', () => {
     )
 
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ wa_message_id: null }))
+  })
+})
+
+describe('applyDeliveryStatus()', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  /** Captures the filter chain so a test can assert which rows were eligible. */
+  function mockUpdate(matched: number, error: { message: string } | null = null) {
+    const calls: Record<string, unknown[][]> = {}
+    const chain: Record<string, unknown> = {}
+    const record = (name: string) => (...args: unknown[]) => {
+      ;(calls[name] ??= []).push(args)
+      return chain
+    }
+    for (const m of ['update', 'eq', 'in']) chain[m] = record(m)
+    chain.select = vi.fn().mockResolvedValue({
+      data: error ? null : Array.from({ length: matched }, (_, i) => ({ id: String(i) })),
+      error,
+    })
+    mockCreateServiceRoleClient.mockReturnValue({ from: () => chain })
+    return calls
+  }
+
+  it('marks the outbound row delivered, but only while it is still behind', async () => {
+    const calls = mockUpdate(1)
+
+    const applied = await applyDeliveryStatus({
+      orgId: 'org-1',
+      waMessageId: 'wamid.OUT',
+      status: 'delivered',
+    })
+
+    expect(applied).toBe(true)
+    expect(calls.update[0][0]).toEqual(
+      expect.objectContaining({ status: 'delivered', error_code: null, error_message: null })
+    )
+    expect(calls.in[0]).toEqual(['status', ['sent']])
+    expect(calls.eq).toEqual(
+      expect.arrayContaining([
+        ['organization_id', 'org-1'],
+        ['wa_message_id', 'wamid.OUT'],
+        ['direction', 'out'],
+      ])
+    )
+  })
+
+  it('lets a late "delivered" lose to an earlier "read" — statuses never move backwards', async () => {
+    const calls = mockUpdate(0)
+
+    const applied = await applyDeliveryStatus({
+      orgId: 'org-1',
+      waMessageId: 'wamid.OUT',
+      status: 'delivered',
+    })
+
+    expect(applied).toBe(false)
+    expect(calls.in[0][1] as string[]).not.toContain('read')
+  })
+
+  it('keeps the Meta error on a failure and lets it override any earlier status', async () => {
+    const calls = mockUpdate(1)
+
+    await applyDeliveryStatus({
+      orgId: 'org-1',
+      waMessageId: 'wamid.OUT',
+      status: 'failed',
+      errorCode: 131026,
+      errorMessage: 'Message undeliverable',
+    })
+
+    expect(calls.update[0][0]).toEqual(
+      expect.objectContaining({ status: 'failed', error_code: 131026, error_message: 'Message undeliverable' })
+    )
+    expect(calls.in[0][1] as string[]).toEqual(['sent', 'delivered', 'read'])
+  })
+
+  it('never re-applies "sent" — that is the state the row is born in', async () => {
+    const calls = mockUpdate(1)
+
+    const applied = await applyDeliveryStatus({ orgId: 'org-1', waMessageId: 'wamid.OUT', status: 'sent' })
+
+    expect(applied).toBe(false)
+    expect(calls.update).toBeUndefined()
+  })
+
+  it('logs and returns false when the update fails', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockUpdate(0, { message: 'db down' })
+
+    await expect(
+      applyDeliveryStatus({ orgId: 'org-1', waMessageId: 'wamid.OUT', status: 'read' })
+    ).resolves.toBe(false)
+    expect(error).toHaveBeenCalled()
+    error.mockRestore()
   })
 })

@@ -217,6 +217,89 @@ export function parseTemplateStatusUpdates(body: unknown): TemplateStatusUpdate[
   return results
 }
 
+// ── Delivery statuses ─────────────────────────────────────────────────────────
+
+export type DeliveryStatus = 'sent' | 'delivered' | 'read' | 'failed'
+
+/** One `statuses[]` entry of a `messages` change — the fate of a message we sent. */
+export interface DeliveryStatusUpdate {
+  /** Meta phone_number_id of the business line that sent the message. */
+  phoneNumberId: string
+  /** The wamid we stored on the outbound row when Meta accepted the send. */
+  waMessageId: string
+  status: DeliveryStatus
+  /** Meta's error for a `failed` status; null otherwise. */
+  errorCode: number | null
+  errorMessage: string | null
+}
+
+const StatusErrorSchema = z.object({
+  code: z.number().optional(),
+  title: z.string().optional(),
+  message: z.string().optional(),
+  error_data: z.object({ details: z.string().optional() }).optional(),
+})
+
+const MetaStatusSchema = z.object({
+  id: z.string().min(1),
+  status: z.string().min(1),
+  errors: z.array(StatusErrorSchema).optional(),
+})
+
+const StatusesValueSchema = z.object({
+  metadata: z.object({ phone_number_id: z.string().min(1) }),
+  statuses: z.array(MetaStatusSchema).optional(),
+})
+
+/**
+ * Extracts delivery transitions from a webhook payload.
+ *
+ * They ride in the same `messages` change as inbound messages, under
+ * `value.statuses`, and are validated separately so a malformed status never
+ * costs a real message batched next to it (and vice versa). Statuses Meta
+ * defines but we do not track (`deleted`, `warning`) are dropped.
+ */
+export function parseDeliveryStatuses(body: unknown): DeliveryStatusUpdate[] {
+  const parsed = MetaWebhookPayloadSchema.safeParse(body)
+  if (!parsed.success) return []
+
+  const results: DeliveryStatusUpdate[] = []
+
+  for (const entry of parsed.data.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      if (change.field !== 'messages') continue
+
+      const value = StatusesValueSchema.safeParse(change.value)
+      if (!value.success) continue
+
+      for (const status of value.data.statuses ?? []) {
+        const normalized = status.status.toLowerCase()
+        if (!isDeliveryStatus(normalized)) continue
+
+        const firstError = status.errors?.[0]
+        const detail = firstError?.error_data?.details
+        const errorMessage = firstError
+          ? [firstError.title ?? firstError.message, detail].filter(Boolean).join(' — ') || null
+          : null
+
+        results.push({
+          phoneNumberId: value.data.metadata.phone_number_id,
+          waMessageId: status.id,
+          status: normalized,
+          errorCode: firstError?.code ?? null,
+          errorMessage,
+        })
+      }
+    }
+  }
+
+  return results
+}
+
+function isDeliveryStatus(value: string): value is DeliveryStatus {
+  return value === 'sent' || value === 'delivered' || value === 'read' || value === 'failed'
+}
+
 /**
  * Normalises the three inbound shapes we act on into { text, replyId }.
  * Everything else (images, audio, reactions, …) returns null; the caller

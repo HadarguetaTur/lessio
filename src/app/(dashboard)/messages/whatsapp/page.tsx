@@ -6,6 +6,7 @@ import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { getConversationSummaries } from '@/lib/whatsapp/conversations'
+import { getWaConnectionState } from '@/lib/whatsapp/connectionState'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { MessagesTabs } from '@/components/dashboard/messages/MessagesTabs'
 import { PageHeader } from '@/components/ui/page-header'
@@ -35,9 +36,10 @@ export default async function WhatsAppConversationsPage() {
     return <p className="text-center mt-16 text-sm text-muted-foreground">{t('noTeacherRecord')}</p>
   }
 
-  const [conversations, timezone] = await Promise.all([
+  const [conversations, timezone, waState] = await Promise.all([
     getConversationSummaries(session.orgId, teacher ? { teacherId: teacher.id } : {}),
     getOrgTimezone(session.orgId),
+    getWaConnectionState(session.orgId),
   ])
 
   return (
@@ -47,7 +49,41 @@ export default async function WhatsAppConversationsPage() {
       <MessagesTabs showPortal={!isTeacher} />
 
       {conversations.length === 0 ? (
-        <EmptyState icon={MessageSquare} title={t('emptyTitle')} subtitle={t('emptySubtitle')} />
+        /*
+         * "Conversations will appear once someone writes to your number" was
+         * shown whether or not a number existed. For a teacher this is the only
+         * WhatsApp surface in the product, so an unconnected org handed them a
+         * page that would never populate and never said why (UX audit F16).
+         * The owner gets the fix; everyone else gets the explanation.
+         */
+        <EmptyState
+          icon={MessageSquare}
+          title={
+            waState.state === 'not_connected'
+              ? t('emptyNotConnectedTitle')
+              : waState.state === 'reconnect_required'
+                ? t('emptyReconnectTitle')
+                : t('emptyTitle')
+          }
+          subtitle={
+            waState.state === 'not_connected' || waState.state === 'reconnect_required'
+              ? session.role === 'owner'
+                ? t('emptyNotConnectedOwner')
+                : t('emptyNotConnectedStaff')
+              : t('emptySubtitle')
+          }
+          action={
+            session.role === 'owner' &&
+            (waState.state === 'not_connected' || waState.state === 'reconnect_required') ? (
+              <Link
+                href="/settings/whatsapp"
+                className="text-sm font-medium text-primary underline underline-offset-4"
+              >
+                {t('emptyNotConnectedAction')}
+              </Link>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="rounded-lg border bg-card">
           <Table>

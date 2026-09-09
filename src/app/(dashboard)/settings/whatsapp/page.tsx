@@ -17,6 +17,10 @@ import { TrustCard } from './TrustCard'
 import { WhatsAppRequirements } from '@/components/dashboard/settings/WhatsAppRequirements'
 import { WhatsAppUsageTab } from '@/components/dashboard/settings/WhatsAppUsageTab'
 import { getWhatsAppUsage, parseUsageDays } from '@/lib/whatsapp/usageAnalytics'
+import { getTemplateStatuses } from '@/lib/whatsapp/templateStatus'
+import { builtInTemplateName } from '@/lib/whatsapp/templateApprovalView'
+import { OUT_OF_WINDOW_TYPES } from '@/lib/whatsapp/submitTemplate'
+import { parseAppLocale } from '@/lib/i18n/locale'
 import { getTranslations } from 'next-intl/server'
 
 /**
@@ -110,9 +114,11 @@ export default async function WhatsAppSettingsPage({
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('whatsapp.title')}</h1>
       <p className="text-sm text-muted-foreground mb-6">{tp('whatsappPage.subtitle')}</p>
 
-      {/* Tab navigation — the usage tab only makes sense once a number is
-          connected, so it appears alongside the connected state. */}
-      {showConnectedBlocks && (
+      {/* Tab navigation. Shown to anyone on a plan that includes WhatsApp, not
+          only once a number exists: "what is WhatsApp costing me?" is a fair
+          question before connecting, and hiding the tab made its own
+          "not connected yet" copy unreachable (UX audit F17). */}
+      {!planLocked && (
         <div className="flex gap-4 border-b border-gray-200 mb-8">
           <a
             href="?tab=settings"
@@ -137,7 +143,7 @@ export default async function WhatsAppSettingsPage({
         </div>
       )}
 
-      {activeTab === 'usage' && showConnectedBlocks ? (
+      {activeTab === 'usage' && !planLocked ? (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           {usageSummary ? (
             <WhatsAppUsageTab summary={usageSummary} days={usageDays} />
@@ -175,7 +181,8 @@ export default async function WhatsAppSettingsPage({
 
       {/* Message templates — shown when WhatsApp is connected */}
       {showConnectedBlocks && (
-        <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
+        <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+          <TemplateApprovalSummary orgId={orgId} />
           <RegisterTemplatesButton disabled={readOnly} disabledReason={readOnlyReason} />
         </div>
       )}
@@ -257,6 +264,57 @@ async function ConnectedState({
         <p className="text-xs text-muted-foreground mb-2">{tp('whatsappPage.disconnectHint')}</p>
         <DisconnectButton disabled={readOnly} disabledReason={readOnlyReason} />
       </div>
+    </div>
+  )
+}
+
+/**
+ * How many message types Meta has approved, and what it means that some are not.
+ *
+ * "Connected" and "can reach a parent who hasn't written this week" are
+ * different facts, and until now the second one lived on a different page
+ * behind a language tab that an owner had no reason to open — so a studio whose
+ * templates had all been refused believed its reminders were going out
+ * (UX audit F9).
+ */
+async function TemplateApprovalSummary({ orgId }: { orgId: string }) {
+  const t = await getTranslations('settings.whatsapp.templates')
+
+  const [statuses, orgLocale] = await Promise.all([
+    getTemplateStatuses(orgId),
+    createServiceRoleClient()
+      .from('organizations')
+      .select('default_locale')
+      .eq('id', orgId)
+      .maybeSingle()
+      .then(({ data }) => parseAppLocale(data?.default_locale ?? undefined)),
+  ])
+
+  const total = OUT_OF_WINDOW_TYPES.length
+  const approved = OUT_OF_WINDOW_TYPES.filter((type) => {
+    const builtIn = builtInTemplateName(type, orgLocale)
+    return statuses.some(
+      (row) =>
+        row.status === 'APPROVED' &&
+        row.language === orgLocale &&
+        (row.templateName === builtIn || row.type === type)
+    )
+  }).length
+
+  return (
+    <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+      <p className="text-sm font-medium text-gray-900">
+        {t('approvedCount', { approved, total })}
+      </p>
+      {approved < total && (
+        <p className="mt-1 text-xs text-muted-foreground">{t('approvedConsequence')}</p>
+      )}
+      <Link
+        href="/settings/message-templates"
+        className="mt-2 inline-block text-xs font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+      >
+        {t('approvedLink')}
+      </Link>
     </div>
   )
 }

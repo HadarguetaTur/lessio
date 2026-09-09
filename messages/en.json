@@ -433,6 +433,12 @@
       "projected": "Projected remaining",
       "total": "Total projected",
       "atRisk": "At risk"
+    },
+    "whatsappBanner": {
+      "reconnect_required": "Your WhatsApp connection has expired — reminders, payment requests and automatic replies to parents are paused.",
+      "blocked_by_meta": "Meta has restricted your WhatsApp number. Some messages to parents are not being sent.",
+      "at_risk": "Your WhatsApp number's quality rating has dropped. If it continues, Meta will lower how many messages you can send per day.",
+      "action": "See details and fix"
     }
   },
   "students": {
@@ -1637,7 +1643,10 @@
           "decryptFailed": "Could not read the stored WhatsApp credentials — reconnect your number.",
           "registerFailed": "Meta rejected the request. Please try again.",
           "readOnly": "Read-only mode — templates cannot be registered right now."
-        }
+        },
+        "approvedCount": "{approved} of {total} message types approved by Meta",
+        "approvedConsequence": "Until they are approved, the remaining types only reach parents who wrote to you in the last 24 hours.",
+        "approvedLink": "View and edit message wordings"
       }
     },
     "payment": {
@@ -5743,7 +5752,12 @@
       "read": "Read",
       "failed": "Failed",
       "failedWithCode": "Failed ({code})"
-    }
+    },
+    "emptyNotConnectedTitle": "You haven't connected a WhatsApp number yet",
+    "emptyReconnectTitle": "The WhatsApp connection has expired",
+    "emptyNotConnectedOwner": "Once connected, every parent's conversation with the bot appears here and you can step in and reply yourself at any point.",
+    "emptyNotConnectedStaff": "The business's WhatsApp number isn't connected right now, so there are no conversations to show. The account owner can sort this out in settings.",
+    "emptyNotConnectedAction": "Go to WhatsApp settings"
   },
   "broadcasts": {
     "title": "Broadcasts",

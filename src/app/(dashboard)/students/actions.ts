@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { canAccessStudent } from '@/lib/auth/studentAccess'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
@@ -463,13 +464,44 @@ export async function fetchOrgParents(): Promise<
 
 // ── Lazy-tab server actions ───────────────────────────────────────────────────
 
+/**
+ * Authorizes one lazy-tab read.
+ *
+ * These actions each take a studentId from the browser and hand it to a
+ * service-role query, so org scope alone was never enough: within an org it
+ * let any teacher read any student's lessons, homework, goals, exams, billing
+ * and parent contact details. The financial tab is only *hidden* from the
+ * teacher tab bar (TAB_VALUES_TEACHER in StudentDetailSheet), and a hidden tab
+ * is not authorization — a server action is a live endpoint whatever the UI
+ * chooses to render.
+ *
+ * `billing: true` marks the reads the permissions matrix keeps away from
+ * teachers entirely, not merely scoped to their own roster.
+ *
+ * Returns the session on success, or an error state to return as-is.
+ */
+async function authorizeStudentRead(
+  studentId: string,
+  options?: { billing?: boolean }
+): Promise<{ ok: true; orgId: string } | { ok: false; error: string }> {
+  const session = await getSession()
+  if (options?.billing && session.role !== 'owner' && session.role !== 'admin') {
+    return { ok: false, error: await commonError('noPermission') }
+  }
+  if (!(await canAccessStudent(session, studentId))) {
+    return { ok: false, error: await commonError('noPermission') }
+  }
+  return { ok: true, orgId: session.orgId }
+}
+
 export async function fetchStudentParent(
   studentId: string
 ): Promise<{ data: StudentPrimaryParent | null } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId)
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getStudentPrimaryParent(studentId, orgId)
+    const data = await getStudentPrimaryParent(studentId, auth.orgId)
     return { data }
   } catch {
     return { error: t('students.errors.loadParentFailed') }
@@ -480,9 +512,10 @@ export async function fetchStudentLessons(
   studentId: string
 ): Promise<{ data: StudentLesson[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId)
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getStudentLessons(studentId, orgId)
+    const data = await getStudentLessons(studentId, auth.orgId)
     return { data }
   } catch {
     return { error: t('students.errors.loadLessonsFailed') }
@@ -493,9 +526,10 @@ export async function fetchStudentFinancial(
   studentId: string
 ): Promise<{ data: StudentFinancial } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId, { billing: true })
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getStudentFinancial(studentId, orgId)
+    const data = await getStudentFinancial(studentId, auth.orgId)
     return { data }
   } catch {
     return { error: t('students.errors.loadFinanceFailed') }
@@ -506,9 +540,10 @@ export async function fetchStudentHomework(
   studentId: string
 ): Promise<{ data: HomeworkAssignment[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId)
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getAssignments(orgId, { studentId })
+    const data = await getAssignments(auth.orgId, { studentId })
     return { data }
   } catch {
     return { error: t('students.errors.loadHomeworkFailed') }
@@ -519,9 +554,10 @@ export async function fetchStudentSubscriptions(
   studentId: string
 ): Promise<{ data: Subscription[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId, { billing: true })
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getSubscriptions(orgId, studentId)
+    const data = await getSubscriptions(auth.orgId, studentId)
     return { data }
   } catch {
     return { error: t('students.errors.loadSubscriptionsFailed') }
@@ -532,9 +568,10 @@ export async function fetchStudentGoals(
   studentId: string
 ): Promise<{ data: StudentGoal[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId)
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getGoalsForStudent(orgId, studentId)
+    const data = await getGoalsForStudent(auth.orgId, studentId)
     return { data }
   } catch {
     return { error: t('students.errors.loadGoalsFailed') }
@@ -545,10 +582,11 @@ export async function fetchStudentExams(
   studentId: string
 ): Promise<{ data: import('@/lib/students/exams').StudentExam[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId)
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
     const { listExams } = await import('@/lib/students/exams')
-    const data = await listExams(orgId, studentId)
+    const data = await listExams(auth.orgId, studentId)
     return { data }
   } catch {
     return { error: t('students.errors.loadExamsFailed') }
@@ -559,8 +597,10 @@ export async function fetchStudentParentEmails(
   studentId: string
 ): Promise<{ data: { email: string; label: string }[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId, { billing: true })
+  if (!auth.ok) return { error: auth.error }
+  const orgId = auth.orgId
   try {
-    const { orgId } = await getSession()
     const db = (await import('@/lib/supabase/service-role')).createServiceRoleClient()
     const { data } = await db
       .from('relationships')

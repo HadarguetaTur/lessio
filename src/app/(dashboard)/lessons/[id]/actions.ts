@@ -368,6 +368,23 @@ export async function addLessonNote(
   if (session.role === 'teacher') {
     const teacher = await getTeacherByProfileId(session.profileId, session.orgId)
     if (!teacher) return { error: t('lessons.errors.noTeacherProfile') }
+
+    // lessonId arrives from the client and createNote writes on a service-role
+    // client, so nothing else establishes that this lesson is the teacher's.
+    // Without this a teacher could file a note — including one with
+    // visibleToParent, which surfaces in the family's portal — against any
+    // colleague's lesson. deleteLessonNote below already checks ownership;
+    // this branch was the oversight.
+    const { createServiceRoleClient } = await import('@/lib/supabase/service-role')
+    const { data: ownLesson } = await createServiceRoleClient()
+      .from('lessons')
+      .select('id')
+      .eq('id', lessonId)
+      .eq('organization_id', session.orgId)
+      .eq('teacher_id', teacher.id)
+      .maybeSingle()
+    if (!ownLesson) return { error: await commonError('noPermission') }
+
     teacherId = teacher.id
   } else {
     // owner/admin: find the teacher associated with this lesson

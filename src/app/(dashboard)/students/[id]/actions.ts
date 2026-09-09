@@ -414,6 +414,36 @@ export async function approveExamQuotaBumpAction(
 
 // ─── Progress report PDF + email ─────────────────────────────────────────────
 
+/**
+ * True when `email` belongs to a parent linked to this student in this org.
+ *
+ * Compared case-insensitively on the trimmed address, because the dashboard
+ * echoes what a person typed and "Dana@Example.com" is the same mailbox as the
+ * stored one. Fails closed on a query error — an unreachable relationships
+ * table must not read as "sure, mail it anywhere".
+ */
+async function isParentEmailForStudent(
+  studentId: string,
+  orgId: string,
+  email: string
+): Promise<boolean> {
+  const db = createServiceRoleClient()
+  const { data, error } = await db
+    .from('relationships')
+    .select('parents ( email )')
+    .eq('student_id', studentId)
+    .eq('organization_id', orgId)
+
+  if (error) return false
+
+  const target = email.trim().toLowerCase()
+  type Row = { parents: { email: string | null } | null }
+  return (data ?? []).some((r) => {
+    const stored = (r as unknown as Row).parents?.email?.trim().toLowerCase()
+    return Boolean(stored) && stored === target
+  })
+}
+
 export type ProgressReportActionResult = {
   error: string | null
   signedUrl?: string
@@ -435,14 +465,12 @@ export async function generateProgressReportAction(
     return { error: await commonError('supportModeReadOnly') }
   }
 
-  const db = createServiceRoleClient()
-  const { data: row } = await db
-    .from('students')
-    .select('id')
-    .eq('id', studentId)
-    .eq('organization_id', session.orgId)
-    .maybeSingle()
-  if (!row) return { error: t('students.errors.studentNotFound') }
+  // Org membership is not access. The report bundles attendance, homework and
+  // lesson notes for a minor into a 24h-signed PDF; every exam action in this
+  // file already asks canAccessStudent, and these two were simply missed.
+  if (!(await canAccessStudent(session, studentId))) {
+    return { error: await commonError('noPermission') }
+  }
 
   const timezone = await getOrgTimezone(session.orgId)
   const bounds = parseReportDates(fromDate, toDate, timezone)
@@ -485,14 +513,18 @@ export async function sendProgressReportEmailAction(
   const emailParsed = z.string().trim().email().safeParse(recipientEmail)
   if (!emailParsed.success) return { error: 'validation.invalidEmail' }
 
-  const db = createServiceRoleClient()
-  const { data: row } = await db
-    .from('students')
-    .select('id')
-    .eq('id', studentId)
-    .eq('organization_id', session.orgId)
-    .maybeSingle()
-  if (!row) return { error: t('students.errors.studentNotFound') }
+  if (!(await canAccessStudent(session, studentId))) {
+    return { error: await commonError('noPermission') }
+  }
+
+  // The recipient is bound to the student, not taken on trust. A well-formed
+  // address that merely parses is a data-exfiltration primitive here: it would
+  // mail a minor's attendance, homework and lesson notes as a PDF attachment to
+  // any inbox the caller names. The address must be one of this student's own
+  // parents, resolved server-side.
+  if (!(await isParentEmailForStudent(studentId, session.orgId, emailParsed.data))) {
+    return { error: await commonError('noPermission') }
+  }
 
   const canSend = await shouldSendEmail(session.orgId, 'progress_report', emailParsed.data)
   if (!canSend) {

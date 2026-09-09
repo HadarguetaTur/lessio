@@ -3,6 +3,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { assertOrgNotSaasReadOnly } from '@/lib/saas/subscriptions'
 import { detectDayTail } from '@/lib/scheduling/dayTail'
 import type { LessonStatus, LessonType } from '@/lib/lessons/types'
+import { assertLessonPeopleBelongToOrg } from './assertLessonPeople'
 
 export type CreateLessonParams = {
   orgId: string
@@ -85,6 +86,16 @@ export async function createLesson(
   if (studentIds.length === 0) throw new Error('At least one student is required')
 
   await assertOrgNotSaasReadOnly(orgId)
+
+  // teacherId and studentIds reach every caller of this function straight from
+  // a form. The insert below stamps organization_id from the session, so a
+  // foreign teacher or student id produced a row that claimed to be this org's
+  // while pointing at another tenant's people — which then surfaced their
+  // names in this org's lesson lists and billing. The teacher-facing callers
+  // already check (assertStudentsAssignedToTeacher, canAccessStudent); the
+  // owner/admin paths did not, so the check belongs here, at the choke point
+  // every path shares.
+  await assertLessonPeopleBelongToOrg(orgId, teacherId, studentIds)
 
   const db = createServiceRoleClient()
 

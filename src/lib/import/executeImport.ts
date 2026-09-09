@@ -1,3 +1,39 @@
+/**
+ * Bulk import execution.
+ *
+ * ## What "all-or-nothing" actually covers — read this before relying on it
+ *
+ * `ImportAbortedError` is the ONLY thing that triggers `rollback.undo`, and it
+ * is thrown from exactly three of the six entity paths:
+ *
+ *   | entity          | aborts + rolls back | notes                          |
+ *   |-----------------|---------------------|--------------------------------|
+ *   | students        | yes (INSERT batch)  | the UPDATE loop overwrites in  |
+ *   |                 |                     | place and is NOT undone        |
+ *   | lessons-schedule| yes                 |                                |
+ *   | lessons-history | yes                 |                                |
+ *   | parents         | **no**              | every DB error is push + skip  |
+ *   | teachers        | **no**              | and it is called with NO       |
+ *   |                 |                     | rollback ledger at all         |
+ *   | family-list     | **no**              | push + skip                    |
+ *
+ * For the three that do not abort, `rolledBack` stays undefined and
+ * `completeImportBatch` records `status:'completed'`, so the idempotency key
+ * can thereafter only replay the half-finished result.
+ *
+ * Two kinds of damage no compensating-delete ledger can undo, in ANY path:
+ *
+ *   - the `relationships.delete()` per existing parent, which wipes their
+ *     student links before re-linking. A failure two rows later leaves those
+ *     parents permanently unlinked from their children, and billing reads
+ *     `is_primary` relationships.
+ *   - `clearStudentPrimaryParents`, which demotes the previous primary parent
+ *     with no record of who it was.
+ *
+ * Newly-inserted rows' relationships DO vanish with them — both FKs are
+ * `ON DELETE CASCADE` — so those are not orphans.
+ */
+
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizeClockTime, type SeriesRule } from '@/lib/lessons/seriesRule'

@@ -709,7 +709,7 @@
         "SAVE_FAILED": "Could not save. Try again.",
         "NOT_LINKED": "Link a WhatsApp group first.",
         "CREATE_FAILED": "Could not send the invitations. Try again.",
-      "already_started": "This campaign has already been started.",
+        "already_started": "This campaign has already been started.",
         "not_connected": "WhatsApp is not connected. Connect a number in settings first.",
         "quality_red": "Sending is paused while your number’s quality rating recovers.",
         "broadcasts_disabled": "Broadcasts are switched off for this account.",
@@ -3413,7 +3413,9 @@
         },
         "toast": {
           "done": "{name} deleted. {rows} rows removed.",
-          "partial": "{name} deleted, but {count} login accounts could not be removed. Check the server log."
+          "partial": "{name} deleted, but {count} login accounts could not be removed. Check the server log.",
+          "noSnapshot": "The pre-delete snapshot could not be taken. No copy of this tenant exists.",
+          "storageLeftBehind": "{count} files could not be removed from storage and are orphaned. Check the server log."
         },
         "errors": {
           "confirmationMismatch": "The slug you typed does not match this organization.",

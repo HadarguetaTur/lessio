@@ -68,24 +68,42 @@ export async function getExternalBusy(params: {
 
   const db = createServiceRoleClient()
 
-  const [{ data: org }, { data: teacher }] = await Promise.all([
-    db
-      .from('organizations')
-      .select('google_calendar_refresh_token, google_calendar_selected_calendars')
-      .eq('id', orgId)
-      .maybeSingle(),
-    db
-      .from('teachers')
-      .select('google_calendar_refresh_token, google_calendar_selected_calendars')
-      .eq('id', teacherId)
-      .maybeSingle(),
-  ])
+  const [{ data: org, error: orgError }, { data: teacher, error: teacherError }] =
+    await Promise.all([
+      db
+        .from('organizations')
+        .select('google_calendar_refresh_token, google_calendar_selected_calendars')
+        .eq('id', orgId)
+        .maybeSingle(),
+      db
+        .from('teachers')
+        .select('google_calendar_refresh_token, google_calendar_selected_calendars')
+        .eq('id', teacherId)
+        .maybeSingle(),
+    ])
+
+  // supabase-js RETURNS `{ error }`; it does not throw. Discarding it here made
+  // a transient PostgREST or network failure on the TOKEN LOOKUP indistinguish-
+  // able from "no calendar connected", so the function returned a hard 'free'
+  // and `createSlotLock`'s fail-closed branch could never fire — the parent
+  // booked straight over the teacher's real diary. The whole tri-state exists
+  // to say "we could not ask Google", and this is one of the ways we cannot.
+  if (orgError || teacherError) {
+    console.error('[google-calendar] Could not read the calendar tokens', {
+      orgId,
+      teacherId,
+      orgError,
+      teacherError,
+    })
+    return { intervals: [], status: 'unknown_provider_error' }
+  }
 
   const orgToken     = org?.google_calendar_refresh_token ?? null
   const teacherToken = teacher?.google_calendar_refresh_token ?? null
 
   // The common case — no calendar connected — costs zero Google traffic, and
-  // "nothing to ask" is genuinely free rather than unknown.
+  // "nothing to ask" is genuinely free rather than unknown. Reachable only now
+  // that a failed read is ruled out above.
   if (!orgToken && !teacherToken) return { intervals: [], status: 'free' }
 
   const result = await checkCalendarConflicts({

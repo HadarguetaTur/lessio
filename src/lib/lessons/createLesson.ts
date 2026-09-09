@@ -97,7 +97,7 @@ export async function createLesson(
   // already check (assertStudentsAssignedToTeacher, canAccessStudent); the
   // owner/admin paths did not, so the check belongs here, at the choke point
   // every path shares.
-  await assertLessonPeopleBelongToOrg(orgId, teacherId, studentIds)
+  await assertLessonPeopleBelongToOrg(orgId, teacherId, studentIds, groupId)
 
   const db = createServiceRoleClient()
 

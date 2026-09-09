@@ -37,7 +37,6 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
    * stale as soon as the first execute lands — its rows all still say "new" —
    * so re-posting it without this key duplicated whatever already imported.
    */
-  const [batchKey, setBatchKey] = useState<string | null>(null)
 
   /** Only these imports create parent rows, so only they ask about consent. */
   const createsParents = entityType === 'parents' || entityType === 'family-list'
@@ -99,7 +98,6 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
           }
         }
         setExcludedRows(autoExclude)
-        setBatchKey(crypto.randomUUID())
         setStep('preview')
       } catch {
         setError(t('flowErrors.parseFailedRetry'))
@@ -138,7 +136,6 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
           entityType,
           rows: rowsToImport,
           attestConsent,
-          idempotencyKey: batchKey,
         }),
       })
 
@@ -167,7 +164,6 @@ export function ImportFlow({ entityType, onComplete }: ImportFlowProps) {
     setError(null)
     setAttestConsent(false)
     setMissingDependencies({ teachers: [], students: [] })
-    setBatchKey(null)
   }
 
   const validCount = rows.filter(

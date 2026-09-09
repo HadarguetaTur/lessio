@@ -30,6 +30,14 @@ vi.mock('@/lib/whatsapp/templates', () => ({
   resolveTemplate: vi.fn().mockResolvedValue('resolved-body'),
 }))
 
+// The absence cancel now routes through the canonical core rather than a bulk
+// UPDATE. Mocked here so these tests keep asserting the day-off orchestration;
+// what the core is asked to do is pinned in cancelForAbsence.authority.test.ts.
+const mockCancelLessonCore = vi.fn()
+vi.mock('@/lib/cancellation-flow/cancelLessonCore', () => ({
+  cancelLessonCore: (input: unknown) => mockCancelLessonCore(input),
+}))
+
 vi.mock('@/lib/notifications', () => ({
   notifyMultiple: vi.fn().mockResolvedValue(undefined),
   getOwnerAndAdminProfileIds: vi.fn().mockResolvedValue(['profile-1']),
@@ -193,6 +201,7 @@ function findCall(
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockCancelLessonCore.mockResolvedValue({ success: true })
   Settings.now = () => NOW.toMillis()
   mockSendTemplateWithQuickReplies.mockResolvedValue(undefined)
   mockSendTextMessage.mockResolvedValue(undefined)
@@ -316,7 +325,7 @@ describe('approveDayOffRequest', () => {
     expect(findCall(calls, 'lessons', 'update')).toBeUndefined()
   })
 
-  it('cancels only this teacher’s still-scheduled lessons, and charges nobody', async () => {
+  it('cancels this teacher’s lessons through the core, waived because approved', async () => {
     const calls = approvalScript()
 
     const outcome = await approveDayOffRequest({
@@ -325,17 +334,20 @@ describe('approveDayOffRequest', () => {
       ctx: CTX,
     })
 
-    const update = findCall(calls, 'lessons', 'update')
-    expect(update?.payload).toMatchObject({ status: 'cancelled' })
-    expect(update?.filters['eq:organization_id']).toBe(ORG_ID)
-    expect(update?.filters['eq:teacher_id']).toBe(TEACHER_ID)
-    // Already-cancelled lessons are left alone.
-    expect(update?.filters['eq:status']).toBe('scheduled')
+    // No raw bulk UPDATE any more — the bypass this replaced.
+    expect(findCall(calls, 'lessons', 'update')).toBeUndefined()
 
-    // A family does not pay for their teacher's holiday: no charge row, and no
-    // cancellation event either — the monthly engine counts those separately.
-    expect(calls.some((c) => c.table === 'charges')).toBe(false)
-    expect(calls.some((c) => c.table === 'cancellation_events')).toBe(false)
+    // A family does not pay for their teacher's APPROVED holiday, and the
+    // waiver is asserted as an owner/admin decision rather than assumed.
+    expect(mockCancelLessonCore).toHaveBeenCalledTimes(1)
+    expect(mockCancelLessonCore).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lessonId: 'lesson-parent-1',
+        orgId: ORG_ID,
+        actor: { kind: 'staff' },
+        waive: true,
+      })
+    )
 
     expect(outcome).toMatchObject({ status: 'approved', lessonsCancelled: 1 })
   })
@@ -345,15 +357,21 @@ describe('approveDayOffRequest', () => {
 
     await approveDayOffRequest({ requestId: REQUEST_ID, decidedByProfileId: DECIDER, ctx: CTX })
 
-    const update = findCall(calls, 'lessons', 'update')
+    // The bounds now live on the SELECT that picks the affected lessons — the
+    // same read that feeds the parent notices, so there is one window, not two.
+    //
     // Overlap, not "starts within": a lesson that begins before the absence and
     // runs into it collides too, which matters once an absence can be a few
     // hours rather than whole days. Same instants either way — 20/08 00:00 and
     // 23/08 00:00 Jerusalem, the day after the last day off.
-    expect(update?.filters['gt:end_at']).toBe(
+    const read = findCall(calls, 'lessons', 'select')
+    expect(read?.filters['eq:organization_id']).toBe(ORG_ID)
+    expect(read?.filters['eq:teacher_id']).toBe(TEACHER_ID)
+    expect(read?.filters['eq:status']).toBe('scheduled')
+    expect(read?.filters['gt:end_at']).toBe(
       DateTime.fromISO('2026-08-20T00:00:00', { zone: TZ }).toUTC().toISO()
     )
-    expect(update?.filters['lt:start_at']).toBe(
+    expect(read?.filters['lt:start_at']).toBe(
       DateTime.fromISO('2026-08-23T00:00:00', { zone: TZ }).toUTC().toISO()
     )
   })
@@ -587,11 +605,9 @@ describe('approveDayOffRequest', () => {
     // Otherwise a retry answers "already decided" and the owner believes their
     // approval went through while nothing was actually cancelled.
     const calls = approvalScript({
-      lessons: {
-        select: { data: [lessonWithParent('parent-1')], error: null },
-        update: { data: null, error: { code: '500', message: 'db exploded' } },
-      },
+      lessons: { select: { data: [lessonWithParent('parent-1')], error: null } },
     })
+    mockCancelLessonCore.mockRejectedValue(new Error('db exploded'))
 
     await expect(
       approveDayOffRequest({ requestId: REQUEST_ID, decidedByProfileId: DECIDER, ctx: CTX })

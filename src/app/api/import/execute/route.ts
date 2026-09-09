@@ -11,6 +11,7 @@ import {
   claimImportBatch,
   completeImportBatch,
   failImportBatch,
+  deriveImportIdempotencyKey,
 } from '@/lib/import/importBatch'
 import { QuotaExceededError } from '@/lib/saas/quota'
 
@@ -37,7 +38,12 @@ const executeImportSchema = z.object({
   entityType: z.enum(VALID_TYPES),
   rows: z.array(importRowSchema).min(1).max(2_000),
   attestConsent: z.boolean().optional(),
-  /** Stamped by the client once per preview; makes a retry a replay. */
+  /**
+   * Accepted for compatibility with older clients and then IGNORED. The key is
+   * derived server-side from the rows themselves — a client-minted nonce made
+   * idempotency optional (omit it, get none) and per-parse rather than
+   * per-file (re-upload the same spreadsheet, get a second full import).
+   */
   idempotencyKey: z.uuid().optional(),
 }).strict()
 
@@ -62,26 +68,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: t('apiErrors.invalidEntity') }, { status: 400 })
   }
 
-  const { entityType, rows, attestConsent, idempotencyKey } = parsed.data
+  const { entityType, rows, attestConsent } = parsed.data
 
-  // Claim the preview before writing anything. A retry of the same preview
-  // replays the first run's result rather than importing it a second time.
+  // Claim before writing anything, ALWAYS — the claim is no longer conditional
+  // on the client having sent a key, because an optional key is not
+  // idempotency. The key is derived from the payload, so re-uploading the same
+  // spreadsheet replays instead of importing it a second time.
   let batchId: string | null = null
-  if (idempotencyKey) {
-    const claim = await claimImportBatch(
-      session.orgId,
-      idempotencyKey,
-      entityType,
-      rows.length,
-      session.profileId
-    )
+  const claim = await claimImportBatch(
+    session.orgId,
+    deriveImportIdempotencyKey(session.orgId, entityType, rows),
+    entityType,
+    rows.length,
+    session.profileId
+  )
 
-    if (claim.kind === 'replay') return NextResponse.json(claim.result)
-    if (claim.kind === 'inFlight') {
-      return NextResponse.json({ error: t('apiErrors.importAlreadyRan') }, { status: 409 })
-    }
-    if (claim.kind === 'claimed') batchId = claim.batchId
+  if (claim.kind === 'replay') return NextResponse.json(claim.result)
+  if (claim.kind === 'inFlight') {
+    return NextResponse.json({ error: t('apiErrors.importAlreadyRan') }, { status: 409 })
   }
+  if (claim.kind === 'claimed') batchId = claim.batchId
 
   try {
     const timezone = await getOrgTimezone(session.orgId)

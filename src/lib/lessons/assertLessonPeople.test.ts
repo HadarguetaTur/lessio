@@ -33,9 +33,14 @@ let recorded: { table: string; orgId: string }[] = []
  * else comes back as no row, which is what a foreign id looks like to an
  * org-scoped query.
  */
-function mockOrg(inOrg: { teachers: string[]; students: string[] }) {
+function mockOrg(inOrg: {
+  teachers: string[]
+  students: string[]
+  student_groups?: string[]
+}) {
+  const scoped = { student_groups: [], ...inOrg }
   mockCreateServiceRoleClient.mockImplementation(() => ({
-    from: (table: 'teachers' | 'students') => ({
+    from: (table: 'teachers' | 'students' | 'student_groups') => ({
       select: () => ({
         eq: (_c: string, orgId: string) => {
           recorded.push({ table, orgId })
@@ -44,7 +49,7 @@ function mockOrg(inOrg: { teachers: string[]; students: string[] }) {
               Promise.resolve({
                 data:
                   orgId === 'org-a'
-                    ? ids.filter((i) => inOrg[table].includes(i)).map((id) => ({ id }))
+                    ? ids.filter((i) => scoped[table].includes(i)).map((id) => ({ id }))
                     : [],
                 error: null,
               }),
@@ -58,7 +63,11 @@ function mockOrg(inOrg: { teachers: string[]; students: string[] }) {
 beforeEach(() => {
   vi.clearAllMocks()
   recorded = []
-  mockOrg({ teachers: ['teacher-a'], students: ['student-a1', 'student-a2'] })
+  mockOrg({
+    teachers: ['teacher-a'],
+    students: ['student-a1', 'student-a2'],
+    student_groups: ['group-a'],
+  })
 })
 
 describe('assertLessonPeopleBelongToOrg', () => {
@@ -84,6 +93,27 @@ describe('assertLessonPeopleBelongToOrg', () => {
         'student-a2',
       ])
     ).rejects.toThrow(ORG_SCOPE_VIOLATION)
+  })
+
+  it("org A cannot name org B's student GROUP", async () => {
+    // `assertGroupBelongsToOrg` existed with ZERO call sites. `lessons.group_id`
+    // has a plain FK with no org binding, and both create paths write it —
+    // contained only by luck, because the two live entry points happen to
+    // resolve the roster through an org-filtered helper first.
+    await expect(
+      assertLessonPeopleBelongToOrg('org-a', 'teacher-a', ['student-a1'], 'group-of-org-b')
+    ).rejects.toThrow(ORG_SCOPE_VIOLATION)
+  })
+
+  it('allows a group genuinely in the org, and skips the lookup when there is none', async () => {
+    await expect(
+      assertLessonPeopleBelongToOrg('org-a', 'teacher-a', ['student-a1'], 'group-a')
+    ).resolves.toBeUndefined()
+    expect(recorded.map((q) => q.table)).toEqual(['teachers', 'students', 'student_groups'])
+
+    recorded = []
+    await assertLessonPeopleBelongToOrg('org-a', 'teacher-a', ['student-a1'], null)
+    expect(recorded.map((q) => q.table)).toEqual(['teachers', 'students'])
   })
 
   it('allows a teacher and roster genuinely in the org', async () => {

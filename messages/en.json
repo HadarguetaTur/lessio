@@ -622,7 +622,8 @@
       "loadSubscriptionsFailed": "Could not load the subscriptions",
       "loadGoalsFailed": "Could not load the goals",
       "loadExamsFailed": "Could not load the exams",
-      "loadEmailsFailed": "Could not load the emails"
+      "loadEmailsFailed": "Could not load the emails",
+      "teacherNotInOrg": "The selected teacher was not found in this organization"
     },
     "goalErrors": {
       "createFailed": "Could not create the goal",
@@ -709,7 +710,7 @@
         "SAVE_FAILED": "Could not save. Try again.",
         "NOT_LINKED": "Link a WhatsApp group first.",
         "CREATE_FAILED": "Could not send the invitations. Try again.",
-      "already_started": "This campaign has already been started.",
+        "already_started": "This campaign has already been started.",
         "not_connected": "WhatsApp is not connected. Connect a number in settings first.",
         "quality_red": "Sending is paused while your number’s quality rating recovers.",
         "broadcasts_disabled": "Broadcasts are switched off for this account.",

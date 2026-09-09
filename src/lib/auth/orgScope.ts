@@ -127,6 +127,9 @@ export const assertTeacherBelongsToOrg = (teacherId: string, orgId: string) =>
 export const assertStudentsBelongToOrg = (studentIds: readonly string[], orgId: string) =>
   assertIdsBelongToOrg('students', studentIds, orgId)
 
+export const teacherBelongsToOrg = (teacherId: string, orgId: string) =>
+  belongsToOrg('teachers', teacherId, orgId)
+
 export const groupBelongsToOrg = (groupId: string, orgId: string) =>
   belongsToOrg('student_groups', groupId, orgId)
 

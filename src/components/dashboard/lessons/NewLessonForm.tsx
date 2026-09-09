@@ -281,12 +281,24 @@ export function NewLessonForm({
     startTransition(() => formAction(fd))
   }
 
+  /**
+   * Proceed past a scheduling warning by replaying the token the SERVER issued
+   * alongside it. The three `confirm_*=1` booleans this replaces were client
+   * assertions with nothing behind them — posting all three up front skipped
+   * the checks entirely, so nothing was ever confirmed and nothing was ever
+   * read. The token names this exact slot and these exact guards.
+   */
+  const proceedWithAck = (fd: FormData) => {
+    const ack = state.scheduleAck
+    if (ack) fd.set('schedule_ack', ack)
+    startTransition(() => formAction(fd))
+  }
+
   const handleConfirmSchedule = () => {
     const fd = lastFormDataRef.current
     setDismissed((d) => ({ ...d, availability: true }))
     if (!fd) return
-    fd.set('confirm_outside_availability', '1')
-    startTransition(() => formAction(fd))
+    proceedWithAck(fd)
   }
 
   const handleCancelConfirm = () => {
@@ -302,8 +314,7 @@ export function NewLessonForm({
     const fd = lastFormDataRef.current
     setDismissed((d) => ({ ...d, calendar: true }))
     if (!fd) return
-    fd.set('confirm_calendar_conflict', '1')
-    startTransition(() => formAction(fd))
+    proceedWithAck(fd)
   }
 
   const handleCancelCalendar = () => {
@@ -314,8 +325,7 @@ export function NewLessonForm({
     const fd = lastFormDataRef.current
     setDismissed((d) => ({ ...d, impact: true }))
     if (!fd) return
-    fd.set('confirm_schedule_impact', '1')
-    startTransition(() => formAction(fd))
+    proceedWithAck(fd)
   }
 
   const handleCancelImpact = () => {
@@ -330,9 +340,9 @@ export function NewLessonForm({
     input.value = time
     setSelectedTime(time)
     fd.set('start_time', time)
-    fd.delete('confirm_outside_availability')
-    fd.delete('confirm_schedule_impact')
-    fd.delete('confirm_calendar_conflict')
+    // A different slot: the server signed its acknowledgement against the old
+    // one and would refuse this anyway, but sending it is misleading.
+    fd.delete('schedule_ack')
     setDismissed({ availability: false, impact: false, calendar: false })
     startTransition(() => formAction(fd))
   }

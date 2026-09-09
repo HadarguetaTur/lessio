@@ -14,12 +14,25 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DateTime } from 'luxon'
-import { extendLessonSeries } from './updateSeries'
 
 const mockFrom = vi.fn()
 vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({ from: (t: string) => mockFrom(t) }),
 }))
+
+// Extend now runs the same write-time slot authority the parent booking path
+// does — availability windows, holidays and the duration whitelist. Its own
+// behaviour is pinned in assertSlotBookable's suite; here it is stubbed so
+// these fixtures keep testing the extension loop, and the two tests at the
+// bottom of this file pin that extend actually calls it.
+const mockAssertSlotBookable = vi.fn()
+vi.mock('@/lib/booking/assertSlotBookable', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/booking/assertSlotBookable')>()),
+  assertSlotBookable: (p: unknown) => mockAssertSlotBookable(p),
+}))
+
+import { extendLessonSeries } from './updateSeries'
+import { SlotNotBookableError } from '@/lib/booking/assertSlotBookable'
 
 const ORG_ID = 'org-1'
 const SERIES_ID = 'series-1'
@@ -114,7 +127,10 @@ function wire(scenario: Scenario = {}) {
   })
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockAssertSlotBookable.mockResolvedValue(undefined)
+})
 
 describe('extendLessonSeries', () => {
   it('creates the missing occurrences when nothing is in the way', async () => {
@@ -172,5 +188,40 @@ describe('extendLessonSeries', () => {
     // Proof the run really straddles the transition rather than passing by
     // accident on one side of it.
     expect(offsets.size).toBe(2)
+  })
+
+  it('asks the write-time slot authority for every occurrence it mints', async () => {
+    // Extend used to read `organization_holidays`, student overlap and slot
+    // locks and nothing else — never `availability_overrides`, never Google —
+    // so pushing `until` forward minted up to 130 lessons straight through an
+    // approved teacher vacation.
+    wire()
+    await extendLessonSeries(SERIES_ID, ORG_ID, '2027-04-08')
+
+    expect(mockAssertSlotBookable).toHaveBeenCalled()
+    expect(mockAssertSlotBookable.mock.calls.length).toBeGreaterThanOrEqual(inserted.length)
+    for (const [params] of mockAssertSlotBookable.mock.calls) {
+      expect(params).toMatchObject({
+        orgId: ORG_ID,
+        teacherId: TEACHER_ID,
+        audience: 'admin',
+        // A studio putting a lesson in its own diary is not a parent booking:
+        // the parent notice window is the ONE rule staff may sit outside.
+        skipMinNotice: true,
+      })
+    }
+  })
+
+  it('records a slot the authority refuses as a conflict, and keeps going', async () => {
+    wire()
+    mockAssertSlotBookable
+      .mockRejectedValueOnce(new SlotNotBookableError('outside_availability'))
+      .mockResolvedValue(undefined)
+
+    const result = await extendLessonSeries(SERIES_ID, ORG_ID, '2027-04-08')
+
+    expect(result.conflicts.length).toBe(1)
+    // One blocked week must not abandon the other twenty-nine.
+    expect(result.affected).toBeGreaterThan(0)
   })
 })

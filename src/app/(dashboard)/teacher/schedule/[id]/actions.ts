@@ -74,7 +74,13 @@ export async function sendLessonUpdateAction(
     return { error: 'failed' }
   }
 
-  const classification = await classifyBroadcastText(session.orgId, message)
+  // `topic` is body parameter {{2}} of the UTILITY class_update template and is
+  // teacher free text, so it is classified alongside the message — the same
+  // hole the owner-facing compose screen had.
+  const classification = await classifyBroadcastText(
+    session.orgId,
+    [topic, message].filter(Boolean).join('\n')
+  )
   const start = await startCampaign((created as { id: string }).id, {
     contentLooksPromotional: classification.promotional,
     subscriptionLapsed: session.isSaasReadOnly === true,

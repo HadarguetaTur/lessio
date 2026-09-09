@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { canAccessStudent } from '@/lib/auth/studentAccess'
+import { teacherBelongsToOrg } from '@/lib/auth/orgScope'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
@@ -141,14 +142,28 @@ export async function createStudent(
 
   const supabase = await createClient()
 
+  // `teacher_id` arrives from a form field that only shape-checks as a UUID.
+  // The FK is plain (`students_teacher_id_fkey`, not composite on
+  // organization_id) and `getStudents` reads with the service role, embedding
+  // `teachers!teacher_id(profiles(full_name))` with no org filter — so a
+  // planted foreign id rendered ANOTHER TENANT'S TEACHER NAME in this org's
+  // students list. Cross-tenant PII from a normal form field.
   let teacher_id = parsed.data.teacher_id ?? null
+  if (teacher_id && !(await teacherBelongsToOrg(teacher_id, orgId))) {
+    return { error: t('students.errors.teacherNotInOrg') }
+  }
+
   if (!teacher_id) {
-    const { data: teacherRows } = await supabase
+    const { data: teacherRows, error: teacherRowsError } = await supabase
       .from('teachers')
       .select('id')
       .eq('organization_id', orgId)
       .eq('is_active', true)
-    if (teacherRows && teacherRows.length === 1) {
+    // A solo tutor's only teacher is auto-assigned. If the read failed, or the
+    // org has none or several, the field is simply left unset: an unassigned
+    // student is a visible gap the owner can fill, whereas a guessed teacher
+    // is a wrong answer nobody notices.
+    if (!teacherRowsError && teacherRows && teacherRows.length === 1) {
       teacher_id = teacherRows[0].id as string
     }
   }
@@ -337,6 +352,12 @@ export async function updateStudent(
   }
 
   if (role !== 'owner' && role !== 'admin') return { error: await commonError('noPermission') }
+
+  // Same client-supplied pointer as on create — see the note there. The update
+  // below writes it straight through, and the plain FK does not stop it.
+  if (parsed.data.teacher_id && !(await teacherBelongsToOrg(parsed.data.teacher_id, orgId))) {
+    return { error: t('students.errors.teacherNotInOrg') }
+  }
 
   let phoneForDb: string | null = parsed.data.phone ?? null
   if (parsed.data.phone) {

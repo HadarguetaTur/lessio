@@ -12,16 +12,36 @@
  * Two rules are load-bearing and easy to break by reaching for the ordinary
  * cancellation helpers:
  *
- *   1. **No charge, ever.** A family does not pay for their teacher's absence.
- *      That means not calling the charge path AND not writing a cancellation
- *      event — the monthly billing engine counts those separately, so a waived
- *      charge with an event still lands on the invoice.
+ *   1. **Whoever authorised the absence decides the price.** This used to read
+ *      "no charge, ever", implemented as a raw bulk `UPDATE lessons SET
+ *      status='cancelled'`. That made a teacher's *self-service* schedule
+ *      exception (`/teacher/overrides`) a free, unapproved waiver of every fee
+ *      the identical act one screen over (`/lessons/[id]` → `cancelLessonCore`
+ *      with `actor.kind='teacher'`) charges under the org policy. Same actor,
+ *      same lessons, two prices — the exact drift this module exists to stop.
+ *
+ *      Every cancellation here now goes through `cancelLessonCore`, and the
+ *      *actor* carries the authority: owner/admin (a day-off **approval**, or
+ *      an override an admin writes for a teacher) cancels as `staff` with
+ *      `waive: true` — a family still does not pay for an approved absence —
+ *      while a teacher closing her own diary cancels as `teacher`, which
+ *      `cancelLessonCore` refuses to let waive (`waive = actor.kind ===
+ *      'staff' && …`).
+ *
+ *      The old note that a waived charge "still lands on the invoice" via the
+ *      cancellation event is stale: `calculateCancellationEventAmount` honours
+ *      `policy_amount` (0 for a waived charge) before any legacy full-price
+ *      fallback. Writing the event is now strictly better — it is the only
+ *      audit record that a monthly org's lesson vanished from the bill on
+ *      purpose.
  *   2. **Service role only.** `guard_teacher_lesson_update()` blocks a
  *      teacher-role client from cancelling a lesson at all, so the caller must
- *      never hand its own RLS client in.
+ *      never hand its own RLS client in. `cancelLessonCore` opens its own
+ *      service-role client, so this holds by construction.
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { cancelLessonCore } from '@/lib/cancellation-flow/cancelLessonCore'
 import { sendTextMessage } from '@/lib/whatsapp'
 import { sendTemplateWithQuickReplies } from '@/lib/whatsapp/interactive'
 import { prepareBusinessSend } from '@/lib/whatsapp/consent'
@@ -45,10 +65,25 @@ export type SendContext = {
   timezone: string
 }
 
+/**
+ * Who authorised this absence, and therefore what may be waived.
+ *
+ * `staff` is an owner/admin: a day-off **approval**, or an override an admin
+ * writes on a teacher's page. `teacher_self` is a teacher closing her own
+ * diary with nobody's sign-off — priced under the org cancellation policy,
+ * exactly as her cancel button on the lesson page is.
+ */
+export type AbsenceAuthority = { kind: 'staff' } | { kind: 'teacher_self' }
+
 /** A stretch of time a teacher is away — whole days, or part of one. */
 export type AbsenceWindow = {
   orgId: string
   teacherId: string
+  /**
+   * Required. Defaulting it would reintroduce the bypass the first time a new
+   * caller forgets — the whole point is that authority is never implicit.
+   */
+  authority: AbsenceAuthority
   /** UTC ISO, half-open [gte, lt) */
   gte: string
   lt: string
@@ -58,6 +93,7 @@ export type AbsenceWindow = {
 }
 
 export type AffectedLesson = {
+  id: string
   lesson_students: Array<{
     student: {
       relationships: Array<{
@@ -109,28 +145,87 @@ export async function loadAffectedLessons(
   return (data ?? []) as unknown as AffectedLesson[]
 }
 
-export async function cancelLessons(db: Db, window: AbsenceWindow): Promise<number> {
-  const { data, error } = await db
-    .from('lessons')
-    .update({
-      status: 'cancelled',
-      cancel_reason: CANCEL_REASON,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('organization_id', window.orgId)
-    .eq('teacher_id', window.teacherId)
-    .eq('status', 'scheduled')
-    .lt('start_at', window.lt)
-    .gt('end_at', window.gte)
-    .select('id')
+/**
+ * Cancel every lesson in the window through the canonical core.
+ *
+ * One `cancelLessonCore` call per lesson rather than one bulk `UPDATE`: the
+ * bulk update wrote no `student_cancellation_events` row, raised no charge and
+ * consulted no policy, so it was a silent fee waiver reachable by the teacher
+ * herself. Per-lesson is also what makes the roster, the billing parent and the
+ * idempotent status-claim apply here at all.
+ *
+ * `lessonIds` is captured by `loadAffectedLessons` BEFORE anything moves — the
+ * `status='scheduled'` filter stops matching the moment the first one lands.
+ */
+export async function cancelLessons(
+  db: Db,
+  window: AbsenceWindow,
+  lessonIds?: string[]
+): Promise<number> {
+  const ids = lessonIds ?? (await loadAffectedLessons(db, window)).map((l) => l.id)
+  if (ids.length === 0) return 0
 
-  if (error) {
-    console.error('[absence] Failed to cancel lessons', { orgId: window.orgId, error })
-    throw new Error('Failed to cancel lessons for a teacher absence')
+  // An approved absence is free; a teacher's unapproved one is not. Only the
+  // staff actor is even allowed to ask for the waiver — `cancelLessonCore`
+  // drops `waive` for any other actor, so this cannot be spoofed by a caller
+  // that passes the wrong authority.
+  const actor =
+    window.authority.kind === 'staff'
+      ? ({ kind: 'staff' } as const)
+      : ({ kind: 'teacher', teacherId: window.teacherId } as const)
+
+  let cancelled = 0
+
+  for (const lessonId of ids) {
+    const outcome = await cancelLessonCore({
+      lessonId,
+      orgId: window.orgId,
+      actor,
+      source: 'teacher',
+      reason: CANCEL_REASON,
+      waive: window.authority.kind === 'staff',
+    })
+
+    if (outcome.success) {
+      cancelled++
+      continue
+    }
+
+    // `already_cancelled` is the ordinary racing/retry outcome and not worth a
+    // line. Anything else means a lesson is still sitting inside a window the
+    // calendar now says is closed, which a human has to see.
+    if (outcome.error === 'already_cancelled') continue
+
+    if (outcome.error === 'no_students') {
+      // The core refuses an empty roster because there is nobody to bill. There
+      // is also nobody to WRONG, and leaving it scheduled inside a blocked
+      // window is worse — so this single case falls back to the plain status
+      // move, with the reason marker intact.
+      const { error } = await db
+        .from('lessons')
+        .update({
+          status: 'cancelled',
+          cancel_reason: CANCEL_REASON,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', lessonId)
+        .eq('organization_id', window.orgId)
+        .eq('status', 'scheduled')
+      if (!error) {
+        cancelled++
+        continue
+      }
+    }
+
+    console.error('[absence] A lesson inside the absence could not be cancelled', {
+      orgId: window.orgId,
+      lessonId,
+      error: outcome.error,
+    })
   }
 
   // lesson_students rows are left alone, matching the dashboard cancel path.
-  return (data ?? []).length
+  return cancelled
 }
 
 /**
@@ -280,7 +375,7 @@ export async function cancelAndNotify(
   const db = createServiceRoleClient()
 
   const affected = await loadAffectedLessons(db, window)
-  const cancelled = await cancelLessons(db, window)
+  const cancelled = await cancelLessons(db, window, affected.map((l) => l.id))
 
   const ctx = await buildSendContext(window.orgId)
   if (!ctx) {

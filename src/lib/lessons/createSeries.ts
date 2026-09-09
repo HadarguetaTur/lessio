@@ -12,6 +12,8 @@ import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { LessonType } from '@/lib/lessons/types'
 import { assertLessonPeopleBelongToOrg } from './assertLessonPeople'
+import { assertOrgNotSaasReadOnly } from '@/lib/saas/subscriptions'
+import { assertSlotBookable, SlotNotBookableError } from '@/lib/booking/assertSlotBookable'
 
 export type SeriesFrequency = 'weekly' | 'biweekly'
 
@@ -88,6 +90,10 @@ export async function createLessonSeries(
 
   if (studentIds.length === 0) throw new Error('At least one student is required')
 
+  // `createLesson` refuses a lapsed org here; the series builder did not, so
+  // the cheaper single lesson was blocked while the 130-lesson version was not.
+  await assertOrgNotSaasReadOnly(orgId)
+
   // Same reasoning as createLesson: teacherId and studentIds arrive from the
   // new-series form and every row written below is stamped with orgId, so a
   // foreign id would mint a whole recurring series against another tenant's
@@ -95,7 +101,7 @@ export async function createLessonSeries(
   // this function writes the series first and generates occurrences in a
   // loop, so a late rejection would leave a series row behind even when
   // every occurrence failed.
-  await assertLessonPeopleBelongToOrg(orgId, teacherId, studentIds)
+  await assertLessonPeopleBelongToOrg(orgId, teacherId, studentIds, groupId)
 
   const seriesGroupId = lessonType === 'group' ? groupId : null
 
@@ -260,6 +266,32 @@ export async function createLessonSeries(
       skipped++
       conflicts.push(dateStr)
       continue
+    }
+
+    // e2. The same write-time authority the parent booking path uses.
+    // `createSeriesAction` runs quota, duration and horizon and then came
+    // straight here — so the series builder never read `availability_overrides`
+    // at all, while the single-lesson form one directory over does. Same
+    // business action, same UI affordance, three fewer guards.
+    //
+    // A blocked date is a CONFLICT, matching every other skip in this loop:
+    // one closed week must not abandon the rest of the term.
+    try {
+      await assertSlotBookable({
+        orgId,
+        teacherId,
+        startUtc,
+        endUtc,
+        audience: 'admin',
+        skipMinNotice: true,
+      })
+    } catch (err) {
+      if (err instanceof SlotNotBookableError) {
+        skipped++
+        conflicts.push(dateStr)
+        continue
+      }
+      throw err
     }
 
     // f. Insert lesson

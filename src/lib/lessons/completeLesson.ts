@@ -30,9 +30,14 @@ export async function completeLesson(params: {
       .eq('id', lessonId)
       .eq('organization_id', organizationId)
 
+    // A manual completion may correct a no_show, but it may not re-claim a
+    // lesson that is ALREADY completed: that re-enters createLessonCharge, which
+    // against a legacy NULL-student_id charge row mints a second charge the
+    // unique index cannot catch. The retry path uses alreadyCompleted:true and
+    // is guarded inside createLessonCharge instead.
     update = source === 'automatic'
       ? update.eq('status', 'scheduled')
-      : update.neq('status', 'cancelled')
+      : update.neq('status', 'cancelled').neq('status', 'completed')
 
     const { data, error } = await update.select('id')
     if (error) throw new Error(error.message)

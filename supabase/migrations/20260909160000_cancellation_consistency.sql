@@ -45,6 +45,39 @@ WHERE c.student_id IS NULL
   AND c.parent_id = m.parent_id
   AND c.charge_type IN ('lesson', 'cancellation');
 
+-- Second pass: a charge on a lesson with exactly ONE enrolled student is
+-- unambiguously for that student, whoever the charge's parent happens to be.
+-- The first pass joins relationships.is_primary, so it leaves NULL every
+-- cancellation charge written by the pre-fix parent-initiated paths, which
+-- "used to bill whoever tapped cancel" — a secondary parent, not the primary.
+-- Those are not the sibling-ambiguity case and there are more of them.
+UPDATE charges c
+SET student_id = m.student_id
+FROM (
+  SELECT ls.lesson_id, min(ls.student_id::text)::uuid AS student_id
+  FROM lesson_students ls
+  GROUP BY ls.lesson_id
+  HAVING count(*) = 1
+) m
+WHERE c.student_id IS NULL
+  AND c.lesson_id = m.lesson_id
+  AND c.charge_type IN ('lesson', 'cancellation');
+
+-- What is left NULL after both passes is genuinely unresolvable: a GROUP lesson
+-- whose charge cannot be tied to one enrolled student — either two of the
+-- parent's children are on it (the under-billed case this migration exists to
+-- fix) or the charge's parent is nobody's primary parent on that lesson. There
+-- is no signal in the data that says which child the single row was for, so
+-- guessing would corrupt history. They stay NULL, and the application-side
+-- guard in createLessonCharge/createCancellationCharge treats such a row as
+-- "this parent is already billed for this lesson" so re-completion cannot mint
+-- a second charge beside it.
+--
+-- Measure the residue before deploying:
+--   SELECT count(*), charge_type FROM charges
+--   WHERE student_id IS NULL AND charge_type IN ('lesson','cancellation')
+--   GROUP BY charge_type;
+
 CREATE INDEX IF NOT EXISTS idx_charges_student
   ON charges(student_id)
   WHERE student_id IS NOT NULL;
@@ -61,6 +94,27 @@ CREATE UNIQUE INDEX IF NOT EXISTS charges_lesson_student_unique
 CREATE UNIQUE INDEX IF NOT EXISTS charges_cancellation_lesson_student_unique
   ON charges(lesson_id, student_id)
   WHERE charge_type = 'cancellation';
+
+-- The two indexes above cannot dedupe a NULL student_id: in Postgres NULLs
+-- compare distinct, so N legacy rows for one lesson all coexist and a freshly
+-- minted per-student row collides with none of them. Two backstops:
+--
+-- 1. New rows MUST carry student_id. NOT VALID so the unresolvable legacy rows
+--    above survive; it is enforced on every INSERT and UPDATE from here on,
+--    which is what makes the "everything written from here on carries
+--    student_id" claim true rather than aspirational.
+ALTER TABLE charges
+  DROP CONSTRAINT IF EXISTS charges_lesson_charge_has_student;
+ALTER TABLE charges
+  ADD CONSTRAINT charges_lesson_charge_has_student
+  CHECK (charge_type NOT IN ('lesson', 'cancellation') OR student_id IS NOT NULL)
+  NOT VALID;
+
+-- 2. Legacy NULL rows dedupe among THEMSELVES on (lesson, parent, type), so a
+--    replayed legacy write cannot stack a second one.
+CREATE UNIQUE INDEX IF NOT EXISTS charges_legacy_null_student_unique
+  ON charges(lesson_id, parent_id, charge_type)
+  WHERE student_id IS NULL AND charge_type IN ('lesson', 'cancellation');
 
 -- ─── student_cancellation_events: the policy's own number ────────────────────
 

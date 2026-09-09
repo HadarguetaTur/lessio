@@ -1,144 +1,85 @@
+/**
+ * `executeCancellation` is now a thin adapter over `cancelLessonCore`, so what
+ * is worth testing here is the adapting: that the parent-facing surface asks
+ * the core the right question, and that it narrows the core's refusals without
+ * losing one.
+ *
+ * The billing behaviour itself is covered in cancelLessonCore.test.ts — the
+ * point of the change is that there is one implementation to test.
+ */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock service-role client
-const mockFrom = vi.fn()
-vi.mock('@/lib/supabase/service-role', () => ({
-  createServiceRoleClient: () => ({ from: (t: string) => mockFrom(t) }),
-}))
-
-// Spy on calculateCancellationCharge to verify reuse
-vi.mock('@/lib/billing/calculateCancellationCharge', async () => {
-  const actual = await vi.importActual('@/lib/billing/calculateCancellationCharge')
-  const actualMod = actual as { calculateCancellationCharge: (...args: unknown[]) => unknown }
-  return {
-    ...actual,
-    calculateCancellationCharge: vi.fn(actualMod.calculateCancellationCharge),
-  }
-})
-
-// Spy on createCancellationCharge
-const mockCreateCancellationCharge = vi.fn().mockResolvedValue(null)
-vi.mock('@/lib/billing/createCharge', () => ({
-  createCancellationCharge: (...args: unknown[]) => mockCreateCancellationCharge(...args),
+const mockCore = vi.fn()
+vi.mock('./cancelLessonCore', () => ({
+  cancelLessonCore: (...args: unknown[]) => mockCore(...args),
 }))
 
 import { executeCancellation } from './executeCancellation'
-import { calculateCancellationCharge } from '@/lib/billing/calculateCancellationCharge'
 
-const mockCalculate = vi.mocked(calculateCancellationCharge)
-
-// Lesson 2 hours from now
-const FUTURE_START = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
-const FUTURE_END = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()
-
-const MOCK_LESSON = {
-  id: 'lesson-1',
-  start_at: FUTURE_START,
-  end_at: FUTURE_END,
-  status: 'scheduled',
-  lesson_students: [{ student_id: 'student-1', students: { full_name: 'ישראל ישראלי' } }],
-  teachers: { id: 'teacher-1', hourly_rate: 200, profiles: { full_name: 'שרה כהן' } },
+const SUCCESS = {
+  success: true as const,
+  billingMode: 'per_lesson' as const,
+  lessonId: 'lesson-1',
+  lessonStartAt: '2026-06-12T09:00:00.000Z',
+  lessonEndAt: '2026-06-12T10:00:00.000Z',
+  studentName: 'דנה',
+  teacherName: 'שרה',
+  lines: [],
+  billedTotal: 150,
+  pendingTotal: 0,
+  chargeResult: { shouldCharge: true, chargeType: 'full' as const, amount: 150, reasonCode: 'full_charge' },
+  alerts: [],
 }
 
-const MOCK_POLICY = {
-  id: 'policy-1',
-  notice_hours_full: 24,
-  notice_hours_partial: 2,
-  partial_charge_percent: 50,
-}
-
-function buildChain(result: unknown) {
-  const self: Record<string, unknown> = {}
-  const pass = () => self
-  ;['select', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'order', 'insert', 'update', 'delete', 'upsert'].forEach(m => { self[m] = pass })
-  self['maybeSingle'] = () => Promise.resolve(result)
-  self['single'] = () => Promise.resolve(result)
-  return self
-}
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 describe('executeCancellation', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockCreateCancellationCharge.mockResolvedValue(null)
-  })
+  it('asks the core to cancel as the parent who tapped cancel', async () => {
+    mockCore.mockResolvedValue(SUCCESS)
 
-  it('returns not_found when lesson does not exist', async () => {
-    mockFrom.mockImplementation(() => buildChain({ data: null, error: { message: 'not found' } }))
-    const result = await executeCancellation('lesson-x', 'parent-1', 'org-1')
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.error).toBe('not_found')
-  })
+    await executeCancellation('lesson-1', 'parent-9', 'org-1', 'portal')
 
-  it('returns already_cancelled for an already-cancelled lesson (idempotency)', async () => {
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'lessons') return buildChain({ data: { ...MOCK_LESSON, status: 'cancelled' }, error: null })
-      return buildChain({ data: null, error: null })
+    expect(mockCore).toHaveBeenCalledWith({
+      lessonId: 'lesson-1',
+      orgId: 'org-1',
+      actor: { kind: 'parent', parentId: 'parent-9' },
+      source: 'portal',
     })
-    const result = await executeCancellation('lesson-1', 'parent-1', 'org-1')
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.error).toBe('already_cancelled')
-    expect(mockCreateCancellationCharge).not.toHaveBeenCalled()
   })
 
-  it('returns not_eligible when lesson is not scheduled', async () => {
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'lessons') return buildChain({ data: { ...MOCK_LESSON, status: 'completed' }, error: null })
-      return buildChain({ data: null, error: null })
-    })
-    const result = await executeCancellation('lesson-1', 'parent-1', 'org-1')
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.error).toBe('not_eligible')
-    expect(mockCreateCancellationCharge).not.toHaveBeenCalled()
+  it('defaults to the WhatsApp source', async () => {
+    mockCore.mockResolvedValue(SUCCESS)
+    await executeCancellation('lesson-1', 'parent-9', 'org-1')
+    expect(mockCore.mock.calls[0][0].source).toBe('whatsapp')
   })
 
-  it('returns not_eligible when lesson does not belong to parent', async () => {
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'lessons') return buildChain({ data: MOCK_LESSON, error: null })
-      if (table === 'relationships') return buildChain({ data: null, error: null })
-      return buildChain({ data: null, error: null })
-    })
-    const result = await executeCancellation('lesson-1', 'parent-1', 'org-1')
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.error).toBe('not_eligible')
+  it('returns the amount that was actually billed, and the pending one beside it', async () => {
+    mockCore.mockResolvedValue({ ...SUCCESS, billedTotal: 0, pendingTotal: 150, chargeResult: { shouldCharge: false, chargeType: null, amount: 0, reasonCode: 'monthly_pending' } })
+
+    const outcome = await executeCancellation('lesson-1', 'parent-9', 'org-1')
+
+    expect(outcome.success).toBe(true)
+    if (!outcome.success) return
+    // A monthly org charged nothing now. Callers render chargeResult, so this
+    // is what stops the bot quoting a fee it did not raise.
+    expect(outcome.chargeResult.amount).toBe(0)
+    expect(outcome.pendingTotal).toBe(150)
   })
 
-  it('succeeds, calls calculateCancellationCharge (policy reuse from Sprint 3), creates charge', async () => {
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'lessons') return buildChain({ data: MOCK_LESSON, error: null })
-      if (table === 'relationships') return buildChain({ data: { id: 'rel-1' }, error: null })
-      if (table === 'cancellation_policies') return buildChain({ data: MOCK_POLICY, error: null })
-      return buildChain({ data: null, error: null })
-    })
-
-    const result = await executeCancellation('lesson-1', 'parent-1', 'org-1')
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.studentName).toBe('ישראל ישראלי')
-      expect(result.teacherName).toBe('שרה כהן')
-      expect(result.chargeResult).toBeDefined()
-    }
-    // Verifies that the Sprint 3 function is being reused (not a reimplementation)
-    expect(mockCalculate).toHaveBeenCalledWith(
-      expect.objectContaining({ start_at: FUTURE_START, end_at: FUTURE_END }),
-      expect.any(Date),
-      MOCK_POLICY
-    )
-  })
-
-  it('does not create charge when lesson is outside policy window', async () => {
-    // Lesson 48 hours from now, policy full_notice = 24h → outside window → no charge
-    const farFuture = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
-    const farFutureEnd = new Date(Date.now() + 49 * 60 * 60 * 1000).toISOString()
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'lessons') return buildChain({ data: { ...MOCK_LESSON, start_at: farFuture, end_at: farFutureEnd }, error: null })
-      if (table === 'relationships') return buildChain({ data: { id: 'rel-1' }, error: null })
-      if (table === 'cancellation_policies') return buildChain({ data: MOCK_POLICY, error: null })
-      return buildChain({ data: null, error: null })
-    })
-
-    const result = await executeCancellation('lesson-1', 'parent-1', 'org-1')
-    expect(result.success).toBe(true)
-    expect(mockCreateCancellationCharge).not.toHaveBeenCalled()
+  it.each([
+    ['not_found', 'not_found'],
+    ['already_cancelled', 'already_cancelled'],
+    // A parent has no use for the distinction between these three.
+    ['already_delivered', 'not_eligible'],
+    ['forbidden', 'not_eligible'],
+    ['no_students', 'not_eligible'],
+    ['not_eligible', 'not_eligible'],
+  ])('maps %s to %s', async (coreError, expected) => {
+    mockCore.mockResolvedValue({ success: false, error: coreError })
+    const outcome = await executeCancellation('lesson-1', 'parent-9', 'org-1')
+    expect(outcome).toEqual({ success: false, error: expected })
   })
 })

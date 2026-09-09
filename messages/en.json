@@ -1068,7 +1068,9 @@
       "reminderOnlyScheduled": "Reminders can only be sent for a scheduled lesson",
       "reminderLessonPast": "A reminder cannot be sent for a lesson that has already passed",
       "noPrimaryParentPhone": "No active primary parent with a phone number was found",
-      "reminderSendFailed": "Could not send the reminder"
+      "reminderSendFailed": "Could not send the reminder",
+      "alreadyDelivered": "A lesson that already took place cannot be cancelled. Change its status instead.",
+      "noLinkedStudents": "Cannot cancel — this lesson has no linked students"
     },
     "chargeAlerts": {
       "noLinkedStudents": "Cannot create a cancellation charge — the lesson has no students linked",
@@ -4306,7 +4308,8 @@
         "generic": "Cancellation failed"
       },
       "cancelledWithCharge": "The lesson was cancelled. Cancellation charge: {amount}",
-      "cancelledOk": "The lesson was cancelled successfully"
+      "cancelledOk": "The lesson was cancelled successfully",
+      "cancelledPendingCharge": "Lesson cancelled. A {amount} cancellation fee will be added to your monthly bill once the school approves it."
     },
     "payments": {
       "title": "Payments",

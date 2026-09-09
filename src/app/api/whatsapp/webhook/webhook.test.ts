@@ -1217,6 +1217,8 @@ describe('WhatsApp cancellation intent', () => {
         studentName: 'יעל',
         teacherName: 'מיכל',
         chargeResult: { shouldCharge: false, amount: 0, chargeType: null, reasonCode: 'no_policy' },
+        pendingTotal: 0,
+        lines: [],
       })
 
       const res = await POST(makeRequest(makeInteractivePayload(`c:confirm:${OWN_LESSON_ID}`)))
@@ -2339,6 +2341,8 @@ describe('WhatsApp sender roles', () => {
         studentName: 'יעל',
         teacherName: 'מיכל',
         chargeResult: { shouldCharge: false, amount: 0, chargeType: null, reasonCode: 'no_policy' },
+        pendingTotal: 0,
+        lines: [],
       })
 
       const res = await POST(makeRequest(makeWebhookPayload('1')))
@@ -2395,6 +2399,8 @@ describe('WhatsApp sender roles', () => {
         studentName: 'יעל',
         teacherName: 'מיכל',
         chargeResult: { shouldCharge: false, amount: 0, chargeType: null, reasonCode: 'no_policy' },
+        pendingTotal: 0,
+        lines: [],
       })
 
       const res = await POST(makeRequest(makeInteractivePayload(`c:confirm:${OWN_LESSON_ID}`)))

@@ -7,17 +7,15 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { updateLessonStatus, LessonStatus } from '@/lib/lessons'
 import { createNote, deleteNote } from '@/lib/lessons/notes'
 import { getTeacherByProfileId } from '@/lib/teachers'
-import { createLessonCharge, createCancellationCharge } from '@/lib/billing/createCharge'
-import { getCancellationPolicy } from '@/lib/cancellation-policy'
-import { calculateCancellationCharge } from '@/lib/billing/calculateCancellationCharge'
-import { getOrgPricing } from '@/lib/organizations/pricing'
-import { resolveLessonBaseAmount, isMissingPrice, toStudentPricing } from '@/lib/billing/lessonPricing'
-import type { LessonType } from '@/lib/lessons/types'
-import { resolveBillingParent, MissingPrimaryParentError } from '@/lib/billing/resolveBillingParent'
+import { createLessonCharge } from '@/lib/billing/createCharge'
+import {
+  cancelLessonCore,
+  type CancellationActor,
+  type CancellationError,
+} from '@/lib/cancellation-flow/cancelLessonCore'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { autoSendPaymentRequest } from '@/lib/payment-request/autoSend'
 import { stopLessonSeries } from '@/lib/lessons/cancelSeries'
-import { createCancellationEvent } from '@/lib/billing/monthly/cancellationEvents'
 import { notifyMultiple, getOwnerAndAdminProfileIds, getTeacherProfileId } from '@/lib/notifications'
 import { DateTime } from 'luxon'
 import { getTranslations } from 'next-intl/server'
@@ -28,6 +26,27 @@ import { sendSmartMessage } from '@/lib/whatsapp/sendSmart'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 
 const VALID_STATUSES: LessonStatus[] = ['scheduled', 'completed', 'no_show', 'cancelled']
+
+/** How each refusal from `cancelLessonCore` reads to a staff user. */
+const CANCEL_ERROR_MESSAGE: Record<CancellationError, string> = {
+  not_found: 'validation.lessonNotFound',
+  already_cancelled: 'lessons.errors.alreadyCancelled',
+  already_delivered: 'lessons.errors.alreadyDelivered',
+  not_eligible: 'lessons.errors.cancelFailed',
+  forbidden: 'lessons.errors.noCancelPermission',
+  no_students: 'lessons.errors.noLinkedStudents',
+}
+
+async function getLessonTeacherId(lessonId: string, orgId: string): Promise<string | null> {
+  const db = createServiceRoleClient()
+  const { data } = await db
+    .from('lessons')
+    .select('teacher_id')
+    .eq('id', lessonId)
+    .eq('organization_id', orgId)
+    .maybeSingle()
+  return (data?.teacher_id as string | null) ?? null
+}
 
 export type SetLessonStatusResult = {
   error: string | null
@@ -57,6 +76,35 @@ export async function setLessonStatus(
 
   if (!status || !VALID_STATUSES.includes(status)) {
     return { error: t('lessons.errors.invalidStatus') }
+  }
+
+  // Cancelling from the status dropdown is the same act as cancelling from the
+  // cancel panel, and it used to be a different one: it flipped the status and
+  // charged nothing, in either billing mode. Same lesson, same policy, same
+  // money — one path.
+  if (status === 'cancelled') {
+    const outcome = await cancelLessonCore({
+      lessonId,
+      orgId,
+      actor: { kind: 'staff' },
+      source: 'dashboard',
+      reason: cancelReason,
+    })
+
+    if (!outcome.success) return { error: t(CANCEL_ERROR_MESSAGE[outcome.error]) }
+
+    revalidatePath(`/lessons/${lessonId}`)
+    revalidatePath('/lessons')
+    revalidatePath('/dashboard')
+    revalidatePath('/charges')
+    revalidatePath('/billing')
+    revalidatePath('/teacher/schedule')
+    revalidatePath(`/teacher/schedule/${lessonId}`)
+
+    return {
+      error: null,
+      chargeAlert: outcome.alerts[0] ? t(outcome.alerts[0].message) : undefined,
+    }
   }
 
   try {
@@ -90,9 +138,11 @@ export type CancelLessonResult = {
 }
 
 /**
- * Cancels a lesson from the dashboard (owner/admin only).
- * Calculates charge via policy engine. Charge is skipped if waive=true.
- * Cannot cancel an already-cancelled lesson.
+ * Cancels a lesson from the dashboard. Owner/admin may cancel any lesson and
+ * may waive the fee; a teacher may cancel her own, always under the org policy.
+ *
+ * The rule itself lives in `cancelLessonCore` — this only resolves the actor and
+ * renders the result.
  */
 export async function cancelLesson(
   lessonId: string,
@@ -108,8 +158,6 @@ export async function cancelLesson(
   }
   const { userId, orgId, role } = session
 
-  // A teacher may cancel too, but only her own lesson. Ownership is enforced
-  // below, once the lesson row has been read.
   const isStaff = role === 'owner' || role === 'admin'
   if (!isStaff && role !== 'teacher') {
     return { error: t('lessons.errors.noCancelPermission') }
@@ -118,139 +166,40 @@ export async function cancelLesson(
   const reason = (formData.get('cancel_reason') as string).trim()
   if (!reason) return { error: t('lessons.errors.reasonRequired') }
 
-  // Waiving the fee is a money decision, so it stays with owner/admin. A
-  // teacher's cancellation always runs through the org's cancellation policy.
-  const waive = isStaff && formData.get('waive') === 'true'
-
-  const supabase = createServiceRoleClient()
-
-  // Fetch lesson with teacher hourly_rate; student resolved via lesson_students
-  const { data: lesson, error: lessonError } = await supabase
-    .from('lessons')
-    .select('id, start_at, end_at, status, lesson_type, price_per_student, lesson_students(student_id, students(hourly_rate, discount_percent)), teachers(id, hourly_rate)')
-    .eq('id', lessonId)
-    .eq('organization_id', orgId)
-    .single()
-
-  if (lessonError || !lesson) return { error: 'validation.lessonNotFound' }
-  if (lesson.status === 'cancelled') return { error: t('lessons.errors.alreadyCancelled') }
-
-  if (!isStaff) {
+  let actor: CancellationActor
+  if (isStaff) {
+    actor = { kind: 'staff' }
+  } else {
     const teacherRecord = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
-    const lessonTeacher = lesson.teachers as unknown as { id: string } | null
-    if (!teacherRecord || lessonTeacher?.id !== teacherRecord.id) {
-      return { error: t('lessons.errors.noCancelPermission') }
-    }
+    if (!teacherRecord) return { error: t('lessons.errors.noCancelPermission') }
+    actor = { kind: 'teacher', teacherId: teacherRecord.id }
   }
 
-  // `students` is a to-one embed, but the select-string parser widens it to an
-  // array, so the cast goes through `unknown` (same as `teachers` above).
-  const lessonStudents = lesson.lesson_students as unknown as Array<{
-    student_id: string
-    students?: { hourly_rate: number | null; discount_percent: number | null } | null
-  }>
-  const primaryStudentId = lessonStudents[0]?.student_id
+  const outcome = await cancelLessonCore({
+    lessonId,
+    orgId,
+    actor,
+    source: isStaff ? 'dashboard' : 'teacher',
+    reason,
+    // Waiving the fee is a money decision, so it stays with owner/admin. A
+    // teacher's cancellation always runs through the org's cancellation policy.
+    waive: isStaff && formData.get('waive') === 'true',
+  })
 
-  // Determine charge
-  let chargeAlert: string | undefined
-  let cancellationParentId: string | null = null
-  let pendingCancellationCharge:
-    | ReturnType<typeof calculateCancellationCharge>
-    | null = null
-
-  if (!waive) {
-    const policy = await getCancellationPolicy(orgId)
-    const teacher = (lesson.teachers as unknown as { id: string; hourly_rate: number | null })
-
-    // The cancellation fee follows the first enrolled student's price (Sprint 31
-    // backlog: one fee per family), so that student's personal pricing applies.
-    const pricing = await getOrgPricing(orgId)
-    const studentPricing = toStudentPricing(lessonStudents[0]?.students)
-    const baseAmount = resolveLessonBaseAmount(
-      {
-        lessonType: ((lesson.lesson_type as LessonType) ?? 'individual'),
-        pricePerStudent: (lesson.price_per_student as number | null) ?? null,
-        durationMinutes:
-          (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) /
-          (1000 * 60),
-        teacherHourlyRate: teacher?.hourly_rate ?? null,
-        studentHourlyRate: studentPricing.hourlyRate,
-        studentDiscountPercent: studentPricing.discountPercent,
-      },
-      pricing
-    )
-
-    const chargeResult = calculateCancellationCharge(
-      {
-        start_at: lesson.start_at,
-        end_at: lesson.end_at,
-        baseAmount: isMissingPrice(baseAmount) ? null : baseAmount,
-      },
-      new Date(),
-      policy
-    )
-
-    if (chargeResult.shouldCharge && chargeResult.amount > 0) {
-      pendingCancellationCharge = chargeResult
-      if (!primaryStudentId) {
-        chargeAlert = t('lessons.chargeAlerts.noLinkedStudents')
-      } else {
-        try {
-          cancellationParentId = await resolveBillingParent(primaryStudentId, orgId)
-        } catch (e) {
-          if (e instanceof MissingPrimaryParentError) {
-            chargeAlert = t('lessons.chargeAlerts.noPrimaryParent')
-          } else {
-            chargeAlert = t('validation.createCancellationChargeFailed')
-          }
-        }
-      }
-    } else if (chargeResult.shouldCharge && chargeResult.reasonCode === 'missing_rate') {
-      chargeAlert = t('lessons.chargeAlerts.noTeacherRate')
-    }
+  if (!outcome.success) {
+    return { error: t(CANCEL_ERROR_MESSAGE[outcome.error]) }
   }
 
-  // Update lesson status
-  const { error: updateError } = await supabase
-    .from('lessons')
-    .update({ status: 'cancelled', cancel_reason: reason, updated_at: new Date().toISOString() })
-    .eq('id', lessonId)
-    .eq('organization_id', orgId)
+  const chargeAlert = outcome.alerts[0] ? t(outcome.alerts[0].message) : undefined
 
-  if (updateError) return { error: t('lessons.errors.cancelFailed') }
-
-  if (pendingCancellationCharge && cancellationParentId) {
-    const alert = await createCancellationCharge(
-      lessonId,
-      orgId,
-      cancellationParentId,
-      pendingCancellationCharge
-    )
-    if (alert) chargeAlert = t(alert.message)
-  }
-
-  // Create cancellation events for the monthly billing engine (all enrolled students).
-  // Fire-and-forget: failures here must not block the cancellation response.
-  const orgTz = await getOrgTimezone(orgId)
-  for (const ls of lessonStudents) {
-    createCancellationEvent({
-      organizationId: orgId,
-      lessonId,
-      studentId: ls.student_id,
-      lessonStartAt: lesson.start_at,
-      timezone: orgTz,
-    }).catch((err) =>
-      console.error('[cancelLesson] cancellation event creation failed', { lessonId, studentId: ls.student_id, err })
-    )
-  }
+  const teacherIdForNotice = await getLessonTeacherId(lessonId, orgId)
 
   // Fire-and-forget: in-app notification for lesson cancellation (Sprint 25 Story 4)
   void (async () => {
     try {
-      const teacher = lesson.teachers as unknown as { id: string }
       const [ownerAdmins, teacherProfileId] = await Promise.all([
         getOwnerAndAdminProfileIds(orgId),
-        teacher?.id ? getTeacherProfileId(teacher.id) : Promise.resolve(null),
+        teacherIdForNotice ? getTeacherProfileId(teacherIdForNotice) : Promise.resolve(null),
       ])
       const recipients = [...ownerAdmins]
       if (teacherProfileId && !recipients.includes(teacherProfileId)) {

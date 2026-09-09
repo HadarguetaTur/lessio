@@ -521,7 +521,7 @@ describe('createCancellationCharge', () => {
         chargeType: 'full',
         amount: 120,
         reasonCode: 'late_cancel',
-      })
+      }, 'student-1')
     ).resolves.toBeNull()
   })
 })

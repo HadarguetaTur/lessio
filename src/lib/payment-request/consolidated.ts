@@ -11,6 +11,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
+import { mintAmountForCharges } from '@/lib/payments/mintAmount'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
@@ -59,7 +60,8 @@ export async function sendConsolidatedPaymentRequest(
   const charges = await getPendingChargesForParent(parentId, orgId)
   if (charges.length === 0) return 'no_open_charges'
 
-  const total = Math.round(charges.reduce((sum, c) => sum + c.amount, 0) * 100) / 100
+  // One derivation for every mint path — see mintAmountForCharges.
+  const total = mintAmountForCharges(charges)
   if (total <= 0) return 'no_open_charges'
 
   const chargeIds = charges.map((c) => c.id)
@@ -140,7 +142,9 @@ export async function sendConsolidatedPaymentRequest(
     .eq('id', requestId)
 
   // The shared reference is what makes one payment settle every charge.
-  await db
+  // supabase-js returns { error } rather than throwing: a swallowed failure
+  // here hands the parent a link the webhook can never resolve to any charge.
+  const { error: persistError } = await db
     .from('charges')
     .update({
       payment_link: paymentUrl,
@@ -150,6 +154,13 @@ export async function sendConsolidatedPaymentRequest(
     })
     .in('id', chargeIds)
     .eq('organization_id', orgId)
+
+  if (persistError) {
+    await db.from('payment_requests').update({ status: 'failed' }).eq('id', requestId)
+    throw new Error(
+      `[sendConsolidatedPaymentRequest] failed to persist payment reference on ${chargeIds.length} charge(s): ${persistError.message}`
+    )
+  }
 
   const result = await sendPaymentWithButton({
     orgId,

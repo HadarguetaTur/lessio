@@ -15,6 +15,7 @@ import { getParentStudents, type ParentStudent } from '@/lib/relationships'
 import { getParentDebt } from '@/lib/charges'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getPaymentProvider } from '@/lib/payments/factory'
+import { mintAmountForCharges } from '@/lib/payments/mintAmount'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { decryptToken } from '@/lib/crypto'
 import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
@@ -479,7 +480,7 @@ export async function sendPaymentRequestAction(
 
   try {
     const { provider, providerName } = await getPaymentProvider(orgId)
-    const totalAmount = charges.reduce((sum, c) => sum + c.amount, 0)
+    const totalAmount = mintAmountForCharges(charges)
     const firstChargeId = charges[0]!.id
     const description = tr('chargeDescription', { name: parent.full_name as string })
 
@@ -495,8 +496,10 @@ export async function sendPaymentRequestAction(
     paymentReference = result.reference
     paymentProviderName = providerName
 
-    // Save payment link + reference on all pending charges (same link covers the total)
-    await db
+    // Save payment link + reference on all pending charges (same link covers the total).
+    // supabase-js returns { error } rather than throwing; a swallowed failure
+    // here means the parent is handed a link no webhook can resolve.
+    const { error: persistError } = await db
       .from('charges')
       .update({
         payment_link: paymentUrl,
@@ -506,6 +509,21 @@ export async function sendPaymentRequestAction(
       })
       .in('id', charges.map(c => c.id))
       .eq('organization_id', orgId)
+
+    if (persistError) {
+      // Drop the link rather than sending one whose reference is stored
+      // nowhere — the parent would pay and nothing would settle. The message
+      // still goes out, without a checkout, exactly as it does when no
+      // provider is configured.
+      console.error('[sendPaymentRequestAction] failed to persist payment reference', {
+        orgId,
+        parentId,
+        error: persistError.message,
+      })
+      paymentUrl = null
+      paymentReference = null
+      paymentProviderName = null
+    }
 
     console.info('[sendPaymentRequestAction] Payment link created', {
       orgId,
@@ -522,7 +540,7 @@ export async function sendPaymentRequestAction(
     // Continue sending the WhatsApp message even if the payment link fails
   }
 
-  const totalAmount = charges.reduce((sum, c) => sum + c.amount, 0)
+  const totalAmount = mintAmountForCharges(charges)
 
   try {
     // One path for both halves of the 24h window, and one body: the org's

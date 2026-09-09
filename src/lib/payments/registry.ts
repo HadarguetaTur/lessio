@@ -369,9 +369,15 @@ const growEntry: RegistryEntry = {
     })
   },
 
-  // No verifyWebhookRequest: Grow signs nothing. The reference itself is the
-  // shared secret — processToken is minted by Grow and known only to us — and
-  // the adapter's acknowledgeWebhook closes the loop with approveTransaction.
+  // Settles on the adapter's confirmTransaction, not on the callback body: Grow
+  // signs nothing, so authenticity comes from the approveTransaction round-trip
+  // made with this org's own API key. Without this flag the route rejected every
+  // Grow callback before reading it, and no Grow payment could ever be
+  // collected — the parent paid and Lessio kept chasing them.
+  acceptsWebhookSettlement: true,
+
+  // No verifyWebhookRequest: there is no signature to verify. See
+  // GrowProvider.confirmTransaction.
   parseWebhookBody: parseGrowWebhookBody,
   webhookTransactionIds: growWebhookTransactionIds,
   parseInvoiceWebhookBody: parseGrowInvoiceWebhookBody,

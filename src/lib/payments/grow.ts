@@ -167,17 +167,39 @@ export class GrowProvider implements PaymentProvider {
   }
 
   /**
-   * Grow requires an approveTransaction call once a payment webhook has been
-   * processed. Without it some flows — Bit in particular — never settle.
-   * Best-effort: the charge is already marked paid, so a failure here is logged
-   * rather than thrown, and Grow's own retries give a second chance.
+   * Grow's settlement path: approveTransaction, which is both the confirmation
+   * and the acknowledgement.
+   *
+   * Grow signs nothing, so a callback body on its own proves only that someone
+   * knows a processToken. approveTransaction proves more: it is a call made
+   * with the org's own API key, and Grow accepts it only for a (processId,
+   * processToken) pair that really belongs to this merchant and is really
+   * awaiting approval. A forged callback fails it, so it — not the body — is
+   * what authorises the mutation.
+   *
+   * It is also the call Grow requires before some flows (Bit especially)
+   * actually settle, which is why it runs before the charge is written rather
+   * than after: a Grow retry re-runs it, whereas a payment we recorded without
+   * approving would never be collected at all.
+   *
+   * Returns false rather than throwing on every failure — the route treats a
+   * false as "do not touch the ledger", which is the correct outcome for a
+   * network error too.
    */
-  async acknowledgeWebhook(body: Record<string, string>): Promise<void> {
-    const processId = body.processId
-    const processToken = body.processToken
-    if (!processId || !processToken) {
-      console.error('[grow] Cannot approve transaction — webhook has no process identifiers')
-      return
+  async confirmTransaction(params: {
+    reference: string
+    expectedAmount: number
+    chargeIds: string[]
+    body?: Record<string, string>
+  }): Promise<boolean> {
+    const processId = params.body?.processId
+    const processToken = params.body?.processToken
+
+    // The token in the body must be the reference the charge was minted with:
+    // approveTransaction is scoped to the merchant, not to this payment.
+    if (!processId || !processToken || processToken !== params.reference) {
+      console.error('[grow] Cannot approve transaction — callback has no matching process identifiers')
+      return false
     }
 
     const form = new FormData()
@@ -186,22 +208,33 @@ export class GrowProvider implements PaymentProvider {
     form.append('processId', processId)
     form.append('processToken', processToken)
 
-    const res = await fetch(`${growApiBase()}/approveTransaction`, {
-      method: 'POST',
-      headers: { 'x-api-key': this.config.apiKey },
-      body: form,
-    })
+    let res: Response
+    try {
+      res = await fetch(`${growApiBase()}/approveTransaction`, {
+        method: 'POST',
+        headers: { 'x-api-key': this.config.apiKey },
+        body: form,
+      })
+    } catch (err) {
+      console.error('[grow] approveTransaction request failed', { err: String(err) })
+      return false
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')
       console.error('[grow] approveTransaction HTTP error', { status: res.status, body: text })
-      return
+      return false
     }
 
     const json = (await res.json().catch(() => null)) as GrowApiResponse | null
-    if (json && json.status !== 1) {
-      console.error('[grow] approveTransaction rejected', { err: errorMessage(json.err) })
+    if (!json || json.status !== 1) {
+      console.error('[grow] approveTransaction rejected', {
+        err: json ? errorMessage(json.err) : 'unparseable response',
+      })
+      return false
     }
+
+    return true
   }
 }
 

@@ -118,6 +118,40 @@ describe('getExternalBusyIntervals', () => {
     expect(busy).toEqual([{ start: '2026-09-06T10:00:00Z', end: '2026-09-06T12:00:00Z' }])
   })
 
+  it('reports UNKNOWN when the token lookup itself fails', async () => {
+    // Regression: the `error` half of `{ data, error }` was discarded, so a
+    // transient PostgREST/network failure on the TOKEN lookup was indistinguish-
+    // able from "no calendar connected" and returned a hard 'free'. That made
+    // `createSlotLock`'s fail-closed branch unreachable — the tri-state was
+    // there, but nothing could ever put it in the third state from here.
+    mockFrom.mockImplementation((table: string) =>
+      buildChain(
+        table === 'organizations'
+          ? { data: null, error: { message: 'connection reset', code: '08006' } }
+          : { data: null, error: null }
+      )
+    )
+
+    const result = await getExternalBusy(PARAMS)
+
+    expect(result.status).toBe('unknown_provider_error')
+    expect(result.intervals).toEqual([])
+    // And it must not silently pretend it asked Google either.
+    expect(mockCheck).not.toHaveBeenCalled()
+  })
+
+  it('reports UNKNOWN when the TEACHER row is the one that fails', async () => {
+    mockFrom.mockImplementation((table: string) =>
+      buildChain(
+        table === 'teachers'
+          ? { data: null, error: { message: 'timeout' } }
+          : { data: null, error: null }
+      )
+    )
+
+    expect((await getExternalBusy(PARAMS)).status).toBe('unknown_provider_error')
+  })
+
   it('calls Google when only one level is connected', async () => {
     mockFrom.mockImplementation((table: string) =>
       buildChain(

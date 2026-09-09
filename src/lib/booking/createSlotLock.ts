@@ -184,7 +184,11 @@ async function checkSlotAvailable(
     .toISO()!
 
   // Check for overlapping scheduled lessons
-  const { data: lessons } = await db
+  // Both reads answer "is anything in the way?", so an empty result is a green
+  // light. supabase-js returns `{ error }` rather than throwing — a discarded
+  // error therefore MEANT a green light. Unavailable is the honest answer to a
+  // question we could not ask.
+  const { data: lessons, error: lessonsError } = await db
     .from('lessons')
     .select('id')
     .eq('teacher_id', teacherId)
@@ -192,10 +196,14 @@ async function checkSlotAvailable(
     .lt('start_at', bufferedEnd)
     .gt('end_at', bufferedStart)
 
+  if (lessonsError) {
+    console.error('[booking] Could not read overlapping lessons', { teacherId, lessonsError })
+    return false
+  }
   if (lessons && lessons.length > 0) return false
 
   // Check for active (non-expired) overlapping slot locks
-  const { data: locks } = await db
+  const { data: locks, error: locksError } = await db
     .from('slot_locks')
     .select('id')
     .eq('teacher_id', teacherId)
@@ -204,6 +212,10 @@ async function checkSlotAvailable(
     .lt('start_at', bufferedEnd)
     .gt('end_at', bufferedStart)
 
+  if (locksError) {
+    console.error('[booking] Could not read active slot locks', { teacherId, locksError })
+    return false
+  }
   if (locks && locks.length > 0) return false
 
   return true

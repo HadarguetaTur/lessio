@@ -40,18 +40,31 @@ export async function checkLessonCalendarConflicts(params: {
   const db = createServiceRoleClient()
 
   // Fetch org calendar token + timezone + calendar selection in one query
-  const { data: org } = await db
+  const { data: org, error: orgError } = await db
     .from('organizations')
     .select('google_calendar_refresh_token, google_calendar_selected_calendars, timezone')
     .eq('id', orgId)
     .maybeSingle()
 
   // Fetch teacher's calendar token + calendar selection
-  const { data: teacher } = await db
+  const { data: teacher, error: teacherError } = await db
     .from('teachers')
     .select('google_calendar_refresh_token, google_calendar_selected_calendars')
     .eq('id', teacherId)
     .maybeSingle()
+
+  // supabase-js returns `{ error }` rather than throwing. Ignoring it turned a
+  // DB blip on the token lookup into a confident 'free', which is exactly the
+  // lie this module's tri-state was introduced to stop telling.
+  if (orgError || teacherError) {
+    console.error('[google-calendar] Could not read the calendar tokens', {
+      orgId,
+      teacherId,
+      orgError,
+      teacherError,
+    })
+    return { conflicts: [], status: 'unknown_provider_error' }
+  }
 
   const orgToken     = org?.google_calendar_refresh_token ?? null
   const teacherToken = teacher?.google_calendar_refresh_token ?? null
@@ -63,7 +76,10 @@ export async function checkLessonCalendarConflicts(params: {
   const timezone = org?.timezone ?? 'Asia/Jerusalem'
 
   const lessonStart = DateTime.fromFormat(`${date} ${startTime}`, 'yyyy-MM-dd HH:mm', { zone: timezone })
-  if (!lessonStart.isValid) return { conflicts: [], status: 'free' }
+  // A date that passes the action's `^\d{4}-\d{2}-\d{2}$` but is not a real day
+  // ('2027-02-31'). We did not ask Google, so we do not know — reporting 'free'
+  // here is the same category error as swallowing the DB error above.
+  if (!lessonStart.isValid) return { conflicts: [], status: 'unknown_provider_error' }
 
   const lessonEnd = lessonStart.plus({ minutes: durationMinutes })
   const timeMin   = lessonStart.toUTC().toISO()!

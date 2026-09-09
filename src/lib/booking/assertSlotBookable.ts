@@ -45,6 +45,13 @@ export type SlotRejectionReason =
   | 'duration_not_allowed'
   | 'holiday'
   | 'outside_availability'
+  /**
+   * A question we could not ask. supabase-js returns `{ error }` instead of
+   * throwing, so a discarded error used to be indistinguishable from a clean
+   * "nothing found" — and "nothing found" reads as permission on every check
+   * below. An unanswerable question is a refusal, not an allowance.
+   */
+  | 'unavailable'
 
 export class SlotNotBookableError extends Error {
   readonly reason: SlotRejectionReason
@@ -84,11 +91,15 @@ export async function assertSlotBookable(params: AssertSlotBookableParams): Prom
   // 1. A booking in the past is never a race — it is a forged or stale payload.
   if (start <= now) throw new SlotNotBookableError('past')
 
-  const { data: org } = await db
+  // supabase-js returns `{ error }` rather than throwing. On this path an
+  // unread org row would silently fall back to a 0-hour notice window and the
+  // default timezone — a permissive answer derived from a failure.
+  const { data: org, error: orgError } = await db
     .from('organizations')
     .select('timezone, min_booking_notice_hours')
     .eq('id', orgId)
     .single()
+  if (orgError || !org) throw new SlotNotBookableError('unavailable')
 
   const timezone = (org?.timezone as string | null) ?? 'Asia/Jerusalem'
   const noticeHours = Number(org?.min_booking_notice_hours ?? 0) || 0
@@ -113,13 +124,14 @@ export async function assertSlotBookable(params: AssertSlotBookableParams): Prom
   const date = startLocal.toISODate()!
 
   // 4. Org-wide holiday.
-  const { data: holiday } = await db
+  const { data: holiday, error: holidayError } = await db
     .from('organization_holidays')
     .select('id')
     .eq('organization_id', orgId)
     .eq('date', date)
     .limit(1)
     .maybeSingle()
+  if (holidayError) throw new SlotNotBookableError('unavailable')
   if (holiday) throw new SlotNotBookableError('holiday')
 
   // 5. Inside an OPEN availability window. resolveDayWindows has already

@@ -142,7 +142,7 @@ export async function confirmBooking({
 
   // 4. Resolve billing parent (is_primary = true)
   // Per /docs/decisions.md #10 and /docs/schema.md § relationships
-  const { data: relationship } = await db
+  const { data: relationship, error: relationshipError } = await db
     .from('relationships')
     .select('parent_id')
     .eq('student_id', studentId)
@@ -150,11 +150,17 @@ export async function confirmBooking({
     .eq('is_primary', true)
     .maybeSingle()
 
+  if (relationshipError) throw new LessonConflictError('override_blocked')
   if (!relationship) throw new NoPrimaryParentError()
 
   // 5. Re-check teacher overlap — guards against a lesson being manually created
   // after the lock was taken (createLesson ignores locks; this closes that race).
-  const { data: teacherConflict } = await db
+  //
+  // Every read below is "is there a conflict?", where an empty answer means
+  // "go ahead". supabase-js returns `{ error }` instead of throwing, so a
+  // discarded error produced exactly that empty answer from a failure — the
+  // one shape of bug that turns an outage into a double-booked teacher.
+  const { data: teacherConflict, error: teacherConflictError } = await db
     .from('lessons')
     .select('id')
     .eq('teacher_id', teacherId)
@@ -163,17 +169,19 @@ export async function confirmBooking({
     .lt('start_at', lock.end_at)
     .gt('end_at', lock.start_at)
     .limit(1)
+  if (teacherConflictError) throw new LessonConflictError('teacher_conflict')
   if (teacherConflict?.length) throw new LessonConflictError('teacher_conflict')
 
   // 5a. Student overlap — the slot lock only reserves the teacher, so without
   // this a parent could book the same child with two different teachers at the
   // same hour. Mirrors the check in createLesson.
-  const { data: studentLessonIds } = await db
+  const { data: studentLessonIds, error: studentLessonIdsError } = await db
     .from('lesson_students')
     .select('lesson_id')
     .eq('student_id', studentId)
+  if (studentLessonIdsError) throw new LessonConflictError('student_conflict')
   if (studentLessonIds?.length) {
-    const { data: studentConflict } = await db
+    const { data: studentConflict, error: studentConflictError } = await db
       .from('lessons')
       .select('id')
       .in('id', studentLessonIds.map((r) => r.lesson_id))
@@ -182,6 +190,7 @@ export async function confirmBooking({
       .lt('start_at', lock.end_at)
       .gt('end_at', lock.start_at)
       .limit(1)
+    if (studentConflictError) throw new LessonConflictError('student_conflict')
     if (studentConflict?.length) throw new LessonConflictError('student_conflict')
   }
 

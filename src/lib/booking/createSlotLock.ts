@@ -14,7 +14,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getEffectiveBreakMinutes } from '@/lib/scheduling/breaks'
-import { getExternalBusyIntervals } from '@/lib/google-calendar/getExternalBusyIntervals'
+import { getExternalBusy } from '@/lib/google-calendar/getExternalBusyIntervals'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
 import { assertSlotBookable, SlotNotBookableError } from './assertSlotBookable'
 
@@ -107,14 +107,31 @@ export async function createSlotLock({
   // on the write path — confirmBooking deliberately does not repeat it, so an
   // external event created inside the lock's five minutes losing to the booking
   // is an accepted race, in the same spirit as the dashboard's soft-confirm.
-  // Not break-widened, consistent with the listing. Fail-open on Google errors.
-  const externalBusy = await getExternalBusyIntervals({
+  // Not break-widened, consistent with the listing.
+  //
+  // Fail-CLOSED on a Google error (INT-01). It used to fail open, and because
+  // checkCalendarConflicts swallowed every failure into an empty array, a
+  // revoked refresh token was indistinguishable from an empty calendar: a
+  // teacher whose Google connection had quietly died was double-booked over
+  // every real event in their diary, indefinitely. Listing still fails open —
+  // an outage must not close the booking book — but a write does not get to
+  // assume. 'unavailable' asks the parent to pick another time, which is an
+  // honest retry rather than a silent overwrite.
+  const external = await getExternalBusy({
     orgId: organizationId,
     teacherId,
     windowStartUtc: startAt,
     windowEndUtc: endAt,
   })
-  if (externalBusy.some(b => b.start < endAt && b.end > startAt)) {
+  if (external.status === 'unknown_provider_error') {
+    console.warn('[createSlotLock] refusing the lock — Google Calendar could not be read', {
+      orgId: organizationId,
+      teacherId,
+      startAt,
+    })
+    throw new SlotUnavailableError()
+  }
+  if (external.intervals.some(b => b.start < endAt && b.end > startAt)) {
     throw new SlotUnavailableError()
   }
 

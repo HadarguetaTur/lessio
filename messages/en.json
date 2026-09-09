@@ -1069,6 +1069,7 @@
       "overrideBlocked": "The teacher has blocked this time — a lesson cannot be scheduled",
       "studentConflict": "The student already has a lesson at this time",
       "googleCalendar": "There is a Google Calendar event at the requested time. Schedule the lesson anyway?",
+      "googleCalendarUnavailable": "We could not read the Google Calendar, so we do not know whether this time is free — the calendar connection may have expired. Schedule the lesson anyway?",
       "outsideWindows": "The teacher is not available at this time. Schedule the lesson anyway?",
       "markedUnavailable": "The teacher marked this date as unavailable. Schedule the lesson anyway?",
       "outsideDayWindow": "The requested time is outside the availability window set for this date. Schedule the lesson anyway?",

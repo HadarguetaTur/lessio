@@ -20,6 +20,17 @@ const GOOGLE_CALENDAR_LIST_URL = 'https://www.googleapis.com/calendar/v3/users/m
 export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly'
 
 /**
+ * Every call to Google is bounded. There was no timeout at all: a hung socket
+ * held a Server Action open until the platform killed it, and the parent saw a
+ * booking that never answered rather than a slot list.
+ */
+export const GOOGLE_TIMEOUT_MS = 8000
+
+function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS) })
+}
+
+/**
  * Google's granular consent screen lets the user approve the connection while
  * leaving the calendar checkbox unticked — the code exchange still succeeds
  * with only the email scope, and every later freeBusy call fails 403.
@@ -69,7 +80,7 @@ export async function exchangeCalendarCode(code: string): Promise<CalendarTokens
     throw new Error('[google-calendar] GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set')
   }
 
-  const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
+  const tokenRes = await fetchWithTimeout(GOOGLE_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -97,7 +108,7 @@ export async function exchangeCalendarCode(code: string): Promise<CalendarTokens
     throw new Error(`[google-calendar] Token exchange: missing tokens — ${JSON.stringify(tokenJson)}`)
   }
 
-  const userRes = await fetch(GOOGLE_USERINFO_URL, {
+  const userRes = await fetchWithTimeout(GOOGLE_USERINFO_URL, {
     headers: { Authorization: `Bearer ${tokenJson.access_token}` },
   })
 
@@ -128,7 +139,7 @@ async function getAccessToken(encryptedRefreshToken: string): Promise<string> {
     throw new Error('[google-calendar] GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set')
   }
 
-  const res = await fetch(GOOGLE_TOKEN_URL, {
+  const res = await fetchWithTimeout(GOOGLE_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -196,7 +207,7 @@ export async function listCalendars(encryptedRefreshToken: string): Promise<Cale
     const params = new URLSearchParams({ minAccessRole: 'freeBusyReader' })
     if (pageToken) params.set('pageToken', pageToken)
 
-    const res = await fetch(`${GOOGLE_CALENDAR_LIST_URL}?${params.toString()}`, {
+    const res = await fetchWithTimeout(`${GOOGLE_CALENDAR_LIST_URL}?${params.toString()}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
 
@@ -279,16 +290,40 @@ export function parseFreeBusyResponse(
   return { busy, erroredCalendarIds }
 }
 
+/**
+ * What a freeBusy lookup can actually tell us.
+ *
+ * The third value is the point of this type. `checkCalendarConflicts` used to
+ * return a plain array, and a revoked refresh token, a 403, a network failure
+ * and a genuinely empty calendar all produced the same empty array — so
+ * "Google says this teacher is free" and "we could not ask Google" were
+ * indistinguishable to every caller. Nothing may treat UNKNOWN as free without
+ * saying so.
+ */
+export type CalendarCheckStatus = 'free' | 'busy' | 'unknown_provider_error'
+
+export interface CalendarFreeBusyResult {
+  status: CalendarCheckStatus
+  conflicts: CalendarConflict[]
+  /** Which connected level could not be answered at all. */
+  unreachable: ('org' | 'teacher')[]
+  /** Calendars the response itself reported an error for, or omitted. */
+  erroredCalendarIds: string[]
+}
+
 async function fetchBusyPeriods(
   encryptedRefreshToken: string,
   timeMin: string,
   timeMax: string,
   calendars: SelectedCalendar[]
-): Promise<{ start: string; end: string; label: string | null }[]> {
+): Promise<{
+  busy: { start: string; end: string; label: string | null }[]
+  erroredCalendarIds: string[]
+}> {
   const accessToken = await getAccessToken(encryptedRefreshToken)
   const ids = calendars.map(c => c.id)
 
-  const res = await fetch(GOOGLE_FREEBUSY_URL, {
+  const res = await fetchWithTimeout(GOOGLE_FREEBUSY_URL, {
     method: 'POST',
     headers: {
       Authorization:  `Bearer ${accessToken}`,
@@ -311,20 +346,29 @@ async function fetchBusyPeriods(
   }
 
   const summaryById = new Map(calendars.map(c => [c.id, c.summary]))
-  return busy.map(b => ({
-    start: b.start,
-    end:   b.end,
-    label: summaryById.get(b.calendarId) ?? null,
-  }))
+  return {
+    busy: busy.map(b => ({
+      start: b.start,
+      end:   b.end,
+      label: summaryById.get(b.calendarId) ?? null,
+    })),
+    // Computed here since Sprint 29 and then only logged. It is now carried to
+    // the caller, which is what makes an unanswerable calendar visible.
+    erroredCalendarIds,
+  }
 }
 
 /**
  * Checks both the org calendar and the teacher calendar for busy periods
  * overlapping [timeMin, timeMax].
  *
- * Returns an empty array if neither calendar is connected or no conflicts found.
- * Never throws — errors are logged and treated as no-conflict so lesson creation
- * is never blocked by a transient Google API failure.
+ * Still never throws — a Google outage must not crash a Server Action — but it
+ * no longer lies about what it found. A level that threw, and a calendar the
+ * response reported an error for, both make the result
+ * `unknown_provider_error`, and it is the caller's job to decide what that
+ * means for its audience: the parent booking write path fails closed, the
+ * staff dialog asks for an explicit acknowledgement. Before this, a revoked
+ * refresh token was reported to every caller as "free".
  */
 export async function checkCalendarConflicts(params: {
   orgEncryptedToken:        string | null
@@ -333,31 +377,42 @@ export async function checkCalendarConflicts(params: {
   teacherSelectedCalendars: SelectedCalendar[]
   timeMin:                  string  // ISO 8601
   timeMax:                  string  // ISO 8601
-}): Promise<CalendarConflict[]> {
+}): Promise<CalendarFreeBusyResult> {
   const {
     orgEncryptedToken, teacherEncryptedToken,
     orgSelectedCalendars, teacherSelectedCalendars,
     timeMin, timeMax,
   } = params
+
   const conflicts: CalendarConflict[] = []
+  const unreachable: ('org' | 'teacher')[] = []
+  const erroredCalendarIds: string[] = []
 
-  if (orgEncryptedToken) {
+  const levels: { calendar: 'org' | 'teacher'; token: string | null; calendars: SelectedCalendar[] }[] = [
+    { calendar: 'org', token: orgEncryptedToken, calendars: orgSelectedCalendars },
+    { calendar: 'teacher', token: teacherEncryptedToken, calendars: teacherSelectedCalendars },
+  ]
+
+  for (const level of levels) {
+    if (!level.token) continue
     try {
-      const busy = await fetchBusyPeriods(orgEncryptedToken, timeMin, timeMax, orgSelectedCalendars)
-      conflicts.push(...busy.map(b => ({ ...b, calendar: 'org' as const })))
+      const result = await fetchBusyPeriods(level.token, timeMin, timeMax, level.calendars)
+      conflicts.push(...result.busy.map(b => ({ ...b, calendar: level.calendar })))
+      erroredCalendarIds.push(...result.erroredCalendarIds)
     } catch (err) {
-      console.error('[google-calendar] Org freebusy check failed', { err })
+      // A revoked token, a 403, a network failure and the 8s timeout all land
+      // here, and all of them mean "we do not know", not "nothing is booked".
+      console.error(`[google-calendar] ${level.calendar} freebusy check failed`, { err })
+      unreachable.push(level.calendar)
     }
   }
 
-  if (teacherEncryptedToken) {
-    try {
-      const busy = await fetchBusyPeriods(teacherEncryptedToken, timeMin, timeMax, teacherSelectedCalendars)
-      conflicts.push(...busy.map(b => ({ ...b, calendar: 'teacher' as const })))
-    } catch (err) {
-      console.error('[google-calendar] Teacher freebusy check failed', { err })
-    }
-  }
+  const degraded = unreachable.length > 0 || erroredCalendarIds.length > 0
 
-  return conflicts
+  // A conflict we *did* find is already the cautious answer, so it outranks the
+  // partial failure: reporting 'busy' blocks or warns, which is the safe side.
+  const status: CalendarCheckStatus =
+    conflicts.length > 0 ? 'busy' : degraded ? 'unknown_provider_error' : 'free'
+
+  return { status, conflicts, unreachable, erroredCalendarIds }
 }

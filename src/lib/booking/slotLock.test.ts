@@ -11,10 +11,12 @@ vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: () => ({ from: (t: string) => mockFrom(t) }),
 }))
 
-// Google Calendar re-check at lock time (decision #36) — defaults to no busy.
-const mockExternalBusy = vi.fn().mockResolvedValue([])
+// Google Calendar re-check at lock time (decision #36) — defaults to a clean
+// answer of "nothing busy". The write path distinguishes that from "we could
+// not ask", so the mock returns the tri-state shape.
+const mockExternalBusy = vi.fn().mockResolvedValue({ intervals: [], status: 'free' })
 vi.mock('@/lib/google-calendar/getExternalBusyIntervals', () => ({
-  getExternalBusyIntervals: (...args: unknown[]) => mockExternalBusy(...args),
+  getExternalBusy: (...args: unknown[]) => mockExternalBusy(...args),
 }))
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -163,7 +165,10 @@ describe('createSlotLock', () => {
 
   it('throws SlotUnavailableError when Google Calendar reports the slot busy', async () => {
     mockFrom.mockImplementation((table: string) => fallback(table))
-    mockExternalBusy.mockResolvedValueOnce([{ start: START, end: END }])
+    mockExternalBusy.mockResolvedValueOnce({
+      intervals: [{ start: START, end: END }],
+      status: 'busy',
+    })
 
     await expect(
       createSlotLock({ teacherId: TEACHER_ID, startAt: START, endAt: END, organizationId: ORG_ID })
@@ -174,6 +179,27 @@ describe('createSlotLock', () => {
       windowStartUtc: START,
       windowEndUtc: END,
     })
+  })
+
+  /**
+   * INT-01. A revoked refresh token used to arrive as an empty busy list,
+   * indistinguishable from a genuinely free calendar — so the teacher was
+   * double-booked over every real event in their diary, silently and
+   * indefinitely. The write path now refuses; the listing surfaces still fail
+   * open, which is asserted in getExternalBusyIntervals.test.ts.
+   */
+  it('refuses the lock when Google could not be read at all', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mockFrom.mockImplementation((table: string) => fallback(table))
+    mockExternalBusy.mockResolvedValueOnce({
+      intervals: [],
+      status: 'unknown_provider_error',
+    })
+
+    await expect(
+      createSlotLock({ teacherId: TEACHER_ID, startAt: START, endAt: END, organizationId: ORG_ID })
+    ).rejects.toThrow(SlotUnavailableError)
+    warn.mockRestore()
   })
 
   it('throws SlotUnavailableError when an active slot lock already exists', async () => {

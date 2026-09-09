@@ -826,6 +826,75 @@ registered per WABA from the settings page before anything can send.
 **Not built:** the bot's one-time opt-in prompt, media in broadcasts, recurring
 campaigns, and Phase 3 (the real Groups API) which waits on a tenant with OBA.
 
+## WhatsApp UX readiness (2026-09-09)
+
+**Status:** ✅ Built — ships with the broadcasts branch; migration `20260909120000` not yet in production
+**Source:** End-to-end WhatsApp UX audit, 2026-09-09 (25 findings; the artifact is linked from the support notes)
+
+The audit scored the WhatsApp experience 58/100. The connection flow itself was
+strong — every branch of Meta's popup already resolved to a sentence, and the
+save blocked on both WABA subscription and Cloud API registration. What failed
+was **truth after connection**: eight surfaces each derived "connected" from
+`whatsapp_phone_number_id != null`, a field that only answers "are credentials
+stored". An expired token, a Meta-restricted account and a healthy number all
+satisfied it, so all three rendered as one green ✓.
+
+**The resolver (`src/lib/whatsapp/connectionState.ts`)** is now the single
+answer, and the reason the rest was possible. `computeWaState` is pure and
+precedence-ordered — `plan_locked > not_connected > reconnect_required >
+blocked_by_meta > at_risk > limited > active` — so the state matrix is a unit
+test rather than a hope. **Green means operational; nothing else paints green.**
+Read by the connections hub, the settings page, the setup checklist, the
+dashboard banner, the conversation pages and the broadcast guard.
+
+To answer without calling Graph on every page load, the reasons are persisted:
+migration `20260909120000` adds `wa_health_error` (`token_invalid` vs
+`unreachable` — terminal vs a blip), `wa_account_restricted`, and a cached
+`wa_display_phone_number` / `wa_verified_name`. `health.ts` classifies a Graph
+190 as a dead token and clears it on a read that works; the `account_update`
+webhook sets the restriction and an APPROVED `account_review_status` lifts it;
+`getPhoneIdentity` feeds the same column from the settings page's own lookup.
+
+**Also fixed**
+- Disconnect had no confirmation — one click unsubscribed the WABA, cleared the
+  credentials and stopped every automation. (The confirmation string had been
+  written and translated and was referenced by nothing.)
+- The plan wall moved in front of the Connect button: an org without
+  `whatsapp_automation` used to complete Meta's entire popup and then be
+  redirected to billing with a burnt OAuth code and no explanation.
+- `saveAutomationSettings` had no `requireFeature` at all — the only WhatsApp
+  write action without one.
+- `requireMutation` threw out of five actions, so support mode and a lapsed
+  subscription presented a billing problem as a crash. One
+  `mutationBlockedError` helper now distinguishes the two.
+- The trust card rendered only `verified`/`pending`, so a business Meta had
+  **refused** looked identical to one that had never applied.
+- A broken WhatsApp was invisible outside settings. One dashboard banner, for
+  exactly three states: `reconnect_required`, `blocked_by_meta`, `at_risk`.
+- Admins receive the `whatsapp_health` notification and its link landed on a red
+  403. The page now renders read-only for them.
+- Six connection errors spoke Meta (OAuth code, token, webhook, Cloud API, raw
+  scope names, an env var name); Meta's English is no longer spliced into
+  Hebrew. Delivery failures show a reason, not error 131047.
+- Prerequisites listed Meta Business Verification as required *to connect*,
+  contradicting the trust card on the same page. Split into "to start ~10
+  minutes" and "what comes later".
+- The broadcast guard gained `reconnect_required` / `blocked_by_meta`: it
+  protected the number's quality but not its ability to send at all, so a
+  campaign on a dead token marched through the whole audience marking every row
+  failed — and the audience is not reusable.
+
+**Deliberately not done:** the audit's F5 (the trust card promising broadcasts
+that did not exist) was closed by Phase 1 shipping rather than by rewording.
+
+**To deploy:** apply `20260908150000` **and** `20260909120000`, set
+`LESSIO_WHATSAPP_CRON_SECRET_SHA256` in Vercel, re-run `scripts/setup-crons.sql`,
+tick the three webhook fields in the Meta App Dashboard. Until the first
+migration lands, `TrustCard` returns `null` in production and the resolver falls
+back to `not_connected` for every org.
+
+---
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

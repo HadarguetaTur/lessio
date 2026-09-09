@@ -281,12 +281,27 @@ export function isValidStatusTransition(
   return current !== 'cancelled' && ['scheduled', 'completed', 'cancelled', 'no_show'].includes(next)
 }
 
+/**
+ * Moves a lesson between the DELIVERY statuses.
+ *
+ * Cancellation is deliberately NOT reachable from here. It is a money decision
+ * — policy, notice window, billing parent, monthly cancellation event — and it
+ * lives in exactly one place, `cancelLessonCore`. Both existing callers already
+ * divert (`lessons/[id]/actions.ts` calls the core; the teacher shell allows
+ * only completed/no_show); this refusal is what stops the third caller from
+ * quietly reopening the free-cancellation door those two closed.
+ */
 export async function updateLessonStatus(
   id: string,
   organizationId: string,
   status: LessonStatus,
   cancelReason?: string
 ): Promise<void> {
+  if (status === 'cancelled') {
+    throw new Error(
+      '[updateLessonStatus] cancellation must go through cancelLessonCore — it is the only path that prices the cancellation and records it'
+    )
+  }
   const supabase = await createClient()
 
   const { data: current } = await supabase

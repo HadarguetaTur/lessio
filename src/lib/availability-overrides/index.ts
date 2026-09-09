@@ -17,7 +17,11 @@ import { DateTime } from 'luxon'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { normalizeTime } from '@/lib/availability/constants'
-import { cancelAndNotify, type AbsenceWindow } from '@/lib/day-off/cancelForAbsence'
+import {
+  cancelAndNotify,
+  type AbsenceWindow,
+  type AbsenceAuthority,
+} from '@/lib/day-off/cancelForAbsence'
 
 export interface AvailabilityOverride {
   id: string
@@ -191,7 +195,8 @@ async function absenceWindowFor(
   organizationId: string,
   teacherId: string,
   parsed: ParsedForm,
-  teacherName: string | null
+  teacherName: string | null,
+  authority: AbsenceAuthority
 ): Promise<AbsenceWindow | null> {
   const db = createServiceRoleClient()
   const { data: org } = await db
@@ -223,6 +228,7 @@ async function absenceWindowFor(
     // template resets it to PENDING at Meta, so the hours ride along here.
     label: parsed.start ? `${date}, ${parsed.start}–${parsed.end}` : date,
     teacherName,
+    authority,
   }
 }
 
@@ -285,7 +291,8 @@ async function createOverrideRange(
   organizationId: string,
   teacherId: string,
   formData: FormData,
-  teacherName: string | null
+  teacherName: string | null,
+  authority: AbsenceAuthority
 ): Promise<OverrideCreateResult> {
   const dateFrom = String(formData.get('override_date') ?? '').trim()
   const dateTo = String(formData.get('override_date_to') ?? '').trim()
@@ -321,6 +328,7 @@ async function createOverrideRange(
         ? start.toFormat('dd/MM/yyyy')
         : `${start.toFormat('dd/MM/yyyy')}–${end.minus({ days: 1 }).toFormat('dd/MM/yyyy')}`,
     teacherName,
+    authority,
   }
 
   const lessonAction = String(formData.get('lesson_action') ?? '')
@@ -375,13 +383,20 @@ export async function createOverride(
   organizationId: string,
   teacherId: string,
   formData: FormData,
-  teacherName: string | null = null
+  teacherName: string | null = null,
+  /**
+   * Who is writing this exception. Deliberately NOT defaulted: a teacher
+   * closing her own diary must not silently waive her own cancellation fees,
+   * and the only caller that knows which of the two this is, is the server
+   * action holding the session role.
+   */
+  authority: AbsenceAuthority
 ): Promise<OverrideCreateResult> {
   // A date range is its own path: it writes many rows and supersedes rather
   // than conflict-checks, so it shares the window/cancel machinery but not the
   // single-date parse.
   if (String(formData.get('type') ?? '') === 'block_dates') {
-    return createOverrideRange(organizationId, teacherId, formData, teacherName)
+    return createOverrideRange(organizationId, teacherId, formData, teacherName, authority)
   }
 
   const parsed = parseForm(formData)
@@ -397,7 +412,7 @@ export async function createOverride(
   const window =
     parsed.kind === 'special_hours'
       ? null
-      : await absenceWindowFor(organizationId, teacherId, parsed, teacherName)
+      : await absenceWindowFor(organizationId, teacherId, parsed, teacherName, authority)
 
   if (window && !lessonAction) {
     const db = createServiceRoleClient()

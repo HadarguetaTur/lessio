@@ -44,8 +44,10 @@ function isDuplicateInsertError(error: { code?: string } | null): boolean {
  * monthly engine zeroes the same lesson, so charging here was a double charge.
  * Note this path still does not branch on organizations.billing_mode.
  *
- * Idempotent: the unique index on charges(lesson_id, parent_id) WHERE
- * charge_type='lesson' makes a repeated call a no-op.
+ * Idempotent: the unique index on charges(lesson_id, student_id) WHERE
+ * charge_type='lesson' makes a repeated call a no-op. It is keyed on the
+ * student, not the parent — two siblings in one group lesson share a parent,
+ * and a parent-keyed index silently swallowed the second child's charge.
  *
  * Returns a ChargeAlert if no charge could be created at all; when only some
  * students fail (no primary parent), the rest are still charged and the first
@@ -188,6 +190,7 @@ export async function createLessonCharge(
       .insert({
         organization_id: organizationId,
         parent_id: parentId,
+        student_id: studentId,
         lesson_id: lessonId,
         amount,
         charge_type: 'lesson',
@@ -231,15 +234,22 @@ export async function createLessonCharge(
 
 /**
  * Creates a cancellation charge from the result of calculateCancellationCharge.
- * Called from the manual cancellation flow (DEV-58).
- * Idempotent by the same unique index (charge_type = 'lesson' not applicable here,
- * but cancellation charges are created once per cancellation action).
+ *
+ * `studentId` says which participant the fee is for. Idempotency is the unique
+ * index on charges(lesson_id, student_id) WHERE charge_type='cancellation': one
+ * fee per family per lesson, and a retry of the same cancellation is a no-op.
+ * The index it replaced was keyed on lesson_id alone, so a group lesson could
+ * only ever raise one cancellation fee no matter how many families it had.
+ *
+ * Only `cancelLessonCore` should call this — it is the path that decides the
+ * billing mode, the policy amount and the billing parent.
  */
 export async function createCancellationCharge(
   lessonId: string,
   organizationId: string,
   parentId: string,
-  chargeResult: CancellationChargeResult
+  chargeResult: CancellationChargeResult,
+  studentId: string
 ): Promise<ChargeAlert | null> {
   if (!chargeResult.shouldCharge || chargeResult.amount === 0) return null
 
@@ -254,6 +264,7 @@ export async function createCancellationCharge(
     .insert({
       organization_id: organizationId,
       parent_id: parentId,
+      student_id: studentId,
       lesson_id: lessonId,
       amount: chargeResult.amount,
       charge_type: 'cancellation',
@@ -282,7 +293,7 @@ export async function createCancellationCharge(
     eventType: 'created',
     afterStatus: 'pending',
     afterAmount: chargeResult.amount,
-    metadata: { source: 'lesson_cancelled', lesson_id: lessonId },
+    metadata: { source: 'lesson_cancelled', lesson_id: lessonId, student_id: studentId },
   })
 
   return null

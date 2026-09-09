@@ -11,6 +11,7 @@ import { botString } from './strings'
 import { META_API_VERSION } from './graphVersion'
 import { clipButtonLabel } from './templateButtons'
 import { recordOutboundSend } from './messageLog'
+import { reportSendFailure } from './sendFailure'
 
 // ── Meta approved template message component types ────────────────────────────
 
@@ -60,6 +61,7 @@ export async function sendTemplateMessage(
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
     console.error('[whatsapp] Template API error', { to, templateName, status: res.status, detail })
+    await reportSendFailure(res.status, detail)
     throw new Error(`WhatsApp template API error ${res.status}: ${detail}`)
   }
 
@@ -93,6 +95,7 @@ export async function sendTextMessage(
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
     console.error('[whatsapp] API error', { to, status: res.status, detail })
+    await reportSendFailure(res.status, detail)
     throw new Error(`WhatsApp API error ${res.status}: ${detail}`)
   }
 
@@ -174,6 +177,7 @@ export async function sendCtaUrlMessage(
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
     console.error('[whatsapp] CTA URL API error', { to, status: res.status, detail })
+    await reportSendFailure(res.status, detail)
     throw new Error(`WhatsApp CTA URL API error ${res.status}: ${detail}`)
   }
 

@@ -388,13 +388,20 @@ function makeRequest(body: object, { signed = true } = {}): NextRequest {
   })
 }
 
-function buildChain(result: unknown) {
+/**
+ * `listResult` is what an awaited query with no .single()/.maybeSingle()
+ * resolves to — PostgREST returns rows, not a row. One fixture can now answer
+ * both shapes, which matters where the same table is read one way by the
+ * inbound-message path and the other by the WABA lookup.
+ */
+function buildChain(result: unknown, listResult?: unknown) {
   const self: Record<string, unknown> = {}
   const pass = () => self
   ;['select', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'order', 'limit', 'insert', 'update', 'delete', 'upsert'].forEach(m => { self[m] = pass })
   self['maybeSingle'] = () => Promise.resolve(result)
   self['single'] = () => Promise.resolve(result)
-  self['then'] = (res: (v: unknown) => unknown) => Promise.resolve(result).then(res)
+  self['then'] = (res: (v: unknown) => unknown) =>
+    Promise.resolve(listResult ?? result).then(res)
   return self
 }
 
@@ -1406,6 +1413,25 @@ describe('WhatsApp webhook hardening (Sprint 31 Story 4)', () => {
       return buildChain({ data: null, error: null })
     })
   }
+
+  it('lets a foreign or landline number reach org resolution', async () => {
+    // normalizePhone accepted +9725 mobiles only, and the drop happened before
+    // the org was resolved — so a US reviewer, an English tenant's overseas
+    // parent and an Israeli landline all vanished: no reply, no lead, no
+    // transcript, and nothing in the logs but a warning.
+    mockKnownOrgAndParent()
+
+    for (const [from, expected] of [
+      ['14155551234', '+14155551234'],
+      ['97235551234', '+97235551234'],
+    ] as const) {
+      mockIsRateLimited.mockClear()
+      const res = await POST(makeRequest(makeWebhookPayload(NEUTRAL_TEXT, from)))
+
+      expect(res.status).toBe(200)
+      expect(mockIsRateLimited).toHaveBeenCalledWith(ORG_ID, expected)
+    }
+  })
 
   it('drops the message without claiming when the phone is rate limited', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -2855,7 +2881,7 @@ describe('POST /api/whatsapp/webhook — template status updates', () => {
   it('records the new status against the org that owns the WABA', async () => {
     const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID }, error: null })
+      if (table === 'organizations') return buildChain({ data: [{ id: ORG_ID }], error: null })
       if (table === 'whatsapp_template_statuses') return { upsert }
       return buildChain({ data: null, error: null })
     })
@@ -2878,7 +2904,7 @@ describe('POST /api/whatsapp/webhook — template status updates', () => {
   it('stores the rejection reason Meta gave', async () => {
     const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'organizations') return buildChain({ data: { id: ORG_ID }, error: null })
+      if (table === 'organizations') return buildChain({ data: [{ id: ORG_ID }], error: null })
       if (table === 'whatsapp_template_statuses') return { upsert }
       return buildChain({ data: null, error: null })
     })
@@ -2887,6 +2913,35 @@ describe('POST /api/whatsapp/webhook — template status updates', () => {
 
     expect(upsert).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'REJECTED', reason: 'INVALID_FORMAT' }),
+      expect.anything()
+    )
+  })
+
+  it('records the update for every org sharing the WABA', async () => {
+    // Meta allows several phone numbers under one WhatsApp Business Account, so
+    // a customer with two studios produces two Lessio orgs on one waba_id. The
+    // lookup used .maybeSingle(), which errors on a second row — so from the day
+    // the second studio connected, BOTH orgs silently stopped receiving every
+    // template-approval and health update.
+    const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') {
+        return buildChain({ data: [{ id: ORG_ID }, { id: 'org-2' }], error: null })
+      }
+      if (table === 'whatsapp_template_statuses') return { upsert }
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeStatusPayload()))
+
+    expect(res.status).toBe(200)
+    expect(upsert).toHaveBeenCalledTimes(2)
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ organization_id: ORG_ID }),
+      expect.anything()
+    )
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ organization_id: 'org-2' }),
       expect.anything()
     )
   })
@@ -2914,10 +2969,18 @@ describe('POST /api/whatsapp/webhook — template status updates', () => {
     const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }))
     mockFrom.mockImplementation((table: string) => {
       if (table === 'organizations') {
-        return buildChain({
-          data: { id: ORG_ID, whatsapp_access_token: 'encrypted-token', timezone: 'Asia/Jerusalem' },
-          error: null,
-        })
+        return buildChain(
+          {
+            data: {
+              id: ORG_ID,
+              whatsapp_access_token: 'encrypted-token',
+              timezone: 'Asia/Jerusalem',
+            },
+            error: null,
+          },
+          // The same table, read as a list by the WABA lookup.
+          { data: [{ id: ORG_ID }], error: null }
+        )
       }
       if (table === 'whatsapp_template_statuses') return { upsert }
       return buildChain({ data: null, error: null })

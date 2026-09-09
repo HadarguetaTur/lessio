@@ -2394,6 +2394,11 @@
         "debugTokenFailed": "We couldn't confirm what Meta approved. Try connecting again.",
         "scopeMissing": "Setup didn't finish — Meta hasn't granted Lessio the permissions this number needs. That's a problem on our side, not yours. Write to us and we'll sort it.",
         "wabaMismatch": "The WhatsApp Business account returned by Meta is not one this connection was authorised for — please start the connection again.",
+        "phoneRegisterPinRequired": "Meta would not activate this number: it has two-step verification switched on with your own PIN, which Lessio cannot know. Turn two-step verification off for the number (WhatsApp Manager > number settings > two-step verification) and connect again. Retrying without turning it off will fail the same way.",
+        "phoneRegisterPinLocked": "Meta has temporarily locked activation for this number after too many PIN attempts. Wait about 12 hours and connect again.",
+        "phoneRegisterReverify": "Meta needs this number verified again. Verify it in WhatsApp Manager, then connect again.",
+        "numberInUse": "This WhatsApp number is already connected to another Lessio account. Disconnect it there, or write to us and we will sort it.",
+        "metaSaid": "Meta said: {detail}",
         "phoneRegisterFailed": "Meta didn't approve this number for sending. Try again, or check the number isn't active in the WhatsApp app.",
         "disconnectFailed": "Could not disconnect the account"
       }
@@ -2637,6 +2642,7 @@
         "RED": "Quality: low",
         "UNKNOWN": "Quality: not checked yet"
       },
+      "staleSnapshot": "These figures are from the last successful check with Meta. They stop updating while the connection is broken.",
       "limitPerDay": "Up to {n} conversations per day",
       "limitUnknown": "Daily limit not checked yet",
       "limitUnlimited": "Unlimited conversations per day",
@@ -5518,6 +5524,8 @@
     "supportTicketReply": "Support replied to your request",
     "supportTicketResolved": "Your request was resolved",
     "devIssueFixed": "The problem you reported was fixed",
+    "waTokenExpired": "Your WhatsApp connection has stopped — nothing is being sent",
+    "waTokenExpiredBody": "Meta rejected Lessio’s permission for your number. Reminders, payment requests and bot replies will not go out until you reconnect in Settings > WhatsApp.",
     "waHealthFlagged": "Your WhatsApp number was flagged by Meta",
     "waHealthFlaggedBody": "Parents are blocking or reporting messages. Sending is limited until the rating recovers.",
     "waHealthUnflagged": "Your WhatsApp number is back in good standing",

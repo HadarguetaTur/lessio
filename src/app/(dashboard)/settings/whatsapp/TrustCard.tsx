@@ -24,14 +24,23 @@ export async function TrustCard({ orgId, readOnly = false }: { orgId: string; re
   const { data: org } = await db
     .from('organizations')
     .select(
-      'whatsapp_business_id, whatsapp_waba_id, wa_quality_rating, wa_messaging_limit_tier, wa_is_oba, wa_oba_status, wa_business_verification_status, wa_name_status, wa_health_checked_at, wa_connected_at, wa_verification_checklist, timezone'
+      'whatsapp_business_id, whatsapp_waba_id, wa_quality_rating, wa_messaging_limit_tier, wa_is_oba, wa_oba_status, wa_business_verification_status, wa_name_status, wa_health_checked_at, wa_health_error, wa_account_restricted, wa_connected_at, wa_verification_checklist, timezone'
     )
     .eq('id', orgId)
     .maybeSingle()
 
   if (!org) return null
 
-  const quality = (org.wa_quality_rating ?? 'UNKNOWN') as WaQualityRating
+  // These figures are the last snapshot Meta gave us. When the credentials are
+  // dead or the account is restricted, that snapshot is history: showing
+  // 'Quality: high' underneath a red 'reconnect required' badge is the same
+  // screen asserting two contradictory things, which is what the 09.09 audit
+  // found here (F1). The card says so instead of repainting the old chip.
+  const staleSnapshot =
+    org.wa_health_error === 'token_invalid' || org.wa_account_restricted === true
+  const quality = (
+    staleSnapshot ? 'UNKNOWN' : (org.wa_quality_rating ?? 'UNKNOWN')
+  ) as WaQualityRating
   const dailyLimit = tierDailyLimit(org.wa_messaging_limit_tier)
 
   // Meta's full vocabulary, not just the two happy values. `rejected`/`failed`
@@ -116,6 +125,7 @@ export async function TrustCard({ orgId, readOnly = false }: { orgId: string; re
           </span>
         )}
       </div>
+      {staleSnapshot && <p className="text-xs text-amber-700">{t('staleSnapshot')}</p>}
       {quality === 'RED' && <p className="text-xs text-red-700">{t('qualityRedHint')}</p>}
       {quality === 'YELLOW' && <p className="text-xs text-amber-700">{t('qualityYellowHint')}</p>}
       <RefreshHealthButton checkedAtLabel={checkedAtLabel} readOnly={readOnly} />

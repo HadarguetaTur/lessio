@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizePhone, PhoneNormalizationError } from './index'
+import { normalizeInboundPhone, normalizePhone, PhoneNormalizationError } from './index'
 
 describe('normalizePhone', () => {
   describe('valid inputs → E.164', () => {
@@ -62,3 +62,28 @@ describe('normalizePhone', () => {
     })
   })
 })
+
+describe('normalizeInboundPhone', () => {
+  it('normalizes Israeli mobiles exactly as normalizePhone does', () => {
+    // Parent identity is stored in this shape (parents is unique on
+    // organization_id, phone), so it must not move by a single character.
+    for (const raw of ['0521234567', '972521234567', '+972521234567', '054-693-0333']) {
+      expect(normalizeInboundPhone(raw)).toBe(normalizePhone(raw))
+    }
+  });
+
+  it('accepts the numbers the webhook used to drop on the floor', () => {
+    // A foreign parent, an Israeli landline, a Meta reviewer's US handset.
+    expect(normalizeInboundPhone('14155551234')).toBe('+14155551234');
+    expect(normalizeInboundPhone('+44 7700 900123')).toBe('+447700900123');
+    expect(normalizeInboundPhone('97235551234')).toBe('+97235551234');
+  });
+
+  it('still refuses input that is not a number at all', () => {
+    expect(() => normalizeInboundPhone('')).toThrow(PhoneNormalizationError);
+    expect(() => normalizeInboundPhone('not-a-phone')).toThrow(PhoneNormalizationError);
+    expect(() => normalizeInboundPhone('12345')).toThrow(PhoneNormalizationError);
+    // '0' is not a country code — accepting a local form would invent a country.
+    expect(() => normalizeInboundPhone('035551234')).toThrow(PhoneNormalizationError);
+  });
+});

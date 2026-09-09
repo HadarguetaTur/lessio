@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { detectLocaleFromText, resolveRecipientLocale } from './locale'
+import {
+  detectLocaleForPersistence,
+  detectLocaleFromText,
+  resolvePersistedLocale,
+  resolveRecipientLocale,
+} from './locale'
 
 describe('detectLocaleFromText', () => {
   it('detects Hebrew from Hebrew letters', () => {
@@ -22,6 +27,89 @@ describe('detectLocaleFromText', () => {
     expect(detectLocaleFromText('👍')).toBeNull()
     expect(detectLocaleFromText('  ')).toBeNull()
     expect(detectLocaleFromText('+972501234567')).toBeNull()
+  })
+
+  it('does not read a lone loanword as English', () => {
+    // The bug this exists to stop: a Hebrew-speaking parent replying "ok" or
+    // "toda" to a reminder, and receiving English from then on.
+    expect(detectLocaleFromText('ok')).toBeNull()
+    expect(detectLocaleFromText('OK!')).toBeNull()
+    expect(detectLocaleFromText('toda')).toBeNull()
+    expect(detectLocaleFromText('thanks')).toBeNull()
+    expect(detectLocaleFromText('beseder, toda')).toBeNull()
+  })
+
+  it('still detects English from a real sentence', () => {
+    expect(detectLocaleFromText('can we move the lesson to Monday?')).toBe('en')
+  })
+})
+
+describe('detectLocaleForPersistence', () => {
+  it('needs a sentence, not a word', () => {
+    expect(detectLocaleForPersistence('ok')).toBeNull()
+    expect(detectLocaleForPersistence('yes please')).toBeNull()
+    expect(detectLocaleForPersistence('can we move the lesson to Monday?')).toBe('en')
+  })
+
+  it('treats any Hebrew word as Hebrew', () => {
+    expect(detectLocaleForPersistence('כן')).toBe('he')
+  })
+})
+
+describe('resolvePersistedLocale', () => {
+  it('keeps a Hebrew parent on Hebrew when they type "ok"', () => {
+    expect(
+      resolvePersistedLocale({ role: 'parent', stored: 'he', text: 'ok' })
+    ).toBeNull()
+  })
+
+  it('follows a genuine switch to English', () => {
+    expect(
+      resolvePersistedLocale({
+        role: 'parent',
+        stored: 'he',
+        text: 'Hi, could you please send me the schedule for next week?',
+      })
+    ).toBe('en')
+  })
+
+  it('never rewrites a staff member’s dashboard language', () => {
+    // profiles.preferred_locale seeds the dashboard locale cookie at login, so
+    // an owner texting their own business number must not change it.
+    expect(
+      resolvePersistedLocale({
+        role: 'staff',
+        stored: 'he',
+        text: 'Hi, could you please send me the schedule for next week?',
+      })
+    ).toBeNull()
+    expect(
+      resolvePersistedLocale({
+        role: 'teacher',
+        stored: 'he',
+        text: 'Hi, could you please send me the schedule for next week?',
+      })
+    ).toBeNull()
+  })
+
+  it('writes nothing for a tapped button or an unknown sender', () => {
+    expect(
+      resolvePersistedLocale({
+        role: 'parent',
+        stored: 'he',
+        text: 'Daniel Adams',
+        isInteractiveReply: true,
+      })
+    ).toBeNull()
+    expect(
+      resolvePersistedLocale({ role: 'unknown', stored: null, text: 'hello there friends' })
+    ).toBeNull()
+  })
+
+  it('writes nothing when the detection agrees with what is stored', () => {
+    expect(
+      resolvePersistedLocale({ role: 'parent', stored: 'en', text: 'when is the next lesson?' })
+    ).toBeNull()
   })
 })
 

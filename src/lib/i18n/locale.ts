@@ -10,18 +10,119 @@ export function parseAppLocale(value: string | undefined): AppLocale {
 }
 
 /**
- * Infers a language from free text — used on the WhatsApp path, where no
- * Accept-Language header exists (Meta's webhook POST carries no user locale).
+ * Latin-script words that are not evidence of anything.
+ *
+ * Israeli parents write these to a Hebrew business every day: English
+ * loanwords that entered Hebrew whole ("ok", "thanks"), and Hebrew words
+ * typed in Latin letters because the keyboard was in the wrong mode ("toda",
+ * "beseder"). Counting them as English is what made a Hebrew-speaking parent
+ * receive English reminders forever after typing "ok" once.
+ *
+ * The list is a filter on *evidence*, not a dictionary — a message made only
+ * of these words simply carries no language signal, exactly like a bare "2".
+ */
+const AMBIGUOUS_LATIN_WORDS: ReadonlySet<string> = new Set([
+  // English loanwords used verbatim in Hebrew conversation
+  'ok', 'okay', 'okey', 'k', 'kk', 'yes', 'no', 'yep', 'yeah', 'sure',
+  'thanks', 'thank', 'thx', 'tnx', 'ty', '10x', 'please', 'pls',
+  'hi', 'hey', 'hello', 'bye', 'lol', 'wow', 'great', 'good', 'cool', 'nice',
+  'sorry', 'super', 'perfect', 'amen',
+  // Hebrew typed in Latin letters
+  'toda', 'todah', 'todaraba', 'beseder', 'bseder', 'sababa', 'saba', 'ken',
+  'lo', 'yalla', 'yala', 'shalom', 'ahalan', 'achi', 'ahi', 'mamash',
+  'bevakasha', 'slicha', 'sliha', 'boker', 'tov', 'erev', 'laila', 'nu',
+])
+
+/**
+ * How much a message says about the writer's language.
+ *
+ * `null` — nothing at all: no letters, or only ambiguous Latin words.
+ * `weak` — enough to answer in ("yes please"), not enough to rewrite a profile.
+ * `strong` — a real sentence, or any Hebrew script.
+ *
+ * Hebrew script is strong on its own: nobody types Hebrew letters by accident,
+ * and a Hebrew word inside an otherwise-English message ("send me the מחיר")
+ * still means the writer reads Hebrew.
+ */
+export type LocaleEvidence = { locale: AppLocale; strength: 'weak' | 'strong' } | null
+
+export function localeEvidence(text: string): LocaleEvidence {
+  const hebrewLetters = (text.match(/[֐-׿]/g) ?? []).length
+  if (hebrewLetters > 0) {
+    return { locale: 'he', strength: hebrewLetters >= 2 ? 'strong' : 'weak' }
+  }
+
+  const words = (text.toLowerCase().match(/[a-z]+/g) ?? []).filter(
+    (w) => !AMBIGUOUS_LATIN_WORDS.has(w)
+  )
+  const letters = words.join('').length
+  if (letters === 0) return null
+  // Two real words, or one long enough not to be an abbreviation, is a
+  // sentence. Anything less is someone reaching for a word they happen to know.
+  const strong = words.length >= 2 || letters >= 8
+  return { locale: 'en', strength: strong ? 'strong' : 'weak' }
+}
+
+/**
+ * The language to *answer* this message in — used on the WhatsApp path, where
+ * no Accept-Language header exists (Meta's webhook POST carries no user locale).
  *
  * Any Hebrew letter wins, so a Hebrew speaker mixing in Latin words
  * ("שלח לי link") still gets Hebrew. Returns null when the text carries no
- * language signal at all — a bare "2" selecting a lesson from a numbered list,
- * an emoji reaction, a phone number — so those never flip a parent's language.
+ * language signal — a bare "2" selecting a lesson from a numbered list, an
+ * emoji reaction, a phone number, or a lone loanword like "ok" — so those never
+ * flip the language of the reply.
  */
 export function detectLocaleFromText(text: string): AppLocale | null {
-  if (/[֐-׿]/.test(text)) return 'he'
-  if (/[A-Za-z]/.test(text)) return 'en'
-  return null
+  return localeEvidence(text)?.locale ?? null
+}
+
+/**
+ * The language this message is evidence enough to *store* against a person.
+ *
+ * Deliberately stricter than the reply language. Answering in the language
+ * someone just wrote in is polite and reversible; rewriting their stored
+ * preference changes every reminder they will ever receive, so it needs a
+ * sentence rather than a word.
+ */
+export function detectLocaleForPersistence(text: string): AppLocale | null {
+  const evidence = localeEvidence(text)
+  return evidence?.strength === 'strong' ? evidence.locale : null
+}
+
+/** Who wrote an inbound WhatsApp message, as far as language storage cares. */
+export type LocaleWriterRole = 'parent' | 'student' | 'teacher' | 'staff' | 'unknown'
+
+/**
+ * Whether an inbound WhatsApp message may rewrite the sender's stored language,
+ * and to what.
+ *
+ * Two rules, both learned the hard way:
+ *
+ *  - Staff are never touched. A profile's `preferred_locale` seeds the dashboard
+ *    `locale` cookie at login, so an owner who texted "ok" to their own business
+ *    number found the entire dashboard in English at their next sign-in. A
+ *    dashboard language is chosen in the dashboard, in /settings, and nowhere
+ *    else.
+ *  - A parent's stored language is only overwritten by a full sentence, and a
+ *    message that merely agrees with what is already stored writes nothing.
+ *
+ * Students have no locale column at all; their language stays per-message.
+ */
+export function resolvePersistedLocale(params: {
+  role: LocaleWriterRole
+  stored: string | null | undefined
+  text: string
+  /** True for a tapped button: presentation copy, never the writer's words. */
+  isInteractiveReply?: boolean
+}): AppLocale | null {
+  if (params.role !== 'parent') return null
+  if (params.isInteractiveReply) return null
+
+  const detected = detectLocaleForPersistence(params.text)
+  if (!detected) return null
+  if (params.stored === detected) return null
+  return detected
 }
 
 /**

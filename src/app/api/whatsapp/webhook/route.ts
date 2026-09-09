@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { maskPhone, normalizePhone, PhoneNormalizationError } from '@/lib/phone'
+import { maskPhone, normalizeInboundPhone, PhoneNormalizationError } from '@/lib/phone'
 import { signBookingToken } from '@/lib/jwt'
 import { decryptToken } from '@/lib/crypto'
 import {
@@ -84,6 +84,7 @@ import {
 } from './shared'
 import {
   detectLocaleFromText,
+  resolvePersistedLocale,
   resolveRecipientLocale,
   type AppLocale,
 } from '@/lib/i18n/locale'
@@ -369,44 +370,80 @@ async function notifyUnroutablePhoneNumber(phoneNumberId: string): Promise<void>
  * message, nobody is waiting on a reply.
  */
 async function recordTemplateStatusUpdate(update: TemplateStatusUpdate): Promise<void> {
-  const db = createServiceRoleClient()
+  const orgIds = await orgsOwningWaba(update.wabaId, 'template status update', {
+    templateName: update.templateName,
+  })
+  if (orgIds.length === 0) return
 
-  const { data: org, error } = await db
-    .from('organizations')
-    .select('id')
-    .eq('whatsapp_waba_id', update.wabaId)
-    .maybeSingle()
-
-  if (error || !org) {
-    console.warn('[whatsapp/webhook] Template status update for unknown WABA — ignoring', {
-      wabaId: update.wabaId,
+  for (const orgId of orgIds) {
+    await upsertTemplateStatus(orgId, {
       templateName: update.templateName,
+      language: update.language,
+      status: update.status,
+      reason: update.reason,
     })
-    return
-  }
 
-  await upsertTemplateStatus(org.id, {
-    templateName: update.templateName,
-    language: update.language,
-    status: update.status,
-    reason: update.reason,
-  })
-
-  console.info('[whatsapp/webhook] Template status recorded', {
-    orgId: org.id,
-    templateName: update.templateName,
-    language: update.language,
-    status: update.status,
-  })
-
-  // A template Meta paused or disabled means parents are blocking or ignoring
-  // it. The owner has to know now, not when a reminder silently fails.
-  if (update.status === 'PAUSED' || update.status === 'DISABLED') {
-    await notifyOwnersAboutHealth(org.id, 'waTemplatePaused', {
-      template: update.templateName,
+    console.info('[whatsapp/webhook] Template status recorded', {
+      orgId,
+      templateName: update.templateName,
+      language: update.language,
       status: update.status,
     })
+
+    // A template Meta paused or disabled means parents are blocking or ignoring
+    // it. The owner has to know now, not when a reminder silently fails.
+    if (update.status === 'PAUSED' || update.status === 'DISABLED') {
+      await notifyOwnersAboutHealth(orgId, 'waTemplatePaused', {
+        template: update.templateName,
+        status: update.status,
+      })
+    }
   }
+}
+
+/**
+ * Every org that owns this WABA — plural on purpose.
+ *
+ * Two Lessio orgs may legitimately sit on one WhatsApp Business Account: Meta
+ * allows several phone numbers under one WABA, and a customer with two studios
+ * connects one number to each. `organizations.whatsapp_phone_number_id` is
+ * unique, `whatsapp_waba_id` is not.
+ *
+ * This used to be `.eq(waba).maybeSingle()`, which PostgREST answers with an
+ * error the moment a second row matches — so the day a second studio connected,
+ * BOTH orgs stopped receiving every template-approval and account-health update,
+ * permanently and with no signal anywhere. Returning a list and acting on all of
+ * them is the whole fix.
+ */
+async function orgsOwningWaba(
+  wabaId: string,
+  what: string,
+  logExtra: Record<string, unknown> = {}
+): Promise<string[]> {
+  const db = createServiceRoleClient()
+  const { data, error } = await db
+    .from('organizations')
+    .select('id')
+    .eq('whatsapp_waba_id', wabaId)
+
+  if (error) {
+    console.error('[whatsapp/webhook] Could not resolve orgs for WABA', {
+      wabaId,
+      what,
+      error: error.message,
+      ...logExtra,
+    })
+    return []
+  }
+
+  const ids = (data ?? []).map((row) => (row as { id: string }).id)
+  if (ids.length === 0) {
+    console.warn(`[whatsapp/webhook] ${what} for unknown WABA — ignoring`, {
+      wabaId,
+      ...logExtra,
+    })
+  }
+  return ids
 }
 
 /**
@@ -416,22 +453,11 @@ async function recordTemplateStatusUpdate(update: TemplateStatusUpdate): Promise
  * changes what they may send.
  */
 async function recordAccountHealthUpdate(update: AccountHealthUpdate): Promise<void> {
-  const db = createServiceRoleClient()
-
-  const { data: org, error } = await db
-    .from('organizations')
-    .select('id')
-    .eq('whatsapp_waba_id', update.wabaId)
-    .maybeSingle()
-
-  if (error || !org) {
-    console.warn('[whatsapp/webhook] Account health update for unknown WABA — ignoring', {
-      wabaId: update.wabaId,
-      field: update.field,
-      event: update.event,
-    })
-    return
-  }
+  const orgIds = await orgsOwningWaba(update.wabaId, 'Account health update', {
+    field: update.field,
+    event: update.event,
+  })
+  if (orgIds.length === 0) return
 
   // What the event states outright. The refresh below overwrites it with
   // Meta's full view when it succeeds; when it does not, this is still true.
@@ -458,22 +484,25 @@ async function recordAccountHealthUpdate(update: AccountHealthUpdate): Promise<v
   } else if (update.field === 'phone_number_name_update') {
     patch.nameStatus = update.event
   }
-  await storePhoneHealth(org.id, patch)
-  await refreshPhoneHealth(org.id)
-
-  console.info('[whatsapp/webhook] Account health recorded', {
-    orgId: org.id,
-    field: update.field,
-    event: update.event,
-    currentLimit: update.currentLimit,
-  })
-
   const alert = healthAlertKey(update)
-  if (alert) {
-    await notifyOwnersAboutHealth(org.id, alert, {
-      tier: update.currentLimit ?? '',
-      detail: update.detail ?? '',
+
+  for (const orgId of orgIds) {
+    await storePhoneHealth(orgId, patch)
+    await refreshPhoneHealth(orgId)
+
+    console.info('[whatsapp/webhook] Account health recorded', {
+      orgId,
+      field: update.field,
+      event: update.event,
+      currentLimit: update.currentLimit,
     })
+
+    if (alert) {
+      await notifyOwnersAboutHealth(orgId, alert, {
+        tier: update.currentLimit ?? '',
+        detail: update.detail ?? '',
+      })
+    }
   }
 }
 
@@ -613,10 +642,16 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
 async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promise<void> {
   const db = createServiceRoleClient()
 
-  // 4. Normalize sender phone
+  // 4. Normalize sender phone.
+  // normalizeInboundPhone, not normalizePhone: the strict Israeli-mobile rule
+  // belongs on a form a user types into, not on Meta's webhook. Applied here it
+  // dropped every foreign number, every Israeli landline and every Meta
+  // reviewer's handset before the org was even resolved — no reply, no lead, no
+  // transcript. Israeli normalisation is unchanged, so stored parent identities
+  // still match.
   let senderPhone: string
   try {
-    senderPhone = normalizePhone(msg.from)
+    senderPhone = normalizeInboundPhone(msg.from)
   } catch (err) {
     if (err instanceof PhoneNormalizationError) {
       console.warn('[whatsapp/webhook] Could not normalize sender phone — ignoring', {
@@ -831,10 +866,21 @@ async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promi
   }
 
   // Remember the language for proactive sends (reminders) that have no inbound
-  // text to infer from. Only on a real signal — a bare "2" must not flip it.
+  // text to infer from. Far stricter than `detected` above: replying in the
+  // language someone wrote in is reversible, rewriting their profile is not.
   // Await the write so the next interactive tap cannot race a stale preference
   // in a serverless runtime that freezes work after the response is returned.
-  await persistSenderLocale(db, org.id, sender, detected)
+  await persistSenderLocale(
+    db,
+    org.id,
+    sender,
+    resolvePersistedLocale({
+      role: sender.role,
+      stored: sender.preferredLocale,
+      text: msg.text,
+      isInteractiveReply: Boolean(msg.replyId),
+    })
+  )
 
   // A parent writing to the business number is opt-in under Meta's policy.
   // Recorded once (never overwrites an earlier source), and marks the welcome
@@ -1411,7 +1457,12 @@ async function sendMenuWithFallback(params: {
 /**
  * Persists the language detected from this message on the sender's own row.
  * Awaited before replying so a following interactive tap sees the new value.
- * Students have no locale column; their language is inferred per typed message.
+ *
+ * Parents only. `resolvePersistedLocale` is the rule — see its comment for why
+ * a staff member's `profiles.preferred_locale` is off limits from here (it
+ * seeds the dashboard's own language cookie at login) and why a single word is
+ * never enough. This function trusts that decision and only writes it; the
+ * guard below is a belt-and-braces assertion, not a second policy.
  */
 async function persistSenderLocale(
   db: ReturnType<typeof createServiceRoleClient>,
@@ -1419,16 +1470,12 @@ async function persistSenderLocale(
   sender: ResolvedSender,
   detected: AppLocale | null
 ): Promise<void> {
-  if (!detected || sender.role === 'unknown' || sender.role === 'student') return
-  if (sender.preferredLocale === detected) return
-
-  const table = sender.role === 'parent' ? 'parents' : 'profiles'
-  const id = sender.role === 'parent' ? sender.parentId : sender.profileId
+  if (!detected || sender.role !== 'parent') return
 
   const { error } = await db
-    .from(table)
+    .from('parents')
     .update({ preferred_locale: detected })
-    .eq('id', id)
+    .eq('id', sender.parentId)
     .eq('organization_id', orgId)
   if (error) {
     console.warn('[whatsapp/webhook] Failed to persist sender locale', {

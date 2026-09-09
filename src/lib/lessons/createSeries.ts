@@ -11,6 +11,7 @@
 import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { LessonType } from '@/lib/lessons/types'
+import { assertLessonPeopleBelongToOrg } from './assertLessonPeople'
 
 export type SeriesFrequency = 'weekly' | 'biweekly'
 
@@ -69,6 +70,14 @@ export async function createLessonSeries(
   const db = createServiceRoleClient()
 
   if (studentIds.length === 0) throw new Error('At least one student is required')
+
+  // Same reasoning as createLesson: teacherId and studentIds arrive from the
+  // new-series form and every row written below is stamped with orgId, so a
+  // foreign id would mint a whole recurring series against another tenant's
+  // teacher or students. Checked before the lesson_series row is inserted, so
+  // a rejection leaves nothing behind.
+  await assertLessonPeopleBelongToOrg(orgId, teacherId, studentIds)
+
   const seriesGroupId = lessonType === 'group' ? groupId : null
 
   // 1. Fetch org timezone

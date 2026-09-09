@@ -370,44 +370,80 @@ async function notifyUnroutablePhoneNumber(phoneNumberId: string): Promise<void>
  * message, nobody is waiting on a reply.
  */
 async function recordTemplateStatusUpdate(update: TemplateStatusUpdate): Promise<void> {
-  const db = createServiceRoleClient()
+  const orgIds = await orgsOwningWaba(update.wabaId, 'template status update', {
+    templateName: update.templateName,
+  })
+  if (orgIds.length === 0) return
 
-  const { data: org, error } = await db
-    .from('organizations')
-    .select('id')
-    .eq('whatsapp_waba_id', update.wabaId)
-    .maybeSingle()
-
-  if (error || !org) {
-    console.warn('[whatsapp/webhook] Template status update for unknown WABA — ignoring', {
-      wabaId: update.wabaId,
+  for (const orgId of orgIds) {
+    await upsertTemplateStatus(orgId, {
       templateName: update.templateName,
+      language: update.language,
+      status: update.status,
+      reason: update.reason,
     })
-    return
-  }
 
-  await upsertTemplateStatus(org.id, {
-    templateName: update.templateName,
-    language: update.language,
-    status: update.status,
-    reason: update.reason,
-  })
-
-  console.info('[whatsapp/webhook] Template status recorded', {
-    orgId: org.id,
-    templateName: update.templateName,
-    language: update.language,
-    status: update.status,
-  })
-
-  // A template Meta paused or disabled means parents are blocking or ignoring
-  // it. The owner has to know now, not when a reminder silently fails.
-  if (update.status === 'PAUSED' || update.status === 'DISABLED') {
-    await notifyOwnersAboutHealth(org.id, 'waTemplatePaused', {
-      template: update.templateName,
+    console.info('[whatsapp/webhook] Template status recorded', {
+      orgId,
+      templateName: update.templateName,
+      language: update.language,
       status: update.status,
     })
+
+    // A template Meta paused or disabled means parents are blocking or ignoring
+    // it. The owner has to know now, not when a reminder silently fails.
+    if (update.status === 'PAUSED' || update.status === 'DISABLED') {
+      await notifyOwnersAboutHealth(orgId, 'waTemplatePaused', {
+        template: update.templateName,
+        status: update.status,
+      })
+    }
   }
+}
+
+/**
+ * Every org that owns this WABA — plural on purpose.
+ *
+ * Two Lessio orgs may legitimately sit on one WhatsApp Business Account: Meta
+ * allows several phone numbers under one WABA, and a customer with two studios
+ * connects one number to each. `organizations.whatsapp_phone_number_id` is
+ * unique, `whatsapp_waba_id` is not.
+ *
+ * This used to be `.eq(waba).maybeSingle()`, which PostgREST answers with an
+ * error the moment a second row matches — so the day a second studio connected,
+ * BOTH orgs stopped receiving every template-approval and account-health update,
+ * permanently and with no signal anywhere. Returning a list and acting on all of
+ * them is the whole fix.
+ */
+async function orgsOwningWaba(
+  wabaId: string,
+  what: string,
+  logExtra: Record<string, unknown> = {}
+): Promise<string[]> {
+  const db = createServiceRoleClient()
+  const { data, error } = await db
+    .from('organizations')
+    .select('id')
+    .eq('whatsapp_waba_id', wabaId)
+
+  if (error) {
+    console.error('[whatsapp/webhook] Could not resolve orgs for WABA', {
+      wabaId,
+      what,
+      error: error.message,
+      ...logExtra,
+    })
+    return []
+  }
+
+  const ids = (data ?? []).map((row) => (row as { id: string }).id)
+  if (ids.length === 0) {
+    console.warn(`[whatsapp/webhook] ${what} for unknown WABA — ignoring`, {
+      wabaId,
+      ...logExtra,
+    })
+  }
+  return ids
 }
 
 /**
@@ -417,22 +453,11 @@ async function recordTemplateStatusUpdate(update: TemplateStatusUpdate): Promise
  * changes what they may send.
  */
 async function recordAccountHealthUpdate(update: AccountHealthUpdate): Promise<void> {
-  const db = createServiceRoleClient()
-
-  const { data: org, error } = await db
-    .from('organizations')
-    .select('id')
-    .eq('whatsapp_waba_id', update.wabaId)
-    .maybeSingle()
-
-  if (error || !org) {
-    console.warn('[whatsapp/webhook] Account health update for unknown WABA — ignoring', {
-      wabaId: update.wabaId,
-      field: update.field,
-      event: update.event,
-    })
-    return
-  }
+  const orgIds = await orgsOwningWaba(update.wabaId, 'Account health update', {
+    field: update.field,
+    event: update.event,
+  })
+  if (orgIds.length === 0) return
 
   // What the event states outright. The refresh below overwrites it with
   // Meta's full view when it succeeds; when it does not, this is still true.
@@ -459,22 +484,25 @@ async function recordAccountHealthUpdate(update: AccountHealthUpdate): Promise<v
   } else if (update.field === 'phone_number_name_update') {
     patch.nameStatus = update.event
   }
-  await storePhoneHealth(org.id, patch)
-  await refreshPhoneHealth(org.id)
-
-  console.info('[whatsapp/webhook] Account health recorded', {
-    orgId: org.id,
-    field: update.field,
-    event: update.event,
-    currentLimit: update.currentLimit,
-  })
-
   const alert = healthAlertKey(update)
-  if (alert) {
-    await notifyOwnersAboutHealth(org.id, alert, {
-      tier: update.currentLimit ?? '',
-      detail: update.detail ?? '',
+
+  for (const orgId of orgIds) {
+    await storePhoneHealth(orgId, patch)
+    await refreshPhoneHealth(orgId)
+
+    console.info('[whatsapp/webhook] Account health recorded', {
+      orgId,
+      field: update.field,
+      event: update.event,
+      currentLimit: update.currentLimit,
     })
+
+    if (alert) {
+      await notifyOwnersAboutHealth(orgId, alert, {
+        tier: update.currentLimit ?? '',
+        detail: update.detail ?? '',
+      })
+    }
   }
 }
 

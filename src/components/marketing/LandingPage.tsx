@@ -214,6 +214,7 @@ export function LandingPage({
     chain,
     problem,
     capabilities,
+    implementation,
     israel,
     trust,
     audience,
@@ -397,6 +398,17 @@ export function LandingPage({
                   {hero.dashCard.slot}
                 </p>
               </div>
+              <div className="mt-3 grid w-full max-w-[25rem] grid-cols-3 gap-2 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:delay-[4000ms] motion-safe:fill-mode-both motion-reduce:animate-none">
+                {hero.outcomes.map((outcome) => (
+                  <p
+                    key={outcome}
+                    className="rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-2 py-2 text-[0.68rem] font-semibold leading-snug text-foreground/85"
+                  >
+                    <Check className="mx-auto mb-1 size-3 text-emerald-600" aria-hidden strokeWidth={3} />
+                    {outcome}
+                  </p>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -473,6 +485,11 @@ export function LandingPage({
                 </li>
               ))}
             </ol>
+            <LandingReveal variant="fade-up" className="mt-12 text-center">
+              <PrimaryCta href={links.signup} dataCta="chain-primary">
+                {chain.cta}
+              </PrimaryCta>
+            </LandingReveal>
           </div>
         </SectionShell>
 
@@ -558,6 +575,27 @@ export function LandingPage({
                 </ul>
               </div>
             </LandingReveal>
+          </div>
+        </SectionShell>
+
+        {/* Implementation — answer the rollout objection before asking for a plan choice. */}
+        <SectionShell>
+          <div className="mx-auto max-w-5xl">
+            <SectionTitle title={implementation.title} intro={implementation.intro} />
+            <LandingStagger as="ol" className="mt-10 grid list-none gap-4 md:grid-cols-3" stepMs={120}>
+              {implementation.steps.map(([title, body], index) => (
+                <li
+                  key={title}
+                  className="relative rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm ring-1 ring-black/[0.02] dark:bg-card/40 dark:ring-white/[0.04]"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-xl bg-violet-600 text-sm font-bold tabular-nums text-white shadow-sm shadow-violet-500/20">
+                    {index + 1}
+                  </span>
+                  <h3 className="mt-4 text-base font-bold text-foreground sm:text-lg">{title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+                </li>
+              ))}
+            </LandingStagger>
           </div>
         </SectionShell>
 

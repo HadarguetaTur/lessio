@@ -1365,7 +1365,19 @@
     },
     "partiallyPaid": "Paid {paid} of {total}",
     "filterFrom": "From date",
-    "filterTo": "To date"
+    "filterTo": "To date",
+    "refund": {
+      "action": "Record refund",
+      "title": "Record a refund",
+      "description": "The money goes back to the parent through your payment provider or bank, not through Lessio. Recording it here stops the amount counting as revenue and stops telling the parent the charge is paid.",
+      "receiptWarning": "A receipt was issued for this charge. The credit note is issued in your receipt system, not in Lessio.",
+      "amountLabel": "Refund amount (up to {max})",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Why was the money returned?",
+      "confirm": "Record refund",
+      "success": "Refund recorded",
+      "banner": "{amount} refunded on {date}. It no longer counts as revenue."
+    }
   },
   "billing": {
     "title": "Monthly Billing",

@@ -14,20 +14,32 @@
  * funnel through those two functions, and only some of them checked.
  */
 
-import { assertIdsBelongToOrg } from '@/lib/auth/orgScope'
+import { assertIdsBelongToOrg, assertGroupBelongsToOrg } from '@/lib/auth/orgScope'
 
 /**
- * Throws OrgScopeError unless the teacher and every student belong to `orgId`.
+ * Throws OrgScopeError unless the teacher, every student and the group (when a
+ * group lesson names one) belong to `orgId`.
  *
  * Students are checked as one batch: the row count must match the id count, so
  * a roster that mixes one foreign student among five valid ones is rejected
  * whole rather than silently trimmed.
+ *
+ * The group was the gap. `lessons.group_id` has a plain FK
+ * (`lessons_group_id_fkey`) with no org binding, and both `createLesson` and
+ * `createSeries` write it. It happened to be contained because the two live
+ * entry points resolve the roster through `getGroupRosterServiceRole`, which
+ * filters on `organization_id` — containment by luck, one caller away from
+ * gone. `assertGroupBelongsToOrg` was written for exactly this and had ZERO
+ * call sites; a defence nobody calls is worse than no defence, because it reads
+ * like one in a review.
  */
 export async function assertLessonPeopleBelongToOrg(
   orgId: string,
   teacherId: string,
-  studentIds: readonly string[]
+  studentIds: readonly string[],
+  groupId?: string | null
 ): Promise<void> {
   await assertIdsBelongToOrg('teachers', [teacherId], orgId)
   await assertIdsBelongToOrg('students', studentIds, orgId)
+  if (groupId) await assertGroupBelongsToOrg(groupId, orgId)
 }

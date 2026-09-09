@@ -622,7 +622,8 @@
       "loadSubscriptionsFailed": "שגיאה בטעינת המנויים",
       "loadGoalsFailed": "שגיאה בטעינת היעדים",
       "loadExamsFailed": "שגיאה בטעינת המבחנים",
-      "loadEmailsFailed": "שגיאה בטעינת אימיילים"
+      "loadEmailsFailed": "שגיאה בטעינת אימיילים",
+      "teacherNotInOrg": "מורה שנבחר לא נמצא בארגון"
     },
     "goalErrors": {
       "createFailed": "שגיאה ביצירת המטרה",
@@ -709,7 +710,7 @@
         "SAVE_FAILED": "לא הצלחנו לשמור. נסו שוב.",
         "NOT_LINKED": "צריך לקשר קבוצת ואטסאפ קודם.",
         "CREATE_FAILED": "לא הצלחנו לשלוח את ההזמנות. נסו שוב.",
-      "already_started": "התפוצה הזו כבר יצאה לדרך.",
+        "already_started": "התפוצה הזו כבר יצאה לדרך.",
         "not_connected": "וואטסאפ לא מחובר. צריך לחבר מספר בהגדרות קודם.",
         "quality_red": "השליחה מושהית עד שדירוג האיכות של המספר יתאושש.",
         "broadcasts_disabled": "התפוצות מושבתות בחשבון הזה.",

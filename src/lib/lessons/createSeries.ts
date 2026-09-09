@@ -95,7 +95,7 @@ export async function createLessonSeries(
   // this function writes the series first and generates occurrences in a
   // loop, so a late rejection would leave a series row behind even when
   // every occurrence failed.
-  await assertLessonPeopleBelongToOrg(orgId, teacherId, studentIds)
+  await assertLessonPeopleBelongToOrg(orgId, teacherId, studentIds, groupId)
 
   const seriesGroupId = lessonType === 'group' ? groupId : null
 

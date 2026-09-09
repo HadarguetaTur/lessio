@@ -95,7 +95,9 @@ export async function POST(request: NextRequest) {
       {
         teacherNotFound: (name: string) => t('executeErrors.teacherNotFound', { name }),
         studentNotFound: (name: string) => t('executeErrors.studentNotFound', { name }),
-      }
+      },
+      (firstRowNumber: number) =>
+        t('warnings.duplicateInFile', { row: firstRowNumber } as Record<string, number>)
     )
 
     const missingDependencies = {

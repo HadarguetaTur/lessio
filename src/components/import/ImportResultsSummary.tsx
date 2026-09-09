@@ -27,6 +27,18 @@ export function ImportResultsSummary({ result }: ImportResultsSummaryProps) {
         <p className="text-sm text-destructive">{t('results.nothingImportedHint')}</p>
       )}
 
+      {result.rolledBack && (
+        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          {t('results.rolledBackNotice')}
+        </p>
+      )}
+
+      {result.alreadyRan && (
+        <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
+          {t('results.alreadyRanNotice')}
+        </p>
+      )}
+
       <div className={`grid gap-3 grid-cols-${colCount}`} style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}>
         <div className="flex items-center gap-3 rounded-lg bg-emerald-50 p-3">
           <CheckCircle2 size={20} className="text-emerald-700 shrink-0" />

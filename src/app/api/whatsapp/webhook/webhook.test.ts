@@ -1414,6 +1414,25 @@ describe('WhatsApp webhook hardening (Sprint 31 Story 4)', () => {
     })
   }
 
+  it('lets a foreign or landline number reach org resolution', async () => {
+    // normalizePhone accepted +9725 mobiles only, and the drop happened before
+    // the org was resolved — so a US reviewer, an English tenant's overseas
+    // parent and an Israeli landline all vanished: no reply, no lead, no
+    // transcript, and nothing in the logs but a warning.
+    mockKnownOrgAndParent()
+
+    for (const [from, expected] of [
+      ['14155551234', '+14155551234'],
+      ['97235551234', '+97235551234'],
+    ] as const) {
+      mockIsRateLimited.mockClear()
+      const res = await POST(makeRequest(makeWebhookPayload(NEUTRAL_TEXT, from)))
+
+      expect(res.status).toBe(200)
+      expect(mockIsRateLimited).toHaveBeenCalledWith(ORG_ID, expected)
+    }
+  })
+
   it('drops the message without claiming when the phone is rate limited', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     mockIsRateLimited.mockResolvedValue(true)

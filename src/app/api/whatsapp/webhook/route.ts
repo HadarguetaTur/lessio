@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { maskPhone, normalizePhone, PhoneNormalizationError } from '@/lib/phone'
+import { maskPhone, normalizeInboundPhone, PhoneNormalizationError } from '@/lib/phone'
 import { signBookingToken } from '@/lib/jwt'
 import { decryptToken } from '@/lib/crypto'
 import {
@@ -642,10 +642,16 @@ async function processMessage(msg: WhatsAppMessage, origin: string): Promise<voi
 async function handleInboundMessage(msg: WhatsAppMessage, origin: string): Promise<void> {
   const db = createServiceRoleClient()
 
-  // 4. Normalize sender phone
+  // 4. Normalize sender phone.
+  // normalizeInboundPhone, not normalizePhone: the strict Israeli-mobile rule
+  // belongs on a form a user types into, not on Meta's webhook. Applied here it
+  // dropped every foreign number, every Israeli landline and every Meta
+  // reviewer's handset before the org was even resolved — no reply, no lead, no
+  // transcript. Israeli normalisation is unchanged, so stored parent identities
+  // still match.
   let senderPhone: string
   try {
-    senderPhone = normalizePhone(msg.from)
+    senderPhone = normalizeInboundPhone(msg.from)
   } catch (err) {
     if (err instanceof PhoneNormalizationError) {
       console.warn('[whatsapp/webhook] Could not normalize sender phone — ignoring', {

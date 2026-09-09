@@ -5,7 +5,12 @@
  * receipts, teacher time-off notices, dashboard buttons) goes through
  * prepareBusinessSend() before the actual send:
  *
- *   1. Opt-out (parents.opted_out_at) → the send is refused.
+ *   1. Consent for this message's category → the send is refused if withdrawn.
+ *      `opted_out_at` refuses everything; a broadcast also asks its own category
+ *      (see consentRules.ts). This is THE authority: it runs on the live parent
+ *      row microseconds before the message leaves, so a Stop tapped an hour ago
+ *      — or five minutes ago, mid-campaign — is honoured even though the
+ *      recipient row was materialised days earlier.
  *   2. First contact (parents.welcome_sent_at IS NULL) → a welcome notice goes
  *      out first, explaining who is messaging, what about, and how to stop.
  *      Sent exactly once per parent; the claim is an atomic UPDATE so two crons
@@ -27,13 +32,66 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
-import { isOptedOut } from './optOut'
 import { getApprovedTemplate } from './approvedTemplates'
 import { sendTemplateMessage } from './index'
+import {
+  consentRefusal,
+  NO_CONSENT_RECORD,
+  type ConsentCategory,
+  type ConsentFacts,
+  type ConsentRefusal,
+} from './consentRules'
 
-export type BusinessSendGate = { ok: true } | { ok: false; reason: 'opted_out' }
+/**
+ * `unknown` is not a refusal — it is "consent could not be read". Only a
+ * broadcast ever sees it, and it means requeue, never skip: a recipient must not
+ * be recorded as having refused because the database blinked.
+ */
+export type BusinessSendGate = { ok: true } | { ok: false; reason: ConsentRefusal | 'unknown' }
 
 export type ConsentSource = 'attested' | 'import' | 'portal' | 'booking' | 'whatsapp_reply'
+
+/**
+ * The parent's live consent columns.
+ *
+ * Fails open on a database error and on a phone with no parent behind it (a
+ * student's own number, a teacher): this gate sits in front of lesson
+ * reminders, and a transient outage must not become a silent blackout. The
+ * broadcast path narrows that fail-open — see the note in `prepareBusinessSend`.
+ */
+async function loadConsentFacts(orgId: string, phone: string): Promise<ConsentFacts | null> {
+  try {
+    const db = createServiceRoleClient()
+    const { data, error } = await db
+      .from('parents')
+      .select('opted_out_at, updates_opted_out_at, marketing_opt_in_at, marketing_opted_out_at')
+      .eq('organization_id', orgId)
+      .eq('phone', phone)
+      .maybeSingle()
+
+    if (error) {
+      console.warn('[consent] lookup failed', { orgId, error: error.message })
+      return null
+    }
+    if (!data) return NO_CONSENT_RECORD
+
+    const row = data as Partial<{
+      opted_out_at: string | null
+      updates_opted_out_at: string | null
+      marketing_opt_in_at: string | null
+      marketing_opted_out_at: string | null
+    }>
+    return {
+      optedOutAt: row.opted_out_at ?? null,
+      updatesOptedOutAt: row.updates_opted_out_at ?? null,
+      marketingOptInAt: row.marketing_opt_in_at ?? null,
+      marketingOptedOutAt: row.marketing_opted_out_at ?? null,
+    }
+  } catch (err) {
+    console.warn('[consent] lookup threw', { orgId, error: String(err) })
+    return null
+  }
+}
 
 export async function prepareBusinessSend(params: {
   orgId: string
@@ -42,11 +100,26 @@ export async function prepareBusinessSend(params: {
   phoneNumberId: string
   /** Recipient language. When omitted, the parent's stored locale / org default is used. */
   locale?: AppLocale
+  /**
+   * What this message is. Defaults to `transactional` — a reminder, a payment
+   * request, a receipt — which only the global opt-out stops. A broadcast passes
+   * its own category so the per-category Stop is honoured HERE, at the last
+   * safe moment, rather than at the moment the audience was resolved.
+   */
+  category?: ConsentCategory
 }): Promise<BusinessSendGate> {
   const { orgId, phone, accessToken, phoneNumberId } = params
+  const category = params.category ?? 'transactional'
 
-  if (await isOptedOut(orgId, phone)) {
-    return { ok: false, reason: 'opted_out' }
+  const facts = await loadConsentFacts(orgId, phone)
+  if (facts === null) {
+    // A lookup failure fails open for transactional messages only. For a
+    // broadcast, "we could not read consent" is not permission to send: the
+    // recipient stays queued and the next tick asks again.
+    if (category !== 'transactional') return { ok: false, reason: 'unknown' }
+  } else {
+    const refusal = consentRefusal(facts, category)
+    if (refusal) return { ok: false, reason: refusal }
   }
 
   // Fail-open on anything unexpected: this gate sits in front of lesson

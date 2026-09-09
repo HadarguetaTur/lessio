@@ -709,6 +709,7 @@
         "SAVE_FAILED": "לא הצלחנו לשמור. נסו שוב.",
         "NOT_LINKED": "צריך לקשר קבוצת ואטסאפ קודם.",
         "CREATE_FAILED": "לא הצלחנו לשלוח את ההזמנות. נסו שוב.",
+      "already_started": "התפוצה הזו כבר יצאה לדרך.",
         "not_connected": "וואטסאפ לא מחובר. צריך לחבר מספר בהגדרות קודם.",
         "quality_red": "השליחה מושהית עד שדירוג האיכות של המספר יתאושש.",
         "broadcasts_disabled": "התפוצות מושבתות בחשבון הזה.",
@@ -5793,6 +5794,7 @@
     "colRecipient": "נמען",
     "colDelivery": "מסירה",
     "resultSummary": "{sent} נשלחו · {skipped} דולגו · {failed} נכשלו",
+    "deferredNote": "{count} נמענים מעבר למכסה הבטוחה של המספר להיום. הם יצאו בפתיחה הבאה, אוטומטית — אין מה לעשות.",
     "scheduledFor": "מתוזמן ל-{when}",
     "failedWithCode": "נכשל (שגיאה {code})",
     "types": {
@@ -5811,6 +5813,7 @@
     },
     "recipientStatuses": {
       "pending": "ממתין",
+      "deferred": "ממתין למחר",
       "claimed": "בשליחה",
       "sent": "נשלח",
       "skipped": "דולג",
@@ -5825,6 +5828,7 @@
     "stats": {
       "total": "נמענים",
       "sent": "נשלחו",
+      "deferred": "ממתין למחר",
       "skipped": "דולגו",
       "failed": "נכשלו"
     },
@@ -5896,8 +5900,7 @@
       "frequency_capped": "קיבלו הודעה כזו לאחרונה",
       "per_user_limit": "מגבלת וואטסאפ היומית של הנמען",
       "already_invited": "כבר הוזמנו",
-      "no_phone": "אין מספר טלפון",
-      "over_cap": "מעבר למכסה הבטוחה להיום"
+      "no_phone": "אין מספר טלפון"
     },
     "blocked": {
       "not_connected": "וואטסאפ לא מחובר. צריך לחבר מספר בהגדרות קודם.",

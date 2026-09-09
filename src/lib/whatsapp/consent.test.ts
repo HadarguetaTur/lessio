@@ -1,21 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const {
-  mockCreateServiceRoleClient,
-  mockIsOptedOut,
-  mockSendTemplateMessage,
-} = vi.hoisted(() => ({
+const { mockCreateServiceRoleClient, mockSendTemplateMessage } = vi.hoisted(() => ({
   mockCreateServiceRoleClient: vi.fn(),
-  mockIsOptedOut: vi.fn(),
   mockSendTemplateMessage: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/service-role', () => ({
   createServiceRoleClient: mockCreateServiceRoleClient,
-}))
-
-vi.mock('./optOut', () => ({
-  isOptedOut: mockIsOptedOut,
 }))
 
 vi.mock('./index', () => ({
@@ -32,9 +23,9 @@ const BASE = {
 }
 
 /**
- * The gate touches two tables: `parents` is updated (the welcome claim, the
- * claim release, the consent record) and `organizations` is read for the name
- * that goes into the notice.
+ * The gate touches two tables: `parents` is read (the live consent columns) and
+ * updated (the welcome claim, the claim release, the consent record), and
+ * `organizations` is read for the name that goes into the notice.
  */
 function mockDb(
   options: {
@@ -43,11 +34,17 @@ function mockDb(
     claimError?: { message: string } | null
     orgName?: string | null
     orgDefaultLocale?: string | null
+    /** The parent's live consent columns, as `loadConsentFacts` reads them. */
+    consent?: Record<string, string | null> | null
+    consentError?: { message: string } | null
   } = {}
 ) {
   const parentsUpdates: Array<Record<string, unknown>> = []
 
+  // One chain per from('parents') call, so the flag below cannot leak between
+  // the consent read, the welcome claim and the claim release.
   const parentsQuery = () => {
+    let selected = false
     const chain: Record<string, unknown> = {}
     chain.update = vi.fn((payload: Record<string, unknown>) => {
       parentsUpdates.push(payload)
@@ -55,14 +52,24 @@ function mockDb(
     })
     chain.eq = vi.fn(() => chain)
     chain.is = vi.fn(() => chain)
-    chain.select = vi.fn(async () => ({
-      data: options.claimed ?? [],
-      error: options.claimError ?? null,
+    chain.select = vi.fn(() => {
+      selected = true
+      return chain
+    })
+    // The consent read is the only `parents` query that ends in maybeSingle().
+    chain.maybeSingle = vi.fn(async () => ({
+      data: options.consent === undefined ? {} : options.consent,
+      error: options.consentError ?? null,
     }))
-    // A terminal update (claim release, consent record) is awaited directly
-    // rather than through .select().
+    // Awaiting the chain itself is either the welcome claim (which asked for
+    // .select() first) or a terminal update — the claim release, the consent
+    // record — which did not.
     chain.then = (resolve: (v: unknown) => unknown) =>
-      Promise.resolve({ data: null, error: null }).then(resolve)
+      Promise.resolve(
+        selected
+          ? { data: options.claimed ?? [], error: options.claimError ?? null }
+          : { data: null, error: null }
+      ).then(resolve)
     return chain
   }
 
@@ -88,16 +95,86 @@ function mockDb(
 describe('prepareBusinessSend', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsOptedOut.mockResolvedValue(false)
     mockSendTemplateMessage.mockResolvedValue(undefined)
   })
 
   it('refuses the send and sends no welcome when the parent opted out', async () => {
-    mockDb({ claimed: [{ id: 'p-1' }] })
-    mockIsOptedOut.mockResolvedValue(true)
+    mockDb({ claimed: [{ id: 'p-1' }], consent: { opted_out_at: '2026-09-01T00:00:00Z' } })
 
     expect(await prepareBusinessSend(BASE)).toEqual({ ok: false, reason: 'opted_out' })
     expect(mockSendTemplateMessage).not.toHaveBeenCalled()
+  })
+
+  // The heart of it: the gate is asked about a CATEGORY, on the live row, at the
+  // moment of sending. A parent who left the offers list is still owed their
+  // lesson updates, and a parent who left the updates list is not thereby
+  // subscribed to offers.
+  describe('per-category consent', () => {
+    const promoRefused = { opted_out_at: null, marketing_opted_out_at: '2026-09-09T10:00:00Z' }
+    const updatesRefused = { opted_out_at: null, updates_opted_out_at: '2026-09-09T10:00:00Z' }
+
+    it('refuses a promo to a parent who stopped offers', async () => {
+      mockDb({ consent: { ...promoRefused, marketing_opt_in_at: '2026-01-01T00:00:00Z' } })
+      expect(await prepareBusinessSend({ ...BASE, category: 'promo' })).toEqual({
+        ok: false,
+        reason: 'marketing_opted_out',
+      })
+    })
+
+    it('still allows a class update to a parent who stopped offers', async () => {
+      mockDb({ claimed: [], consent: promoRefused })
+      expect(await prepareBusinessSend({ ...BASE, category: 'update' })).toEqual({ ok: true })
+    })
+
+    it('refuses a class update to a parent who stopped updates', async () => {
+      mockDb({ consent: updatesRefused })
+      expect(await prepareBusinessSend({ ...BASE, category: 'update' })).toEqual({
+        ok: false,
+        reason: 'updates_opted_out',
+      })
+    })
+
+    it('refuses a group invite to a parent who stopped updates — same service list', async () => {
+      mockDb({ consent: updatesRefused })
+      expect(await prepareBusinessSend({ ...BASE, category: 'invite' })).toEqual({
+        ok: false,
+        reason: 'updates_opted_out',
+      })
+    })
+
+    it('still allows a promo to a parent who stopped updates but opted into marketing', async () => {
+      mockDb({ claimed: [], consent: { ...updatesRefused, marketing_opt_in_at: '2026-01-01T00:00:00Z' } })
+      expect(await prepareBusinessSend({ ...BASE, category: 'promo' })).toEqual({ ok: true })
+    })
+
+    it('requires an explicit opt-in for marketing, not merely the absence of a refusal', async () => {
+      mockDb({ consent: { opted_out_at: null } })
+      expect(await prepareBusinessSend({ ...BASE, category: 'promo' })).toEqual({
+        ok: false,
+        reason: 'no_marketing_opt_in',
+      })
+    })
+
+    // A reminder must not die because the consent read blinked; a broadcast must
+    // not go out on a guess. `unknown` is a requeue, never a recorded refusal.
+    it('fails open for a reminder and closed for a broadcast when the read fails', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      mockDb({ claimed: [], consentError: { message: 'connection reset' } })
+
+      expect(await prepareBusinessSend(BASE)).toEqual({ ok: true })
+      expect(await prepareBusinessSend({ ...BASE, category: 'update' })).toEqual({
+        ok: false,
+        reason: 'unknown',
+      })
+      warnSpy.mockRestore()
+    })
+
+    // A student's own number has no parent row, so it has no consent columns of
+    // its own. It inherits nothing and refuses nothing.
+    it('allows a phone with no parent row behind it', async () => {
+      mockDb({ claimed: [], consent: null })
+      expect(await prepareBusinessSend({ ...BASE, category: 'update' })).toEqual({ ok: true })
+    })
   })
 
   it('sends the welcome notice on first contact, as an approved template', async () => {
@@ -174,7 +251,6 @@ describe('prepareBusinessSend', () => {
   // product, so an unexpected throw must not become a messaging blackout.
   it('allows the send when the DB client throws outright', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    mockIsOptedOut.mockResolvedValue(false)
     mockCreateServiceRoleClient.mockImplementation(() => {
       throw new Error('no service role key')
     })

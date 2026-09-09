@@ -709,6 +709,7 @@
         "SAVE_FAILED": "Could not save. Try again.",
         "NOT_LINKED": "Link a WhatsApp group first.",
         "CREATE_FAILED": "Could not send the invitations. Try again.",
+      "already_started": "This campaign has already been started.",
         "not_connected": "WhatsApp is not connected. Connect a number in settings first.",
         "quality_red": "Sending is paused while your number’s quality rating recovers.",
         "broadcasts_disabled": "Broadcasts are switched off for this account.",
@@ -5793,6 +5794,7 @@
     "colRecipient": "Recipient",
     "colDelivery": "Delivery",
     "resultSummary": "{sent} sent · {skipped} skipped · {failed} failed",
+    "deferredNote": "{count} recipients are over today's safe limit for your number. They go out at the next opening, automatically — nothing to do.",
     "scheduledFor": "Scheduled for {when}",
     "failedWithCode": "Failed (error {code})",
     "types": {
@@ -5811,6 +5813,7 @@
     },
     "recipientStatuses": {
       "pending": "Waiting",
+      "deferred": "Waiting for tomorrow",
       "claimed": "Sending",
       "sent": "Sent",
       "skipped": "Skipped",
@@ -5825,6 +5828,7 @@
     "stats": {
       "total": "Recipients",
       "sent": "Sent",
+      "deferred": "Waiting for tomorrow",
       "skipped": "Skipped",
       "failed": "Failed"
     },
@@ -5896,8 +5900,7 @@
       "frequency_capped": "Had one too recently",
       "per_user_limit": "WhatsApp daily limit for this person",
       "already_invited": "Already invited",
-      "no_phone": "No phone number",
-      "over_cap": "Over today's safe limit"
+      "no_phone": "No phone number"
     },
     "blocked": {
       "not_connected": "WhatsApp is not connected. Connect a number in settings first.",

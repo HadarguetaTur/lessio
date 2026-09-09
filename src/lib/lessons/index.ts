@@ -294,10 +294,9 @@ export function isValidStatusTransition(
 export async function updateLessonStatus(
   id: string,
   organizationId: string,
-  status: LessonStatus,
-  cancelReason?: string
+  status: LessonStatus
 ): Promise<void> {
-  if (status === 'cancelled') {
+  if (status === ('cancelled' as LessonStatus)) {
     throw new Error(
       '[updateLessonStatus] cancellation must go through cancelLessonCore — it is the only path that prices the cancellation and records it'
     )
@@ -316,12 +315,8 @@ export async function updateLessonStatus(
     throw new Error('validation.lessonCancelled')
   }
 
-  const update: Record<string, string | null> = { status }
-  if (status === 'cancelled') {
-    update.cancel_reason = cancelReason ?? null
-  } else {
-    update.cancel_reason = null
-  }
+  // Only delivery statuses reach here, so the cancel reason is always cleared.
+  const update: Record<string, string | null> = { status, cancel_reason: null }
 
   const { error } = await supabase
     .from('lessons')

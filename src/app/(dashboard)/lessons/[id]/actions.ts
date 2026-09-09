@@ -108,7 +108,9 @@ export async function setLessonStatus(
   }
 
   try {
-    await updateLessonStatus(lessonId, orgId, status, cancelReason)
+    // `cancelReason` is consumed by the cancelLessonCore branch above; only
+    // delivery statuses reach here, and they carry no reason.
+    await updateLessonStatus(lessonId, orgId, status)
     revalidatePath(`/lessons/${lessonId}`)
     revalidatePath('/lessons')
     revalidatePath('/dashboard')

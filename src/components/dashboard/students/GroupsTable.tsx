@@ -1,7 +1,8 @@
 'use client'
 
 import { useTransition } from 'react'
-import { PauseCircle, PlayCircle, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { MessageSquare, PauseCircle, PlayCircle, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { deleteGroup, toggleGroupStatus, updateGroup } from '@/app/(dashboard)/students/group-actions'
@@ -109,6 +110,14 @@ export function GroupsTable({ groups, students }: GroupsTableProps) {
                         action={updateAction}
                         group={group}
                       />
+
+                      <Link
+                        href={`/messages/broadcasts/new?audience=student_group:${group.id}`}
+                        className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        title={t('groups.messageParents')}
+                      >
+                        <MessageSquare size={15} />
+                      </Link>
 
                       <button
                         onClick={() => handleToggleStatus(group.id, group.status)}

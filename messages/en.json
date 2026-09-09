@@ -571,7 +571,8 @@
       "noStudentsFound": "No students found",
       "saving": "Saving...",
       "createGroup": "Create Group",
-      "namePlaceholder": "E.g. Grade 7 Math"
+      "namePlaceholder": "E.g. Grade 7 Math",
+      "messageParents": "Message the group's parents"
     },
     "parents": {
       "title": "Linked Parents",
@@ -2619,6 +2620,48 @@
         "refreshFailed": "Meta could not be reached. Try again in a minute.",
         "invalid": "Invalid request.",
         "saveFailed": "Saving failed. Try again."
+      }
+    },
+    "whatsappState": {
+      "active": {
+        "label": "WhatsApp is active",
+        "description": "Messages are being sent and received normally."
+      },
+      "limited": {
+        "label": "Active with limits",
+        "description": "Sending works, but not everything is open yet."
+      },
+      "at_risk": {
+        "label": "Needs your attention",
+        "description": "Parents are blocking or reporting your messages. If it continues, Meta will lower your daily limit."
+      },
+      "blocked_by_meta": {
+        "label": "Meta has restricted your number",
+        "description": "Some messages will not be sent until the restriction is lifted."
+      },
+      "reconnect_required": {
+        "label": "The connection has expired",
+        "description": "Messages are not being sent or received. Connect the number again."
+      },
+      "not_connected": {
+        "label": "Not connected",
+        "description": "You haven't connected a WhatsApp number yet."
+      },
+      "plan_locked": {
+        "label": "Not included in your plan",
+        "description": "Upgrade to connect WhatsApp and send reminders, payment requests and automatic replies to parents."
+      },
+      "noActionNeeded": "Nothing for you to do.",
+      "reasons": {
+        "token_invalid": "Meta no longer accepts the saved connection details.",
+        "unreachable": "We could not reach Meta on the last check, so the figures here may be out of date.",
+        "restricted": "Meta has restricted your business's WhatsApp account.",
+        "quality_red": "Your number's quality rating is low.",
+        "quality_yellow": "Your number's quality rating has dropped. Send fewer proactive messages until it recovers.",
+        "warm_up": "The number is new — Meta limits it for its first two weeks.",
+        "verification_pending": "Meta is reviewing your business verification.",
+        "unverified_business": "Your business is not verified with Meta yet, so the daily limit stays at 250 conversations.",
+        "templates_unapproved": "Some message wordings are still waiting for Meta approval — until then they only reach parents who wrote to you in the last 24 hours."
       }
     }
   },
@@ -5579,7 +5622,8 @@
     "takeoverNotice": "The bot is paused on this conversation and will not reply automatically.",
     "tabs": {
       "portal": "Portal messages",
-      "whatsapp": "WhatsApp"
+      "whatsapp": "WhatsApp",
+      "broadcasts": "Broadcasts"
     },
     "roles": {
       "parent": "Parent",
@@ -5617,6 +5661,155 @@
       "read": "Read",
       "failed": "Failed",
       "failedWithCode": "Failed ({code})"
+    }
+  },
+  "broadcasts": {
+    "title": "Broadcasts",
+    "subtitle": "One message to many parents, sent from your business number.",
+    "new": "New broadcast",
+    "newTitle": "New broadcast",
+    "newSubtitle": "Every message goes to each parent privately, one at a time.",
+    "emptyTitle": "No broadcasts yet",
+    "emptySubtitle": "Tell a whole group about a change of room, a cancelled class or a new term.",
+    "colName": "Name",
+    "colType": "Type",
+    "colStatus": "Status",
+    "colResult": "Result",
+    "colDate": "Date",
+    "colRecipient": "Recipient",
+    "colDelivery": "Delivery",
+    "resultSummary": "{sent} sent · {skipped} skipped · {failed} failed",
+    "scheduledFor": "Scheduled for {when}",
+    "failedWithCode": "Failed (error {code})",
+    "types": {
+      "class_update": "Class update",
+      "promo": "Offer",
+      "group_invite": "Group invite"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "sending": "Sending",
+      "paused": "Paused",
+      "sent": "Sent",
+      "cancelled": "Cancelled",
+      "failed": "Failed"
+    },
+    "recipientStatuses": {
+      "pending": "Waiting",
+      "claimed": "Sending",
+      "sent": "Sent",
+      "skipped": "Skipped",
+      "failed": "Failed"
+    },
+    "delivery": {
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "read": "Read",
+      "failed": "Failed"
+    },
+    "stats": {
+      "total": "Recipients",
+      "sent": "Sent",
+      "skipped": "Skipped",
+      "failed": "Failed"
+    },
+    "typeChoice": {
+      "class_update": {
+        "title": "Update about something existing",
+        "hint": "A change of time or room, a cancellation, a reminder about a lesson the family already has."
+      },
+      "promo": {
+        "title": "Offer, registration or promotion",
+        "hint": "Something new to sign up for. Only reaches parents who agreed to marketing messages."
+      }
+    },
+    "audiences": {
+      "allActive": "All active students",
+      "openDebt": "Parents with an open balance",
+      "group": "{name} ({count} students)",
+      "teacher": "{name}'s students",
+      "lesson": "The parents of this lesson"
+    },
+    "form": {
+      "name": "Name (for you only)",
+      "namePlaceholder": "Room change, Sunday guitar",
+      "type": "What kind of message is this?",
+      "audience": "Who receives it",
+      "topic": "What it is about",
+      "topicPlaceholder": "Sunday guitar class",
+      "message": "Message",
+      "messagePlaceholder": "This week the class meets in room 3 instead of room 1.",
+      "oneParagraph": "One paragraph — WhatsApp removes line breaks from this field.",
+      "schedule": "Send later (optional)",
+      "scheduleHint": "Leave empty to send now. Outside your quiet hours it waits for the morning either way.",
+      "consentAttest": "I confirm these parents agreed to receive offers and marketing messages from my business.",
+      "submitNow": "Send now",
+      "submitScheduled": "Schedule"
+    },
+    "preview": {
+      "title": "What a parent receives",
+      "he": "Hebrew",
+      "en": "English",
+      "note": "The wording around your message is the template Meta approved and cannot be edited.",
+      "orgSample": "Your business",
+      "topicSample": "the class",
+      "messageSample": "your message"
+    },
+    "side": {
+      "audienceTitle": "Audience",
+      "counting": "Counting…",
+      "willReceive": "will receive this",
+      "healthTitle": "Your number",
+      "quality": "Quality",
+      "dailyLeft": "Conversations left today",
+      "verified": "Business verified",
+      "unknown": "Not checked",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "quality": {
+      "GREEN": "High",
+      "YELLOW": "Medium",
+      "RED": "Low",
+      "UNKNOWN": "Not checked"
+    },
+    "skipReasons": {
+      "opted_out": "Opted out of all messages",
+      "updates_opted_out": "Opted out of updates",
+      "marketing_opted_out": "Opted out of offers",
+      "no_marketing_opt_in": "No marketing consent",
+      "frequency_capped": "Had one too recently",
+      "per_user_limit": "WhatsApp daily limit for this person",
+      "already_invited": "Already invited",
+      "no_phone": "No phone number",
+      "over_cap": "Over today's safe limit"
+    },
+    "blocked": {
+      "not_connected": "WhatsApp is not connected. Connect a number in settings first.",
+      "quality_red": "Meta has lowered your number’s quality rating. Broadcasts are paused until it recovers; reminders and payment requests keep going.",
+      "broadcasts_disabled": "Broadcasts are switched off for this account. Contact support.",
+      "subscription_lapsed": "Your subscription is not active, so sending is paused.",
+      "no_daily_budget": "Today’s message allowance is used up. Schedule this for tomorrow and it will go out then.",
+      "promo_needs_verification": "Offers can only be sent once your business is verified with Meta. Open the verification card in WhatsApp settings.",
+      "promotional_content_in_update": "This reads like an offer rather than a service update. Choose \"Offer, registration or promotion\" — sending it as an update breaks WhatsApp’s rules and puts your number at risk.",
+      "template_paused": "Meta paused the template this uses. It will resume once Meta restores it.",
+      "repeated_failure": "Sending stopped after several failures in a row. Check the connection."
+    },
+    "errors": {
+      "INVALID_INPUT": "Something in the form is not valid.",
+      "INVALID_AUDIENCE": "Pick who should receive this.",
+      "CONSENT_REQUIRED": "Confirm the parents agreed to marketing messages.",
+      "QUOTA_EXCEEDED": "You have used this month’s broadcast allowance.",
+      "CREATE_FAILED": "Could not save the broadcast. Try again.",
+      "UPDATE_FAILED": "Could not update the broadcast. Try again.",
+      "BLOCKED": "This broadcast cannot be sent right now."
+    },
+    "controls": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "cancel": "Cancel",
+      "confirmCancel": "Cancel this broadcast? Parents already messaged will keep their message."
     }
   }
 }

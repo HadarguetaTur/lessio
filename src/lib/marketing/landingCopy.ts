@@ -74,7 +74,7 @@ const landingEnCore = {
       moreRest: ' certainty that it is handled.',
     },
     subheadline:
-      'Lessons, parents, teachers, cancellations and billing in one operating system. When a parent writes on WhatsApp, the right part of the business updates — without copying messages or chasing balances.',
+      'Lessons, parents, teachers, cancellations and billing in one operating system. When a parent writes on WhatsApp, the right part of the business updates without copying messages or chasing balances.',
     ctaPrimary: 'Start a 30-day centre trial',
     ctaPrimaryNote: 'No credit card. Full Studio plan.',
     ctaSecondary: 'See how it works',
@@ -112,7 +112,7 @@ const landingEnCore = {
     },
     dashCard: {
       title: 'Needs attention',
-      line: 'Cancellation charge — Noa Levi',
+      line: 'Cancellation charge: Noa Levi',
       amount: '₪60',
       slot: 'The 14:00 slot is open again on the calendar',
     },
@@ -129,7 +129,7 @@ const landingEnCore = {
       },
       {
         title: 'Your policy prices it',
-        body: 'You set the rules once — say, full charge inside 24 hours, 50% inside two. The system does the math, and the parent sees the amount before confirming.',
+        body: 'Set the rules once. For example, a full charge inside 24 hours and 50% inside two. The system does the math, and the parent sees the amount before confirming.',
         image: null,
       },
       {
@@ -150,7 +150,7 @@ const landingEnCore = {
     ],
     policyCard: {
       title: 'Cancellation policy',
-      rules: ['Up to 24 hours — full charge', 'Up to 2 hours — 50%'],
+      rules: ['Up to 24 hours: full charge', 'Up to 2 hours: 50%'],
       result: 'Partial cancellation charge: ₪60',
     },
   },
@@ -163,7 +163,7 @@ const landingEnCore = {
       },
       {
         title: 'The slot stays empty',
-        body: 'You find out about the cancellation tomorrow — when it is too late to fill it.',
+        body: 'You find out about the cancellation tomorrow, when it is too late to fill it.',
       },
       {
         title: 'There is no single version of the truth',
@@ -175,11 +175,11 @@ const landingEnCore = {
   capabilities: {
     title: 'Three places to run the centre from one system',
     intro:
-      'Every lesson, payment and parent message lands in the same record — so the right person can act without rebuilding the story first.',
+      'Every lesson, payment and parent message lands in the same record, so the right person can act without rebuilding the story first.',
     items: [
       {
         title: 'Control the day-to-day',
-        body: 'Lessons, availability, cancellations and make-up sessions — tied to the right teacher, student and group.',
+        body: 'Lessons, availability, cancellations and make-up sessions, tied to the right teacher, student and group.',
         image: 'calendar-week' as const,
       },
       {
@@ -189,7 +189,7 @@ const landingEnCore = {
       },
       {
         title: 'Control parent communication',
-        body: 'Reminders, payment requests, homework and the parent portal — through official WhatsApp or one secure link, with nothing to install.',
+        body: 'Reminders, payment requests, homework and the parent portal, through official WhatsApp or one secure link, with nothing to install.',
         image: 'portal-payments' as const,
       },
     ],
@@ -221,12 +221,12 @@ const landingEnCore = {
         body: 'The WhatsApp Business Platform, with your own business number and approved templates. No unofficial automations, no browser workarounds, no risk to your number.',
       },
       {
-        title: 'You reply — the bot goes quiet',
+        title: 'When you reply, the bot goes quiet',
         body: 'Answered a parent yourself from the dashboard? The bot steps out of that conversation for six hours. No double replies.',
       },
       {
         title: 'Nothing happens without a confirmation',
-        body: 'The parent confirms before a cancellation. You approve before a charge is sent. The AI suggests — it never acts on its own.',
+        body: 'The parent confirms before a cancellation. You approve before a charge is sent. AI suggests, it never acts on its own.',
       },
       {
         title: 'Parents stay in control',
@@ -237,7 +237,7 @@ const landingEnCore = {
   audience: {
     title: 'Lessio was not built for every tutor. It was built for a business.',
     subtitle:
-      'For the moment teaching has already become a business — dozens of students, several teachers, and billing you can no longer keep in your head.',
+      'For the moment teaching has become a business: dozens of students, several teachers, and billing you can no longer keep in your head.',
     forTitle: 'Good fit',
     forBullets: [
       'Private tutor with real operational load',
@@ -268,7 +268,7 @@ const landingEnCore = {
     // Paired with PRICES_INCLUDE_VAT in src/lib/saas/pricing.ts — the company
     // is VAT-exempt, so the price shown is the price charged. Both change on
     // the day it registers for VAT.
-    vatNote: 'Prices are final — no VAT is added.',
+    vatNote: 'Prices are final. No VAT is added.',
     teachersOne: '1 teacher',
     teachersUpTo: 'Up to {count} teachers',
     teachersUnlimited: 'Unlimited teachers',
@@ -364,7 +364,7 @@ const landingEnCore = {
     faq: 'FAQ',
   },
   meta: {
-    title: 'LESSIO — The operating system for tutoring centres',
+    title: 'LESSIO | The operating system for tutoring centres',
     description:
       'Run lessons, parents, teachers, WhatsApp and billing from one system for tutoring centres. 30 days free, no credit card.',
   },
@@ -380,7 +380,7 @@ const landingHeCore = {
       moreRest: ' לדעת שהכול מטופל.',
     },
     subheadline:
-      'שיעורים, הורים, מורים, ביטולים וגבייה במערכת אחת. כשהורה כותב ב־WhatsApp, החלק הנכון בעסק מתעדכן — בלי להעתיק הודעות ובלי לרדוף אחרי יתרות.',
+      'שיעורים, הורים, מורים, ביטולים וגבייה במערכת אחת. כשהורה כותב ב־WhatsApp, החלק הנכון בעסק מתעדכן בלי להעתיק הודעות ובלי לרדוף אחרי יתרות.',
     ctaPrimary: 'פתחו 30 ימי ניסיון למרכז',
     ctaPrimaryNote: 'בלי כרטיס אשראי. מסלול סטודיו מלא.',
     ctaSecondary: 'איך זה עובד',
@@ -418,7 +418,7 @@ const landingHeCore = {
     },
     dashCard: {
       title: 'דורש טיפול',
-      line: 'חיוב ביטול — נועה לוי',
+      line: 'חיוב ביטול: נועה לוי',
       amount: '₪60',
       slot: 'המשבצת של 14:00 התפנתה ביומן',
     },
@@ -435,7 +435,7 @@ const landingHeCore = {
       },
       {
         title: 'המדיניות שלך מתמחרת',
-        body: 'קובעים את הכללים פעם אחת — למשל חיוב מלא עד 24 שעות, 50% עד שעתיים. המערכת מחשבת לבד, וההורה רואה את הסכום עוד לפני שהוא מאשר.',
+        body: 'קובעים את הכללים פעם אחת. למשל, חיוב מלא עד 24 שעות ו-50% עד שעתיים. המערכת מחשבת לבד, וההורה רואה את הסכום עוד לפני שהוא מאשר.',
         image: null,
       },
       {
@@ -449,14 +449,14 @@ const landingHeCore = {
         image: 'calendar-week' as const,
       },
       {
-        title: 'ובסוף החודש — הכול כבר שם',
+        title: 'בסוף החודש הכול כבר שם',
         body: 'החשבון של כל תלמיד נבנה לבד משיעורים, מנויים וביטולים. מאשרים, ההורה מקבל בקשת תשלום בוואטסאפ, והקבלה יוצאת לבד.',
         image: 'billing-detail' as const,
       },
     ],
     policyCard: {
       title: 'מדיניות ביטולים',
-      rules: ['עד 24 שעות — חיוב מלא', 'עד שעתיים — 50%'],
+      rules: ['עד 24 שעות: חיוב מלא', 'עד שעתיים: 50%'],
       result: 'חיוב ביטול חלקי: 60₪',
     },
   },
@@ -469,7 +469,7 @@ const landingHeCore = {
       },
       {
         title: 'המשבצת נשארת ריקה',
-        body: 'על הביטול מגלים מחר — כשכבר מאוחר מדי למלא אותה.',
+        body: 'על הביטול מגלים מחר, כשכבר מאוחר מדי למלא אותה.',
       },
       {
         title: 'אין גרסה אחת של האמת',
@@ -481,11 +481,11 @@ const landingHeCore = {
   capabilities: {
     title: 'שלושה מוקדי שליטה, מערכת אחת למרכז',
     intro:
-      'כל שיעור, תשלום והודעה מהורה נרשמים באותו הקשר — כדי שהאדם הנכון יוכל לפעול בלי לבנות מחדש את הסיפור.',
+      'כל שיעור, תשלום והודעה מהורה נרשמים באותו הקשר, כדי שהאדם הנכון יוכל לפעול בלי לבנות מחדש את הסיפור.',
     items: [
       {
         title: 'שליטה בשוטף',
-        body: 'שיעורים, זמינות, ביטולים והשלמות — מחוברים למורה, לתלמיד ולקבוצה הנכונים.',
+        body: 'שיעורים, זמינות, ביטולים והשלמות מחוברים למורה, לתלמיד ולקבוצה הנכונים.',
         image: 'calendar-week' as const,
       },
       {
@@ -495,7 +495,7 @@ const landingHeCore = {
       },
       {
         title: 'שליטה בתקשורת עם הורים',
-        body: 'תזכורות, בקשות תשלום, שיעורי בית ופורטל הורים — ב־WhatsApp הרשמי או בקישור מאובטח, בלי להתקין כלום.',
+        body: 'תזכורות, בקשות תשלום, שיעורי בית ופורטל הורים זמינים ב־WhatsApp הרשמי או בקישור מאובטח, בלי להתקין כלום.',
         image: 'portal-payments' as const,
       },
     ],
@@ -504,7 +504,7 @@ const landingHeCore = {
     title: 'לא מחליפים שיטה ביום אחד. מתחילים ממה שכבר עובד.',
     intro: 'מעבירים את המרכז בהדרגה. Lessio עובדת גם לפני חיבור WhatsApp, כך ששלב ההגדרה הארוך לא עוצר את שאר העסק.',
     steps: [
-      ['מייבאים את הבסיס', 'תלמידים, הורים ושיעורים נכנסים מאקסל — לא בהקלדה מחדש.'],
+      ['מייבאים את הבסיס', 'תלמידים, הורים ושיעורים נכנסים מאקסל, לא בהקלדה מחדש.'],
       ['מגדירים את כללי המרכז', 'מורים, זמינות, מדיניות ביטולים והגדרות גבייה נקבעים פעם אחת.'],
       ['מפעילים בהדרגה', 'מתחילים ביומן ובחיובים; מחברים WhatsApp כשמוכנים.'],
     ],
@@ -516,7 +516,7 @@ const landingHeCore = {
       'קבלות דרך ספקים ישראליים מורשים',
       'בוט שעונה בעברית ובאנגלית',
       'חגי ישראל נטענים לבד ליומן',
-      'מדיניות ביטולים של עולם השיעורים — לא של חנות',
+      'מדיניות ביטולים של עולם השיעורים, לא של חנות',
     ],
   },
   trust: {
@@ -527,12 +527,12 @@ const landingHeCore = {
         body: 'WhatsApp Business Platform עם מספר עסקי משלכם ותבניות מאושרות. בלי אוטומציות לא-רשמיות, בלי דפדפן פתוח, בלי סיכון למספר.',
       },
       {
-        title: 'עניתם בעצמכם — הבוט שותק',
+        title: 'עניתם בעצמכם? הבוט שותק',
         body: 'עניתם להורה ידנית מהמערכת? הבוט יוצא מהשיחה לשש שעות. בלי תשובות כפולות.',
       },
       {
         title: 'שום דבר לא קורה בלי אישור',
-        body: 'ההורה מאשר לפני ביטול. אתם מאשרים לפני שחיוב נשלח. ה-AI מציע — אף פעם לא מבצע לבד.',
+        body: 'ההורה מאשר לפני ביטול. אתם מאשרים לפני שחיוב נשלח. ה-AI מציע, אף פעם לא מבצע לבד.',
       },
       {
         title: 'ההורים נשארים בשליטה',
@@ -543,7 +543,7 @@ const landingHeCore = {
   audience: {
     title: 'Lessio לא נבנתה לכל מורה. היא נבנתה לעסק.',
     subtitle:
-      'לרגע שבו ההוראה כבר הפכה לעסק — עשרות תלמידים, כמה מורים, וגבייה שאי אפשר להחזיק בראש.',
+      'לרגע שבו ההוראה כבר הפכה לעסק: עשרות תלמידים, כמה מורים וגבייה שאי אפשר להחזיק בראש.',
     forTitle: 'מתאים',
     forBullets: [
       'מורה פרטי עם עומס תפעולי אמיתי',
@@ -558,7 +558,7 @@ const landingHeCore = {
       'לא מחפש לשנות את הדרך שבה העסק עובד',
     ] as const,
     closing:
-      'לא כל עסק צריך מערכת כזו. אבל עסק שכבר רץ — לא אמור להמשיך להחזיק את עצמו ידנית.',
+      'לא כל עסק צריך מערכת כזו. אבל עסק שכבר רץ לא אמור להמשיך להחזיק את עצמו ידנית.',
   },
   pricing: {
     title: 'מחיר אחד לעסק, לפי מספר המורים',
@@ -568,10 +568,10 @@ const landingHeCore = {
     yearlyLabel: 'שנתי',
     perMonth: '/ לחודש',
     perYear: '/ לשנה',
-    yearlyNote: 'תשלום שנתי — חודשיים מתנה.',
+    yearlyNote: 'בתשלום שנתי מקבלים חודשיים במתנה.',
     // ראה PRICES_INCLUDE_VAT ב-src/lib/saas/pricing.ts — עוסק פטור, ולכן
     // המחיר המוצג הוא המחיר הנגבה. השניים משתנים יחד ביום המעבר לעוסק מורשה.
-    vatNote: 'המחירים סופיים — ללא מע"מ.',
+    vatNote: 'המחירים סופיים, ללא מע"מ.',
     teachersOne: 'מורה אחד',
     teachersUpTo: 'עד {count} מורים',
     teachersUnlimited: 'מורים ללא הגבלה',
@@ -667,7 +667,7 @@ const landingHeCore = {
     faq: 'שאלות',
   },
   meta: {
-    title: 'LESSIO — מערכת ההפעלה למרכזי למידה',
+    title: 'LESSIO | מערכת ההפעלה למרכזי למידה',
     description:
       'שיעורים, הורים, מורים, WhatsApp וגבייה במערכת אחת למרכזי למידה. 30 יום ניסיון ללא כרטיס אשראי.',
   },

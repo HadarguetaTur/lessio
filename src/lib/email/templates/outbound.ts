@@ -110,8 +110,22 @@ function shell(opts: {
 </html>`
 }
 
+/** One line, one link: the way out has to be as easy as the way in. */
+function unsubFooter(url: string | undefined, locale: Locale): string {
+  if (locale === 'en') {
+    const base = 'You got this because you replied to our email.'
+    return url
+      ? `${base} <a href="${esc(url)}" style="color:#9ca3af;">One click and we stop</a>.`
+      : `${base} Not relevant? Reply "remove" and we will not write again.`
+  }
+  const base = 'קיבלת את המייל הזה כי ענית למייל שלנו.'
+  return url
+    ? `${base} <a href="${esc(url)}" style="color:#9ca3af;">בלחיצה אחת אנחנו מפסיקים</a>.`
+    : `${base} לא רלוונטי? השיבו "הסר" ולא נכתוב שוב.`
+}
+
 export function demoEmail(
-  vars: { firstName: string | null; signupUrl: string },
+  vars: { firstName: string | null; signupUrl: string; unsubscribeUrl?: string },
   locale: Locale
 ): SaasEmail {
   if (locale === 'en') {
@@ -138,7 +152,7 @@ export function demoEmail(
         signupUrl: vars.signupUrl,
         walkthrough: 'Prefer a 15-minute walkthrough on your own schedule first? Just reply to this email with a time that suits you.',
         signoff: 'Hadar<br><span style="color:#6b7280;font-size:14px;">Founder, Lessio</span>',
-        footer: 'You got this because you replied to our email. Not relevant? Reply "remove" and we will not write again.',
+        footer: unsubFooter(vars.unsubscribeUrl, 'en'),
       }),
     }
   }
@@ -166,7 +180,7 @@ export function demoEmail(
       signupUrl: vars.signupUrl,
       walkthrough: 'מעדיפה קודם סיור קצר של 15 דקות איתי? פשוט השיבי למייל הזה עם שעה שנוחה לך.',
       signoff: 'הדר<br><span style="color:#6b7280;font-size:14px;">מייסדת, Lessio</span>',
-      footer: 'קיבלת את המייל הזה כי ענית למייל שלנו. לא רלוונטי? השיבי "הסר" ולא נכתוב שוב.',
+      footer: unsubFooter(vars.unsubscribeUrl, 'he'),
     }),
   }
 }

@@ -65,7 +65,7 @@ const BOUNCE_BODY = /(address not found|user unknown|does not exist|no such user
 const AUTO_SUBJECT = /^(re:\s*)?(auto(matic)?[ -]?reply|automatic response|out of (the )?office|תשובה אוטומטית|מענה אוטומטי)/i
 const AUTO_BODY = /(out of (the )?office|currently (away|out of)|on (annual|parental|maternity) leave|will (be back|return|respond when)|limited access to (my )?email|auto(matic)?[ -]?reply|תשובה אוטומטית|מענה אוטומטי|מחוץ למשרד|בחופשה|אחזור ב|אשוב ב)/i
 
-const UNSUBSCRIBE = /(\bunsubscribe\b|\bremove me\b|\bopt[ -]?out\b|\bdo not (email|contact|write)\b|\bdon'?t (email|contact|write)\b|\bstop (emailing|sending|contacting)\b|^stop[.!]?$|\btake me off\b|הסר אותי|הסירו אותי|תסירו אותי|להסיר אותי|תפסיקו|אל תשלחו|אל תפנו|הסרה מרשימת|להסרה)/i
+const UNSUBSCRIBE = /(\bunsubscribe\b|\bremove me\b|\bopt[ -]?out\b|\bdo not (email|contact|write)\b|\bdon'?t (email|contact|write)\b|\bstop (emailing|sending|contacting)\b|^stop[.!]?$|\btake me off\b|הסר אותי|הסירו אותי|הסירי אותי|תסירו אותי|תסירי אותי|תסיר אותי|להסיר אותי|תורידו אותי|תורידי אותי|להסרה מהרשימה|תפסיקו|אל תשלחו|אל תפנו|הסרה מרשימת|להסרה)/i
 
 const NEGATIVE: RegExp[] = [
   /\bnot interested\b/i,

@@ -9,7 +9,7 @@
 
 import { z } from 'zod'
 import type { RawRow } from '@/lib/import/parseFile'
-import type { OutboundLocale } from './types'
+import type { OutboundLocale, ProspectGender } from './types'
 
 export const PROSPECT_COLUMN_ALIASES: Record<string, string[]> = {
   email: ['email', 'e-mail', 'mail', 'email address', 'אימייל', 'מייל', 'דוא"ל', 'דואל'],
@@ -19,6 +19,7 @@ export const PROSPECT_COLUMN_ALIASES: Record<string, string[]> = {
   company: ['company', 'business', 'studio', 'organization', 'org', 'חברה', 'עסק', 'סטודיו', 'ארגון', 'בית ספר'],
   phone: ['phone', 'phone_number', 'tel', 'mobile', 'טלפון', 'נייד'],
   locale: ['locale', 'language', 'lang', 'שפה'],
+  gender: ['gender', 'sex', 'מגדר', 'מין'],
   personal_line: ['personal_line', 'personal line', 'personalization', 'personalisation', 'icebreaker', 'שורה אישית', 'פתיח', 'משפט אישי'],
   subject_area: ['subject_area', 'subject area', 'subject', 'niche', 'field', 'תחום', 'מקצוע', 'נישה'],
   source_url: ['source_url', 'source url', 'url', 'website', 'link', 'קישור', 'אתר'],
@@ -36,6 +37,7 @@ export interface ProspectInput {
   company: string | null
   phone: string | null
   locale: OutboundLocale
+  gender: ProspectGender | null
   personal_line: string | null
   subject_area: string | null
   source_url: string | null
@@ -55,6 +57,15 @@ function str(value: unknown): string | null {
   if (value == null) return null
   const s = String(value).trim()
   return s === '' ? null : s
+}
+
+/** Hebrew needs the person's gender to address them; unknown keeps the copy neutral. */
+function toGender(value: string | null): ProspectGender | null {
+  if (!value) return null
+  const v = value.trim().toLowerCase()
+  if (['f', 'female', 'woman', 'נ', 'נקבה', 'אישה'].includes(v)) return 'f'
+  if (['m', 'male', 'man', 'ז', 'זכר', 'גבר'].includes(v)) return 'm'
+  return null
 }
 
 function toLocale(value: string | null): OutboundLocale {
@@ -121,6 +132,7 @@ export function normalizeProspectRows(headers: string[], rows: RawRow[]): Normal
       company: fields.company ?? null,
       phone: fields.phone ?? null,
       locale: toLocale(fields.locale ?? null),
+      gender: toGender(fields.gender ?? null),
       personal_line: fields.personal_line ?? null,
       subject_area: fields.subject_area ?? null,
       source_url: fields.source_url ?? null,

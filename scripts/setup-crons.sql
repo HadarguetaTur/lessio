@@ -73,6 +73,12 @@ end $$;
 --                                 route re-checks the local window itself).
 --   outbound-replies           — reads the outreach inboxes for replies.
 --                                 Every 5 minutes, all day.
+--   outbound-followups         — the second and third touch for prospects who
+--                                 already answered, inside the same Gmail
+--                                 thread. Four times an hour, same window.
+--   outbound-openers           — drafts the AI opening line for freshly
+--                                 imported prospects. Every 5 minutes; the
+--                                 draft still waits for a person to approve it.
 --
 -- All send the same SERVICE_KEY_PLACEHOLDER bearer token. The app never sees
 -- the token itself, only its SHA-256, so set ALL of these env vars to the hex
@@ -87,7 +93,9 @@ declare
     {"name": "saas-renew",                  "cron": "*/15 2-3 * * *","path": "/api/internal/saas/renew"},
     {"name": "saas-lifecycle-emails",       "cron": "0 8 * * *",     "path": "/api/internal/saas/lifecycle-emails"},
     {"name": "outbound-send",               "cron": "*/10 5-15 * * 0-4", "path": "/api/internal/outbound/run-send"},
-    {"name": "outbound-replies",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-replies"}
+    {"name": "outbound-replies",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-replies"},
+    {"name": "outbound-followups",          "cron": "5,20,35,50 5-15 * * 0-4", "path": "/api/internal/outbound/run-followups"},
+    {"name": "outbound-openers",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-openers"}
   ]'::jsonb;
   job jsonb;
 begin

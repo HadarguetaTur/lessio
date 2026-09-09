@@ -24,6 +24,8 @@ export interface ReplyRunResult {
   mailboxes: number
   fetched: number
   duplicates: number
+  /** Senders on the do-not-email list; nothing about them is stored. */
+  suppressed: number
   matched: number
   unmatched: number
   interested: number
@@ -32,7 +34,7 @@ export interface ReplyRunResult {
 
 export async function runReplyPoll(opts: { now?: Date } = {}): Promise<ReplyRunResult> {
   const now = opts.now ?? new Date()
-  const result: ReplyRunResult = { mailboxes: 0, fetched: 0, duplicates: 0, matched: 0, unmatched: 0, interested: 0, errors: [] }
+  const result: ReplyRunResult = { mailboxes: 0, fetched: 0, duplicates: 0, suppressed: 0, matched: 0, unmatched: 0, interested: 0, errors: [] }
 
   const boxes = (await listMailboxes()).filter((b) => b.is_active)
   result.mailboxes = boxes.length
@@ -43,6 +45,7 @@ export async function runReplyPoll(opts: { now?: Date } = {}): Promise<ReplyRunR
       for (const o of outcomes) {
         result.fetched++
         if (o.duplicate) result.duplicates++
+        else if ('suppressed' in o) result.suppressed++
         else if (!o.matched) result.unmatched++
         else {
           result.matched++
@@ -104,6 +107,7 @@ async function pollMailbox(box: Mailbox, now: Date): Promise<IngestReplyResult[]
         transportMessageId: msg.id,
         transportThreadId: msg.threadId,
         inReplyTo: msg.inReplyTo,
+        rfcMessageId: msg.rfcMessageId,
         receivedAt: msg.receivedAt,
         mailboxId: box.id,
       })

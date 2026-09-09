@@ -1806,6 +1806,8 @@
       "title": "תזכורות",
       "lessonReminder": "תזכורת לפני שיעור",
       "paymentReminder": "תזכורת לחוב פתוח",
+      "homeworkReminder": "תזכורת שיעורי בית",
+      "examGoodLuck": "הודעת בהצלחה לפני מבחן",
       "hoursBeforeLesson": "שעות לפני שיעור",
       "daysAfterInvoice": "ימים לאחר חיוב",
       "notificationLog": "יומן התראות",
@@ -2015,12 +2017,19 @@
       "subtitle": "בחר אילו פלואים פעילים עבור הארגון שלך",
       "sendLabel": "שליחה",
       "hoursBefore": "{h} שעות לפני",
+      "examMorningHourLabel": "שעת שליחה ביום המבחן",
+      "examMorningHourOption": "{h}:00",
+      "examHoursBeforeLabel": "כשידועה שעת המבחן",
       "save": "שמור הגדרות",
       "saving": "שומר…",
       "flows": {
         "automation_lesson_reminder_enabled": {
           "label": "תזכורת לשיעור",
           "description": "שליחת הודעת WhatsApp להורה לפני השיעור"
+        },
+        "automation_exam_good_luck_enabled": {
+          "label": "הודעת בהצלחה לפני מבחן",
+          "description": "הודעה לתלמיד ביום המבחן — בשעה שנבחרה, או לפני שעת המבחן כשהיא ידועה"
         },
         "automation_cancellation_enabled": {
           "label": "ביטול שיעור דרך WhatsApp",
@@ -2544,6 +2553,72 @@
         "scopeRequired": "יש לבחור לפחות הרשאה אחת",
         "createFailed": "יצירת המפתח נכשלה. נסו שוב.",
         "revokeFailed": "ביטול המפתח נכשל. נסו שוב."
+      }
+    },
+    "whatsappTrust": {
+      "title": "אימות ואמינות",
+      "subtitle": "איפה המספר שלכם עומד מול מטא, ומה כל שלב פותח.",
+      "quality": {
+        "GREEN": "איכות: גבוהה",
+        "YELLOW": "איכות: בינונית",
+        "RED": "איכות: נמוכה",
+        "UNKNOWN": "איכות: עדיין לא נבדקה"
+      },
+      "limitPerDay": "עד {n} שיחות ביום",
+      "limitUnknown": "המכסה היומית עדיין לא נבדקה",
+      "limitUnlimited": "שיחות ללא הגבלה ביום",
+      "warmUp": "מספר חדש: {days} הימים הראשונים מוגבלים",
+      "qualityRedHint": "הורים חוסמים או מדווחים על הודעות. תפוצות מושהות עד שהדירוג יתאושש; תזכורות ובקשות תשלום ממשיכות.",
+      "qualityYellowHint": "חלק מההורים מדווחים על הודעות. שמרו על תפוצות קטנות ורלוונטיות עד שהדירוג יחזור לגבוה.",
+      "refresh": "בדיקה עכשיו",
+      "lastChecked": "נבדק לאחרונה {when}",
+      "rungs": {
+        "connected": {
+          "title": "מחובר",
+          "detail": "תזכורות, בקשות תשלום ותשובות עובדות."
+        },
+        "verified": {
+          "title": "עסק מאומת",
+          "detail": "מעלה את המכסה היומית מ-250 ל-2,000 שיחות ופותח תפוצות שיווקיות וקבוצות ואטסאפ מקושרות.",
+          "done": "מאומת במטא. מכסה יומית 2,000 ומעלה.",
+          "howto": "מטא מקבלת מסמכים רק מנציג של העסק, ב-Security Centre. הכינו את אלה קודם, ואז הגישו שם. האישור לוקח בדרך כלל כמה ימים.",
+          "openSecurityCentre": "פתיחת Security Centre",
+          "noUpload": "Lessio אף פעם לא אוספת את המסמכים שלכם. מטא לא מאפשרת לספק תוכנה להגיש אימות בשמכם."
+        },
+        "oba": {
+          "title": "חשבון עסקי רשמי (וי ירוק)",
+          "detail": "הדרך היחידה לפתוח קבוצות ואטסאפ אמיתיות מתוך Lessio. מטא מעניקה אותו לעסקים עם נוכחות ציבורית.",
+          "done": "אושר. אפשר ליצור קבוצות מתוך Lessio.",
+          "reqVerified": "עסק מאומת",
+          "reqAge": "30 יום על הפלטפורמה (נותרו {days})",
+          "reqName": "שם תצוגה מאושר",
+          "notability": "מטא מחפשת גם אתר, פרופילים ברשתות ואזכורים בתקשורת. דחייה אפשר להגיש מחדש אחרי 30 יום.",
+          "request": "הגשת בקשה ב-WhatsApp Manager"
+        }
+      },
+      "checklist": {
+        "legal_document": {
+          "title": "מסמך רישום של העסק",
+          "hint": "תעודת התאגדות או תעודת עוסק עם שם העסק המדויק."
+        },
+        "address_proof": {
+          "title": "הוכחת כתובת",
+          "hint": "חשבון חשמל או ארנונה עדכני על שם העסק, עם הכתובת."
+        },
+        "website_or_domain": {
+          "title": "אתר או דומיין",
+          "hint": "אתר שמציין את שם העסק, או מייל על דומיין משלכם."
+        },
+        "matching_name": {
+          "title": "אותו שם בכל מקום",
+          "hint": "השם במסמכים, ב-Business Manager ובפרופיל הוואטסאפ חייב להיות זהה."
+        }
+      },
+      "errors": {
+        "ownerOnly": "רק בעל העסק יכול לעשות זאת.",
+        "refreshFailed": "לא הצלחנו להגיע למטא. נסו שוב בעוד דקה.",
+        "invalid": "בקשה לא תקינה.",
+        "saveFailed": "השמירה נכשלה. נסו שוב."
       }
     }
   },
@@ -3616,7 +3691,9 @@
         "columns": "עמודות: email (חובה), first_name, last_name, company, phone, locale, personal_line, subject_area, source_url. כל עמודה אחרת נשמרת כ-metadata.",
         "needCampaign": "קודם יוצרים קמפיין.",
         "submit": "ייבוא",
-        "result": "{inserted} בתור · {suppressed} חסומים · {duplicates} כבר מוכרים · {invalid} לא תקינים"
+        "result": "{inserted} בתור · {suppressed} חסומים · {duplicates} כבר מוכרים · {invalid} לא תקינים",
+        "generateOpeners": "שה-AI ינסח שורת פתיחה",
+        "generateOpenersHint": "לשורות שיש בהן אתר, עמוד או תיאור. כל ניסוח ממתין לאישור שלך למטה לפני שנשלח משהו."
       },
       "suppression": {
         "title": "רשימת אל-תשלחו",
@@ -3696,6 +3773,31 @@
         "testTo": "כתובת לבדיקה",
         "sendTest": "שליחת מייל בדיקה",
         "testSent": "נשלח אל {to}"
+      },
+      "opener": {
+        "title": "שורות פתיחה לאישור",
+        "description": "מנוסחות ממה שכל לקוח פוטנציאלי מפנה אליו. שום דבר לא נשלח עד שתאשרי. אפשר לערוך חופשי, או לדלג ולשלוח בלי פתיח.",
+        "empty": "אין מה לאשר.",
+        "source": "מקור",
+        "placeholder": "המשפט שבא אחרי \"היי <שם>,\"",
+        "approve": "אישור ולתור",
+        "regenerate": "ניסוח מחדש",
+        "skip": "לשלוח בלי פתיח",
+        "saveFailed": "השמירה נכשלה.",
+        "status": {
+          "pending": "ממתין ל-AI",
+          "generated": "ניסוח מוכן",
+          "failed": "הניסוח נכשל",
+          "approved": "אושר",
+          "none": "בלי פתיח"
+        },
+        "errors": {
+          "NO_API_KEY": "אין מפתח AI בפלטפורמה, אז את השורה הזו צריך לכתוב ידנית.",
+          "NO_SOURCE": "לא הצלחנו לקרוא את המקור. אפשר לכתוב את השורה ידנית, או לדלג.",
+          "MODEL_FAILED": "המודל לא ענה. נסי שוב עוד רגע.",
+          "EMPTY": "המודל לא החזיר כלום.",
+          "TOO_LONG": "המודל כתב פסקה במקום משפט."
+        }
       }
     },
     "leads": {
@@ -3976,6 +4078,7 @@
         "titlePlaceholder": "נושא המבחן",
         "descriptionPlaceholder": "תיאור / פרטים נוספים (רשות)",
         "examDate": "תאריך המבחן",
+        "examTime": "שעת המבחן (רשות)",
         "upload": "צירוף קובץ (עד {maxMb}MB, רשות)",
         "submit": "שליחת דיווח",
         "submitting": "שולח...",
@@ -5136,6 +5239,7 @@
         "subject": "מקצוע",
         "title": "כותרת / נושא",
         "examDate": "תאריך מבחן",
+        "examTime": "שעה (רשות)",
         "score": "ציון",
         "maxScore": "מהמקסימום",
         "notes": "הערות (רשות)",
@@ -5235,7 +5339,23 @@
     "dayOffRejected": "בקשת החופש שלך נדחתה",
     "supportTicketReply": "קיבלת תשובה מהתמיכה",
     "supportTicketResolved": "הפנייה שלך נסגרה",
-    "devIssueFixed": "התקלה שדיווחת עליה תוקנה"
+    "devIssueFixed": "התקלה שדיווחת עליה תוקנה",
+    "waHealthFlagged": "מטא סימנה את מספר הוואטסאפ שלכם",
+    "waHealthFlaggedBody": "הורים חוסמים או מדווחים על הודעות. השליחה מוגבלת עד שהדירוג יתאושש.",
+    "waHealthUnflagged": "מספר הוואטסאפ שלכם חזר למצב תקין",
+    "waHealthUnflaggedBody": "מטא הסירה את הסימון מהמספר.",
+    "waHealthTierDown": "המכסה היומית בוואטסאפ ירדה ל-{tier}",
+    "waHealthTierDownBody": "מטא הורידה את מספר השיחות שאפשר לפתוח ביום בגלל דירוג איכות נמוך.",
+    "waHealthTierUp": "המכסה היומית בוואטסאפ עלתה ל-{tier}",
+    "waHealthTierUpBody": "מטא הגדילה את מספר השיחות שאפשר לפתוח ביום.",
+    "waHealthRestricted": "מטא הגבילה את חשבון הוואטסאפ שלכם",
+    "waHealthRestrictedBody": "{detail}",
+    "waHealthVerified": "העסק שלכם אומת במטא",
+    "waHealthVerifiedBody": "המכסה היומית בוואטסאפ עולה ל-2,000 שיחות.",
+    "waNameRejected": "מטא דחתה את שם התצוגה בוואטסאפ",
+    "waNameRejectedBody": "{detail}",
+    "waTemplatePaused": "מטא השהתה תבנית וואטסאפ",
+    "waTemplatePausedBody": "התבנית {template} במצב {status}. הודעות שמשתמשות בה לא יישלחו עד שתתאושש."
   },
   "notFound": {
     "title": "הדף לא נמצא",

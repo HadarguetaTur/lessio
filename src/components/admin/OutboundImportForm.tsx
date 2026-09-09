@@ -62,6 +62,20 @@ export function OutboundImportForm({ campaigns, action }: { campaigns: Campaign[
         {t('import.columns')}
       </p>
 
+      <label className="mb-4 flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="generateOpeners"
+          defaultChecked
+          disabled={noCampaign}
+          className="mt-0.5 size-4 rounded border-input accent-primary"
+        />
+        <span>
+          {t('import.generateOpeners')}
+          <span className="block text-xs text-muted-foreground">{t('import.generateOpenersHint')}</span>
+        </span>
+      </label>
+
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <div className="text-sm">
           {noCampaign && <span className="text-muted-foreground">{t('import.needCampaign')}</span>}

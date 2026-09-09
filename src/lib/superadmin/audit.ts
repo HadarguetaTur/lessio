@@ -35,6 +35,8 @@ export type AdminAuditAction =
   | 'outbound.suppression_add'
   | 'outbound.mailbox_save'
   | 'outbound.mailbox_test'
+  | 'outbound.opener_approve'
+  | 'outbound.opener_regenerate'
 
 export type AdminAuditEntry = {
   id: string

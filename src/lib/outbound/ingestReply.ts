@@ -19,9 +19,11 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { classifyReply } from './classifyReply'
 import { nextStatus } from './transitions'
-import { addSuppression, normalizeEmail } from './suppressions'
-import { addLeadEvent, markLeadLost, upsertLeadFromProspect } from './leads'
+import { addSuppression, isSuppressed, normalizeEmail } from './suppressions'
+import { addLeadEvent, upsertLeadFromProspect } from './leads'
 import { sendDemoEmailOnce, type DemoEmailOutcome } from './demoEmail'
+import { scheduleFollowup } from './followups'
+import { eraseProspectByEmail } from './unsubscribe'
 import type { Prospect, ProspectStatus, ReplyClassification } from './types'
 
 export interface IngestReplyInput {
@@ -32,12 +34,16 @@ export interface IngestReplyInput {
   transportThreadId?: string | null
   inReplyTo?: string | null
   receivedAt?: string | null
+  /** The reply's own RFC Message-ID; a follow-up quotes it to stay in-thread. */
+  rfcMessageId?: string | null
   /** The outbound_mailboxes row whose inbox received it. */
   mailboxId?: string | null
 }
 
 export type IngestReplyResult =
   | { duplicate: true }
+  /** The sender is on the do-not-email list. Nothing was stored. */
+  | { duplicate: false; suppressed: true }
   | { duplicate: false; matched: false; classification: 'unmatched'; messageId: string }
   | {
       duplicate: false
@@ -55,6 +61,12 @@ export async function ingestReply(input: IngestReplyInput): Promise<IngestReplyR
   const db = createServiceRoleClient()
   const fromEmail = normalizeEmail(input.fromEmail)
 
+  // 0. Someone who asked out keeps nothing here, not even a message row. The
+  //    poller overlaps its windows, so the reply that triggered the erase comes
+  //    back around on the next run; storing it would re-create the address we
+  //    just promised to delete.
+  if (await isSuppressed(fromEmail)) return { duplicate: false, suppressed: true }
+
   // 1. Log first. The unique index is the idempotency key.
   const { data: inserted, error: insertErr } = await db
     .from('outbound_messages')
@@ -67,6 +79,7 @@ export async function ingestReply(input: IngestReplyInput): Promise<IngestReplyR
       transport_message_id: input.transportMessageId,
       transport_thread_id: input.transportThreadId ?? null,
       in_reply_to: input.inReplyTo ?? null,
+      rfc_message_id: input.rfcMessageId ?? null,
       from_email: fromEmail,
       subject: input.subject ?? null,
       body: input.bodyText.slice(0, 20_000),
@@ -94,16 +107,39 @@ export async function ingestReply(input: IngestReplyInput): Promise<IngestReplyR
     .update({ prospect_id: prospect.id, classification, body: snippet || input.bodyText.slice(0, 20_000) })
     .eq('id', messageId)
 
+  const now = new Date()
+  const nowIso = now.toISOString()
   const target = nextStatus(prospect.status, classification)
-  const nowIso = new Date().toISOString()
+
+  // A real answer cancels whatever follow-up was queued: the point of the
+  // follow-up was to get one. An auto-reply is not an answer and changes
+  // nothing — the person has still not read it.
+  const isRealReply = classification !== 'auto_reply'
+  const followupFields = isRealReply
+    ? {
+        last_inbound_at: nowIso,
+        next_followup_at:
+          target === 'replied' ? scheduleFollowup('replied', 0, now)?.toISOString() ?? null : null,
+        followup_claimed_at: null,
+        followup_stage: target === 'replied' ? 0 : prospect.followup_stage,
+      }
+    : {}
 
   if (target) {
     await db
       .from('outbound_prospects')
-      .update({ status: target, replied_at: prospect.replied_at ?? nowIso, last_reply_class: classification })
+      .update({
+        status: target,
+        replied_at: prospect.replied_at ?? nowIso,
+        last_reply_class: classification,
+        ...followupFields,
+      })
       .eq('id', prospect.id)
-  } else if (classification !== 'auto_reply') {
-    await db.from('outbound_prospects').update({ last_reply_class: classification }).eq('id', prospect.id)
+  } else if (isRealReply) {
+    await db
+      .from('outbound_prospects')
+      .update({ last_reply_class: classification, ...followupFields })
+      .eq('id', prospect.id)
   }
 
   const status = target ?? prospect.status
@@ -141,8 +177,9 @@ export async function ingestReply(input: IngestReplyInput): Promise<IngestReplyR
       await addSuppression({ email: prospect.email, reason: 'replied_negative', source: `reply:${messageId}` })
       break
     case 'unsubscribed':
-      await addSuppression({ email: prospect.email, reason: 'unsubscribed', source: `reply:${messageId}` })
-      if (prospect.platform_lead_id) await markLeadLost(prospect.platform_lead_id, 'unsubscribed')
+      // Not a flag: the address stays on the suppression list and everything
+      // else about the person — this reply included — is deleted.
+      await eraseProspectByEmail(prospect.email, `reply:${messageId}`)
       break
     case 'bounced':
       await addSuppression({ email: prospect.email, reason: 'bounced', source: `reply:${messageId}` })

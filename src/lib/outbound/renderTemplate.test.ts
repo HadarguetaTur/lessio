@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderCampaignMessage, renderTemplate, textToHtml } from './renderTemplate'
-import type { Campaign, Prospect } from './types'
+import { makeProspect } from './testFixtures'
+import type { Campaign } from './types'
 
 describe('renderTemplate', () => {
   it('substitutes flat and nested keys', () => {
@@ -35,19 +36,32 @@ describe('renderCampaignMessage', () => {
     id: 'c', name: 'x', subject: 'שאלה על {{company}}', body_text: 'היי {{first_name}},\n\n{{personal_line}}\n\nבנינו משהו.',
     locale: 'he', is_active: true, created_at: '', updated_at: '',
   }
-  const prospect = {
-    id: 'p', campaign_id: 'c', email: 'dana@example.com', first_name: 'דנה', last_name: null, company: 'סטודיו דנה',
-    phone: null, locale: 'he', personal_line: 'ראיתי שאת מכינה לבגרות במתמטיקה.', subject_area: null, source_url: null,
-    metadata: {}, status: 'claimed', send_attempts: 0, claimed_at: null, sent_at: null, replied_at: null,
-    last_reply_class: null, platform_lead_id: null, demo_email_sent_at: null, import_batch_id: null, notes: null,
-    created_at: '', updated_at: '',
-  } satisfies Prospect
+  const prospect = makeProspect({
+    id: 'p', campaign_id: 'c', company: 'סטודיו דנה', status: 'claimed', send_attempts: 0, sent_at: null,
+    personal_line: 'ראיתי שאת מכינה לבגרות במתמטיקה.',
+  })
 
   it('renders subject, text and html', () => {
     const m = renderCampaignMessage(campaign, prospect)
     expect(m.subject).toBe('שאלה על סטודיו דנה')
-    expect(m.bodyText).toBe('היי דנה,\n\nראיתי שאת מכינה לבגרות במתמטיקה.\n\nבנינו משהו.')
+    expect(m.bodyText).toContain('היי דנה,\n\nראיתי שאת מכינה לבגרות במתמטיקה.\n\nבנינו משהו.')
     expect(m.bodyHtml).toContain('dir="rtl"')
     expect(m.bodyHtml).toContain('ראיתי שאת מכינה')
+  })
+
+  it('every cold email carries a way out', () => {
+    const m = renderCampaignMessage(campaign, prospect)
+    const path = `/u/${prospect.unsubscribe_token}`
+    expect(m.bodyText).toContain(path)
+    expect(m.bodyHtml).toContain(path)
+    // Once. A second footer would read as a mistake.
+    expect(m.bodyText.split(path)).toHaveLength(2)
+  })
+
+  it('a body that places the link itself keeps control of it', () => {
+    const withLink: Campaign = { ...campaign, body_text: 'היי {{first_name}},\n\nלהסרה: {{unsubscribe_url}}' }
+    const m = renderCampaignMessage(withLink, prospect)
+    expect(m.bodyText.split(prospect.unsubscribe_token)).toHaveLength(2)
+    expect(m.bodyText).not.toContain('לא רלוונטי?')
   })
 })

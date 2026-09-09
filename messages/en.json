@@ -1806,6 +1806,8 @@
       "title": "Reminders",
       "lessonReminder": "Lesson reminder",
       "paymentReminder": "Payment debt reminder",
+      "homeworkReminder": "Homework reminder",
+      "examGoodLuck": "Exam good-luck message",
       "hoursBeforeLesson": "Hours before lesson",
       "daysAfterInvoice": "Days after invoice",
       "notificationLog": "Notification Log",
@@ -2015,12 +2017,19 @@
       "subtitle": "Choose which flows are active for your business",
       "sendLabel": "Send",
       "hoursBefore": "{h} hours before",
+      "examMorningHourLabel": "Send at, on the exam day",
+      "examMorningHourOption": "{h}:00",
+      "examHoursBeforeLabel": "When the exam time is known",
       "save": "Save settings",
       "saving": "Saving…",
       "flows": {
         "automation_lesson_reminder_enabled": {
           "label": "Lesson reminder",
           "description": "Send the parent a WhatsApp message before the lesson"
+        },
+        "automation_exam_good_luck_enabled": {
+          "label": "Good-luck message before an exam",
+          "description": "A message to the student on the exam day — at the chosen hour, or ahead of the exam time when it is known"
         },
         "automation_cancellation_enabled": {
           "label": "Lesson cancellation over WhatsApp",
@@ -2544,6 +2553,72 @@
         "scopeRequired": "Select at least one permission",
         "createFailed": "Could not create the key. Try again.",
         "revokeFailed": "Could not revoke the key. Try again."
+      }
+    },
+    "whatsappTrust": {
+      "title": "Verification and trust",
+      "subtitle": "Where your number stands with Meta, and what each step unlocks.",
+      "quality": {
+        "GREEN": "Quality: high",
+        "YELLOW": "Quality: medium",
+        "RED": "Quality: low",
+        "UNKNOWN": "Quality: not checked yet"
+      },
+      "limitPerDay": "Up to {n} conversations per day",
+      "limitUnknown": "Daily limit not checked yet",
+      "limitUnlimited": "Unlimited conversations per day",
+      "warmUp": "New number: first {days} days are limited",
+      "qualityRedHint": "Parents are blocking or reporting messages. Broadcasts are paused until the rating recovers; reminders and payment requests keep going.",
+      "qualityYellowHint": "Some parents are reporting messages. Keep broadcasts small and relevant until the rating is back to high.",
+      "refresh": "Check now",
+      "lastChecked": "Last checked {when}",
+      "rungs": {
+        "connected": {
+          "title": "Connected",
+          "detail": "Reminders, payment requests and replies work."
+        },
+        "verified": {
+          "title": "Business verified",
+          "detail": "Raises the daily limit from 250 to 2,000 conversations and unlocks marketing broadcasts and linked WhatsApp groups.",
+          "done": "Verified at Meta. Daily limit 2,000 and up.",
+          "howto": "Meta only accepts documents from a person of the business, in Security Centre. Prepare these first, then submit there. Approval usually takes a few days.",
+          "openSecurityCentre": "Open Security Centre",
+          "noUpload": "Lessio never collects your documents. Meta does not allow a software provider to submit verification on your behalf."
+        },
+        "oba": {
+          "title": "Official Business Account (green tick)",
+          "detail": "The only way to open real WhatsApp groups from Lessio. Meta grants it to businesses with a public presence.",
+          "done": "Granted. Groups can be created from Lessio.",
+          "reqVerified": "Business verified",
+          "reqAge": "30 days on the platform ({days} left)",
+          "reqName": "Display name approved",
+          "notability": "Meta also looks for a website, social profiles and press mentions. A rejection can be resubmitted after 30 days.",
+          "request": "Request in WhatsApp Manager"
+        }
+      },
+      "checklist": {
+        "legal_document": {
+          "title": "Business registration document",
+          "hint": "Certificate of incorporation or the dealer certificate from the tax authority, with the exact business name."
+        },
+        "address_proof": {
+          "title": "Proof of address",
+          "hint": "A recent utility bill or municipal tax bill in the business name, showing the address."
+        },
+        "website_or_domain": {
+          "title": "Website or domain",
+          "hint": "A site that names the business, or an email on your own domain."
+        },
+        "matching_name": {
+          "title": "Same name everywhere",
+          "hint": "The name on the documents, in Business Manager and on the WhatsApp profile must match."
+        }
+      },
+      "errors": {
+        "ownerOnly": "Only the owner can do this.",
+        "refreshFailed": "Meta could not be reached. Try again in a minute.",
+        "invalid": "Invalid request.",
+        "saveFailed": "Saving failed. Try again."
       }
     }
   },
@@ -3616,7 +3691,9 @@
         "columns": "Columns: email (required), first_name, last_name, company, phone, locale, personal_line, subject_area, source_url. Any other column is kept as metadata.",
         "needCampaign": "Create a campaign first.",
         "submit": "Import",
-        "result": "{inserted} queued · {suppressed} suppressed · {duplicates} already known · {invalid} invalid"
+        "result": "{inserted} queued · {suppressed} suppressed · {duplicates} already known · {invalid} invalid",
+        "generateOpeners": "Let the AI draft an opening line",
+        "generateOpenersHint": "For rows that carry a website, a page or a description. Every draft waits for your approval below before anything is sent."
       },
       "suppression": {
         "title": "Do-not-email list",
@@ -3696,6 +3773,31 @@
         "testTo": "Test address",
         "sendTest": "Send test email",
         "testSent": "Sent to {to}"
+      },
+      "opener": {
+        "title": "Opening lines to review",
+        "description": "Drafted from what each prospect points at. Nothing is sent until you approve it. Edit freely, or skip to send without an opener.",
+        "empty": "Nothing waiting.",
+        "source": "source",
+        "placeholder": "The line that follows \"Hi <name>,\"",
+        "approve": "Approve and queue",
+        "regenerate": "Draft again",
+        "skip": "Send without one",
+        "saveFailed": "That did not save.",
+        "status": {
+          "pending": "Waiting for the AI",
+          "generated": "Draft ready",
+          "failed": "Drafting failed",
+          "approved": "Approved",
+          "none": "No opener"
+        },
+        "errors": {
+          "NO_API_KEY": "No platform AI key is configured, so this one needs writing by hand.",
+          "NO_SOURCE": "Nothing could be read from the source. Write the line yourself, or skip.",
+          "MODEL_FAILED": "The model did not answer. Try again in a moment.",
+          "EMPTY": "The model returned nothing.",
+          "TOO_LONG": "The model wrote a paragraph instead of a sentence."
+        }
       }
     },
     "leads": {
@@ -3976,6 +4078,7 @@
         "titlePlaceholder": "Exam topic",
         "descriptionPlaceholder": "Description / extra details (optional)",
         "examDate": "Exam date",
+        "examTime": "Exam time (optional)",
         "upload": "Attach a file (up to {maxMb}MB, optional)",
         "submit": "Send report",
         "submitting": "Sending...",
@@ -5136,6 +5239,7 @@
         "subject": "Subject",
         "title": "Title / topic",
         "examDate": "Exam date",
+        "examTime": "Time (optional)",
         "score": "Score",
         "maxScore": "Out of",
         "notes": "Notes (optional)",
@@ -5235,7 +5339,23 @@
     "dayOffRejected": "Your day-off request was declined",
     "supportTicketReply": "Support replied to your request",
     "supportTicketResolved": "Your request was resolved",
-    "devIssueFixed": "The problem you reported was fixed"
+    "devIssueFixed": "The problem you reported was fixed",
+    "waHealthFlagged": "Your WhatsApp number was flagged by Meta",
+    "waHealthFlaggedBody": "Parents are blocking or reporting messages. Sending is limited until the rating recovers.",
+    "waHealthUnflagged": "Your WhatsApp number is back in good standing",
+    "waHealthUnflaggedBody": "Meta lifted the flag on your number.",
+    "waHealthTierDown": "Your WhatsApp daily limit was lowered to {tier}",
+    "waHealthTierDownBody": "Meta lowered the number of conversations you can start per day because of low quality.",
+    "waHealthTierUp": "Your WhatsApp daily limit was raised to {tier}",
+    "waHealthTierUpBody": "Meta raised the number of conversations you can start per day.",
+    "waHealthRestricted": "Meta restricted your WhatsApp account",
+    "waHealthRestrictedBody": "{detail}",
+    "waHealthVerified": "Your business is now verified at Meta",
+    "waHealthVerifiedBody": "Your WhatsApp daily limit rises to 2,000 conversations.",
+    "waNameRejected": "Meta rejected your WhatsApp display name",
+    "waNameRejectedBody": "{detail}",
+    "waTemplatePaused": "Meta paused a WhatsApp template",
+    "waTemplatePausedBody": "{template} is {status}. Messages that use it will not go out until it recovers."
   },
   "notFound": {
     "title": "Page not found",

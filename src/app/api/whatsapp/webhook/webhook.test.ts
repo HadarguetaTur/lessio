@@ -105,10 +105,12 @@ vi.mock('@/lib/whatsapp/messageLog', () => ({
   logOutboundMessage: vi.fn().mockResolvedValue(undefined),
   attachInboundSender: vi.fn().mockResolvedValue(undefined),
   recordOutboundSend: vi.fn(),
+  applyDeliveryStatus: vi.fn().mockResolvedValue(true),
 }))
 
 vi.mock('@sentry/nextjs', () => ({
   captureException: vi.fn(),
+  captureMessage: vi.fn(),
 }))
 
 vi.mock('@/lib/notifications', () => ({
@@ -214,7 +216,7 @@ import { aiAssistant, isAiAssistantConfigured } from '@/lib/ai-assistant'
 import { logExchange } from '@/lib/ai-assistant/conversationLog'
 import { claimIncomingMessage, releaseIncomingMessageClaim, isRateLimited } from '@/lib/whatsapp/idempotency'
 import { isTakenOver } from '@/lib/whatsapp/takeover'
-import { logInboundMessage } from '@/lib/whatsapp/messageLog'
+import { logInboundMessage, applyDeliveryStatus } from '@/lib/whatsapp/messageLog'
 import {
   notifyMultiple,
   notifySuperadmins,
@@ -2932,5 +2934,84 @@ describe('POST /api/whatsapp/webhook — template status updates', () => {
     // The message reached the pipeline: an unknown sender becomes a lead.
     expect(mockSendUnknownParentReply).toHaveBeenCalled()
     expect(upsert).toHaveBeenCalled()
+  })
+})
+
+// ── Delivery statuses ─────────────────────────────────────────────────────────
+
+describe('POST /api/whatsapp/webhook — delivery statuses', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.WHATSAPP_APP_SECRET = APP_SECRET
+    mockIsRateLimited.mockResolvedValue(false)
+    mockClaimIncomingMessage.mockResolvedValue(true)
+  })
+
+  function makeDeliveryPayload(status: Record<string, unknown>) {
+    return {
+      object: 'whatsapp_business_account',
+      entry: [{
+        id: 'waba-1',
+        changes: [{
+          field: 'messages',
+          value: {
+            messaging_product: 'whatsapp',
+            metadata: { display_phone_number: '972552451476', phone_number_id: 'phone-number-id-1' },
+            statuses: [{ id: 'wamid.OUT', recipient_id: '972504343547', timestamp: '1788858000', ...status }],
+          },
+        }],
+      }],
+    }
+  }
+
+  it('advances the transcript row for the org that owns the line', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    const res = await POST(makeRequest(makeDeliveryPayload({ status: 'delivered' })))
+
+    expect(res.status).toBe(200)
+    expect(applyDeliveryStatus).toHaveBeenCalledWith({
+      orgId: ORG_ID,
+      waMessageId: 'wamid.OUT',
+      status: 'delivered',
+      errorCode: null,
+      errorMessage: null,
+    })
+  })
+
+  it('records a failure with Meta\'s error code and raises it in the logs', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'organizations') return buildChain({ data: { id: ORG_ID }, error: null })
+      return buildChain({ data: null, error: null })
+    })
+
+    await POST(makeRequest(makeDeliveryPayload({
+      status: 'failed',
+      errors: [{ code: 131026, title: 'Message undeliverable', error_data: { details: 'Message Undeliverable.' } }],
+    })))
+
+    expect(applyDeliveryStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', errorCode: 131026 })
+    )
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[whatsapp/webhook] Outbound message failed at Meta',
+      expect.objectContaining({ orgId: ORG_ID, errorCode: 131026 })
+    )
+    errorSpy.mockRestore()
+  })
+
+  it('ignores a status for a line we do not know, still returning 200', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mockFrom.mockImplementation(() => buildChain({ data: null, error: null }))
+
+    const res = await POST(makeRequest(makeDeliveryPayload({ status: 'read' })))
+
+    expect(res.status).toBe(200)
+    expect(applyDeliveryStatus).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
   })
 })

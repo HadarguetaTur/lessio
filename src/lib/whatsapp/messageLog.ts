@@ -140,3 +140,69 @@ export async function attachInboundSender(params: {
     console.error('[whatsapp/messageLog] sender attach failed', { orgId, error: error.message })
   }
 }
+
+export type OutboundDeliveryStatus = 'sent' | 'delivered' | 'read' | 'failed'
+
+/**
+ * Meta's statuses arrive out of order (a `read` can land before its
+ * `delivered`), so a transition only ever moves forward. `failed` outranks
+ * everything: a message Meta gave up on is failed whatever it reported before.
+ */
+const STATUS_RANK: Record<OutboundDeliveryStatus, number> = {
+  sent: 0,
+  delivered: 1,
+  read: 2,
+  failed: 3,
+}
+
+/** Statuses a row may currently hold and still accept `next`. */
+function statusesBelow(next: OutboundDeliveryStatus): OutboundDeliveryStatus[] {
+  return (Object.keys(STATUS_RANK) as OutboundDeliveryStatus[]).filter(
+    (s) => STATUS_RANK[s] < STATUS_RANK[next]
+  )
+}
+
+/**
+ * Applies a delivery status Meta reported for a message we sent.
+ *
+ * Returns true when a row was advanced, false when nothing matched — the
+ * message predates the transcript, or the status arrived already superseded.
+ */
+export async function applyDeliveryStatus(params: {
+  orgId: string
+  waMessageId: string
+  status: OutboundDeliveryStatus
+  errorCode?: number | null
+  errorMessage?: string | null
+}): Promise<boolean> {
+  const { orgId, waMessageId, status, errorCode, errorMessage } = params
+  const eligible = statusesBelow(status)
+  if (eligible.length === 0) return false
+
+  const db = createServiceRoleClient()
+
+  const { data, error } = await db
+    .from('whatsapp_messages')
+    .update({
+      status,
+      status_updated_at: new Date().toISOString(),
+      error_code: status === 'failed' ? (errorCode ?? null) : null,
+      error_message: status === 'failed' ? (errorMessage ?? null) : null,
+    })
+    .eq('organization_id', orgId)
+    .eq('wa_message_id', waMessageId)
+    .eq('direction', 'out')
+    .in('status', eligible)
+    .select('id')
+
+  if (error) {
+    console.error('[whatsapp/messageLog] delivery status update failed', {
+      orgId,
+      status,
+      error: error.message,
+    })
+    return false
+  }
+
+  return (data?.length ?? 0) > 0
+}

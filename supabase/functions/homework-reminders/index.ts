@@ -7,10 +7,10 @@
  * Algorithm (per org):
  *   1. Mark past-due pending assignments as 'overdue' (Story 9)
  *   2. Find assignments with due_date = tomorrow
- *   3. For each assignment, resolve target phone (student → primary parent)
- *   4. Check notification_log dedup — skip if already notified
+ *   3. Claim the notification_log row ('pending') — skip if another run owns it
+ *   4. For each assignment, resolve target phone (student → primary parent)
  *   5. Send WhatsApp reminder
- *   6. Insert notification_log row
+ *   6. Settle the notification_log row to sent/failed
  *
  * Only runs for orgs with reminders_enabled=true and a connected WhatsApp number.
  * Failures are isolated per org/assignment.
@@ -24,6 +24,7 @@ import { resolveTemplate, resolveRecipientLocale, type AppLocale } from '../_sha
 import { botString } from '../_shared/botStrings.ts'
 import { sendEmail } from '../_shared/email.ts'
 import { reportEdgeError, serveWithErrorReporting } from '../_shared/telemetry.ts'
+import { claimNotification, settleNotification } from '../_shared/notificationClaim.ts'
 
 serveWithErrorReporting('homework-reminders', async (_req) => {
   const authError = authorizeCronRequest(_req)
@@ -149,16 +150,13 @@ async function processOrg(db: any, org: any): Promise<void> {
   }
 
   for (const assignment of assignments) {
-    // ── Check dedup log ───────────────────────────────────────────────────────
-    const { data: existing } = await db
-      .from('notification_log')
-      .select('id')
-      .eq('organization_id', orgId)
-      .eq('type', 'homework_reminder')
-      .eq('entity_id', assignment.id)
-      .maybeSingle()
-
-    if (existing) continue // already notified
+    // ── Claim before send — only the run that owns the row may send ───────────
+    const claim = await claimNotification(db, {
+      orgId,
+      type: 'homework_reminder',
+      entityId: assignment.id,
+    })
+    if (claim !== 'claimed') continue // already notified, in flight, or ledger unavailable
 
     // ── Resolve target phone: student phone → primary parent phone ────────────
     const phone = resolvePhone(assignment)
@@ -287,31 +285,20 @@ function resolveParentEmail(assignment: any): string | null {
   return null
 }
 
+/** Settles the row claimed at the top of the loop. */
 // deno-lint-ignore no-explicit-any
-async function insertLog(
+function insertLog(
   db: any,
   orgId: string,
   assignmentId: string,
   status: 'sent' | 'failed',
   errorMessage: string | null
 ): Promise<void> {
-  const { error } = await db.from('notification_log').upsert(
-    {
-      organization_id: orgId,
-      type:            'homework_reminder',
-      entity_id:       assignmentId,
-      status,
-      error_message:   errorMessage,
-      sent_at:         new Date().toISOString(),
-    },
-    { onConflict: 'organization_id,type,entity_id', ignoreDuplicates: false }
-  )
-
-  if (error) {
-    console.error('[homework-reminders] Failed to insert notification_log', {
-      org_id:        orgId,
-      assignment_id: assignmentId,
-      error:         error.message,
-    })
-  }
+  return settleNotification(db, {
+    orgId,
+    type: 'homework_reminder',
+    entityId: assignmentId,
+    status,
+    errorMessage,
+  })
 }

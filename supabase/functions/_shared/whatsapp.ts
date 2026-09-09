@@ -240,6 +240,7 @@ const APPROVED_TEMPLATES: Record<
     homework_assignment: { name: 'lessio_homework_assignment_he_v2', languageCode: 'he', bodyParamCount: 3 },
     homework_graded: { name: 'lessio_homework_graded_he_v2', languageCode: 'he', bodyParamCount: 3 },
     welcome_notice: { name: 'lessio_welcome_notice_he_v2', languageCode: 'he', bodyParamCount: 1 },
+    exam_good_luck: { name: 'lessio_exam_good_luck_he_v2', languageCode: 'he', bodyParamCount: 3 },
   },
   en: {
     lesson_reminder:  { name: 'lessio_lesson_reminder_en_v2',  languageCode: 'en', bodyParamCount: 3 },
@@ -249,6 +250,7 @@ const APPROVED_TEMPLATES: Record<
     homework_assignment: { name: 'lessio_homework_assignment_en_v2', languageCode: 'en', bodyParamCount: 3 },
     homework_graded: { name: 'lessio_homework_graded_en_v2', languageCode: 'en', bodyParamCount: 3 },
     welcome_notice: { name: 'lessio_welcome_notice_en_v2', languageCode: 'en', bodyParamCount: 1 },
+    exam_good_luck: { name: 'lessio_exam_good_luck_en_v2', languageCode: 'en', bodyParamCount: 3 },
   },
 }
 
@@ -314,6 +316,7 @@ const VAR_FALLBACKS: Record<string, Record<string, string>> = {
     feedback_line: 'אין משוב נוסף.',
     decision: 'עודכנה',
     description: 'שיעור',
+    subject: 'המבחן',
   },
   en: {
     teacher_name: 'your teacher',
@@ -330,6 +333,7 @@ const VAR_FALLBACKS: Record<string, Record<string, string>> = {
     feedback_line: 'No additional feedback.',
     decision: 'updated',
     description: 'a lesson',
+    subject: 'the exam',
   },
 }
 

@@ -7,10 +7,11 @@
  * Algorithm:
  *   1. Fetch all orgs with reminders_enabled=true and a connected WhatsApp number
  *   2. For each org, find lessons starting within the reminder window
- *   3. For each lesson, check notification_log (dedup)
+ *   3. For each lesson, claim the notification_log row ('pending') — skip if
+ *      another run owns it
  *   4. Resolve the primary parent's phone via lesson_students → relationships
  *   5. Send WhatsApp reminder
- *   6. Insert notification_log row (sent or failed)
+ *   6. Settle the notification_log row (sent or failed)
  *
  * Failures are isolated per org/lesson — one failure does not stop others.
  */
@@ -23,6 +24,7 @@ import { resolveTemplate, resolveRecipientLocale } from '../_shared/templates.ts
 import { botString } from '../_shared/botStrings.ts'
 import { sendEmail } from '../_shared/email.ts'
 import { reportEdgeError, serveWithErrorReporting } from '../_shared/telemetry.ts'
+import { claimNotification, settleNotification } from '../_shared/notificationClaim.ts'
 
 serveWithErrorReporting('lesson-reminders', async (_req) => {
   const authError = authorizeCronRequest(_req)
@@ -135,16 +137,13 @@ async function processOrg(db: any, org: any, now: Date) {
   }
 
   for (const lesson of lessons) {
-    // ── 3. Check dedup log ────────────────────────────────────────────────────
-    const { data: existing } = await db
-      .from('notification_log')
-      .select('id')
-      .eq('organization_id', org.id)
-      .eq('type', 'lesson_reminder')
-      .eq('entity_id', lesson.id)
-      .maybeSingle()
-
-    if (existing) continue // already sent
+    // ── 3. Claim before send — only the run that owns the row may send ────────
+    const claim = await claimNotification(db, {
+      orgId: org.id,
+      type: 'lesson_reminder',
+      entityId: lesson.id,
+    })
+    if (claim !== 'claimed') continue // already sent, in flight, or ledger unavailable
 
     // ── 4. Resolve primary parent phone ──────────────────────────────────────
     const phone = resolvePrimaryParentPhone(lesson)
@@ -299,32 +298,15 @@ function resolvePrimaryParentEmail(lesson: any): string | null {
   return null
 }
 
+/** Settles the row claimed at the top of the loop. */
 // deno-lint-ignore no-explicit-any
-async function insertLog(
+function insertLog(
   db: any,
   orgId: string,
   type: string,
   entityId: string,
   status: 'sent' | 'failed',
   errorMessage: string | null
-) {
-  const { error } = await db.from('notification_log').upsert(
-    {
-      organization_id: orgId,
-      type,
-      entity_id: entityId,
-      status,
-      error_message: errorMessage,
-      sent_at: new Date().toISOString(),
-    },
-    { onConflict: 'organization_id,type,entity_id', ignoreDuplicates: false }
-  )
-
-  if (error) {
-    console.error('[lesson-reminders] Failed to insert notification_log', {
-      org_id: orgId,
-      entity_id: entityId,
-      error: error.message,
-    })
-  }
+): Promise<void> {
+  return settleNotification(db, { orgId, type, entityId, status, errorMessage })
 }

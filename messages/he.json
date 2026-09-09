@@ -1068,7 +1068,9 @@
       "reminderOnlyScheduled": "ניתן לשלוח תזכורת רק לשיעור מתוכנן",
       "reminderLessonPast": "אי אפשר לשלוח תזכורת לשיעור שכבר עבר",
       "noPrimaryParentPhone": "לא נמצא הורה ראשי פעיל עם מספר טלפון",
-      "reminderSendFailed": "שליחת התזכורת נכשלה"
+      "reminderSendFailed": "שליחת התזכורת נכשלה",
+      "alreadyDelivered": "לא ניתן לבטל שיעור שכבר התקיים. יש לשנות את הסטטוס שלו במקום.",
+      "noLinkedStudents": "לא ניתן לבטל — לשיעור אין תלמידים מקושרים"
     },
     "chargeAlerts": {
       "noLinkedStudents": "לא ניתן ליצור חיוב ביטול — לשיעור אין תלמידים מקושרים",

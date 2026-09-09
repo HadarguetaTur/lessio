@@ -84,6 +84,7 @@ export function LandingPricing({
 
               <Link
                 href={signupHref}
+                data-cta={`pricing-${row.name}`}
                 className={cn(
                   'mt-auto inline-flex h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors',
                   featured
@@ -99,7 +100,7 @@ export function LandingPricing({
       </div>
 
       <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
-        {copy.trialNote} · {copy.yearlyNote} · {copy.vatNote}
+        {copy.trialNote} {copy.trialIncludes} · {copy.yearlyNote} · {copy.vatNote}
       </p>
     </div>
   )

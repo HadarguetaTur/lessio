@@ -1,76 +1,242 @@
-/** Landing copy — short, sharp Hebrew + English parallel. */
+/**
+ * Landing copy — short, sharp Hebrew + English parallel.
+ *
+ * House style (also used by docs/video-brand-script.md): short sentences,
+ * no exclamation points, no promises the code can't keep. The page tells one
+ * story — a parent's WhatsApp message becoming a priced charge, a freed slot
+ * and a line on the monthly bill — and everything else hangs off that rail.
+ * English is written natively, not translated sentence-by-sentence.
+ *
+ * Every product claim here is backed by shipped behavior. Things that are NOT
+ * claimable (and must stay out): free-text NLU ("Noa won't come tomorrow" is
+ * not parsed — the flow is button/menu driven), WhatsApp rescheduling (demo
+ * flag only), Google Calendar two-way sync (read-only conflict detection),
+ * a broad "AI secretary" (the copilot classifies and always requires a
+ * confirm tap), "only we have official WhatsApp" or any claim about
+ * competitors, testimonials/metrics (none exist yet).
+ */
+
+/** Screenshot assets under public/landing/{he,en}/<key>.webp */
+export type LandingImageKey =
+  | 'wa-cancel-flow'
+  | 'dash-attention-tick'
+  | 'calendar-week'
+  | 'billing-detail'
+  | 'dash-overview'
+  | 'billing-table'
+  | 'wa-payment-request'
+  | 'portal-payments'
+  | 'portal-book'
+  | 'teachers'
+  | 'homework-board'
+  | 'reports-revenue'
+
+/** Dashboard frames are 1920×1080; phone captures are 780×1688.
+ *  billing-detail is cropped to 1920×720 — the source frame's lower half says
+ *  "no cancellations this month", which would contradict the ₪60 story. */
+export const LANDING_IMAGE_SIZES: Record<LandingImageKey, { width: number; height: number }> = {
+  'wa-cancel-flow': { width: 780, height: 1688 },
+  'dash-attention-tick': { width: 1920, height: 1080 },
+  'calendar-week': { width: 1920, height: 1080 },
+  'billing-detail': { width: 1920, height: 720 },
+  'dash-overview': { width: 1920, height: 1080 },
+  'billing-table': { width: 1920, height: 1080 },
+  'wa-payment-request': { width: 780, height: 1688 },
+  'portal-payments': { width: 780, height: 1688 },
+  'portal-book': { width: 780, height: 1688 },
+  teachers: { width: 1920, height: 1080 },
+  'homework-board': { width: 1920, height: 1080 },
+  'reports-revenue': { width: 1920, height: 1080 },
+}
+
+export function landingImageSrc(locale: string, key: LandingImageKey): string {
+  return `/landing/${locale === 'en' ? 'en' : 'he'}/${key}.webp`
+}
+
+/** One bubble in the hero chat. Mirrors the real cancellation flow verbatim. */
+export type LandingChatMessage = {
+  from: 'parent' | 'business'
+  lines: readonly string[]
+  time: string
+  /** Interactive affordance rendered under the bubble, as in real WhatsApp. */
+  buttons?: readonly string[]
+  /** Marks the ₪60 line so the chat and the dashboard card can highlight it. */
+  highlight?: boolean
+}
 
 const landingEnCore = {
   hero: {
-    headline: 'Operational chaos costs money. Lessio stops the leak.',
-    subheadline: 'Business infrastructure for private tutors and learning centers',
-    supporting: [] as const,
-    highlights: ['One system', 'WhatsApp', 'Auto billing'] as const,
-    ctaPrimary: 'Sign up',
-    ctaLogin: 'Sign in',
+    eyebrow: 'The operating system for tutoring businesses',
+    headline: 'What happens on WhatsApp updates your business automatically.',
+    subheadline:
+      'When a parent cancels a lesson, Lessio connects the WhatsApp flow to the lesson, cancellation policy, charge, and schedule, with no manual updates.',
+    ctaPrimary: 'Start 30 days free',
+    ctaPrimaryNote: 'No credit card.',
+    ctaSecondary: 'See how it works',
+    trustLine: "Built on Meta's official WhatsApp Business Platform",
+    chat: {
+      contactName: 'Michal Music Studio',
+      statusLabel: 'online',
+      messages: [
+        { from: 'parent', lines: ['Cancel a lesson'], time: '21:40' },
+        {
+          from: 'business',
+          lines: ['Which lesson should we cancel? Upcoming lessons:'],
+          time: '21:40',
+          buttons: ['Choose a lesson'],
+        },
+        {
+          from: 'business',
+          lines: ['Cancel Noa Levi’s lesson on 31/08 at 14:00?'],
+          time: '21:41',
+          buttons: ['Yes, cancel', 'No, go back'],
+        },
+        {
+          from: 'business',
+          lines: [
+            'Lesson cancelled ✅',
+            'Noa Levi with Michal Abramov',
+            '31/08 at 14:00',
+            'Partial cancellation charge: ₪60',
+          ],
+          time: '21:41',
+          highlight: true,
+        },
+      ] as readonly LandingChatMessage[],
+    },
+    dashCard: {
+      title: 'Needs attention',
+      line: 'Cancellation charge — Noa Levi',
+      amount: '₪60',
+      slot: 'The 14:00 slot is open again on the calendar',
+    },
+  },
+  chain: {
+    title: 'One cancellation, from message to bill',
+    intro: 'This is not a metaphor. It is exactly what the system does, step by step.',
+    beats: [
+      {
+        title: 'The parent cancels on WhatsApp',
+        body: 'Tap "cancel", pick the lesson, confirm. No new app, no phone calls, no waiting for the morning.',
+        image: 'wa-cancel-flow' as const,
+      },
+      {
+        title: 'Your policy prices it',
+        body: 'You set the rules once — say, full charge inside 24 hours, 50% inside two. The system does the math, and the parent sees the amount before confirming.',
+        image: null,
+      },
+      {
+        title: 'The charge is already on your dashboard',
+        body: 'The line shows up under "Needs attention" in real time. You did not touch anything.',
+        image: 'dash-attention-tick' as const,
+      },
+      {
+        title: 'The calendar updates itself',
+        body: 'The slot opens up, and other parents can book straight into it.',
+        image: 'calendar-week' as const,
+      },
+      {
+        title: 'At month end, it is all there',
+        body: 'Each student’s bill builds itself from lessons, subscriptions and cancellations. You approve, the parent gets a payment request on WhatsApp, the receipt goes out on its own.',
+        image: 'billing-detail' as const,
+      },
+    ],
+    policyCard: {
+      title: 'Cancellation policy',
+      rules: ['Up to 24 hours — full charge', 'Up to 2 hours — 50%'],
+      result: 'Partial cancellation charge: ₪60',
+    },
   },
   problem: {
-    title: 'What does it look like without our infrastructure?',
-    processSteps: [
-      'Last-minute cancellations hit WhatsApp and vanish inside a long thread.',
-      'Charges that should go out simply get forgotten in the noise.',
-      'Parents do not get updates on time — then come messages, questions, and frustration.',
-      'The spreadsheet exists, but nobody is really sure which version is right.',
-      'Information sits in several places at once, with no single source of truth to trust.',
-      'Every small change needs manual tracking, memory, and coordination across channels.',
-      'Meanwhile, every day, money, time, and focus keep leaking out.',
-    ] as const,
-  },
-  currentState: {
-    title: "The problem isn't the load. The problem is there's no system holding it together.",
+    title: 'Without a system, that same cancellation becomes your job.',
     items: [
       {
-        title: 'Charges that never close on time',
-        body: 'The lesson ends, the day keeps going, and the charge that should have gone out stays stuck in memory.',
+        title: 'The charge never goes out',
+        body: 'The lesson is cancelled, nobody is billed, and the revenue simply disappears.',
       },
       {
-        title: 'Last-minute cancellations turn into a big problem',
-        body: 'The schedule breaks, the slot is wasted, and the revenue you were supposed to see, simply vanishes.',
+        title: 'The slot stays empty',
+        body: 'You find out about the cancellation tomorrow — when it is too late to fill it.',
       },
       {
-        title: 'No single source you can trust',
-        body: 'Information is scattered across WhatsApp, spreadsheets, and your head — and nobody is sure what is actually true.',
-      },
-      {
-        title: 'Scheduling lives only in endless WhatsApp threads',
-        body: "One update gets missed, one parent doesn't get an answer, and the phone won't stop ringing.",
+        title: 'There is no single version of the truth',
+        body: 'WhatsApp, the spreadsheet and your memory tell three different stories.',
       },
     ],
+    closing: 'What does not close in the system is lost in the day-to-day.',
   },
-  solution: {
-    title: 'Why Lessio',
+  capabilities: {
+    title: 'Everything else runs on the same rail',
     intro:
-      'Because a tutoring business does not need another tool. It needs a system that connects the whole day-to-day into one place.',
-    pillars: [
+      'Cancellations are just the opening act. Every movement in the business — a lesson, a payment, a message — lands in the same record.',
+    items: [
       {
-        title: 'Built around what actually happens in the business',
-        body: 'Not just scheduling — also cancellations, billing, communication, and follow-through.',
+        title: 'Booking and scheduling',
+        body: 'Parents book through a link, against your teachers’ real availability — no back-and-forth with staff.',
+        image: 'portal-book' as const,
       },
       {
-        title: 'Parents stay on WhatsApp',
-        body: 'No new app, no retraining, and no unnecessary friction.',
+        title: 'Monthly billing that builds itself',
+        body: 'Each student’s bill assembles from lessons, subscriptions and cancellations. One approval, and the payment request goes out.',
+        image: 'billing-table' as const,
       },
       {
-        title: 'Less scatter, more control',
-        body: 'When the day-to-day lives in one place, fewer things fall through the cracks.',
+        title: 'Messages that send themselves',
+        body: 'Lesson reminders, payment requests, homework reminders and receipts — in Hebrew or English, on the official channel.',
+        image: 'wa-payment-request' as const,
+      },
+      {
+        title: 'Parent self-service',
+        body: 'Schedule, balance, payment links, receipts, homework and the portal — one WhatsApp message or one link, nothing to install.',
+        image: 'portal-payments' as const,
+      },
+      {
+        title: 'Teachers and operations',
+        body: 'Teachers, students, groups, availability, day-off requests and lesson records — with clear role separation.',
+        image: 'teachers' as const,
+      },
+      {
+        title: 'Reports that look forward',
+        body: 'Revenue, debts, cancellation rates and a forecast. See where the business is going, not just where it was.',
+        image: 'reports-revenue' as const,
       },
     ],
   },
-  businessValue: {
-    title: 'What does not close in the system is lost in the day-to-day.',
-    paragraphs: [
-      'Unbilled cancellations, delayed payments, lessons not logged on time — these are not rare exceptions. They are where money slips when too much relies on memory, messages, and manual tracking.',
-      'Lessio centralizes the operational flow in one clear system, so fewer things stay open — and less revenue is lost along the way.',
+  israel: {
+    title: 'Built for how tutoring businesses work in Israel',
+    items: [
+      'Bit, PayBox, Cardcom, PayPlus, Stripe and Grow',
+      'Receipts through licensed Israeli providers',
+      'A bot that answers in Hebrew and English',
+      'Jewish holidays load themselves into the calendar',
+      'Cancellation policies from the lessons world, not retail',
     ],
-    stats: ['Parents stay on WhatsApp', 'All day-to-day in one place', 'Fewer leaks, more control'] as const,
+  },
+  trust: {
+    title: 'Automation with a seatbelt',
+    items: [
+      {
+        title: "Meta's official channel",
+        body: 'The WhatsApp Business Platform, with your own business number and approved templates. No unofficial automations, no browser workarounds, no risk to your number.',
+      },
+      {
+        title: 'You reply — the bot goes quiet',
+        body: 'Answered a parent yourself from the dashboard? The bot steps out of that conversation for six hours. No double replies.',
+      },
+      {
+        title: 'Nothing happens without a confirmation',
+        body: 'The parent confirms before a cancellation. You approve before a charge is sent. The AI suggests — it never acts on its own.',
+      },
+      {
+        title: 'Parents stay in control',
+        body: 'One "stop" message halts everything. Data is deleted on a defined retention schedule.',
+      },
+    ],
   },
   audience: {
     title: 'Lessio was not built for every tutor. It was built for a business.',
+    subtitle:
+      'For the moment teaching has already become a business — dozens of students, several teachers, and billing you can no longer keep in your head.',
     forTitle: 'Good fit',
     forBullets: [
       'Private tutor with real operational load',
@@ -107,6 +273,7 @@ const landingEnCore = {
     teachersUnlimited: 'Unlimited teachers',
     cta: 'Start 30 days free',
     trialNote: '30 days free. No credit card.',
+    trialIncludes: 'The trial includes the full Studio plan.',
   },
   faq: {
     title: 'Frequently asked questions',
@@ -120,10 +287,38 @@ const landingEnCore = {
         ],
       },
       {
-        question: 'Do parents need to switch to a new app?',
-        opening: 'No.',
+        question: 'Is this official WhatsApp?',
+        opening: 'Yes.',
         rest: [
-          'Communication stays on WhatsApp. Less friction, fewer explanations, less chance of losing a reply along the way.',
+          "Lessio runs on Meta's WhatsApp Business Platform, connected through Meta's guided setup, with approved message templates. No unofficial automations, no phone that has to stay on, no risk of your number being blocked.",
+        ],
+      },
+      {
+        question: 'Do I need a new number?',
+        opening: 'You connect a dedicated business number through Meta.',
+        rest: [
+          'An existing number can be migrated to the business platform, but most businesses prefer a separate one - the personal line stays personal.',
+        ],
+      },
+      {
+        question: 'How do parents use Lessio?',
+        opening: 'They install nothing.',
+        rest: [
+          'They write to your business WhatsApp and get a menu: cancel, book, balance, receipts, portal. Anyone who prefers the portal signs in with a one-time code.',
+        ],
+      },
+      {
+        question: 'How long does switching take?',
+        opening: 'You can work from day one.',
+        rest: [
+          'Setup is guided, and students, parents and lessons come in from a spreadsheet import - not retyping. Connecting WhatsApp through Meta is the longest step, and the system works before it too.',
+        ],
+      },
+      {
+        question: 'What happens when a parent cancels?',
+        opening: 'Your policy decides.',
+        rest: [
+          'You set the cancellation window and charge percentages once. From then on every cancellation is priced on its own, the parent sees the amount before confirming, and the charge lands on the monthly bill.',
         ],
       },
       {
@@ -134,20 +329,6 @@ const landingEnCore = {
         ],
       },
       {
-        question: 'What does Lessio actually replace?',
-        opening: 'It replaces scatter.',
-        rest: [
-          'Instead of WhatsApp, spreadsheets, reminders, and memory - one system that holds the day-to-day.',
-        ],
-      },
-      {
-        question: 'Where is the economic value?',
-        rest: [
-          'Right where money leaks: cancellations, billing, coordination, and follow-up.',
-          'Lessio helps close the day-to-day more clearly, so fewer things stay open.',
-        ],
-      },
-      {
         question: 'What if I already "make do" with the tools I have?',
         rest: [
           'If everything is truly closed, clear, and documented - you probably do not need to change.',
@@ -155,6 +336,12 @@ const landingEnCore = {
         ],
       },
     ],
+  },
+  finalCta: {
+    title: 'The next cancellation is coming either way.',
+    body: 'The only question is how much work it leaves behind.',
+    cta: 'Start 30 days free',
+    note: '30 days free. No credit card. The trial includes the full Studio plan.',
   },
   footer: {
     statusLabel: 'System live',
@@ -168,81 +355,191 @@ const landingEnCore = {
   },
   nav: {
     login: 'Sign in',
-    signup: 'Sign up',
+    signup: 'Start free',
+    howItWorks: 'How it works',
+    pricing: 'Pricing',
+    faq: 'FAQ',
+  },
+  meta: {
+    title: 'LESSIO — The operating system for tutoring businesses',
+    description:
+      'A parent cancels on WhatsApp and Lessio closes the loop: your policy prices it, the charge is recorded, the calendar updates, the monthly bill already knows. 30 days free, no credit card.',
   },
 } as const
 
 const landingHeCore = {
   hero: {
-    headline: 'הכאוס התפעולי עולה כסף. Lessio שמה לזה סוף.',
-    subheadline: 'תשתית עסקית למורים פרטיים ומרכזי למידה',
-    supporting: [] as const,
-    highlights: ['מערכת אחת', 'WhatsApp', 'גבייה אוטומטית'] as const,
-    ctaPrimary: 'הרשמה',
-    ctaLogin: 'כניסה',
+    eyebrow: 'מערכת ההפעלה לעסקי הוראה',
+    headline: 'מה שקורה בוואטסאפ, מתעדכן אוטומטית בעסק.',
+    subheadline:
+      'הורה ביטל שיעור? Lessio מחברת את ה-WhatsApp לשיעור, למדיניות הביטול, לחיוב וליומן, בלי לעדכן הכול ידנית.',
+    ctaPrimary: 'התחילו 30 יום ניסיון',
+    ctaPrimaryNote: 'בלי כרטיס אשראי.',
+    ctaSecondary: 'איך זה עובד',
+    trustLine: 'מחוברת ל-WhatsApp Business Platform הרשמית של Meta',
+    chat: {
+      contactName: 'סטודיו מיכל למוזיקה',
+      statusLabel: 'מקוון',
+      messages: [
+        { from: 'parent', lines: ['ביטול שיעור'], time: '21:40' },
+        {
+          from: 'business',
+          lines: ['איזה שיעור לבטל? הנה השיעורים הקרובים:'],
+          time: '21:40',
+          buttons: ['בחירת שיעור'],
+        },
+        {
+          from: 'business',
+          lines: ['לבטל את השיעור של נועה לוי ב-31/08 בשעה 14:00?'],
+          time: '21:41',
+          buttons: ['כן, לבטל', 'לא, חזרה'],
+        },
+        {
+          from: 'business',
+          lines: [
+            'השיעור בוטל ✅',
+            'נועה לוי עם מיכל אברמוב',
+            '31/08 בשעה 14:00',
+            'חיוב ביטול חלקי: 60₪',
+          ],
+          time: '21:41',
+          highlight: true,
+        },
+      ] as readonly LandingChatMessage[],
+    },
+    dashCard: {
+      title: 'דורש טיפול',
+      line: 'חיוב ביטול — נועה לוי',
+      amount: '₪60',
+      slot: 'המשבצת של 14:00 התפנתה ביומן',
+    },
+  },
+  chain: {
+    title: 'ביטול אחד, מההודעה ועד החיוב',
+    intro: 'זה לא משל. זה בדיוק מה שהמערכת עושה, צעד אחרי צעד.',
+    beats: [
+      {
+        title: 'ההורה מבטל בוואטסאפ',
+        body: 'לחיצה על "ביטול שיעור", בחירת שיעור, אישור. בלי אפליקציה חדשה, בלי טלפונים, בלי לחכות לבוקר.',
+        image: 'wa-cancel-flow' as const,
+      },
+      {
+        title: 'המדיניות שלך מתמחרת',
+        body: 'קובעים את הכללים פעם אחת — למשל חיוב מלא עד 24 שעות, 50% עד שעתיים. המערכת מחשבת לבד, וההורה רואה את הסכום עוד לפני שהוא מאשר.',
+        image: null,
+      },
+      {
+        title: 'החיוב כבר בלוח הבקרה',
+        body: 'השורה מופיעה ב"דורש טיפול" בזמן אמת. בלי שנגעת בכלום.',
+        image: 'dash-attention-tick' as const,
+      },
+      {
+        title: 'היומן מתעדכן לבד',
+        body: 'המשבצת מתפנה, והורים אחרים יכולים לקבוע אליה שיעור בקישור.',
+        image: 'calendar-week' as const,
+      },
+      {
+        title: 'ובסוף החודש — הכול כבר שם',
+        body: 'החשבון של כל תלמיד נבנה לבד משיעורים, מנויים וביטולים. מאשרים, ההורה מקבל בקשת תשלום בוואטסאפ, והקבלה יוצאת לבד.',
+        image: 'billing-detail' as const,
+      },
+    ],
+    policyCard: {
+      title: 'מדיניות ביטולים',
+      rules: ['עד 24 שעות — חיוב מלא', 'עד שעתיים — 50%'],
+      result: 'חיוב ביטול חלקי: 60₪',
+    },
   },
   problem: {
-    title: 'איך זה נראה בלי התשתית שלנו?',
-    processSteps: [
-      'ביטולים ברגע האחרון מגיעים ב-WhatsApp ונבלעים בתוך שרשור שלם.',
-      'חיובים שאמורים לצאת פשוט נשכחים בתוך העומס.',
-      'הורים לא מקבלים עדכון בזמן, ואז מתחילות הודעות, שאלות ותסכול.',
-      'האקסל קיים, אבל אף אחד לא באמת בטוח איזו גרסה היא הנכונה.',
-      'מידע יושב בכמה מקומות במקביל, בלי מקור אחד ברור שאפשר לסמוך עליו.',
-      'כל שינוי קטן דורש מעקב ידני, זיכרון, ותיאום בין כמה ערוצים.',
-      'ובינתיים, בכל יום, כסף, זמן וריכוז ממשיכים לדלוף.',
-    ] as const,
-  },
-  currentState: {
-    title: 'הבעיה היא לא העומס. הבעיה היא שאין מערכת שמחזיקה אותו.',
+    title: 'ובלי מערכת? אותו ביטול הופך לעוד משימה שלך.',
     items: [
       {
-        title: 'חיובים שלא נסגרים בזמן',
-        body: 'שיעור נגמר, היום ממשיך, והחיוב שאמור היה לצאת נשאר תלוי בזיכרון.',
+        title: 'החיוב לא יוצא',
+        body: 'השיעור בוטל, אף אחד לא חויב, וההכנסה פשוט נעלמת.',
       },
       {
-        title: 'ביטולים של הרגע האחרון הופכים לבעיה גדולה',
-        body: 'הלו״ז נפגע, המקום מתבזבז, וההכנסה שהיית אמורה לראות, פשוט נעלמת.',
+        title: 'המשבצת נשארת ריקה',
+        body: 'על הביטול מגלים מחר — כשכבר מאוחר מדי למלא אותה.',
       },
       {
-        title: 'אין מקור אחד שאפשר לסמוך עליו',
-        body: 'המידע מפוזר בין WhatsApp, אקסל והראש שלך — ובסוף אף אחד לא בטוח מה נכון.',
-      },
-      {
-        title: 'התיאום מתועד רק בהתכתבויות אינסופיות ב-WhatsApp',
-        body: 'עדכון אחד מתפספס, הורה אחד לא מקבל תשובה, והטלפון לא מפסיק לצלצל.',
+        title: 'אין גרסה אחת של האמת',
+        body: 'הוואטסאפ, האקסל והזיכרון מספרים שלושה סיפורים שונים.',
       },
     ],
+    closing: 'מה שלא נסגר במערכת, הולך לאיבוד בשוטף.',
   },
-  solution: {
-    title: 'למה דווקא Lessio',
+  capabilities: {
+    title: 'כל השוטף רץ על אותה מסילה',
     intro:
-      'כי עסק שיעורים לא צריך עוד כלי. הוא צריך מערכת שמחברת את כל השוטף למקום אחד.',
-    pillars: [
+      'ביטולים הם רק הפתיח. כל תנועה בעסק — שיעור, תשלום, הודעה — נרשמת באותה מערכת.',
+    items: [
       {
-        title: 'נבנתה סביב מה שבאמת קורה בעסק',
-        body: 'לא רק תיאום, אלא גם ביטולים, גבייה, תקשורת ומעקב.',
+        title: 'קביעות ותיאום',
+        body: 'הורים קובעים שיעור בקישור, מול הזמינות האמיתית של המורים — בלי פינג-פונג מול הצוות.',
+        image: 'portal-book' as const,
       },
       {
-        title: 'ההורים נשארים ב-WhatsApp',
-        body: 'בלי אפליקציה חדשה, בלי חינוך מחדש, בלי חיכוך מיותר.',
+        title: 'גבייה חודשית שנבנית לבד',
+        body: 'החשבון של כל תלמיד מורכב משיעורים, מנויים וביטולים. אישור אחד — ובקשת התשלום בדרך.',
+        image: 'billing-table' as const,
       },
       {
-        title: 'פחות פיזור, יותר שליטה',
-        body: 'כשהשוטף מרוכז במקום אחד, פחות דברים נופלים בדרך.',
+        title: 'הודעות שנשלחות לבד',
+        body: 'תזכורות שיעור, בקשות תשלום, תזכורות שיעורי בית וקבלות — בעברית או באנגלית, בערוץ הרשמי.',
+        image: 'wa-payment-request' as const,
+      },
+      {
+        title: 'שירות עצמי להורים',
+        body: 'לו"ז, יתרה, קישורי תשלום, קבלות, שיעורי בית ופורטל — בהודעת וואטסאפ או בקישור אחד, בלי להתקין כלום.',
+        image: 'portal-payments' as const,
+      },
+      {
+        title: 'מורים ותפעול',
+        body: 'מורים, תלמידים, קבוצות, זמינות, בקשות יום חופש ותיעוד שיעורים — עם הפרדת תפקידים ברורה.',
+        image: 'teachers' as const,
+      },
+      {
+        title: 'דוחות שמסתכלים קדימה',
+        body: 'הכנסות, חובות, אחוזי ביטולים ותחזית. רואים לאן העסק הולך, לא רק איפה הוא היה.',
+        image: 'reports-revenue' as const,
       },
     ],
   },
-  businessValue: {
-    title: 'מה שלא נסגר במערכת, הולך לאיבוד בשוטף.',
-    paragraphs: [
-      'ביטולים שלא חויבו, תשלומים שנדחו, שיעורים שלא תועדו בזמן — אלה לא מקרים נדירים. אלה המקומות שבהם עסק מאבד כסף כשיותר מדי דברים נשענים על זיכרון, הודעות ומעקב ידני.',
-      'Lessio מרכזת את השוטף במערכת אחת ברורה, כדי שפחות דברים יישארו פתוחים — ופחות כסף ילך לאיבוד בדרך.',
+  israel: {
+    title: 'בנויה לאיך שעסק הוראה עובד בישראל',
+    items: [
+      'Bit, PayBox, Cardcom, PayPlus, Stripe ו-Grow',
+      'קבלות דרך ספקים ישראליים מורשים',
+      'בוט שעונה בעברית ובאנגלית',
+      'חגי ישראל נטענים לבד ליומן',
+      'מדיניות ביטולים של עולם השיעורים — לא של חנות',
     ],
-    stats: ['ההורים נשארים ב-WhatsApp', 'כל השוטף במקום אחד', 'פחות דליפות, יותר שליטה'] as const,
+  },
+  trust: {
+    title: 'אוטומציה עם חגורת בטיחות',
+    items: [
+      {
+        title: 'הערוץ הרשמי של Meta',
+        body: 'WhatsApp Business Platform עם מספר עסקי משלכם ותבניות מאושרות. בלי אוטומציות לא-רשמיות, בלי דפדפן פתוח, בלי סיכון למספר.',
+      },
+      {
+        title: 'עניתם בעצמכם — הבוט שותק',
+        body: 'עניתם להורה ידנית מהמערכת? הבוט יוצא מהשיחה לשש שעות. בלי תשובות כפולות.',
+      },
+      {
+        title: 'שום דבר לא קורה בלי אישור',
+        body: 'ההורה מאשר לפני ביטול. אתם מאשרים לפני שחיוב נשלח. ה-AI מציע — אף פעם לא מבצע לבד.',
+      },
+      {
+        title: 'ההורים נשארים בשליטה',
+        body: 'הודעת "הסר" אחת עוצרת הכול. נתונים נמחקים לפי מדיניות שמירה מוגדרת.',
+      },
+    ],
   },
   audience: {
     title: 'Lessio לא נבנתה לכל מורה. היא נבנתה לעסק.',
+    subtitle:
+      'לרגע שבו ההוראה כבר הפכה לעסק — עשרות תלמידים, כמה מורים, וגבייה שאי אפשר להחזיק בראש.',
     forTitle: 'מתאים',
     forBullets: [
       'מורה פרטי עם עומס תפעולי אמיתי',
@@ -274,8 +571,9 @@ const landingHeCore = {
     teachersOne: 'מורה אחד',
     teachersUpTo: 'עד {count} מורים',
     teachersUnlimited: 'מורים ללא הגבלה',
-    cta: '30 יום ניסיון',
+    cta: 'התחילו 30 יום ניסיון',
     trialNote: '30 יום ניסיון. בלי כרטיס אשראי.',
+    trialIncludes: 'הניסיון כולל את מסלול סטודיו המלא.',
   },
   faq: {
     title: 'מענה לשאלות נפוצות',
@@ -289,10 +587,38 @@ const landingHeCore = {
         ],
       },
       {
-        question: 'ההורים צריכים לעבור לאפליקציה חדשה?',
-        opening: 'לא.',
+        question: 'האם זה וואטסאפ רשמי?',
+        opening: 'כן.',
         rest: [
-          'התקשורת נשארת ב-WhatsApp. פחות חיכוך, פחות הסברים, פחות סיכוי לאבד תגובה בדרך.',
+          'Lessio רצה על WhatsApp Business Platform של Meta, בחיבור מודרך ועם תבניות הודעה מאושרות. בלי אוטומציות לא-רשמיות, בלי טלפון שצריך להישאר דלוק, בלי סיכון לחסימת המספר.',
+        ],
+      },
+      {
+        question: 'האם אני צריכה להחליף מספר?',
+        opening: 'מחברים מספר עסקי ייעודי דרך התהליך של Meta.',
+        rest: [
+          'אפשר גם להעביר מספר קיים לפלטפורמה העסקית, אבל רוב העסקים מעדיפים מספר עסקי נפרד - כך הקו האישי נשאר אישי.',
+        ],
+      },
+      {
+        question: 'איך ההורים משתמשים ב-Lessio?',
+        opening: 'הם לא מתקינים כלום.',
+        rest: [
+          'הם כותבים לוואטסאפ של העסק ומקבלים תפריט: ביטול, קביעה, יתרה, קבלות, פורטל. מי שמעדיף - נכנס לפורטל בקישור עם קוד חד-פעמי.',
+        ],
+      },
+      {
+        question: 'כמה זמן לוקח לעבור למערכת?',
+        opening: 'אפשר לעבוד כבר ביום הראשון.',
+        rest: [
+          'ההקמה מודרכת, ותלמידים, הורים ושיעורים נכנסים בייבוא מאקסל - לא בהקלדה מחדש. חיבור הוואטסאפ מול Meta הוא הצעד שלוקח הכי הרבה זמן, והמערכת עובדת גם לפניו.',
+        ],
+      },
+      {
+        question: 'מה קורה כשהורה מבטל?',
+        opening: 'המדיניות שלך מחליטה.',
+        rest: [
+          'קובעים חלון ביטול ואחוזי חיוב פעם אחת. מאותו רגע כל ביטול מתומחר לבד, ההורה רואה את הסכום לפני שהוא מאשר, והחיוב נכנס לחשבון החודשי.',
         ],
       },
       {
@@ -303,20 +629,6 @@ const landingHeCore = {
         ],
       },
       {
-        question: 'מה Lessio מחליפה בפועל?',
-        opening: 'היא מחליפה פיזור.',
-        rest: [
-          'במקום WhatsApp, אקסל, תזכורות וזיכרון - מערכת אחת שמחזיקה את השוטף.',
-        ],
-      },
-      {
-        question: 'איפה הערך הכלכלי?',
-        rest: [
-          'בדיוק במקומות שבהם כסף נוזל: ביטולים, גבייה, תיאום ומעקב.',
-          'Lessio עוזרת לסגור את השוטף בצורה ברורה יותר, כדי שפחות דברים יישארו פתוחים.',
-        ],
-      },
-      {
         question: 'מה קורה אם אני כבר "מסתדר" עם הכלים שיש לי?',
         rest: [
           'אם באמת הכול סגור, ברור, ומתועד - כנראה שלא צריך לשנות.',
@@ -324,6 +636,12 @@ const landingHeCore = {
         ],
       },
     ],
+  },
+  finalCta: {
+    title: 'הודעת הביטול הבאה תגיע בכל מקרה.',
+    body: 'השאלה היחידה היא כמה עבודה היא תשאיר אחריה.',
+    cta: 'התחילו 30 יום ניסיון',
+    note: '30 יום ניסיון. בלי כרטיס אשראי. הניסיון כולל את מסלול סטודיו המלא.',
   },
   footer: {
     statusLabel: 'מערכת פעילה',
@@ -337,7 +655,15 @@ const landingHeCore = {
   },
   nav: {
     login: 'כניסה',
-    signup: 'הרשמה',
+    signup: 'להתחיל בחינם',
+    howItWorks: 'איך זה עובד',
+    pricing: 'מחירים',
+    faq: 'שאלות',
+  },
+  meta: {
+    title: 'LESSIO — מערכת ההפעלה לעסקי הוראה ומרכזי למידה',
+    description:
+      'הוואטסאפ של ההורים מחובר לעסק: ביטול מתומחר לפי המדיניות שלך, נכנס לחיוב החודשי ומתעדכן ביומן — לבד. 30 יום ניסיון בלי כרטיס אשראי.',
   },
 } as const
 
@@ -345,6 +671,7 @@ export type LandingContent = (typeof landingEnCore | typeof landingHeCore) & {
   links: {
     login: string
     signup: string
+    howItWorks: string
   }
 }
 
@@ -356,6 +683,7 @@ export function getLandingContent(locale: string): LandingContent {
     links: {
       login: '/login',
       signup: '/signup',
+      howItWorks: '#how-it-works',
     },
   }
 }
@@ -376,8 +704,7 @@ export function getLandingMetadata(locale: string): {
   }
 } {
   const c = getLandingContent(locale)
-  const title = `LESSIO — ${c.hero.subheadline}`
-  const description = c.hero.headline
+  const { title, description } = c.meta
 
   return {
     title,

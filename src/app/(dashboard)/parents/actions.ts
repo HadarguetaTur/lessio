@@ -289,6 +289,10 @@ export async function updateParentAsTeacher(
 
   const session = await getSession()
   if (session.role !== 'teacher') return { error: await commonError('noPermission') }
+  // The two teacher-facing parent actions were the only dashboard mutations in
+  // the product that skipped this. Support mode reports role 'owner' so it
+  // never reached here, but a lapsed org's teacher could still write.
+  requireMutation(session)
 
   const teacher = await getTeacherByProfileId(session.profileId, session.orgId, { activeOnly: true })
   if (!teacher) return { error: t('parents.errors.noTeacherProfile') }
@@ -328,8 +332,10 @@ export async function updateParentNotesAsTeacher(
 ): Promise<ActionState> {
   const t = await getTranslations()
   const notes = (formData.get('notes') as string ?? '').trim() || null
-  const { orgId, role, profileId } = await getSession()
+  const session = await getSession()
+  const { orgId, role, profileId } = session
   if (role !== 'teacher') return { error: await commonError('noPermission') }
+  requireMutation(session)
 
   const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
   if (!teacher) return { error: t('parents.errors.noTeacherProfile') }

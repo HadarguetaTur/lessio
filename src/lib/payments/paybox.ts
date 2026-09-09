@@ -5,14 +5,26 @@
  * PayBox API: https://developer.payboxapp.com
  * Generates a hosted payment page link.
  *
- * NOTE: Exact endpoint paths, request/response shapes, and webhook field names
- * must be verified against the PayBox developer portal during go-live.
- * The contract below is based on the documented API structure.
+ * ⚠ UNVERIFIED WIRE CONTRACT — DO NOT TREAT AS WORKING. Identical situation to
+ * src/lib/payments/bit.ts; read the note there. Endpoint paths, response field
+ * names, webhook field names and the HMAC scheme are all inferred, not
+ * confirmed against a live PayBox account.
+ *
+ * `reference: chargeId` below is the id we SEND to PayBox. The reference we
+ * store is PayBox's own `transactionId ?? paymentId ?? id`, which
+ * registry.parseWebhookBody reads back — internally consistent, but resting on
+ * the unverified assumption that PayBox echoes its own id under one of those
+ * names.
+ *
+ * PayBox has no confirmTransaction, so the signed webhook is the only
+ * settlement path: createPaymentLink refuses to mint in production without
+ * PAYBOX_WEBHOOK_HMAC_SECRET rather than let a paid link fail to settle.
  *
  * Config fields: apiKey, secret, merchantId
  */
 
 import type { PaymentProvider } from './index'
+import { assertWebhookSettlementConfigured } from './webhook-verify'
 
 export interface PayBoxConfig {
   apiKey:     string
@@ -42,6 +54,12 @@ export class PayBoxProvider implements PaymentProvider {
   }): Promise<{ url: string; reference: string }> {
     const { chargeId, amount, description } = params
     const { apiKey, secret, merchantId } = this.config
+
+    assertWebhookSettlementConfigured(
+      process.env.PAYBOX_WEBHOOK_HMAC_SECRET,
+      'paybox',
+      'PAYBOX_WEBHOOK_HMAC_SECRET'
+    )
 
     const body = {
       merchantId,

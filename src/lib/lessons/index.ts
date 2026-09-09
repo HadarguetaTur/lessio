@@ -272,13 +272,24 @@ export async function getLessonsForWeek(
 
 /**
  * Returns true if the status transition from current → next is allowed.
- * Business rule: cancelled is a terminal state — no further transitions permitted.
+ *
+ * Business rules:
+ * - `cancelled` is terminal — no further transitions permitted.
+ * - A no-op transition is refused. `completed → completed` used to be legal, and
+ *   the caller runs `updateLessonStatus` then `createLessonCharge`, so
+ *   re-tapping "mark completed" re-entered the charge path. Against a legacy
+ *   charge row with a NULL student_id that mints a second (and, for two
+ *   siblings, a third) charge for one lesson, because the unique index cannot
+ *   dedupe NULLs. Correcting a mistake still works — completed → no_show →
+ *   completed — it just cannot be done by repeating the state it is already in.
  */
 export function isValidStatusTransition(
   current: LessonStatus,
   next: LessonStatus
 ): boolean {
-  return current !== 'cancelled' && ['scheduled', 'completed', 'cancelled', 'no_show'].includes(next)
+  if (current === 'cancelled') return false
+  if (current === next) return false
+  return ['scheduled', 'completed', 'cancelled', 'no_show'].includes(next)
 }
 
 export async function updateLessonStatus(

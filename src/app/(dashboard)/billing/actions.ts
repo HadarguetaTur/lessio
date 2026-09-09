@@ -15,6 +15,7 @@ import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import { createSubscription, updateSubscription, deleteSubscription } from '@/lib/subscriptions'
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
+import { requireMintAmount, NothingToCollectError } from '@/lib/payments/mintAmount'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { formatBillingMonth } from '@/lib/i18n/formatBillingMonth'
 import { getT } from '@/lib/i18n/serverTranslator'
@@ -548,11 +549,21 @@ export async function approveBillingAction(billingId: string) {
     })
     chargeId = syncResult.chargeId
   } catch (error) {
-    await supabase
+    // The compensating un-approve. supabase-js returns { error } rather than
+    // throwing, and a swallowed failure here leaves the month APPROVED with no
+    // ledger charge behind it — the owner sees an approved bill nobody can pay.
+    const { error: revertError } = await supabase
       .from('student_monthly_billing')
       .update({ is_approved: false, updated_at: new Date().toISOString() })
       .eq('id', billingId)
       .eq('organization_id', session.orgId)
+    if (revertError) {
+      console.error(
+        '[billing] FAILED TO UN-APPROVE after a ledger sync error — this billing row is approved ' +
+        'with no charge behind it and needs a person.',
+        { billingId, orgId: session.orgId, error: revertError.message }
+      )
+    }
     if (error instanceof MonthlyBillingConflictError) {
       return { error: t('billing.errors.individualChargeConflict') }
     }
@@ -680,13 +691,28 @@ async function sendBillingPaymentRequestCore(
 
   const { data: charge } = await db
     .from('charges')
-    .select('id, status, amount')
+    // amount_paid is load-bearing: the link must be minted NET of any cash
+    // already recorded, because that is what the charge_payment_references
+    // trigger stores as the amount this link collects. See mintAmountForCharges.
+    .select('id, status, amount, amount_paid')
     .eq('organization_id', orgId)
     .eq('billing_record_id', billingId)
     .maybeSingle()
 
   if (!charge) throw new Error(t('billing.errors.ledgerChargeNotFound'))
   if (charge.status === 'paid') throw new Error(t('billing.errors.chargeAlreadyPaid'))
+
+  // A charge whose partial payments already cover it has nothing left to
+  // collect; minting for it would hand the parent a ₪0 link.
+  let mintAmount: number
+  try {
+    mintAmount = requireMintAmount([charge])
+  } catch (err) {
+    if (err instanceof NothingToCollectError) {
+      throw new Error(t('billing.errors.chargeAlreadyPaid'))
+    }
+    throw err
+  }
 
   // Load parent
   const { data: parent } = await db
@@ -734,7 +760,7 @@ async function sendBillingPaymentRequestCore(
   const { provider, providerName } = await getPaymentProvider(orgId)
   const paymentResult = await provider.createPaymentLink({
     chargeId: charge.id,
-    amount: Number(charge.amount),
+    amount: mintAmount,
     description: tr('paymentDescription', {
       month: monthLabel,
       parent: parent.full_name as string,
@@ -746,8 +772,10 @@ async function sendBillingPaymentRequestCore(
     },
   })
 
-  // Persist link on charge
-  await db
+  // Persist link on charge. supabase-js returns { error } rather than throwing,
+  // so this MUST be checked: a swallowed failure here sends the parent a link
+  // whose reference is stored nowhere, which no webhook can ever settle.
+  const { error: persistError } = await db
     .from('charges')
     .update({
       payment_link: paymentResult.url,
@@ -757,6 +785,12 @@ async function sendBillingPaymentRequestCore(
     })
     .eq('id', charge.id)
     .eq('organization_id', orgId)
+
+  if (persistError) {
+    throw new Error(
+      `[sendMonthlyPaymentRequest] failed to persist payment reference on charge ${charge.id}: ${persistError.message}`
+    )
+  }
 
   // Session-window aware: the org's own template copy inside the 24h window,
   // the Meta-approved lessio_payment_request_* template outside it. A plain
@@ -771,8 +805,8 @@ async function sendBillingPaymentRequestCore(
     templateType: 'payment_request',
     vars: {
       parent_name: parent.full_name as string,
-      amount: formatBotMoney(Number(charge.amount), locale, currency),
-      amount_value: Number(charge.amount).toFixed(2),
+      amount: formatBotMoney(mintAmount, locale, currency),
+      amount_value: mintAmount.toFixed(2),
       description: tr('paymentDescriptionShort', { month: monthLabel }),
       charge_lines: '',
       payment_link: paymentResult.url,

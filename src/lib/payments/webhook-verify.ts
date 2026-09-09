@@ -6,6 +6,33 @@
 
 import { createHmac, timingSafeEqual } from 'crypto'
 
+/**
+ * Refuses to mint a payment link for a provider whose ONLY settlement path is a
+ * signed webhook, when the signing secret is not configured.
+ *
+ * Bit and PayBox have no `confirmTransaction`, so the webhook handler's
+ * `if (!requestVerified && !providerConfirmed) return { ok:false }` is the whole
+ * story: with no secret in production, `verifyWebhookHmacSha256Base64` returns
+ * false and EVERY payment is rejected. The parent pays, the money leaves their
+ * account, and nothing settles — visible only as a line in the server log.
+ *
+ * Failing here instead turns that into "the owner cannot send the link and is
+ * told why", which is a problem someone can act on.
+ */
+export function assertWebhookSettlementConfigured(
+  secret: string | undefined,
+  provider: string,
+  envVarName: string
+): void {
+  if (secret) return
+  if (process.env.NODE_ENV !== 'production') return
+  throw new Error(
+    `[payments/${provider}] ${envVarName} is not set. ${provider} settles only through a signed ` +
+      'webhook, so without it every payment this link collects would be rejected by ' +
+      '/api/payments/' + provider + ' and the charge would stay unpaid. Refusing to mint the link.'
+  )
+}
+
 function readSignatureHeader(headers: Headers, names: string[]): string | null {
   for (const name of names) {
     const v = headers.get(name)

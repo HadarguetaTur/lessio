@@ -32,6 +32,7 @@ import {
   chargeOutstanding,
   isMissingIdempotencyKey,
 } from '@/lib/payments/settlement'
+import type { ReferenceCharge } from '@/lib/payments/settlement'
 import { round2 } from '@/lib/charges/paymentMethods'
 
 /**
@@ -188,9 +189,13 @@ export async function POST(
   // already recorded goes out at ₪150, and the provider reports ₪150. Checking
   // ₪200 here rejected every such payment and left the dunning cron chasing
   // money that had already arrived.
-  const settleable = charges.filter((charge) => SETTLEABLE_STATUSES.has(String(charge.status)))
+  // Snapshot state, used only to validate the amount the provider reports. The
+  // write path below re-reads instead — see the freshness re-read.
+  const settleableAtLookup = charges.filter((charge) =>
+    SETTLEABLE_STATUSES.has(String(charge.status))
+  )
   const outstandingTotal = round2(
-    settleable.reduce((sum, charge) => sum + chargeOutstanding(charge), 0)
+    settleableAtLookup.reduce((sum, charge) => sum + chargeOutstanding(charge), 0)
   )
   const expectedAmount =
     resolved.mintedAmount ??
@@ -248,7 +253,46 @@ export async function POST(
   // Includes 'paid': a callback for a charge someone already settled by hand is
   // the same reconciliation problem — real money that our ledger will not
   // record, because recording it would count it twice.
-  const resolvedCharges = charges.filter((c) => !SETTLEABLE_STATUSES.has(String(c.status)))
+  // ── Freshness re-read ─────────────────────────────────────────────────────
+  // Everything above ran against the snapshot taken at `resolveChargesForReference`,
+  // and between then and here the handler performed an organizations read, a
+  // credential decryption, a payment_requests read and — critically — a network
+  // round-trip to the provider (`confirmTransaction`). Seconds, not milliseconds.
+  //
+  // An owner tapping "mark paid" inside that window sets status='paid' and
+  // inserts a method:'manual' charge_payments row. The webhook, still holding
+  // its stale 'pending' snapshot, used to upsert a method:'provider' row under a
+  // DIFFERENT unique key — ₪400 of charge_payments against a ₪200 charge —
+  // while charges.amount_paid stayed correct, so nothing in `charges` revealed
+  // it. `markChargeAsPaid` guards on (status, amount_paid); this side now reads
+  // the same state so both check the same thing.
+  const { data: freshRows, error: freshError } = await db
+    .from('charges')
+    .select('id, organization_id, parent_id, amount, amount_paid, status')
+    .in('id', chargeIds)
+    .eq('organization_id', orgId)
+
+  if (freshError) {
+    console.error('[payments/webhook] Failed to re-read charge state before settling', {
+      provider,
+      orgId,
+      paymentReference,
+      error: freshError.message,
+    })
+    return NextResponse.json({ ok: false }, { status: 200 })
+  }
+
+  const freshById = new Map(
+    ((freshRows ?? []) as ReferenceCharge[]).map((row) => [row.id, row])
+  )
+  // Fall back to the snapshot only for a row that vanished, which the status
+  // filter then treats as unsettleable.
+  const currentCharges = charges.map((c) => freshById.get(c.id as string) ?? c)
+
+  const resolvedCharges = currentCharges.filter(
+    (c) => !SETTLEABLE_STATUSES.has(String(c.status))
+  )
+  const settleable = currentCharges.filter((c) => SETTLEABLE_STATUSES.has(String(c.status)))
 
   // Per charge rather than one bulk update: each absorbs its own share of the
   // payment, which becomes a charge_payments row keyed by (charge, reference) —
@@ -362,13 +406,40 @@ export async function POST(
       update.paid_at = now
     }
 
-    const { error: updateError } = await db
+    // Both terms are the state this iteration read and priced against. Guarding
+    // on status alone let an owner's "mark paid" land in between: their update
+    // moved amount_paid without moving it off a status this WHERE still matched.
+    // The zero-row outcome is now looked at rather than discarded.
+    const { data: updatedRow, error: updateError } = await db
       .from('charges')
       .update(update)
       .eq('id', charge.id)
+      .eq('organization_id', charge.organization_id)
       .eq('status', charge.status)
+      .eq('amount_paid', charge.amount_paid ?? 0)
       .select('id')
       .maybeSingle()
+
+    if (!updateError && !updatedRow) {
+      // Someone settled this charge between the re-read and here. The ledger row
+      // is already written, so the money is not lost — but amount_paid was set
+      // by the other writer and may now disagree with SUM(charge_payments).
+      updateFailed = true
+      console.error(
+        '[payments/webhook] Charge changed underneath the settlement — amount_paid not updated. ' +
+        'Reconcile charges.amount_paid against SUM(charge_payments) for this charge.',
+        {
+          provider,
+          orgId,
+          chargeId: charge.id,
+          paymentReference,
+          expectedStatus: charge.status,
+          expectedAmountPaid: charge.amount_paid ?? 0,
+          recorded,
+        }
+      )
+      continue
+    }
 
     if (updateError) {
       updateFailed = true

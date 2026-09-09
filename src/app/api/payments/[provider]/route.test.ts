@@ -153,24 +153,40 @@ function fakeDb(options: DbOptions) {
       }
 
       if (this.table === 'charges' && this.action === 'select') {
+        // Copies, not live references — a real SELECT is a snapshot, and the
+        // handler holding one across a provider round-trip is the whole point
+        // of the "owner marks paid mid-flight" test below.
+        const snapshot = (rows: ChargeRow[]) => rows.map((r) => ({ ...r }))
         if (this.inFilter?.column === 'id') {
-          return { data: charges.filter((c) => this.inFilter!.values.includes(c.id)), error: null }
-        }
-        if ('payment_reference' in this.filters) {
           return {
-            data: charges.filter((c) => c.payment_reference === this.filters.payment_reference),
+            data: snapshot(charges.filter((c) => this.inFilter!.values.includes(c.id))),
             error: null,
           }
         }
-        return { data: charges.filter((c) => c.id === this.filters.id), error: null }
+        if ('payment_reference' in this.filters) {
+          return {
+            data: snapshot(
+              charges.filter((c) => c.payment_reference === this.filters.payment_reference)
+            ),
+            error: null,
+          }
+        }
+        return { data: snapshot(charges.filter((c) => c.id === this.filters.id)), error: null }
       }
 
       if (this.table === 'charges' && this.action === 'update') {
         if ('provider_transaction_ids' in this.values) return { data: null, error: null }
         const target = charges.find((c) => c.id === this.filters.id)
         if (!target) return { data: [], error: null }
-        // Optimistic filters: a stale status matches nothing, as in Postgres.
+        // Optimistic filters: a stale status or amount_paid matches nothing, as
+        // in Postgres.
         if ('status' in this.filters && this.filters.status !== target.status) {
+          return { data: [], error: null }
+        }
+        if (
+          'amount_paid' in this.filters &&
+          Number(this.filters.amount_paid) !== Number(target.amount_paid)
+        ) {
           return { data: [], error: null }
         }
         Object.assign(target, this.values)
@@ -469,5 +485,40 @@ describe('grow', () => {
 
     expect(world.chargeById('charge-1').status).toBe('pending')
     expect(world.payments).toHaveLength(0)
+  })
+})
+
+describe('an owner marking the charge paid while the callback is in flight', () => {
+  it('does not double-count: no provider row lands on a charge already settled by hand', async () => {
+    const world = fakeDb({ provider: 'cardcom', charges: [{ amount: 200 }] })
+    mocks.createDb.mockReturnValue(world.db)
+
+    // The window is a provider round-trip. confirmTransaction stands in for it:
+    // the owner taps "mark paid" while the handler waits on the network, which
+    // is what markChargeAsPaid does — status paid, amount_paid full, and a
+    // method:'manual' charge_payments row keyed WITHOUT a provider_reference.
+    mocks.getProvider.mockResolvedValue({
+      provider: {
+        confirmTransaction: vi.fn().mockImplementation(async () => {
+          const charge = world.chargeById('charge-1')
+          charge.status = 'paid'
+          charge.amount_paid = 200
+          world.payments.push({ charge_id: 'charge-1', provider_reference: null, amount: 200 })
+          return true
+        }),
+      },
+      providerName: 'cardcom',
+    })
+
+    const request = callback('cardcom', 'ref-1', 200)
+    await deliver('cardcom', request.body, request.headers)
+
+    // Before the freshness re-read the handler settled against its stale
+    // 'pending' snapshot and upserted a second, method:'provider' row under a
+    // different unique key — 400 of charge_payments against a 200 charge,
+    // invisible in `charges` because amount_paid stayed a correct 200.
+    expect(world.totalRecorded('charge-1')).toBe(200)
+    expect(world.paymentsFor('charge-1')).toHaveLength(1)
+    expect(world.chargeById('charge-1').amount_paid).toBe(200)
   })
 })

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { canTeacherAccessStudent, getStudentById, getStudents } from '@/lib/students'
 import { getTeacherByProfileId, getTeachers } from '@/lib/teachers'
-import { getGroups } from '@/lib/groups'
+import { getGroups, withInviteCounts } from '@/lib/groups'
 import { orgEnforcesWeeklyQuota } from '@/lib/booking'
 import { StudentSearch } from '@/components/dashboard/students/StudentSearch'
 import { createStudent } from './actions'
@@ -60,7 +60,9 @@ export default async function StudentsPage(props: {
   const [students, teachers, groups, initialSheetStudent] = await Promise.all([
     getStudents(orgId, studentQuery),
     isTeacher ? Promise.resolve([]) : getTeachers(orgId),
-    tab === 'groups' ? getGroups(orgId) : Promise.resolve([]),
+    tab === 'groups'
+      ? getGroups(orgId).then((g) => withInviteCounts(orgId, g))
+      : Promise.resolve([]),
     // ?openStudent= takes any id, so it needs the same teacher check the detail
     // page does — otherwise the sheet is a way around the scoped list.
     tab === 'students' && openStudentParsed.success

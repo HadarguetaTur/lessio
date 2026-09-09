@@ -7,6 +7,12 @@ import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { deleteGroup, toggleGroupStatus, updateGroup } from '@/app/(dashboard)/students/group-actions'
 import { EditGroupSheet } from './GroupFormSheet'
+import { WhatsAppGroupCard } from './WhatsAppGroupCard'
+import {
+  inviteGroupParentsAction,
+  linkWhatsAppGroupAction,
+  unlinkWhatsAppGroupAction,
+} from '@/app/(dashboard)/students/wa-group-actions'
 import type { StudentGroup } from '@/lib/groups'
 
 interface Student {
@@ -109,6 +115,14 @@ export function GroupsTable({ groups, students }: GroupsTableProps) {
                         students={students}
                         action={updateAction}
                         group={group}
+                        waGroupCard={
+                          <WhatsAppGroupCard
+                            group={group}
+                            linkAction={linkWhatsAppGroupAction}
+                            unlinkAction={unlinkWhatsAppGroupAction}
+                            inviteAction={inviteGroupParentsAction}
+                          />
+                        }
                       />
 
                       <Link

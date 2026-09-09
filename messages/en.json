@@ -681,6 +681,36 @@
       "discountPercent": "Discount (%)",
       "discountReason": "Discount reason",
       "discountReasonPlaceholder": "e.g. sibling discount"
+    },
+    "waGroup": {
+      "title": "WhatsApp group",
+      "howto": {
+        "1": "Open a group in WhatsApp on your own phone and give it a name.",
+        "2": "In the group info, choose \"Invite via link\" and copy the link.",
+        "3": "Paste it here — we will send it to each parent privately."
+      },
+      "link": "Link",
+      "unlink": "Unlink",
+      "invite": "Invite parents",
+      "open": "Open in WhatsApp",
+      "invitedCount": "{invited} of {total} parents invited",
+      "pendingInvites": "{count} parents have not been invited yet.",
+      "inviteSent": "Invitations sent to {count} parents.",
+      "notInGroupNote": "Messages you send from Lessio reach each parent privately from your business number — never inside the group itself.",
+      "errors": {
+        "INVALID_LINK": "That is not a WhatsApp invite link. It should start with https://chat.whatsapp.com/",
+        "SAVE_FAILED": "Could not save. Try again.",
+        "NOT_LINKED": "Link a WhatsApp group first.",
+        "CREATE_FAILED": "Could not send the invitations. Try again.",
+        "not_connected": "WhatsApp is not connected. Connect a number in settings first.",
+        "quality_red": "Sending is paused while your number’s quality rating recovers.",
+        "broadcasts_disabled": "Broadcasts are switched off for this account.",
+        "subscription_lapsed": "Your subscription is not active, so sending is paused.",
+        "no_daily_budget": "Today’s message allowance is used up. Try again tomorrow.",
+        "promo_needs_verification": "Your business needs to be verified with Meta first.",
+        "promotional_content_in_update": "The message reads as promotional.",
+        "template_paused": "Meta paused the invitation template."
+      }
     }
   },
   "parents": {
@@ -2456,7 +2486,6 @@
       "req2": "A phone number not already registered on WhatsApp",
       "req3": "Meta Business Verification",
       "identityLoading": "Loading the number details from Meta...",
-      "identityUnverified": "We could not confirm the connection with Meta — the connection may have expired. If this persists, disconnect and reconnect.",
       "verifiedName": "Verified business name",
       "phoneNumber": "Phone number",
       "disconnectHint": "Disconnecting stops WhatsApp messages being sent and received until you reconnect.",
@@ -2470,7 +2499,9 @@
       "noPhoneNumber": "A WhatsApp Business account was selected but no phone number was connected. Reopen the flow and add a phone number to finish.",
       "missingIds": "Meta finished without returning the account details needed to connect. Nothing was saved — please try again.",
       "req2Hint": "A number that is already active in the WhatsApp app can't be connected. Use a second number, or migrate your existing one — it will then stop working in the app.",
-      "requirementsHelp": "Not sure? Write to us"
+      "requirementsHelp": "Not sure? Write to us",
+      "phoneNumberId": "Number's technical ID",
+      "identityUnavailable": "We couldn't read this number's details from Meta right now."
     },
     "remindersPage": {
       "subtitle": "Set automatic WhatsApp reminders to parents before lessons and about open charges.",
@@ -2617,9 +2648,13 @@
       },
       "errors": {
         "ownerOnly": "Only the owner can do this.",
-        "refreshFailed": "Meta could not be reached. Try again in a minute.",
         "invalid": "Invalid request.",
-        "saveFailed": "Saving failed. Try again."
+        "saveFailed": "Saving failed. Try again.",
+        "refresh": {
+          "not_connected": "No WhatsApp number is connected, so there is nothing to check.",
+          "token_invalid": "The WhatsApp connection has expired. Connect the number again to keep sending and receiving messages.",
+          "unreachable": "We could not reach Meta. Try again in a minute."
+        }
       }
     },
     "whatsappState": {
@@ -2662,7 +2697,8 @@
         "verification_pending": "Meta is reviewing your business verification.",
         "unverified_business": "Your business is not verified with Meta yet, so the daily limit stays at 250 conversations.",
         "templates_unapproved": "Some message wordings are still waiting for Meta approval — until then they only reach parents who wrote to you in the last 24 hours."
-      }
+      },
+      "viewPlans": "View plans"
     }
   },
   "quota": {

@@ -3166,7 +3166,29 @@
     "noTeacherRecordContact": "No active teacher record found. Contact your system administrator.",
     "availabilityHint": "Set the weekly windows in which students can book lessons.",
     "overridesHint": "Exceptions for a specific date — block the whole day, block part of the hours, or set special hours.",
-    "reminderSent": "Reminder sent"
+    "reminderSent": "Reminder sent",
+    "lessonUpdate": {
+      "title": "Tell the parents",
+      "subtitle": "Reaches the {count} parents of this lesson, each one privately.",
+      "placeholder": "This week we are in room 3 instead of room 1.",
+      "note": "Sent from the school’s WhatsApp number.",
+      "send": "Send",
+      "sent": "Sent to {count} parents.",
+      "errors": {
+        "noPermission": "This lesson is not yours.",
+        "empty": "Write something first.",
+        "tooLong": "That is too long for one WhatsApp message.",
+        "failed": "Could not send. Try again.",
+        "not_connected": "The school has not connected WhatsApp yet.",
+        "quality_red": "Sending is paused while the school’s number recovers its quality rating.",
+        "broadcasts_disabled": "Sending is switched off for this account.",
+        "subscription_lapsed": "The school’s subscription is not active.",
+        "no_daily_budget": "Today’s message allowance is used up. Try again tomorrow.",
+        "promo_needs_verification": "The school’s business is not verified with Meta yet.",
+        "promotional_content_in_update": "This reads like an offer rather than a lesson update. Registration and offers are sent by the office.",
+        "template_paused": "WhatsApp paused the template this uses."
+      }
+    }
   },
   "admin": {
     "nav": {
@@ -4350,6 +4372,13 @@
     "serviceUnavailable": {
       "unavailableTitle": "This portal is not available right now",
       "unavailableBody": "The parent portal is inactive at the moment. For scheduling, cancellations or any question, please contact your teacher directly."
+    },
+    "marketingOptIn": {
+      "title": "Offers and news",
+      "description": "Let {org} send you news about new classes, registration and offers.",
+      "serviceNote": "Lesson reminders, homework and payment requests always keep arriving, whichever way this is set.",
+      "saving": "Saving…",
+      "failed": "Could not save. Try again."
     }
   },
   "saas": {

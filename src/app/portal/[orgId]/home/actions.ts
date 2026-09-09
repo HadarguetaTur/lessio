@@ -3,6 +3,7 @@
 import { getPortalSession } from '@/lib/portal/session'
 import { createDeletionRequest } from '@/lib/superadmin/dataDeletion'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 
 /** `error` is a key under the portal.gdpr namespace, translated by the client. */
 export type DeletionRequestState = { error: 'noPhone' | 'error' | null; success?: boolean }
@@ -11,6 +12,45 @@ export type DeletionRequestState = { error: 'noPhone' | 'error' | null; success?
  * Inserts a GDPR data deletion request for the current portal session's phone number.
  * Per /docs/sprint-23-scope.md § Story 1a.
  */
+/**
+ * The parent's own consent to marketing messages.
+ *
+ * Recorded with source 'portal' so the evidence on file says the parent chose
+ * it themselves rather than the business attesting on their behalf. Turning it
+ * off writes marketing_opted_out_at and never touches opted_out_at, so lesson
+ * reminders and payment requests keep working.
+ */
+export async function setMarketingOptInAction(
+  orgId: string,
+  optIn: boolean
+): Promise<{ error: string | null }> {
+  const session = await getPortalSession()
+  if (!session || session.orgId !== orgId) {
+    redirect(`/portal/${orgId}/login`)
+  }
+
+  const { createServiceRoleClient } = await import('@/lib/supabase/service-role')
+  const now = new Date().toISOString()
+
+  const { error } = await createServiceRoleClient()
+    .from('parents')
+    .update(
+      optIn
+        ? { marketing_opt_in_at: now, marketing_opt_in_source: 'portal', marketing_opted_out_at: null }
+        : { marketing_opted_out_at: now, marketing_opt_in_at: null }
+    )
+    .eq('id', session.parentId)
+    .eq('organization_id', orgId)
+
+  if (error) {
+    console.error('[portal/marketing] update failed', { orgId, error: error.message })
+    return { error: 'error' }
+  }
+
+  revalidatePath(`/portal/${orgId}/home`)
+  return { error: null }
+}
+
 export async function requestDeletionAction(
   orgId: string,
   _prev: DeletionRequestState

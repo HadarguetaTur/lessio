@@ -9,7 +9,10 @@ import { getLessonAccessScope, getLessonById, formatTime, formatDate, LessonStat
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { TeacherLessonOutcomeForm } from '@/components/dashboard/lessons/TeacherLessonOutcomeForm'
 import { CancelLessonForm } from '@/components/dashboard/lessons/CancelLessonForm'
-import { updateTeacherLessonOutcome } from './actions'
+import { updateTeacherLessonOutcome, sendLessonUpdateAction } from './actions'
+import { LessonUpdateForm } from '@/components/dashboard/lessons/LessonUpdateForm'
+import { resolveAudience } from '@/lib/whatsapp/broadcast/audience'
+import { PARAM_LIMITS } from '@/lib/whatsapp/approvedTemplates'
 import { cancelLesson } from '@/app/(dashboard)/lessons/[id]/actions'
 import { renderCancelReason } from '@/lib/lessons/renderCancelReason'
 
@@ -68,6 +71,14 @@ export default async function TeacherLessonDetailPage(props: {
   if (lesson.teacher.id !== teacher.id) {
     forbidden()
   }
+
+  // How many parents an update would actually reach, after consent. Shown on
+  // the button so a teacher is not guessing, and it is 0 when everyone opted out.
+  const updateRecipients =
+    lesson.status === 'scheduled'
+      ? (await resolveAudience(orgId, { kind: 'lesson', lessonId: lesson.id }, 'class_update')).included
+          .length
+      : 0
 
   const backHref = `/teacher/schedule${week ? `?week=${week}` : ''}`
 
@@ -152,6 +163,19 @@ export default async function TeacherLessonDetailPage(props: {
           action={updateTeacherLessonOutcome.bind(null, lesson.id)}
         />
       </div>
+
+      {/* Telling this lesson's parents something about it. Scheduled lessons
+          only: an update about a lesson that already happened is a message the
+          teacher should send in the conversation itself. */}
+      {lesson.status === 'scheduled' && (
+        <div className="mt-4">
+          <LessonUpdateForm
+            action={sendLessonUpdateAction.bind(null, lesson.id)}
+            recipientCount={updateRecipients}
+            maxLength={PARAM_LIMITS.broadcast_message}
+          />
+        </div>
+      )}
 
       {/* A teacher who falls ill had no way to cancel — only an admin did. The
           fee still follows the org's cancellation policy; waiving it does not

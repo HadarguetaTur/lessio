@@ -6,7 +6,7 @@
  * money is this". A parent paying a link from a week ago is not doing anything
  * wrong, and their payment has to land. charge_payment_references keeps every
  * reference a charge ever carried (written by a DB trigger, see
- * 20260909160000_charge_payment_reference_history.sql), and this resolves
+ * 20260909170000_charge_payment_reference_history.sql), and this resolves
  * through it, falling back to the live column so the lookup still works in an
  * environment where the table is not there yet.
  */

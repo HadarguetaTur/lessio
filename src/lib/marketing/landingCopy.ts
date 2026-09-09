@@ -67,7 +67,12 @@ export type LandingChatMessage = {
 const landingEnCore = {
   hero: {
     eyebrow: 'For tutoring centres that have outgrown spreadsheets and chat threads',
-    headline: 'Less chasing what happens at your centre. More certainty that it is handled.',
+    headline: {
+      less: 'Less',
+      lessRest: ' chasing what happens at your centre.',
+      more: 'More',
+      moreRest: ' certainty that it is handled.',
+    },
     subheadline:
       'Lessons, parents, teachers, cancellations and billing in one operating system. When a parent writes on WhatsApp, the right part of the business updates — without copying messages or chasing balances.',
     ctaPrimary: 'Start a 30-day centre trial',
@@ -368,7 +373,12 @@ const landingEnCore = {
 const landingHeCore = {
   hero: {
     eyebrow: 'למרכזי למידה שכבר גדלו מעבר לאקסל ולשרשורי WhatsApp',
-    headline: 'פחות לרדוף אחרי מה שקורה במרכז. יותר לדעת שהכול מטופל.',
+    headline: {
+      less: 'פחות',
+      lessRest: ' לרדוף אחרי מה שקורה במרכז.',
+      more: 'יותר',
+      moreRest: ' לדעת שהכול מטופל.',
+    },
     subheadline:
       'שיעורים, הורים, מורים, ביטולים וגבייה במערכת אחת. כשהורה כותב ב־WhatsApp, החלק הנכון בעסק מתעדכן — בלי להעתיק הודעות ובלי לרדוף אחרי יתרות.',
     ctaPrimary: 'פתחו 30 ימי ניסיון למרכז',

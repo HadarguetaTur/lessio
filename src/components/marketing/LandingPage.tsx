@@ -302,7 +302,8 @@ export function LandingPage({
             <div className="text-center lg:text-start">
               <p
                 className={cn(
-                  'text-xs font-semibold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-400 sm:text-sm',
+                  'text-xs font-semibold text-teal-700 dark:text-teal-400 sm:text-sm',
+                  locale === 'he' ? 'tracking-normal' : 'uppercase tracking-[0.14em]',
                   HERO_MOTION
                 )}
               >
@@ -315,7 +316,16 @@ export function LandingPage({
                   'motion-safe:delay-75'
                 )}
               >
-                {hero.headline}
+                <span className="block text-foreground/72">
+                  <span className="font-extrabold text-rose-600 dark:text-rose-400">{hero.headline.less}</span>
+                  {hero.headline.lessRest}
+                </span>
+                <span className="mt-1 block text-foreground">
+                  <span className="bg-gradient-to-l from-teal-600 via-emerald-600 to-violet-600 bg-clip-text font-extrabold text-transparent dark:from-teal-400 dark:via-emerald-400 dark:to-violet-400">
+                    {hero.headline.more}
+                  </span>
+                  {hero.headline.moreRest}
+                </span>
               </h1>
               <p
                 className={cn(

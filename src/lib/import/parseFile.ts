@@ -3,6 +3,43 @@ export interface RawRow {
 }
 
 /**
+ * Decodes an uploaded file, taking Excel as it actually is.
+ *
+ * Excel writes a CSV in the machine's ANSI codepage unless you pick the
+ * "CSV UTF-8" entry by hand, so a Hebrew sheet arrives as Windows-1255 and a
+ * strict UTF-8 decode throws on it. We try UTF-8 first (correct, and what a
+ * BOM'd file is), then fall back to Windows-1255 rather than refusing a file
+ * the customer exported the obvious way.
+ */
+function decodeUpload(buffer: ArrayBuffer): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer)
+  } catch {
+    return new TextDecoder('windows-1255').decode(buffer)
+  }
+}
+
+/**
+ * Which character separates the fields.
+ *
+ * Excel uses the regional list separator, which is a semicolon across most of
+ * Europe and in Israel \u2014 so "Save as CSV" on a Hebrew Windows produces a file
+ * this parser used to read as one giant column. Decided on the header line,
+ * outside quotes: the winner is whichever candidate appears most.
+ */
+function detectDelimiter(firstLine: string): ',' | ';' | '\t' {
+  let quoted = false
+  const counts = { ',': 0, ';': 0, '\t': 0 }
+  for (const char of firstLine) {
+    if (char === '"') quoted = !quoted
+    else if (!quoted && (char === ',' || char === ';' || char === '\t')) counts[char]++
+  }
+  if (counts[';'] > counts[','] && counts[';'] >= counts['\t']) return ';'
+  if (counts['\t'] > counts[','] && counts['\t'] > counts[';']) return '\t'
+  return ','
+}
+
+/**
  * Parse an uploaded CSV into an array of row objects.
  * Returns the header row and data rows separately.
  */
@@ -13,7 +50,8 @@ export function parseFile(buffer: ArrayBuffer, filename: string): {
   if (!filename.toLowerCase().endsWith('.csv')) {
     throw new Error('Only CSV imports are supported')
   }
-  const text = new TextDecoder('utf-8', { fatal: true }).decode(buffer).replace(/^\uFEFF/, '')
+  const text = decodeUpload(buffer).replace(/^\uFEFF/, '')
+  const delimiter = detectDelimiter(text.split('\n', 1)[0] ?? '')
   const records: string[][] = []
   let row: string[] = []
   let field = ''
@@ -25,7 +63,7 @@ export function parseFile(buffer: ArrayBuffer, filename: string): {
       else if (char === '"') quoted = false
       else field += char
     } else if (char === '"') quoted = true
-    else if (char === ',') { row.push(field); field = '' }
+    else if (char === delimiter) { row.push(field); field = '' }
     else if (char === '\n') { row.push(field.replace(/\r$/, '')); records.push(row); row = []; field = '' }
     else field += char
   }

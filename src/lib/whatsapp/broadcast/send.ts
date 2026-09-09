@@ -37,6 +37,7 @@ import {
 import { resolveAudience } from './audience'
 import { encodeBroadcastStopPayload } from './payloads'
 import { categoryOf, type AudienceFilter, type BroadcastType, type SkipReason } from './types'
+import { getOrgSubscriptionState, isOrgSaasReadOnly } from '@/lib/saas/subscriptions'
 
 type Db = ReturnType<typeof createServiceRoleClient>
 
@@ -167,6 +168,59 @@ async function recentSendsByPhone(
     counts.set(phone, (counts.get(phone) ?? 0) + 1)
   }
   return counts
+}
+
+/**
+ * May this paused campaign go back into flight?
+ *
+ * `guard.ts` opens with "every broadcast-shaped send passes through here", and
+ * resume was the counter-example: it set `status:'sending'` and cleared
+ * `paused_reason` with no guard at all, so a campaign auto-paused for
+ * `quality_red`, `blocked_by_meta` or `repeated_failure:<code>` resumed and
+ * drained on the next tick — straight back into whatever got it paused.
+ *
+ * The lapsed flag is resolved here rather than taken from the caller, for the
+ * same reason `promoteDeferredRecipients` now resolves it: a caller that can
+ * pass `false` will eventually pass `false`.
+ */
+export async function checkCampaignResumable(
+  campaignId: string,
+  orgId: string,
+  opts: { now?: Date; contentLooksPromotional?: boolean } = {}
+): Promise<{ ok: true } | { ok: false; reason: GuardBlockReason }> {
+  const db = createServiceRoleClient()
+  const now = opts.now ?? new Date()
+
+  const { data: campaignData } = await db
+    .from('broadcast_campaigns')
+    .select('template_type')
+    .eq('id', campaignId)
+    .eq('organization_id', orgId)
+    .maybeSingle()
+  if (!campaignData) return { ok: false, reason: 'not_connected' }
+
+  const { data: orgData } = await db
+    .from('organizations')
+    .select(ORG_COLUMNS)
+    .eq('id', orgId)
+    .maybeSingle()
+  if (!orgData) return { ok: false, reason: 'not_connected' }
+
+  const decision = checkCampaignAllowed({
+    org: toGuardOrg(
+      orgData as OrgRow,
+      isOrgSaasReadOnly(await getOrgSubscriptionState(orgId))
+    ),
+    category: categoryOf((campaignData as { template_type: BroadcastType }).template_type),
+    // Resuming sends the remaining recipients, whatever is left; the cap is
+    // re-applied per tick, so one is enough to ask the yes/no question.
+    recipientCount: 1,
+    conversationsLast24h: await countConversationsLast24h(db, orgId, now),
+    contentLooksPromotional: opts.contentLooksPromotional,
+    now,
+  })
+
+  return decision.ok ? { ok: true } : { ok: false, reason: decision.reason }
 }
 
 export type StartCampaignResult =
@@ -383,7 +437,16 @@ export async function promoteDeferredRecipients(db: Db, now: Date): Promise<numb
     const org = orgData as OrgRow | null
     if (!org) continue
 
-    const guardOrg = toGuardOrg(org, false)
+    // `false` used to be hardcoded here. `startCampaign` threads the real flag
+    // from the session, but this promotion runs on a cron with no session — so
+    // a campaign started while the org was paying kept promoting its deferred
+    // remainder and sending indefinitely after the subscription lapsed, since
+    // deferral re-runs every tick. `checkCampaignAllowed` would have answered
+    // `subscription_lapsed` and was simply never asked.
+    const guardOrg = toGuardOrg(
+      org,
+      isOrgSaasReadOnly(await getOrgSubscriptionState(campaign.organization_id))
+    )
     const decision = checkCampaignAllowed({
       org: guardOrg,
       category: categoryOf(campaign.template_type),

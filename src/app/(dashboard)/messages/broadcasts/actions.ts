@@ -18,7 +18,7 @@ import { requireFeature } from '@/lib/saas/featureGate'
 import { requireQuotaCapacity, QuotaExceededError } from '@/lib/saas/quota'
 import { resolveAudience } from '@/lib/whatsapp/broadcast/audience'
 import { classifyBroadcastText } from '@/lib/whatsapp/broadcast/classify'
-import { startCampaign } from '@/lib/whatsapp/broadcast/send'
+import { startCampaign, checkCampaignResumable } from '@/lib/whatsapp/broadcast/send'
 import { categoryOf, type AudienceFilter, type BroadcastType } from '@/lib/whatsapp/broadcast/types'
 import { PARAM_LIMITS } from '@/lib/whatsapp/approvedTemplates'
 import type { AppLocale } from '@/lib/i18n/locale'
@@ -148,7 +148,17 @@ export async function createBroadcastAction(
     throw err
   }
 
-  const classification = await classifyBroadcastText(session.orgId, parsed.data.message)
+  // EVERY owner-controlled field that reaches a template BODY is classified,
+  // not just `message`. `topic` is body parameter {{2}} of the UTILITY
+  // `class_update` template and ships verbatim: the same promotional sentence
+  // refused in `message` sailed through in `topic`, so `checkCampaignAllowed`
+  // never raised `promotional_content_in_update` and `consentRefusal` admitted
+  // every parent who had never opted into marketing. Marketing to a tenant's
+  // whole parent base under a UTILITY template, from one 80-character field.
+  const classification = await classifyBroadcastText(
+    session.orgId,
+    [parsed.data.topic, parsed.data.message].filter(Boolean).join('\n')
+  )
 
   const { data: created, error } = await db
     .from('broadcast_campaigns')
@@ -198,6 +208,16 @@ export async function updateBroadcastStatusAction(
   await requireFeature(session.orgId, 'broadcasts')
 
   if (!CampaignIdSchema.safeParse(campaignId).success) return { error: 'INVALID_INPUT' }
+
+  // Resume is a SEND decision, not a status edit: it puts the campaign back in
+  // flight. Without this it cleared `paused_reason` and re-entered 'sending'
+  // with no guard, so a campaign auto-paused for quality_red, blocked_by_meta
+  // or repeated failures resumed straight back into whatever paused it.
+  // Pausing and cancelling need no permission — they only ever send less.
+  if (action === 'resume') {
+    const allowed = await checkCampaignResumable(campaignId, session.orgId)
+    if (!allowed.ok) return { error: 'BLOCKED', guardReason: allowed.reason, campaignId }
+  }
 
   const db = createServiceRoleClient()
   const status = action === 'pause' ? 'paused' : action === 'resume' ? 'sending' : 'cancelled'

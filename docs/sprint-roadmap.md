@@ -770,6 +770,62 @@ routes), re-run `scripts/setup-crons.sql`, tick the three new webhook fields
 in the Meta App Dashboard, and register the templates on Brightpath's WABA from
 the settings page.
 
+## WhatsApp broadcasts + linked group — Phase 1 & 2 (2026-09-09)
+
+**Status:** Built, not yet deployed (migration `20260909140000` local only)
+**Track:** continues "WhatsApp broadcasts + group channel (2026-09-08)"; decision #42
+**Plan:** `~/.claude/plans/pure-moseying-raccoon.md`
+
+Phase 0 (number health, the three templates, the verification card) shipped on
+09.09. This is the engine and the screens on top of it.
+
+**Where it lives.** `/messages/broadcasts` is a third tab beside the portal and
+WhatsApp conversations, for owners and admins. A student group row gains
+"message the group's parents", which opens the composer with the audience ready.
+A teacher gets a single box on their own lesson page. The linked WhatsApp group
+lives in the group's edit sheet.
+
+**The campaign object.** `broadcast_campaigns` stores the audience as a FILTER
+and materialises it into `broadcast_recipients` only at send time, so a campaign
+scheduled for next week never reaches a student who left. Skipped people are
+written as rows too — the delivery report has to answer "why didn't Dana's
+mother get this?" a week later. `claim_broadcast_recipients` is the same
+`FOR UPDATE SKIP LOCKED` lease as the outbound engine, drained by
+`/api/internal/whatsapp/broadcast` (cron `whatsapp-broadcast`, every 2 min)
+twenty at a time with a pause between messages.
+
+**The guard** (`src/lib/whatsapp/broadcast/guard.ts`) is the single gate. It
+refuses on RED quality, a lapsed subscription, an unverified business sending
+marketing, or a promotion written into a service update; caps on YELLOW, on a
+warm-up number, and at half the remaining daily allowance so an announcement
+cannot starve tomorrow's reminders; and defers past quiet hours rather than
+refusing. Meta's error codes are mapped once — the per-user marketing cap
+(131049) is a skip and never a retry, a throughput error requeues and ends the
+tick, three failures in a row pause the campaign.
+
+**Consent is per category.** `parents.marketing_opt_in_at` is required (not
+merely un-refused) for a promo; `updates_opted_out_at` and
+`marketing_opted_out_at` are separate, so leaving the offers list keeps lesson
+reminders. Collected three ways: the portal switch (source `portal`), the
+owner's attestation on a promo campaign, and the `bc:stop` button on every
+broadcast. The bot prompt is deliberately deferred.
+
+**The linked group.** Meta's Groups API needs an Official Business Account, so
+the default is a group the teacher already has: they paste its invite link, and
+Lessio sends it to each parent privately on the `group_invite` template.
+`onlyUninvited` makes the button safe to press twice and makes adding a student
+invite that student's parent alone. The card says on screen that messages reach
+parents privately rather than landing in the group.
+
+**To deploy:** apply `20260909140000_whatsapp_broadcasts.sql`; register the
+`whatsapp-broadcast` cron in prod with the Vault bearer (not the whole
+`setup-crons.sql`, which would overwrite the Edge Function jobs); the
+`LESSIO_WHATSAPP_CRON_SECRET_SHA256` env var is already set. Templates must be
+registered per WABA from the settings page before anything can send.
+
+**Not built:** the bot's one-time opt-in prompt, media in broadcasts, recurring
+campaigns, and Phase 3 (the real Groups API) which waits on a tenant with OBA.
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

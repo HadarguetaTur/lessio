@@ -16,7 +16,7 @@ import { RefreshHealthButton, TrustChecklist } from './TrustChecklist'
  * forbids submitting verification for a customer, so the card prepares and
  * points, it does not collect.
  */
-export async function TrustCard({ orgId }: { orgId: string }) {
+export async function TrustCard({ orgId, readOnly = false }: { orgId: string; readOnly?: boolean }) {
   const t = await getTranslations('settings.whatsappTrust')
   const locale = await getLocale()
 
@@ -118,7 +118,7 @@ export async function TrustCard({ orgId }: { orgId: string }) {
       </div>
       {quality === 'RED' && <p className="text-xs text-red-700">{t('qualityRedHint')}</p>}
       {quality === 'YELLOW' && <p className="text-xs text-amber-700">{t('qualityYellowHint')}</p>}
-      <RefreshHealthButton checkedAtLabel={checkedAtLabel} />
+      <RefreshHealthButton checkedAtLabel={checkedAtLabel} readOnly={readOnly} />
 
       <hr className="border-gray-100" />
 
@@ -149,7 +149,7 @@ export async function TrustCard({ orgId }: { orgId: string }) {
                   ? t('rungs.verified.rejectedHowto')
                   : t('rungs.verified.howto')}
               </p>
-              <TrustChecklist ticked={ticked} />
+              <TrustChecklist ticked={ticked} readOnly={readOnly} />
               <a
                 href={securityCentreUrl}
                 target="_blank"

@@ -50,9 +50,15 @@ export default async function WhatsAppSettingsPage({
   const session = await getSession()
   const { orgId, role } = session
 
-  if (role !== 'owner') {
+  // Admins get the `whatsapp_health` notification too, and its action link
+  // points here — so refusing them outright handed an admin a problem and a red
+  // 403 page in the same breath (UX audit F20). They see the status and the
+  // ladder; every control stays owner-only, and the write actions enforce that
+  // independently, so this is a rendering change and not a permission one.
+  if (role !== 'owner' && role !== 'admin') {
     forbidden()
   }
+  const isOwner = role === 'owner'
 
   const params = await searchParams
   const activeTab = params.tab === 'usage' ? 'usage' : 'settings'
@@ -94,15 +100,22 @@ export default async function WhatsAppSettingsPage({
   // A superadmin in support mode and an owner whose subscription lapsed can
   // both read this page and neither may write. Saying so on the controls beats
   // letting the click through to an action that throws (UX audit F3).
-  const readOnly = Boolean(session.isSupportMode || session.isSaasReadOnly)
+  const readOnly = Boolean(session.isSupportMode || session.isSaasReadOnly) || !isOwner
   const readOnlyReason = session.isSupportMode
     ? await commonError('supportModeReadOnly')
     : session.isSaasReadOnly
       ? await commonError('saasReadOnly')
-      : undefined
+      : !isOwner
+        ? tp('whatsappPage.adminReadOnly')
+        : undefined
 
   const metaAppId = process.env.META_APP_ID ?? ''
   const metaConfigId = process.env.NEXT_PUBLIC_META_CONFIG_ID ?? ''
+  if (!metaAppId || !metaConfigId) {
+    console.error('[whatsapp/settings] Embedded Signup is not configured', {
+      missing: !metaAppId ? 'META_APP_ID' : 'NEXT_PUBLIC_META_CONFIG_ID',
+    })
+  }
 
   const t = await getTranslations('settings')
 
@@ -172,12 +185,12 @@ export default async function WhatsAppSettingsPage({
             readOnlyReason={readOnlyReason}
           />
         ) : (
-          <DisconnectedState metaAppId={metaAppId} metaConfigId={metaConfigId} />
+          <DisconnectedState metaAppId={metaAppId} metaConfigId={metaConfigId} isOwner={isOwner} />
         )}
       </div>
 
       {/* Where the number stands with Meta, and the next rung to climb */}
-      {showConnectedBlocks && <TrustCard orgId={orgId} />}
+      {showConnectedBlocks && <TrustCard orgId={orgId} readOnly={readOnly} />}
 
       {/* Message templates — shown when WhatsApp is connected */}
       {showConnectedBlocks && (
@@ -399,24 +412,43 @@ async function PhoneIdentityRows({
   )
 }
 
-async function DisconnectedState({ metaAppId, metaConfigId }: { metaAppId: string; metaConfigId: string }) {
+async function DisconnectedState({
+  metaAppId,
+  metaConfigId,
+  isOwner,
+}: {
+  metaAppId: string
+  metaConfigId: string
+  isOwner: boolean
+}) {
   const tp = await getTranslations('settings')
+  const t = await getTranslations('settings.whatsappState')
   const missingVar = !metaAppId ? 'META_APP_ID' : !metaConfigId ? 'NEXT_PUBLIC_META_CONFIG_ID' : null
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-muted-foreground">
-        <AlertCircle size={20} />
-        <span className="font-medium text-sm">{tp('googleCommon.notConnected')}</span>
+        <AlertCircle size={20} aria-hidden />
+        <span className="font-medium text-sm">{t('not_connected.label')}</span>
       </div>
 
+      {/* The value, before the cost. This page used to open with the amber
+          prerequisites box and a sentence about each org having its own number;
+          what WhatsApp actually does for the studio was said only in the
+          onboarding wizard, which an owner may well have skipped (F19). */}
+      <p className="text-sm text-gray-700">{tp('whatsappPage.valueSummary')}</p>
       <p className="text-sm text-gray-600">{tp('whatsappPage.disconnectedHint')}</p>
 
-      {missingVar === null ? (
+      {!isOwner ? (
+        <p className="text-sm text-muted-foreground">{tp('whatsappPage.adminReadOnly')}</p>
+      ) : missingVar === null ? (
         <EmbeddedSignupButton metaAppId={metaAppId} metaConfigId={metaConfigId} />
       ) : (
+        /* A Lessio-side deployment fault, stated in Lessio-side deployment
+           language. The customer can do nothing with an env var name and does
+           not know it is not their fault (F14). */
         <p className="text-sm text-red-600">
-          {tp('whatsappPage.missingVar', { name: missingVar })}
+          {tp('whatsappPage.setupUnavailable')}
         </p>
       )}
     </div>

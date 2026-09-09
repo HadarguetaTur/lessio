@@ -55,11 +55,6 @@ function isMetaOrigin(origin: string): boolean {
   }
 }
 
-/** `PHONE_NUMBER_SETUP` reads better as `phone number setup` inside a sentence. */
-function readableStep(step: string): string {
-  return step.toLowerCase().replace(/_/g, ' ')
-}
-
 export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
   const router = useRouter()
   const tp = useTranslations('settings')
@@ -174,11 +169,7 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
       // created, so it ends the attempt the same way a reported CANCEL does.
       if (msg.event === 'ERROR') {
         console.error('[EmbeddedSignup] Meta reported an error', data)
-        setClientError(
-          data.error_message
-            ? tp('whatsappPage.metaError', { message: data.error_message })
-            : tp('whatsappPage.popupClosed')
-        )
+        setClientError(data.error_message ? tp('whatsappPage.metaError') : tp('whatsappPage.popupClosed'))
         return
       }
 
@@ -187,9 +178,10 @@ export function EmbeddedSignupButton({ metaAppId, metaConfigId }: Props) {
       if (msg.event === 'CANCEL') {
         if (data.error_message) {
           console.error('[EmbeddedSignup] Meta reported an error', data)
-          setClientError(tp('whatsappPage.metaError', { message: data.error_message }))
+          setClientError(tp('whatsappPage.metaError'))
         } else if (data.current_step) {
-          setClientError(tp('whatsappPage.cancelledAtStep', { step: readableStep(data.current_step) }))
+          console.warn('[EmbeddedSignup] Cancelled at step', data.current_step)
+          setClientError(tp('whatsappPage.cancelledAtStep'))
         } else {
           setClientError(tp('whatsappPage.popupClosed'))
         }

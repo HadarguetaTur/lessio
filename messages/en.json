@@ -2365,14 +2365,14 @@
     "whatsappActions": {
       "errors": {
         "missingMetaConfig": "Meta settings are missing on the server — contact your system administrator",
-        "exchangeFailed": "Exchanging the code for a token failed — please try again",
-        "webhookRegisterFailed": "Registering the webhook with Meta failed — please try connecting again",
-        "encryptFailed": "Could not encrypt the token — check that the encryption key is set",
+        "exchangeFailed": "Meta didn't complete the connection. Nothing was saved — you can try again.",
+        "webhookRegisterFailed": "We couldn't set up receiving messages from Meta. Try connecting again; if it keeps happening, write to us.",
+        "encryptFailed": "A technical problem stopped us saving the connection. Write to us and we will sort it.",
         "saveFailed": "Could not save the data",
-        "debugTokenFailed": "Could not verify which permissions Meta granted — please try connecting again",
-        "scopeMissing": "Meta did not grant the permissions this connection needs ({scopes}). The Lessio app is still awaiting Meta App Review approval for them.",
+        "debugTokenFailed": "We couldn't confirm what Meta approved. Try connecting again.",
+        "scopeMissing": "Setup didn't finish — Meta hasn't granted Lessio the permissions this number needs. That's a problem on our side, not yours. Write to us and we'll sort it.",
         "wabaMismatch": "The WhatsApp Business account returned by Meta is not one this connection was authorised for — please start the connection again.",
-        "phoneRegisterFailed": "The phone number could not be registered with WhatsApp Cloud API — please try connecting again",
+        "phoneRegisterFailed": "Meta didn't approve this number for sending. Try again, or check the number isn't active in the WhatsApp app.",
         "disconnectFailed": "Could not disconnect the account"
       }
     },
@@ -2494,10 +2494,9 @@
       "connectedSuccess": "WhatsApp connected successfully. Refreshing the number details...",
       "subtitle": "Connect your organization WhatsApp number to send and receive messages. Each organization is connected to its own number.",
       "portalUrlHint": "Share this link with parents so they can reach their personal portal.",
-      "requirementsTitle": "Before you start — about 2–3 days",
+      "requirementsTitle": "What you need to start — about 10 minutes",
       "req1": "A Meta Business account with access to the WhatsApp Business API",
       "req2": "A phone number not already registered on WhatsApp",
-      "req3": "Meta Business Verification",
       "identityLoading": "Loading the number details from Meta...",
       "verifiedName": "Verified business name",
       "phoneNumber": "Phone number",
@@ -2506,18 +2505,22 @@
       "disconnectKeeps": "Your existing conversations and templates are kept, not deleted.",
       "disconnectReturn": "To come back you'll have to go through Meta's connection flow again.",
       "disconnectedHint": "Click the button to start the connection process through Meta. You will be taken to Meta to choose the number you want to connect.",
-      "missingVar": "{name} is not configured on the server — the connection process cannot start.",
       "signupHint": "Sign in to your Meta account and choose the number you want to connect to this organization.",
       "sdkNotLoaded": "Facebook’s login script did not load. Disable any ad or content blocker for this page and reload.",
       "popupClosed": "The Meta window closed before the connection finished. Nothing was saved — you can try again.",
-      "cancelledAtStep": "The connection was not completed. Meta stopped at: {step}.",
-      "metaError": "Meta reported an error: {message}",
+      "cancelledAtStep": "Setup stopped before the number was connected. Nothing was saved — you can start again.",
+      "metaError": "Meta didn't complete the connection. Nothing was saved — you can try again.",
       "noPhoneNumber": "A WhatsApp Business account was selected but no phone number was connected. Reopen the flow and add a phone number to finish.",
       "missingIds": "Meta finished without returning the account details needed to connect. Nothing was saved — please try again.",
       "req2Hint": "A number that is already active in the WhatsApp app can't be connected. Use a second number, or migrate your existing one — it will then stop working in the app.",
       "requirementsHelp": "Not sure? Write to us",
       "phoneNumberId": "Number's technical ID",
-      "identityUnavailable": "We couldn't read this number's details from Meta right now."
+      "identityUnavailable": "We couldn't read this number's details from Meta right now.",
+      "adminReadOnly": "Only the account owner can change the WhatsApp connection.",
+      "valueSummary": "With a WhatsApp number connected, Lessio sends lesson reminders, payment requests and cancellation links — and answers parents automatically.",
+      "setupUnavailable": "WhatsApp setup isn't available right now because of a technical problem on our side. We're on it — please try again later.",
+      "laterTitle": "What comes later",
+      "laterVerification": "Verifying your business with Meta raises your daily limit from 250 to 2,000 conversations. Not needed to start, and you can do it at any point from the card on this page."
     },
     "remindersPage": {
       "subtitle": "Set automatic WhatsApp reminders to parents before lessons and about open charges.",
@@ -2681,7 +2684,8 @@
         "pending": "Meta is reviewing",
         "rejected": "Refused",
         "todo": "Not submitted yet"
-      }
+      },
+      "neverChecked": "Not checked yet"
     },
     "whatsappState": {
       "active": {

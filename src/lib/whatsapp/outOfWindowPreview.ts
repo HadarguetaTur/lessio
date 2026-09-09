@@ -158,6 +158,7 @@ const BUILTIN_VAR_ORDER: Partial<
   homework_graded: { v2: ['title', 'score', 'feedback_line'] },
   day_off_decision: { v2: ['date_range', 'decision'] },
   welcome_notice: { v2: ['org_name'] },
+  exam_good_luck: { v2: ['student_name', 'subject', 'title'] },
   lesson_cancelled_by_teacher: { v2: ['teacher_name', 'date_range'] },
   // {{3}} is really balance_line + receipt_line joined; the preview shows the
   // balance sample alone, which is the common shape of a real send.

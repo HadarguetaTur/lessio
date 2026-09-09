@@ -7,7 +7,8 @@
  * Algorithm:
  *   1. Fetch homework_assignments where sent=false AND send_at <= now()
  *   2. Group by org
- *   3. For each assignment, send WhatsApp and mark sent=true
+ *   3. For each assignment, claim it (sent=false → true, atomically), then send;
+ *      a failed send releases the claim for the next run
  *
  * Failures are isolated per assignment.
  */
@@ -121,6 +122,13 @@ serveWithErrorReporting('homework-sender', async (_req) => {
 
     // deno-lint-ignore no-explicit-any
     for (const assignment of orgAssignments as any[]) {
+      // Claim before send: flip sent=false → true atomically, so two overlapping
+      // hourly runs (or a schedule registered twice) cannot both send the same
+      // assignment. Whoever loses the flip sees an empty result and stands down.
+      const claimed = await claimSend(db, assignment.id)
+      if (claimed === null) continue // claim query failed — fail closed
+      if (!claimed) continue          // another run owns it
+
       try {
         const phone = resolvePhone(assignment)
         if (!phone) {
@@ -128,8 +136,7 @@ serveWithErrorReporting('homework-sender', async (_req) => {
             org_id: orgId,
             assignment_id: assignment.id,
           })
-          // Still mark as sent to avoid retrying endlessly
-          await markSent(db, assignment.id)
+          // Stays marked sent to avoid retrying endlessly
           continue
         }
 
@@ -168,8 +175,6 @@ serveWithErrorReporting('homework-sender', async (_req) => {
           buttonLabels: [botString('btn_homework_done', locale)],
         })
 
-        await markSent(db, assignment.id)
-
         console.info('[homework-sender] Sent', { org_id: orgId, assignment_id: assignment.id })
       } catch (err) {
         console.error('[homework-sender] Failed to process assignment', {
@@ -177,6 +182,8 @@ serveWithErrorReporting('homework-sender', async (_req) => {
           assignment_id: assignment.id,
           error: String(err),
         })
+        // Release the claim so the next hourly run retries the send.
+        await releaseSend(db, assignment.id)
         await reportEdgeError(db, {
           thrown: err,
           route: 'homework-sender',
@@ -217,20 +224,43 @@ function resolveParentLocale(assignment: any): string | null {
 }
 
 /**
+ * Atomic claim: flips sent=false → true and returns whether THIS call did the
+ * flip. `null` means the query itself failed (treat as not claimed).
+ *
  * Both columns, always. `sent` gates the parent portal's homework list and
  * `sent_at` is the timestamp shown to the teacher; writing one without the
  * other leaves the two halves of the same fact disagreeing. The mirror of this
  * write lives in src/lib/homework/sendHomework.ts.
  */
 // deno-lint-ignore no-explicit-any
-async function markSent(db: any, assignmentId: string): Promise<void> {
-  const { error } = await db
+async function claimSend(db: any, assignmentId: string): Promise<boolean | null> {
+  const { data, error } = await db
     .from('homework_assignments')
     .update({ sent: true, sent_at: new Date().toISOString() })
     .eq('id', assignmentId)
+    .eq('sent', false)
+    .select('id')
 
   if (error) {
-    console.error('[homework-sender] Failed to mark sent', {
+    console.error('[homework-sender] Failed to claim assignment', {
+      assignment_id: assignmentId,
+      error: error.message,
+    })
+    return null
+  }
+  return Array.isArray(data) && data.length > 0
+}
+
+/** Undo a claim whose send failed, so the next run picks the assignment up again. */
+// deno-lint-ignore no-explicit-any
+async function releaseSend(db: any, assignmentId: string): Promise<void> {
+  const { error } = await db
+    .from('homework_assignments')
+    .update({ sent: false, sent_at: null })
+    .eq('id', assignmentId)
+
+  if (error) {
+    console.error('[homework-sender] Failed to release claim', {
       assignment_id: assignmentId,
       error: error.message,
     })

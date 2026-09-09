@@ -42,6 +42,7 @@ const EXAM: StudentExam = {
   subject: 'מתמטיקה',
   title: 'משוואות',
   examDate: '2026-09-15', // Tuesday — week of Sunday 2026-09-13
+  examTime: null,
   score: null,
   maxScore: 100,
   notes: null,

@@ -12,8 +12,13 @@ import { getShareableBaseUrl } from '@/lib/url/appUrl'
 type TemplateDefinition = {
   name: string
   language: string
-  /** Defaults to UTILITY. AUTHENTICATION templates have a fixed Meta-generated body. */
-  category?: 'UTILITY' | 'AUTHENTICATION'
+  /**
+   * Defaults to UTILITY. AUTHENTICATION templates have a fixed Meta-generated
+   * body. MARKETING is reserved for the promo broadcast: it needs a separate
+   * opt-in, counts against the per-user marketing cap, and must never carry a
+   * service message (Meta re-categorises, and the number's quality pays).
+   */
+  category?: 'UTILITY' | 'MARKETING' | 'AUTHENTICATION'
   bodyText?: string
   example?: string[][]
   /**
@@ -183,6 +188,25 @@ export const TEMPLATES: TemplateDefinition[] = [
     bodyText:
       'Hi! Messages in this chat are sent on behalf of {{1}} via Lessio — lesson reminders, homework and payment requests. Reply "stop" at any time to opt out.',
     example: [['Brightpath Tutoring']],
+  },
+  // ── Exam good luck ──────────────────────────────────────────────────────
+  // Sent on the morning of an exam (or a few hours before it), which is almost
+  // never inside a 24h window opened by the student, so it has to be a
+  // template. {{1}} student, {{2}} subject, {{3}} exam title — all mid-sentence,
+  // because Meta rejects a variable at the very start or end of the body.
+  {
+    name: 'lessio_exam_good_luck_he_v2',
+    language: 'he',
+    bodyText:
+      'היי {{1}}! היום המבחן שלך ב{{2}} ({{3}}). בהצלחה גדולה, אנחנו מאמינים בך!',
+    example: [['דנה', 'מתמטיקה', 'מבחן פרק ג']],
+  },
+  {
+    name: 'lessio_exam_good_luck_en_v2',
+    language: 'en',
+    bodyText:
+      'Hi {{1}}! Your {{2}} exam ({{3}}) is today. Good luck, we believe in you!',
+    example: [['Dana', 'Maths', 'Chapter 3 test']],
   },
   // ── Payment received ────────────────────────────────────────────────────
   // Sent when the tutor records a payment by hand, which is typically days
@@ -356,6 +380,7 @@ export const TEMPLATES: TemplateDefinition[] = [
   // redirect. That bakes this deployment's origin into the approved template:
   // an org on a different domain would need its own registration.
   ...paymentButtonTemplates(),
+  ...broadcastTemplates(),
   {
     // Portal OTP login (Sprint 31). Body copy is fixed by Meta for AUTHENTICATION
     // templates; the footer expiry must match the 10-minute OTP TTL in
@@ -515,6 +540,122 @@ function paymentButtonTemplates(): TemplateDefinition[] {
 }
 
 /**
+ * Broadcast templates (2026-09-08, Phase 0 of the broadcasts track).
+ *
+ * Three messages a business sends to many parents at once, each registered with
+ * the opt-out Meta's policy asks for. They are split by category on purpose:
+ *
+ *   class_update — UTILITY. A service update about a lesson or group the parent
+ *     already has ("this week we meet in room 3"). Falls under the general
+ *     opt-in every parent already gave.
+ *   promo — MARKETING. Registration, offers, new classes. Needs the separate
+ *     marketing opt-in on the parent row, and is what Meta's per-user marketing
+ *     cap (131049) applies to. Sending a promotion through class_update is a
+ *     policy breach that costs the number its quality rating — the send guard
+ *     refuses it; this split is what lets it.
+ *   group_invite — UTILITY. The invite to the WhatsApp group opened for a
+ *     student group, as a URL button on the fixed chat.whatsapp.com base so
+ *     the invite code is the dynamic suffix Meta allows.
+ *
+ * {{1}} is always the business name, kept mid-sentence: Meta rejects a variable
+ * at the very start or end of a body. The free text a business types is one
+ * paragraph — param() collapses whitespace because Meta rejects newlines in a
+ * parameter — and is capped by PARAM_LIMITS.broadcast_message so the rendered
+ * body stays under Meta's 1024 characters.
+ */
+function broadcastTemplates(): TemplateDefinition[] {
+  const inviteBase = 'https://chat.whatsapp.com/'
+  const joinButton = (text: string) => ({
+    type: 'BUTTONS',
+    buttons: [
+      {
+        type: 'URL',
+        text,
+        url: `${inviteBase}{{1}}`,
+        example: [`${inviteBase}ExampleInviteCode`],
+      },
+    ],
+  })
+
+  return [
+    {
+      name: 'lessio_class_update_he_v1',
+      language: 'he',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'עדכון מ-{{1}} לגבי {{2}}:\n{{3}}\nההודעה נשלחה דרך Lessio. לשאלות אפשר להשיב כאן.',
+          example: { body_text: [['מרכז הלמידה של אהרון', 'חוג גיטרה יום ראשון', 'השיעור השבוע יתקיים בחדר 3 במקום בחדר 1.']] },
+        },
+        { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'הסרה מעדכונים' }] },
+      ],
+    },
+    {
+      name: 'lessio_class_update_en_v1',
+      language: 'en',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'An update from {{1}} about {{2}}:\n{{3}}\nSent via Lessio. Feel free to reply here with any questions.',
+          example: { body_text: [["Aaron's Learning Centre", 'Sunday guitar class', 'This week the class meets in room 3 instead of room 1.']] },
+        },
+        { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'Stop updates' }] },
+      ],
+    },
+    {
+      name: 'lessio_promo_he_v1',
+      language: 'he',
+      category: 'MARKETING',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'הודעה מ-{{1}}:\n{{2}}\nלפרטים והרשמה אפשר להשיב כאן. אפשר להפסיק הודעות מסוג זה בכפתור שלמטה.',
+          example: { body_text: [['מרכז הלמידה של אהרון', 'נפתחה ההרשמה לסדנת הקיץ. מספר המקומות מוגבל.']] },
+        },
+        { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'הסרה מהצעות' }] },
+      ],
+    },
+    {
+      name: 'lessio_promo_en_v1',
+      language: 'en',
+      category: 'MARKETING',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'A message from {{1}}:\n{{2}}\nReply here for details and to sign up. You can stop messages like this with the button below.',
+          example: { body_text: [["Aaron's Learning Centre", 'Registration for the summer workshop is open. Places are limited.']] },
+        },
+        { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'Stop offers' }] },
+      ],
+    },
+    {
+      name: 'lessio_group_invite_he_v1',
+      language: 'he',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'שלום! {{1}} פתחו קבוצת ואטסאפ להורי {{2}}. ההצטרפות רשות, וכל העדכונים ממשיכים להגיע גם כאן.',
+          example: { body_text: [['מרכז הלמידה של אהרון', 'חוג גיטרה יום ראשון']] },
+        },
+        joinButton('הצטרפות לקבוצה'),
+      ],
+    },
+    {
+      name: 'lessio_group_invite_en_v1',
+      language: 'en',
+      rawComponents: [
+        {
+          type: 'BODY',
+          text: 'Hi! {{1}} opened a WhatsApp group for the parents of {{2}}. Joining is optional, and every update keeps arriving here too.',
+          example: { body_text: [["Aaron's Learning Centre", 'Sunday guitar class']] },
+        },
+        joinButton('Join the group'),
+      ],
+    },
+  ]
+}
+
+/**
  * The registered body and buttons of one Meta template, by name.
  *
  * The settings page renders what a parent receives OUTSIDE the 24h window, and
@@ -606,7 +747,7 @@ export async function postTemplateToMeta(
   template: {
     name: string
     language: string
-    category?: 'UTILITY' | 'AUTHENTICATION'
+    category?: 'UTILITY' | 'MARKETING' | 'AUTHENTICATION'
     components: Record<string, unknown>[]
   }
 ): Promise<PostTemplateResult> {

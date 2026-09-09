@@ -16,7 +16,8 @@ declare
     {"name": "saas-renewal-reminder",    "cron": "0 8 * * *", "fn": "saas-renewal-reminder"},
     {"name": "data-retention",           "cron": "0 3 * * *", "fn": "data-retention"},
     {"name": "notification-cleanup",     "cron": "0 4 * * *", "fn": "notification-cleanup"},
-    {"name": "holiday-sync",             "cron": "0 2 1 * *", "fn": "holiday-sync"}
+    {"name": "holiday-sync",             "cron": "0 2 1 * *", "fn": "holiday-sync"},
+    {"name": "exam-good-luck",           "cron": "0 * * * *", "fn": "exam-good-luck"}
   ]'::jsonb;
   job jsonb;
   job_name text;
@@ -79,6 +80,9 @@ end $$;
 --   outbound-openers           — drafts the AI opening line for freshly
 --                                 imported prospects. Every 5 minutes; the
 --                                 draft still waits for a person to approve it.
+--   whatsapp-health            — refreshes every connected number's quality
+--                                 rating, messaging tier and verification
+--                                 status from Meta. Daily 03:30 UTC.
 --
 -- All send the same SERVICE_KEY_PLACEHOLDER bearer token. The app never sees
 -- the token itself, only its SHA-256, so set ALL of these env vars to the hex
@@ -86,6 +90,7 @@ end $$;
 --   LESSIO_AUTO_COMPLETION_CRON_SECRET_SHA256
 --   LESSIO_SAAS_CRON_SECRET_SHA256
 --   LESSIO_OUTBOUND_CRON_SECRET_SHA256
+--   LESSIO_WHATSAPP_CRON_SECRET_SHA256
 do $$
 declare
   http_jobs jsonb := '[
@@ -95,7 +100,8 @@ declare
     {"name": "outbound-send",               "cron": "*/10 5-15 * * 0-4", "path": "/api/internal/outbound/run-send"},
     {"name": "outbound-replies",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-replies"},
     {"name": "outbound-followups",          "cron": "5,20,35,50 5-15 * * 0-4", "path": "/api/internal/outbound/run-followups"},
-    {"name": "outbound-openers",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-openers"}
+    {"name": "outbound-openers",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-openers"},
+    {"name": "whatsapp-health",             "cron": "30 3 * * *",    "path": "/api/internal/whatsapp/health"}
   ]'::jsonb;
   job jsonb;
 begin

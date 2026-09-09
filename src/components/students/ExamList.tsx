@@ -109,7 +109,12 @@ export function ExamList({
             <tbody>
               {exams.map((ex) => (
                 <tr key={ex.id} className="border-t border-gray-100">
-                  <td className="px-3 py-2">{ex.examDate}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {ex.examDate}
+                    {ex.examTime && (
+                      <span className="text-muted-foreground"> · {ex.examTime}</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span>{ex.title}</span>

@@ -8,6 +8,7 @@ import { EmbeddedSignupButton } from './EmbeddedSignupButton'
 import { DisconnectButton } from './DisconnectButton'
 import { RegisterTemplatesButton } from './RegisterTemplatesButton'
 import { AutomationsSettings } from './AutomationsSettings'
+import { TrustCard } from './TrustCard'
 import { WhatsAppRequirements } from '@/components/dashboard/settings/WhatsAppRequirements'
 import { WhatsAppUsageTab } from '@/components/dashboard/settings/WhatsAppUsageTab'
 import { getWhatsAppUsage, parseUsageDays } from '@/lib/whatsapp/usageAnalytics'
@@ -52,6 +53,9 @@ export default async function WhatsAppSettingsPage({
       automation_new_leads_enabled,
       payment_confirmation_default_enabled,
       automation_lesson_reminder_hours,
+      automation_exam_good_luck_enabled,
+      exam_good_luck_hour,
+      exam_good_luck_hours_before,
       ai_assistant_enabled
     `)
     .eq('id', orgId)
@@ -127,6 +131,9 @@ export default async function WhatsAppSettingsPage({
         )}
       </div>
 
+      {/* Where the number stands with Meta, and the next rung to climb */}
+      {isConnected && <TrustCard orgId={orgId} />}
+
       {/* Message templates — shown when WhatsApp is connected */}
       {isConnected && (
         <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
@@ -150,6 +157,9 @@ export default async function WhatsAppSettingsPage({
               automation_new_leads_enabled:         org.automation_new_leads_enabled ?? true,
               payment_confirmation_default_enabled: org.payment_confirmation_default_enabled ?? true,
               automation_lesson_reminder_hours:     org.automation_lesson_reminder_hours ?? 24,
+              automation_exam_good_luck_enabled:    org.automation_exam_good_luck_enabled ?? true,
+              exam_good_luck_hour:                  org.exam_good_luck_hour ?? 7,
+              exam_good_luck_hours_before:          org.exam_good_luck_hours_before ?? 2,
               ai_assistant_enabled:                 org.ai_assistant_enabled ?? false,
             }}
           />

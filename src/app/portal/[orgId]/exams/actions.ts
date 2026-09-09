@@ -55,6 +55,7 @@ export async function reportExamAction(
     title: formData.get('title'),
     description: (formData.get('description') as string | null) || null,
     examDate: formData.get('examDate'),
+    examTime: formData.get('examTime'),
   })
   if (!parsed.success) {
     return { error: t('invalidInput') }

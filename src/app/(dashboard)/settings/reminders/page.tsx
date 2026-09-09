@@ -33,6 +33,8 @@ export default async function RemindersSettingsPage() {
   const TYPE_LABELS: Record<string, string> = {
     lesson_reminder: t('lessonReminder'),
     payment_reminder: t('paymentReminder'),
+    homework_reminder: t('homeworkReminder'),
+    exam_good_luck: t('examGoodLuck'),
   }
 
   const STATUS_LABELS: Record<string, string> = {

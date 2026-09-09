@@ -31,13 +31,17 @@ import {
   hasResumeIntent,
 } from '@/lib/whatsapp'
 import {
+  parseAccountHealthUpdates,
   parseDeliveryStatuses,
   parseTemplateStatusUpdates,
+  type AccountHealthUpdate,
   type DeliveryStatusUpdate,
   type TemplateStatusUpdate,
   type WhatsAppMessage,
 } from '@/lib/whatsapp/parsePayload'
 import { upsertTemplateStatus } from '@/lib/whatsapp/templateStatus'
+import { refreshPhoneHealth, storePhoneHealth, type PhoneHealth } from '@/lib/whatsapp/health'
+import { parseAppLocale } from '@/lib/i18n/locale'
 import { isOptedOut, setParentOptOut } from '@/lib/whatsapp/optOut'
 import { recordParentConsent } from '@/lib/whatsapp/consent'
 import { resolveTemplate } from '@/lib/whatsapp/templates'
@@ -172,6 +176,7 @@ export async function POST(request: NextRequest) {
   const messages = parseWebhookPayload(body)
   const templateStatusUpdates = parseTemplateStatusUpdates(body)
   const deliveryStatuses = parseDeliveryStatuses(body)
+  const healthUpdates = parseAccountHealthUpdates(body)
 
   // Process messages in the background so Meta gets its 200 immediately —
   // slow handlers (AI assistant, outbound sends) must not delay the ack,
@@ -198,6 +203,17 @@ export async function POST(request: NextRequest) {
       await recordTemplateStatusUpdate(update).catch(err => {
         console.error('[whatsapp/webhook] Error recording template status', {
           templateName: update.templateName,
+          err,
+        })
+      })
+    }
+
+    for (const update of healthUpdates) {
+      await recordAccountHealthUpdate(update).catch(err => {
+        console.error('[whatsapp/webhook] Error recording account health', {
+          wabaId: update.wabaId,
+          field: update.field,
+          event: update.event,
           err,
         })
       })
@@ -317,6 +333,138 @@ async function recordTemplateStatusUpdate(update: TemplateStatusUpdate): Promise
     language: update.language,
     status: update.status,
   })
+
+  // A template Meta paused or disabled means parents are blocking or ignoring
+  // it. The owner has to know now, not when a reminder silently fails.
+  if (update.status === 'PAUSED' || update.status === 'DISABLED') {
+    await notifyOwnersAboutHealth(org.id, 'waTemplatePaused', {
+      template: update.templateName,
+      status: update.status,
+    })
+  }
+}
+
+/**
+ * Records what Meta says about the number's standing and re-reads the full
+ * snapshot, so a FLAGGED / DOWNGRADE / restriction lands on the org row before
+ * the daily refresh would have found it. The owner is alerted for anything that
+ * changes what they may send.
+ */
+async function recordAccountHealthUpdate(update: AccountHealthUpdate): Promise<void> {
+  const db = createServiceRoleClient()
+
+  const { data: org, error } = await db
+    .from('organizations')
+    .select('id')
+    .eq('whatsapp_waba_id', update.wabaId)
+    .maybeSingle()
+
+  if (error || !org) {
+    console.warn('[whatsapp/webhook] Account health update for unknown WABA — ignoring', {
+      wabaId: update.wabaId,
+      field: update.field,
+      event: update.event,
+    })
+    return
+  }
+
+  // What the event states outright. The refresh below overwrites it with
+  // Meta's full view when it succeeds; when it does not, this is still true.
+  const patch: Partial<PhoneHealth> & { checkedAt: string } = {
+    checkedAt: new Date().toISOString(),
+  }
+  if (update.field === 'phone_number_quality_update') {
+    if (update.event === 'FLAGGED') patch.qualityRating = 'RED'
+    if (update.currentLimit) patch.messagingLimitTier = update.currentLimit
+  } else if (update.field === 'account_update' && update.event === 'VERIFIED_ACCOUNT') {
+    patch.businessVerificationStatus = 'verified'
+  } else if (update.field === 'phone_number_name_update') {
+    patch.nameStatus = update.event
+  }
+  await storePhoneHealth(org.id, patch)
+  await refreshPhoneHealth(org.id)
+
+  console.info('[whatsapp/webhook] Account health recorded', {
+    orgId: org.id,
+    field: update.field,
+    event: update.event,
+    currentLimit: update.currentLimit,
+  })
+
+  const alert = healthAlertKey(update)
+  if (alert) {
+    await notifyOwnersAboutHealth(org.id, alert, {
+      tier: update.currentLimit ?? '',
+      detail: update.detail ?? '',
+    })
+  }
+}
+
+type HealthAlertKey =
+  | 'waHealthFlagged'
+  | 'waHealthUnflagged'
+  | 'waHealthTierDown'
+  | 'waHealthTierUp'
+  | 'waHealthRestricted'
+  | 'waHealthVerified'
+  | 'waNameRejected'
+  | 'waTemplatePaused'
+
+function healthAlertKey(update: AccountHealthUpdate): HealthAlertKey | null {
+  if (update.field === 'phone_number_quality_update') {
+    if (update.event === 'FLAGGED') return 'waHealthFlagged'
+    if (update.event === 'UNFLAGGED') return 'waHealthUnflagged'
+    if (update.event === 'DOWNGRADE') return 'waHealthTierDown'
+    if (update.event === 'UPGRADE') return 'waHealthTierUp'
+    return null
+  }
+  if (update.field === 'account_update') {
+    if (update.event === 'VERIFIED_ACCOUNT') return 'waHealthVerified'
+    if (
+      update.event === 'ACCOUNT_RESTRICTION' ||
+      update.event === 'ACCOUNT_VIOLATION' ||
+      update.event === 'DISABLED_UPDATE'
+    ) {
+      return 'waHealthRestricted'
+    }
+    return null
+  }
+  if (update.field === 'phone_number_name_update' && update.event === 'REJECTED') {
+    return 'waNameRejected'
+  }
+  return null
+}
+
+/**
+ * In-app alert to every owner and admin, in the org's language. Never throws:
+ * an alert failure must not undo the health record that triggered it.
+ */
+async function notifyOwnersAboutHealth(
+  orgId: string,
+  key: HealthAlertKey,
+  vars: Record<string, string>
+): Promise<void> {
+  try {
+    const db = createServiceRoleClient()
+    const { data: org } = await db
+      .from('organizations')
+      .select('default_locale')
+      .eq('id', orgId)
+      .maybeSingle()
+    const locale = parseAppLocale(org?.default_locale ?? undefined)
+    const tn = await getT('notifications', locale)
+    const recipients = await getOwnerAndAdminProfileIds(orgId)
+    await notifyMultiple(
+      orgId,
+      recipients,
+      'whatsapp_health',
+      tn(key, vars),
+      tn(key + 'Body', vars),
+      '/settings/whatsapp'
+    )
+  } catch (err) {
+    console.error('[whatsapp/webhook] Health alert failed', { orgId, key, err })
+  }
 }
 
 /**

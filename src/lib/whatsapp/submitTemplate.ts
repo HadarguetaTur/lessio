@@ -41,6 +41,7 @@ export const SUBMITTABLE_TYPES: MessageTemplateType[] = [
   'homework_assignment',
   'homework_graded',
   'day_off_decision',
+  'exam_good_luck',
 ]
 
 export function isSubmittableType(type: string): type is MessageTemplateType {
@@ -181,6 +182,7 @@ const VAR_FALLBACKS: Record<AppLocale, Record<string, string>> = {
     // A single-charge request carries no breakdown, and Meta rejects an empty
     // parameter — so the itemisation degrades to a pointer at the portal.
     charge_lines: 'פירוט מלא באזור האישי',
+    subject: 'המבחן',
   },
   en: {
     teacher_name: 'your teacher',
@@ -198,6 +200,7 @@ const VAR_FALLBACKS: Record<AppLocale, Record<string, string>> = {
     decision: 'updated',
     description: 'a lesson',
     charge_lines: 'full breakdown in your personal area',
+    subject: 'the exam',
   },
 }
 

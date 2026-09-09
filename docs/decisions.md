@@ -815,6 +815,84 @@ Workspace's outreach mailboxes. No Make.com / n8n layer.
 
 Setup: `docs/outbound-gmail-setup.md`.
 
+## 41. An Exam Day Has a Default Hour, Not a Required Time
+
+**Date:** 2026-09-08
+
+The good-luck message before an exam has to answer "when", and `student_exams`
+only ever stored `exam_date` — a date. Making the time mandatory would have been
+the tidy schema answer and the wrong product one: a parent reporting their child's
+exam from the portal, or a student typing it into WhatsApp, frequently does not
+know the hour, and a required field there costs us the report entirely.
+
+So the time is optional and the org owns the fallback:
+
+* `organizations.exam_good_luck_hour` (default 07:00 org-local) is when the
+  message goes out on the exam day when no time is known — the common case
+* `student_exams.exam_time`, when present, moves the send to
+  `exam_good_luck_hours_before` hours ahead of it (default 2)
+* the send never lands earlier than `exam_good_luck_hour`, so an early exam does
+  not produce a 05:30 message, and never once the exam has started — late
+  encouragement is worse than none
+* the rule is one pure function (`src/lib/exams/goodLuckTiming.ts`, mirrored in
+  `supabase/functions/_shared/`), not a subtraction spread across the cron
+
+The cron queries by date and dedups on the `notification_log` claim rather than
+on the hour, so a run that misses its hour still sends later the same day and can
+never send twice.
+
+The recipient follows the existing student-facing rule — `students.phone`, else
+the primary parent — and the toggle lives with the other automations on
+`/settings/whatsapp`, not on `/settings/exams`, so an owner has one place to see
+everything the system sends by itself.
+
+## 42. Broadcasts Are Campaigns Behind One Guard; a WhatsApp Group Is a Dual Track
+
+**Date:** 2026-09-08
+
+The 2026-09-05 spec for distribution lists was shelved on two conditions. App
+Review has since been approved, and the product owner reopened it with a third
+ask — a WhatsApp group next to every student group. The research that shaped
+the answer (Meta docs, 2026-09-08):
+
+* the Groups API is gated on **Official Business Account** status per number.
+  Business verification, 30 days on the platform and public notability are the
+  bar; a music studio does not clear it. 8 participants including the business.
+* a tech provider **cannot submit Business Verification** for a customer. Only a
+  person of the business, in Security Centre. An OBA request can be made on the
+  customer's behalf, but the decision is Meta's.
+* MARKETING templates need a separate opt-in, are capped per recipient across
+  all businesses (131049), and a service message sent as marketing — or the
+  reverse — costs the number its quality rating.
+
+Decided:
+
+* **A broadcast is a campaign object** — audience filter, category, state,
+  delivery report — never a loop over `sendSmartMessage`. The audience is a
+  filter materialised at send time, so a scheduled campaign never reaches a
+  student who left.
+* **Every broadcast-shaped send passes one guard** (`src/lib/whatsapp/broadcast/guard.ts`):
+  quality rating, warm-up, daily budget that leaves room for reminders,
+  per-parent frequency, quiet hours, opt-in by category, an AI check that a
+  "service update" is not a promotion, Meta error mapping, template pausing.
+  The number's health lives on `organizations` and is refreshed by webhook and
+  cron, so the guard reads a column, not Meta.
+* **UTILITY and MARKETING are separate template types** (`class_update`,
+  `promo`), not a checkbox. Each carries its own opt-out button, and opting
+  out of one category leaves the others — a parent who leaves offers keeps
+  getting lesson reminders.
+* **"A WhatsApp group for the student group" is a dual track.** Default:
+  a *linked* group the teacher opens on their own phone, whose invite link
+  Lessio sends 1:1 (`group_invite`), and "message the group" is a broadcast
+  to the group's parents — said plainly in the UI. The Groups API path exists
+  only behind `wa_is_oba` and is not built until a tenant has it.
+* **Lessio prepares and points, it does not collect documents.** The
+  verification card on `/settings/whatsapp` shows the ladder
+  (connected → verified → OBA), an Israeli checklist and the Security Centre
+  link. Marketing broadcasts and linked groups open only after verification.
+* Owners and admins broadcast; a teacher may send a service update to the
+  parents of their own lessons, nothing else.
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

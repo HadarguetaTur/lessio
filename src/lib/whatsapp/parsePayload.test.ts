@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseDeliveryStatuses, parseWebhookPayload } from './parsePayload'
+import { parseAccountHealthUpdates, parseDeliveryStatuses, parseWebhookPayload } from './parsePayload'
 
 /** A `messages` change the way Meta batches it: statuses and messages side by side. */
 function envelope(value: Record<string, unknown>) {
@@ -118,5 +118,49 @@ describe('parseDeliveryStatuses()', () => {
     ).toEqual([])
     expect(parseDeliveryStatuses({ object: 'page' })).toEqual([])
     expect(parseDeliveryStatuses(null)).toEqual([])
+  })
+})
+
+describe('parseAccountHealthUpdates()', () => {
+  const envelope = (field: string, value: unknown) => ({
+    object: 'whatsapp_business_account',
+    entry: [{ id: 'waba-1', changes: [{ field, value }] }],
+  })
+
+  it('reads a quality flag and a tier change', () => {
+    const flagged = parseAccountHealthUpdates(
+      envelope('phone_number_quality_update', { display_phone_number: '972501234567', event: 'FLAGGED', current_limit: 'TIER_250' })
+    )
+    expect(flagged).toEqual([
+      { wabaId: 'waba-1', field: 'phone_number_quality_update', event: 'FLAGGED', currentLimit: 'TIER_250', detail: null },
+    ])
+
+    const upgraded = parseAccountHealthUpdates(
+      envelope('phone_number_quality_update', { event: 'upgrade', current_limit: 'TIER_2K' })
+    )
+    expect(upgraded[0]).toMatchObject({ event: 'UPGRADE', currentLimit: 'TIER_2K' })
+  })
+
+  it('collects restriction details from an account_update', () => {
+    const [update] = parseAccountHealthUpdates(
+      envelope('account_update', {
+        event: 'ACCOUNT_RESTRICTION',
+        restriction_info: [{ restriction_type: 'RESTRICTED_ADD_PHONE_NUMBER_ACTION', expiration: '2026-10-01' }],
+      })
+    )
+    expect(update).toMatchObject({ field: 'account_update', event: 'ACCOUNT_RESTRICTION', detail: 'RESTRICTED_ADD_PHONE_NUMBER_ACTION' })
+  })
+
+  it('maps a display-name decision, dropping NONE as a reason', () => {
+    const [update] = parseAccountHealthUpdates(
+      envelope('phone_number_name_update', { decision: 'APPROVED', rejection_reason: 'NONE' })
+    )
+    expect(update).toMatchObject({ field: 'phone_number_name_update', event: 'APPROVED', detail: null })
+  })
+
+  it('ignores unrelated fields and malformed values', () => {
+    expect(parseAccountHealthUpdates(envelope('messages', { messaging_product: 'whatsapp' }))).toEqual([])
+    expect(parseAccountHealthUpdates(envelope('account_update', { nothing: true }))).toEqual([])
+    expect(parseAccountHealthUpdates({ object: 'page' })).toEqual([])
   })
 })

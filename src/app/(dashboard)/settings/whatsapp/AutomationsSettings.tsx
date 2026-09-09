@@ -6,6 +6,9 @@ import { saveAutomationSettings, type AutomationSettingsResult } from './automat
 
 type OrgAutomations = {
   automation_lesson_reminder_enabled:   boolean
+  automation_exam_good_luck_enabled:    boolean
+  exam_good_luck_hour:                  number
+  exam_good_luck_hours_before:          number
   automation_cancellation_enabled:      boolean
   automation_payment_request_enabled:   boolean
   automation_dunning_enabled:           boolean
@@ -19,14 +22,19 @@ type OrgAutomations = {
 // `settings.automations.flows.<key>` — the key is the single source of truth
 // here so the two never drift.
 const FLOWS = [
-  { key: 'automation_lesson_reminder_enabled' as const, hasHours: true },
-  { key: 'automation_cancellation_enabled' as const, hasHours: false },
-  { key: 'automation_payment_request_enabled' as const, hasHours: false },
-  { key: 'automation_dunning_enabled' as const, hasHours: false },
-  { key: 'payment_confirmation_default_enabled' as const, hasHours: false },
-  { key: 'automation_new_leads_enabled' as const, hasHours: false },
-  { key: 'ai_assistant_enabled' as const, hasHours: false },
+  { key: 'automation_lesson_reminder_enabled' as const, hasHours: true, hasExamTiming: false },
+  { key: 'automation_exam_good_luck_enabled' as const, hasHours: false, hasExamTiming: true },
+  { key: 'automation_cancellation_enabled' as const, hasHours: false, hasExamTiming: false },
+  { key: 'automation_payment_request_enabled' as const, hasHours: false, hasExamTiming: false },
+  { key: 'automation_dunning_enabled' as const, hasHours: false, hasExamTiming: false },
+  { key: 'payment_confirmation_default_enabled' as const, hasHours: false, hasExamTiming: false },
+  { key: 'automation_new_leads_enabled' as const, hasHours: false, hasExamTiming: false },
+  { key: 'ai_assistant_enabled' as const, hasHours: false, hasExamTiming: false },
 ]
+
+/** Org-local hour of the morning send, and how far ahead of a known exam time. */
+const EXAM_MORNING_HOURS = [6, 7, 8, 9]
+const EXAM_HOURS_BEFORE = [1, 2, 3]
 
 const initialState: AutomationSettingsResult = { error: null }
 
@@ -82,6 +90,51 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
                   </select>
                 </div>
               )}
+
+              {flow.hasExamTiming && org[flow.key] && (
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="exam_good_luck_hour"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t('examMorningHourLabel')}
+                    </label>
+                    <select
+                      id="exam_good_luck_hour"
+                      name="exam_good_luck_hour"
+                      defaultValue={org.exam_good_luck_hour}
+                      className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
+                    >
+                      {EXAM_MORNING_HOURS.map((h) => (
+                        <option key={h} value={h}>
+                          {t('examMorningHourOption', { h })}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="exam_good_luck_hours_before"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t('examHoursBeforeLabel')}
+                    </label>
+                    <select
+                      id="exam_good_luck_hours_before"
+                      name="exam_good_luck_hours_before"
+                      defaultValue={org.exam_good_luck_hours_before}
+                      className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
+                    >
+                      {EXAM_HOURS_BEFORE.map((h) => (
+                        <option key={h} value={h}>
+                          {t('hoursBefore', { h })}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
             <label htmlFor={flow.key} className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
@@ -101,6 +154,8 @@ export function AutomationsSettings({ org }: { org: OrgAutomations }) {
 
         {/* hidden fallback so unchecked boxes still submit hours */}
         <input type="hidden" name="automation_lesson_reminder_hours" value={org.automation_lesson_reminder_hours} />
+        <input type="hidden" name="exam_good_luck_hour" value={org.exam_good_luck_hour} />
+        <input type="hidden" name="exam_good_luck_hours_before" value={org.exam_good_luck_hours_before} />
 
         <div className="pt-4 flex items-center justify-between">
           {state.error && (

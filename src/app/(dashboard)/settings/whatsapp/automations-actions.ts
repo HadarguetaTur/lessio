@@ -17,6 +17,13 @@ const Schema = z.object({
   automation_lesson_reminder_hours:     z.coerce.number().refine(v => [2, 12, 24].includes(v), {
     message: 'AUTOMATION_HOURS_INVALID',
   }),
+  automation_exam_good_luck_enabled:    z.enum(['on', 'off']).transform(v => v === 'on'),
+  exam_good_luck_hour:                  z.coerce.number().refine(v => [6, 7, 8, 9].includes(v), {
+    message: 'AUTOMATION_HOURS_INVALID',
+  }),
+  exam_good_luck_hours_before:          z.coerce.number().refine(v => [1, 2, 3].includes(v), {
+    message: 'AUTOMATION_HOURS_INVALID',
+  }),
   ai_assistant_enabled:                 z.enum(['on', 'off']).transform(v => v === 'on'),
 })
 
@@ -43,6 +50,9 @@ export async function saveAutomationSettings(
     automation_new_leads_enabled:         formData.get('automation_new_leads_enabled') ?? 'off',
     payment_confirmation_default_enabled: formData.get('payment_confirmation_default_enabled') ?? 'off',
     automation_lesson_reminder_hours:     formData.get('automation_lesson_reminder_hours') ?? '24',
+    automation_exam_good_luck_enabled:    formData.get('automation_exam_good_luck_enabled') ?? 'off',
+    exam_good_luck_hour:                  formData.get('exam_good_luck_hour') ?? '7',
+    exam_good_luck_hours_before:          formData.get('exam_good_luck_hours_before') ?? '2',
     ai_assistant_enabled:                 formData.get('ai_assistant_enabled') ?? 'off',
   }
 

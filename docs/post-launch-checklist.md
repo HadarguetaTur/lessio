@@ -8,7 +8,10 @@
 
 ### Supabase — סביבת Production
 
-- [ ] הגדרת Edge Function crons ב-Supabase Dashboard תחת **Edge Functions → Schedules**:
+- [ ] רישום ה-crons של ה-Edge Functions **דרך `scripts/setup-crons.sql` בלבד** (pg_cron).
+  **לא** להוסיף schedule גם מלוח הבקרה של Supabase — הלוח יוצר job נוסף ב-pg_cron
+  בשם אחר, ושני jobs שיורים באותה דקה שלחו כל תזכורת פעמיים (07.09.2026).
+  לאחר ההרצה לוודא job אחד לכל פונקציה (השאילתות ב-`docs/release-checklist.md`, שלב 2):
   | Function | Schedule | תיאור |
   |---|---|---|
   | `lesson-reminders` | `0 * * * *` | תזכורות שיעורים — כל שעה |

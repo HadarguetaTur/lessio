@@ -26,6 +26,8 @@ export interface ExamReportSession {
   draft_subject: string | null
   draft_title: string | null
   draft_exam_date: string | null
+  /** Optional "HH:MM" typed with the date; null when only a date was given. */
+  draft_exam_time: string | null
   expires_at: string
 }
 
@@ -47,6 +49,7 @@ export async function startExamReportSession(
       draft_subject: null,
       draft_title: null,
       draft_exam_date: null,
+      draft_exam_time: null,
       expires_at: expiresAt,
     },
     { onConflict: 'organization_id,phone' }
@@ -64,7 +67,7 @@ export async function startExamReportSession(
 export async function advanceExamReportSession(
   orgId: string,
   phone: string,
-  patch: Partial<Pick<ExamReportSession, 'draft_subject' | 'draft_title' | 'draft_exam_date'>> & {
+  patch: Partial<Pick<ExamReportSession, 'draft_subject' | 'draft_title' | 'draft_exam_date' | 'draft_exam_time'>> & {
     step: ExamReportStep
   }
 ): Promise<void> {
@@ -92,7 +95,7 @@ export async function getActiveExamReportSession(
   const { data, error } = await db
     .from('exam_report_sessions')
     .select(
-      'id, organization_id, phone, student_id, step, draft_subject, draft_title, draft_exam_date, expires_at'
+      'id, organization_id, phone, student_id, step, draft_subject, draft_title, draft_exam_date, draft_exam_time, expires_at'
     )
     .eq('organization_id', orgId)
     .eq('phone', phone)

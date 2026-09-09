@@ -39,7 +39,7 @@ import {
   type ExamReportSession,
 } from '@/lib/exam-report-flow/sessions'
 import { DateTime } from 'luxon'
-import { parseExamDate, isSkipWord } from '@/lib/exam-report-flow/parseExamDate'
+import { parseExamDateTime, isSkipWord } from '@/lib/exam-report-flow/parseExamDate'
 import { createExamReport } from '@/lib/students/exams'
 import { completeExamReportFollowUp } from '@/lib/exams/postReport'
 import { downloadMedia, MediaTooLargeError } from '@/lib/whatsapp/media'
@@ -385,14 +385,17 @@ async function continueExamReport(ctx: HandlerContext, session: ExamReportSessio
     }
 
     case 'awaiting_date': {
-      const examDate = parseExamDate(text, ctx.timezone)
-      if (!examDate) {
+      // A time typed after the date ("15/9 10:00") is optional — with one we can
+      // wish them luck before the exam rather than at the org's morning hour.
+      const parsed = parseExamDateTime(text, ctx.timezone)
+      if (!parsed) {
         await replyWith(ctx, 'exam_report_invalid_date')
         return
       }
       await advanceExamReportSession(ctx.org.id, ctx.senderPhone, {
         step: 'awaiting_file',
-        draft_exam_date: examDate,
+        draft_exam_date: parsed.date,
+        draft_exam_time: parsed.time,
       })
       await replyWith(ctx, 'exam_report_ask_file')
       return
@@ -466,6 +469,7 @@ export async function completeExamReport(
         subject: session.draft_subject,
         title: session.draft_title,
         examDate: session.draft_exam_date,
+        examTime: session.draft_exam_time,
       },
       file,
     })

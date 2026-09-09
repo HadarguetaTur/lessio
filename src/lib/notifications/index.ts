@@ -36,6 +36,9 @@ export type NotificationType =
   // could not be bound to its checkout, and a renewal charge Sumit declined.
   | 'saas_activation_refused'
   | 'saas_renewal_failed'
+  // WhatsApp number health (owner/admin): quality flagged, tier change,
+  // account restriction, template paused, verification granted.
+  | 'whatsapp_health'
 
 export interface CreateNotificationParams {
   orgId: string

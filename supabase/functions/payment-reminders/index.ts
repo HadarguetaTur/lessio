@@ -7,10 +7,11 @@
  * Algorithm:
  *   1. Fetch all orgs with reminders_enabled=true and a connected WhatsApp number
  *   2. For each org, find pending charges older than payment_reminder_days that have a payment_link
- *   3. For each charge, check notification_log (dedup — one reminder per charge)
+ *   3. For each charge, claim the notification_log row ('pending') — one reminder
+ *      per charge, and only the run that owns the row may send
  *   4. Fetch parent phone via charge.parent_id
  *   5. Send WhatsApp payment reminder
- *   6. Insert notification_log row (sent or failed)
+ *   6. Settle the notification_log row (sent or failed)
  *
  * Only charges with a payment_link are included — charges without a link have no
  * actionable payment URL to send to the parent.
@@ -27,6 +28,7 @@ import { botString } from '../_shared/botStrings.ts'
 import { formatBotMoney } from '../_shared/money.ts'
 import { sendEmail } from '../_shared/email.ts'
 import { reportEdgeError, serveWithErrorReporting } from '../_shared/telemetry.ts'
+import { claimNotification, settleNotification } from '../_shared/notificationClaim.ts'
 
 serveWithErrorReporting('payment-reminders', async (_req) => {
   const authError = authorizeCronRequest(_req)
@@ -119,16 +121,13 @@ async function processOrg(db: any, org: any, now: Date) {
   }
 
   for (const charge of charges) {
-    // ── 3. Check dedup log ────────────────────────────────────────────────────
-    const { data: existing } = await db
-      .from('notification_log')
-      .select('id')
-      .eq('organization_id', org.id)
-      .eq('type', 'payment_reminder')
-      .eq('entity_id', charge.id)
-      .maybeSingle()
-
-    if (existing) continue // already sent
+    // ── 3. Claim before send — only the run that owns the row may send ────────
+    const claim = await claimNotification(db, {
+      orgId: org.id,
+      type: 'payment_reminder',
+      entityId: charge.id,
+    })
+    if (claim !== 'claimed') continue // already sent, in flight, or ledger unavailable
 
     // ── 4. Resolve parent phone ───────────────────────────────────────────────
     const phone: string | null = charge.parent?.phone ?? null
@@ -220,31 +219,20 @@ async function processOrg(db: any, org: any, now: Date) {
   }
 }
 
+/** Settles the row claimed at the top of the loop. */
 // deno-lint-ignore no-explicit-any
-async function insertLog(
+function insertLog(
   db: any,
   orgId: string,
   chargeId: string,
   status: 'sent' | 'failed',
   errorMessage: string | null
-) {
-  const { error } = await db.from('notification_log').upsert(
-    {
-      organization_id: orgId,
-      type: 'payment_reminder',
-      entity_id: chargeId,
-      status,
-      error_message: errorMessage,
-      sent_at: new Date().toISOString(),
-    },
-    { onConflict: 'organization_id,type,entity_id', ignoreDuplicates: false }
-  )
-
-  if (error) {
-    console.error('[payment-reminders] Failed to insert notification_log', {
-      org_id: orgId,
-      charge_id: chargeId,
-      error: error.message,
-    })
-  }
+): Promise<void> {
+  return settleNotification(db, {
+    orgId,
+    type: 'payment_reminder',
+    entityId: chargeId,
+    status,
+    errorMessage,
+  })
 }

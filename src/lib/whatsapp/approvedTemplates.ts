@@ -74,6 +74,11 @@ export const PARAM_LIMITS = {
   homework_title: 150,
   homework_body: 600,
   homework_feedback: 500,
+  exam_title: 150,
+  /** One paragraph a business types into a broadcast; see broadcastTemplates(). */
+  broadcast_message: 700,
+  broadcast_topic: 80,
+  broadcast_group_name: 80,
 } as const
 
 /**
@@ -202,6 +207,23 @@ const HE_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = {
     ],
   },
 
+  exam_good_luck: {
+    // The morning of an exam. The student (or their parent) has no reason to
+    // have written in first, so this is a cold start by construction.
+    name: 'lessio_exam_good_luck_he_v2',
+    languageCode: 'he',
+    buildComponents: (vars) => [
+      {
+        type: 'body',
+        parameters: [
+          param(vars.student_name, 'התלמיד'),
+          param(vars.subject, 'המבחן'),
+          param(vars.title, 'מבחן', PARAM_LIMITS.exam_title),
+        ],
+      },
+    ],
+  },
+
   payment_received: {
     // Confirms a payment the tutor recorded by hand, usually days after the
     // parent last wrote in — so almost always outside the window. {{3}} is the
@@ -266,6 +288,7 @@ const EN_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = Obj
           body: vars.body || 'See details in your personal area',
           due_line: vars.due_line || 'No due date',
           due_date: vars.due_date || 'tomorrow',
+          subject: vars.subject || 'the exam',
           feedback_line: vars.feedback_line || 'No additional feedback.',
           decision: vars.decision || 'updated',
           org_name: vars.org_name || 'your tutor',
@@ -374,6 +397,71 @@ export const URL_BUTTON_TEMPLATES_V4: Partial<
     he: { name: 'lessio_payment_reminder_he_v4', languageCode: 'he' },
     en: { name: 'lessio_payment_reminder_en_v4', languageCode: 'en' },
   },
+}
+
+// ── Broadcast templates (Phase 0) ─────────────────────────────────────────────
+
+/** The three broadcast message types; see broadcastTemplates() in registerTemplates.ts. */
+export type BroadcastTemplateType = Extract<MessageTemplateType, 'class_update' | 'promo' | 'group_invite'>
+
+/**
+ * Broadcast templates, by type and language. Every one is registered WITH a
+ * button (the category opt-out, or the join-group URL), so like the other
+ * button sets they never go through sendTemplateMessage's body-only components.
+ * Body parameters come from broadcastBodyParams below; the URL suffix for
+ * group_invite is the invite code, bound at send time.
+ */
+export const BROADCAST_TEMPLATES: Record<BroadcastTemplateType, Record<AppLocale, ButtonTemplate>> = {
+  class_update: {
+    he: { name: 'lessio_class_update_he_v1', languageCode: 'he' },
+    en: { name: 'lessio_class_update_en_v1', languageCode: 'en' },
+  },
+  promo: {
+    he: { name: 'lessio_promo_he_v1', languageCode: 'he' },
+    en: { name: 'lessio_promo_en_v1', languageCode: 'en' },
+  },
+  group_invite: {
+    he: { name: 'lessio_group_invite_he_v1', languageCode: 'he' },
+    en: { name: 'lessio_group_invite_en_v1', languageCode: 'en' },
+  },
+}
+
+/** Meta category of each broadcast type — the send guard keys its rules on this. */
+export const BROADCAST_CATEGORY: Record<BroadcastTemplateType, 'UTILITY' | 'MARKETING'> = {
+  class_update: 'UTILITY',
+  promo: 'MARKETING',
+  group_invite: 'UTILITY',
+}
+
+/**
+ * Body parameters for a broadcast template, in registration order, normalised
+ * through param() (whitespace collapsed, capped by PARAM_LIMITS).
+ *
+ * The invite code for group_invite is NOT a body parameter — it is the URL
+ * button's suffix, which the sender binds separately.
+ */
+export function broadcastBodyParams(
+  type: BroadcastTemplateType,
+  locale: AppLocale,
+  vars: Record<string, string>
+): string[] {
+  const orgFallback = locale === 'he' ? 'בית הספר' : 'your tutor'
+  const org = param(vars.org_name, orgFallback).text
+  switch (type) {
+    case 'class_update':
+      return [
+        org,
+        param(vars.topic, locale === 'he' ? 'השיעור' : 'the lesson', PARAM_LIMITS.broadcast_topic).text,
+        param(vars.message, '', PARAM_LIMITS.broadcast_message).text,
+      ]
+    case 'promo':
+      return [org, param(vars.message, '', PARAM_LIMITS.broadcast_message).text]
+    case 'group_invite':
+      return [
+        org,
+        param(vars.group_name, locale === 'he' ? 'הקבוצה' : 'the group', PARAM_LIMITS.broadcast_group_name).text,
+      ]
+  }
 }
 
 /**

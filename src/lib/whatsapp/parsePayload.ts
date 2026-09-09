@@ -392,3 +392,85 @@ export function hasResumeIntent(text: string): boolean {
   const normalized = text.trim().toLowerCase().replace(/[.!?]+$/, '')
   return /^(start|resume|subscribe|unstop|התחל|חדשו|המשך|הצטרף)$/.test(normalized)
 }
+
+// ── Number / account health updates ───────────────────────────────────────────
+
+/**
+ * One health-related change, resolved to its WABA (entry[].id).
+ *
+ * Meta reports the number's standing through several subscribed fields:
+ *   - phone_number_quality_update: FLAGGED / UNFLAGGED (quality rating), and
+ *     UPGRADE / DOWNGRADE (messaging tier, in `current_limit`)
+ *   - account_update: VERIFIED_ACCOUNT, DISABLED_UPDATE, ACCOUNT_VIOLATION,
+ *     ACCOUNT_RESTRICTION, ACCOUNT_DELETED, PARTNER_REMOVED …
+ *   - phone_number_name_update: display-name decision
+ *
+ * The webhook stores what the event states outright and then re-reads the full
+ * snapshot from Meta (src/lib/whatsapp/health.ts), so this type carries only
+ * the facts needed to decide whether to alert the owner.
+ */
+export interface AccountHealthUpdate {
+  wabaId: string
+  field: 'phone_number_quality_update' | 'account_update' | 'phone_number_name_update'
+  /** Meta's event / decision, upper-cased. */
+  event: string
+  /** New messaging tier when the event is a tier change, e.g. TIER_2K. */
+  currentLimit: string | null
+  /** Meta's explanation, when it sends one (restrictions, name rejection). */
+  detail: string | null
+}
+
+const HealthValueSchema = z.object({
+  event: z.string().optional(),
+  decision: z.string().optional(),
+  current_limit: z.string().optional(),
+  rejection_reason: z.string().nullish(),
+  ban_info: z.object({ waba_ban_state: z.string().optional() }).optional(),
+  restriction_info: z
+    .array(z.object({ restriction_type: z.string().optional(), expiration: z.string().optional() }))
+    .optional(),
+})
+
+const HEALTH_FIELDS = new Set<AccountHealthUpdate['field']>([
+  'phone_number_quality_update',
+  'account_update',
+  'phone_number_name_update',
+])
+
+export function parseAccountHealthUpdates(body: unknown): AccountHealthUpdate[] {
+  const parsed = MetaWebhookPayloadSchema.safeParse(body)
+  if (!parsed.success) return []
+
+  const results: AccountHealthUpdate[] = []
+
+  for (const entry of parsed.data.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      const field = change.field as AccountHealthUpdate['field']
+      if (!HEALTH_FIELDS.has(field)) continue
+
+      const value = HealthValueSchema.safeParse(change.value)
+      if (!value.success) continue
+
+      const event = (value.data.event ?? value.data.decision ?? '').toUpperCase()
+      if (!event) continue
+
+      const detailParts = [
+        value.data.rejection_reason && value.data.rejection_reason.toUpperCase() !== 'NONE'
+          ? value.data.rejection_reason
+          : null,
+        value.data.ban_info?.waba_ban_state ?? null,
+        ...(value.data.restriction_info ?? []).map((r) => r.restriction_type ?? null),
+      ].filter((p): p is string => Boolean(p))
+
+      results.push({
+        wabaId: entry.id,
+        field,
+        event,
+        currentLimit: value.data.current_limit ?? null,
+        detail: detailParts.length > 0 ? detailParts.join(', ') : null,
+      })
+    }
+  }
+
+  return results
+}

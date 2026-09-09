@@ -88,6 +88,9 @@ export type BotStringKey =
   | 'btn_need_to_cancel'
   | 'btn_homework_done'
   | 'btn_book_new_lesson'
+  | 'btn_stop_updates'
+  | 'btn_stop_offers'
+  | 'btn_join_group'
   // Interactive menu. Row titles are capped at 24 chars and the list button at
   // 20 by Meta, so these are deliberately terse.
   | 'menu_greeting'
@@ -319,6 +322,9 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     btn_need_to_cancel: 'צריך לבטל',
     btn_homework_done: 'סיימתי',
     btn_book_new_lesson: 'קביעת שיעור חדש',
+    btn_stop_updates: 'הסרה מעדכונים',
+    btn_stop_offers: 'הסרה מהצעות',
+    btn_join_group: 'הצטרפות לקבוצה',
 
     menu_greeting: 'היי {{first_name}} 👋\nאיך אפשר לעזור?',
     menu_greeting_noname: 'היי 👋\nאיך אפשר לעזור?',
@@ -371,7 +377,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     menu_report_exam_desc: 'מבחן מתקרב? ספרו לנו',
     exam_report_ask_subject: 'באיזה מקצוע המבחן? (למשל: מתמטיקה)',
     exam_report_ask_title: 'על מה המבחן? אפשר לכתוב נושא או תיאור קצר.',
-    exam_report_ask_date: 'מתי המבחן? כתבו תאריך, למשל 15/09',
+    exam_report_ask_date: 'מתי המבחן? כתבו תאריך, למשל 15/09. אפשר להוסיף גם שעה, למשל 15/09 10:00',
     exam_report_ask_file:
       'אם יש חומר למבחן (צילום או קובץ) — שלחו אותו עכשיו.\nאין קובץ? כתבו "דלג" וזהו 🙂',
     exam_report_confirmed:
@@ -573,6 +579,9 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     btn_need_to_cancel: 'Need to cancel',
     btn_homework_done: 'Done',
     btn_book_new_lesson: 'Book a new lesson',
+    btn_stop_updates: 'Stop updates',
+    btn_stop_offers: 'Stop offers',
+    btn_join_group: 'Join the group',
 
     // Names are stored in Hebrew, so an English greeting deliberately omits
     // them rather than reading "Hi יעל 👋". Transliterating is worse: Hebrew
@@ -629,7 +638,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     menu_report_exam_desc: 'Exam coming up? Let us know',
     exam_report_ask_subject: 'Which subject is the exam in? (e.g. Math)',
     exam_report_ask_title: 'What is the exam about? A topic or short description works.',
-    exam_report_ask_date: 'When is the exam? Type a date, e.g. 15/09',
+    exam_report_ask_date: 'When is the exam? Type a date, e.g. 15/09. You can add a time too, e.g. 15/09 10:00',
     exam_report_ask_file:
       'If you have exam material (a photo or file) — send it now.\nNo file? Just type "skip" 🙂',
     exam_report_confirmed:

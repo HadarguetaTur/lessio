@@ -74,6 +74,10 @@ const REQUIRED_IN_PRODUCTION: string[] = [
   // Same, for /api/internal/outbound/run-send and run-replies. Without it no
   // cold email goes out and no reply is ever read.
   'LESSIO_OUTBOUND_CRON_SECRET_SHA256',
+  // Same, for /api/internal/whatsapp/* (daily number-health refresh; the
+  // broadcast drain from Phase 1). Without it a number sliding to RED goes
+  // unnoticed until sends fail.
+  'LESSIO_WHATSAPP_CRON_SECRET_SHA256',
   // OPENAI_API_KEY: optional platform-level fallback. Each org configures its own AI key.
   // RESEND_API_KEY / RESEND_FROM_EMAIL: optional. Required only when email reminders are used.
   // NEXT_PUBLIC_SENTRY_DSN: optional. Set to enable Sentry error monitoring.

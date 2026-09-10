@@ -1,6 +1,7 @@
 import { Users, Upload } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getParents } from '@/lib/parents'
+import { getTeacherByProfileId } from '@/lib/teachers'
 import { ParentSearch } from '@/components/dashboard/parents/ParentSearch'
 import { createParent, updateParent, archiveParent, restoreParent, sendPaymentRequestAction } from './actions'
 import { PageHeader } from '@/components/ui/page-header'
@@ -17,11 +18,27 @@ export default async function ParentsPage(props: {
   const searchParams = await props.searchParams
   const q = searchParams.q ?? ''
 
-  const { orgId, role } = await getSession()
-  const parents = await getParents(orgId, { search: q })
+  const { orgId, role, profileId } = await getSession()
   const isTeacher = role === 'teacher'
   const t = await getTranslations('parents')
   const tCommon = await getTranslations('common')
+  const tStudents = await getTranslations('students')
+
+  // Same shape as the students page: a teacher sees her own families only.
+  const teacherRecord =
+    isTeacher ? await getTeacherByProfileId(profileId, orgId, { activeOnly: true }) : null
+  if (isTeacher && !teacherRecord) {
+    return (
+      <div className="text-center mt-16 text-sm text-muted-foreground">
+        {tStudents('noTeacherRecord')}
+      </div>
+    )
+  }
+
+  const parents = await getParents(orgId, {
+    search: q,
+    ...(isTeacher && teacherRecord ? { teacherId: teacherRecord.id } : {}),
+  })
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">

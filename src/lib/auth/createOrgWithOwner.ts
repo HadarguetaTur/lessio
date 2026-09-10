@@ -5,9 +5,17 @@
  * Steps:
  *  1. Sign up via Supabase Auth
  *  2. Generate unique slug
- *  3. Insert organizations row (onboarding_completed = false)
+ *  3. Insert organizations row (onboarding_completed = true — see below)
  *  4. Insert default cancellation_policies row
  *  5. Insert profiles row (role = 'owner')
+ *
+ * `onboarding_completed` is true from the start, so a self-serve signup lands
+ * on /dashboard and never sees the wizard under (onboarding). That is the
+ * intended route today: the dashboard's own setup checklist does the
+ * orienting. This docblock used to claim `false`, which sent people looking
+ * for a wizard the flow does not run (UX audit F3). The one thing the wizard
+ * offered that the checklist did not — the bulk import — is now a step on the
+ * checklist (src/components/dashboard/sections.tsx).
  *
  * Compensating deletes on failure (same pattern as superadmin createOrganization).
  */

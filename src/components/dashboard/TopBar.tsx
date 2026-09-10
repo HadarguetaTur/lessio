@@ -4,7 +4,7 @@ import { type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Menu } from 'lucide-react'
+import { Menu, Search } from 'lucide-react'
 import { LocaleSwitcher } from '@/components/dashboard/LocaleSwitcher'
 import { GlobalSearch } from '@/components/dashboard/GlobalSearch'
 import { resolveBreadcrumb } from '@/lib/navigation/registry'
@@ -100,6 +100,35 @@ export function TopBar({ currentLocale, userRole, saasFeatures, mobileNavigation
       />
 
       <div className="flex shrink-0 items-center gap-2">
+        {/* Below md the field itself does not fit, but search is how anyone
+            finds a setting they cannot name a path to — leaving it out made
+            the phone the one place with no answer to "where is that?"
+            (UX audit F9). Keyed on pathname so picking a result closes it. */}
+        <Sheet key={`search-${pathname}`}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="md:hidden"
+              aria-label={t('globalSearch.ariaLabel')}
+            >
+              <Search size={16} />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="top" className="p-4" closeAriaLabel={tc('actions.close')}>
+            <SheetHeader className="sr-only">
+              <SheetTitle>{t('globalSearch.ariaLabel')}</SheetTitle>
+              <SheetDescription>{t('globalSearch.placeholder')}</SheetDescription>
+            </SheetHeader>
+            <GlobalSearch
+              userRole={userRole}
+              saasFeatures={saasFeatures}
+              className="w-full"
+              autoFocus
+            />
+          </SheetContent>
+        </Sheet>
+
         {notificationBell}
         <LocaleSwitcher currentLocale={currentLocale} />
       </div>

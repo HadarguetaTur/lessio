@@ -290,7 +290,7 @@
     "messages": "Portal messages",
     "reportsRevenue": "Revenue report",
     "reportsLessons": "Lesson report",
-    "reportsDebt": "Outstanding balances",
+    "reportsDebt": "Outstanding balances report",
     "reportsTeachers": "Teacher report",
     "reportsTeacherPerformance": "Teacher performance report",
     "reportsStudents": "Student report",
@@ -367,6 +367,7 @@
       "items": {
         "teacher": "Add your first teacher",
         "student": "Add your first student",
+        "importStudents": "Import students from Excel",
         "lesson": "Schedule your first lesson",
         "whatsapp": "Connect WhatsApp",
         "payment": "Set up a payment provider"
@@ -394,7 +395,7 @@
       "overdueHomework": "Overdue homework ({count})",
       "cards": {
         "unloggedLessons": "Lessons not logged",
-        "billing": "Billing",
+        "billing": "Monthly billing & collection",
         "overdueHomework": "Overdue homework",
         "newLeads": "New leads",
         "atRisk": "At-risk students"
@@ -2771,7 +2772,7 @@
     "of": "of"
   },
   "subscriptions": {
-    "title": "Subscriptions",
+    "title": "Student subscriptions",
     "searchPlaceholder": "Search by student name",
     "addSubscription": "Add Subscription",
     "editSubscription": "Edit Subscription",
@@ -2955,7 +2956,7 @@
       "chartSeriesCancelled": "Cancelled"
     },
     "debt": {
-      "title": "Outstanding balances",
+      "title": "Outstanding balances report",
       "description": "Parents with outstanding balances",
       "searchPlaceholder": "Search parent or phone",
       "parent": "Parent",

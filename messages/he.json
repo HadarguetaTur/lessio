@@ -290,7 +290,7 @@
     "messages": "הודעות פורטל",
     "reportsRevenue": "דוח הכנסות",
     "reportsLessons": "דוח שיעורים",
-    "reportsDebt": "דוח יתרות",
+    "reportsDebt": "דוח יתרות פתוחות",
     "reportsTeachers": "דוח מורים",
     "reportsTeacherPerformance": "דוח ביצועי מורים",
     "reportsStudents": "דוח תלמידים",
@@ -367,6 +367,7 @@
       "items": {
         "teacher": "הוספת מורה ראשון",
         "student": "הוספת תלמיד ראשון",
+        "importStudents": "ייבוא תלמידים מאקסל",
         "lesson": "קביעת שיעור ראשון",
         "whatsapp": "חיבור WhatsApp",
         "payment": "הגדרת ספק סליקה"
@@ -394,7 +395,7 @@
       "overdueHomework": "שיעורי בית באיחור ({count})",
       "cards": {
         "unloggedLessons": "שיעורים שעדיין לא עודכנו",
-        "billing": "חיובים",
+        "billing": "חיוב חודשי וגבייה",
         "overdueHomework": "שיעורי בית באיחור",
         "newLeads": "לידים חדשים",
         "atRisk": "תלמידים בסיכון"
@@ -2771,7 +2772,7 @@
     "of": "מתוך"
   },
   "subscriptions": {
-    "title": "מנויים",
+    "title": "מנויי תלמידים",
     "searchPlaceholder": "חיפוש לפי שם תלמיד",
     "addSubscription": "הוסף מנוי",
     "editSubscription": "ערוך מנוי",
@@ -2955,7 +2956,7 @@
       "chartSeriesCancelled": "ביטולים"
     },
     "debt": {
-      "title": "יתרות פתוחות",
+      "title": "דוח יתרות פתוחות",
       "description": "הורים עם יתרת חוב",
       "searchPlaceholder": "חיפוש הורה או טלפון",
       "parent": "הורה",

@@ -10,7 +10,7 @@ import { getAttentionData } from '@/lib/dashboard/attention'
 import type { AttentionActionResult } from '@/app/(dashboard)/dashboard/actions'
 import { getMonthlyRevenueTrend } from '@/lib/reports/revenue'
 import { getMonthForecast } from '@/lib/reports/forecast'
-import { getOrgSetupProgress } from '@/lib/organizations/readiness'
+import { getOrgSetupProgress, isImportStepDone } from '@/lib/organizations/readiness'
 import { getWaConnectionState } from '@/lib/whatsapp/connectionState'
 import { KpiCard } from '@/components/dashboard/KpiCard'
 import { SetupChecklistCard } from '@/components/dashboard/SetupChecklistCard'
@@ -55,6 +55,9 @@ export async function SetupSection({ orgId }: { orgId: string }) {
   const items = [
     { key: 'teacher', done: progress.hasTeacher, href: '/teachers' },
     { key: 'student', done: progress.hasStudent, href: '/students' },
+    // The only place in the product that tells a new studio the bulk import
+    // exists: signup skips the wizard that used to (UX audit F3).
+    { key: 'importStudents', done: isImportStepDone(progress), href: '/students/import' },
     { key: 'lesson', done: progress.hasLesson, href: '/lessons/new' },
     // Not progress.hasWhatsApp: that is only "a number is stored". A number
     // whose credentials Meta rejects is not a finished setup step, and ticking

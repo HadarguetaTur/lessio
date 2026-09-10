@@ -197,17 +197,19 @@ export function TeacherDetailSheet({
                         </span>
                       )}
                     </DataRow>
+                    {/* dt/dd, like the DataRow above: a <dl> may only hold
+                        term/description pairs (axe definition-list). */}
                     <div className="px-4 py-3">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
+                      <dt className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
                         {t('bio')}
-                      </p>
-                      {teacher.bio?.trim() ? (
-                        <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed break-words">
-                          {teacher.bio}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground text-center py-1">—</p>
-                      )}
+                      </dt>
+                      <dd className="text-sm text-foreground whitespace-pre-wrap leading-relaxed break-words">
+                        {teacher.bio?.trim() ? (
+                          teacher.bio
+                        ) : (
+                          <span className="block text-muted-foreground text-center py-1">—</span>
+                        )}
+                      </dd>
                     </div>
                   </dl>
                 </SectionCard>

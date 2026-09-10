@@ -7,10 +7,16 @@ import { LeadStatus } from '@/lib/leads'
 interface Props {
   leadId: string
   currentStatus: LeadStatus
+  /**
+   * Names which lead this control belongs to. One select per row means the
+   * accessible name has to carry the row identity — "status" alone leaves a
+   * screen-reader user with four identical combo boxes.
+   */
+  label: string
   action: (leadId: string, status: LeadStatus) => Promise<{ error: string | null }>
 }
 
-export function LeadStatusSelect({ leadId, currentStatus, action }: Props) {
+export function LeadStatusSelect({ leadId, currentStatus, label, action }: Props) {
   const t = useTranslations('leads')
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -29,10 +35,11 @@ export function LeadStatusSelect({ leadId, currentStatus, action }: Props) {
   return (
     <div>
       <select
+        aria-label={label}
         value={currentStatus === 'converted' ? 'converted' : currentStatus}
         onChange={handleChange}
         disabled={isPending || currentStatus === 'converted'}
-        className="border border-gray-300 rounded-md px-2 py-1 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="border border-input rounded-md px-2 py-1 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {currentStatus === 'converted' ? (
           <option value="converted">{t('statusConverted')}</option>

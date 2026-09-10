@@ -1753,6 +1753,7 @@
       "quotaDisabledWarning": "Note: weekly quota enforcement is off for this organization, so the quota bump will have no effect.",
       "bumpLabel": "Extra lessons for the exam week",
       "bumpHint": "How many lessons to add to the student's weekly quota during the exam week (1–5)",
+      "bumpNotRelevant": "Only applies when the quota goes up — pick \"Notify + one-click approval\" or \"Raise quota automatically\".",
       "boosterLabel": "Offer the parent a booster lesson",
       "boosterHint": "On every exam report, the parent gets a WhatsApp booking link for a booster lesson",
       "saved": "Settings saved",
@@ -2837,6 +2838,7 @@
     "autoCreated": "Leads are created automatically from WhatsApp messages",
     "firstMessage": "First message: ",
     "changeStatus": "Change Status",
+    "statusFor": "Lead status for {phone}",
     "noPermission": "You do not have permission to view this page",
     "convertLink": "Convert →",
     "errors": {

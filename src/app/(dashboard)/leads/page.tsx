@@ -140,6 +140,7 @@ export default async function LeadsPage(props: {
                       <LeadStatusSelect
                         leadId={lead.id}
                         currentStatus={lead.status}
+                        label={t('statusFor', { phone: lead.phone })}
                         action={updateLeadStatus}
                       />
                     </td>

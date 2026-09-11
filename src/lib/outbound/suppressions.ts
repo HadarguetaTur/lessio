@@ -87,3 +87,39 @@ export async function isSuppressed(email: string): Promise<boolean> {
   if (error) throw new Error(`[outbound/suppressions] lookup failed: ${error.message}`)
   return Boolean(data)
 }
+
+/**
+ * Silence one prospect by hand, whatever state the conversation is in.
+ *
+ * `addSuppression` alone only pulls not-yet-sent rows out of the queue; a
+ * prospect who was already mailed keeps their status so the history stays
+ * readable. Here the founder is explicitly closing the door on a person, so
+ * the follow-ups stop too. Terminal rows (unsubscribed, bounced, converted)
+ * are left as they are.
+ */
+export async function suppressProspect(
+  prospectId: string,
+  source: string
+): Promise<{ ok: true } | { ok: false; error: 'NOT_FOUND' | 'SAVE_FAILED' }> {
+  const db = createServiceRoleClient()
+  const { data: prospect } = await db
+    .from('outbound_prospects')
+    .select('email, status')
+    .eq('id', prospectId)
+    .maybeSingle()
+  if (!prospect) return { ok: false, error: 'NOT_FOUND' }
+
+  const added = await addSuppression({ email: prospect.email as string, reason: 'manual', source })
+  if (!added.ok) return { ok: false, error: 'SAVE_FAILED' }
+
+  const terminal = ['unsubscribed', 'bounced', 'converted']
+  await db
+    .from('outbound_prospects')
+    .update({
+      next_followup_at: null,
+      followup_claimed_at: null,
+      ...(terminal.includes(prospect.status as string) ? {} : { status: 'suppressed' }),
+    })
+    .eq('id', prospectId)
+  return { ok: true }
+}

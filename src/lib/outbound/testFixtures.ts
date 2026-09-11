@@ -6,7 +6,7 @@
  * every hand-written fixture at once).
  */
 
-import type { Prospect } from './types'
+import type { PlatformLead, Prospect } from './types'
 
 export function makeProspect(overrides: Partial<Prospect> = {}): Prospect {
   return {
@@ -47,6 +47,33 @@ export function makeProspect(overrides: Partial<Prospect> = {}): Prospect {
     last_inbound_at: null,
     created_at: '',
     updated_at: '',
+    ...overrides,
+  }
+}
+
+
+export function makeLead(overrides: Partial<PlatformLead> = {}): PlatformLead {
+  return {
+    id: 'lead-1',
+    name: 'דנה כהן',
+    email: 'dana@example.com',
+    phone: null,
+    company: 'סטודיו דנה',
+    status: 'new',
+    notes: null,
+    source: 'outbound',
+    medium: 'email',
+    campaign: 'First outreach (he)',
+    prospect_id: 'p1',
+    organization_id: null,
+    converted_org_id: null,
+    converted_at: null,
+    lost_reason: null,
+    owner_profile_id: null,
+    next_action_at: null,
+    next_action_note: null,
+    created_at: '2026-09-08T10:00:00Z',
+    updated_at: '2026-09-08T10:00:00Z',
     ...overrides,
   }
 }

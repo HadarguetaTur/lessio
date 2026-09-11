@@ -3860,7 +3860,8 @@
         "title": "Do-not-email list",
         "description": "Global. An address here is never mailed again by any campaign; queued prospects with it are pulled out.",
         "email": "Email address",
-        "add": "Suppress"
+        "add": "Suppress",
+        "list": "Suppressed addresses"
       },
       "prospects": {
         "title": "Prospects",
@@ -3868,7 +3869,10 @@
         "all": "All"
       },
       "replies": {
-        "title": "Latest replies"
+        "title": "Latest replies",
+        "reviewed": "Handled",
+        "markReviewed": "Handled",
+        "unmatched": "Unmatched"
       },
       "columns": {
         "email": "Email",
@@ -3959,6 +3963,31 @@
           "EMPTY": "The model returned nothing.",
           "TOO_LONG": "The model wrote a paragraph instead of a sentence."
         }
+      },
+      "tabs": {
+        "attention": "Waiting for you",
+        "queue": "Queue",
+        "openers": "Opening lines",
+        "replies": "Replies",
+        "settings": "Settings"
+      },
+      "cockpit": {
+        "allClear": "Nothing is waiting for you.",
+        "sendingActive": "Sending is on. {remaining} more can go out today.",
+        "sendingResumes": "Sending resumes {when}.",
+        "noMailboxCapacity": "No mailbox has room left today, or none is active.",
+        "queued": "In queue",
+        "sentToday": "Sent today",
+        "repliesToday": "Replies today",
+        "interested7d": "Interested, 7 days",
+        "items": {
+          "openers": "{count} opening lines to approve",
+          "replies": "{count} replies need a look",
+          "newLeads": "{count} new leads",
+          "dueActions": "{count} reminders are due",
+          "mailboxError": "Mailbox {email} failed: {error}"
+        },
+        "waitingTitle": "Waiting for you"
       }
     },
     "leads": {
@@ -3973,7 +4002,10 @@
         "status": "Status",
         "source": "Source",
         "createdAt": "Created",
-        "notes": "Notes"
+        "notes": "Notes",
+        "lastMessage": "Last message",
+        "nextAction": "Next step",
+        "prospectStatus": "Outreach"
       },
       "status": {
         "new": "New",
@@ -3982,6 +4014,73 @@
         "trial": "Trial",
         "won": "Won",
         "lost": "Lost"
+      },
+      "filters": {
+        "all": "All",
+        "attention": "Needs attention"
+      },
+      "attention": {
+        "next_action_due": "Reminder due",
+        "new": "New",
+        "unanswered_reply": "Waiting for you",
+        "none": ""
+      },
+      "statusActions": {
+        "changeStatus": "Status",
+        "lostReason": "Why lost",
+        "lostReasonText": "Say why",
+        "confirmLost": "Mark lost"
+      },
+      "lostReasons": {
+        "no_budget": "No budget",
+        "no_need": "No need",
+        "competitor": "Chose someone else",
+        "no_response": "Went quiet",
+        "other": "Other"
+      },
+      "errors": {
+        "INVALID_INPUT": "Check the fields.",
+        "LOST_REASON_REQUIRED": "Pick a reason first.",
+        "NOT_FOUND": "Not found.",
+        "SAVE_FAILED": "Could not save."
+      },
+      "card": {
+        "title": "Lead",
+        "description": "Contact details, the conversation, and what to do next.",
+        "cancel": "Cancel",
+        "saved": "Saved",
+        "saveFailed": "Could not save.",
+        "whatsapp": "WhatsApp",
+        "campaign": "Campaign",
+        "mailbox": "Sent from",
+        "organization": "Open organization",
+        "thread": "Conversation",
+        "noThread": "No emails yet.",
+        "needsLook": "needs a look",
+        "notes": "Notes",
+        "notesPlaceholder": "What was said, what they need, anything to remember.",
+        "saveNotes": "Save notes",
+        "nextAction": "Come back to this on",
+        "nextActionNote": "What to do then",
+        "saveNextAction": "Save reminder",
+        "clearNextAction": "Clear",
+        "dueNow": "due",
+        "followupScheduled": "Automatic follow-up scheduled for {when}",
+        "createLead": "Make this a lead",
+        "suppress": "Never email again",
+        "suppressConfirmTitle": "Stop emailing this address?",
+        "suppressConfirmBody": "The address goes on the do-not-email list and any scheduled follow-up is cancelled. The conversation stays readable.",
+        "markReviewed": "Mark {count} replies handled",
+        "openerWaiting": "The opening line is waiting for your approval",
+        "statusChangedEvent": "Status: {from} → {to}",
+        "noteEvent": "Note saved",
+        "nextActionEvent": "Reminder set for {when}",
+        "kind": {
+          "cold_email": "Cold email",
+          "reply": "Their reply",
+          "demo_email": "Demo email",
+          "followup": "Follow-up"
+        }
       }
     }
   },

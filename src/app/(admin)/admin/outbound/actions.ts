@@ -7,7 +7,8 @@ import { requirePlatformSession } from '@/lib/superadmin/session'
 import { recordAdminAction } from '@/lib/superadmin/audit'
 import { importProspects, type ImportProspectsResult } from '@/lib/outbound/importProspects'
 import { saveCampaign } from '@/lib/outbound/campaigns'
-import { addSuppression } from '@/lib/outbound/suppressions'
+import { addSuppression, suppressProspect } from '@/lib/outbound/suppressions'
+import { markInboundReviewed } from '@/lib/outbound/messages'
 import { approveOpener, regenerateOpener } from '@/lib/outbound/opener'
 import { saveMailbox } from '@/lib/outbound/mailboxes'
 import { isServiceAccountConfigured, sendAsUser } from '@/lib/gmail/serviceAccount'
@@ -343,4 +344,61 @@ export async function regenerateOpenerAction(
 
   revalidatePath('/admin/outbound')
   return outcome.ok ? { ok: true, detail: outcome.text } : { error: `OPENER_${outcome.error}` }
+}
+
+// ── From the lead card ───────────────────────────────────────────────────────
+
+export async function suppressProspectAction(
+  _prev: OutboundActionState | null,
+  formData: FormData
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+
+  const parsed = z.object({ prospectId: z.string().uuid() }).safeParse({ prospectId: formData.get('prospectId') })
+  if (!parsed.success) return { error: 'INVALID_INPUT' }
+
+  const result = await suppressProspect(parsed.data.prospectId, `admin:${session.profileId}`)
+  if (!result.ok) return { error: result.error }
+
+  await recordAdminAction({
+    actorProfileId: session.profileId,
+    action: 'outbound.suppress_prospect',
+    targetType: 'outbound_prospects',
+    targetId: parsed.data.prospectId,
+  })
+
+  revalidatePath('/admin/outbound')
+  revalidatePath('/admin/leads')
+  return { ok: true }
+}
+
+export async function markReplyReviewedAction(
+  _prev: OutboundActionState | null,
+  formData: FormData
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+
+  const parsed = z
+    .object({ messageId: z.string().uuid().optional(), prospectId: z.string().uuid().optional() })
+    .refine((v) => v.messageId || v.prospectId)
+    .safeParse({
+      messageId: formData.get('messageId') || undefined,
+      prospectId: formData.get('prospectId') || undefined,
+    })
+  if (!parsed.success) return { error: 'INVALID_INPUT' }
+
+  const key = parsed.data.messageId ? { messageId: parsed.data.messageId } : { prospectId: parsed.data.prospectId! }
+  const changed = await markInboundReviewed(key)
+
+  await recordAdminAction({
+    actorProfileId: session.profileId,
+    action: 'outbound.reply_reviewed',
+    targetType: 'outbound_messages',
+    targetId: parsed.data.messageId ?? parsed.data.prospectId,
+    metadata: { changed },
+  })
+
+  revalidatePath('/admin/outbound')
+  revalidatePath('/admin/leads')
+  return { ok: true }
 }

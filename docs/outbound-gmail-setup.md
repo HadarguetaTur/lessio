@@ -171,6 +171,31 @@ carrying that address imports it as `suppressed` and it is never mailed.
 Opening the link never unsubscribes anyone by itself — mail scanners follow
 links — so the page asks first and the button does the work.
 
+## 11. Working the screens
+
+`/admin/outbound` opens on **"מחכה לך"**: whether sending is on right now (and
+how many can still go out today, or when it resumes), then a short list of what
+needs a person — mailbox errors, reminders that came due, replies the classifier
+could not read, new leads, opening lines to approve — then four numbers. The
+other tabs are the queue, the opening lines, the replies (each with a
+**"טופל"** button that clears it from the list), and settings (mailboxes,
+campaigns, import, suppression).
+
+`/admin/leads` is the inbox. Rows are ranked by what it costs to ignore them
+today: a due reminder first, then new leads, then people who wrote back and are
+waiting. Filter pills carry counts.
+
+**Clicking any row opens the lead card** beside the table (`?open=<id>`, so
+Back closes it and refresh keeps it). The card holds the person's contact
+details, one-click status buttons, a reminder ("come back to this on…"), notes,
+and the whole conversation as bubbles. Two rules the card enforces:
+
+- **Changing a status by hand cancels the automatic follow-ups** for that
+  person. Once the founder is in the conversation, the engine stays out of it.
+  `trial` and `won` also mark the prospect `converted`; `lost` needs a reason.
+- **Touching a lead marks its unread replies as handled.** The "replies need a
+  look" counter only ever counts messages nobody has acted on.
+
 ## Troubleshooting
 
 | Symptom | Cause |

@@ -40,6 +40,22 @@ export function isInSendWindow(now: Date, tz: string = OUTBOUND_TIMEZONE): boole
   return local.hour >= SEND_WINDOW.startHour && local.hour < SEND_WINDOW.endHour
 }
 
+/**
+ * When sending next resumes, or null if it is running right now. Walks forward
+ * hour by hour at most a week, so a Thursday evening answers "Sunday 08:00"
+ * and a Sunday 07:00 answers "today 08:00".
+ */
+export function nextSendWindowStart(now: Date, tz: string = OUTBOUND_TIMEZONE): Date | null {
+  if (isInSendWindow(now, tz)) return null
+  const local = DateTime.fromJSDate(now).setZone(tz)
+  for (let dayOffset = 0; dayOffset <= 7; dayOffset++) {
+    const candidate = local.plus({ days: dayOffset }).set({ hour: SEND_WINDOW.startHour, minute: 0, second: 0, millisecond: 0 })
+    if (candidate <= local) continue
+    if ((SEND_WINDOW.weekdays as readonly number[]).includes(candidate.weekday)) return candidate.toJSDate()
+  }
+  return null
+}
+
 /** Start of the current local day, as an ISO instant — the cap's reset point. */
 export function startOfLocalDay(now: Date, tz: string = OUTBOUND_TIMEZONE): string {
   return DateTime.fromJSDate(now).setZone(tz).startOf('day').toUTC().toISO()!

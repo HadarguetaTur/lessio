@@ -15,10 +15,8 @@ import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { requireFeature } from '@/lib/saas/featureGate'
-import { requireQuotaCapacity, QuotaExceededError } from '@/lib/saas/quota'
 import { resolveAudience } from '@/lib/whatsapp/broadcast/audience'
-import { classifyBroadcastText } from '@/lib/whatsapp/broadcast/classify'
-import { startCampaign } from '@/lib/whatsapp/broadcast/send'
+import { createCampaign } from '@/lib/whatsapp/broadcast/create'
 import { categoryOf, type AudienceFilter, type BroadcastType } from '@/lib/whatsapp/broadcast/types'
 import { PARAM_LIMITS } from '@/lib/whatsapp/approvedTemplates'
 import type { AppLocale } from '@/lib/i18n/locale'
@@ -138,53 +136,28 @@ export async function createBroadcastAction(
     return { error: 'CONSENT_REQUIRED' }
   }
 
-  const db = createServiceRoleClient()
-
-  const audience = await resolveAudience(session.orgId, filter, type)
-  try {
-    await requireQuotaCapacity(session.orgId, 'broadcast_recipients_monthly', audience.included.length)
-  } catch (err) {
-    if (err instanceof QuotaExceededError) return { error: 'QUOTA_EXCEEDED' }
-    throw err
-  }
-
-  const classification = await classifyBroadcastText(session.orgId, parsed.data.message)
-
-  const { data: created, error } = await db
-    .from('broadcast_campaigns')
-    .insert({
-      organization_id: session.orgId,
-      name: parsed.data.name,
-      template_type: type,
-      topic: parsed.data.topic || null,
-      message: parsed.data.message,
-      audience: filter,
-      status: 'draft',
-      scheduled_at: parsed.data.scheduled_at ? new Date(parsed.data.scheduled_at).toISOString() : null,
-      created_by_profile_id: session.profileId,
-      created_by_role: session.role,
-      consent_attested_at: category === 'promo' ? new Date().toISOString() : null,
-      student_group_id: filter.kind === 'student_group' ? filter.groupId : null,
-      lesson_id: filter.kind === 'lesson' ? filter.lessonId : null,
-    })
-    .select('id')
-    .single()
-
-  if (error || !created) {
-    console.error('[broadcasts] create failed', { orgId: session.orgId, error: error?.message })
-    return { error: 'CREATE_FAILED' }
-  }
-
-  const campaignId = (created as { id: string }).id
-  const start = await startCampaign(campaignId, {
-    contentLooksPromotional: classification.promotional,
+  const result = await createCampaign({
+    orgId: session.orgId,
+    profileId: session.profileId,
+    role: session.role,
+    name: parsed.data.name,
+    type,
+    topic: parsed.data.topic,
+    message: parsed.data.message,
+    audience: filter,
+    scheduledAt: parsed.data.scheduled_at,
+    consentAttested: parsed.data.consent_attested === 'on',
     subscriptionLapsed: session.isSaasReadOnly === true,
   })
 
   revalidatePath('/messages/broadcasts')
 
-  if (!start.ok) return { error: 'BLOCKED', guardReason: start.reason, campaignId }
-  return { error: null, campaignId }
+  if (!result.ok) {
+    return result.error === 'BLOCKED'
+      ? { error: 'BLOCKED', guardReason: result.guardReason, campaignId: result.campaignId }
+      : { error: result.error }
+  }
+  return { error: null, campaignId: result.campaignId }
 }
 
 const CampaignIdSchema = z.string().uuid()

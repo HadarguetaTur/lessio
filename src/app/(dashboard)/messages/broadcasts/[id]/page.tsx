@@ -6,7 +6,8 @@ import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
-import { PageHeader } from '@/components/ui/page-header'
+import { deliveryFailureReason } from '@/lib/whatsapp/deliveryErrorCopy'
+import { SectionHeader } from '@/components/inbox/SectionHeader'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -32,6 +33,9 @@ export default async function BroadcastDetailPage({
   params: Promise<{ id: string }>
 }) {
   const t = await getTranslations('broadcasts')
+  // Same wording as the conversation thread: a failed delivery says why, not
+  // which number Meta used for it.
+  const tDelivery = await getTranslations('waConversations.delivery')
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin') forbidden()
 
@@ -91,18 +95,18 @@ export default async function BroadcastDetailPage({
   if (waIds.length > 0) {
     const { data: messages } = await db
       .from('whatsapp_messages')
-      .select('wa_message_id, delivery_status')
+      .select('wa_message_id, status')
       .eq('organization_id', session.orgId)
       .in('wa_message_id', waIds)
-    for (const m of (messages ?? []) as Array<{ wa_message_id: string | null; delivery_status: string | null }>) {
-      if (m.wa_message_id && m.delivery_status) deliveryByWaId.set(m.wa_message_id, m.delivery_status)
+    for (const m of (messages ?? []) as Array<{ wa_message_id: string | null; status: string | null }>) {
+      if (m.wa_message_id && m.status) deliveryByWaId.set(m.wa_message_id, m.status)
     }
   }
 
   return (
     <div className="space-y-6">
       <LiveRefresh tables={['broadcast_campaigns', 'broadcast_recipients']} />
-      <PageHeader
+      <SectionHeader
         title={campaign.name}
         subtitle={t(`types.${campaign.template_type}`)}
         actions={
@@ -158,7 +162,7 @@ export default async function BroadcastDetailPage({
             {recipients.map((r) => (
               <TableRow key={r.id}>
                 <TableCell>
-                  <Link href={`/messages/whatsapp/${r.phone}`} className="hover:underline">
+                  <Link href={`/messages/whatsapp/${encodeURIComponent(r.phone)}`} className="hover:underline">
                     {r.display_name ?? r.phone}
                   </Link>
                 </TableCell>
@@ -167,7 +171,10 @@ export default async function BroadcastDetailPage({
                     <span className="text-muted-foreground">{t(`skipReasons.${r.skip_reason}`)}</span>
                   ) : r.status === 'failed' ? (
                     <span className="text-destructive">
-                      {t('failedWithCode', { code: r.error_code ?? 0 })}
+                      {(() => {
+                        const reason = deliveryFailureReason(r.error_code)
+                        return reason ? tDelivery(`reasons.${reason}`) : tDelivery('failed')
+                      })()}
                     </span>
                   ) : (
                     t(`recipientStatuses.${r.status}`)

@@ -10,7 +10,7 @@ import { BROADCAST_TEMPLATES, PARAM_LIMITS } from '@/lib/whatsapp/approvedTempla
 import { tierDailyLimit } from '@/lib/whatsapp/health'
 import { countConversationsLast24h } from '@/lib/whatsapp/broadcast/send'
 import type { BroadcastType } from '@/lib/whatsapp/broadcast/types'
-import { PageHeader } from '@/components/ui/page-header'
+import { SectionHeader } from '@/components/inbox/SectionHeader'
 import {
   BroadcastComposer,
   type AudienceOption,
@@ -81,7 +81,7 @@ export default async function NewBroadcastPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t('newTitle')} subtitle={t('newSubtitle')} />
+      <SectionHeader title={t('newTitle')} subtitle={t('newSubtitle')} />
       <BroadcastComposer
         audiences={audiences}
         initialAudience={initialAudience}

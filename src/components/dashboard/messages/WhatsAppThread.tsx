@@ -1,9 +1,9 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState, useTransition } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { DateTime } from 'luxon'
-import { AlertCircle, Bot, Check, CheckCheck, Megaphone, Send, Sparkles, Undo2 } from 'lucide-react'
+import { AlertCircle, Bot, Check, CheckCheck, Megaphone, Send, Sparkles } from 'lucide-react'
 import type { ThreadMessage } from '@/lib/whatsapp/conversations'
 import { deliveryFailureReason } from '@/lib/whatsapp/deliveryErrorCopy'
 
@@ -16,7 +16,12 @@ type Props = {
   windowOpen: boolean
   takenOver: boolean
   sendAction: (prev: ActionResult, formData: FormData) => Promise<ActionResult>
-  releaseAction: () => Promise<ActionResult>
+  /**
+   * What replaces the text box once Meta's window has closed. The thread used
+   * to show a dead sentence there; the inbox passes a composer that sends an
+   * approved template instead, or an explanation where no template applies.
+   */
+  closedWindow: React.ReactNode
 }
 
 export function WhatsAppThread({
@@ -25,13 +30,12 @@ export function WhatsAppThread({
   windowOpen,
   takenOver,
   sendAction,
-  releaseAction,
+  closedWindow,
 }: Props) {
   const t = useTranslations('waConversations')
   const tCommon = useTranslations('common')
+  const tInbox = useTranslations('inbox.thread')
   const [state, action, isPending] = useActionState(sendAction, { error: null })
-  const [releasing, startRelease] = useTransition()
-  const [releaseError, setReleaseError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Controlled, so a failed send keeps what was typed. React 19 resets an
@@ -54,7 +58,7 @@ export function WhatsAppThread({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[600px]">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.isInbound ? 'justify-start' : 'justify-end'}`}>
             <div
@@ -85,28 +89,10 @@ export function WhatsAppThread({
       </div>
 
       <div className="border-t border-border p-4 space-y-2">
-        {takenOver && (
-          <div className="flex items-center justify-between gap-3 text-xs">
-            <span className="text-muted-foreground">{t('takeoverNotice')}</span>
-            <button
-              type="button"
-              disabled={releasing}
-              onClick={() =>
-                startRelease(async () => {
-                  const result = await releaseAction()
-                  setReleaseError(result.error)
-                })
-              }
-              className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border hover:bg-muted disabled:opacity-50 transition-colors"
-            >
-              <Undo2 size={12} />
-              {t('actions.release')}
-            </button>
-          </div>
-        )}
-
-        {(state.error || releaseError) && (
-          <p className="text-xs text-red-600">{state.error ?? releaseError}</p>
+        {state.error && (
+          <p role="alert" className="text-xs text-red-600">
+            {state.error}
+          </p>
         )}
 
         {windowOpen ? (
@@ -132,9 +118,13 @@ export function WhatsAppThread({
             </button>
           </form>
         ) : (
-          <p className="text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2.5">
-            {t('windowClosedNotice')}
-          </p>
+          closedWindow
+        )}
+
+        {windowOpen && !takenOver && (
+          // Sending a reply silences the bot here for six hours. That used to
+          // happen with no warning at all.
+          <p className="text-[11px] text-muted-foreground">{tInbox('sendTakesOver')}</p>
         )}
       </div>
     </div>

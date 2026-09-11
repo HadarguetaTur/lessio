@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { getSession, requireMutation } from '@/lib/auth/session'
 import { sendPortalMessage } from '@/lib/portal/messages'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { mutationBlockedError } from '@/lib/i18n/actionErrors'
+import { getTeacherByProfileId } from '@/lib/teachers'
+import { canTeacherAccessStudent } from '@/lib/students'
 import { getTranslations } from 'next-intl/server'
 
 export type ReplyResult = { error: string | null }
@@ -19,8 +21,17 @@ export async function replyToPortalMessageAction(
 
   try {
     requireMutation(session)
-  } catch (e) {
-    return { error: await commonError('supportModeReadOnly') }
+  } catch (err) {
+    return { error: await mutationBlockedError(err) }
+  }
+
+  // Teachers reach portal threads through the inbox now, scoped to their own
+  // students. The student id is client input, so the scope is re-checked here.
+  if (session.role === 'teacher') {
+    const teacher = await getTeacherByProfileId(session.profileId, session.orgId, { activeOnly: true })
+    if (!teacher || !(await canTeacherAccessStudent(session.orgId, teacher.id, studentId))) {
+      return { error: t('lessons.messageErrors.studentNotFound') }
+    }
   }
 
   const body = (formData.get('body') as string | null)?.trim()
@@ -63,5 +74,6 @@ export async function replyToPortalMessageAction(
   }
 
   revalidatePath(`/messages/${studentId}`)
+  revalidatePath('/messages')
   return { error: null }
 }

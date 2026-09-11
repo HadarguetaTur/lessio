@@ -2728,7 +2728,8 @@
         "unverified_business": "Your business is not verified with Meta yet, so the daily limit stays at 250 conversations.",
         "templates_unapproved": "Some message wordings are still waiting for Meta approval — until then they only reach parents who wrote to you in the last 24 hours."
       },
-      "viewPlans": "View plans"
+      "viewPlans": "View plans",
+      "fixLink": "Fix in settings"
     }
   },
   "quota": {
@@ -5786,7 +5787,6 @@
     "colDelivery": "Delivery",
     "resultSummary": "{sent} sent · {skipped} skipped · {failed} failed",
     "scheduledFor": "Scheduled for {when}",
-    "failedWithCode": "Failed (error {code})",
     "types": {
       "class_update": "Class update",
       "promo": "Offer",
@@ -5918,6 +5918,86 @@
       "resume": "Resume",
       "cancel": "Cancel",
       "confirmCancel": "Cancel this broadcast? Parents already messaged will keep their message."
+    }
+  },
+  "inbox": {
+    "title": "Messages",
+    "searchPlaceholder": "Search by name, phone or student",
+    "nav": {
+      "label": "Messaging areas",
+      "conversations": "Conversations",
+      "lists": "Lists",
+      "broadcasts": "Broadcasts"
+    },
+    "filters": {
+      "all": "All",
+      "awaiting": "Awaiting reply",
+      "taken_over": "Handled by a person",
+      "parents": "Parents",
+      "students": "Students",
+      "staff": "Team",
+      "unknown": "Unknown",
+      "portal": "Portal"
+    },
+    "preview": {
+      "you": "You:",
+      "bot": "Bot:",
+      "ai": "AI assistant:",
+      "broadcast": "Broadcast:"
+    },
+    "tags": {
+      "awaiting_reply": "Awaiting reply",
+      "delivery_failed": "Not delivered",
+      "taken_over_by_me": "Yours",
+      "taken_over": "Handled by a person",
+      "window_closed": "24h window closed",
+      "opted_out": "Opted out",
+      "open_debt": "Open balance",
+      "portal": "Portal",
+      "unknown_number": "Unknown number",
+      "bot_answered": "Bot replied",
+      "ai_answered": "AI replied",
+      "broadcast": "Broadcast",
+      "more": "+{count}"
+    },
+    "empty": {
+      "pickOne": "Pick a conversation",
+      "pickOneHint": "Every conversation with parents, students and the team — from WhatsApp and the portal — is on the left, newest first.",
+      "noConversations": "No conversations yet",
+      "noConversationsHint": "A conversation appears here as soon as someone writes to your WhatsApp number or from the portal.",
+      "noMatches": "Nothing matches",
+      "noMatchesHint": "Try another filter or a shorter search."
+    },
+    "thread": {
+      "back": "Back to conversations",
+      "takeOver": "I'll answer",
+      "release": "Hand back to the bot",
+      "takeOverHint": "The bot is answering here. Press to answer yourself — the bot goes quiet in this conversation for 6 hours.",
+      "heldByUntil": "{name} is answering here. The bot is quiet until {time}.",
+      "heldUntil": "The bot is quiet in this conversation until {time}.",
+      "heldHint": "The bot is quiet in this conversation.",
+      "sendTakesOver": "Sending a message quiets the bot in this conversation for 6 hours.",
+      "windowClosedTitle": "Their last message was more than 24 hours ago.",
+      "windowClosedParent": "WhatsApp doesn't allow a free-text message now, but you can send an update — it goes out as an approved business message.",
+      "windowClosedOther": "WhatsApp doesn't allow a free-text message now. As soon as they write again, you can answer here.",
+      "windowClosedOptedOut": "This parent asked to stop receiving messages, so no update can be sent. As soon as they write again, you can answer here.",
+      "topicPlaceholder": "Topic (optional) — e.g. tomorrow's lesson",
+      "updatePlaceholder": "What would you like to tell them?",
+      "sendUpdate": "Send update",
+      "updateSent": "Update sent. It appears in the conversation once Meta confirms delivery.",
+      "campaignName": "Update for {name}",
+      "portalSubtitle": "Message from the personal portal",
+      "errors": {
+        "notOnPlan": "Sending updates is not included in your plan.",
+        "notFound": "Conversation not found.",
+        "notAParent": "Updates can only be sent to a parent.",
+        "empty": "Write what you want to tell them.",
+        "tooLong": "The update is too long.",
+        "topicTooLong": "The topic is too long.",
+        "quota": "You've reached your plan's monthly message allowance.",
+        "sendFailed": "Sending failed. Try again.",
+        "optedOut": "This parent asked to stop receiving messages, so the update was not sent."
+      }
     }
   }
 }

@@ -39,6 +39,7 @@ import {
   UserPlus,
   MessageCircle,
   MessageSquare,
+  Megaphone,
   CreditCard,
   CalendarOff,
   CalendarDays,
@@ -411,7 +412,36 @@ export const MAIN_NAV: NavEntry[] = [
     // No saasFeature: the sidebar shows /messages on every plan, and search
     // must not be stricter than the sidebar.
     roles: ['owner', 'admin'],
-    synonyms: ['message', 'messages', 'portal', 'inbox', 'הודעה', 'הודעות', 'פורטל', 'תיבה'],
+    synonyms: [
+      'message', 'messages', 'portal', 'inbox', 'whatsapp', 'conversation', 'conversations', 'bot',
+      'הודעה', 'הודעות', 'פורטל', 'תיבה', 'וואטסאפ', 'שיחה', 'שיחות', 'בוט',
+    ],
+  },
+  // The inbox's other two places. Registered so breadcrumbs name them and
+  // search finds them — "רשימת תפוצה" typed into search used to find nothing.
+  // They stay out of the section categories: the inbox's own segmented control
+  // is their navigation.
+  {
+    href: '/messages/lists',
+    navKey: 'messagesLists',
+    icon: Users,
+    roles: ['owner', 'admin'],
+    saasFeature: 'broadcasts',
+    synonyms: [
+      'list', 'lists', 'group', 'groups', 'audience', 'distribution',
+      'רשימה', 'רשימות', 'רשימת תפוצה', 'קבוצה', 'קבוצות', 'קהל',
+    ],
+  },
+  {
+    href: '/messages/broadcasts',
+    navKey: 'messagesBroadcasts',
+    icon: Megaphone,
+    roles: ['owner', 'admin'],
+    saasFeature: 'broadcasts',
+    synonyms: [
+      'broadcast', 'broadcasts', 'announcement', 'campaign', 'send to all',
+      'תפוצה', 'תפוצות', 'הודעה לכולם', 'עדכון', 'הכרזה', 'קמפיין',
+    ],
   },
   {
     href: '/support',

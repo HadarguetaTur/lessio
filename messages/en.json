@@ -355,7 +355,9 @@
     "settingsPrivacy": "Privacy & data",
     "settingsCalendar": "Google Calendar",
     "support": "Support",
-    "settingsIntegrations": "Automation API keys"
+    "settingsIntegrations": "Automation API keys",
+    "messagesLists": "Lists",
+    "messagesBroadcasts": "Broadcasts"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -5802,24 +5804,7 @@
     "rejectAll": "Reject all"
   },
   "waConversations": {
-    "title": "WhatsApp Chats",
-    "subtitle": "Every conversation the bot is having, with the option to step in yourself",
-    "emptyTitle": "No conversations yet",
-    "emptySubtitle": "Chats appear here as soon as someone writes to your business WhatsApp number",
-    "noTeacherRecord": "No teacher record found for you. Contact your administrator.",
-    "backToList": "Back to conversations",
-    "colContact": "Contact",
-    "colLastMessage": "Last message",
-    "colDate": "Updated",
-    "colStatus": "Status",
     "composerPlaceholder": "Write a message…",
-    "windowClosedNotice": "The 24-hour window is closed. You cannot send free text until they write again.",
-    "takeoverNotice": "The bot is paused on this conversation and will not reply automatically.",
-    "tabs": {
-      "portal": "Portal messages",
-      "whatsapp": "WhatsApp",
-      "broadcasts": "Broadcasts"
-    },
     "roles": {
       "parent": "Parent",
       "student": "Student",
@@ -5833,14 +5818,6 @@
       "staff": "Staff",
       "cron": "Automated message",
       "broadcast": "Broadcast"
-    },
-    "badges": {
-      "takenOver": "Handled by a person",
-      "takenOverBy": "Handled by {name}",
-      "awaitingReply": "Awaiting reply"
-    },
-    "actions": {
-      "release": "Return to bot"
     },
     "errors": {
       "empty": "Cannot send an empty message",
@@ -5862,12 +5839,7 @@
         "marketing_opted_out": "Not delivered — this person opted out of marketing messages",
         "rate_limited": "Not delivered — temporary load. It will be retried"
       }
-    },
-    "emptyNotConnectedTitle": "You haven't connected a WhatsApp number yet",
-    "emptyReconnectTitle": "The WhatsApp connection has expired",
-    "emptyNotConnectedOwner": "Once connected, every parent's conversation with the bot appears here and you can step in and reply yourself at any point.",
-    "emptyNotConnectedStaff": "The business's WhatsApp number isn't connected right now, so there are no conversations to show. The account owner can sort this out in settings.",
-    "emptyNotConnectedAction": "Go to WhatsApp settings"
+    }
   },
   "broadcasts": {
     "title": "Broadcasts",
@@ -6114,8 +6086,8 @@
       "openDebtHint": "Anyone with a charge not yet paid",
       "byTeacher": "{name}'s families",
       "byTeacherHint": "Parents of the students they teach",
-      "parentsCount": "{count, plural, =0 {No parents on this list} one {1 parent} other {# parents}}",
-      "studentsCount": "{count, plural, =0 {No students} one {1 student} other {# students}}",
+      "parentsCount": "{count, plural, one {# parent} other {# parents}}",
+      "studentsCount": "{count, plural, one {# student} other {# students}}",
       "linkedGroup": "Linked to a WhatsApp group",
       "sendUpdate": "Send update",
       "newList": "New list",
@@ -6130,7 +6102,7 @@
       "noPhone": "No phone — won't receive messages",
       "optedOut": "Asked to stop receiving messages",
       "remove": "Remove {name}",
-      "selectedCount": "{count, plural, =0 {No parents selected} one {1 parent selected} other {# parents selected}}",
+      "selectedCount": "{count, plural, one {# parent selected} other {# parents selected}}",
       "save": "Save",
       "saving": "Saving…",
       "delete": "Delete",

@@ -355,7 +355,9 @@
     "settingsPrivacy": "פרטיות ונתונים",
     "settingsCalendar": "יומן Google",
     "support": "תמיכה",
-    "settingsIntegrations": "מפתחות API לאוטומציה"
+    "settingsIntegrations": "מפתחות API לאוטומציה",
+    "messagesLists": "רשימות",
+    "messagesBroadcasts": "תפוצות"
   },
   "dashboard": {
     "title": "לוח הבקרה",
@@ -5802,24 +5804,7 @@
     "rejectAll": "דחיית הכל"
   },
   "waConversations": {
-    "title": "שיחות WhatsApp",
-    "subtitle": "כל ההתכתבויות של הבוט, עם אפשרות להתערב ולענות בעצמכם",
-    "emptyTitle": "אין עדיין שיחות",
-    "emptySubtitle": "שיחות יופיעו כאן ברגע שמישהו יכתוב למספר ה-WhatsApp של העסק",
-    "noTeacherRecord": "לא נמצא רישום מורה עבורכם. פנו למנהל המערכת.",
-    "backToList": "חזרה לרשימת השיחות",
-    "colContact": "איש קשר",
-    "colLastMessage": "הודעה אחרונה",
-    "colDate": "עודכן",
-    "colStatus": "סטטוס",
     "composerPlaceholder": "כתבו הודעה…",
-    "windowClosedNotice": "חלון 24 השעות סגור. אי אפשר לשלוח הודעה חופשית עד שהצד השני יכתוב שוב.",
-    "takeoverNotice": "הבוט מושתק בשיחה הזו ואינו עונה אוטומטית.",
-    "tabs": {
-      "portal": "הודעות פורטל",
-      "whatsapp": "WhatsApp",
-      "broadcasts": "תפוצות"
-    },
     "roles": {
       "parent": "הורה",
       "student": "תלמיד",
@@ -5833,14 +5818,6 @@
       "staff": "צוות",
       "cron": "הודעה אוטומטית",
       "broadcast": "תפוצה"
-    },
-    "badges": {
-      "takenOver": "בטיפול ידני",
-      "takenOverBy": "בטיפול של {name}",
-      "awaitingReply": "ממתין למענה"
-    },
-    "actions": {
-      "release": "החזר לבוט"
     },
     "errors": {
       "empty": "לא ניתן לשלוח הודעה ריקה",
@@ -5862,12 +5839,7 @@
         "marketing_opted_out": "לא נמסר — הנמען ביקש לא לקבל הודעות שיווקיות",
         "rate_limited": "לא נמסר — עומס זמני. יישלח שוב"
       }
-    },
-    "emptyNotConnectedTitle": "עוד לא חיברתם מספר WhatsApp",
-    "emptyReconnectTitle": "החיבור ל-WhatsApp פג",
-    "emptyNotConnectedOwner": "אחרי החיבור, כל שיחה של הורה עם הבוט תופיע כאן ותוכלו להתערב ולענות בעצמכם בכל רגע.",
-    "emptyNotConnectedStaff": "מספר ה-WhatsApp של העסק אינו מחובר כרגע, ולכן אין שיחות להציג. בעל/ת העסק יכול/ה לטפל בזה בהגדרות.",
-    "emptyNotConnectedAction": "למעבר להגדרות WhatsApp"
+    }
   },
   "broadcasts": {
     "title": "תפוצות",
@@ -6114,8 +6086,8 @@
       "openDebtHint": "מי שיש לו חיוב שעוד לא שולם",
       "byTeacher": "המשפחות של {name}",
       "byTeacherHint": "ההורים של התלמידים שלומדים איתו/איתה",
-      "parentsCount": "{count, plural, =0 {אין הורים ברשימה} one {הורה אחד} other {# הורים}}",
-      "studentsCount": "{count, plural, =0 {אין תלמידים} one {תלמיד אחד} other {# תלמידים}}",
+      "parentsCount": "{count, plural, one {הורה אחד} other {# הורים}}",
+      "studentsCount": "{count, plural, one {תלמיד אחד} other {# תלמידים}}",
       "linkedGroup": "מקושרת לקבוצת וואטסאפ",
       "sendUpdate": "שליחת עדכון",
       "newList": "רשימה חדשה",
@@ -6130,7 +6102,7 @@
       "noPhone": "אין טלפון — לא יקבל/תקבל הודעות",
       "optedOut": "ביקש/ה להפסיק לקבל הודעות",
       "remove": "הסרת {name}",
-      "selectedCount": "{count, plural, =0 {לא נבחרו הורים} one {נבחר הורה אחד} other {נבחרו # הורים}}",
+      "selectedCount": "{count, plural, one {נבחר הורה אחד} other {נבחרו # הורים}}",
       "save": "שמירה",
       "saving": "שומרים…",
       "delete": "מחיקה",

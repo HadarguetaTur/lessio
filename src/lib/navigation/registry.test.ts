@@ -257,13 +257,13 @@ describe('matchPages', () => {
 })
 
 describe('categories', () => {
-  it('covers every working page exactly once (dashboard, messages and support stay out)', () => {
+  it('covers every working page exactly once (dashboard, the inbox and support stay out)', () => {
     const inCategories = CATEGORIES.flatMap((c) => c.items.map((i) => i.href))
     expect(new Set(inCategories).size).toBe(inCategories.length)
 
     const expected = [
       ...MAIN_NAV.map((e) => e.href).filter(
-        (h) => !['/dashboard', '/messages', '/support'].includes(h)
+        (h) => !['/dashboard', '/support'].includes(h) && !h.startsWith('/messages')
       ),
       ...REPORTS_NAV.map((e) => e.href),
     ]

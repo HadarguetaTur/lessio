@@ -895,6 +895,41 @@ back to `not_connected` for every org.
 
 ---
 
+## WhatsApp inbox (2026-09-10)
+
+**Status:** ✅ Built on the broadcasts branch — migration `20260911120000` not yet in production
+**Decision:** #43
+
+Hadar's first reaction to the operational WhatsApp surface was that nothing was
+findable. `/messages` became an inbox in the shape everyone already knows:
+
+- **Conversations** — one rail for WhatsApp and portal (`src/lib/inbox/rows.ts`),
+  search, filter chips (awaiting reply, handled by a person, parents, students,
+  team, unknown, portal) and derived tags (`src/lib/inbox/tags.ts`). The facts
+  behind the tags — window, parent, students, teacher, group, open balance,
+  opt-out, who holds it — are resolved for the whole list in a few batched
+  queries in `getConversationSummaries`.
+- **Thread** — header with the tags and an explicit "I'll answer" / "hand back to
+  the bot"; after the 24h window a parent can still be sent an update as the
+  approved `class_update` template (`createCampaign`, extracted from the
+  broadcast action and shared).
+- **Lists** (`/messages/lists`) — student groups, saved lists
+  (`broadcast_lists`, `{ kind: 'list' }` audience) and ready-made audiences, each
+  card opening the composer with the audience selected.
+- **Status** — the number's state in one line at the top of every inbox page.
+
+Fixed on the way: the broadcast report selected a column that does not exist
+(`delivery_status`), so its delivery column was always empty.
+
+**Known gap:** `broadcast_campaigns` / `broadcast_recipients` are not in the
+realtime publication or `WATCHED_TABLES`, so the broadcast pages' live refresh
+never fires.
+
+**To deploy:** apply `20260911120000_broadcast_lists.sql` together with the
+broadcasts and health migrations listed above.
+
+---
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

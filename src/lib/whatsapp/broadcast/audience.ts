@@ -253,6 +253,7 @@ async function studentIdsFor(db: Db, orgId: string, filter: AudienceFilter): Pro
       return (data ?? []).map((r) => (r as { id: string }).id)
     }
     case 'manual':
+    case 'list':
       return null
   }
 }
@@ -273,14 +274,18 @@ export async function resolveAudience(
 
   let candidates: AudienceCandidate[]
 
-  if (filter.kind === 'manual') {
-    if (filter.parentIds.length === 0) return { included: [], skipped: [] }
+  if (filter.kind === 'manual' || filter.kind === 'list') {
+    // A saved list is a manual audience whose members live in a table rather
+    // than in the campaign row — read at send time, so a parent taken off the
+    // list since is not messaged.
+    const parentIds = filter.kind === 'manual' ? filter.parentIds : await listMemberIds(db, orgId, filter.listId)
+    if (parentIds.length === 0) return { included: [], skipped: [] }
     const { data, error } = await db
       .from('parents')
       .select(PARENT_COLUMNS)
       .eq('organization_id', orgId)
-      .in('id', filter.parentIds)
-    if (error) throw new Error(`resolveAudience(manual): ${error.message}`)
+      .in('id', parentIds)
+    if (error) throw new Error(`resolveAudience(${filter.kind}): ${error.message}`)
     candidates = ((data ?? []) as unknown as ParentRow[]).map((p) => candidateFromParent(p, null))
   } else {
     const studentIds = (await studentIdsFor(db, orgId, filter)) ?? []
@@ -305,4 +310,19 @@ export async function resolveAudience(
   }
 
   return applyConsent(candidates, category, opts.fallbackLocale ?? 'he')
+}
+
+/** The parents on a saved list, scoped to the org so a foreign list id reads as empty. */
+async function listMemberIds(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string,
+  listId: string
+): Promise<string[]> {
+  const { data, error } = await db
+    .from('broadcast_list_members')
+    .select('parent_id')
+    .eq('organization_id', orgId)
+    .eq('list_id', listId)
+  if (error) throw new Error(`resolveAudience(list): ${error.message}`)
+  return (data ?? []).map((r) => (r as { parent_id: string }).parent_id)
 }

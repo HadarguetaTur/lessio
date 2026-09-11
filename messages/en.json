@@ -5934,7 +5934,8 @@
       "openDebt": "Parents with an open balance",
       "group": "{name} ({count} students)",
       "teacher": "{name}'s students",
-      "lesson": "The parents of this lesson"
+      "lesson": "The parents of this lesson",
+      "list": "List: {name} ({count})"
     },
     "form": {
       "name": "Name (for you only)",
@@ -6096,6 +6097,53 @@
         "quota": "You've reached your plan's monthly message allowance.",
         "sendFailed": "Sending failed. Try again.",
         "optedOut": "This parent asked to stop receiving messages, so the update was not sent."
+      }
+    },
+    "lists": {
+      "title": "Lists",
+      "subtitle": "Who you can write to at once. Pick a list and \"Send update\" — you write the message on the next page and see exactly who gets it.",
+      "savedTitle": "Saved lists",
+      "savedEmpty": "No saved lists yet. A saved list is for a choice that follows no group — say, the parents who asked about the summer course.",
+      "groupsTitle": "Student groups",
+      "groupsEmpty": "No active groups. Groups are created on the Students page.",
+      "manageGroups": "Manage groups",
+      "builtInTitle": "Ready-made",
+      "allActive": "All active parents",
+      "allActiveHint": "Parents of every active student",
+      "openDebt": "Parents with an open balance",
+      "openDebtHint": "Anyone with a charge not yet paid",
+      "byTeacher": "{name}'s families",
+      "byTeacherHint": "Parents of the students they teach",
+      "parentsCount": "{count, plural, =0 {No parents on this list} one {1 parent} other {# parents}}",
+      "studentsCount": "{count, plural, =0 {No students} one {1 student} other {# students}}",
+      "linkedGroup": "Linked to a WhatsApp group",
+      "sendUpdate": "Send update",
+      "newList": "New list",
+      "newTitle": "New list",
+      "editTitle": "Edit list",
+      "edit": "Edit",
+      "sheetHint": "Pick parents. Anyone who asked to stop receiving messages, or has no phone, is marked — and won't get the message even if they stay on the list.",
+      "nameLabel": "List name",
+      "namePlaceholder": "e.g. Summer course interest",
+      "searchParents": "Search parent, phone or student",
+      "noParents": "No parents found",
+      "noPhone": "No phone — won't receive messages",
+      "optedOut": "Asked to stop receiving messages",
+      "remove": "Remove {name}",
+      "selectedCount": "{count, plural, =0 {No parents selected} one {1 parent selected} other {# parents selected}}",
+      "save": "Save",
+      "saving": "Saving…",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleteConfirmTitle": "Delete the list \"{name}\"?",
+      "deleteConfirmBody": "The list is deleted. The parents themselves are not, and reports for broadcasts already sent to it are kept.",
+      "errors": {
+        "forbidden": "Only an owner or admin can manage lists.",
+        "notOnPlan": "Lists and broadcasts are not included in your plan.",
+        "invalid": "The list needs a name, or the selection is not valid.",
+        "notFound": "List not found.",
+        "saveFailed": "Saving failed. Try again.",
+        "deleteFailed": "Deleting failed. Try again."
       }
     }
   }

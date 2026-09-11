@@ -39,6 +39,7 @@ const AudienceSchema: z.ZodType<AudienceFilter> = z.union([
   z.object({ kind: z.literal('teacher'), teacherId: z.string().uuid() }),
   z.object({ kind: z.literal('open_debt') }),
   z.object({ kind: z.literal('manual'), parentIds: z.array(z.string().uuid()).min(1) }),
+  z.object({ kind: z.literal('list'), listId: z.string().uuid() }),
 ])
 
 const CreateSchema = z.object({

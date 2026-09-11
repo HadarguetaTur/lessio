@@ -63,10 +63,28 @@ export default async function ParentsPage(props: {
 
       {parents.length === 0 ? (
         <div className="mt-4">
+          {/* Title and subtitle used to be the page title and a button label
+              ("הורים" / "הורה חדש") — an empty state that said what the page is
+              called, not what it is for or why it is empty (UX audit F17). */}
           <EmptyState
             icon={Users}
-            title={q ? tCommon('emptyStates.noResults') : t('title')}
-            subtitle={!q ? t('newParent') : undefined}
+            title={
+              q
+                ? tCommon('emptyStates.noResults')
+                : isTeacher
+                  ? t('emptyTeacher')
+                  : t('emptyTitle')
+            }
+            subtitle={q ? t('noSearchMatch', { query: q }) : isTeacher ? undefined : t('emptySubtitle')}
+            action={
+              q ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/parents">{tCommon('actions.clear')}</Link>
+                </Button>
+              ) : !isTeacher ? (
+                <NewParentSheet action={createParent} />
+              ) : undefined
+            }
           />
         </div>
       ) : (

@@ -1,9 +1,10 @@
 import Link from 'next/link'
-import { Pencil } from 'lucide-react'
+import { FileText, Pencil } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { getTemplates } from '@/lib/homework'
 import { DeleteTemplateButton } from './DeleteTemplateButton'
 import { getTranslations } from 'next-intl/server'
+import { EmptyState } from '@/components/ui/empty-state'
 import { commonError } from '@/lib/i18n/actionErrors'
 
 /**
@@ -44,16 +45,15 @@ export default async function HomeworkTemplatesPage() {
         </div>
       </div>
 
+      {/* "לא נמצאו תוצאות" on a list nobody has ever filled, with a second
+          "new template" link under the one in the header (UX audit F17). The
+          header button is the action; this says what a template is for. */}
       {templates.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <p className="text-muted-foreground text-sm mb-3">{tCommon('emptyStates.noResults')}</p>
-          <Link
-            href="/homework/templates/new"
-            className="text-sm text-blue-600 hover:underline"
-          >
-            {t('newTemplate')}
-          </Link>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title={t('templatesEmptyTitle')}
+          subtitle={t('templatesEmptySubtitle')}
+        />
       ) : (
         <div className="space-y-3">
           {templates.map((tmpl) => (

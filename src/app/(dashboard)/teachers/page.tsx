@@ -37,8 +37,8 @@ export default async function TeachersPage() {
       {teachers.length === 0 ? (
         <EmptyState
           icon={UserRound}
-          title={t('title')}
-          subtitle={t('invite')}
+          title={t('emptyTitle')}
+          subtitle={t('emptySubtitle')}
           action={<NewTeacherSheet action={inviteTeacher} />}
         />
       ) : (

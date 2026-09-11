@@ -684,7 +684,8 @@
     "noSearchMatch": "No students match \"{query}\"",
     "pricing": {
       "title": "Personal pricing",
-      "hint": "Leave blank to inherit the teacher's rate and the organization's prices. The discount applies to every lesson and cancellation fee, not to subscriptions or punch cards.",
+      "hint": "The discount applies to every lesson and cancellation fee, not to subscriptions or punch cards.",
+      "rateHint": "Blank = the teacher's rate and the organization's prices.",
       "hourlyRate": "Hourly rate (individual lessons)",
       "hourlyRatePlaceholder": "Teacher's rate",
       "discountPercent": "Discount (%)",
@@ -726,6 +727,10 @@
   "parents": {
     "title": "Parents",
     "newParent": "New Parent",
+    "emptyTitle": "You haven't added any parents yet",
+    "emptySubtitle": "A parent is who receives the student's messages, reminders and charges.",
+    "emptyTeacher": "Your students have no parents on file yet",
+    "noSearchMatch": "No parents match \"{query}\"",
     "editParent": "Edit Parent",
     "fields": {
       "fullName": "Full Name",
@@ -831,6 +836,8 @@
     "newTeacher": "New Teacher",
     "editTeacher": "Edit Teacher",
     "invite": "Invite Teacher",
+    "emptyTitle": "You haven't added any teachers yet",
+    "emptySubtitle": "Adding a teacher lets you manage their availability, lessons and reports.",
     "inviteDescription": "An invitation will be sent by email",
     "fields": {
       "fullName": "Full Name",
@@ -966,6 +973,7 @@
     "changeStatus": "Change Status",
     "updating": "Updating...",
     "updateStatus": "Update Status",
+    "pickDifferentStatus": "Pick a status other than the current one to update.",
     "outcomeUpdate": "Update Lesson Outcome",
     "updateOutcome": "Update Outcome",
     "cancelledStatus": "Lesson cancelled — status cannot be changed.",
@@ -1031,6 +1039,7 @@
       "loading": "Loading recommended times...",
       "pickTeacher": "Choose a teacher to see available times.",
       "empty": "No recommended times are available on this day. You can choose a time manually.",
+      "pickOne": "Pick a time from the list to create the lesson.",
       "chooseManual": "Choose a time manually",
       "showRecommended": "Show recommended times"
     },
@@ -1993,8 +2002,8 @@
       "logHeaders": {
         "time": "Time",
         "phone": "Phone",
-        "aiReply": "Assistant reply",
-        "parentMessage": "Parent message"
+        "role": "Who",
+        "message": "Message"
       },
       "keyMissingWarning": "To enable the assistant, first configure an API key in the provider settings above.",
       "enable": "Enable the AI assistant",
@@ -2858,6 +2867,8 @@
     "subtitle": "Track homework assigned to students.",
     "templates": "Templates",
     "newTemplate": "New Template",
+    "templatesEmptyTitle": "No templates yet",
+    "templatesEmptySubtitle": "A template saves an assignment you give often, so you can assign it in one click.",
     "editTemplate": "Edit Template",
     "assign": "Assign Homework",
     "fields": {
@@ -3092,6 +3103,7 @@
     },
     "overrides": {
       "title": "Schedule Exceptions",
+      "empty": "No exceptions — every week follows the regular availability.",
       "addOverride": "Add Exception",
       "addOverrideTitle": "Add Exception",
       "typeBlocked": "Blocked",

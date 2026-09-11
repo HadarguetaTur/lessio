@@ -78,7 +78,6 @@ export function OverridesEditor({
   readOnly = false,
 }: Props) {
   const t = useTranslations('teacherSelf.overrides')
-  const tCommon = useTranslations('common')
 
   const [addState, addFormAction, addPending] = useActionState(addAction, null)
   const [kind, setKind] = useState<FormKind>('block_range')
@@ -112,8 +111,10 @@ export function OverridesEditor({
   return (
     <div className="space-y-6">
       {dates.length === 0 ? (
+        // Not "no results": nothing was searched. Having no exceptions is the
+        // normal state, and saying so is the useful part (UX audit F17).
         <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground shadow-sm">
-          {tCommon('emptyStates.noResults')}
+          {t('empty')}
         </p>
       ) : (
         <div className="space-y-2">

@@ -89,6 +89,12 @@ export function LessonStatusForm({ currentStatus, lessonLabel, action }: Props) 
       <Button type="submit" className="w-full" disabled={pending || selected === currentStatus}>
         {pending ? t('updating') : t('updateStatus')}
       </Button>
+
+      {/* A dropdown showing the current status next to a dead button reads as
+          broken unless something says the rule (UX audit F18). */}
+      {!pending && selected === currentStatus && (
+        <p className="text-xs text-muted-foreground">{t('pickDifferentStatus')}</p>
+      )}
     </form>
   )
 }

@@ -103,10 +103,10 @@ export function ConversationLogTable({ rows }: Props) {
               {t('logHeaders.phone')}
             </th>
             <th className="px-4 py-3 text-end text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t('logHeaders.aiReply')}
+              {t('logHeaders.role')}
             </th>
             <th className="px-4 py-3 text-end text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t('logHeaders.parentMessage')}
+              {t('logHeaders.message')}
             </th>
           </tr>
         </thead>

@@ -115,7 +115,9 @@ export function TopBar({ currentLocale, userRole, saasFeatures, mobileNavigation
               <Search size={16} />
             </Button>
           </SheetTrigger>
-          <SheetContent side="top" className="p-4" closeAriaLabel={tc('actions.close')}>
+          {/* pt-12 keeps the field below the sheet's close button — at p-4 the
+              close ✕ sat on top of the search input's own clear ×. */}
+          <SheetContent side="top" className="p-4 pt-12" closeAriaLabel={tc('actions.close')}>
             <SheetHeader className="sr-only">
               <SheetTitle>{t('globalSearch.ariaLabel')}</SheetTitle>
               <SheetDescription>{t('globalSearch.placeholder')}</SheetDescription>

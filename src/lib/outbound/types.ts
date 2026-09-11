@@ -94,7 +94,12 @@ export interface Prospect {
   updated_at: string
 }
 
-export type PlatformLeadStatus = 'new' | 'contacted' | 'qualified' | 'trial' | 'won' | 'lost'
+export const PLATFORM_LEAD_STATUSES = ['new', 'contacted', 'qualified', 'trial', 'won', 'lost'] as const
+export type PlatformLeadStatus = (typeof PLATFORM_LEAD_STATUSES)[number]
+
+/** Why a lead was closed as lost; 'other' carries free text. */
+export const LOST_REASONS = ['no_budget', 'no_need', 'competitor', 'no_response', 'other'] as const
+export type LostReason = (typeof LOST_REASONS)[number]
 
 export interface PlatformLead {
   id: string
@@ -108,10 +113,33 @@ export interface PlatformLead {
   medium: string | null
   campaign: string | null
   prospect_id: string | null
+  organization_id: string | null
   converted_org_id: string | null
   converted_at: string | null
+  lost_reason: string | null
+  owner_profile_id: string | null
+  /** Founder-set reminder; a due one floats the lead to the top of the inbox. */
+  next_action_at: string | null
+  next_action_note: string | null
   created_at: string
   updated_at: string
+}
+
+
+/** One row of outbound_messages, as the lead card reads it. */
+export interface OutboundMessage {
+  id: string
+  prospect_id: string | null
+  direction: 'in' | 'out'
+  kind: MessageKind
+  mailbox_id: string | null
+  from_email: string | null
+  subject: string | null
+  body: string | null
+  classification: string | null
+  error: string | null
+  reviewed_at: string | null
+  created_at: string
 }
 
 export interface InboundMessageRow {
@@ -121,5 +149,6 @@ export interface InboundMessageRow {
   subject: string | null
   body: string | null
   classification: string | null
+  reviewed_at: string | null
   created_at: string
 }

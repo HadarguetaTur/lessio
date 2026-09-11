@@ -49,7 +49,7 @@ export function OutboundOpenerReview({
   )
 }
 
-function OpenerRow({
+export function OpenerRow({
   row,
   approveAction,
   regenerateAction,

@@ -115,6 +115,11 @@ export function recordingClient(options: RecordingClientOptions = {}): Recording
       in: filter('in'),
       contains: filter('contains'),
       is: filter('is'),
+      // .not(column, operator, value): recorded as "not:<column>" -> "<operator> <value>".
+      not: vi.fn((column: string, operator: string, value: unknown) => {
+        filters[`not:${column}`] = `${operator} ${String(value)}`
+        return builder
+      }),
       or: bare('or'),
       match: bare('match'),
 

@@ -3831,7 +3831,8 @@
         "title": "רשימת אל-תשלחו",
         "description": "גלובלית. כתובת שנמצאת כאן לא תקבל מייל משום קמפיין; לקוחות פוטנציאליים בתור עם הכתובת הזו מוצאים מהתור.",
         "email": "כתובת אימייל",
-        "add": "חסימה"
+        "add": "חסימה",
+        "list": "כתובות חסומות"
       },
       "prospects": {
         "title": "לקוחות פוטנציאליים",
@@ -3839,7 +3840,10 @@
         "all": "הכול"
       },
       "replies": {
-        "title": "תשובות אחרונות"
+        "title": "תשובות אחרונות",
+        "reviewed": "טופל",
+        "markReviewed": "טופל",
+        "unmatched": "ללא התאמה"
       },
       "columns": {
         "email": "אימייל",
@@ -3930,6 +3934,31 @@
           "EMPTY": "המודל לא החזיר כלום.",
           "TOO_LONG": "המודל כתב פסקה במקום משפט."
         }
+      },
+      "tabs": {
+        "attention": "מחכה לך",
+        "queue": "תור",
+        "openers": "שורות פתיחה",
+        "replies": "תשובות",
+        "settings": "הגדרות"
+      },
+      "cockpit": {
+        "allClear": "שום דבר לא מחכה לך.",
+        "sendingActive": "השליחה פעילה. עוד {remaining} יכולים לצאת היום.",
+        "sendingResumes": "השליחה תתחדש {when}.",
+        "noMailboxCapacity": "לאף תיבה לא נשאר מקום להיום, או שאף אחת לא פעילה.",
+        "queued": "בתור",
+        "sentToday": "נשלחו היום",
+        "repliesToday": "תשובות היום",
+        "interested7d": "מעוניינים, 7 ימים",
+        "items": {
+          "openers": "{count} שורות פתיחה לאישור",
+          "replies": "{count} תשובות דורשות מבט",
+          "newLeads": "{count} לידים חדשים",
+          "dueActions": "{count} תזכורות הגיע זמנן",
+          "mailboxError": "התיבה {email} נכשלה: {error}"
+        },
+        "waitingTitle": "מחכה לך"
       }
     },
     "leads": {
@@ -3944,7 +3973,10 @@
         "status": "סטטוס",
         "source": "מקור",
         "createdAt": "נוצר",
-        "notes": "הערות"
+        "notes": "הערות",
+        "lastMessage": "הודעה אחרונה",
+        "nextAction": "צעד הבא",
+        "prospectStatus": "אאוטבאונד"
       },
       "status": {
         "new": "חדש",
@@ -3953,6 +3985,73 @@
         "trial": "בניסיון",
         "won": "נסגר",
         "lost": "אבד"
+      },
+      "filters": {
+        "all": "הכול",
+        "attention": "דורש טיפול"
+      },
+      "attention": {
+        "next_action_due": "תזכורת",
+        "new": "חדש",
+        "unanswered_reply": "מחכה לך",
+        "none": ""
+      },
+      "statusActions": {
+        "changeStatus": "סטטוס",
+        "lostReason": "למה אבד",
+        "lostReasonText": "כתבי למה",
+        "confirmLost": "סמן כאבד"
+      },
+      "lostReasons": {
+        "no_budget": "אין תקציב",
+        "no_need": "אין צורך",
+        "competitor": "בחרו במישהו אחר",
+        "no_response": "נעלמו",
+        "other": "אחר"
+      },
+      "errors": {
+        "INVALID_INPUT": "בדקי את השדות.",
+        "LOST_REASON_REQUIRED": "קודם בוחרים סיבה.",
+        "NOT_FOUND": "לא נמצא.",
+        "SAVE_FAILED": "השמירה נכשלה."
+      },
+      "card": {
+        "title": "ליד",
+        "description": "פרטי קשר, השיחה, ומה עושים הלאה.",
+        "cancel": "ביטול",
+        "saved": "נשמר",
+        "saveFailed": "השמירה נכשלה.",
+        "whatsapp": "וואטסאפ",
+        "campaign": "קמפיין",
+        "mailbox": "נשלח מ",
+        "organization": "לארגון",
+        "thread": "השיחה",
+        "noThread": "עדיין לא נשלחו מיילים.",
+        "needsLook": "דורש מבט",
+        "notes": "הערות",
+        "notesPlaceholder": "מה נאמר, מה הם צריכים, מה לזכור.",
+        "saveNotes": "שמירת הערות",
+        "nextAction": "לחזור לזה ב",
+        "nextActionNote": "מה לעשות אז",
+        "saveNextAction": "שמירת תזכורת",
+        "clearNextAction": "ניקוי",
+        "dueNow": "הגיע הזמן",
+        "followupScheduled": "פולואו-אפ אוטומטי מתוכנן ל-{when}",
+        "createLead": "להפוך לליד",
+        "suppress": "לא לשלוח יותר",
+        "suppressConfirmTitle": "להפסיק לשלוח לכתובת הזו?",
+        "suppressConfirmBody": "הכתובת נכנסת לרשימת אל-תשלחו וכל פולואו-אפ מתוכנן מבוטל. השיחה נשארת לקריאה.",
+        "markReviewed": "לסמן {count} תשובות כטופלו",
+        "openerWaiting": "שורת הפתיחה מחכה לאישור שלך",
+        "statusChangedEvent": "סטטוס: {from} ← {to}",
+        "noteEvent": "הערה נשמרה",
+        "nextActionEvent": "תזכורת נקבעה ל-{when}",
+        "kind": {
+          "cold_email": "מייל קר",
+          "reply": "התשובה שלהם",
+          "demo_email": "מייל דמו",
+          "followup": "פולואו-אפ"
+        }
       }
     }
   },

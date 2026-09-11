@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DateTime } from 'luxon'
-import { isInSendWindow, pickMailbox, remainingCapacity, startOfLocalDay, type MailboxWithUsage } from './mailboxes'
+import { isInSendWindow, nextSendWindowStart, pickMailbox, remainingCapacity, startOfLocalDay, type MailboxWithUsage } from './mailboxes'
 
 const box = (over: Partial<MailboxWithUsage>): MailboxWithUsage => ({
   id: over.id ?? 'a',
@@ -73,5 +73,31 @@ describe('remainingCapacity', () => {
     expect(
       remainingCapacity([box({ id: 'a', sentToday: 10 }), box({ id: 'b', is_active: false }), box({ id: 'c', sentToday: 31 })])
     ).toBe(20)
+  })
+})
+
+describe('nextSendWindowStart', () => {
+  const at = (iso: string) => DateTime.fromISO(iso, { zone: 'Asia/Jerusalem' }).toJSDate()
+  const local = (d: Date | null) =>
+    d ? DateTime.fromJSDate(d).setZone('Asia/Jerusalem').toFormat('ccc HH:mm') : null
+
+  it('is null while sending is on', () => {
+    expect(nextSendWindowStart(at('2026-09-09T10:00'))).toBeNull() // Wednesday morning
+  })
+
+  it('a Thursday evening waits for Sunday', () => {
+    expect(local(nextSendWindowStart(at('2026-09-10T19:00')))).toBe('Sun 08:00')
+  })
+
+  it('a Sunday before the window waits for the same morning', () => {
+    expect(local(nextSendWindowStart(at('2026-09-13T07:00')))).toBe('Sun 08:00')
+  })
+
+  it('a Wednesday after the window waits for Thursday', () => {
+    expect(local(nextSendWindowStart(at('2026-09-09T18:30')))).toBe('Thu 08:00')
+  })
+
+  it('Saturday waits for Sunday', () => {
+    expect(local(nextSendWindowStart(at('2026-09-12T12:00')))).toBe('Sun 08:00')
   })
 })

@@ -1,6 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { ArrowDown, ArrowUp, ChevronsUpDown, Download } from 'lucide-react'
 
@@ -54,6 +56,7 @@ export function AdminTable({
   emptyLabel,
   exportName,
   pageSize = PAGE_SIZE,
+  highlightId,
 }: {
   columns: AdminTableColumn[]
   rows: AdminTableRow[]
@@ -61,8 +64,11 @@ export function AdminTable({
   /** Base filename for the CSV. Omit to hide the export button. */
   exportName?: string
   pageSize?: number
+  /** The row whose detail is open beside the table, if any. */
+  highlightId?: string
 }) {
   const t = useTranslations('admin.table')
+  const router = useRouter()
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null)
   const [page, setPage] = useState(0)
 
@@ -167,23 +173,51 @@ export function AdminTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {visible.map((r) => (
-              <tr key={r.id} className="transition-colors hover:bg-muted/40">
-                {columns.map((c) => (
-                  <td
-                    key={c.key}
-                    className={cn(
-                      'px-4 py-3 align-middle',
-                      c.align === 'end' ? 'text-end' : 'text-start',
-                      c.numeric && 'tabular-nums whitespace-nowrap',
-                      c.secondary && 'hidden lg:table-cell'
-                    )}
-                  >
-                    {r.cells[c.key] ?? <span className="text-muted-foreground">—</span>}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {visible.map((r) => {
+              // A row with an href is one click to its detail. The first cell is
+              // a real link (middle-click, keyboard, screen readers); the rest of
+              // the row forwards a plain click unless it landed on a control.
+              const open = r.href
+                ? (e: React.MouseEvent | React.KeyboardEvent) => {
+                    if ((e.target as HTMLElement).closest('a,button,input,select,textarea,label')) return
+                    router.push(r.href!, { scroll: false })
+                  }
+                : undefined
+              return (
+                <tr
+                  key={r.id}
+                  onClick={open}
+                  onKeyDown={open ? (e) => { if (e.key === 'Enter') open(e) } : undefined}
+                  tabIndex={open ? 0 : undefined}
+                  aria-selected={highlightId === r.id || undefined}
+                  className={cn(
+                    'transition-colors hover:bg-muted/40',
+                    open && 'cursor-pointer focus-visible:bg-muted/40 focus-visible:outline-none',
+                    highlightId === r.id && 'bg-muted/60'
+                  )}
+                >
+                  {columns.map((c, i) => (
+                    <td
+                      key={c.key}
+                      className={cn(
+                        'px-4 py-3 align-middle',
+                        c.align === 'end' ? 'text-end' : 'text-start',
+                        c.numeric && 'tabular-nums whitespace-nowrap',
+                        c.secondary && 'hidden lg:table-cell'
+                      )}
+                    >
+                      {i === 0 && r.href ? (
+                        <Link href={r.href} scroll={false} className="block -m-1 p-1" tabIndex={-1}>
+                          {r.cells[c.key] ?? <span className="text-muted-foreground">—</span>}
+                        </Link>
+                      ) : (
+                        (r.cells[c.key] ?? <span className="text-muted-foreground">—</span>)
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

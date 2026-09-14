@@ -3000,6 +3000,7 @@
       "revenue": "הכנסות",
       "nameColumn": "מורה",
       "pageSubtitle": "{count} מורים פעילים",
+      "chartTitle": "תרשים שיעורים לפי מורה",
       "emptyPeriod": "אין נתונים לתקופה זו"
     },
     "students": {

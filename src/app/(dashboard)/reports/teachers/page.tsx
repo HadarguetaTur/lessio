@@ -5,6 +5,7 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { getTeachersReport } from '@/lib/reports/teachers'
 import { parseReportMonths } from '@/lib/reports/params'
 import { TeachersChart } from '@/components/reports/lazyCharts'
+import { ChartPanel } from '@/components/reports/ChartPanel'
 import { CsvDownloadButton } from '@/components/reports/CsvDownloadButton'
 import { PeriodSelector } from '@/components/reports/PeriodSelector'
 import { getLocale, getTranslations } from 'next-intl/server'
@@ -55,14 +56,23 @@ export default async function TeachersReportPage({ searchParams }: Props) {
         }
       />
 
+      {/* The table is the report; the chart folds away. It starts open only for
+          small teams, where it fits without pushing the table off the screen. */}
       {rows.length > 0 && (
-        <div className="mb-6 min-w-0 rounded-xl border border-border bg-card p-6">
-          <TeachersChart rows={rows} />
+        <div className="mb-6 min-w-0 shrink-0">
+          <ChartPanel title={t('teachers.chartTitle')} defaultOpen={rows.length <= 10}>
+            <TeachersChart rows={rows} />
+          </ChartPanel>
         </div>
       )}
 
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="h-full min-h-0 w-full overflow-x-auto overflow-y-auto overscroll-x-contain">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label={t('teachers.title')}
+          className="h-full min-h-0 w-full overflow-x-auto overflow-y-auto overscroll-x-contain"
+        >
           <Table className="min-w-[480px] w-full">
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">

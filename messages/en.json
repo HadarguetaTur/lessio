@@ -3000,6 +3000,7 @@
       "revenue": "Revenue",
       "nameColumn": "Teacher",
       "pageSubtitle": "{count, plural, one {# active teacher} other {# active teachers}}",
+      "chartTitle": "Lessons by teacher chart",
       "emptyPeriod": "No data for this period"
     },
     "students": {

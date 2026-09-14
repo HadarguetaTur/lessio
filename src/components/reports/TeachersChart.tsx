@@ -85,19 +85,14 @@ export function TeachersChart({ rows }: TeachersChartProps) {
     </ResponsiveContainer>
   )
 
-  if (compact) {
-    return (
-      <div className="max-h-[75vh] min-w-0 w-full overflow-y-auto overscroll-y-contain rounded-md">
-        <div className="w-full" style={{ height: chartHeight, minHeight: chartHeight }}>
-          {chartInner}
-        </div>
-      </div>
-    )
-  }
-
+  // One row per teacher at its natural height, scrolled inside a capped box.
+  // Squeezing forty teachers into a fixed 400px made the labels overlap and
+  // hid every other name; the cap keeps the table below it visible.
   return (
-    <div className="min-w-0 w-full" style={{ height: Math.min(chartHeight, 400) }}>
-      {chartInner}
+    <div className="max-h-[75vh] min-w-0 w-full overflow-y-auto overscroll-y-contain rounded-md sm:max-h-[45vh]">
+      <div className="w-full" style={{ height: chartHeight, minHeight: chartHeight }}>
+        {chartInner}
+      </div>
     </div>
   )
 }

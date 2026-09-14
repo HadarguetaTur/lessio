@@ -18,6 +18,7 @@ console:
       - /teacher/reports/lessons
       - /reports/lessons
       - /reports/revenue
+      - /reports/teachers
 
 network:
   - match_status: 404

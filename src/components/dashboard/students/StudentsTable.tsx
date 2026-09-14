@@ -162,23 +162,23 @@ export function StudentsTable({
           {students.map((student) => {
             const badge = getStudentStatusBadge(student.status, t)
             return (
-              // A div with button semantics, not a <button>: the ⋯ actions menu
-              // renders inside the card, and a button may not contain a button
-              // (React 19 warns and it breaks hydration).
+              // The card opens the detail sheet, and it also carries the ⋯ menu.
+              // Those are two controls, so they are two siblings: an overlay
+              // button beneath the content, and the menu above it. Giving the
+              // card itself button semantics instead put a real <button> inside
+              // a role="button" — React 19 warns, and axe flags it
+              // nested-interactive once per row (UX audit F8).
               <div
                 key={student.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => handleRowClick(student)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    handleRowClick(student)
-                  }
-                }}
-                className="cursor-pointer rounded-xl border border-border bg-card p-3 text-start shadow-sm transition-colors hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="relative rounded-xl border border-border bg-card p-3 text-start shadow-sm transition-colors hover:bg-muted/20"
               >
-                <div className="flex items-start justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleRowClick(student)}
+                  aria-label={student.full_name}
+                  className="absolute inset-0 z-0 cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <div className="pointer-events-none relative z-10 flex items-start justify-between gap-3">
                   <div className="flex min-w-0 flex-1 items-center gap-2.5">
                     <UserAvatar name={student.full_name} />
                     <div className="min-w-0">
@@ -198,17 +198,12 @@ export function StudentsTable({
                   </span>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
+                <div className="pointer-events-none relative z-10 mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
                   <span>{tStatus}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-foreground">{badge.label}</span>
                     {showArchiveActions ? (
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation()
-                        }}
-                        className="inline-flex"
-                      >
+                      <span className="pointer-events-auto inline-flex">
                         <RowActions student={student} />
                       </span>
                     ) : null}

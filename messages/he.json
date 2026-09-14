@@ -290,7 +290,7 @@
     "messages": "הודעות פורטל",
     "reportsRevenue": "דוח הכנסות",
     "reportsLessons": "דוח שיעורים",
-    "reportsDebt": "דוח יתרות",
+    "reportsDebt": "דוח יתרות פתוחות",
     "reportsTeachers": "דוח מורים",
     "reportsTeacherPerformance": "דוח ביצועי מורים",
     "reportsStudents": "דוח תלמידים",
@@ -367,6 +367,7 @@
       "items": {
         "teacher": "הוספת מורה ראשון",
         "student": "הוספת תלמיד ראשון",
+        "importStudents": "ייבוא תלמידים מאקסל",
         "lesson": "קביעת שיעור ראשון",
         "whatsapp": "חיבור WhatsApp",
         "payment": "הגדרת ספק סליקה"
@@ -394,7 +395,7 @@
       "overdueHomework": "שיעורי בית באיחור ({count})",
       "cards": {
         "unloggedLessons": "שיעורים שעדיין לא עודכנו",
-        "billing": "חיובים",
+        "billing": "חיוב חודשי וגבייה",
         "overdueHomework": "שיעורי בית באיחור",
         "newLeads": "לידים חדשים",
         "atRisk": "תלמידים בסיכון"
@@ -683,7 +684,8 @@
     "noSearchMatch": "לא נמצאו תלמידים התואמים ל\"{query}\"",
     "pricing": {
       "title": "תמחור אישי",
-      "hint": "משאירים ריק כדי לרשת את תעריף המורה ואת מחירי הארגון. ההנחה חלה על כל שיעור ועל דמי ביטול, לא על מנויים וכרטיסיות.",
+      "hint": "ההנחה חלה על כל שיעור ועל דמי ביטול, לא על מנויים וכרטיסיות.",
+      "rateHint": "ריק = לפי תעריף המורה ומחירי הארגון.",
       "hourlyRate": "תעריף לשעה (שיעור פרטי)",
       "hourlyRatePlaceholder": "לפי המורה",
       "discountPercent": "הנחה (%)",
@@ -725,6 +727,10 @@
   "parents": {
     "title": "הורים",
     "newParent": "הורה חדש",
+    "emptyTitle": "עוד לא הוספתם הורים",
+    "emptySubtitle": "הורה הוא מי שמקבל את ההודעות, התזכורות והחיובים של התלמיד.",
+    "emptyTeacher": "אין עדיין הורים לתלמידים שלך",
+    "noSearchMatch": "לא נמצאו הורים התואמים ל\"{query}\"",
     "editParent": "עריכת הורה",
     "fields": {
       "fullName": "שם מלא",
@@ -830,6 +836,8 @@
     "newTeacher": "מורה חדש",
     "editTeacher": "עריכת מורה",
     "invite": "הזמן מורה",
+    "emptyTitle": "עוד לא הוספתם מורים",
+    "emptySubtitle": "הוספת מורה מאפשרת לנהל את הזמינות, השיעורים והדוחות שלו.",
     "inviteDescription": "הזמנה תישלח למייל",
     "fields": {
       "fullName": "שם מלא",
@@ -965,6 +973,7 @@
     "changeStatus": "שנה סטטוס",
     "updating": "מעדכן...",
     "updateStatus": "עדכן סטטוס",
+    "pickDifferentStatus": "בחרו סטטוס שונה מהנוכחי כדי לעדכן.",
     "outcomeUpdate": "עדכון תוצאת שיעור",
     "updateOutcome": "עדכן תוצאה",
     "cancelledStatus": "שיעור בוטל — לא ניתן לשנות סטטוס.",
@@ -1030,6 +1039,7 @@
       "loading": "טוען שעות מומלצות...",
       "pickTeacher": "בחרו מורה כדי לראות שעות זמינות.",
       "empty": "אין שעות מומלצות ביום הזה. אפשר לבחור שעה ידנית.",
+      "pickOne": "בחרו שעה מהרשימה כדי ליצור את השיעור.",
       "chooseManual": "בחירת שעה ידנית",
       "showRecommended": "הצגת שעות מומלצות"
     },
@@ -1753,6 +1763,7 @@
       "quotaDisabledWarning": "שימו לב: אכיפת מכסה שבועית כבויה בארגון, ולכן תוספת המכסה לא תשפיע בפועל.",
       "bumpLabel": "תוספת שיעורים לשבוע המבחן",
       "bumpHint": "בכמה שיעורים להעלות את המכסה השבועית של התלמיד בשבוע המבחן (1–5)",
+      "bumpNotRelevant": "רלוונטי רק כשהמכסה עולה — בחרו \"התראה + אישור בקליק\" או \"העלאת מכסה אוטומטית\".",
       "boosterLabel": "הצעת שיעור תגבור להורה",
       "boosterHint": "עם כל דיווח מבחן, ההורה מקבל בוואטסאפ קישור לקביעת שיעור תגבור",
       "saved": "ההגדרות נשמרו",
@@ -1991,8 +2002,8 @@
       "logHeaders": {
         "time": "זמן",
         "phone": "טלפון",
-        "aiReply": "תשובת העוזר",
-        "parentMessage": "הודעת ההורה"
+        "role": "מי כתב",
+        "message": "הודעה"
       },
       "keyMissingWarning": "כדי להפעיל את העוזר יש להגדיר קודם מפתח API בהגדרות הספק למעלה.",
       "enable": "הפעלת עוזר ה-AI",
@@ -2770,7 +2781,7 @@
     "of": "מתוך"
   },
   "subscriptions": {
-    "title": "מנויים",
+    "title": "מנויי תלמידים",
     "searchPlaceholder": "חיפוש לפי שם תלמיד",
     "addSubscription": "הוסף מנוי",
     "editSubscription": "ערוך מנוי",
@@ -2837,6 +2848,7 @@
     "autoCreated": "לידים נוצרים אוטומטית מהודעות WhatsApp",
     "firstMessage": "הודעה ראשונה: ",
     "changeStatus": "שינוי סטטוס",
+    "statusFor": "סטטוס הליד {phone}",
     "noPermission": "אין הרשאה לצפות בדף זה",
     "convertLink": "המר ←",
     "errors": {
@@ -2855,6 +2867,8 @@
     "subtitle": "מעקב אחר שיעורי בית שהוקצו לתלמידים",
     "templates": "תבניות",
     "newTemplate": "תבנית חדשה",
+    "templatesEmptyTitle": "אין עדיין תבניות",
+    "templatesEmptySubtitle": "תבנית שומרת משימה שחוזרת על עצמה, כדי להקצות אותה לתלמיד בלחיצה.",
     "editTemplate": "עריכת תבנית",
     "assign": "הקצה שיעורי בית",
     "fields": {
@@ -2953,7 +2967,7 @@
       "chartSeriesCancelled": "ביטולים"
     },
     "debt": {
-      "title": "יתרות פתוחות",
+      "title": "דוח יתרות פתוחות",
       "description": "הורים עם יתרת חוב",
       "searchPlaceholder": "חיפוש הורה או טלפון",
       "parent": "הורה",
@@ -3089,6 +3103,7 @@
     },
     "overrides": {
       "title": "חריגים ביומן",
+      "empty": "אין חריגים — כל השבועות לפי הזמינות הקבועה.",
       "addOverride": "הוסף חריג",
       "addOverrideTitle": "הוסף חריג",
       "typeBlocked": "חסום",

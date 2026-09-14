@@ -33,17 +33,24 @@ export function CancellationPolicyForm({
   // and lands in the same red box as the server's.
   const [clientError, setClientError] = useState<string | null>(null)
 
-  function validate(form: HTMLFormElement): string | null {
-    const num = (name: string) =>
-      Number((form.elements.namedItem(name) as HTMLInputElement).value)
-    const full = num('notice_hours_full')
-    const partial = num('notice_hours_partial')
-    const percent = num('partial_charge_percent')
+  // Controlled, so the "how it works" summary below reads what is on screen.
+  // It used to interpolate defaultValues — the server's numbers — so editing
+  // 24 to 48 left the three rules underneath still saying 24, and the one
+  // element that makes the policy legible disagreed with the form
+  // (UX audit F13).
+  const [fullHours, setFullHours] = useState(String(defaultValues.notice_hours_full))
+  const [partialHours, setPartialHours] = useState(String(defaultValues.notice_hours_partial))
+  const [percent, setPercent] = useState(String(defaultValues.partial_charge_percent))
 
+  const full = Number(fullHours)
+  const partial = Number(partialHours)
+  const pct = Number(percent)
+
+  function validate(): string | null {
     if (!Number.isFinite(full) || full < 1) return t('errors.fullHoursPositive')
     if (!Number.isFinite(partial) || partial < 0) return t('errors.partialHoursPositive')
     if (partial >= full) return t('errors.partialLessThanFull')
-    if (!Number.isFinite(percent) || percent < 0 || percent > 100) return t('errors.percentRange')
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) return t('errors.percentRange')
     return null
   }
 
@@ -54,7 +61,7 @@ export function CancellationPolicyForm({
       action={formAction}
       noValidate
       onSubmit={(e) => {
-        const problem = validate(e.currentTarget)
+        const problem = validate()
         setClientError(problem)
         if (problem) e.preventDefault()
       }}
@@ -66,7 +73,7 @@ export function CancellationPolicyForm({
         </div>
       )}
       {!clientError && 'success' in (state ?? {}) && (
-        <div className="text-sm text-green-700 bg-green-50 border border-green-200 p-3 rounded-md">
+        <div role="status" className="text-sm text-green-700 bg-green-50 border border-green-200 p-3 rounded-md">
           {t('saved')}
         </div>
       )}
@@ -83,7 +90,8 @@ export function CancellationPolicyForm({
             type="number"
             min="1"
             step="1"
-            defaultValue={defaultValues.notice_hours_full}
+            value={fullHours}
+            onChange={(e) => setFullHours(e.target.value)}
             disabled={readOnly}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-muted-foreground"
           />
@@ -100,7 +108,8 @@ export function CancellationPolicyForm({
             type="number"
             min="0"
             step="1"
-            defaultValue={defaultValues.notice_hours_partial}
+            value={partialHours}
+            onChange={(e) => setPartialHours(e.target.value)}
             disabled={readOnly}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-muted-foreground"
           />
@@ -118,7 +127,8 @@ export function CancellationPolicyForm({
             min="0"
             max="100"
             step="1"
-            defaultValue={defaultValues.partial_charge_percent}
+            value={percent}
+            onChange={(e) => setPercent(e.target.value)}
             disabled={readOnly}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-muted-foreground"
           />
@@ -128,9 +138,9 @@ export function CancellationPolicyForm({
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600 space-y-1">
         <p className="font-medium text-gray-700">{t('howItWorks')}</p>
         <ul className="list-disc list-inside space-y-1 text-xs">
-          <li>{t('ruleNoCharge', { hours: defaultValues.notice_hours_full })}</li>
-          <li>{t('rulePartial', { partialHours: defaultValues.notice_hours_partial, fullHours: defaultValues.notice_hours_full, percent: defaultValues.partial_charge_percent })}</li>
-          <li>{t('ruleFull', { hours: defaultValues.notice_hours_partial })}</li>
+          <li>{t('ruleNoCharge', { hours: full })}</li>
+          <li>{t('rulePartial', { partialHours: partial, fullHours: full, percent: pct })}</li>
+          <li>{t('ruleFull', { hours: partial })}</li>
         </ul>
       </div>
 

@@ -30,6 +30,29 @@ export type OrgSetupProgress = OrgReadiness & {
   hasTeacher: boolean
   hasStudent: boolean
   hasLesson: boolean
+  /** Active students. The count, not just the boolean — see isImportStepDone. */
+  studentCount: number
+}
+
+/**
+ * Whether to stop offering the bulk import.
+ *
+ * A studio arriving with a roster in a spreadsheet is the common case, and the
+ * signup flow never mentions import — the onboarding wizard that used to
+ * (`onboarding_completed` is true from the moment an org is created) is not
+ * reachable, so the dashboard checklist is the only place left to say it
+ * exists (UX audit F3).
+ *
+ * Done means one of two things, because a step nobody can finish nags forever:
+ * enough students that they plainly did import, or a studio already operating
+ * with students and lessons and simply small.
+ */
+export function isImportStepDone(progress: {
+  studentCount: number
+  hasStudent: boolean
+  hasLesson: boolean
+}): boolean {
+  return progress.studentCount >= 5 || (progress.hasStudent && progress.hasLesson)
 }
 
 /**
@@ -89,10 +112,13 @@ export async function getOrgSetupProgress(orgId: string): Promise<OrgSetupProgre
     db.from('lessons').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
   ])
 
+  const studentCount = students.count ?? 0
+
   return {
     ...readiness,
     hasTeacher: (teachers.count ?? 0) > 0,
-    hasStudent: (students.count ?? 0) > 0,
+    hasStudent: studentCount > 0,
     hasLesson: (lessons.count ?? 0) > 0,
+    studentCount,
   }
 }

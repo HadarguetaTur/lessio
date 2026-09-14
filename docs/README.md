@@ -71,6 +71,7 @@ these stay as the record of what was found.
 | [`ux-audit-5-remediation.md`](ux-audit-5-remediation.md) | 04.09.2026 — the change log for both audit-5 docs. 9 of 13 Critical/High were already fixed; F5/F20/F12/F13 fixed here. Open: F1 (needs a product decision) |
 | [`ux-audit-7-communications.md`](ux-audit-7-communications.md) | 03–04.09.2026, team ↔ parent communication — Conditional Pass; all findings closed |
 | [`ux-audit-8-money-month-end.md`](ux-audit-8-money-month-end.md) | 04.09.2026, owner money / month-end — **Fail** as audited, Conditional Pass after fixes. Found that tax invoices had never been issued for any org |
+| [`ux-audit-9-product-wide.md`](ux-audit-9-product-wide.md) | 10.09.2026, first **product-wide** audit (owner + teacher + parent portal + onboarding) — **Fail** on two axe gates. Round 1 (11.09) closed 14 findings and both gates; still Fail only because F1 (no way to move a lesson) and F2 (cancellation never states its cost) are open. Route table in [`ux-audit-9-appendix-routes.md`](ux-audit-9-appendix-routes.md) |
 
 ## Marketing
 

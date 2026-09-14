@@ -1,7 +1,18 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import type { DeletionRequest } from '@/lib/superadmin/dataDeletion'
+import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 
 interface Props {
   requests: DeletionRequest[]
@@ -11,14 +22,21 @@ interface Props {
 
 export function DeletionRequestsSection({ requests, orgId, processAction }: Props) {
   const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  // Which request's confirmation is open. One at a time; null = closed.
+  const [confirming, setConfirming] = useState<string | null>(null)
 
   const open = requests.filter((r) => r.status === 'open')
   const processed = requests.filter((r) => r.status !== 'open')
 
   function handle(requestId: string, action: 'anonymise' | 'dismiss') {
+    setError(null)
     startTransition(async () => {
       const result = await processAction(requestId, action, orgId)
-      if (result.error) alert(result.error)
+      // Inline, not alert(): a native dialog blocks the thread, cannot be
+      // styled, and vanishes from the page the moment it is dismissed.
+      if (result.error) setError(result.error)
+      setConfirming(null)
     })
   }
 
@@ -34,6 +52,12 @@ export function DeletionRequestsSection({ requests, orgId, processAction }: Prop
           )}
         </h3>
       </div>
+
+      {error && (
+        <p role="alert" className="px-4 py-2 text-sm text-destructive border-b border-border">
+          {error}
+        </p>
+      )}
 
       {requests.length === 0 ? (
         <p className="px-4 py-3 text-sm text-muted-foreground">No deletion requests.</p>
@@ -54,22 +78,53 @@ export function DeletionRequestsSection({ requests, orgId, processAction }: Prop
 
               {req.status === 'open' && (
                 <div className="flex gap-2 shrink-0">
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => handle(req.id, 'anonymise')}
-                    className="px-3 py-1 text-xs font-medium bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  {/* The one irreversible action in the product that used to
+                      run on a bare click — no dialog, no confirm() (UX audit
+                      F11). The copy says exactly what processDeletionRequest
+                      changes, so the operator knows what survives. */}
+                  <AlertDialog
+                    open={confirming === req.id}
+                    onOpenChange={(next) => {
+                      if (isPending) return
+                      setConfirming(next ? req.id : null)
+                    }}
                   >
-                    Anonymise
-                  </button>
-                  <button
+                    <AlertDialogTrigger asChild>
+                      <Button type="button" variant="destructive" size="sm" disabled={isPending}>
+                        Anonymise
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Anonymise {req.requesterPhone}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          The parent&apos;s name and phone number, and the names of their linked
+                          students, are replaced with placeholders. Lessons, charges and history
+                          stay, but can no longer be traced to them. This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          disabled={isPending}
+                          onClick={() => handle(req.id, 'anonymise')}
+                        >
+                          {isPending ? 'Anonymising…' : 'Anonymise permanently'}
+                        </Button>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     disabled={isPending}
                     onClick={() => handle(req.id, 'dismiss')}
-                    className="px-3 py-1 text-xs font-medium border border-border rounded-md hover:bg-muted disabled:opacity-50 transition-colors"
                   >
                     Dismiss
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>

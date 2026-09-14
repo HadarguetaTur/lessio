@@ -50,9 +50,15 @@ interface GlobalSearchProps {
   /** Undefined = show everything, matching the sidebar's semantics. */
   saasFeatures?: SaasFeatures
   className?: string
+  /**
+   * Focus the field on mount and open the result list. For the mobile sheet,
+   * whose whole purpose is searching — the user already tapped once to get
+   * there and should not have to tap the field too.
+   */
+  autoFocus?: boolean
 }
 
-export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearchProps) {
+export function GlobalSearch({ userRole, saasFeatures, className, autoFocus }: GlobalSearchProps) {
   const t = useTranslations('nav.globalSearch')
   const tNav = useTranslations('nav')
   const router = useRouter()
@@ -75,6 +81,12 @@ export function GlobalSearch({ userRole, saasFeatures, className }: GlobalSearch
     const id = setTimeout(() => setDebounced(query.trim()), 280)
     return () => clearTimeout(id)
   }, [query])
+
+  useEffect(() => {
+    if (!autoFocus) return
+    inputRef.current?.focus()
+    setOpen(true)
+  }, [autoFocus])
 
   const canSeeCharges = userRole === 'owner' || userRole === 'admin'
 

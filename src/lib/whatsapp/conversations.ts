@@ -25,6 +25,14 @@ export type ConversationSummary = {
   /** True when the last message came from them — nobody has answered it yet. */
   awaitingReply: boolean
   takenOver: boolean
+  /**
+   * Meta's error code when the latest message was ours and did not deliver,
+   * else null. The thread already explained failures; the list, where an owner
+   * actually scans, showed a blank status cell for them (UX audit F20).
+   */
+  lastDeliveryError: number | null
+  /** The latest message was ours and Meta reported it failed. */
+  lastDeliveryFailed: boolean
 }
 
 export type ThreadMessage = {
@@ -130,6 +138,8 @@ export async function getConversationSummaries(
       lastMessageAt: row.created_at,
       awaitingReply: row.direction === 'in',
       takenOver: takeovers.has(phone),
+      lastDeliveryFailed: row.direction === 'out' && row.status === 'failed',
+      lastDeliveryError: row.direction === 'out' && row.status === 'failed' ? row.error_code : null,
     })
   }
 

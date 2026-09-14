@@ -10,7 +10,7 @@ import { revalidatePath } from 'next/cache'
 import { getPendingChargesForParent, logPaymentRequestSent } from '@/lib/payment-request'
 import { buildChargeLines } from '@/lib/payment-request/chargeLines'
 import { formatBotMoney } from '@/lib/i18n/formatCurrency'
-import { getParentById, type Parent } from '@/lib/parents'
+import { canTeacherAccessParent, getParentById, type Parent } from '@/lib/parents'
 import { getParentStudents, type ParentStudent } from '@/lib/relationships'
 import { getParentDebt } from '@/lib/charges'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -595,7 +595,20 @@ export async function fetchParentForSheet(
 ): Promise<{ data: ParentSheetData } | { error: string }> {
   const t = await getTranslations()
   try {
-    const { orgId } = await getSession()
+    const session = await getSession()
+    const { orgId, role, profileId } = session
+
+    // Filtered on organization_id alone, this returned any family in the org —
+    // name, phone, email, linked students and outstanding debt — to a teacher
+    // who guessed or pasted an id. The list is scoped now (UX audit F4), so the
+    // by-id read has to be too, by the same rule.
+    if (role === 'teacher') {
+      const teacher = await getTeacherByProfileId(profileId, orgId, { activeOnly: true })
+      if (!teacher) return { error: t('parents.errors.parentNotFound') }
+      const allowed = await canTeacherAccessParent(orgId, teacher.id, parentId)
+      if (!allowed) return { error: t('parents.errors.parentNotFound') }
+    }
+
     const [parent, linkedStudents, debt] = await Promise.all([
       getParentById(parentId, orgId),
       getParentStudents(parentId, orgId),

@@ -60,7 +60,11 @@ export function ExamPolicyForm({
       <hr className="border-gray-100" />
 
       {/* Bump size */}
-      <div className={bumpRelevant ? undefined : 'opacity-50'}>
+      {/* Not dimmed with opacity when it does not apply: that dropped the label
+          and hint below AA contrast (UX audit F8) and still left the field grey
+          for no stated reason. The input alone is disabled, and a line says
+          why (F18). */}
+      <div>
         <label htmlFor="exam_quota_bump" className="block text-sm font-medium text-gray-900">
           {t('bumpLabel')}
         </label>
@@ -73,8 +77,14 @@ export function ExamPolicyForm({
           max={5}
           defaultValue={defaultQuotaBump}
           disabled={!bumpRelevant}
-          className="w-24 rounded-md border border-gray-300 px-3 py-2 text-sm"
+          aria-describedby={bumpRelevant ? undefined : 'exam_quota_bump_disabled'}
+          className="w-24 rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-muted-foreground"
         />
+        {!bumpRelevant && (
+          <p id="exam_quota_bump_disabled" className="mt-1.5 text-xs text-muted-foreground">
+            {t('bumpNotRelevant')}
+          </p>
+        )}
         {/* Disabled inputs are not submitted — keep the stored value intact. */}
         {!bumpRelevant && <input type="hidden" name="exam_quota_bump" value={defaultQuotaBump} />}
       </div>

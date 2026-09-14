@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeOrgReadiness, type OrgReadinessRow } from './readiness'
+import { computeOrgReadiness, isImportStepDone, type OrgReadinessRow } from './readiness'
 
 const EMPTY: OrgReadinessRow = {
   whatsapp_phone_number_id: null,
@@ -88,5 +88,26 @@ describe('computeOrgReadiness', () => {
       const partial = { ...full, [missing]: null }
       expect(computeOrgReadiness(partial, NO_PLATFORM_KEY).isReady, missing).toBe(false)
     }
+  })
+})
+
+describe('isImportStepDone', () => {
+  // The step exists to tell a new studio the bulk import is there at all, so
+  // it has to stop nagging once that is moot — either they clearly imported,
+  // or they are a small studio already running.
+  it('is not done for an org with nothing yet', () => {
+    expect(isImportStepDone({ studentCount: 0, hasStudent: false, hasLesson: false })).toBe(false)
+  })
+
+  it('is not done for one hand-typed student and no lesson', () => {
+    expect(isImportStepDone({ studentCount: 1, hasStudent: true, hasLesson: false })).toBe(false)
+  })
+
+  it('is done once five students are on the books, lessons or not', () => {
+    expect(isImportStepDone({ studentCount: 5, hasStudent: true, hasLesson: false })).toBe(true)
+  })
+
+  it('is done for a small studio that is already teaching', () => {
+    expect(isImportStepDone({ studentCount: 2, hasStudent: true, hasLesson: true })).toBe(true)
   })
 })

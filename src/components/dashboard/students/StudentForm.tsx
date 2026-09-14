@@ -134,9 +134,60 @@ export function StudentForm({
         </div>
       </div>
 
-      {/* Everything past name/phone/grade is either optional or has a sensible
-          default. Adding a student mid-week should not mean answering eight
-          questions, so the rest folds away — open by default when editing,
+      {/* Teacher and rate stay out of the fold. They were inside it, closed on
+          create — so the two things a student cannot be scheduled or billed
+          without were the two an owner never saw while adding one
+          (UX audit F16). The discount stays folded: it is genuinely occasional. */}
+      {(teachers.length > 1 || showPricing) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {teachers.length > 1 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="teacher_id">{t('fields.teacher')}</Label>
+              <select
+                id="teacher_id"
+                name="teacher_id"
+                defaultValue={teacherDefault}
+                className={selectClass}
+              >
+                <option value="">{t('fields.noTeacher')}</option>
+                {teachers.map((teach) => (
+                  <option key={teach.id} value={teach.id}>
+                    {teach.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {showPricing && (
+            <div className="space-y-1.5">
+              <Label htmlFor="hourly_rate">{t('pricing.hourlyRate')}</Label>
+              <Input
+                id="hourly_rate"
+                name="hourly_rate"
+                type="number"
+                min={1}
+                max={10000}
+                step="0.5"
+                dir="ltr"
+                placeholder={t('pricing.hourlyRatePlaceholder')}
+                defaultValue={defaultValues?.hourly_rate ?? ''}
+                aria-describedby="hourly_rate_hint"
+              />
+              <p id="hourly_rate_hint" className="text-xs text-muted-foreground">
+                {t('pricing.rateHint')}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+      {/* One teacher: assign silently instead of offering a choice of one. */}
+      {teachers.length === 1 && (
+        <input type="hidden" name="teacher_id" value={teacherDefault || teachers[0].id} />
+      )}
+
+      {/* Everything past name/phone/grade/teacher/rate is either optional or has
+          a sensible default. Adding a student mid-week should not mean answering
+          eight questions, so the rest folds away — open by default when editing,
           where the values already exist and hiding them would hide data. */}
       <details className="group rounded-lg border border-border" open={variant !== 'create'}>
         <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-foreground marker:content-none">
@@ -201,29 +252,6 @@ export function StudentForm({
             </div>
           </div>
 
-          {teachers.length > 1 && (
-            <div className="space-y-1.5">
-              <Label htmlFor="teacher_id">{t('fields.teacher')}</Label>
-              <select
-                id="teacher_id"
-                name="teacher_id"
-                defaultValue={teacherDefault}
-                className={selectClass}
-              >
-                <option value="">{t('fields.noTeacher')}</option>
-                {teachers.map((teach) => (
-                  <option key={teach.id} value={teach.id}>
-                    {teach.full_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {/* One teacher: assign silently instead of offering a choice of one. */}
-          {teachers.length === 1 && (
-            <input type="hidden" name="teacher_id" value={teacherDefault || teachers[0].id} />
-          )}
-
           <div className="space-y-1.5">
             <Label htmlFor="notes">{t('fields.notes')}</Label>
             <textarea
@@ -240,20 +268,6 @@ export function StudentForm({
               <legend className="px-1 text-sm font-medium text-foreground">{t('pricing.title')}</legend>
               <p className="text-xs text-muted-foreground">{t('pricing.hint')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="hourly_rate">{t('pricing.hourlyRate')}</Label>
-                  <Input
-                    id="hourly_rate"
-                    name="hourly_rate"
-                    type="number"
-                    min={1}
-                    max={10000}
-                    step="0.5"
-                    dir="ltr"
-                    placeholder={t('pricing.hourlyRatePlaceholder')}
-                    defaultValue={defaultValues?.hourly_rate ?? ''}
-                  />
-                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="discount_percent">{t('pricing.discountPercent')}</Label>
                   <Input

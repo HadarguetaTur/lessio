@@ -627,6 +627,13 @@ export function NewLessonForm({
         </div>
       )}
 
+      {/* Next to the submit, not up in the slot section: once a teacher is
+          picked and the chips render, the hints above all go quiet and the
+          button stays dead with nothing nearby saying why (UX audit F18). */}
+      {!pending && timeMode === 'recommended' && !selectedTime && teacherId && recommendedSlots.length > 0 && (
+        <p className="pt-2 text-xs text-muted-foreground">{t('recommendedSlots.pickOne')}</p>
+      )}
+
       <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 pt-2">
         {variant === 'sheet' ? (
           <Button type="button" variant="outline" className="sm:flex-1" onClick={onCancel}>

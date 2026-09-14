@@ -79,7 +79,7 @@ export default async function ParentsImportPage({ searchParams }: PageProps) {
             </div>
             <div>
               <p className="font-semibold text-sm text-foreground">{t('familyListCard')}</p>
-              <span className="text-[10px] font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5">
+              <span className="text-xs font-semibold text-primary-foreground bg-primary rounded px-1.5 py-0.5">
                 {t('familyListBadge')}
               </span>
             </div>

@@ -140,15 +140,19 @@ export function TeacherDetailPanel({
               {teacher.profile.phone ?? <span className="text-muted-foreground font-normal">—</span>}
             </dd>
           </div>
+          {/* dt/dd like its siblings: a <dl> may only hold term/description
+              pairs, and a bare <p> here failed axe definition-list. */}
           <div className="px-4 py-4 min-h-[4.5rem]">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{t('bio')}</p>
-            {teacher.bio?.trim() ? (
-              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed break-words">{teacher.bio}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-2" aria-hidden>
-                —
-              </p>
-            )}
+            <dt className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{t('bio')}</dt>
+            <dd className="text-sm text-foreground whitespace-pre-wrap leading-relaxed break-words">
+              {teacher.bio?.trim() ? (
+                teacher.bio
+              ) : (
+                <span className="block text-muted-foreground text-center py-2" aria-hidden>
+                  —
+                </span>
+              )}
+            </dd>
           </div>
         </dl>
       </div>

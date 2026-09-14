@@ -7,6 +7,7 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { getConversationSummaries } from '@/lib/whatsapp/conversations'
 import { getWaConnectionState } from '@/lib/whatsapp/connectionState'
+import { deliveryFailureReason } from '@/lib/whatsapp/deliveryErrorCopy'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { MessagesTabs } from '@/components/dashboard/messages/MessagesTabs'
 import { PageHeader } from '@/components/ui/page-header'
@@ -119,6 +120,19 @@ export default async function WhatsAppConversationsPage() {
                       .toFormat('dd/MM HH:mm')}
                   </TableCell>
                   <TableCell className="space-x-1 space-x-reverse">
+                    {/* First: a message that never arrived is the thing to act
+                        on. The reason sits in the thread, one click away. */}
+                    {c.lastDeliveryFailed && (() => {
+                      const reason = deliveryFailureReason(c.lastDeliveryError)
+                      return (
+                        <Badge
+                          variant="destructive"
+                          title={reason ? t(`delivery.reasons.${reason}`) : undefined}
+                        >
+                          {t('delivery.failed')}
+                        </Badge>
+                      )
+                    })()}
                     {c.takenOver && <Badge variant="secondary">{t('badges.takenOver')}</Badge>}
                     {c.awaitingReply && <Badge variant="outline">{t('badges.awaitingReply')}</Badge>}
                   </TableCell>

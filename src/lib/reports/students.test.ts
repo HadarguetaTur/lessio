@@ -1,26 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getStudentsReport } from './students'
 
-let lessonsUsedDateFilter = false
+let rpcArgs: Record<string, unknown> | null = null
 
 const studentsData = [
   { id: 'student-old', full_name: 'תלמיד ותיק' },
   { id: 'student-recent', full_name: 'תלמיד פעיל' },
 ]
 
-const lessonsData = [
-  {
-    start_at: '2026-01-10T09:00:00.000Z',
-    lesson_students: [{ student_id: 'student-old' }],
-  },
-  {
-    start_at: '2026-04-10T09:00:00.000Z',
-    lesson_students: [{ student_id: 'student-recent' }],
-  },
+// What the student_lesson_activity SQL function returns: the all-time last
+// lesson and the count since the cutoff (bigint, so PostgREST sends a string).
+const activityData = [
+  { student_id: 'student-old', last_lesson_at: '2026-01-10T09:00:00.000Z', lessons_since: '0' },
+  { student_id: 'student-recent', last_lesson_at: '2026-04-10T09:00:00.000Z', lessons_since: '1' },
 ]
 
 vi.mock('@/lib/supabase/service-role', () => ({
-  createServiceRoleClient: () => ({ from: (table: string) => buildTableChain(table) }),
+  createServiceRoleClient: () => ({
+    from: (table: string) => buildTableChain(table),
+    rpc: (fn: string, args: Record<string, unknown>) => {
+      rpcArgs = { fn, ...args }
+      return Promise.resolve({ data: activityData, error: null })
+    },
+  }),
 }))
 
 describe('getStudentsReport', () => {
@@ -28,7 +30,7 @@ describe('getStudentsReport', () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-15T12:00:00.000Z'))
-    lessonsUsedDateFilter = false
+    rpcArgs = null
   })
 
   afterEach(() => {
@@ -38,7 +40,11 @@ describe('getStudentsReport', () => {
   it('keeps the real last lesson date even when the student is at risk', async () => {
     const result = await getStudentsReport('org-1', 'UTC')
 
-    expect(lessonsUsedDateFilter).toBe(false)
+    expect(rpcArgs).toEqual({
+      fn: 'student_lesson_activity',
+      p_org_id: 'org-1',
+      p_since: '2026-03-16T12:00:00.000Z',
+    })
     expect(result.rows).toEqual([
       {
         studentId: 'student-old',
@@ -60,28 +66,17 @@ describe('getStudentsReport', () => {
 })
 
 function buildTableChain(table: string) {
-  let result =
+  const result =
     table === 'students'
       ? { data: studentsData, error: null }
-      : { data: lessonsData, error: null }
+      : { data: [], error: new Error(`unexpected table ${table}`) }
 
   const self: Record<string, unknown> = {}
   const pass = () => self
 
-  ;['select', 'eq', 'neq', 'order'].forEach((method) => {
+  ;['select', 'eq', 'neq', 'order', 'gte'].forEach((method) => {
     self[method] = pass
   })
-
-  self['gte'] = (field: string, value: string) => {
-    if (table === 'lessons' && field === 'start_at') {
-      lessonsUsedDateFilter = true
-      result = {
-        data: lessonsData.filter((lesson) => lesson.start_at >= value),
-        error: null,
-      }
-    }
-    return self
-  }
 
   self['then'] = (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve)
 

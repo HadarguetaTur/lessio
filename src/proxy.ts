@@ -210,9 +210,17 @@ export async function proxy(request: NextRequest) {
   // Refresh session — required for Server Components to read auth state.
   // This call may rotate the refresh token and populate supabaseResponse
   // with new Set-Cookie headers via the setAll handler above.
+  //
+  // getClaims(), not getUser(): it verifies the JWT locally against the
+  // project's ES256 JWKS (fetched once per isolate and cached), so the
+  // proxy no longer pays a round-trip to the Auth server on every
+  // navigation and prefetch. A revoked-but-unexpired token is caught by
+  // getSession() in the layout, which still calls getUser(). Projects on
+  // legacy HS256 keys (local dev) fall back to getUser() automatically.
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: claimsData,
+  } = await supabase.auth.getClaims()
+  const user = claimsData?.claims?.sub ? { id: claimsData.claims.sub } : null
 
   // Recovery-flow isolation: the pw_reset cookie is set by /auth/callback
   // immediately after verifyOtp('recovery') or exchangeCodeForSession when

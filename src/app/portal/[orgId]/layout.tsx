@@ -1,3 +1,6 @@
+import { NextIntlClientProvider } from 'next-intl'
+import { getMessages } from 'next-intl/server'
+import { PORTAL_MESSAGE_NAMESPACES, pickMessages } from '@/i18n/clientMessages'
 import type { ReactNode } from 'react'
 import { getLocale, getTranslations } from 'next-intl/server'
 
@@ -11,7 +14,7 @@ import { getPortalSettings } from '@/lib/organizations/portalSettings'
  * Max-width 480px centered on large screens.
  * Per /docs/sprint-13-scope.md § Story 6.
  */
-export default async function PortalLayout({
+async function PortalLayoutShell({
   children,
   params,
 }: {
@@ -83,5 +86,21 @@ async function ServiceUnavailable() {
       <h1 className="text-lg font-semibold text-foreground">{t('unavailableTitle')}</h1>
       <p className="max-w-[36ch] text-sm text-muted-foreground">{t('unavailableBody')}</p>
     </main>
+  )
+}
+
+/**
+ * Scopes the client-side translation bundle to the portal — see
+ * src/i18n/clientMessages.ts. The shell above is unchanged.
+ */
+export default async function PortalLayout(props: {
+  children: ReactNode
+  params: Promise<{ orgId: string }>
+}) {
+  const [locale, messages] = await Promise.all([getLocale(), getMessages()])
+  return (
+    <NextIntlClientProvider locale={locale} messages={pickMessages(messages, PORTAL_MESSAGE_NAMESPACES)}>
+      <PortalLayoutShell {...props} />
+    </NextIntlClientProvider>
   )
 }

@@ -1,3 +1,7 @@
+import { NextIntlClientProvider } from 'next-intl'
+import { getMessages } from 'next-intl/server'
+import { ADMIN_MESSAGE_NAMESPACES, pickMessages } from '@/i18n/clientMessages'
+
 import { getLocale } from 'next-intl/server'
 
 import { requirePlatformSession } from '@/lib/superadmin/session'
@@ -18,7 +22,7 @@ import { AdminCommandPalette } from '@/components/admin/AdminCommandPalette'
  * the two consoles read as one product. Both bars are shrink-0, so the tab row
  * never scrolls away with the content.
  */
-export default async function AdminLayout({
+async function AdminLayoutShell({
   children,
 }: {
   children: React.ReactNode
@@ -57,5 +61,19 @@ export default async function AdminLayout({
       </main>
       <AdminCommandPalette capabilities={session.capabilities} />
     </div>
+  )
+}
+
+/**
+ * Scopes the client-side translation bundle to this area — see
+ * src/i18n/clientMessages.ts. The shell above is unchanged; it just renders
+ * inside a provider that carries only the namespaces its client components use.
+ */
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const [locale, messages] = await Promise.all([getLocale(), getMessages()])
+  return (
+    <NextIntlClientProvider locale={locale} messages={pickMessages(messages, ADMIN_MESSAGE_NAMESPACES)}>
+      <AdminLayoutShell>{children}</AdminLayoutShell>
+    </NextIntlClientProvider>
   )
 }

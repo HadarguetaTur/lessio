@@ -17,7 +17,7 @@ import { SetupChecklistCard } from '@/components/dashboard/SetupChecklistCard'
 import { TodayLessonsList } from '@/components/dashboard/TodayLessonsList'
 import { AttentionPanel } from '@/components/dashboard/AttentionPanel'
 import { ForecastCard } from '@/components/dashboard/ForecastCard'
-import { MiniRevenueChart } from '@/components/dashboard/MiniRevenueChart'
+import { MiniRevenueChart } from '@/components/dashboard/MiniRevenueChartLazy'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 /**

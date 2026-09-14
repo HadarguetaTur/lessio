@@ -1,10 +1,12 @@
+import { Suspense } from 'react'
 import { forbidden } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { CheckCircle, AlertCircle, CalendarDays } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { listCalendars, resolveSelectedCalendars, CalendarListEntry } from '@/lib/google-calendar'
+import { listCalendars, resolveSelectedCalendars, type CalendarListEntry, type SelectedCalendar } from '@/lib/google-calendar'
 import { CalendarSelectionCard } from '@/components/dashboard/settings/CalendarSelectionCard'
+import { Skeleton } from '@/components/ui/skeleton'
 import { DisconnectCalendarButton } from './DisconnectCalendarButton'
 import { updateOrgCalendarSelection } from './actions'
 
@@ -29,14 +31,6 @@ export default async function CalendarSettingsPage({
   const connectedEmail = org?.google_calendar_email ?? null
   const isConnected    = Boolean(connectedEmail)
 
-  let calendarList: CalendarListEntry[] | null = null
-  if (isConnected && org?.google_calendar_refresh_token) {
-    try {
-      calendarList = await listCalendars(org.google_calendar_refresh_token)
-    } catch (err) {
-      console.error('[settings/calendar] calendarList fetch failed', { err })
-    }
-  }
   const selectedCalendars = resolveSelectedCalendars(org?.google_calendar_selected_calendars)
 
   const params         = await searchParams
@@ -73,13 +67,15 @@ export default async function CalendarSettingsPage({
         )}
       </div>
 
-      {isConnected && (
-        <CalendarSelectionCard
-          calendars={calendarList}
-          selected={selectedCalendars}
-          listError={calendarList === null}
-          saveAction={updateOrgCalendarSelection}
-        />
+      {isConnected && org?.google_calendar_refresh_token && (
+        // The calendar list is two Google API round-trips (token refresh +
+        // calendarList). Streamed, so the page paints before Google answers.
+        <Suspense fallback={<Skeleton className="mt-6 h-40 w-full rounded-lg" />}>
+          <CalendarSelection
+            refreshToken={org.google_calendar_refresh_token}
+            selected={selectedCalendars}
+          />
+        </Suspense>
       )}
 
       <div className="mt-6 rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800 space-y-1">
@@ -91,6 +87,29 @@ export default async function CalendarSettingsPage({
         </ul>
       </div>
     </div>
+  )
+}
+
+async function CalendarSelection({
+  refreshToken,
+  selected,
+}: {
+  refreshToken: string
+  selected: SelectedCalendar[]
+}) {
+  let calendarList: CalendarListEntry[] | null = null
+  try {
+    calendarList = await listCalendars(refreshToken)
+  } catch (err) {
+    console.error('[settings/calendar] calendarList fetch failed', { err })
+  }
+  return (
+    <CalendarSelectionCard
+      calendars={calendarList}
+      selected={selected}
+      listError={calendarList === null}
+      saveAction={updateOrgCalendarSelection}
+    />
   )
 }
 

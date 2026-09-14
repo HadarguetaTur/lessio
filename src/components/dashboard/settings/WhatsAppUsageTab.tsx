@@ -12,7 +12,7 @@
 import { useTranslations } from 'next-intl'
 import { DateTime } from 'luxon'
 import { AlertCircle } from 'lucide-react'
-import { PRICING_CATEGORIES, type PricingCategory, type WhatsAppUsageSummary, type UsageDays } from '@/lib/whatsapp/usageAnalytics'
+import { PRICING_CATEGORIES, type PricingCategory, type WhatsAppUsageSummary, type UsageDays } from '@/lib/whatsapp/usageTypes'
 
 interface Props {
   summary: WhatsAppUsageSummary

@@ -20,9 +20,11 @@ export default async function ParentsPage(props: {
 
   const { orgId, role, profileId } = await getSession()
   const isTeacher = role === 'teacher'
-  const t = await getTranslations('parents')
-  const tCommon = await getTranslations('common')
-  const tStudents = await getTranslations('students')
+  const [t, tCommon, tStudents] = await Promise.all([
+    getTranslations('parents'),
+    getTranslations('common'),
+    getTranslations('students'),
+  ])
 
   // Same shape as the students page: a teacher sees her own families only.
   const teacherRecord =

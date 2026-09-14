@@ -214,10 +214,9 @@ export function TermsHe({ email, addr, tel, reg, pricing }: TermsDocProps) {
                   ['חינמי (ניסיון 30 יום)', '₪0', '—'],
                   ...pricing.map((p) => [
                     p.labelHe,
-                    `₪${p.priceMonthly.toLocaleString('he-IL')}/חודש`,
-                    p.priceYearly != null ? `₪${p.priceYearly.toLocaleString('he-IL')}/שנה` : '—',
+                    p.isCustom ? 'לפי הצעת מחיר' : `₪${p.priceMonthly.toLocaleString('he-IL')}/חודש`,
+                    !p.isCustom && p.priceYearly != null ? `₪${p.priceYearly.toLocaleString('he-IL')}/שנה` : '—',
                   ]),
-                  ['מותאם אישית', 'לפי הצעת מחיר', '—'],
                 ].map(([plan, monthly, annual]) => (
                   <tr key={plan}>
                     <td className="border border-border px-3 py-2">{plan}</td>

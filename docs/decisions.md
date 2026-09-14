@@ -755,7 +755,7 @@ Rules:
 * the dashboard attention area is exception-driven: inactive buckets are omitted
   instead of staying visible as empty cards
 
-## 39. The Final Plan Catalog Is Solo / Studio / Center, Priced by Teacher Seats
+## 39. The Plan Catalog Is Solo / Studio / Bespoke Center, Priced by Teacher Seats
 
 ✅ DECIDED (06 Sep 2026): after an end-to-end audit of every pricing surface
 (landing page, Terms table, onboarding picker, /account/billing upgrade panel,
@@ -765,7 +765,7 @@ Rules:
 |---|---|---|---|---|
 | solo | יחיד | ₪149 | ₪1,490 | 1 |
 | studio | סטודיו | ₪349 | ₪3,490 | up to 5 |
-| center | מרכז | ₪699 | ₪6,990 | unlimited |
+| center | מרכז | bespoke quote | bespoke quote | 6+ |
 
 Rules:
 
@@ -773,7 +773,7 @@ Rules:
   all eight feature flags, students and lessons are unlimited; a plan that
   charges the same for one teacher and eight (the old `advanced`) is the
   mistake this catalog replaced
-* yearly = 10 × monthly ("two months free"); prices are final, no VAT (עוסק
+* Solo and Studio yearly = 10 × monthly ("two months free"); prices are final, no VAT (עוסק
   פטור) — flipping `SAAS_PRICES_INCLUDE_VAT` must land with the copy change
 * `basic` (₪99) and `advanced` (₪199) are retired in the DB
   (`20260906120000_retire_legacy_plans.sql` sets `is_active = false`), not
@@ -788,6 +788,13 @@ Rules:
   holder
 * the Hebrew word for a tier is «מסלול» everywhere in UI copy (not תוכנית or
   חבילה)
+
+**Amendment (09 Sep 2026, Hadar):** Center is no longer a self-serve checkout
+plan. Its existing priced row is retired, never repriced, so current Center
+subscribers retain their terms. New organizations with more than five teachers,
+and existing Studio organizations that need a sixth seat, submit a contact form
+to the platform CRM and receive a bespoke quote. Solo (₪149) and Studio (₪349,
+up to five teachers) remain self-serve.
 
 ## 40. The Outbound Engine Sends and Reads Through the Workspace Itself
 

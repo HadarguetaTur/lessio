@@ -74,10 +74,10 @@ describe('PLAN_UI', () => {
 })
 
 describe('purchasable tiers', () => {
-  it('excludes free, custom, and every retired tier', () => {
+  it('excludes Center, free, custom, and every retired tier from self-serve checkout', () => {
     expect(isPurchasablePlanName('solo')).toBe(true)
     expect(isPurchasablePlanName('studio')).toBe(true)
-    expect(isPurchasablePlanName('center')).toBe(true)
+    expect(isPurchasablePlanName('center')).toBe(false)
     expect(isPurchasablePlanName('free')).toBe(false)
     expect(isPurchasablePlanName('custom')).toBe(false)
     expect(isPurchasablePlanName('basic')).toBe(false)

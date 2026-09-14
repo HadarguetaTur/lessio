@@ -75,8 +75,8 @@ const landingEnCore = {
     },
     subheadline:
       'Lessons, parents, teachers, cancellations and billing in one operating system. When a parent writes on WhatsApp, the right part of the business updates without copying messages or chasing balances.',
-    ctaPrimary: 'Start a 30-day centre trial',
-    ctaPrimaryNote: 'No credit card. Full Studio plan.',
+    ctaPrimary: 'Try Lessio free',
+    ctaPrimaryNote: '30 days with every feature unlocked. No credit card.',
     ctaSecondary: 'See how it works',
     trustLine: "Built on Meta's official WhatsApp Business Platform",
     outcomes: ['The parent confirms', 'The charge is recorded', 'The calendar updates'],
@@ -120,7 +120,7 @@ const landingEnCore = {
   chain: {
     title: 'How Lessio handles the everyday work while you teach',
     intro: 'A cancellation is only one example. This is what happens when one WhatsApp message needs to update the whole business.',
-    cta: 'Start my 30-day trial',
+    cta: 'Try Lessio free',
     beats: [
       {
         title: 'The parent cancels on WhatsApp',
@@ -274,9 +274,20 @@ const landingEnCore = {
     teachersUnlimited: 'Unlimited teachers',
     featuredLabel: 'Best fit for most centres',
     featureLine: 'All features included',
-    cta: 'Start a 30-day centre trial',
-    trialNote: '30 days free. No credit card.',
+    cta: 'Try Lessio free',
+    trialNote: '30 days with every feature unlocked. No credit card.',
     trialIncludes: 'The trial includes the full Studio plan.',
+    customPricing: 'Custom pricing',
+    centerInquiry: {
+      cta: 'Talk to us',
+      title: 'A Center plan built for you',
+      body: 'Leave your details and we will help tailor the right plan.',
+      name: 'Full name',
+      phone: 'Phone',
+      submit: 'Send details',
+      success: 'Thanks — we will be in touch shortly.',
+      error: 'We could not save your details. Please try again.',
+    },
   },
   faq: {
     title: 'Frequently asked questions',
@@ -343,8 +354,8 @@ const landingEnCore = {
   finalCta: {
     title: 'Your centre is already working hard. The system should work with it.',
     body: 'Start with one real workflow and see what remains of the operational load when everything is connected.',
-    cta: 'Start a 30-day centre trial',
-    note: '30 days free. No credit card. The trial includes the full Studio plan.',
+    cta: 'Try Lessio free',
+    note: '30 days with every feature unlocked. No credit card.',
   },
   footer: {
     statusLabel: 'System live',
@@ -381,8 +392,8 @@ const landingHeCore = {
     },
     subheadline:
       'שיעורים, הורים, מורים, ביטולים וגבייה במערכת אחת. כשהורה כותב ב־WhatsApp, החלק הנכון בעסק מתעדכן בלי להעתיק הודעות ובלי לרדוף אחרי יתרות.',
-    ctaPrimary: 'פתחו 30 ימי ניסיון למרכז',
-    ctaPrimaryNote: 'בלי כרטיס אשראי. מסלול סטודיו מלא.',
+    ctaPrimary: 'נסו את Lessio בחינם',
+    ctaPrimaryNote: '30 יום עם כל היכולות פתוחות. בלי כרטיס אשראי.',
     ctaSecondary: 'איך זה עובד',
     trustLine: 'מחוברת ל-WhatsApp Business Platform הרשמית של Meta',
     outcomes: ['ההורה מאשר', 'החיוב נרשם', 'היומן מתעדכן'],
@@ -426,7 +437,7 @@ const landingHeCore = {
   chain: {
     title: 'ככה Lessio מטפלת בשוטף בזמן שאתם מלמדים',
     intro: 'ביטול הוא רק דוגמה אחת. כך הודעה אחת ב־WhatsApp מעדכנת את כל מה שצריך במרכז.',
-    cta: 'לפתוח ניסיון של 30 יום',
+    cta: 'נסו את Lessio בחינם',
     beats: [
       {
         title: 'ההורה מבטל בוואטסאפ',
@@ -577,9 +588,20 @@ const landingHeCore = {
     teachersUnlimited: 'מורים ללא הגבלה',
     featuredLabel: 'הבחירה של רוב המרכזים',
     featureLine: 'כל הפיצ׳רים כלולים',
-    cta: 'פתחו 30 ימי ניסיון למרכז',
-    trialNote: '30 יום ניסיון. בלי כרטיס אשראי.',
+    cta: 'נסו את Lessio בחינם',
+    trialNote: '30 יום עם כל היכולות פתוחות. בלי כרטיס אשראי.',
     trialIncludes: 'הניסיון כולל את מסלול סטודיו המלא.',
+    customPricing: 'מחיר מותאם אישית',
+    centerInquiry: {
+      cta: 'דברו איתנו',
+      title: 'מסלול מרכז בהתאמה אישית',
+      body: 'השאירו פרטים ונחזור אליכם להתאמת המסלול.',
+      name: 'שם מלא',
+      phone: 'טלפון',
+      submit: 'שליחת פרטים',
+      success: 'קיבלנו, נחזור אליכם בהקדם.',
+      error: 'לא הצלחנו לשמור את הפרטים. נסו שוב.',
+    },
   },
   faq: {
     title: 'מענה לשאלות נפוצות',
@@ -646,8 +668,8 @@ const landingHeCore = {
   finalCta: {
     title: 'המרכז שלכם כבר עובד קשה. הגיע הזמן שהמערכת תעבוד איתו.',
     body: 'התחילו בתהליך אמיתי אחד, וראו מה נשאר מהעומס כשהכול מחובר.',
-    cta: 'פתחו 30 ימי ניסיון למרכז',
-    note: '30 יום ניסיון. בלי כרטיס אשראי. הניסיון כולל את מסלול סטודיו המלא.',
+    cta: 'נסו את Lessio בחינם',
+    note: '30 יום עם כל היכולות פתוחות. בלי כרטיס אשראי.',
   },
   footer: {
     statusLabel: 'מערכת פעילה',

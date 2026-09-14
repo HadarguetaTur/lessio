@@ -20,6 +20,8 @@ import { CancelSaasButton } from './CancelSaasButton'
 import { UpgradePlanPanel } from '@/components/dashboard/billing/UpgradePlanPanel'
 import { beginUpgradeCheckoutAction } from './upgrade-actions'
 import { isRepurchase } from '@/lib/saas/repurchase'
+import { createClient } from '@/lib/supabase/server'
+import { CenterUpgradeInquiryDialog } from '@/components/dashboard/billing/CenterUpgradeInquiryDialog'
 
 const SAAS_FEATURE_PARAM_KEYS = new Set([
   'whatsapp_automation',
@@ -87,12 +89,17 @@ export default async function AccountBillingPage({
     )
   }
 
-  const [state, invoices, timezone, catalog, usage] = await Promise.all([
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const [state, invoices, timezone, catalog, usage, profile] = await Promise.all([
     getOrgSubscriptionState(session.orgId),
     listSaasInvoices(session.orgId),
     getOrgTimezone(session.orgId),
     listActiveSaasPlans(),
     getOrgQuotaUsage(session.orgId),
+    user
+      ? supabase.from('profiles').select('full_name, phone').eq('id', user.id).maybeSingle().then((result) => result.data)
+      : Promise.resolve(null),
   ])
 
   const currentCatalogPlan = state ? await getSaasPlanById(state.planId) : null
@@ -267,6 +274,28 @@ export default async function AccountBillingPage({
           beginUpgradeCheckout={beginUpgradeCheckoutAction}
           isNewSubscription={legacyNoRow}
         />
+      ) : null}
+
+      {!session.isSupportMode && session.role === 'owner' ? (
+        <section className="max-w-xl rounded-xl border border-violet-500/25 bg-violet-500/5 p-5">
+          <h2 className="text-sm font-semibold text-foreground">{t('centerPanelTitle')}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t('centerPanelBody')}</p>
+          <div className="mt-4"><CenterUpgradeInquiryDialog
+              copy={{
+                cta: t('centerInquiry.cta'),
+                title: t('centerInquiry.title'),
+                body: t('centerInquiry.body'),
+                name: t('centerInquiry.name'),
+                phone: t('centerInquiry.phone'),
+                submit: t('centerInquiry.submit'),
+                success: t('centerInquiry.success'),
+                error: t('centerInquiry.error'),
+              }}
+              locale={locale}
+              initialName={profile?.full_name ?? ''}
+              initialPhone={profile?.phone ?? ''}
+            /></div>
+        </section>
       ) : null}
 
       <section className="space-y-3">

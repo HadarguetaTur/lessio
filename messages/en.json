@@ -4688,6 +4688,18 @@
       "legacyNoSubscription": "No platform subscription record (org created before SaaS plans). You can keep using the product as usual.",
       "statusPastDue": "Payment failed",
       "statusCancelled": "Cancelled",
+      "centerPanelTitle": "Need more than 5 teachers?",
+      "centerPanelBody": "Our Center plan is tailored for larger teams and specific needs.",
+      "centerInquiry": {
+        "cta": "Move to Center",
+        "title": "A Center plan built for you",
+        "body": "Leave your details and we will get back to you with a tailored offer.",
+        "name": "Full name",
+        "phone": "Phone",
+        "submit": "Send request",
+        "success": "Your request is in. We will be in touch shortly.",
+        "error": "We could not send your request. Please try again."
+      },
       "lapsedHero": {
         "trial_ended": {
           "title": "Your free trial has ended",

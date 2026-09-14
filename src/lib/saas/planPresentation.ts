@@ -24,7 +24,7 @@ import type { SaasPlanName } from './types'
 export const TRIAL_ENTITLEMENT_PLAN = 'studio' satisfies SaasPlanName
 
 /** Tiers a tenant can buy self-serve, cheapest first. */
-export const PURCHASABLE_PLAN_NAMES = ['solo', 'studio', 'center'] as const
+export const PURCHASABLE_PLAN_NAMES = ['solo', 'studio'] as const
 
 export type PurchasableSaasPlanName = (typeof PURCHASABLE_PLAN_NAMES)[number]
 

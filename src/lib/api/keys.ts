@@ -21,13 +21,9 @@ const KEY_BYTES = 32
 /** Characters kept on the row for identifying a key in the UI. */
 const DISPLAY_PREFIX_LENGTH = 12
 
-export type ApiScope = 'read' | 'write' | 'messages:send'
-
-export const API_SCOPES: readonly ApiScope[] = ['read', 'write', 'messages:send'] as const
-
-export function isApiScope(value: string): value is ApiScope {
-  return (API_SCOPES as readonly string[]).includes(value)
-}
+// Scopes live in a crypto-free module so client code can import them
+// without pulling this file (and Node's crypto) into the browser bundle.
+export { API_SCOPES, isApiScope, type ApiScope } from '@/lib/api/scopes'
 
 export interface MintedApiKey {
   /** Full plaintext key. Shown once, never stored. */

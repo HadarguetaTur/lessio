@@ -24,44 +24,11 @@ import { META_API_VERSION } from './graphVersion'
 
 const CACHE_TTL_HOURS = 6
 
-export type UsageDays = 30 | 60 | 90
-
-export type PricingCategory = 'marketing' | 'utility' | 'service' | 'authentication' | 'unknown'
-
-export const PRICING_CATEGORIES: PricingCategory[] = [
-  'marketing',
-  'utility',
-  'service',
-  'authentication',
-  'unknown',
-]
-
-export interface CategoryTotals {
-  volume: number
-  costUsd: number
-}
-
-export interface WhatsAppUsageSummary {
-  days: UsageDays
-  /** ISO dates (UTC) of the covered range, inclusive start / exclusive end. */
-  startDate: string
-  endDate: string
-  totalMessages: number
-  billableMessages: number
-  freeMessages: number
-  totalCostUsd: number
-  byCategory: Record<PricingCategory, CategoryTotals>
-  daily: Array<{
-    date: string
-    volume: number
-    costUsd: number
-    byCategory: Partial<Record<PricingCategory, CategoryTotals>>
-  }>
-  /** When the numbers were fetched from Meta (ISO). */
-  fetchedAt: string
-  /** True when Meta was unreachable and this is an expired cache copy. */
-  stale: boolean
-}
+// Shapes shared with the client-side usage tab live in a dependency-free
+// module so importing them never pulls zod/luxon into the browser bundle.
+export type { UsageDays, PricingCategory, CategoryTotals, WhatsAppUsageSummary } from './usageTypes'
+export { PRICING_CATEGORIES } from './usageTypes'
+import type { UsageDays, PricingCategory, CategoryTotals, WhatsAppUsageSummary } from './usageTypes'
 
 // ── Meta response parsing ────────────────────────────────────────────────────
 // Tolerant on purpose: Meta adds fields and enum values without notice, so we

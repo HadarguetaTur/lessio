@@ -1,17 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const { mockGetUser, mockCreateServerClient } = vi.hoisted(() => {
-  const getUser = vi.fn()
+// The proxy verifies the JWT locally with getClaims() rather than paying an
+// Auth round-trip per request; the tests drive it through the same seam.
+const { mockGetClaims, mockCreateServerClient } = vi.hoisted(() => {
+  const getClaims = vi.fn()
   return {
-    mockGetUser: getUser,
+    mockGetClaims: getClaims,
     mockCreateServerClient: vi.fn(() => ({
       auth: {
-        getUser,
+        getClaims,
       },
     })),
   }
 })
+
+const signedOut = { data: null, error: null }
+const signedInAs = (sub: string) => ({ data: { claims: { sub } }, error: null })
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: mockCreateServerClient,
@@ -22,7 +27,7 @@ import { buildForwardedHeaders, PATHNAME_HEADER, proxy } from './proxy'
 describe('proxy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetUser.mockResolvedValue({ data: { user: null } })
+    mockGetClaims.mockResolvedValue(signedOut)
   })
 
   it('bypasses /book routes without creating a Supabase client', async () => {
@@ -93,7 +98,7 @@ describe('proxy', () => {
   })
 
   it('redirects authenticated users away from /login to /dashboard', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+    mockGetClaims.mockResolvedValue(signedInAs('user-1'))
     const request = new NextRequest('http://localhost:3000/login')
 
     const response = await proxy(request)
@@ -111,7 +116,7 @@ describe('proxy', () => {
   })
 
   it('redirects authenticated users from / to /dashboard', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+    mockGetClaims.mockResolvedValue(signedInAs('user-1'))
     const request = new NextRequest('http://localhost:3000/')
 
     const response = await proxy(request)
@@ -121,7 +126,7 @@ describe('proxy', () => {
   })
 
   it('redirects authenticated users from /signup to /dashboard', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+    mockGetClaims.mockResolvedValue(signedInAs('user-1'))
     const request = new NextRequest('http://localhost:3000/signup')
 
     const response = await proxy(request)
@@ -147,7 +152,7 @@ describe('proxy', () => {
   })
 
   it('allows authenticated teacher routes through the proxy', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+    mockGetClaims.mockResolvedValue(signedInAs('user-1'))
     const request = new NextRequest('http://localhost:3000/teacher/schedule')
 
     const response = await proxy(request)

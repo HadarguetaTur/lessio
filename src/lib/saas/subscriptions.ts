@@ -101,7 +101,7 @@ export const getOrgSubscriptionState = cache(async function getOrgSubscriptionSt
  * - Active trial: the whole app, deliberately — that is what the trial is.
  * - Anything else, read-only included: the plan's real features.
  */
-export async function getEffectiveSaasFeatures(orgId: string): Promise<SaasFeatures> {
+async function getEffectiveSaasFeaturesUncached(orgId: string): Promise<SaasFeatures> {
   const state = await getOrgSubscriptionState(orgId)
   if (!state) return { ...parseSaasFeatures(null) }
 
@@ -637,3 +637,6 @@ export async function getOrgServiceState(orgId: string): Promise<OrgServiceState
 export function isServiceSuspended(state: OrgServiceState): boolean {
   return state === 'suspended' || state === 'dormant'
 }
+
+/** Per-request memo of {@link getEffectiveSaasFeaturesUncached}: one read per render, however many callers. */
+export const getEffectiveSaasFeatures = cache(getEffectiveSaasFeaturesUncached)

@@ -12,7 +12,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Check, Copy, KeyRound, TriangleAlert } from 'lucide-react'
-import { API_SCOPES, type ApiScope } from '@/lib/api/keys'
+import { API_SCOPES, type ApiScope } from '@/lib/api/scopes'
 import { createApiKeyAction, type CreateApiKeyResult } from './actions'
 
 const initialState: CreateApiKeyResult = { error: null }

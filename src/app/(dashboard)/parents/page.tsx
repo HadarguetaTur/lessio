@@ -18,10 +18,12 @@ export default async function ParentsPage(props: {
   const q = searchParams.q ?? ''
 
   const { orgId, role } = await getSession()
-  const parents = await getParents(orgId, { search: q })
+  const [parents, t, tCommon] = await Promise.all([
+    getParents(orgId, { search: q }),
+    getTranslations('parents'),
+    getTranslations('common'),
+  ])
   const isTeacher = role === 'teacher'
-  const t = await getTranslations('parents')
-  const tCommon = await getTranslations('common')
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">

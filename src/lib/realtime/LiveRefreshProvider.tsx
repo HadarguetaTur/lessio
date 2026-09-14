@@ -17,8 +17,7 @@
  */
 
 import { createContext, useEffect, useState, type ReactNode } from 'react'
-import type { RealtimeChannel } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
+import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 import { WATCHED_TABLES, createRegistry, type LiveRefreshRegistry } from './registry'
 
 export const LiveRefreshContext = createContext<LiveRefreshRegistry | null>(null)
@@ -41,38 +40,51 @@ export function LiveRefreshProvider({
     // resolves. Both are "nothing to subscribe to" rather than an error.
     if (!orgId) return
 
-    const supabase = createClient()
-    let channel: RealtimeChannel | null = supabase.channel(`live-refresh:${orgId}`)
+    // The Supabase browser client (with its ~170 KB Realtime transport) is
+    // loaded here, after the page has painted, instead of in every dashboard
+    // route's first-load bundle. Client-side navigations reuse the module.
+    let cancelled = false
+    let supabase: SupabaseClient | null = null
+    let channel: RealtimeChannel | null = null
 
-    // Every listener has to be attached before subscribe() — the Realtime
-    // client will not accept new bindings on an already-joined channel, which
-    // is why WATCHED_TABLES is a fixed list rather than built from whatever
-    // happens to be mounted.
-    for (const table of WATCHED_TABLES) {
-      channel = channel.on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table,
-          filter: `organization_id=eq.${orgId}`,
-        },
-        () => registry.dispatch(table)
-      )
-    }
+    void import('@/lib/supabase/client').then(({ createClient }) => {
+      if (cancelled) return
+      supabase = createClient()
+      let next: RealtimeChannel = supabase.channel(`live-refresh:${orgId}`)
 
-    channel.subscribe((status) => {
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        // Not fatal: every consumer either has its own fallback poll or is a
-        // convenience refresh. Log rather than surface it to the user.
-        console.warn('[realtime] live refresh unavailable', { status })
+      // Every listener has to be attached before subscribe() — the Realtime
+      // client will not accept new bindings on an already-joined channel, which
+      // is why WATCHED_TABLES is a fixed list rather than built from whatever
+      // happens to be mounted.
+      for (const table of WATCHED_TABLES) {
+        next = next.on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table,
+            filter: `organization_id=eq.${orgId}`,
+          },
+          () => registry.dispatch(table)
+        )
       }
+
+      next.subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          // Not fatal: every consumer either has its own fallback poll or is a
+          // convenience refresh. Log rather than surface it to the user.
+          console.warn('[realtime] live refresh unavailable', { status })
+        }
+      })
+      channel = next
     })
 
     return () => {
+      cancelled = true
       const open = channel
+      const client = supabase
       channel = null
-      if (open) void supabase.removeChannel(open)
+      if (open && client) void client.removeChannel(open)
     }
   }, [orgId, registry])
 

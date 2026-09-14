@@ -60,7 +60,6 @@ export const DASHBOARD_MESSAGE_NAMESPACES: readonly MessagePath[] = [
   'receipts',
   'homework',
   'import',
-  'inbox',
   'waConversations',
   'broadcasts',
   'leads',

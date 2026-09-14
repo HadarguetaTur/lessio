@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 /**
@@ -8,7 +9,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
  * every org silently fell back to Asia/Jerusalem. The org id is always resolved
  * server-side (session or verified portal JWT), never taken from the client.
  */
-export async function getOrgTimezone(organizationId: string): Promise<string> {
+async function getOrgTimezoneUncached(organizationId: string): Promise<string> {
   const supabase = createServiceRoleClient()
 
   const { data } = await supabase
@@ -19,3 +20,6 @@ export async function getOrgTimezone(organizationId: string): Promise<string> {
 
   return data?.timezone ?? 'Asia/Jerusalem'
 }
+
+/** Per-request memo of {@link getOrgTimezoneUncached}: one read per render, however many callers. */
+export const getOrgTimezone = cache(getOrgTimezoneUncached)

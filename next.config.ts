@@ -16,7 +16,14 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '11mb', // Homework media uploads: max 10MB file + form fields overhead
     },
+    // lucide-react and recharts are optimised by default; luxon is not, and
+    // three client components import it.
+    optimizePackageImports: ['luxon'],
   },
+  // Large Node-only SDKs: leave them to native require() instead of bundling
+  // them into every server chunk (smaller server bundles, faster cold starts).
+  // @react-pdf/renderer is already on Next's built-in list.
+  serverExternalPackages: ['googleapis', 'openai', '@anthropic-ai/sdk', '@google/generative-ai', 'stripe'],
   async headers() {
     return [
       {

@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { ROOT_MESSAGE_NAMESPACES, pickMessages } from "@/i18n/clientMessages";
 import { getShareableBaseUrl } from "@/lib/url/appUrl";
 import { ConsentBanner } from "@/components/tracking/ConsentBanner";
 import { TrackingScripts } from "@/components/tracking/TrackingScripts";
@@ -70,7 +71,9 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-full overflow-hidden flex flex-col">
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        {/* Only the namespaces used outside the route groups; each group
+            layout provides its own scoped set (src/i18n/clientMessages.ts). */}
+        <NextIntlClientProvider locale={locale} messages={pickMessages(messages, ROOT_MESSAGE_NAMESPACES)}>
           {children}
           <Toaster position="bottom-center" richColors />
           {/* Per /docs/sprint-34-scope.md § C. The banner gates the scripts:

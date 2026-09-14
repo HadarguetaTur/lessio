@@ -1,3 +1,4 @@
+import { cache } from 'react'
 /**
  * The one answer to "is WhatsApp working?".
  *
@@ -225,7 +226,7 @@ export function hasUnapprovedOutOfWindowTemplates(
  * `features` is accepted so a caller that already resolved the plan — the
  * dashboard layout does, for the sidebar — does not resolve it twice.
  */
-export async function getWaConnectionState(
+async function getWaConnectionStateUncached(
   orgId: string,
   opts: { checkTemplates?: boolean; features?: SaasFeatures } = {}
 ): Promise<WaConnectionState> {
@@ -266,3 +267,6 @@ export async function getWaConnectionState(
     templatesUnapproved,
   })
 }
+
+/** Per-request memo of {@link getWaConnectionStateUncached}: one read per render, however many callers. */
+export const getWaConnectionState = cache(getWaConnectionStateUncached)

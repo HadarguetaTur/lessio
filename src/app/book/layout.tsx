@@ -1,3 +1,7 @@
+import { NextIntlClientProvider } from 'next-intl'
+import { getMessages } from 'next-intl/server'
+import { BOOKING_MESSAGE_NAMESPACES, pickMessages } from '@/i18n/clientMessages'
+
 import { getLocale } from 'next-intl/server'
 
 import { setLandingLocaleAction } from '@/app/landing-locale-action'
@@ -9,7 +13,7 @@ import { LocaleToggle } from '@/components/i18n/LocaleToggle'
  * its own scroll container — without this, anything below the first viewport
  * is clipped and unreachable on mobile.
  */
-export default async function BookLayout({ children }: { children: React.ReactNode }) {
+async function BookLayoutShell({ children }: { children: React.ReactNode }) {
   const locale = await getLocale()
   const dir = locale === 'he' ? 'rtl' : 'ltr'
 
@@ -23,5 +27,19 @@ export default async function BookLayout({ children }: { children: React.ReactNo
       </div>
       {children}
     </div>
+  )
+}
+
+/**
+ * Scopes the client-side translation bundle to this area — see
+ * src/i18n/clientMessages.ts. The shell above is unchanged; it just renders
+ * inside a provider that carries only the namespaces its client components use.
+ */
+export default async function BookLayout({ children }: { children: React.ReactNode }) {
+  const [locale, messages] = await Promise.all([getLocale(), getMessages()])
+  return (
+    <NextIntlClientProvider locale={locale} messages={pickMessages(messages, BOOKING_MESSAGE_NAMESPACES)}>
+      <BookLayoutShell>{children}</BookLayoutShell>
+    </NextIntlClientProvider>
   )
 }

@@ -1,3 +1,7 @@
+import { NextIntlClientProvider } from 'next-intl'
+import { getMessages } from 'next-intl/server'
+import { ONBOARDING_MESSAGE_NAMESPACES, pickMessages } from '@/i18n/clientMessages'
+
 import Link from 'next/link'
 
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
@@ -5,7 +9,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 
 import { LocaleSwitcher } from '@/components/dashboard/LocaleSwitcher'
 
-export default async function OnboardingLayout({
+async function OnboardingLayoutShell({
   children,
 }: {
   children: React.ReactNode
@@ -64,5 +68,19 @@ export default async function OnboardingLayout({
         </div>
       </main>
     </div>
+  )
+}
+
+/**
+ * Scopes the client-side translation bundle to this area — see
+ * src/i18n/clientMessages.ts. The shell above is unchanged; it just renders
+ * inside a provider that carries only the namespaces its client components use.
+ */
+export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
+  const [locale, messages] = await Promise.all([getLocale(), getMessages()])
+  return (
+    <NextIntlClientProvider locale={locale} messages={pickMessages(messages, ONBOARDING_MESSAGE_NAMESPACES)}>
+      <OnboardingLayoutShell>{children}</OnboardingLayoutShell>
+    </NextIntlClientProvider>
   )
 }

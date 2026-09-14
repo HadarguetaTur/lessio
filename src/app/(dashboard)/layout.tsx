@@ -1,6 +1,9 @@
-import { isPlatformRole } from '@/lib/superadmin/capabilities'
+import { NextIntlClientProvider } from 'next-intl'
+import { getMessages } from 'next-intl/server'
+import { DASHBOARD_MESSAGE_NAMESPACES, pickMessages } from '@/i18n/clientMessages'
+
 import { headers } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
+import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/dashboard/Sidebar'
@@ -35,37 +38,30 @@ import { LapsedNotice } from '@/components/dashboard/LapsedNotice'
 import { getActiveTeacherCount, getTeacherByProfileId } from '@/lib/teachers'
 import { LiveRefreshProvider } from '@/lib/realtime/LiveRefreshProvider'
 
-export default async function DashboardLayout({
+async function DashboardLayoutShell({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const t = await getTranslations()
-  const locale = await getLocale()
-  const dir = locale === 'he' ? 'rtl' : 'ltr'
-
   // ── Support mode (superadmin inspecting an org) ──────────────────────────
   // Check BEFORE the normal session flow, because the superadmin's own profile
   // would otherwise be redirected back to /admin/dashboard.
-  const supportSession = await getActiveSupportSession()
+  const [t, locale, supportSession] = await Promise.all([
+    getTranslations(),
+    getLocale(),
+    getActiveSupportSession(),
+  ])
+  const dir = locale === 'he' ? 'rtl' : 'ltr'
 
   if (supportSession) {
-    const [saasFeaturesSupport, teacherCountSupport] = await Promise.all([
-      getNavigationSaasFeatures(supportSession.targetOrgId),
-      getActiveTeacherCount(supportSession.targetOrgId),
-    ])
     const db = createServiceRoleClient()
-    const { data: org } = await db
-      .from('organizations')
-      .select('name')
-      .eq('id', supportSession.targetOrgId)
-      .single()
-
-    const { data: adminProfile } = await db
-      .from('profiles')
-      .select('full_name')
-      .eq('id', supportSession.superAdminId)
-      .single()
+    const [saasFeaturesSupport, teacherCountSupport, { data: org }, { data: adminProfile }] =
+      await Promise.all([
+        getNavigationSaasFeatures(supportSession.targetOrgId),
+        getActiveTeacherCount(supportSession.targetOrgId),
+        db.from('organizations').select('name').eq('id', supportSession.targetOrgId).single(),
+        db.from('profiles').select('full_name').eq('id', supportSession.superAdminId).single(),
+      ])
 
     return (
       <div className="flex h-screen flex-col bg-background" dir={dir}>
@@ -120,32 +116,15 @@ export default async function DashboardLayout({
   }
 
   // ── Normal org-user session ───────────────────────────────────────────────
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // Belt-and-suspenders — middleware handles this, but protect at layout level too.
-  if (!user) {
-    redirect('/login')
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, role, organization_id, is_active')
-    .eq('id', user.id)
-    .single()
-
-  // Platform staff have no org — send them to the console. Checking only
-  // 'superadmin' would drop a support or billing colleague into a tenant shell
-  // with orgId null, which every query below assumes is a string.
-  if (!profile || profile.is_active === false) {
-    redirect('/login')
-  }
-
-  if (profile.role && isPlatformRole(profile.role)) {
-    redirect('/admin')
+  // getSession() is React-cached, so the page and every nested server
+  // component reuse this one auth round-trip + profiles read. It already
+  // redirects unauthenticated users to /login and platform staff to /admin.
+  const session = await getSession()
+  const user = { id: session.userId }
+  const profile = {
+    full_name: session.fullName,
+    role: session.role,
+    organization_id: session.orgId,
   }
 
   // Setup is progressive inside the product. Owners always reach the dashboard;
@@ -199,26 +178,27 @@ export default async function DashboardLayout({
   // once the org is down to a single teacher, which is exactly the org where
   // the owner IS the teacher.
   let hasOwnTeacherRecord = false
+  // Notification bell — initial unread count, fetched alongside the nav data
+  // rather than after it: one round-trip fewer on the critical path.
+  let initialUnreadCount = 0
   if (
     profile?.organization_id &&
     (profile.role === 'owner' || profile.role === 'admin')
   ) {
     let ownTeacher: Awaited<ReturnType<typeof getTeacherByProfileId>>
-    ;[saasFeatures, teacherCount, ownTeacher] = await Promise.all([
+    ;[saasFeatures, teacherCount, ownTeacher, initialUnreadCount] = await Promise.all([
       getNavigationSaasFeatures(profile.organization_id),
       getActiveTeacherCount(profile.organization_id),
       getTeacherByProfileId(user.id, profile.organization_id, { activeOnly: true }),
+      getUnreadCount(user.id, profile.organization_id),
     ])
     hasOwnTeacherRecord = ownTeacher !== null
+  } else if (profile?.organization_id) {
+    initialUnreadCount = await getUnreadCount(user.id, profile.organization_id)
   }
 
   const showSaasBanners =
     (profile?.role === 'owner' || profile?.role === 'admin') && profile?.organization_id
-
-  // Notification bell — fetch initial unread count server-side
-  const initialUnreadCount = profile?.organization_id
-    ? await getUnreadCount(user.id, profile.organization_id)
-    : 0
 
   const bellElement = profile?.organization_id ? (
     <NotificationBell
@@ -235,7 +215,7 @@ export default async function DashboardLayout({
     <LiveRefreshProvider orgId={profile?.organization_id ?? null}>
       <div className="flex h-screen bg-background" dir={dir}>
       <Sidebar
-        userName={profile?.full_name ?? user.email ?? ''}
+        userName={profile?.full_name ?? ''}
         userRole={profile?.role ?? ''}
         hasOwnTeacherRecord={hasOwnTeacherRecord}
         saasFeatures={saasFeatures}
@@ -249,7 +229,7 @@ export default async function DashboardLayout({
           notificationBell={bellElement}
           mobileNavigation={
             <Sidebar
-              userName={profile?.full_name ?? user.email ?? ''}
+              userName={profile?.full_name ?? ''}
               userRole={profile?.role ?? ''}
               hasOwnTeacherRecord={hasOwnTeacherRecord}
               mobile
@@ -309,5 +289,19 @@ export default async function DashboardLayout({
       </main>
     </div>
     </LiveRefreshProvider>
+  )
+}
+
+/**
+ * Scopes the client-side translation bundle to this area — see
+ * src/i18n/clientMessages.ts. The shell above is unchanged; it just renders
+ * inside a provider that carries only the namespaces its client components use.
+ */
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [locale, messages] = await Promise.all([getLocale(), getMessages()])
+  return (
+    <NextIntlClientProvider locale={locale} messages={pickMessages(messages, DASHBOARD_MESSAGE_NAMESPACES)}>
+      <DashboardLayoutShell>{children}</DashboardLayoutShell>
+    </NextIntlClientProvider>
   )
 }

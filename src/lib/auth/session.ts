@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { isPlatformRole } from '@/lib/superadmin/capabilities'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
@@ -36,8 +37,12 @@ export interface SuperAdminSession {
  *
  * Safe to call from any dashboard Server Component or Server Action.
  * Never returns a superadmin session — callers can always assume orgId is a non-null string.
+ *
+ * Memoised per request with React `cache()`: the dashboard layout, the page
+ * and any nested server component all share one auth round-trip and one
+ * `profiles` read instead of repeating them.
  */
-export async function getSession(): Promise<UserSession> {
+export const getSession = cache(async function getSession(): Promise<UserSession> {
   // Support mode: superadmin viewing an org's dashboard read-only.
   // Check the support cookie before the normal Supabase session.
   const support = await getActiveSupportSession()
@@ -110,7 +115,7 @@ export async function getSession(): Promise<UserSession> {
     fullName: profile.full_name,
     isSaasReadOnly: saasReadOnly,
   }
-}
+})
 
 /**
  * Alias for getSession() — use this when you want to be explicit that

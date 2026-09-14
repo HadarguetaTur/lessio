@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export type BillingMode = 'monthly' | 'per_lesson'
@@ -8,7 +9,7 @@ export interface OrgBillingPolicy {
   dueDays: number
 }
 
-export async function getOrgBillingPolicy(organizationId: string): Promise<OrgBillingPolicy> {
+async function getOrgBillingPolicyUncached(organizationId: string): Promise<OrgBillingPolicy> {
   const db = createServiceRoleClient()
   const { data, error } = await db
     .from('organizations')
@@ -26,3 +27,6 @@ export async function getOrgBillingPolicy(organizationId: string): Promise<OrgBi
     dueDays: Number(data.billing_due_days ?? 7),
   }
 }
+
+/** Per-request memo of {@link getOrgBillingPolicyUncached}: one read per render, however many callers. */
+export const getOrgBillingPolicy = cache(getOrgBillingPolicyUncached)

@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { SaasPlanName } from './types'
 import { parseSaasFeatures, type SaasFeatures } from './types'
@@ -86,7 +87,7 @@ export async function listActiveSaasPlans(): Promise<SaasPlanRow[]> {
 }
 
 /** Every plan row, retired ones included. See listActiveSaasPlans for when to use which. */
-export async function listAllSaasPlans(): Promise<SaasPlanRow[]> {
+async function listAllSaasPlansUncached(): Promise<SaasPlanRow[]> {
   const db = createServiceRoleClient()
   const { data, error } = await db
     .from('saas_plans')
@@ -107,7 +108,7 @@ export async function listAllSaasPlans(): Promise<SaasPlanRow[]> {
  * subscriptions.ts) treats null as "grant everything". Never point this at a
  * name that a migration might retire; use TRIAL_ENTITLEMENT_PLAN.
  */
-export async function getSaasPlanByName(name: SaasPlanName): Promise<SaasPlanRow | null> {
+async function getSaasPlanByNameUncached(name: SaasPlanName): Promise<SaasPlanRow | null> {
   const db = createServiceRoleClient()
   const { data, error } = await db
     .from('saas_plans')
@@ -137,7 +138,7 @@ export async function getSaasPlanByName(name: SaasPlanName): Promise<SaasPlanRow
  * filter stays absent — if that test fails, read this comment before "fixing"
  * it.
  */
-export async function getSaasPlanById(id: string): Promise<SaasPlanRow | null> {
+async function getSaasPlanByIdUncached(id: string): Promise<SaasPlanRow | null> {
   const db = createServiceRoleClient()
   const { data, error } = await db
     .from('saas_plans')
@@ -149,3 +150,10 @@ export async function getSaasPlanById(id: string): Promise<SaasPlanRow | null> {
 
   return mapPlanRow(data as unknown as PlanQueryRow)
 }
+
+/** Per-request memo of {@link listAllSaasPlansUncached}: one read per render, however many callers. */
+export const listAllSaasPlans = cache(listAllSaasPlansUncached)
+/** Per-request memo of {@link getSaasPlanByNameUncached}: one read per render, however many callers. */
+export const getSaasPlanByName = cache(getSaasPlanByNameUncached)
+/** Per-request memo of {@link getSaasPlanByIdUncached}: one read per render, however many callers. */
+export const getSaasPlanById = cache(getSaasPlanByIdUncached)

@@ -1050,7 +1050,10 @@
       "description": "נמצאו אירועים ביומן Google בשעה המבוקשת. ניתן לקבוע את השיעור בכל זאת.",
       "orgCalendar": "יומן ארגוני",
       "teacherCalendar": "יומן מורה",
-      "scheduleAnyway": "קבע בכל זאת"
+      "scheduleAnyway": "קבע בכל זאת",
+      "unavailableTitle": "לא ניתן לקרוא את יומן Google",
+      "unavailableDescription": "לא הצלחנו לקרוא את יומן Google, ולכן לא ידוע אם השעה פנויה. ייתכן שהחיבור ליומן פג ויש לחבר אותו מחדש. ניתן לקבוע את השיעור בכל זאת.",
+      "reconnectLink": "חיבור מחדש של היומן"
     },
     "lessonNotesTitle": "הערות שיעור",
     "lessonNotesEmpty": "אין הערות לשיעור זה.",
@@ -1541,7 +1544,8 @@
         "configured": "מוגדר",
         "notConnected": "לא מחובר",
         "viaPaymentProvider": "דרך ספק הסליקה",
-        "apiKeys": "{count, plural, one {מפתח פעיל אחד} other {# מפתחות פעילים}}"
+        "apiKeys": "{count, plural, one {מפתח פעיל אחד} other {# מפתחות פעילים}}",
+        "needsReauth": "החיבור פג"
       }
     },
     "cardHint": "פתחו את ההגדרה כדי לעדכן את התצורה הרלוונטית.",
@@ -2170,7 +2174,10 @@
       "connected": "מחובר",
       "notConnected": "לא מחובר",
       "connectHint": "לחץ על הכפתור כדי להתחבר עם חשבון Google. תועבר לממשק Google לאישור הגישה.",
-      "missingClientId": "GOOGLE_CLIENT_ID אינו מוגדר בשרת — פנה למנהל המערכת."
+      "missingClientId": "GOOGLE_CLIENT_ID אינו מוגדר בשרת — פנה למנהל המערכת.",
+      "needsReauth": "החיבור פג — יש לחבר מחדש",
+      "needsReauthHint": "Google הפסיק לכבד את ההרשאה שניתנה (למשל אחרי ביטול גישה או פקיעת אישור). עד לחיבור מחדש לא נבדקות חפיפות מול יומן זה.",
+      "reconnectButton": "חבר מחדש"
     },
     "calendarPage": {
       "title": "יומן Google ארגוני",

@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { forbidden } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import { CheckCircle, AlertCircle, CalendarDays } from 'lucide-react'
+import { CheckCircle, AlertCircle, AlertTriangle, CalendarDays } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { listCalendars, resolveSelectedCalendars, type CalendarListEntry, type SelectedCalendar } from '@/lib/google-calendar'
@@ -24,12 +24,15 @@ export default async function CalendarSettingsPage({
   const db = createServiceRoleClient()
   const { data: org } = await db
     .from('organizations')
-    .select('google_calendar_email, google_calendar_refresh_token, google_calendar_selected_calendars')
+    .select('google_calendar_email, google_calendar_refresh_token, google_calendar_selected_calendars, google_calendar_needs_reauth_at')
     .eq('id', orgId)
     .single()
 
   const connectedEmail = org?.google_calendar_email ?? null
-  const isConnected    = Boolean(connectedEmail)
+  // Google refused the stored token (invalid_grant). The email is kept so the
+  // page can say "this connection expired" rather than "not connected".
+  const needsReauth    = Boolean(connectedEmail) && Boolean(org?.google_calendar_needs_reauth_at)
+  const isConnected    = Boolean(connectedEmail) && !needsReauth
 
   const selectedCalendars = resolveSelectedCalendars(org?.google_calendar_selected_calendars)
 
@@ -60,7 +63,9 @@ export default async function CalendarSettingsPage({
       )}
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        {isConnected ? (
+        {needsReauth ? (
+          <NeedsReauthState email={connectedEmail!} canConnect={canConnect} />
+        ) : isConnected ? (
           <ConnectedState email={connectedEmail!} />
         ) : (
           <DisconnectedState canConnect={canConnect} />
@@ -129,6 +134,51 @@ async function ConnectedState({ email }: { email: string }) {
           <dd className="font-mono text-gray-900 text-xs">{email}</dd>
         </div>
       </dl>
+
+      <hr className="border-gray-100" />
+
+      <div>
+        <p className="text-xs text-muted-foreground mb-2">{t('disconnectHint')}</p>
+        <DisconnectCalendarButton />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The token is stored but Google no longer honours it. Reconnecting runs the
+ * same OAuth flow; the callback overwrites the token and clears the flag.
+ */
+async function NeedsReauthState({ email, canConnect }: { email: string; canConnect: boolean }) {
+  const t = await getTranslations('settings.calendarPage')
+  const tG = await getTranslations('settings.googleCommon')
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-amber-700">
+        <AlertTriangle size={20} />
+        <span className="font-medium text-sm">{tG('needsReauth')}</span>
+      </div>
+
+      <dl className="text-sm">
+        <div className="flex justify-between">
+          <dt className="text-muted-foreground">{t('accountLabel')}</dt>
+          <dd className="font-mono text-gray-900 text-xs">{email}</dd>
+        </div>
+      </dl>
+
+      <p className="text-sm text-gray-600">{tG('needsReauthHint')}</p>
+
+      {canConnect ? (
+        <a
+          href="/api/google-calendar/connect?target=org"
+          className="inline-flex items-center gap-2 rounded-md bg-white border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+        >
+          <GoogleIcon />
+          {tG('reconnectButton')}
+        </a>
+      ) : (
+        <p className="text-sm text-red-600">{tG('missingClientId')}</p>
+      )}
 
       <hr className="border-gray-100" />
 

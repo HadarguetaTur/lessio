@@ -26,8 +26,10 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
   checkCalendarConflicts,
   resolveSelectedCalendars,
+  usableCalendarToken,
   type CalendarCheckStatus,
 } from './index'
+import { markCalendarConnectionsRevoked } from './markNeedsReauth'
 
 export interface ExternalBusyInterval {
   start: string // UTC ISO
@@ -72,12 +74,12 @@ export async function getExternalBusy(params: {
     await Promise.all([
       db
         .from('organizations')
-        .select('google_calendar_refresh_token, google_calendar_selected_calendars')
+        .select('google_calendar_refresh_token, google_calendar_selected_calendars, google_calendar_needs_reauth_at')
         .eq('id', orgId)
         .maybeSingle(),
       db
         .from('teachers')
-        .select('google_calendar_refresh_token, google_calendar_selected_calendars')
+        .select('google_calendar_refresh_token, google_calendar_selected_calendars, google_calendar_needs_reauth_at')
         .eq('id', teacherId)
         .maybeSingle(),
     ])
@@ -98,8 +100,13 @@ export async function getExternalBusy(params: {
     return { intervals: [], status: 'unknown_provider_error' }
   }
 
-  const orgToken     = org?.google_calendar_refresh_token ?? null
-  const teacherToken = teacher?.google_calendar_refresh_token ?? null
+  // A level Google has already refused (`needs_reauth_at` set) is treated as
+  // disconnected here too — deliberately. Failing every parent booking closed
+  // until the owner notices would turn a stale token into a shut booking book;
+  // the dead connection is visible on the settings page and connections hub,
+  // and reconnecting restores the blackout.
+  const orgToken     = usableCalendarToken(org)
+  const teacherToken = usableCalendarToken(teacher)
 
   // The common case — no calendar connected — costs zero Google traffic, and
   // "nothing to ask" is genuinely free rather than unknown. Reachable only now
@@ -114,6 +121,8 @@ export async function getExternalBusy(params: {
     timeMin:                  windowStartUtc,
     timeMax:                  windowEndUtc,
   })
+
+  markCalendarConnectionsRevoked({ orgId, teacherId, revoked: result.revoked })
 
   return {
     intervals: mergeBusyIntervals(result.conflicts.map(c => ({ start: c.start, end: c.end }))),

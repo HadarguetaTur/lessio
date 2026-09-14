@@ -148,6 +148,11 @@ interface Props {
   onSuccess?: () => void
   /** Durations open to the current audience — load via getOrgLessonDurations(orgId, audience). */
   durationValues: number[]
+  /**
+   * Where "reconnect the calendar" points when the Google check could not run.
+   * Owners manage the org calendar in settings; a teacher reconnects their own.
+   */
+  calendarReconnectHref?: string
 }
 
 const initialState: NewLessonState = { error: null }
@@ -170,6 +175,7 @@ export function NewLessonForm({
   onCancel,
   onSuccess,
   durationValues,
+  calendarReconnectHref = '/settings/calendar',
 }: Props) {
   const t = useTranslations('lessons')
   const tCommon = useTranslations('common')
@@ -690,10 +696,34 @@ export function NewLessonForm({
       }}
     >
       <DialogContent>
+        {/* Two different situations share this dialog and must not share its
+            copy. `calendarCheckFailed` means Google could not be read at all
+            (an expired connection, a timeout) — there is no event, and saying
+            "events were found" over an empty list read as a phantom conflict. */}
         <DialogHeader>
-          <DialogTitle>{t('calendarConfirm.title')}</DialogTitle>
-          <DialogDescription>{t('calendarConfirm.description')}</DialogDescription>
+          <DialogTitle>
+            {state.calendarCheckFailed
+              ? t('calendarConfirm.unavailableTitle')
+              : t('calendarConfirm.title')}
+          </DialogTitle>
+          <DialogDescription>
+            {state.calendarCheckFailed
+              ? t('calendarConfirm.unavailableDescription')
+              : t('calendarConfirm.description')}
+          </DialogDescription>
         </DialogHeader>
+        {state.calendarCheckFailed && (
+          // New tab: the form is uncontrolled and half-filled, and navigating
+          // away in this tab throws the lesson away.
+          <Link
+            href={calendarReconnectHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-sm font-medium text-primary hover:underline"
+          >
+            {t('calendarConfirm.reconnectLink')}
+          </Link>
+        )}
         {state.calendarConflicts && state.calendarConflicts.length > 0 && (
           <ul className="text-sm space-y-1 border rounded-lg p-3 bg-muted/40">
             {state.calendarConflicts.map((c, i) => (

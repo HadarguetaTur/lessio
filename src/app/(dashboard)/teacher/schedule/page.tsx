@@ -135,6 +135,7 @@ export default async function TeacherSchedulePage(props: {
         scheduleForm={scheduleForm}
         defaultTeacherId={teacher.id}
         allowGroupLessons={false}
+        calendarReconnectHref="/teacher/calendar-connect"
       >
         <Suspense fallback={null}>
           <LessonsNewLessonFromQuery />

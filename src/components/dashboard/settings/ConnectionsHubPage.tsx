@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
-import { Check, ChevronLeft } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getNavigationSaasFeatures } from '@/lib/saas/subscriptions'
@@ -19,8 +19,13 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 type ConnectionStatus = {
-  /** 'configured' = credentials saved but never verified (payment/receipts honesty). */
-  state: 'connected' | 'configured' | 'none'
+  /**
+   * 'configured' = credentials saved but never verified (payment/receipts
+   * honesty). 'needsReauth' = credentials saved and the provider has since
+   * refused them (Google Calendar invalid_grant) — the one non-WhatsApp
+   * connection whose failure Lessio does learn about.
+   */
+  state: 'connected' | 'configured' | 'needsReauth' | 'none'
   detail?: string
   /**
    * WhatsApp alone renders its own badge. Every other connection here can only
@@ -62,7 +67,7 @@ export async function ConnectionsHubPage() {
     db
       .from('organizations')
       .select(
-        'payment_provider, receipt_config_encrypted, receipt_mode, receipt_provider, whatsapp_phone_number_id, gmail_connected_email, google_calendar_email, ai_config_encrypted, ai_provider'
+        'payment_provider, receipt_config_encrypted, receipt_mode, receipt_provider, whatsapp_phone_number_id, gmail_connected_email, google_calendar_email, google_calendar_needs_reauth_at, ai_config_encrypted, ai_provider'
       )
       .eq('id', orgId)
       .single(),
@@ -107,7 +112,10 @@ export async function ConnectionsHubPage() {
       ? { state: 'connected', detail: org.ai_provider ?? undefined }
       : { state: 'none' },
     calendar: org?.google_calendar_email
-      ? { state: 'connected', detail: org.google_calendar_email }
+      ? {
+          state: org.google_calendar_needs_reauth_at ? 'needsReauth' : 'connected',
+          detail: org.google_calendar_email,
+        }
       : { state: 'none' },
     integrations:
       apiKeys.length > 0
@@ -151,6 +159,14 @@ export async function ConnectionsHubPage() {
                                   state={status.wa.state}
                                   detail={status.wa.displayPhoneNumber}
                                 />
+                              ) : status.state === 'needsReauth' ? (
+                                <Badge className="border-amber-200 bg-amber-50 text-amber-800">
+                                  <AlertTriangle aria-hidden />
+                                  <span className="truncate">
+                                    {t('connectionsHub.status.needsReauth')}
+                                    {status.detail ? ` · ${status.detail}` : ''}
+                                  </span>
+                                </Badge>
                               ) : isOn ? (
                                 <Badge className="border-green-200 bg-green-50 text-green-700">
                                   <Check aria-hidden />

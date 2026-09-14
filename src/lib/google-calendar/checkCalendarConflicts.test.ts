@@ -95,6 +95,19 @@ describe('checkCalendarConflicts', () => {
     expect(result.status).toBe('unknown_provider_error')
     expect(result.conflicts).toEqual([])
     expect(result.unreachable).toEqual(['teacher'])
+    // Retrying will not help; the caller flags the connection for re-auth.
+    expect(result.revoked).toEqual(['teacher'])
+  })
+
+  it('does not call a transient token-endpoint failure revoked', async () => {
+    // A 5xx or a 400 for any other reason is unreachable but may heal on retry.
+    fetchMock.mockResolvedValueOnce(jsonResponse({ error: 'internal_failure' }, false, 500))
+
+    const result = await checkCalendarConflicts(BASE)
+
+    expect(result.status).toBe('unknown_provider_error')
+    expect(result.unreachable).toEqual(['teacher'])
+    expect(result.revoked).toEqual([])
   })
 
   it('reports unknown_provider_error when the request times out', async () => {
@@ -108,6 +121,7 @@ describe('checkCalendarConflicts', () => {
 
     expect(result.status).toBe('unknown_provider_error')
     expect(result.unreachable).toEqual(['teacher'])
+    expect(result.revoked).toEqual([])
   })
 
   it('bounds every Google call with an abort signal', async () => {

@@ -38,6 +38,7 @@ export default async function TeacherNewLessonPage() {
         getRecommendedSlots={getRecommendedLessonSlotsAction}
         minDateStr={todayStr}
         durationValues={durations.map((item) => item.minutes)}
+        calendarReconnectHref="/teacher/calendar-connect"
       />
     </div>
   )

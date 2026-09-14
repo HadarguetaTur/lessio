@@ -17,9 +17,11 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
   checkCalendarConflicts,
   resolveSelectedCalendars,
+  usableCalendarToken,
   CalendarConflict,
   type CalendarCheckStatus,
 } from './index'
+import { markCalendarConnectionsRevoked } from './markNeedsReauth'
 
 export type { CalendarConflict, CalendarCheckStatus }
 
@@ -42,14 +44,14 @@ export async function checkLessonCalendarConflicts(params: {
   // Fetch org calendar token + timezone + calendar selection in one query
   const { data: org, error: orgError } = await db
     .from('organizations')
-    .select('google_calendar_refresh_token, google_calendar_selected_calendars, timezone')
+    .select('google_calendar_refresh_token, google_calendar_selected_calendars, google_calendar_needs_reauth_at, timezone')
     .eq('id', orgId)
     .maybeSingle()
 
   // Fetch teacher's calendar token + calendar selection
   const { data: teacher, error: teacherError } = await db
     .from('teachers')
-    .select('google_calendar_refresh_token, google_calendar_selected_calendars')
+    .select('google_calendar_refresh_token, google_calendar_selected_calendars, google_calendar_needs_reauth_at')
     .eq('id', teacherId)
     .maybeSingle()
 
@@ -66,8 +68,12 @@ export async function checkLessonCalendarConflicts(params: {
     return { conflicts: [], status: 'unknown_provider_error' }
   }
 
-  const orgToken     = org?.google_calendar_refresh_token ?? null
-  const teacherToken = teacher?.google_calendar_refresh_token ?? null
+  // A level flagged `needs_reauth` reads as disconnected: Google already refused
+  // its token, and asking again would only raise the "could not read your
+  // calendar" dialog on every lesson. The settings page carries the reconnect
+  // prompt instead.
+  const orgToken     = usableCalendarToken(org)
+  const teacherToken = usableCalendarToken(teacher)
 
   // Skip entirely if neither calendar is connected. Nothing to ask is free,
   // not unknown — this org has opted out of the check altogether.
@@ -93,6 +99,11 @@ export async function checkLessonCalendarConflicts(params: {
     timeMin,
     timeMax,
   })
+
+  // The first refusal still surfaces as unknown_provider_error (the staff
+  // dialog says the connection expired and links to reconnect); from the next
+  // lesson on the level is skipped above.
+  markCalendarConnectionsRevoked({ orgId, teacherId, revoked: result.revoked })
 
   return { conflicts: result.conflicts, status: result.status }
 }

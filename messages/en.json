@@ -1050,7 +1050,10 @@
       "description": "Google Calendar events were found overlapping the requested time slot. You can still schedule the lesson.",
       "orgCalendar": "Org calendar",
       "teacherCalendar": "Teacher calendar",
-      "scheduleAnyway": "Schedule anyway"
+      "scheduleAnyway": "Schedule anyway",
+      "unavailableTitle": "Google Calendar could not be read",
+      "unavailableDescription": "We could not read the Google Calendar, so we do not know whether this time is free. The calendar connection may have expired and needs to be reconnected. You can still schedule the lesson.",
+      "reconnectLink": "Reconnect the calendar"
     },
     "lessonNotesTitle": "Lesson notes",
     "lessonNotesEmpty": "No notes for this lesson.",
@@ -1541,7 +1544,8 @@
         "configured": "Configured",
         "notConnected": "Not connected",
         "viaPaymentProvider": "via payment provider",
-        "apiKeys": "{count, plural, one {# active key} other {# active keys}}"
+        "apiKeys": "{count, plural, one {# active key} other {# active keys}}",
+        "needsReauth": "Connection expired"
       }
     },
     "cardHint": "Open the setting to update the relevant configuration.",
@@ -2170,7 +2174,10 @@
       "connected": "Connected",
       "notConnected": "Not connected",
       "connectHint": "Click the button to sign in with your Google account. You will be taken to Google to approve access.",
-      "missingClientId": "GOOGLE_CLIENT_ID is not configured on the server — contact your system administrator."
+      "missingClientId": "GOOGLE_CLIENT_ID is not configured on the server — contact your system administrator.",
+      "needsReauth": "Connection expired — reconnect",
+      "needsReauthHint": "Google no longer honours the access that was granted (for example after access was revoked or the authorisation expired). Conflicts are not checked against this calendar until it is reconnected.",
+      "reconnectButton": "Reconnect"
     },
     "calendarPage": {
       "title": "Organization Google Calendar",

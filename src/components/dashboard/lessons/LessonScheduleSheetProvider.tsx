@@ -38,6 +38,8 @@ type ProviderProps = {
   defaultTeacherId?: string
   /** Teachers only: individual lessons; hide group flow in the sheet. */
   allowGroupLessons?: boolean
+  /** Passed through to the form: where "reconnect the calendar" points. */
+  calendarReconnectHref?: string
 }
 
 export function LessonScheduleSheetProvider({
@@ -46,6 +48,7 @@ export function LessonScheduleSheetProvider({
   scheduleForm,
   defaultTeacherId,
   allowGroupLessons = true,
+  calendarReconnectHref,
 }: ProviderProps) {
   const [open, setOpen] = useState(false)
   const [pickedDate, setPickedDate] = useState<string | null>(null)
@@ -90,6 +93,7 @@ export function LessonScheduleSheetProvider({
           durationValues={scheduleForm.durationValues}
           defaultTeacherId={defaultTeacherId}
           allowGroupLessons={allowGroupLessons}
+          calendarReconnectHref={calendarReconnectHref}
         />
       ) : null}
     </LessonScheduleSheetContext.Provider>

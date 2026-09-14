@@ -20,6 +20,7 @@ export async function disconnectTeacherCalendar() {
       google_calendar_refresh_token:      null,
       google_calendar_email:              null,
       google_calendar_selected_calendars: DEFAULT_SELECTED_CALENDARS,
+        google_calendar_needs_reauth_at:    null,
     })
     .eq('profile_id', session.profileId)
 

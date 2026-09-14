@@ -103,6 +103,7 @@ export async function GET(request: NextRequest) {
         google_calendar_refresh_token:      encryptedToken,
         google_calendar_email:              tokens.email,
         google_calendar_selected_calendars: DEFAULT_SELECTED_CALENDARS,
+        google_calendar_needs_reauth_at:    null,
       })
       .eq('profile_id', user.id)
       .select('id')
@@ -136,6 +137,7 @@ export async function GET(request: NextRequest) {
         google_calendar_refresh_token:      encryptedToken,
         google_calendar_email:              tokens.email,
         google_calendar_selected_calendars: DEFAULT_SELECTED_CALENDARS,
+        google_calendar_needs_reauth_at:    null,
       })
       .eq('id', profile.organization_id)
 

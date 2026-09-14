@@ -131,6 +131,25 @@ export async function exchangeCalendarCode(code: string): Promise<CalendarTokens
 
 // ── Token refresh ────────────────────────────────────────────────────────────
 
+/**
+ * Google refused the refresh token itself (`invalid_grant`): the user revoked
+ * access, or the token was minted while the OAuth app was in Testing mode and
+ * expired after seven days. Unlike a timeout or a 5xx this will not heal on
+ * retry — only a reconnect does — so callers mark the connection instead of
+ * asking again on every lesson.
+ */
+export class CalendarTokenRevokedError extends Error {
+  constructor(status: number, body: string) {
+    super(`[google-calendar] Refresh token revoked (${status}): ${body}`)
+    this.name = 'CalendarTokenRevokedError'
+  }
+}
+
+/** Google's token endpoint answers a dead refresh token with 400 invalid_grant. */
+export function isRevokedTokenResponse(status: number, body: string): boolean {
+  return (status === 400 || status === 401) && /invalid_grant/.test(body)
+}
+
 async function getAccessToken(encryptedRefreshToken: string): Promise<string> {
   const refreshToken = decryptCalendarToken(encryptedRefreshToken)
   const clientId     = process.env.GOOGLE_CLIENT_ID
@@ -152,6 +171,9 @@ async function getAccessToken(encryptedRefreshToken: string): Promise<string> {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '')
+    if (isRevokedTokenResponse(res.status, body)) {
+      throw new CalendarTokenRevokedError(res.status, body)
+    }
     throw new Error(`[google-calendar] Token refresh failed ${res.status}: ${body}`)
   }
 
@@ -307,6 +329,11 @@ export interface CalendarFreeBusyResult {
   conflicts: CalendarConflict[]
   /** Which connected level could not be answered at all. */
   unreachable: ('org' | 'teacher')[]
+  /**
+   * The subset of `unreachable` whose refresh token Google refused outright
+   * (`invalid_grant`). Retrying will not help; the connection needs a reconnect.
+   */
+  revoked: ('org' | 'teacher')[]
   /** Calendars the response itself reported an error for, or omitted. */
   erroredCalendarIds: string[]
 }
@@ -386,6 +413,7 @@ export async function checkCalendarConflicts(params: {
 
   const conflicts: CalendarConflict[] = []
   const unreachable: ('org' | 'teacher')[] = []
+  const revoked: ('org' | 'teacher')[] = []
   const erroredCalendarIds: string[] = []
 
   const levels: { calendar: 'org' | 'teacher'; token: string | null; calendars: SelectedCalendar[] }[] = [
@@ -404,6 +432,7 @@ export async function checkCalendarConflicts(params: {
       // here, and all of them mean "we do not know", not "nothing is booked".
       console.error(`[google-calendar] ${level.calendar} freebusy check failed`, { err })
       unreachable.push(level.calendar)
+      if (err instanceof CalendarTokenRevokedError) revoked.push(level.calendar)
     }
   }
 
@@ -414,5 +443,28 @@ export async function checkCalendarConflicts(params: {
   const status: CalendarCheckStatus =
     conflicts.length > 0 ? 'busy' : degraded ? 'unknown_provider_error' : 'free'
 
-  return { status, conflicts, unreachable, erroredCalendarIds }
+  return { status, conflicts, unreachable, revoked, erroredCalendarIds }
+}
+
+// ── Revoked-connection bookkeeping ───────────────────────────────────────────
+
+/**
+ * Shape of the two connection rows (organizations / teachers) as the conflict
+ * checkers read them. A level counts as connected only while it holds a token
+ * AND has not been flagged as needing re-authorisation: a flagged level is
+ * treated exactly like a disconnected one — nothing to ask, so nothing to warn
+ * about — until the owner or teacher reconnects (the OAuth callback clears the
+ * flag). Without this, a dead token raised "we could not read your calendar"
+ * on every single lesson, which staff read as a phantom conflict.
+ */
+export interface CalendarConnectionRow {
+  google_calendar_refresh_token:      string | null
+  google_calendar_selected_calendars: unknown
+  google_calendar_needs_reauth_at?:   string | null
+}
+
+export function usableCalendarToken(row: CalendarConnectionRow | null | undefined): string | null {
+  if (!row?.google_calendar_refresh_token) return null
+  if (row.google_calendar_needs_reauth_at) return null
+  return row.google_calendar_refresh_token
 }

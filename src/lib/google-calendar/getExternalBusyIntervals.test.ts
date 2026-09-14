@@ -101,6 +101,7 @@ describe('getExternalBusyIntervals', () => {
         { start: '2026-09-06T10:30:00Z', end: '2026-09-06T12:00:00Z', calendar: 'teacher', label: null },
       ],
       unreachable: [],
+      revoked: [],
       erroredCalendarIds: [],
     })
 
@@ -164,6 +165,7 @@ describe('getExternalBusyIntervals', () => {
       status: 'free',
       conflicts: [],
       unreachable: [],
+      revoked: [],
       erroredCalendarIds: [],
     })
 
@@ -211,6 +213,7 @@ describe('getExternalBusy — the tri-state', () => {
       status: 'unknown_provider_error',
       conflicts: [],
       unreachable: ['teacher'],
+      revoked: [],
       erroredCalendarIds: [],
     })
 
@@ -228,6 +231,7 @@ describe('getExternalBusy — the tri-state', () => {
       status: 'unknown_provider_error',
       conflicts: [],
       unreachable: ['org'],
+      revoked: [],
       erroredCalendarIds: [],
     })
 

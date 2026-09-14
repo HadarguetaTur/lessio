@@ -21,6 +21,8 @@ export interface NewLessonSheetProps {
   durationValues: number[]
   defaultTeacherId?: string
   allowGroupLessons?: boolean
+  /** Passed through to the form: where "reconnect the calendar" points. */
+  calendarReconnectHref?: string
   pricingDefaults?: PricingDefaults
 }
 
@@ -35,6 +37,7 @@ export function NewLessonSheet({
   durationValues,
   defaultTeacherId,
   allowGroupLessons = true,
+  calendarReconnectHref,
   pricingDefaults,
 }: NewLessonSheetProps) {
   const router = useRouter()
@@ -90,6 +93,7 @@ export function NewLessonSheet({
               initialDate={initialDate}
               defaultTeacherId={defaultTeacherId}
               allowGroupLessons={allowGroupLessons}
+              calendarReconnectHref={calendarReconnectHref}
               pricingDefaults={pricingDefaults}
               calendarFlow
               variant="sheet"

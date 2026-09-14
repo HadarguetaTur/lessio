@@ -16,7 +16,7 @@ describe('mapLesson', () => {
     status: 'scheduled',
     cancel_reason: null,
     series_id: null,
-    teachers: { id: 't1', profiles: { full_name: 'מורה' } },
+    teachers: { id: 't1', color: null, profiles: { full_name: 'מורה' } },
   }
 
   it('keeps every enrolled student, skipping orphaned enrolments', () => {

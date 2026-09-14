@@ -935,6 +935,39 @@ Decided:
   owner/admin tools; a teacher's service update to her own families goes
   through the thread's closed-window send.
 
+## 44. On the Calendar, Status Is the Background and the Teacher Is the Stripe
+
+✅ DECIDED (Sep 2026): a centre with several teachers must be able to read the
+whole-centre calendar and know whose lesson each card is, and switching teacher
+must take one click.
+
+* **Every teacher has a stable colour.** `teachers.color` holds a key from the
+  app palette (`src/lib/teachers/color.ts`); NULL derives a key from the teacher
+  id, so the colour never shifts when a teacher is added or the roster is
+  re-ordered. The owner may pick a different key in the teacher form. Only keys
+  are stored — the Tailwind classes live in code as literal strings.
+* **Colour carries one meaning per surface.** The card background stays the
+  lesson status (scheduled / completed / no-show / cancelled). The teacher is a
+  start-side stripe (`border-s-4`) on week and day cards and a dot on month
+  chips. The card names the teacher only on the whole-centre view; a filtered
+  view keeps the stripe and drops the name.
+* **A solo tutor sees none of it.** With one active teacher there is no picker,
+  no stripe and no name — the same rule that already drops "which teacher?"
+  from forms.
+* **One teacher picker for every view**, `CalendarTeacherPicker`: chips with the
+  teacher's dot on desktop (up to eight teachers), a native select on mobile
+  and for longer rosters. The old pair of controls (one inside `WeekNav`, one
+  for day/month) is gone.
+* **A URL-driven control must show the choice before the server confirms it.**
+  The filter lives in the URL, so picking a teacher is a navigation; a
+  controlled `<select value={serverProp}>` snapped back to the old value while
+  the round trip was in flight, and every retry restarted the navigation
+  ("it only works on the sixth try"). The picker wraps `router.push` in
+  `useTransition`, shows the optimistic value while pending, and is inert until
+  the navigation settles. It edits the current query (`withTeacherParam`)
+  instead of rebuilding it, so view, week, day, month, student and cancelled
+  all survive.
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

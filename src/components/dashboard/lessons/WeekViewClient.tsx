@@ -7,6 +7,7 @@ import { formatTime } from '@/lib/lessons/format'
 import { getLessonTitle } from '@/lib/lessons/title'
 import type { Lesson, LessonStatus } from '@/lib/lessons/types'
 import type { AppLocale } from '@/lib/i18n/locale'
+import { TEACHER_COLOR_CLASSES, resolveTeacherColor } from '@/lib/teachers/color'
 import { cn } from '@/lib/utils'
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
@@ -34,6 +35,10 @@ export interface WeekViewClientProps {
   studentId?: string
   dayNames: string[]
   appLocale: AppLocale
+  /** Status is the card background; with several teachers the teacher is its stripe. */
+  showTeacherStripe?: boolean
+  /** Name the teacher on the card (whole-centre view, no teacher filter). */
+  showTeacherName?: boolean
   /** owner/admin: open schedule sheet for this local date */
   pickDayEnabled?: boolean
   onPickDay?: (dateStr: string) => void
@@ -57,6 +62,8 @@ export function WeekViewClient({
   studentId,
   dayNames,
   appLocale,
+  showTeacherStripe = false,
+  showTeacherName = false,
   pickDayEnabled,
   onPickDay,
   legend,
@@ -138,23 +145,37 @@ export function WeekViewClient({
         )}
 
         <div className="p-1 space-y-1">
-          {dayLessons.map((lesson) => (
-            <Link
-              key={lesson.id}
-              href={lessonHref(lesson.id)}
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-              className={`block rounded px-1.5 py-1 text-xs leading-snug ${STATUS_STYLES[lesson.status]} hover:opacity-75 transition-opacity`}
-            >
-              <span className="flex items-center justify-between gap-1">
-                <span dir="ltr" className="font-mono">
-                  {formatTime(lesson.start_at, timezone, appLocale)}
+          {dayLessons.map((lesson) => {
+            const title = getLessonTitle(lesson, t)
+            return (
+              <Link
+                key={lesson.id}
+                href={lessonHref(lesson.id)}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+                title={showTeacherStripe ? `${title} — ${lesson.teacher.full_name}` : undefined}
+                className={cn(
+                  'block rounded px-1.5 py-1 text-xs leading-snug hover:opacity-75 transition-opacity',
+                  STATUS_STYLES[lesson.status],
+                  showTeacherStripe && 'border-s-4',
+                  showTeacherStripe && TEACHER_COLOR_CLASSES[resolveTeacherColor(lesson.teacher)].stripe
+                )}
+              >
+                <span className="flex items-center justify-between gap-1">
+                  <span dir="ltr" className="font-mono">
+                    {formatTime(lesson.start_at, timezone, appLocale)}
+                  </span>
+                  {lesson.series_id && <Repeat size={10} className="shrink-0 opacity-70" />}
                 </span>
-                {lesson.series_id && <Repeat size={10} className="shrink-0 opacity-70" />}
-              </span>
-              <span className="truncate block">{getLessonTitle(lesson, t)}</span>
-            </Link>
-          ))}
+                <span className="truncate block">{title}</span>
+                {showTeacherName && (
+                  <span className="truncate block text-[10px] opacity-75">
+                    {lesson.teacher.full_name}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
         </div>
       </div>
     )

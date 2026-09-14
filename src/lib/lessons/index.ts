@@ -79,8 +79,8 @@ export function getWeekDays(weekSundayStr: string, timezone: string): string[] {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapLesson(l: any): Lesson {
   const rawTeacher = l.teachers as
-    | { id: string; profiles: { full_name: string } | null }
-    | { id: string; profiles: { full_name: string } | null }[]
+    | { id: string; color?: string | null; profiles: { full_name: string } | null }
+    | { id: string; color?: string | null; profiles: { full_name: string } | null }[]
     | null
   const teacherRow = Array.isArray(rawTeacher) ? rawTeacher[0] ?? null : rawTeacher
   // Orphaned enrolments (student FK resolved to null) are skipped rather than
@@ -107,6 +107,7 @@ export function mapLesson(l: any): Lesson {
     teacher: {
       id: teacherRow?.id ?? '',
       full_name: teacherRow?.profiles?.full_name ?? '—',
+      color: teacherRow?.color ?? null,
     },
     students,
     group: groupRow ? { id: groupRow.id, name: groupRow.name } : null,
@@ -114,7 +115,7 @@ export function mapLesson(l: any): Lesson {
 }
 
 const LESSON_SELECT =
-  'id, start_at, end_at, status, cancel_reason, lesson_type, series_id, group_id, teachers(id, profiles(full_name)), lesson_students(student_id, students(id, full_name)), student_groups(id, name)'
+  'id, start_at, end_at, status, cancel_reason, lesson_type, series_id, group_id, teachers(id, color, profiles(full_name)), lesson_students(student_id, students(id, full_name)), student_groups(id, name)'
 
 async function getLessonIdsForStudent(studentId: string): Promise<string[]> {
   const supabase = await createClient()

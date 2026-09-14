@@ -26,6 +26,8 @@ export async function buildMonthCalendarPayload(input: {
   scheduleBasePath?: string
   teacherId?: string
   studentId?: string
+  /** More than one active teacher: chips carry the teacher colour dot. */
+  showTeacherStripe?: boolean
 }): Promise<MonthCalendarPayload> {
   const {
     cells,
@@ -38,6 +40,7 @@ export async function buildMonthCalendarPayload(input: {
     scheduleBasePath,
     teacherId,
     studentId,
+    showTeacherStripe = false,
   } = input
   const locale = await getLocale()
   const appLocale = parseAppLocale(locale)
@@ -59,6 +62,7 @@ export async function buildMonthCalendarPayload(input: {
     scheduleBasePath,
     teacherId,
     studentId,
+    showTeacherStripe,
     dayHeaders,
     appLocale,
   }

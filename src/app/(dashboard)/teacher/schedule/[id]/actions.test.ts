@@ -31,14 +31,14 @@ const TEACHER_RECORD = { id: 'teacher-1', is_active: true }
 const LESSON_OWN = {
   id: 'lesson-1',
   status: 'scheduled',
-  teacher: { id: 'teacher-1', full_name: 'מורה א' },
+  teacher: { id: 'teacher-1', full_name: 'מורה א', color: null },
   students: [{ id: 'student-1', full_name: 'תלמיד א' }],
   group: null,
   start_at: '2026-03-24T10:00:00Z',
   end_at: '2026-03-24T11:00:00Z',
   cancel_reason: null,
 }
-const LESSON_OTHER_TEACHER = { ...LESSON_OWN, teacher: { id: 'teacher-99', full_name: 'מורה אחר' } }
+const LESSON_OTHER_TEACHER = { ...LESSON_OWN, teacher: { id: 'teacher-99', full_name: 'מורה אחר', color: null } }
 
 const prevState = { error: null }
 

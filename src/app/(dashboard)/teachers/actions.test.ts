@@ -48,7 +48,61 @@ vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
 }))
 
-import { inviteTeacher } from './actions'
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+}))
+
+// updateTeacher re-reads the teacher only to sync the profile phone; a null
+// read skips that branch and keeps these tests about the teachers row.
+vi.mock('@/lib/teachers', () => ({
+  getTeacherById: vi.fn().mockResolvedValue(null),
+}))
+
+import { inviteTeacher, updateTeacher } from './actions'
+import { createClient } from '@/lib/supabase/server'
+
+describe('updateTeacher', () => {
+  const mockUpdate = vi.fn()
+
+  function updateChain() {
+    // supabase.from('teachers').update({...}).eq('id', ..).eq('organization_id', ..)
+    const eq2 = vi.fn().mockResolvedValue({ error: null })
+    const eq1 = vi.fn().mockReturnValue({ eq: eq2 })
+    mockUpdate.mockReturnValue({ eq: eq1 })
+    return { from: vi.fn().mockReturnValue({ update: mockUpdate }) }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetSession.mockResolvedValue({ orgId: 'org-1', role: 'owner' })
+    vi.mocked(createClient).mockResolvedValue(updateChain() as never)
+  })
+
+  function form(fields: Record<string, string>) {
+    const fd = new FormData()
+    fd.set('bio', '')
+    fd.set('hourly_rate', '')
+    fd.set('phone', '')
+    for (const [k, v] of Object.entries(fields)) fd.set(k, v)
+    return fd
+  }
+
+  it('stores a palette colour', async () => {
+    await expect(updateTeacher('t-1', null, form({ color: 'rose' }))).resolves.toBeNull()
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ color: 'rose' }))
+  })
+
+  it('clears the colour when "automatic" is chosen', async () => {
+    await expect(updateTeacher('t-1', null, form({ color: '' }))).resolves.toBeNull()
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ color: null }))
+  })
+
+  it('rejects a colour outside the palette without writing', async () => {
+    const result = await updateTeacher('t-1', null, form({ color: 'bg-red-500' }))
+    expect(result).toEqual({ error: expect.any(String) })
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+})
 
 describe('inviteTeacher', () => {
   beforeEach(() => {

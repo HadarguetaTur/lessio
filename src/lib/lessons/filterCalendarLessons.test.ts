@@ -18,7 +18,7 @@ function lesson(
     lesson_type: 'individual',
     cancel_reason: status === 'cancelled' ? cancel_reason ?? 'Parent asked' : null,
     series_id: null,
-    teacher: { id: 't1', full_name: 'Teacher' },
+    teacher: { id: 't1', full_name: 'Teacher', color: null },
     students: [{ id: 's1', full_name: 'Student' }],
     group: null,
   }

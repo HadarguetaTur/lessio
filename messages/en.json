@@ -847,8 +847,11 @@
       "email": "Email",
       "hourlyRate": "Hourly Rate (₪)",
       "subjects": "Subjects",
-      "hourlyRatePlaceholder": "e.g. 150"
+      "hourlyRatePlaceholder": "e.g. 150",
+      "color": "Calendar colour",
+      "colorAuto": "Automatic"
     },
+    "colorHint": "The colour marks this teacher's lessons on the calendar, so it is clear at a glance whose lesson each one is.",
     "availability": "Weekly Availability",
     "overrides": "Schedule Exceptions",
     "archive": "Archive",
@@ -993,6 +996,8 @@
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
     "allTeachers": "All Teachers",
+    "teacherFilter": "Filter by teacher",
+    "teacherFilterPending": "Updating the calendar…",
     "showCancelled": "Cancelled",
     "showCancelledHint": "Show cancelled lessons",
     "viewDay": "Daily",

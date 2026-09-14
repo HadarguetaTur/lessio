@@ -73,6 +73,7 @@ interface TeacherRowActionsProps {
     profileName: string
     bio?: string | null
     hourly_rate?: number | null
+    color?: string | null
     is_active: boolean
   }
   updateAction: FormAction
@@ -146,9 +147,11 @@ export function TeacherRowActions({
           </SheetHeader>
           <TeacherEditForm
             action={updateAction}
+            teacherId={teacher.id}
             defaultValues={{
               bio: teacher.bio,
               hourly_rate: teacher.hourly_rate,
+              color: teacher.color,
             }}
             onCancel={() => setEditOpen(false)}
             onSuccess={() => {

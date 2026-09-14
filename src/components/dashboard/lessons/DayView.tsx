@@ -4,6 +4,8 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import type { Lesson, LessonStatus } from '@/lib/lessons'
 import { formatTime, getLessonTitle } from '@/lib/lessons'
+import { TEACHER_COLOR_CLASSES, resolveTeacherColor } from '@/lib/teachers/color'
+import { cn } from '@/lib/utils'
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-50 text-blue-700 border border-blue-200',
@@ -33,6 +35,8 @@ interface DayViewProps {
   scheduleBasePath?: string
   teacherId?: string
   studentId?: string
+  /** Several teachers: each row carries the teacher's colour stripe. */
+  showTeacherStripe?: boolean
 }
 
 export async function DayView({
@@ -44,6 +48,7 @@ export async function DayView({
   scheduleBasePath = '/lessons',
   teacherId,
   studentId,
+  showTeacherStripe = false,
 }: DayViewProps) {
   const [t, tCommon, locale] = await Promise.all([
     getTranslations('lessons'),
@@ -95,7 +100,12 @@ export async function DayView({
           <Link
             key={lesson.id}
             href={lessonHref}
-            className={`flex items-center gap-4 px-4 py-3 rounded-lg border transition-opacity hover:opacity-80 ${STATUS_STYLES[lesson.status]}`}
+            className={cn(
+              'flex items-center gap-4 px-4 py-3 rounded-lg border transition-opacity hover:opacity-80',
+              STATUS_STYLES[lesson.status],
+              showTeacherStripe && 'border-s-4',
+              showTeacherStripe && TEACHER_COLOR_CLASSES[resolveTeacherColor(lesson.teacher)].stripe
+            )}
           >
             <div className="text-center min-w-[56px]">
               <p dir="ltr" className="font-mono text-sm font-bold">{startTime}</p>

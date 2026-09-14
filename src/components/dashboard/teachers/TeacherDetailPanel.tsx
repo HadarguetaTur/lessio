@@ -20,6 +20,7 @@ export interface TeacherDetailPanelProps {
     id: string
     bio: string | null
     hourly_rate: number | null
+    color?: string | null
     is_active: boolean
     profile: { full_name: string; phone: string | null }
   }
@@ -189,10 +190,12 @@ export function TeacherDetailPanel({
           <div className="p-4 sm:p-5">
             <TeacherEditForm
               action={updateAction}
+              teacherId={teacher.id}
               defaultValues={{
                 bio: teacher.bio,
                 hourly_rate: teacher.hourly_rate,
                 phone: teacher.profile.phone,
+                color: teacher.color,
               }}
               onSuccess={handleSaved}
               onCancel={() => setEditing(false)}

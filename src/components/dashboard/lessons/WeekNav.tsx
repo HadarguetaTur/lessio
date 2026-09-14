@@ -7,28 +7,19 @@ import { useLocale, useTranslations } from 'next-intl'
 import { formatWeekRangeLabel, parseAppLocale } from '@/lib/i18n/locale'
 import { preserveCalendarParams } from './calendarParams'
 
-interface TeacherOption {
-  id: string
-  full_name: string
-}
-
 interface WeekNavProps {
   weekStr: string
-  teachers: TeacherOption[]
+  /** Kept on every week hop so the admin calendar stays on the chosen teacher. */
   teacherId?: string
   currentWeekStr?: string
   scheduleBasePath?: string
-  /** When false, hide the teacher filter (e.g. teacher viewing only their own schedule). */
-  showTeacherFilter?: boolean
 }
 
 export function WeekNav({
   weekStr,
-  teachers,
   teacherId,
   currentWeekStr,
   scheduleBasePath = '/lessons',
-  showTeacherFilter = true,
 }: WeekNavProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -42,13 +33,6 @@ export function WeekNav({
     const nextStr = next.toISOString().substring(0, 10)
     const params = new URLSearchParams({ week: nextStr })
     if (scheduleBasePath === '/lessons' && teacherId) params.set('teacher', teacherId)
-    preserveCalendarParams(searchParams, params)
-    router.push(`${scheduleBasePath}?${params.toString()}`)
-  }
-
-  function onTeacherChange(val: string) {
-    const params = new URLSearchParams({ week: weekStr })
-    if (val) params.set('teacher', val)
     preserveCalendarParams(searchParams, params)
     router.push(`${scheduleBasePath}?${params.toString()}`)
   }
@@ -93,23 +77,6 @@ export function WeekNav({
           {isRtl ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
         </button>
       </div>
-
-      {/* Teacher filter */}
-      {showTeacherFilter ? (
-        <select
-          value={teacherId ?? ''}
-          onChange={(e) => onTeacherChange(e.target.value)}
-          aria-label={t('allTeachers')}
-          className="w-full min-w-0 text-sm border border-gray-200 rounded-md px-2 py-1.5 text-center bg-white text-gray-700 sm:w-auto sm:max-w-xs sm:text-start"
-        >
-          <option value="">{t('allTeachers')}</option>
-          {teachers.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.full_name}
-            </option>
-          ))}
-        </select>
-      ) : null}
     </div>
   )
 }

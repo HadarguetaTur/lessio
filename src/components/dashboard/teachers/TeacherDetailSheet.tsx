@@ -284,9 +284,12 @@ export function TeacherDetailSheet({
                     <div className="p-4">
                       <TeacherEditForm
                         action={updateAction}
+                        teacherId={teacher.id}
                         defaultValues={{
                           bio: teacher.bio,
                           hourly_rate: teacher.hourly_rate,
+                          phone: teacher.profile.phone,
+                          color: teacher.color,
                         }}
                         onSuccess={handleSaved}
                         onCancel={() => setEditing(false)}

@@ -8,6 +8,8 @@ export interface Teacher {
   break_duration_minutes: number | null
   is_active: boolean
   created_at: string
+  /** Calendar palette key, or null to derive one from the id (resolveTeacherColor). */
+  color: string | null
   profile: {
     id: string
     full_name: string
@@ -23,12 +25,13 @@ type TeacherRow = {
   break_duration_minutes: number | null
   is_active: boolean
   created_at: string
+  color: string | null
   profiles: unknown
 }
 
 /** The column list every teacher read shares. */
 const TEACHER_COLUMNS =
-  'id, bio, hourly_rate, break_duration_minutes, is_active, created_at, profiles(id, full_name, phone)'
+  'id, bio, hourly_rate, break_duration_minutes, is_active, created_at, color, profiles(id, full_name, phone)'
 
 function mapTeacher(data: TeacherRow): Teacher {
   return {
@@ -38,6 +41,7 @@ function mapTeacher(data: TeacherRow): Teacher {
     break_duration_minutes: data.break_duration_minutes ?? null,
     is_active: data.is_active,
     created_at: data.created_at,
+    color: data.color ?? null,
     profile: (data.profiles as unknown) as { id: string; full_name: string; phone: string | null },
   }
 }

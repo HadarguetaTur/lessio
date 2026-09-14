@@ -6,6 +6,7 @@ import { formatTime } from '@/lib/lessons/format'
 import { getLessonTitle } from '@/lib/lessons/title'
 import type { Lesson, LessonStatus } from '@/lib/lessons/types'
 import type { AppLocale } from '@/lib/i18n/locale'
+import { TEACHER_COLOR_CLASSES, resolveTeacherColor } from '@/lib/teachers/color'
 import { cn } from '@/lib/utils'
 
 const STATUS_DOT: Record<LessonStatus, string> = {
@@ -45,6 +46,8 @@ export interface MonthViewClientProps {
   studentId?: string
   dayHeaders: string[]
   appLocale: AppLocale
+  /** Several teachers: each chip opens with the teacher's colour dot. */
+  showTeacherStripe?: boolean
   pickDayEnabled?: boolean
   onPickDay?: (dateStr: string) => void
 }
@@ -62,6 +65,7 @@ export function MonthViewClient({
   studentId,
   dayHeaders,
   appLocale,
+  showTeacherStripe = false,
   pickDayEnabled,
   onPickDay,
 }: MonthViewClientProps) {
@@ -191,25 +195,42 @@ export function MonthViewClient({
                 </div>
 
                 <div className="hidden sm:flex flex-col gap-1 min-w-0">
-                  {dayLessons.slice(0, 3).map((lesson) => (
-                    <Link
-                      key={lesson.id}
-                      href={lessonHref(lesson.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                      className={cn(
-                        'text-[10px] px-1.5 py-0.5 rounded truncate leading-tight',
-                        STATUS_CHIP[lesson.status],
-                        'hover:opacity-75 transition-opacity'
-                      )}
-                      title={`${getLessonTitle(lesson, t)} — ${formatTime(lesson.start_at, timezone, appLocale)}`}
-                    >
-                      <span dir="ltr" className="font-mono">
-                        {formatTime(lesson.start_at, timezone, appLocale)}
-                      </span>{' '}
-                      <span>{getLessonTitle(lesson, t)}</span>
-                    </Link>
-                  ))}
+                  {dayLessons.slice(0, 3).map((lesson) => {
+                    const title = getLessonTitle(lesson, t)
+                    const time = formatTime(lesson.start_at, timezone, appLocale)
+                    return (
+                      <Link
+                        key={lesson.id}
+                        href={lessonHref(lesson.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className={cn(
+                          'flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded leading-tight min-w-0',
+                          STATUS_CHIP[lesson.status],
+                          'hover:opacity-75 transition-opacity'
+                        )}
+                        title={
+                          showTeacherStripe
+                            ? `${title} — ${time} — ${lesson.teacher.full_name}`
+                            : `${title} — ${time}`
+                        }
+                      >
+                        {showTeacherStripe && (
+                          <span
+                            aria-hidden
+                            className={cn(
+                              'size-1.5 shrink-0 rounded-full',
+                              TEACHER_COLOR_CLASSES[resolveTeacherColor(lesson.teacher)].dot
+                            )}
+                          />
+                        )}
+                        <span dir="ltr" className="font-mono shrink-0">
+                          {time}
+                        </span>
+                        <span className="truncate">{title}</span>
+                      </Link>
+                    )
+                  })}
                 </div>
 
                 {dayLessons.length > 3 && (

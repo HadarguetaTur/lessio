@@ -6,6 +6,7 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getTeacherById, type Teacher } from '@/lib/teachers'
+import { isTeacherColorKey } from '@/lib/teachers/color'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
@@ -126,6 +127,14 @@ export async function updateTeacher(
   const parsedPhone = parseOptionalPhone(formData.get('phone'))
   if ('errorKey' in parsedPhone) return { error: t(parsedPhone.errorKey) }
 
+  // Calendar colour: '' (or absent) means "derive from the id"; anything else
+  // must be a palette key — the value is rendered as a class name downstream.
+  const colorRaw = formData.get('color')
+  const color = typeof colorRaw === 'string' && colorRaw !== '' ? colorRaw : null
+  if (color !== null && !isTeacherColorKey(color)) {
+    return { error: t('teachers.errors.updateFailed') }
+  }
+
   const session = await getSession()
   const { orgId, role } = session
   requireMutation(session)
@@ -135,7 +144,7 @@ export async function updateTeacher(
 
   const { error } = await supabase
     .from('teachers')
-    .update({ bio, hourly_rate, updated_at: new Date().toISOString() })
+    .update({ bio, hourly_rate, color, updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('organization_id', orgId)
 

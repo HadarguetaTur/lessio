@@ -20,6 +20,10 @@ export async function buildWeekCalendarPayload(input: {
   scheduleBasePath?: string
   teacherId?: string
   studentId?: string
+  /** More than one active teacher: cards carry the teacher colour stripe. */
+  showTeacherStripe?: boolean
+  /** Stripe on and no teacher filter: cards also name the teacher. */
+  showTeacherName?: boolean
 }): Promise<WeekCalendarPayload> {
   const {
     weekDays,
@@ -31,6 +35,8 @@ export async function buildWeekCalendarPayload(input: {
     scheduleBasePath,
     teacherId,
     studentId,
+    showTeacherStripe = false,
+    showTeacherName = false,
   } = input
   const [tCommon, locale] = await Promise.all([getTranslations('common'), getLocale()])
   const appLocale = parseAppLocale(locale)
@@ -55,6 +61,8 @@ export async function buildWeekCalendarPayload(input: {
     scheduleBasePath,
     teacherId,
     studentId,
+    showTeacherStripe,
+    showTeacherName,
     dayNames,
     appLocale,
     legend: {

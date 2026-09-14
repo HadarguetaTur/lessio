@@ -1,32 +1,51 @@
 'use client'
 
-import { useActionState, useEffect, useRef } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Check } from 'lucide-react'
+import {
+  TEACHER_COLOR_CLASSES,
+  TEACHER_COLOR_KEYS,
+  deriveTeacherColor,
+  isTeacherColorKey,
+} from '@/lib/teachers/color'
+import { cn } from '@/lib/utils'
 
 type ActionState = { error: string } | null
 type FormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
 
 interface TeacherEditFormProps {
   action: FormAction
+  /** Needed to preview the derived colour behind "automatic". */
+  teacherId: string
   defaultValues?: {
     bio?: string | null
     hourly_rate?: number | null
     phone?: string | null
+    color?: string | null
   }
   onSuccess?: () => void
   onCancel?: () => void
 }
 
-export function TeacherEditForm({ action, defaultValues, onSuccess, onCancel }: TeacherEditFormProps) {
+export function TeacherEditForm({
+  action,
+  teacherId,
+  defaultValues,
+  onSuccess,
+  onCancel,
+}: TeacherEditFormProps) {
   const t = useTranslations('teachers')
   const tCommon = useTranslations('common')
   const didSubmitRef = useRef(false)
   const [state, formAction, pending] = useActionState(action, null)
+  const storedColor = isTeacherColorKey(defaultValues?.color) ? defaultValues.color : ''
+  const [color, setColor] = useState<string>(storedColor)
+  const autoColor = deriveTeacherColor(teacherId)
 
   useEffect(() => {
     if (didSubmitRef.current && !pending && !state?.error) {
@@ -76,6 +95,32 @@ export function TeacherEditForm({ action, defaultValues, onSuccess, onCancel }: 
         <p className="text-xs text-muted-foreground">{t('phoneBotHint')}</p>
       </div>
 
+      <fieldset className="space-y-1.5">
+        <legend className="text-sm font-medium leading-none">{t('fields.color')}</legend>
+        <div className="flex flex-wrap items-center gap-2 pt-1.5">
+          {/* "Automatic" shows the colour the teacher gets without a choice. */}
+          <ColorSwatch
+            value=""
+            checked={color === ''}
+            onChange={setColor}
+            swatchClass={TEACHER_COLOR_CLASSES[autoColor].swatch}
+            label={t('fields.colorAuto')}
+            showLabel
+          />
+          {TEACHER_COLOR_KEYS.map((key) => (
+            <ColorSwatch
+              key={key}
+              value={key}
+              checked={color === key}
+              onChange={setColor}
+              swatchClass={TEACHER_COLOR_CLASSES[key].swatch}
+              label={key}
+            />
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">{t('colorHint')}</p>
+      </fieldset>
+
       <div className="space-y-1.5">
         <Label htmlFor="bio">{t('bio')}</Label>
         <textarea
@@ -100,5 +145,51 @@ export function TeacherEditForm({ action, defaultValues, onSuccess, onCancel }: 
         </Button>
       </div>
     </form>
+  )
+}
+
+function ColorSwatch({
+  value,
+  checked,
+  onChange,
+  swatchClass,
+  label,
+  showLabel,
+}: {
+  value: string
+  checked: boolean
+  onChange: (value: string) => void
+  swatchClass: string
+  label: string
+  showLabel?: boolean
+}) {
+  return (
+    <label
+      className={cn(
+        'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-1 py-1 text-xs transition-colors',
+        'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-1',
+        checked ? 'border-foreground/60 bg-muted' : 'border-transparent hover:bg-muted/60'
+      )}
+    >
+      <input
+        type="radio"
+        name="color"
+        value={value}
+        checked={checked}
+        onChange={() => onChange(value)}
+        className="sr-only"
+        aria-label={label}
+      />
+      <span
+        aria-hidden
+        className={cn(
+          'inline-flex size-5 items-center justify-center rounded-full text-white',
+          swatchClass.split(' ')[0]
+        )}
+      >
+        {checked && <Check size={12} strokeWidth={3} />}
+      </span>
+      {showLabel && <span className="pe-1.5 text-foreground">{label}</span>}
+    </label>
   )
 }

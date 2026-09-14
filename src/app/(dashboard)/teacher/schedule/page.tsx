@@ -156,9 +156,7 @@ export default async function TeacherSchedulePage(props: {
               <WeekNav
                 scheduleBasePath={SCHEDULE_BASE}
                 weekStr={weekStr}
-                teachers={[]}
                 currentWeekStr={currentWeekStr}
-                showTeacherFilter={false}
               />
             </div>
             <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">

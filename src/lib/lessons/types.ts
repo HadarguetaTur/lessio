@@ -9,7 +9,8 @@ export interface Lesson {
   lesson_type: LessonType
   cancel_reason: string | null
   series_id: string | null
-  teacher: { id: string; full_name: string }
+  /** `color` is the stored palette key or null; resolve it with resolveTeacherColor(). */
+  teacher: { id: string; full_name: string; color: string | null }
   /** Everyone enrolled, in enrolment order. Display through getLessonTitle(). */
   students: { id: string; full_name: string }[]
   /**

@@ -17,7 +17,8 @@ import { WeekNav } from '@/components/dashboard/lessons/WeekNav'
 import { DayNav } from '@/components/dashboard/lessons/DayNav'
 import { MonthNav } from '@/components/dashboard/lessons/MonthNav'
 import { ViewToggle } from '@/components/dashboard/lessons/ViewToggle'
-import { CalendarTeacherSelect } from '@/components/dashboard/lessons/CalendarTeacherSelect'
+import { CalendarTeacherPicker } from '@/components/dashboard/lessons/CalendarTeacherPicker'
+import { resolveTeacherColor } from '@/lib/teachers/color'
 import { CancelledToggle } from '@/components/dashboard/lessons/CancelledToggle'
 import { CANCELLED_ON } from '@/components/dashboard/lessons/calendarParams'
 import { buildWeekCalendarPayload } from '@/components/dashboard/lessons/WeekView'
@@ -79,7 +80,18 @@ export default async function LessonsPage(props: {
 
   const activeTeachers = teachers
     .filter((t) => t.is_active)
-    .map((t) => ({ id: t.id, full_name: t.profile.full_name }))
+    .map((t) => ({ id: t.id, full_name: t.profile.full_name, colorKey: resolveTeacherColor(t) }))
+
+  // A solo tutor has exactly one teacher record (onboarding creates it), so
+  // the filter and the teacher colouring only appear once there is a choice.
+  const multiTeacher = activeTeachers.length > 1
+  const showTeacherStripe = multiTeacher
+  const showTeacherName = multiTeacher && !teacher
+  const teacherPicker = multiTeacher ? (
+    <div className="flex w-full shrink-0 justify-center sm:w-auto sm:min-w-0 sm:justify-start">
+      <CalendarTeacherPicker teachers={activeTeachers} teacherId={teacher} />
+    </div>
+  ) : null
 
   const isAdmin = role === 'owner' || role === 'admin'
 
@@ -126,6 +138,8 @@ export default async function LessonsPage(props: {
       weekStr,
       teacherId: teacher,
       studentId: studentFilter,
+      showTeacherStripe,
+      showTeacherName,
     })
 
     return (
@@ -139,7 +153,7 @@ export default async function LessonsPage(props: {
         </Suspense>
         <div>
           <PageHeader title={VIEW_TITLES.week} actions={headerActions} mobileCentered />
-          <div className="mb-5 flex min-w-0 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-3 sm:overflow-x-hidden">
+          <div className="mb-5 flex min-w-0 flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
             <div className="w-full shrink-0 sm:w-auto">
               <ViewToggle
                 currentView="week"
@@ -149,14 +163,14 @@ export default async function LessonsPage(props: {
                 teacherId={teacher}
               />
             </div>
-            <div className="flex w-full min-w-0 justify-center sm:block sm:flex-1 sm:min-w-0 sm:justify-start">
+            <div className="flex w-full min-w-0 justify-center sm:w-auto sm:justify-start">
               <WeekNav
                 weekStr={weekStr}
-                teachers={activeTeachers}
                 teacherId={teacher}
                 currentWeekStr={currentWeekStr}
               />
             </div>
+            {teacherPicker}
             <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
               <CancelledToggle hiddenCount={hiddenCount} active={includeCancelled} />
             </div>
@@ -218,14 +232,7 @@ export default async function LessonsPage(props: {
               <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
                 <DayNav dateStr={dateStr} todayStr={todayStr} teacherId={teacher} />
               </div>
-              <div className="flex w-full shrink-0 justify-center sm:w-auto sm:min-w-0 sm:justify-start">
-                <CalendarTeacherSelect
-                  teachers={activeTeachers}
-                  teacherId={teacher}
-                  view="day"
-                  dateStr={dateStr}
-                />
-              </div>
+              {teacherPicker}
               <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
                 <CancelledToggle hiddenCount={hiddenCount} active={includeCancelled} />
               </div>
@@ -239,6 +246,7 @@ export default async function LessonsPage(props: {
             weekStr={weekStr}
             teacherId={teacher}
             studentId={studentFilter}
+            showTeacherStripe={showTeacherStripe}
           />
         </div>
       </LessonScheduleSheetProvider>
@@ -278,6 +286,7 @@ export default async function LessonsPage(props: {
     weekStr,
     teacherId: teacher,
     studentId: studentFilter,
+    showTeacherStripe,
   })
 
   return (
@@ -309,14 +318,7 @@ export default async function LessonsPage(props: {
                 teacherId={teacher}
               />
             </div>
-            <div className="flex w-full shrink-0 justify-center sm:w-auto sm:min-w-0 sm:justify-start">
-              <CalendarTeacherSelect
-                teachers={activeTeachers}
-                teacherId={teacher}
-                view="month"
-                monthStr={monthStr}
-              />
-            </div>
+            {teacherPicker}
             <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-start">
               <CancelledToggle hiddenCount={hiddenCount} active={includeCancelled} />
             </div>

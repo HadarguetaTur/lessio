@@ -847,8 +847,11 @@
       "email": "אימייל",
       "hourlyRate": "תעריף לשעה (₪)",
       "subjects": "מקצועות",
-      "hourlyRatePlaceholder": "לדוגמה: 150"
+      "hourlyRatePlaceholder": "לדוגמה: 150",
+      "color": "צבע בלוח השיעורים",
+      "colorAuto": "אוטומטי"
     },
+    "colorHint": "הצבע מסמן את השיעורים של המורה בלוח, כך שרואים מיד של מי כל שיעור.",
     "availability": "זמינות שבועית",
     "overrides": "חריגים",
     "archive": "ארכיב",
@@ -993,6 +996,8 @@
     "prevMonth": "חודש קודם",
     "nextMonth": "חודש הבא",
     "allTeachers": "כל המורים",
+    "teacherFilter": "סינון לפי מורה",
+    "teacherFilterPending": "מעדכן את הלוח…",
     "showCancelled": "מבוטלים",
     "showCancelledHint": "הצג שיעורים מבוטלים",
     "viewDay": "יומי",

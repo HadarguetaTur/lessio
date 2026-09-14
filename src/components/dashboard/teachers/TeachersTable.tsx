@@ -16,6 +16,7 @@ import { TeacherDetailSheet } from './TeacherDetailSheet'
 import { TeacherRowActions } from './TeacherSheet'
 import { cn } from '@/lib/utils'
 import type { Teacher } from '@/lib/teachers'
+import { TEACHER_COLOR_CLASSES, resolveTeacherColor } from '@/lib/teachers/color'
 
 type ActionState = { error: string } | null
 type UnboundUpdateAction = (id: string, prevState: ActionState, formData: FormData) => Promise<ActionState>
@@ -111,6 +112,13 @@ export function TeachersTable({
                     <TableCell className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <UserAvatar name={teacher.profile.full_name} />
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'size-2.5 shrink-0 rounded-full',
+                            TEACHER_COLOR_CLASSES[resolveTeacherColor(teacher)].dot,
+                          )}
+                        />
                         <span className="text-sm font-medium text-foreground">
                           {teacher.profile.full_name}
                         </span>
@@ -146,6 +154,7 @@ export function TeachersTable({
                           profileName: teacher.profile.full_name,
                           bio: teacher.bio,
                           hourly_rate: teacher.hourly_rate,
+                          color: teacher.color,
                           is_active: teacher.is_active,
                         }}
                         updateAction={boundUpdate}

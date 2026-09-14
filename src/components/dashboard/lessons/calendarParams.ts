@@ -2,6 +2,9 @@
 export const CANCELLED_PARAM = 'cancelled'
 export const CANCELLED_ON = '1'
 
+/** Query param that narrows the admin calendar to one teacher. */
+export const TEACHER_PARAM = 'teacher'
+
 /**
  * Params that must survive every calendar navigation: the student deep-link and the
  * "show cancelled" toggle. Every nav control rebuilds its URL from scratch (so the
@@ -16,4 +19,23 @@ export function preserveCalendarParams(
     if (value) into.set(key, value)
   }
   return into
+}
+
+/**
+ * The current calendar URL with only the teacher filter changed.
+ *
+ * Unlike the date controls, switching teacher must not move the user: the view,
+ * the week/day/month being looked at, the student deep-link and the cancelled
+ * toggle all stay exactly as they are. `null` clears the filter.
+ */
+export function withTeacherParam(
+  current: { toString(): string },
+  teacherId: string | null,
+  basePath = '/lessons'
+): string {
+  const params = new URLSearchParams(current.toString())
+  if (teacherId) params.set(TEACHER_PARAM, teacherId)
+  else params.delete(TEACHER_PARAM)
+  const q = params.toString()
+  return q ? `${basePath}?${q}` : basePath
 }

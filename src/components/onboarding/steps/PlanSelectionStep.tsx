@@ -145,16 +145,13 @@ export function PlanSelectionStep({
   const free = planByName('free')
   const solo = planByName('solo')
   const studio = planByName('studio')
-  const center = planByName('center')
   const custom = planByName('custom')
 
   const outcomes = asStringArray(t.raw('outcomes'))
   const freeBullets = asStringArray(t.raw('plans.free.bullets'))
   const soloBullets = asStringArray(t.raw('plans.solo.bullets'))
   const studioBullets = asStringArray(t.raw('plans.studio.bullets'))
-  const centerBullets = asStringArray(t.raw('plans.center.bullets'))
-  // The custom-plan strip below the grid. Center is now a real tier, so the
-  // inquiry form needed a key of its own.
+  // Center is a bespoke plan, represented by the custom-plan strip below.
   const customBullets = asStringArray(t.raw('plans.custom.bullets'))
 
   const planCardBase =
@@ -402,28 +399,6 @@ export function PlanSelectionStep({
                   onClick={() => onPaid('studio')}
                 >
                   {t('plans.studio.cta')}
-                </Button>
-              </div>
-            ) : null}
-
-            {center ? (
-              <div className={planCardBase}>
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                  <h3 className="text-xl font-semibold tracking-tight text-foreground">{t('plans.center.title')}</h3>
-                  {priceBlock(center.price_monthly, center.price_yearly)}
-                </div>
-                <p className="text-sm leading-snug text-muted-foreground">{t('plans.center.tagline')}</p>
-                <div className="flex-1">
-                  <PlanBulletList items={centerBullets} />
-                </div>
-                <PlanBestFor label={t('bestForLabel')} text={t('plans.center.bestFor')} />
-                <Button
-                  type="button"
-                  className={`mt-1 h-11 w-full font-semibold ${onboardingGradientCta}`}
-                  disabled={pending}
-                  onClick={() => onPaid('center')}
-                >
-                  {t('plans.center.cta')}
                 </Button>
               </div>
             ) : null}

@@ -32,9 +32,19 @@ import {
 import { getLocale } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
+import { createCenterPlanInquiry, type CenterInquiryInput, type CenterInquiryResult } from '@/app/center-inquiry-actions'
 
 const planNameSchema = z.enum(PURCHASABLE_PLAN_NAMES)
 const billingIntervalSchema = z.enum(['monthly', 'yearly'])
+
+/** Owner-only bespoke Center request; unlike checkout, this stays available to a lapsed org. */
+export async function submitCenterUpgradeInquiryAction(
+  input: CenterInquiryInput
+): Promise<CenterInquiryResult> {
+  const session = await getSession()
+  if (session.role !== 'owner') return { error: 'INVALID_INPUT' }
+  return createCenterPlanInquiry(input, session.orgId)
+}
 
 function canStartUpgradeCheckout(state: OrgSubscriptionState | null): boolean {
   if (!state) return false

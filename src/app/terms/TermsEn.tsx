@@ -222,10 +222,9 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
                   ['Free (30-day trial)', '₪0', '—'],
                   ...pricing.map((p) => [
                     p.labelEn,
-                    `₪${p.priceMonthly.toLocaleString('en-US')}/month`,
-                    p.priceYearly != null ? `₪${p.priceYearly.toLocaleString('en-US')}/year` : '—',
+                    p.isCustom ? 'By quote' : `₪${p.priceMonthly.toLocaleString('en-US')}/month`,
+                    !p.isCustom && p.priceYearly != null ? `₪${p.priceYearly.toLocaleString('en-US')}/year` : '—',
                   ]),
-                  ['Custom', 'By quote', '—'],
                 ].map(([plan, monthly, annual]) => (
                   <tr key={plan}>
                     <td className="border border-border px-3 py-2">{plan}</td>

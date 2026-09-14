@@ -1,5 +1,4 @@
-import { listActiveSaasPlans } from '@/lib/saas/plans'
-import { PURCHASABLE_PLAN_NAMES } from '@/lib/saas/planPresentation'
+import { listAllSaasPlans } from '@/lib/saas/plans'
 
 export type PublicPricingRow = {
   name: string
@@ -8,6 +7,7 @@ export type PublicPricingRow = {
   priceMonthly: number
   priceYearly: number | null
   teachersQuota: number | null
+  isCustom: boolean
 }
 
 /**
@@ -26,10 +26,12 @@ export type PublicPricingRow = {
  * confidently wrong one.
  */
 export async function getPublicPricingRows(): Promise<PublicPricingRow[]> {
-  const plans = await listActiveSaasPlans()
+  // Center is intentionally retired from checkout but remains a public offer:
+  // it is the bespoke option for organizations above Studio's five seats.
+  const plans = await listAllSaasPlans()
 
   return plans
-    .filter((p) => (PURCHASABLE_PLAN_NAMES as readonly string[]).includes(p.name))
+    .filter((p) => ['solo', 'studio', 'center'].includes(p.name))
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((p) => ({
       name: p.name,
@@ -38,5 +40,6 @@ export async function getPublicPricingRows(): Promise<PublicPricingRow[]> {
       priceMonthly: p.price_monthly,
       priceYearly: p.price_yearly,
       teachersQuota: p.teachers_quota,
+      isCustom: p.name === 'center',
     }))
 }

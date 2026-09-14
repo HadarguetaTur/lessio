@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
+import { CenterPlanInquiryDialog } from '@/components/marketing/CenterPlanInquiryDialog'
 import type { PublicPricingRow } from '@/lib/marketing/publicPricing'
 import type { LandingContent } from '@/lib/marketing/landingCopy'
 
@@ -75,33 +76,43 @@ export function LandingPricing({
                 {copy.featureLine}
               </p>
 
-              <div className="tabular-nums" dir="ltr">
-                <span className="text-3xl font-bold leading-none tracking-tight text-foreground">
-                  {money(row.priceMonthly)}
-                </span>
-                <span className="ms-1.5 text-sm font-medium text-muted-foreground">
-                  {copy.perMonth}
-                </span>
-              </div>
+              {row.isCustom ? (
+                <div className="text-2xl font-bold leading-none tracking-tight text-foreground">
+                  {copy.customPricing}
+                </div>
+              ) : (
+                <div className="tabular-nums" dir="ltr">
+                  <span className="text-3xl font-bold leading-none tracking-tight text-foreground">
+                    {money(row.priceMonthly)}
+                  </span>
+                  <span className="ms-1.5 text-sm font-medium text-muted-foreground">
+                    {copy.perMonth}
+                  </span>
+                </div>
+              )}
 
-              {row.priceYearly != null ? (
+              {!row.isCustom && row.priceYearly != null ? (
                 <p className="text-xs text-muted-foreground tabular-nums">
                   <span dir="ltr">{money(row.priceYearly)}</span> {copy.perYear}
                 </p>
               ) : null}
 
-              <Link
-                href={signupHref}
-                data-cta={`pricing-${row.name}`}
-                className={cn(
-                  'mt-auto inline-flex h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors',
-                  featured
-                    ? 'bg-violet-600 text-white hover:bg-violet-500'
-                    : 'border border-border/70 text-foreground hover:bg-muted/60'
-                )}
-              >
-                {copy.cta}
-              </Link>
+              {row.isCustom ? (
+                <CenterPlanInquiryDialog copy={copy.centerInquiry} locale={locale} className="mt-auto" />
+              ) : (
+                <Link
+                  href={signupHref}
+                  data-cta={`pricing-${row.name}`}
+                  className={cn(
+                    'mt-auto inline-flex h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors',
+                    featured
+                      ? 'bg-violet-600 text-white hover:bg-violet-500'
+                      : 'border border-border/70 text-foreground hover:bg-muted/60'
+                  )}
+                >
+                  {copy.cta}
+                </Link>
+              )}
             </div>
           )
         })}

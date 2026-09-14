@@ -23,6 +23,7 @@ import {
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { commonError, zodError } from '@/lib/i18n/actionErrors'
+import { createCenterPlanInquiry } from '@/app/center-inquiry-actions'
 import { getLocale, getTranslations } from 'next-intl/server'
 
 
@@ -219,6 +220,14 @@ export async function submitCustomSaasPlanInquiry(
   })
 
   if (error) return { error: t('validation.saveReferralFailed') }
+
+  // The onboarding request is also a platform CRM lead. The old inquiry row
+  // remains for the pending-onboarding state until Sprint 34 fully merges it.
+  const platformLead = await createCenterPlanInquiry(
+    { contactName: parsed.data.contactName, phone: parsed.data.phone },
+    orgId
+  )
+  if (!('ok' in platformLead)) return { error: t('validation.saveReferralFailed') }
 
   redirect('/onboarding/pending-custom')
 }

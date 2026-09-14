@@ -5,12 +5,13 @@ import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getGroups } from '@/lib/groups'
 import { getTeachers } from '@/lib/teachers'
+import { getBroadcastLists } from '@/lib/broadcast-lists'
 import { metaTemplateBody } from '@/lib/whatsapp/registerTemplates'
 import { BROADCAST_TEMPLATES, PARAM_LIMITS } from '@/lib/whatsapp/approvedTemplates'
 import { tierDailyLimit } from '@/lib/whatsapp/health'
 import { countConversationsLast24h } from '@/lib/whatsapp/broadcast/send'
 import type { BroadcastType } from '@/lib/whatsapp/broadcast/types'
-import { PageHeader } from '@/components/ui/page-header'
+import { SectionHeader } from '@/components/inbox/SectionHeader'
 import {
   BroadcastComposer,
   type AudienceOption,
@@ -36,7 +37,7 @@ export default async function NewBroadcastPage({
   const params = await searchParams
   const db = createServiceRoleClient()
 
-  const [{ data: orgData }, groups, teachers] = await Promise.all([
+  const [{ data: orgData }, groups, teachers, lists] = await Promise.all([
     db
       .from('organizations')
       .select(
@@ -46,6 +47,7 @@ export default async function NewBroadcastPage({
       .maybeSingle(),
     getGroups(session.orgId),
     getTeachers(session.orgId),
+    getBroadcastLists(session.orgId),
   ])
 
   const org = orgData as {
@@ -68,6 +70,13 @@ export default async function NewBroadcastPage({
       label: t('audiences.group', { name: g.name, count: g.studentCount }),
       filter: { kind: 'student_group' as const, groupId: g.id },
     })),
+    // Saved lists come right after the groups: they are the other thing an
+    // owner means by "a list", and the lists page links here with one selected.
+    ...lists.map((list) => ({
+      value: `list:${list.id}`,
+      label: t('audiences.list', { name: list.name, count: list.memberCount }),
+      filter: { kind: 'list' as const, listId: list.id },
+    })),
     ...teachers.filter((teacher) => teacher.is_active).map((teacher) => ({
       value: `teacher:${teacher.id}`,
       label: t('audiences.teacher', { name: teacher.profile.full_name }),
@@ -81,7 +90,7 @@ export default async function NewBroadcastPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t('newTitle')} subtitle={t('newSubtitle')} />
+      <SectionHeader title={t('newTitle')} subtitle={t('newSubtitle')} />
       <BroadcastComposer
         audiences={audiences}
         initialAudience={initialAudience}

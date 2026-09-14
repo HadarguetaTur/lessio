@@ -900,6 +900,41 @@ Decided:
 * Owners and admins broadcast; a teacher may send a service update to the
   parents of their own lessons, nothing else.
 
+## 43. Talking to Families Happens in One Inbox
+
+**Date:** 2026-09-10
+
+Opening the product, the owner could not tell where to click, how to step into
+a conversation the bot was having, how to make a list, or where the number stood
+with Meta. Operation lived on four pages in three shapes: WhatsApp conversations
+(keyed by phone), portal messages (keyed by student), broadcasts, and a Meta
+status in settings.
+
+Decided:
+
+* **`/messages` is the one operational surface** — a conversation list on one
+  side, the open thread on the other, the number's state in one line at the
+  top, and conversations / lists / broadcasts as three segments of it. Thread
+  URLs did not change. Settings keep configuration only.
+* **WhatsApp and portal conversations are one list**; the channel is a tag. A
+  studio owner thinks "who is waiting for me", not "which channel".
+* **Tags are derived, never typed** (`src/lib/inbox/tags.ts`). Their priority is
+  a product decision pinned by a test: a row shows the three tags that change
+  what the reader does, and names (group, teacher) always rank below status.
+* **Taking over is an explicit act.** "I'll answer" silences the bot for the
+  takeover window; sending still does too, and both say so.
+* **After the 24h window, a parent is reached with the approved `class_update`
+  template, sent as a campaign of one** through the broadcast engine — never a
+  second send path. Students, teachers and strangers get an explanation
+  instead, because no template is addressed to them.
+* **Groups are lists; a saved list is for the choice that follows no
+  structure.** `broadcast_lists` is an audience (`{ kind: 'list' }`) resolved at
+  send time, under the same consent rules as every other audience.
+* Teachers get the conversations of their own students and their parents, both
+  channels, re-checked per thread and per action. Lists and broadcasts stay
+  owner/admin tools; a teacher's service update to her own families goes
+  through the thread's closed-window send.
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

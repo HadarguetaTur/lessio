@@ -7,8 +7,7 @@ import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
-import { MessagesTabs } from '@/components/dashboard/messages/MessagesTabs'
-import { PageHeader } from '@/components/ui/page-header'
+import { SectionHeader } from '@/components/inbox/SectionHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -61,7 +60,7 @@ export default async function BroadcastsPage() {
   return (
     <div className="space-y-6">
       <LiveRefresh tables={['broadcast_campaigns']} />
-      <PageHeader
+      <SectionHeader
         title={t('title')}
         subtitle={t('subtitle')}
         actions={
@@ -74,7 +73,6 @@ export default async function BroadcastsPage() {
           </Link>
         }
       />
-      <MessagesTabs />
 
       {campaigns.length === 0 ? (
         <EmptyState icon={Megaphone} title={t('emptyTitle')} subtitle={t('emptySubtitle')} />

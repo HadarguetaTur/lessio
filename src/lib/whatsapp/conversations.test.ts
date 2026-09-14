@@ -13,7 +13,12 @@ vi.mock('./takeover', () => ({
   getTakeover: vi.fn().mockResolvedValue(null),
 }))
 
-import { canTeacherAccessPhone, getConversationSummaries, getThread } from './conversations'
+import {
+  canTeacherAccessPhone,
+  getConversationHeader,
+  getConversationSummaries,
+  getThread,
+} from './conversations'
 import { getActiveTakeovers } from './takeover'
 
 type TableData = Record<string, unknown[]>
@@ -28,7 +33,7 @@ function mockTables(tables: TableData) {
     from: (table: string) => {
       const rows = tables[table] ?? []
       const chain: Record<string, unknown> = {}
-      for (const method of ['select', 'eq', 'gte', 'gt', 'in', 'order', 'limit']) {
+      for (const method of ['select', 'eq', 'neq', 'gte', 'gt', 'in', 'order', 'limit']) {
         chain[method] = () => chain
       }
       chain.then = (resolve: (v: unknown) => unknown) =>
@@ -256,5 +261,95 @@ describe('getThread()', () => {
     expect(thread[0].isInbound).toBe(true)
     expect(thread[1].senderName).toBe('הדר')
     expect(thread[1].origin).toBe('staff')
+  })
+})
+
+describe('inbox facts', () => {
+  const PHONE = '+972501111111'
+
+  /** A parent of one student, in a group, with a teacher and an unpaid charge. */
+  const familyTables = (over: TableData = {}): TableData => ({
+    whatsapp_messages: [message({ phone: PHONE, direction: 'out', origin: 'bot', status: 'delivered' })],
+    parents: [{ id: 'parent-1', phone: PHONE, full_name: 'דנה כהן', opted_out_at: null }],
+    students: [{ id: 'student-1', full_name: 'נועה כהן', teacher_id: 'teacher-1' }],
+    teachers: [{ id: 'teacher-1', profiles: { full_name: 'מיכל', phone: null } }],
+    profiles: [],
+    relationships: [{ parent_id: 'parent-1', student_id: 'student-1' }],
+    student_group_members: [{ student_id: 'student-1', student_groups: { name: 'גיטרה מתחילים' } }],
+    charges: [{ student_id: 'student-1' }],
+    whatsapp_processed_messages: [{ phone: PHONE }],
+    ...over,
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getActiveTakeovers).mockResolvedValue(new Map())
+  })
+
+  it('resolves who the parent belongs to, in one pass for the whole list', async () => {
+    mockTables(familyTables())
+    const [row] = await getConversationSummaries('org-1')
+
+    expect(row.parentId).toBe('parent-1')
+    expect(row.studentNames).toEqual(['נועה כהן'])
+    expect(row.teacherNames).toEqual(['מיכל'])
+    expect(row.groupNames).toEqual(['גיטרה מתחילים'])
+    expect(row.hasOpenDebt).toBe(true)
+    expect(row.optedOut).toBe(false)
+  })
+
+  it('reports who spoke last and how it was delivered', async () => {
+    mockTables(familyTables())
+    const [row] = await getConversationSummaries('org-1')
+
+    expect(row.lastOrigin).toBe('bot')
+    expect(row.lastInbound).toBe(false)
+    expect(row.lastDeliveryStatus).toBe('delivered')
+  })
+
+  it('knows whether the 24h window is open without a query per row', async () => {
+    mockTables(familyTables())
+    expect((await getConversationSummaries('org-1'))[0].windowOpen).toBe(true)
+
+    mockTables(familyTables({ whatsapp_processed_messages: [] }))
+    expect((await getConversationSummaries('org-1'))[0].windowOpen).toBe(false)
+  })
+
+  it('carries the opt-out through', async () => {
+    mockTables(
+      familyTables({
+        parents: [{ id: 'parent-1', phone: PHONE, full_name: 'דנה כהן', opted_out_at: '2026-09-01T00:00:00Z' }],
+      })
+    )
+    expect((await getConversationSummaries('org-1'))[0].optedOut).toBe(true)
+  })
+
+  it('gives a stranger no family facts at all', async () => {
+    mockTables(familyTables({ parents: [] }))
+    const [row] = await getConversationSummaries('org-1')
+
+    expect(row.parentId).toBeNull()
+    expect(row.studentNames).toEqual([])
+    expect(row.hasOpenDebt).toBe(false)
+  })
+
+  it('names the person holding a taken-over conversation', async () => {
+    vi.mocked(getActiveTakeovers).mockResolvedValue(
+      new Map([[PHONE, { phone: PHONE, takenByProfileId: 'profile-9', expiresAt: '2026-09-03T14:00:00Z' }]])
+    )
+    mockTables(familyTables({ profiles: [{ id: 'profile-9', full_name: 'הדר', phone: null }] }))
+    const [row] = await getConversationSummaries('org-1')
+
+    expect(row.takenOver).toBe(true)
+    expect(row.takenOverBy).toBe('הדר')
+    expect(row.takenOverByProfileId).toBe('profile-9')
+  })
+
+  it('gives the thread header the parent id the closed-window send needs', async () => {
+    mockTables(familyTables())
+    const header = await getConversationHeader('org-1', PHONE)
+
+    expect(header.parentId).toBe('parent-1')
+    expect(header.studentNames).toEqual(['נועה כהן'])
   })
 })

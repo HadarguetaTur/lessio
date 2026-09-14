@@ -141,10 +141,14 @@ async function DashboardLayoutShell({
       currentPathname.startsWith('/homework') ||
       currentPathname.startsWith('/students') ||
       currentPathname.startsWith('/parents') ||
-      // WhatsApp conversations only — the list and every thread are scoped to
-      // this teacher's own students' parents. /messages itself stays closed:
-      // the portal threads it lists are org-wide.
-      currentPathname.startsWith('/messages/whatsapp')
+      // The inbox's conversations, and nothing else under /messages. The rail
+      // and every thread — WhatsApp and portal alike — are scoped to this
+      // teacher's own students and their parents, and re-checked on each
+      // thread page and action. Lists and broadcasts are owner/admin tools.
+      currentPathname === '/messages' ||
+      (currentPathname.startsWith('/messages/') &&
+        !currentPathname.startsWith('/messages/lists') &&
+        !currentPathname.startsWith('/messages/broadcasts'))
     if (!allowed) {
       redirect('/teacher/dashboard')
     }

@@ -38,6 +38,8 @@ export type AudienceFilter =
   | { kind: 'teacher'; teacherId: string }
   | { kind: 'open_debt' }
   | { kind: 'manual'; parentIds: string[] }
+  /** A saved, hand-picked list (broadcast_lists). Members are read at send time. */
+  | { kind: 'list'; listId: string }
 
 export type AudienceKind = AudienceFilter['kind']
 

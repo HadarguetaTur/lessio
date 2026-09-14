@@ -355,7 +355,9 @@
     "settingsPrivacy": "Privacy & data",
     "settingsCalendar": "Google Calendar",
     "support": "Support",
-    "settingsIntegrations": "Automation API keys"
+    "settingsIntegrations": "Automation API keys",
+    "messagesLists": "Lists",
+    "messagesBroadcasts": "Broadcasts"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -2767,7 +2769,8 @@
         "unverified_business": "Your business is not verified with Meta yet, so the daily limit stays at 250 conversations.",
         "templates_unapproved": "Some message wordings are still waiting for Meta approval — until then they only reach parents who wrote to you in the last 24 hours."
       },
-      "viewPlans": "View plans"
+      "viewPlans": "View plans",
+      "fixLink": "Fix in settings"
     }
   },
   "quota": {
@@ -5876,24 +5879,7 @@
     "rejectAll": "Reject all"
   },
   "waConversations": {
-    "title": "WhatsApp Chats",
-    "subtitle": "Every conversation the bot is having, with the option to step in yourself",
-    "emptyTitle": "No conversations yet",
-    "emptySubtitle": "Chats appear here as soon as someone writes to your business WhatsApp number",
-    "noTeacherRecord": "No teacher record found for you. Contact your administrator.",
-    "backToList": "Back to conversations",
-    "colContact": "Contact",
-    "colLastMessage": "Last message",
-    "colDate": "Updated",
-    "colStatus": "Status",
     "composerPlaceholder": "Write a message…",
-    "windowClosedNotice": "The 24-hour window is closed. You cannot send free text until they write again.",
-    "takeoverNotice": "The bot is paused on this conversation and will not reply automatically.",
-    "tabs": {
-      "portal": "Portal messages",
-      "whatsapp": "WhatsApp",
-      "broadcasts": "Broadcasts"
-    },
     "roles": {
       "parent": "Parent",
       "student": "Student",
@@ -5907,14 +5893,6 @@
       "staff": "Staff",
       "cron": "Automated message",
       "broadcast": "Broadcast"
-    },
-    "badges": {
-      "takenOver": "Handled by a person",
-      "takenOverBy": "Handled by {name}",
-      "awaitingReply": "Awaiting reply"
-    },
-    "actions": {
-      "release": "Return to bot"
     },
     "errors": {
       "empty": "Cannot send an empty message",
@@ -5936,12 +5914,7 @@
         "marketing_opted_out": "Not delivered — this person opted out of marketing messages",
         "rate_limited": "Not delivered — temporary load. It will be retried"
       }
-    },
-    "emptyNotConnectedTitle": "You haven't connected a WhatsApp number yet",
-    "emptyReconnectTitle": "The WhatsApp connection has expired",
-    "emptyNotConnectedOwner": "Once connected, every parent's conversation with the bot appears here and you can step in and reply yourself at any point.",
-    "emptyNotConnectedStaff": "The business's WhatsApp number isn't connected right now, so there are no conversations to show. The account owner can sort this out in settings.",
-    "emptyNotConnectedAction": "Go to WhatsApp settings"
+    }
   },
   "broadcasts": {
     "title": "Broadcasts",
@@ -5961,7 +5934,6 @@
     "resultSummary": "{sent} sent · {skipped} skipped · {failed} failed",
     "deferredNote": "{count} recipients are over today's safe limit for your number. They go out at the next opening, automatically — nothing to do.",
     "scheduledFor": "Scheduled for {when}",
-    "failedWithCode": "Failed (error {code})",
     "types": {
       "class_update": "Class update",
       "promo": "Offer",
@@ -6012,7 +5984,8 @@
       "openDebt": "Parents with an open balance",
       "group": "{name} ({count} students)",
       "teacher": "{name}'s students",
-      "lesson": "The parents of this lesson"
+      "lesson": "The parents of this lesson",
+      "list": "List: {name} ({count})"
     },
     "form": {
       "name": "Name (for you only)",
@@ -6094,6 +6067,133 @@
       "resume": "Resume",
       "cancel": "Cancel",
       "confirmCancel": "Cancel this broadcast? Parents already messaged will keep their message."
+    }
+  },
+  "inbox": {
+    "title": "Messages",
+    "searchPlaceholder": "Search by name, phone or student",
+    "nav": {
+      "label": "Messaging areas",
+      "conversations": "Conversations",
+      "lists": "Lists",
+      "broadcasts": "Broadcasts"
+    },
+    "filters": {
+      "all": "All",
+      "awaiting": "Awaiting reply",
+      "taken_over": "Handled by a person",
+      "parents": "Parents",
+      "students": "Students",
+      "staff": "Team",
+      "unknown": "Unknown",
+      "portal": "Portal"
+    },
+    "preview": {
+      "you": "You:",
+      "bot": "Bot:",
+      "ai": "AI assistant:",
+      "broadcast": "Broadcast:"
+    },
+    "tags": {
+      "awaiting_reply": "Awaiting reply",
+      "delivery_failed": "Not delivered",
+      "taken_over_by_me": "Yours",
+      "taken_over": "Handled by a person",
+      "window_closed": "24h window closed",
+      "opted_out": "Opted out",
+      "open_debt": "Open balance",
+      "portal": "Portal",
+      "unknown_number": "Unknown number",
+      "bot_answered": "Bot replied",
+      "ai_answered": "AI replied",
+      "broadcast": "Broadcast",
+      "more": "+{count}"
+    },
+    "empty": {
+      "pickOne": "Pick a conversation",
+      "pickOneHint": "Every conversation with parents, students and the team — from WhatsApp and the portal — is on the left, newest first.",
+      "noConversations": "No conversations yet",
+      "noConversationsHint": "A conversation appears here as soon as someone writes to your WhatsApp number or from the portal.",
+      "noMatches": "Nothing matches",
+      "noMatchesHint": "Try another filter or a shorter search."
+    },
+    "thread": {
+      "back": "Back to conversations",
+      "takeOver": "I'll answer",
+      "release": "Hand back to the bot",
+      "takeOverHint": "The bot is answering here. Press to answer yourself — the bot goes quiet in this conversation for 6 hours.",
+      "heldByUntil": "{name} is answering here. The bot is quiet until {time}.",
+      "heldUntil": "The bot is quiet in this conversation until {time}.",
+      "heldHint": "The bot is quiet in this conversation.",
+      "sendTakesOver": "Sending a message quiets the bot in this conversation for 6 hours.",
+      "windowClosedTitle": "Their last message was more than 24 hours ago.",
+      "windowClosedParent": "WhatsApp doesn't allow a free-text message now, but you can send an update — it goes out as an approved business message.",
+      "windowClosedOther": "WhatsApp doesn't allow a free-text message now. As soon as they write again, you can answer here.",
+      "windowClosedOptedOut": "This parent asked to stop receiving messages, so no update can be sent. As soon as they write again, you can answer here.",
+      "topicPlaceholder": "Topic (optional) — e.g. tomorrow's lesson",
+      "updatePlaceholder": "What would you like to tell them?",
+      "sendUpdate": "Send update",
+      "updateSent": "Update sent. It appears in the conversation once Meta confirms delivery.",
+      "campaignName": "Update for {name}",
+      "portalSubtitle": "Message from the personal portal",
+      "errors": {
+        "notOnPlan": "Sending updates is not included in your plan.",
+        "notFound": "Conversation not found.",
+        "notAParent": "Updates can only be sent to a parent.",
+        "empty": "Write what you want to tell them.",
+        "tooLong": "The update is too long.",
+        "topicTooLong": "The topic is too long.",
+        "quota": "You've reached your plan's monthly message allowance.",
+        "sendFailed": "Sending failed. Try again.",
+        "optedOut": "This parent asked to stop receiving messages, so the update was not sent."
+      }
+    },
+    "lists": {
+      "title": "Lists",
+      "subtitle": "Who you can write to at once. Pick a list and \"Send update\" — you write the message on the next page and see exactly who gets it.",
+      "savedTitle": "Saved lists",
+      "savedEmpty": "No saved lists yet. A saved list is for a choice that follows no group — say, the parents who asked about the summer course.",
+      "groupsTitle": "Student groups",
+      "groupsEmpty": "No active groups. Groups are created on the Students page.",
+      "manageGroups": "Manage groups",
+      "builtInTitle": "Ready-made",
+      "allActive": "All active parents",
+      "allActiveHint": "Parents of every active student",
+      "openDebt": "Parents with an open balance",
+      "openDebtHint": "Anyone with a charge not yet paid",
+      "byTeacher": "{name}'s families",
+      "byTeacherHint": "Parents of the students they teach",
+      "parentsCount": "{count, plural, one {# parent} other {# parents}}",
+      "studentsCount": "{count, plural, one {# student} other {# students}}",
+      "linkedGroup": "Linked to a WhatsApp group",
+      "sendUpdate": "Send update",
+      "newList": "New list",
+      "newTitle": "New list",
+      "editTitle": "Edit list",
+      "edit": "Edit",
+      "sheetHint": "Pick parents. Anyone who asked to stop receiving messages, or has no phone, is marked — and won't get the message even if they stay on the list.",
+      "nameLabel": "List name",
+      "namePlaceholder": "e.g. Summer course interest",
+      "searchParents": "Search parent, phone or student",
+      "noParents": "No parents found",
+      "noPhone": "No phone — won't receive messages",
+      "optedOut": "Asked to stop receiving messages",
+      "remove": "Remove {name}",
+      "selectedCount": "{count, plural, one {# parent selected} other {# parents selected}}",
+      "save": "Save",
+      "saving": "Saving…",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleteConfirmTitle": "Delete the list \"{name}\"?",
+      "deleteConfirmBody": "The list is deleted. The parents themselves are not, and reports for broadcasts already sent to it are kept.",
+      "errors": {
+        "forbidden": "Only an owner or admin can manage lists.",
+        "notOnPlan": "Lists and broadcasts are not included in your plan.",
+        "invalid": "The list needs a name, or the selection is not valid.",
+        "notFound": "List not found.",
+        "saveFailed": "Saving failed. Try again.",
+        "deleteFailed": "Deleting failed. Try again."
+      }
     }
   }
 }

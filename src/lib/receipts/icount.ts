@@ -94,6 +94,11 @@ export class ICountProvider implements ReceiptProvider {
       client_name:     params.parentName,
       item_name_1:     docDescription,
       item_quantity_1: '1',
+      // VAT-inclusive: item_price is what was collected, item_vat the VAT
+      // contained in it, so the document total is the payment. Unverified
+      // against a live iCount account for doctype 300 — check a real tax
+      // invoice before an org is switched to receipt_document_type =
+      // 'tax_invoice' with this provider.
       item_price_1:    String(params.amount),
       item_vat_1:      String(params.vatAmount ?? 0),
       doc_date:        params.date.replace(/-/g, ''),

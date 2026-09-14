@@ -20,6 +20,7 @@ import {
   type ConflictingLesson,
   type OverrideCreateResult,
 } from '@/lib/availability-overrides'
+import type { AbsenceAuthority } from '@/lib/day-off/cancelForAbsence'
 import { overrideErrorMessage } from '@/lib/availability-overrides/errorMessage'
 import { revalidatePath } from 'next/cache'
 import { commonError } from '@/lib/i18n/actionErrors'
@@ -48,7 +49,13 @@ async function toState(result: OverrideCreateResult): Promise<ActionState> {
 
 /** Resolves the acting user's own teacher row, or the error to show instead. */
 async function ownTeacher(): Promise<
-  { teacherId: string; orgId: string; teacherName: string | null } | { error: string }
+  | {
+      teacherId: string
+      orgId: string
+      teacherName: string | null
+      authority: AbsenceAuthority
+    }
+  | { error: string }
 > {
   const t = await getTranslations()
   const session = await getSession()
@@ -62,7 +69,19 @@ async function ownTeacher(): Promise<
   const teacher = await getTeacherByProfileId(userId, orgId, { activeOnly: true })
   if (!teacher) return { error: t('teacherSelf.errors.noTeacherRecord') }
 
-  return { teacherId: teacher.id, orgId, teacherName: teacher.profile.full_name ?? null }
+  // A teacher blocking her own diary has nobody's sign-off, so cancelling the
+  // lessons inside it is priced under the org cancellation policy — the same
+  // price her cancel button on the lesson page charges. An owner/admin who
+  // also teaches is still staff, and their block is an authorised absence.
+  const authority: AbsenceAuthority =
+    role === 'teacher' ? { kind: 'teacher_self' } : { kind: 'staff' }
+
+  return {
+    teacherId: teacher.id,
+    orgId,
+    teacherName: teacher.profile.full_name ?? null,
+    authority,
+  }
 }
 
 export async function addTeacherOverride(
@@ -72,7 +91,13 @@ export async function addTeacherOverride(
   const who = await ownTeacher()
   if ('error' in who) return who
 
-  const result = await createOverride(who.orgId, who.teacherId, formData, who.teacherName)
+  const result = await createOverride(
+    who.orgId,
+    who.teacherId,
+    formData,
+    who.teacherName,
+    who.authority
+  )
   const state = await toState(result)
   // Nothing was written when the reader still has to decide about the lessons.
   if (state?.needsLessonConfirm) return state

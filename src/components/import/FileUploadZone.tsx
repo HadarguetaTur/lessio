@@ -13,6 +13,9 @@ interface FileUploadZoneProps {
 
 export function FileUploadZone({
   onFileSelect,
+  // Only CSV is parsed. The dropzone copy and the rejection message say so too
+  // — they used to advertise XLSX/XLS and then tell a rejected user to upload
+  // the very format that is refused.
   accept = '.csv',
   maxSizeMb = 5,
 }: FileUploadZoneProps) {

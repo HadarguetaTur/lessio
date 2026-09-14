@@ -312,6 +312,42 @@ export async function hasRecentUnreadSuperadminNotification(
 }
 
 /**
+ * True when this org already has an unread notification of `type` from the last
+ * `withinHours` hours.
+ *
+ * The org-scoped twin of hasRecentUnreadSuperadminNotification, for alerts a
+ * failing background job can raise on every attempt — a dead WhatsApp token
+ * fails every queued reminder, and one sentence a day is the whole message.
+ */
+export async function hasRecentUnreadOrgNotification(
+  orgId: string,
+  type: NotificationType,
+  withinHours: number
+): Promise<boolean> {
+  const db = createServiceRoleClient()
+  const since = new Date(Date.now() - withinHours * 60 * 60 * 1000).toISOString()
+
+  const { count, error } = await db
+    .from('in_app_notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .eq('type', type)
+    .is('read_at', null)
+    .gt('created_at', since)
+
+  if (error) {
+    console.error('[notifications] Failed to check recent org notifications', {
+      orgId,
+      type,
+      error: error.message,
+    })
+    return false
+  }
+
+  return (count ?? 0) > 0
+}
+
+/**
  * Resolve profile IDs for owner + admin roles in an org.
  * Used to determine who receives org-wide notifications.
  */

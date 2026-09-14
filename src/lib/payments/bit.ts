@@ -5,14 +5,34 @@
  * Bit Business API: https://developer.bitpay.co.il
  * Generates a payment request link that the parent opens in the Bit app.
  *
- * NOTE: Exact endpoint paths, request/response shapes, and webhook field names
- * must be verified against the Bit Business developer portal during go-live.
- * The contract below is based on the documented API structure.
+ * ⚠ UNVERIFIED WIRE CONTRACT — DO NOT TREAT AS WORKING.
+ *
+ * Endpoint paths, request/response field names, the webhook's field names and
+ * its HMAC scheme (algorithm, encoding, header name) are all inferred, not
+ * confirmed against a live Bit Business account. This is the same shape as the
+ * Sumit client that "was written to a guessed contract and silently treated
+ * every decline as a success" (see CLAUDE.md). Verify against the Bit Business
+ * developer portal before any org is allowed to select this provider; do not
+ * "fix" a field name by guessing a different one.
+ *
+ * What IS verified in our own code, and is NOT broken:
+ *   - `reference: chargeId` at the createPaymentLink body is the id we SEND to
+ *     Bit, not the reference we store. The stored reference is Bit's own
+ *     `paymentId ?? transactionId ?? id` from the response, and
+ *     registry.parseWebhookBody reads `transactionId || paymentId || externalId`
+ *     back off the callback. Those agree — provided Bit really echoes its own
+ *     id under one of those names, which is exactly the unverified part.
+ *   - There is no `confirmTransaction`, so the signed webhook is the only
+ *     settlement path. createPaymentLink now refuses to mint a link in
+ *     production when BIT_WEBHOOK_HMAC_SECRET is unset, because without it
+ *     /api/payments/bit rejects every callback and the parent's money vanishes
+ *     into a log line.
  *
  * Config fields: apiKey, secret, merchantId
  */
 
 import type { PaymentProvider } from './index'
+import { assertWebhookSettlementConfigured } from './webhook-verify'
 
 export interface BitConfig {
   apiKey:     string
@@ -41,6 +61,14 @@ export class BitProvider implements PaymentProvider {
   }): Promise<{ url: string; reference: string }> {
     const { chargeId, amount, description } = params
     const { apiKey, secret, merchantId } = this.config
+
+    // Bit has no confirmTransaction: the signed webhook is the ONLY way a
+    // payment made through this link can ever settle. See the header note.
+    assertWebhookSettlementConfigured(
+      process.env.BIT_WEBHOOK_HMAC_SECRET,
+      'bit',
+      'BIT_WEBHOOK_HMAC_SECRET'
+    )
 
     const body = {
       merchantId,

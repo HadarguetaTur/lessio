@@ -68,7 +68,14 @@ describe('payment provider registry', () => {
 
   it('allows generic settlement only for providers with webhook verification', () => {
     const enabled = ids.filter((id) => getRegistryEntry(id)?.acceptsWebhookSettlement)
-    expect(enabled).toEqual(['cardcom', 'payplus', 'bit', 'paybox', 'stripe'])
+    // Grow is here without a signature on purpose: its settlement is the
+    // approveTransaction round-trip made with the org's own API key, asserted
+    // below and in grow.test.ts. Every entry in this list must have one of the
+    // two — a verified request or a server-side confirmation.
+    expect(enabled).toEqual(['cardcom', 'payplus', 'bit', 'paybox', 'stripe', 'grow'])
+    expect(getRegistryEntry('grow')?.createAdapter({
+      userId: 'u', pageCode: 'p', apiKey: 'k',
+    }).confirmTransaction).toBeTypeOf('function')
     expect(getRegistryEntry('cardcom')?.createAdapter({
       terminal: '1', apiName: 'u', apiPassword: 'p',
     }).confirmTransaction).toBeTypeOf('function')

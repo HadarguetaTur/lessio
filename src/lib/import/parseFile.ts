@@ -3,6 +3,21 @@ export interface RawRow {
 }
 
 /**
+ * Codes surfaced to the API layer so a bad upload gets a named reason instead
+ * of an opaque 500. Each maps to a message key under the `import` namespace.
+ */
+export type ImportParseErrorCode = 'unsupportedFormat' | 'unterminatedQuote' | 'unreadableFile'
+
+export class ImportParseError extends Error {
+  readonly code: ImportParseErrorCode
+  constructor(code: ImportParseErrorCode, message?: string) {
+    super(message ?? code)
+    this.name = 'ImportParseError'
+    this.code = code
+  }
+}
+
+/**
  * Decodes an uploaded file, taking Excel as it actually is.
  *
  * Excel writes a CSV in the machine's ANSI codepage unless you pick the
@@ -48,7 +63,7 @@ export function parseFile(buffer: ArrayBuffer, filename: string): {
   rows: RawRow[]
 } {
   if (!filename.toLowerCase().endsWith('.csv')) {
-    throw new Error('Only CSV imports are supported')
+    throw new ImportParseError('unsupportedFormat', 'Only CSV imports are supported')
   }
   const text = decodeUpload(buffer).replace(/^\uFEFF/, '')
   const delimiter = detectDelimiter(text.split('\n', 1)[0] ?? '')
@@ -67,7 +82,7 @@ export function parseFile(buffer: ArrayBuffer, filename: string): {
     else if (char === '\n') { row.push(field.replace(/\r$/, '')); records.push(row); row = []; field = '' }
     else field += char
   }
-  if (quoted) throw new Error('Unterminated CSV quote')
+  if (quoted) throw new ImportParseError('unterminatedQuote', 'Unterminated CSV quote')
   if (field || row.length) { row.push(field.replace(/\r$/, '')); records.push(row) }
   const headers = records.shift()?.map((value) => value.trim()) ?? []
   if (headers.length === 0) {

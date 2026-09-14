@@ -28,6 +28,9 @@ export interface Charge {
   receipt_issued_at: string | null
   resolved_at: string | null
   resolution_reason: string | null
+  /** Money went back to the parent. Status stays as it was — see lib/charges/refunds.ts. */
+  refunded_at: string | null
+  refunded_amount: number | null
   parent: { id: string; full_name: string; phone: string | null }
   /**
    * Who the charge is *for*, when it came from a monthly bill. A charge belongs
@@ -40,7 +43,7 @@ export interface Charge {
 }
 
 const CHARGE_SELECT =
-  'id, amount, amount_paid, charge_type, status, notes, paid_at, due_date, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, resolved_at, resolution_reason, parents(id, full_name, phone), lessons(start_at), student_monthly_billing(students(full_name))'
+  'id, amount, amount_paid, charge_type, status, notes, paid_at, due_date, created_at, lesson_id, payment_link, payment_reference, payment_provider, receipt_url, receipt_issued_at, resolved_at, resolution_reason, refunded_at, refunded_amount, parents(id, full_name, phone), lessons(start_at), student_monthly_billing(students(full_name))'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapChargeRow(c: any): Charge {
@@ -62,6 +65,8 @@ function mapChargeRow(c: any): Charge {
     receipt_issued_at: c.receipt_issued_at ?? null,
     resolved_at: c.resolved_at ?? null,
     resolution_reason: c.resolution_reason ?? null,
+    refunded_at: c.refunded_at ?? null,
+    refunded_amount: c.refunded_amount == null ? null : Number(c.refunded_amount),
     student_name: c.student_monthly_billing?.students?.full_name ?? null,
     parent: {
       id: c.parents?.id,
@@ -322,15 +327,50 @@ export async function markChargeAsPaid(
     payload.amount_paid = Number(existing.amount)
   }
 
-  const { data: updatedCharge, error } = await supabase
-    .from('charges')
-    .update(payload)
-    .eq('id', chargeId)
-    .eq('organization_id', organizationId)
+  // Optimistic lock on the two columns that decide how much money this call is
+  // about to record. A payment webhook settling the same charge between the
+  // read above and this write would otherwise leave both paths convinced they
+  // owe a settlement row, and the same money would be in charge_payments twice
+  // — invisible in `charges`, which only ever holds one total, and doubled in
+  // every revenue figure, which sums the ledger.
+  let query = supabase.from('charges').update(payload).eq('id', chargeId).eq('organization_id', organizationId)
+  if (existing) {
+    query = query
+      .eq('status', existing.status as string)
+      .eq('amount_paid', Number(existing.amount_paid ?? 0))
+  }
+
+  const { data: updatedCharge, error } = await query
     .select('charge_type, billing_record_id')
-    .single()
+    .maybeSingle()
 
   if (error) throw new Error(error.message)
+
+  if (existing && !updatedCharge) {
+    // Someone else moved the charge first. If they settled it, this call has
+    // nothing left to do and must not add a second payment row; if they moved
+    // it somewhere else, that is a state this call cannot reason about.
+    const { data: current } = await supabase
+      .from('charges')
+      .select('status')
+      .eq('id', chargeId)
+      .eq('organization_id', organizationId)
+      .maybeSingle()
+
+    if (current?.status === 'paid') {
+      console.warn('[markChargeAsPaid] charge was settled concurrently — nothing recorded', {
+        chargeId,
+        organizationId,
+      })
+      return
+    }
+    if (current?.status === 'waived' || current?.status === 'voided') {
+      throw new ChargeAlreadyResolvedError(current.status as ChargeStatus)
+    }
+    throw new Error(
+      `[markChargeAsPaid] charge ${chargeId} changed while being settled — no payment recorded`
+    )
+  }
 
   // Settling the balance in one go is itself a payment. Recording it keeps
   // charge_payments a complete history — and revenue reporting reads from it.

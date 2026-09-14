@@ -15,13 +15,12 @@ import { issueReceiptForCharge } from '@/lib/receipts/issueReceiptForCharge'
 import { createSubscription, updateSubscription, deleteSubscription } from '@/lib/subscriptions'
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
-import { PaymentProviderNotConfiguredError } from '@/lib/payments'
+import { requireMintAmount, NothingToCollectError } from '@/lib/payments/mintAmount'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { formatBillingMonth } from '@/lib/i18n/formatBillingMonth'
 import { getT } from '@/lib/i18n/serverTranslator'
 import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { formatBotMoney } from '@/lib/i18n/formatCurrency'
-import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { prepareBusinessSend } from '@/lib/whatsapp/consent'
 import { getTranslations } from 'next-intl/server'
 import { getOrgBillingPolicy } from '@/lib/billing/orgBillingPolicy'
@@ -268,6 +267,17 @@ export async function setManualAdjustment(billingId: string, amount: number, rea
     .single()
 
   if (!billing) return { error: t('billing.errors.billingNotFound') }
+
+  // Same guard recalculateStudentBilling has, for the same reason: an approved
+  // bill has been sent, and a paid one has a receipt behind it. Without it,
+  // syncMonthlyCharge would rewrite the amount of a charge whose status stays
+  // 'paid' and whose amount_paid stays at the old figure — a bill of 950 with
+  // 800 collected, sitting outside every open-charge query because 'paid' is
+  // not an open status, and contradicting a tax document already issued at the
+  // old amount. Changing settled money goes through void or credit.
+  if (billing.is_approved || billing.is_paid) {
+    return { error: t('billing.errors.approvedRecalculationBlocked') }
+  }
 
   const computedTotal =
     Number(billing.lessons_amount) +
@@ -539,11 +549,21 @@ export async function approveBillingAction(billingId: string) {
     })
     chargeId = syncResult.chargeId
   } catch (error) {
-    await supabase
+    // The compensating un-approve. supabase-js returns { error } rather than
+    // throwing, and a swallowed failure here leaves the month APPROVED with no
+    // ledger charge behind it — the owner sees an approved bill nobody can pay.
+    const { error: revertError } = await supabase
       .from('student_monthly_billing')
       .update({ is_approved: false, updated_at: new Date().toISOString() })
       .eq('id', billingId)
       .eq('organization_id', session.orgId)
+    if (revertError) {
+      console.error(
+        '[billing] FAILED TO UN-APPROVE after a ledger sync error — this billing row is approved ' +
+        'with no charge behind it and needs a person.',
+        { billingId, orgId: session.orgId, error: revertError.message }
+      )
+    }
     if (error instanceof MonthlyBillingConflictError) {
       return { error: t('billing.errors.individualChargeConflict') }
     }
@@ -671,13 +691,28 @@ async function sendBillingPaymentRequestCore(
 
   const { data: charge } = await db
     .from('charges')
-    .select('id, status, amount')
+    // amount_paid is load-bearing: the link must be minted NET of any cash
+    // already recorded, because that is what the charge_payment_references
+    // trigger stores as the amount this link collects. See mintAmountForCharges.
+    .select('id, status, amount, amount_paid')
     .eq('organization_id', orgId)
     .eq('billing_record_id', billingId)
     .maybeSingle()
 
   if (!charge) throw new Error(t('billing.errors.ledgerChargeNotFound'))
   if (charge.status === 'paid') throw new Error(t('billing.errors.chargeAlreadyPaid'))
+
+  // A charge whose partial payments already cover it has nothing left to
+  // collect; minting for it would hand the parent a ₪0 link.
+  let mintAmount: number
+  try {
+    mintAmount = requireMintAmount([charge])
+  } catch (err) {
+    if (err instanceof NothingToCollectError) {
+      throw new Error(t('billing.errors.chargeAlreadyPaid'))
+    }
+    throw err
+  }
 
   // Load parent
   const { data: parent } = await db
@@ -719,44 +754,28 @@ async function sendBillingPaymentRequestCore(
       ? `${billing.period_start}–${billing.period_end}`
       : formatBillingMonth(billing.billing_month as string, locale)
 
-  // Create payment link. DEMO_PAYMENT_LINK_ENABLED=1 allows sending without a
-  // configured payment provider by linking to the org's parent portal instead
-  // (Meta App Review demo — dead branch in normal production operation).
-  let paymentResult: { url: string; reference: string }
-  let providerName: string
-  try {
-    const p = await getPaymentProvider(orgId)
-    providerName = p.providerName
-    paymentResult = await p.provider.createPaymentLink({
-      chargeId: charge.id,
-      amount: Number(charge.amount),
-      description: tr('paymentDescription', {
-        month: monthLabel,
-        parent: parent.full_name as string,
-      }),
-      orgId,
-      payer: {
-        fullName: parent.full_name as string,
-        phone: parent.phone as string,
-      },
-    })
-  } catch (err) {
-    if (
-      process.env.DEMO_PAYMENT_LINK_ENABLED === '1' &&
-      err instanceof PaymentProviderNotConfiguredError
-    ) {
-      providerName = 'demo'
-      paymentResult = {
-        url: `${getShareableBaseUrl()}/portal/${orgId}`,
-        reference: `demo-${charge.id}`,
-      }
-    } else {
-      throw err
-    }
-  }
+  // Create payment link. An org with no configured provider has nothing to
+  // send: PaymentProviderNotConfiguredError propagates and the caller reports
+  // it, rather than a portal link carrying a reference that can never settle.
+  const { provider, providerName } = await getPaymentProvider(orgId)
+  const paymentResult = await provider.createPaymentLink({
+    chargeId: charge.id,
+    amount: mintAmount,
+    description: tr('paymentDescription', {
+      month: monthLabel,
+      parent: parent.full_name as string,
+    }),
+    orgId,
+    payer: {
+      fullName: parent.full_name as string,
+      phone: parent.phone as string,
+    },
+  })
 
-  // Persist link on charge
-  await db
+  // Persist link on charge. supabase-js returns { error } rather than throwing,
+  // so this MUST be checked: a swallowed failure here sends the parent a link
+  // whose reference is stored nowhere, which no webhook can ever settle.
+  const { error: persistError } = await db
     .from('charges')
     .update({
       payment_link: paymentResult.url,
@@ -766,6 +785,12 @@ async function sendBillingPaymentRequestCore(
     })
     .eq('id', charge.id)
     .eq('organization_id', orgId)
+
+  if (persistError) {
+    throw new Error(
+      `[sendMonthlyPaymentRequest] failed to persist payment reference on charge ${charge.id}: ${persistError.message}`
+    )
+  }
 
   // Session-window aware: the org's own template copy inside the 24h window,
   // the Meta-approved lessio_payment_request_* template outside it. A plain
@@ -780,8 +805,8 @@ async function sendBillingPaymentRequestCore(
     templateType: 'payment_request',
     vars: {
       parent_name: parent.full_name as string,
-      amount: formatBotMoney(Number(charge.amount), locale, currency),
-      amount_value: Number(charge.amount).toFixed(2),
+      amount: formatBotMoney(mintAmount, locale, currency),
+      amount_value: mintAmount.toFixed(2),
       description: tr('paymentDescriptionShort', { month: monthLabel }),
       charge_lines: '',
       payment_link: paymentResult.url,

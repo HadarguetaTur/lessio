@@ -51,6 +51,26 @@ export function DeleteOrganizationCard({ orgId, orgName, orgSlug, counts, delete
         toast.error(result.error)
         return
       }
+
+      // Save the pre-delete snapshot the server took. There is no per-tenant
+      // restore — whole-database PITR would roll back every other tenant — so
+      // this download is the only copy of the tenant that will exist.
+      if (result.snapshotJson) {
+        const blob = new Blob([result.snapshotJson], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `org-snapshot-${orgSlug}-${new Date().toISOString().slice(0, 10)}.json`
+        a.click()
+        URL.revokeObjectURL(url)
+      } else {
+        toast.warning(t('toast.noSnapshot'))
+      }
+
+      if (result.storageObjectsFailed > 0) {
+        toast.warning(t('toast.storageLeftBehind', { count: result.storageObjectsFailed }))
+      }
+
       if (result.authUsersFailed.length > 0) {
         toast.warning(t('toast.partial', { name: result.orgName, count: result.authUsersFailed.length }))
       } else {

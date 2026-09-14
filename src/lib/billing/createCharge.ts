@@ -32,6 +32,61 @@ function isDuplicateInsertError(error: { code?: string } | null): boolean {
 }
 
 /**
+ * What is already billed for this lesson, split by whether the row can say
+ * which student it is for.
+ *
+ * The unique indexes on charges(lesson_id, student_id) are the idempotency key
+ * for everything written since 20260909160000 — but they cannot dedupe a NULL
+ * student_id, because in Postgres NULLs compare distinct. The backfill in that
+ * migration deliberately leaves NULL every row it cannot resolve to one
+ * student, which is precisely the sibling-ambiguity case. So a re-completion
+ * (`completed → completed` is a legal transition, and the auto-completion retry
+ * cron re-enters on a schedule) mints a per-student row that collides with
+ * nothing and the parent is billed two or three times for one lesson.
+ *
+ * `legacyNullParentIds` is the answer: a NULL row for parent P on lesson L
+ * means P is already billed for L under the old (lesson_id, parent_id) key.
+ *
+ * Returns null on a read failure — the caller must NOT charge, because charging
+ * on a broken dedupe read is the bug being closed.
+ */
+async function loadExistingLessonCharges(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  organizationId: string,
+  lessonId: string,
+  chargeType: 'lesson' | 'cancellation'
+): Promise<{ studentIds: Set<string>; legacyNullParentIds: Set<string> } | null> {
+  const { data, error } = await supabase
+    .from('charges')
+    .select('student_id, parent_id')
+    .eq('organization_id', organizationId)
+    .eq('lesson_id', lessonId)
+    .eq('charge_type', chargeType)
+
+  if (error) {
+    console.error('[createCharge] existing-charge lookup failed', {
+      lessonId,
+      orgId: organizationId,
+      chargeType,
+      error: error.message,
+    })
+    return null
+  }
+
+  const studentIds = new Set<string>()
+  const legacyNullParentIds = new Set<string>()
+  for (const row of (data ?? []) as Array<{
+    student_id: string | null
+    parent_id: string | null
+  }>) {
+    if (row.student_id) studentIds.add(row.student_id)
+    else if (row.parent_id) legacyNullParentIds.add(row.parent_id)
+  }
+  return { studentIds, legacyNullParentIds }
+}
+
+/**
  * Creates the lesson charges when a lesson is marked completed.
  *
  * One charge per participant, billed to that student's own primary parent —
@@ -44,8 +99,10 @@ function isDuplicateInsertError(error: { code?: string } | null): boolean {
  * monthly engine zeroes the same lesson, so charging here was a double charge.
  * Note this path still does not branch on organizations.billing_mode.
  *
- * Idempotent: the unique index on charges(lesson_id, parent_id) WHERE
- * charge_type='lesson' makes a repeated call a no-op.
+ * Idempotent: the unique index on charges(lesson_id, student_id) WHERE
+ * charge_type='lesson' makes a repeated call a no-op. It is keyed on the
+ * student, not the parent — two siblings in one group lesson share a parent,
+ * and a parent-keyed index silently swallowed the second child's charge.
  *
  * Returns a ChargeAlert if no charge could be created at all; when only some
  * students fail (no primary parent), the rest are still charged and the first
@@ -151,7 +208,27 @@ export async function createLessonCharge(
     subscriptions = (subsData as CoverageSubscription[] | null) ?? []
   }
 
+  const alreadyCharged = await loadExistingLessonCharges(
+    supabase,
+    organizationId,
+    lessonId,
+    'lesson'
+  )
+  if (alreadyCharged === null) {
+    return { type: 'error', message: 'validation.createChargeFailed' }
+  }
+
   for (const { student_id: studentId, students: studentRow } of lessonStudents) {
+    // Already billed for this student, or billed under a legacy row that
+    // predates charges.student_id. The unique index cannot see the second case:
+    // NULLs compare distinct in Postgres, so a fresh per-student insert collides
+    // with nothing and the parent is billed twice — three times for two
+    // siblings. `completed → completed` and the auto-completion retry cron both
+    // re-enter here, so this must be checked, not assumed.
+    if (alreadyCharged.studentIds.has(studentId)) {
+      chargedCount++
+      continue
+    }
     // Covered by an active subscription → the monthly engine bills 0, so no charge row.
     if (
       isLessonCoveredBySubscription(
@@ -183,11 +260,27 @@ export async function createLessonCharge(
       throw e
     }
 
+    // A legacy row with student_id NULL means this parent is already billed for
+    // this lesson — under the old (lesson_id, parent_id) key, which is exactly
+    // the sibling-ambiguity case the backfill could not resolve. Minting a
+    // per-student row now would bill them a second and third time.
+    if (alreadyCharged.legacyNullParentIds.has(parentId)) {
+      console.warn(
+        '[createLessonCharge] a legacy charge with no student_id already covers this parent for ' +
+        'this lesson — skipping to avoid double-billing. Resolve the NULL student_id by hand ' +
+        'if this student should have their own row.',
+        { lessonId, orgId: organizationId, parentId, studentId }
+      )
+      chargedCount++
+      continue
+    }
+
     const { data: inserted, error: insertError } = await supabase
       .from('charges')
       .insert({
         organization_id: organizationId,
         parent_id: parentId,
+        student_id: studentId,
         lesson_id: lessonId,
         amount,
         charge_type: 'lesson',
@@ -231,15 +324,22 @@ export async function createLessonCharge(
 
 /**
  * Creates a cancellation charge from the result of calculateCancellationCharge.
- * Called from the manual cancellation flow (DEV-58).
- * Idempotent by the same unique index (charge_type = 'lesson' not applicable here,
- * but cancellation charges are created once per cancellation action).
+ *
+ * `studentId` says which participant the fee is for. Idempotency is the unique
+ * index on charges(lesson_id, student_id) WHERE charge_type='cancellation': one
+ * fee per family per lesson, and a retry of the same cancellation is a no-op.
+ * The index it replaced was keyed on lesson_id alone, so a group lesson could
+ * only ever raise one cancellation fee no matter how many families it had.
+ *
+ * Only `cancelLessonCore` should call this — it is the path that decides the
+ * billing mode, the policy amount and the billing parent.
  */
 export async function createCancellationCharge(
   lessonId: string,
   organizationId: string,
   parentId: string,
-  chargeResult: CancellationChargeResult
+  chargeResult: CancellationChargeResult,
+  studentId: string
 ): Promise<ChargeAlert | null> {
   if (!chargeResult.shouldCharge || chargeResult.amount === 0) return null
 
@@ -249,11 +349,34 @@ export async function createCancellationCharge(
   const supabase = createServiceRoleClient()
   const timezone = await getOrgTimezone(organizationId)
 
+  // Same NULL-dedupe hole as the lesson path, and worse historically: the index
+  // this replaced was keyed on lesson_id alone, and the parent-initiated paths
+  // "billed whoever tapped cancel", so the backfill leaves more of these NULL.
+  const existing = await loadExistingLessonCharges(
+    supabase,
+    organizationId,
+    lessonId,
+    'cancellation'
+  )
+  if (existing === null) {
+    return { type: 'error', message: 'validation.createCancellationChargeFailed' }
+  }
+  if (existing.studentIds.has(studentId)) return null
+  if (existing.legacyNullParentIds.has(parentId)) {
+    console.warn(
+      '[createCancellationCharge] a legacy cancellation charge with no student_id already covers ' +
+      'this parent for this lesson — skipping to avoid double-billing.',
+      { lessonId, orgId: organizationId, parentId, studentId }
+    )
+    return null
+  }
+
   const { data: inserted, error } = await supabase
     .from('charges')
     .insert({
       organization_id: organizationId,
       parent_id: parentId,
+      student_id: studentId,
       lesson_id: lessonId,
       amount: chargeResult.amount,
       charge_type: 'cancellation',
@@ -282,7 +405,7 @@ export async function createCancellationCharge(
     eventType: 'created',
     afterStatus: 'pending',
     afterAmount: chargeResult.amount,
-    metadata: { source: 'lesson_cancelled', lesson_id: lessonId },
+    metadata: { source: 'lesson_cancelled', lesson_id: lessonId, student_id: studentId },
   })
 
   return null

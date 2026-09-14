@@ -10,9 +10,15 @@ import { getProviderUI } from '@/lib/payments/registry-ui'
 import { renderChargeNote } from '@/lib/charges/renderNote'
 import { RecordPaymentDialog } from '@/components/dashboard/charges/RecordPaymentDialog'
 import { ResolveChargeDialog } from '@/components/dashboard/charges/ResolveChargeDialog'
+import { MarkRefundedDialog } from '@/components/dashboard/charges/MarkRefundedDialog'
 import { ChargeAuditTimeline } from '@/components/dashboard/charges/ChargeAuditTimeline'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { waiveChargeAction, voidChargeAction, recordChargePaymentAction } from '../actions'
+import {
+  waiveChargeAction,
+  voidChargeAction,
+  recordChargePaymentAction,
+  markChargeRefundedAction,
+} from '../actions'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
 import { formatBillingMonth } from '@/lib/i18n/formatBillingMonth'
@@ -51,6 +57,8 @@ export default async function ChargeDetailPage({
   const canMarkPaid = role === 'owner' || role === 'admin'
   const isOwner = role === 'owner'
   const isOpen = OPEN_STATUSES.includes(charge.status)
+  // A refund is recordable exactly once, on money that actually arrived.
+  const canRecordRefund = canMarkPaid && !charge.refunded_at && charge.amount_paid > 0
   const t = await getTranslations('charges')
   const tp = await getTranslations('settings.paymentProviders')
   const tCommon = await getTranslations('common')
@@ -227,6 +235,30 @@ export default async function ChargeDetailPage({
                 action={voidChargeAction}
                 hasPaymentLink={Boolean(charge.payment_link)}              />
             )}
+          </div>
+        )}
+
+        {/* Money that has gone back. The charge stays 'paid' — status answers
+            "is this collectable" — so the fact is shown here instead. */}
+        {charge.refunded_at && (
+          <div className="p-4">
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              {t('refund.banner', {
+                amount: formatCurrency(charge.refunded_amount ?? 0, appLocale, 2),
+                date: DateTime.fromISO(charge.refunded_at).toFormat('dd.MM.yyyy'),
+              })}
+            </p>
+          </div>
+        )}
+
+        {canRecordRefund && (
+          <div className="p-4 flex flex-wrap items-center gap-3">
+            <MarkRefundedDialog
+              chargeId={charge.id}
+              amountPaid={charge.amount_paid}
+              hasReceipt={Boolean(charge.receipt_url)}
+              action={markChargeRefundedAction}
+            />
           </div>
         )}
 

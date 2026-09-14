@@ -67,13 +67,19 @@ vi.mock('@/lib/whatsapp/health', () => ({
   refreshPhoneHealth: vi.fn().mockResolvedValue(null),
 }))
 
-vi.mock('@/lib/whatsapp/registerPhone', () => ({
+vi.mock('@/lib/whatsapp/registerPhone', async () => ({
+  // PhoneRegistrationError is kept real: the action branches on `instanceof`
+  // and on the failure kind it carries, which is the point of the change.
+  ...(await vi.importActual<typeof import('@/lib/whatsapp/registerPhone')>(
+    '@/lib/whatsapp/registerPhone'
+  )),
   registerPhoneNumber: mockRegisterPhoneNumber,
   // Kept real: the action uses it to reject a malformed env var before any
   // network call, which is behaviour worth exercising rather than stubbing.
   isValidRegisterPin: (pin: string) => /^\d{6}$/.test(pin),
 }))
 
+import { PhoneRegistrationError } from '@/lib/whatsapp/registerPhone'
 import { saveWhatsAppConnection, disconnectWhatsApp, registerTemplates } from './actions'
 
 const mockFetch = vi.fn()
@@ -89,7 +95,9 @@ function makeSaveFormData(
   return formData
 }
 
-function makeSaveDbClient(result: { error: { message: string } | null } = { error: null }) {
+function makeSaveDbClient(
+  result: { error: { message: string; code?: string } | null } = { error: null }
+) {
   const eq = vi.fn().mockResolvedValue(result)
   const update = vi.fn(() => ({ eq }))
   return {
@@ -286,6 +294,71 @@ describe('saveWhatsAppConnection', () => {
     expect(result.error).toBeTruthy()
     expect(db.spies.update).not.toHaveBeenCalled()
     expect(mockRegisterTemplatesForWABA).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('names the customer’s own 2FA PIN as the reason and quotes Meta', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const db = makeSaveDbClient()
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+    mockRegisterPhoneNumber.mockRejectedValue(
+      new PhoneRegistrationError(
+        'register failed: 400',
+        'pin_required',
+        'Two step verification PIN mismatch.'
+      )
+    )
+
+    const result = await saveWhatsAppConnection(
+      { error: null },
+      makeSaveFormData({ wabaId: 'waba-1' })
+    )
+
+    // Retrying sends the same platform PIN, so the message must say what to do
+    // instead of "try again", and must carry Meta's own sentence.
+    expect(result.error).toContain('אימות דו-שלבי')
+    expect(result.error).toContain('Two step verification PIN mismatch.')
+    expect(db.spies.update).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('rolls the WABA subscription back when registration fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const db = makeSaveDbClient()
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+    mockUnsubscribeAppFromWABA.mockResolvedValue(undefined)
+    mockRegisterPhoneNumber.mockRejectedValue(new Error('register failed'))
+
+    await saveWhatsAppConnection({ error: null }, makeSaveFormData({ wabaId: 'waba-1' }))
+
+    // Otherwise Meta keeps dispatching webhooks for a phone_number_id no org
+    // owns, and every parent message to that number is silently dropped.
+    expect(mockUnsubscribeAppFromWABA).toHaveBeenCalledWith('waba-1', 'token-1')
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('reports a number already connected elsewhere, and rolls back', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const db = makeSaveDbClient({
+      error: {
+        message: 'duplicate key value violates unique constraint',
+        code: '23505',
+      },
+    })
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+    mockUnsubscribeAppFromWABA.mockResolvedValue(undefined)
+
+    const result = await saveWhatsAppConnection(
+      { error: null },
+      makeSaveFormData({ wabaId: 'waba-1' })
+    )
+
+    expect(result.error).toContain('כבר מחובר לחשבון Lessio אחר')
+    expect(result.error).not.toBe('שגיאה בשמירת הנתונים')
+    expect(mockUnsubscribeAppFromWABA).toHaveBeenCalledWith('waba-1', 'token-1')
 
     consoleErrorSpy.mockRestore()
   })

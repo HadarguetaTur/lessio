@@ -12,6 +12,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
+import { requireMintAmount, NothingToCollectError } from '@/lib/payments/mintAmount'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
@@ -52,7 +53,7 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
     // 2. Find the lesson charge (created by createLessonCharge moments before)
     const { data: charge } = await db
       .from('charges')
-      .select('id, amount, parent_id')
+      .select('id, amount, amount_paid, parent_id')
       .eq('organization_id', orgId)
       .eq('lesson_id', lessonId)
       .eq('charge_type', 'lesson')
@@ -61,6 +62,23 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
     if (!charge) {
       console.warn('[autoSendPaymentRequest] Lesson charge not found', { orgId, lessonId })
       return
+    }
+
+    // The link is minted NET of anything already paid — the same figure the
+    // charge_payment_references trigger records. One derivation, one place.
+    let mintAmount: number
+    try {
+      mintAmount = requireMintAmount([charge])
+    } catch (err) {
+      if (err instanceof NothingToCollectError) {
+        console.info('[autoSendPaymentRequest] charge already settled — nothing to collect', {
+          orgId,
+          lessonId,
+          chargeId: charge.id,
+        })
+        return
+      }
+      throw err
     }
 
     // 3. Load billing parent
@@ -91,7 +109,7 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
     const { provider, providerName } = await getPaymentProvider(orgId)
     const paymentResult = await provider.createPaymentLink({
       chargeId: charge.id,
-      amount: Number(charge.amount),
+      amount: mintAmount,
       description: (await getT('receipts', recipientLocale))('lessonPayment', {
         name: parent.full_name as string,
       }),
@@ -99,8 +117,11 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
       payer: { fullName: parent.full_name as string, phone: parent.phone },
     })
 
-    // 5. Persist payment link on the charge
-    await db
+    // 5. Persist payment link on the charge.
+    // supabase-js returns { error } rather than throwing. Sending the parent a
+    // link whose reference was never stored produces a payment no webhook can
+    // resolve to a charge, so stop here instead of messaging.
+    const { error: persistError } = await db
       .from('charges')
       .update({
         payment_link: paymentResult.url,
@@ -110,6 +131,16 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
       })
       .eq('id', charge.id)
       .eq('organization_id', orgId)
+
+    if (persistError) {
+      console.error('[autoSendPaymentRequest] failed to persist payment reference — not sending', {
+        orgId,
+        lessonId,
+        chargeId: charge.id,
+        error: persistError.message,
+      })
+      return
+    }
 
     // 6. Decrypt WhatsApp token and send message
     const accessToken = decryptToken(encryptedToken)
@@ -130,10 +161,10 @@ export async function autoSendPaymentRequest(lessonId: string, orgId: string): P
         templateType: 'payment_request',
         vars: {
           parent_name: parent.full_name as string,
-          amount: formatBotMoney(Number(charge.amount), recipientLocale, currency),
+          amount: formatBotMoney(mintAmount, recipientLocale, currency),
           // Bare figure for the Meta v2/v3 params, whose approved copy already
           // prints the currency symbol. See metaAmountParam.
-          amount_value: Number(charge.amount).toFixed(2),
+          amount_value: mintAmount.toFixed(2),
           // A single lesson needs no itemisation, so charge_lines stays empty
           // and the description carries the whole story.
           description: tr('waLessonCharge'),

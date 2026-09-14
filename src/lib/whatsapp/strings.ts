@@ -63,6 +63,7 @@ export type BotStringKey =
   | 'charge_partial'
   | 'charge_line_label'
   | 'charge_none'
+  | 'charge_pending'
   // Fragments composed into the {{charge_lines}} variable of payment_request.
   // They used to live in a private table inside payment-request/index.ts, which
   // is how the automatic payment request ended up ignoring the body an owner
@@ -303,6 +304,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_partial: 'חיוב ביטול חלקי',
     charge_line_label: 'חיוב',
     charge_none: 'ללא חיוב ביטול',
+    charge_pending: 'דמי ביטול לפי המדיניות, ממתינים לאישור לחשבון החודשי',
 
     charge_type_lesson: 'שיעור',
     charge_type_cancellation: 'חיוב ביטול',
@@ -569,6 +571,7 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_partial: 'Partial cancellation charge',
     charge_line_label: 'Charge',
     charge_none: 'No cancellation charge',
+    charge_pending: 'Cancellation fee per policy, pending approval onto the monthly bill',
 
     charge_type_lesson: 'Lesson',
     charge_type_cancellation: 'Cancellation charge',

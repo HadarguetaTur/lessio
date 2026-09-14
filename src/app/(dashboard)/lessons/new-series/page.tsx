@@ -162,7 +162,11 @@ export default async function NewSeriesPage(props: {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-sm text-muted-foreground">
-                        {dateFormatter.format(new Date(`${s.rule.until}T00:00:00`))}
+                        {/* A legacy imported rule has no horizon; formatting an
+                            empty string would throw a RangeError out of Intl. */}
+                        {s.rule.until
+                          ? dateFormatter.format(new Date(`${s.rule.until}T00:00:00`))
+                          : '—'}
                         {s.stoppedAt && (
                           <Badge variant="secondary" className="ms-2">
                             {t('series.stoppedBadge')}

@@ -14,6 +14,7 @@ import {
   deleteOrganizationCompletely,
   OrganizationDeleteError,
 } from '@/lib/superadmin/deleteOrganization'
+import { buildOrgDataExport, countExportedRows } from '@/lib/superadmin/exportOrgData'
 import { recordAdminAction } from '@/lib/superadmin/audit'
 import { getTranslations } from 'next-intl/server'
 
@@ -102,23 +103,7 @@ export async function processDeletionRequestAction(
 export async function exportOrgDataAction(orgId: string): Promise<{ json: string }> {
   const session = await requirePlatformSession('orgs.export')
 
-  const db = createServiceRoleClient()
-
-  const [parents, students, lessons, charges] = await Promise.all([
-    db.from('parents').select('*').eq('organization_id', orgId),
-    db.from('students').select('*').eq('organization_id', orgId),
-    db.from('lessons').select('*').eq('organization_id', orgId),
-    db.from('charges').select('*').eq('organization_id', orgId),
-  ])
-
-  const payload = {
-    exported_at: new Date().toISOString(),
-    org_id: orgId,
-    parents: parents.data ?? [],
-    students: students.data ?? [],
-    lessons: lessons.data ?? [],
-    charges: charges.data ?? [],
-  }
+  const payload = await buildOrgDataExport(orgId)
 
   await recordAdminAction({
     actorProfileId: session.profileId,
@@ -126,12 +111,7 @@ export async function exportOrgDataAction(orgId: string): Promise<{ json: string
     targetType: 'organizations',
     targetId: orgId,
     organizationId: orgId,
-    metadata: {
-      parents: payload.parents.length,
-      students: payload.students.length,
-      lessons: payload.lessons.length,
-      charges: payload.charges.length,
-    },
+    metadata: countExportedRows(payload),
   })
 
   return { json: JSON.stringify(payload, null, 2) }
@@ -140,7 +120,21 @@ export async function exportOrgDataAction(orgId: string): Promise<{ json: string
 // ── Danger zone: hard-delete a tenant ────────────────────────────────────────
 
 export type DeleteOrganizationActionResult =
-  | { ok: true; orgName: string; deletedRows: number; authUsersFailed: string[] }
+  | {
+      ok: true
+      orgName: string
+      deletedRows: number
+      authUsersFailed: string[]
+      /** Files the storage service would not remove. Rows are already gone. */
+      storageObjectsFailed: number
+      /**
+       * The pre-delete snapshot as JSON, for the browser to save. There is no
+       * per-tenant restore in this product — whole-database PITR rolls back
+       * every other tenant — so this file is the only thing standing between an
+       * accidental delete and nothing at all. Null if it could not be taken.
+       */
+      snapshotJson: string | null
+    }
   | { ok: false; error: string }
 
 /**
@@ -192,8 +186,10 @@ export async function deleteOrganizationAction(
       orgName: result.orgName,
       deletedRows: result.deletedRows,
       storageObjectsRemoved: result.storageObjectsRemoved,
+      storageObjectsFailed: result.storageObjectsFailed,
       authUsersDeleted: result.authUsersDeleted,
       authUsersFailed: result.authUsersFailed,
+      snapshotTaken: result.snapshot !== null,
     },
   })
 
@@ -204,5 +200,7 @@ export async function deleteOrganizationAction(
     orgName: result.orgName,
     deletedRows: Object.values(result.deletedRows).reduce((a, b) => a + b, 0),
     authUsersFailed: result.authUsersFailed,
+    storageObjectsFailed: result.storageObjectsFailed,
+    snapshotJson: result.snapshot ? JSON.stringify(result.snapshot, null, 2) : null,
   }
 }

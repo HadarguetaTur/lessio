@@ -17,6 +17,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { resolveAudience } from '@/lib/whatsapp/broadcast/audience'
 import { createCampaign } from '@/lib/whatsapp/broadcast/create'
+import { checkCampaignResumable } from '@/lib/whatsapp/broadcast/send'
 import { categoryOf, type AudienceFilter, type BroadcastType } from '@/lib/whatsapp/broadcast/types'
 import { PARAM_LIMITS } from '@/lib/whatsapp/approvedTemplates'
 import type { AppLocale } from '@/lib/i18n/locale'
@@ -172,6 +173,16 @@ export async function updateBroadcastStatusAction(
   await requireFeature(session.orgId, 'broadcasts')
 
   if (!CampaignIdSchema.safeParse(campaignId).success) return { error: 'INVALID_INPUT' }
+
+  // Resume is a SEND decision, not a status edit: it puts the campaign back in
+  // flight. Without this it cleared `paused_reason` and re-entered 'sending'
+  // with no guard, so a campaign auto-paused for quality_red, blocked_by_meta
+  // or repeated failures resumed straight back into whatever paused it.
+  // Pausing and cancelling need no permission — they only ever send less.
+  if (action === 'resume') {
+    const allowed = await checkCampaignResumable(campaignId, session.orgId)
+    if (!allowed.ok) return { error: 'BLOCKED', guardReason: allowed.reason, campaignId }
+  }
 
   const db = createServiceRoleClient()
   const status = action === 'pause' ? 'paused' : action === 'resume' ? 'sending' : 'cancelled'

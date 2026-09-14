@@ -26,7 +26,11 @@ import { subscribeAppToWABA, unsubscribeAppFromWABA } from '@/lib/whatsapp/subsc
 import { refreshPhoneHealth } from '@/lib/whatsapp/health'
 import { META_API_VERSION } from '@/lib/whatsapp/graphVersion'
 import { inspectAccessToken, type TokenGrant } from '@/lib/whatsapp/debugToken'
-import { registerPhoneNumber, isValidRegisterPin } from '@/lib/whatsapp/registerPhone'
+import {
+  registerPhoneNumber,
+  isValidRegisterPin,
+  PhoneRegistrationError,
+} from '@/lib/whatsapp/registerPhone'
 import { commonError, mutationBlockedError, zodError } from '@/lib/i18n/actionErrors'
 import { getTranslations } from 'next-intl/server'
 
@@ -56,6 +60,31 @@ export type RegisterTemplatesResult = {
   registered: string[]
   /** Templates Meta refused, with its reason. Surfaced, never swallowed. */
   failed: Array<{ name: string; reason: string }>
+}
+
+/**
+ * What to tell the owner when Meta refused to register their number.
+ *
+ * The default used to be "try connecting again", which for the commonest cause
+ * — the number already has two-step verification set with the customer's own
+ * PIN — retries the same platform PIN and fails identically every time. Meta's
+ * own sentence is appended when it sent one, because it names the obstacle.
+ */
+async function registrationErrorMessage(err: unknown): Promise<string> {
+  const t = await getTranslations('settings.whatsappActions.errors')
+  const kind = err instanceof PhoneRegistrationError ? err.kind : 'unknown'
+  const metaMessage = err instanceof PhoneRegistrationError ? err.metaMessage : ''
+
+  const base =
+    kind === 'pin_required'
+      ? t('phoneRegisterPinRequired')
+      : kind === 'pin_locked'
+        ? t('phoneRegisterPinLocked')
+        : kind === 'reverification_required'
+          ? t('phoneRegisterReverify')
+          : t('phoneRegisterFailed')
+
+  return metaMessage ? `${base} ${t('metaSaid', { detail: metaMessage })}` : base
 }
 
 // ── saveWhatsAppConnection ────────────────────────────────────────────────────
@@ -170,6 +199,23 @@ export async function saveWhatsAppConnection(
     return { error: t('settings.whatsappActions.errors.webhookRegisterFailed') }
   }
 
+  // From here on the WABA is subscribed at Meta. Every abort below has to undo
+  // that: leaving it in place means Meta dispatches webhooks for a
+  // phone_number_id no org owns, and every message a parent sends to that
+  // number is silently dropped by our own webhook (UX audit F14).
+  const rollback = async (why: string) => {
+    try {
+      await unsubscribeAppFromWABA(wabaId, accessToken)
+    } catch (err) {
+      console.error('[whatsapp/settings] Rollback unsubscribe failed — WABA left subscribed', {
+        orgId,
+        wabaId,
+        why,
+        err,
+      })
+    }
+  }
+
   // Embedded Signup puts the number on the WABA; it does not put it on Cloud
   // API. Skipping this leaves an org that reads as connected and cannot send a
   // single message — the same reason the subscription above blocks the save.
@@ -183,7 +229,8 @@ export async function saveWhatsAppConnection(
       phoneNumberId,
       err,
     })
-    return { error: t('settings.whatsappActions.errors.phoneRegisterFailed') }
+    await rollback('register')
+    return { error: await registrationErrorMessage(err) }
   }
 
   // Encrypt before storing
@@ -192,6 +239,7 @@ export async function saveWhatsAppConnection(
     encryptedToken = encryptToken(accessToken)
   } catch (err) {
     console.error('[whatsapp/settings] Token encryption failed', { orgId, err })
+    await rollback('encrypt')
     return { error: t('settings.whatsappActions.errors.encryptFailed') }
   }
 
@@ -211,7 +259,19 @@ export async function saveWhatsAppConnection(
     .eq('id', orgId)
 
   if (updateError) {
-    console.error('[whatsapp/settings] DB update failed', { orgId, error: updateError.message })
+    console.error('[whatsapp/settings] DB update failed', {
+      orgId,
+      code: (updateError as { code?: string }).code,
+      error: updateError.message,
+    })
+    await rollback('persist')
+    // whatsapp_phone_number_id is unique across organizations, so a 23505 here
+    // is one specific and very confusing situation: this number is already
+    // connected to another Lessio account. "Could not save the data" left the
+    // owner retrying a signup that can never succeed.
+    if ((updateError as { code?: string }).code === '23505') {
+      return { error: t('settings.whatsappActions.errors.numberInUse') }
+    }
     return { error: t('settings.whatsappActions.errors.saveFailed') }
   }
 

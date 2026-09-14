@@ -9,6 +9,9 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
+/** Thrown by {@link createNote} when the lesson is not the given org's. */
+export const NOTE_LESSON_OUTSIDE_ORG = 'NOTE_LESSON_OUTSIDE_ORG'
+
 export type LessonNote = {
   id: string
   organizationId: string
@@ -149,6 +152,16 @@ export async function getVisibleNotesForStudent(
   }))
 }
 
+/**
+ * Files a note against a lesson.
+ *
+ * The caller decides *who* may write (role, and for a teacher, that the lesson
+ * is theirs). This function only enforces the tenant boundary: `lessonId`
+ * reaches here from a form and the insert runs with RLS bypassed, so without
+ * the check below a note could be stamped with one org's `organization_id`
+ * while pointing at another org's lesson — a row that belongs to neither and
+ * that every org-scoped reader would then mis-attribute.
+ */
 export async function createNote(params: {
   orgId: string
   lessonId: string
@@ -157,6 +170,15 @@ export async function createNote(params: {
   visibleToParent?: boolean
 }): Promise<LessonNote> {
   const db = createServiceRoleClient()
+
+  const { data: lesson } = await db
+    .from('lessons')
+    .select('id')
+    .eq('id', params.lessonId)
+    .eq('organization_id', params.orgId)
+    .maybeSingle()
+  if (!lesson) throw new Error(NOTE_LESSON_OUTSIDE_ORG)
+
   const { data, error } = await db
     .from('lesson_notes')
     .insert({

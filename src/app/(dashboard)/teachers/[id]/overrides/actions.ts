@@ -49,7 +49,10 @@ export async function createOverrideAction(
     orgId,
     teacherId,
     formData,
-    teacher?.profile.full_name ?? null
+    teacher?.profile.full_name ?? null,
+    // Owner/admin only (gated above) — an authorised absence, so cancelling
+    // the lessons inside it waives the fee.
+    { kind: 'staff' }
   )
   const state = await toState(result)
   // Nothing was written when the reader still has to decide about the lessons.

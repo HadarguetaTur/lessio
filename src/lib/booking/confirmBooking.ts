@@ -12,13 +12,13 @@
  * Uses service role — never called from client components.
  */
 
-import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { LessonConflictError } from '@/lib/lessons/createLesson'
 import { detectDayTail } from '@/lib/scheduling/dayTail'
 import { validateSlotLock } from './validateSlotLock'
 import { assertWeeklyQuotaNotExceeded } from './weeklyQuota'
-import { isSlotBlockedByOverride } from './isSlotBlockedByOverride'
+import { assertSlotBookable, SlotNotBookableError } from './assertSlotBookable'
+import { reconcileStudentOverlap } from './reconcileStudentOverlap'
 
 export class LockExpiredError extends Error {
   constructor(reason: string) {
@@ -84,43 +84,25 @@ export async function confirmBooking({
   if (requestedStudentId !== lock.student_id) throw new LockStudentMismatchError()
   const studentId = lock.student_id
 
-  // 1b. Holiday re-check. getAvailableSlots filters holidays only at listing
-  // time — a holiday added between listing and confirm (or a stale client
-  // confirming an old lock) would otherwise land a lesson on it. Both confirm
-  // actions map the resulting LessonConflictError('holiday') to 'slot_taken',
-  // which directs the parent to pick another time.
-  const { data: orgRow } = await db
-    .from('organizations')
-    .select('timezone')
-    .eq('id', organizationId)
-    .single()
-
-  const holidayDate = DateTime.fromISO(lock.start_at, { zone: 'utc' })
-    .setZone(orgRow?.timezone ?? 'UTC')
-    .toISODate()!
-
-  const { data: holiday } = await db
-    .from('organization_holidays')
-    .select('id')
-    .eq('organization_id', organizationId)
-    .eq('date', holidayDate)
-    .limit(1)
-    .maybeSingle()
-
-  if (holiday) throw new LessonConflictError('holiday')
-
-  // 1c. Availability-exception re-check, for the same reason as 1b: an
-  // exception created between listing and confirm (a blocked day, blocked
-  // hours, or an approved day off) must not be booked over. Mapped to
-  // 'slot_taken' by both confirm actions, like every non-student conflict.
-  const overrideBlocked = await isSlotBlockedByOverride({
-    orgId: organizationId,
-    teacherId,
-    startAtUtc: lock.start_at,
-    endAtUtc: lock.end_at,
-    timezone: (orgRow?.timezone as string | undefined) ?? undefined,
-  })
-  if (overrideBlocked) throw new LessonConflictError('override_blocked')
+  // 1b. Commit-time re-validation of the slot itself. A lock is a five-minute
+  // reservation, not a promise: a holiday, an availability exception, a weekly
+  // grid edit or a narrowed duration list between lock and confirm all have to
+  // land here, and so does a lock replayed after its slot has passed. Both
+  // confirm actions map these to 'slot_taken', which asks for another time.
+  try {
+    await assertSlotBookable({
+      orgId: organizationId,
+      teacherId,
+      startUtc: lock.start_at,
+      endUtc: lock.end_at,
+      audience: 'bot',
+    })
+  } catch (err) {
+    if (err instanceof SlotNotBookableError) {
+      throw new LessonConflictError(err.reason === 'holiday' ? 'holiday' : 'override_blocked')
+    }
+    throw err
+  }
 
   // 2. Validate teacher is active in org
   const { data: teacher, error: teacherError } = await db
@@ -160,7 +142,7 @@ export async function confirmBooking({
 
   // 4. Resolve billing parent (is_primary = true)
   // Per /docs/decisions.md #10 and /docs/schema.md § relationships
-  const { data: relationship } = await db
+  const { data: relationship, error: relationshipError } = await db
     .from('relationships')
     .select('parent_id')
     .eq('student_id', studentId)
@@ -168,11 +150,17 @@ export async function confirmBooking({
     .eq('is_primary', true)
     .maybeSingle()
 
+  if (relationshipError) throw new LessonConflictError('override_blocked')
   if (!relationship) throw new NoPrimaryParentError()
 
   // 5. Re-check teacher overlap — guards against a lesson being manually created
   // after the lock was taken (createLesson ignores locks; this closes that race).
-  const { data: teacherConflict } = await db
+  //
+  // Every read below is "is there a conflict?", where an empty answer means
+  // "go ahead". supabase-js returns `{ error }` instead of throwing, so a
+  // discarded error produced exactly that empty answer from a failure — the
+  // one shape of bug that turns an outage into a double-booked teacher.
+  const { data: teacherConflict, error: teacherConflictError } = await db
     .from('lessons')
     .select('id')
     .eq('teacher_id', teacherId)
@@ -181,17 +169,19 @@ export async function confirmBooking({
     .lt('start_at', lock.end_at)
     .gt('end_at', lock.start_at)
     .limit(1)
+  if (teacherConflictError) throw new LessonConflictError('teacher_conflict')
   if (teacherConflict?.length) throw new LessonConflictError('teacher_conflict')
 
   // 5a. Student overlap — the slot lock only reserves the teacher, so without
   // this a parent could book the same child with two different teachers at the
   // same hour. Mirrors the check in createLesson.
-  const { data: studentLessonIds } = await db
+  const { data: studentLessonIds, error: studentLessonIdsError } = await db
     .from('lesson_students')
     .select('lesson_id')
     .eq('student_id', studentId)
+  if (studentLessonIdsError) throw new LessonConflictError('student_conflict')
   if (studentLessonIds?.length) {
-    const { data: studentConflict } = await db
+    const { data: studentConflict, error: studentConflictError } = await db
       .from('lessons')
       .select('id')
       .in('id', studentLessonIds.map((r) => r.lesson_id))
@@ -200,6 +190,7 @@ export async function confirmBooking({
       .lt('start_at', lock.end_at)
       .gt('end_at', lock.start_at)
       .limit(1)
+    if (studentConflictError) throw new LessonConflictError('student_conflict')
     if (studentConflict?.length) throw new LessonConflictError('student_conflict')
   }
 
@@ -238,6 +229,20 @@ export async function confirmBooking({
     await db.from('lessons').delete().eq('id', lesson.id)
     throw new Error(`Failed to link student to lesson: ${lsError.message}`)
   }
+
+  // 5d. The student check above is read-then-insert with nothing serialising
+  // it — unlike the teacher, who is protected by the overlap EXCLUDE. Now that
+  // the row exists it is visible, so look again: if another booking took this
+  // child for the same hour, the older lesson wins and this one withdraws.
+  const withdrawn = await reconcileStudentOverlap({
+    db,
+    orgId: organizationId,
+    lessonId: lesson.id,
+    studentIds: [studentId],
+    startUtc: lock.start_at,
+    endUtc: lock.end_at,
+  })
+  if (withdrawn) throw new LessonConflictError('student_conflict')
 
   // 6. Mark slot lock as consumed
   await db

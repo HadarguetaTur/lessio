@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseFile } from './parseFile'
+import { parseFile, ImportParseError } from './parseFile'
 
 const utf8 = (text: string): ArrayBuffer => new TextEncoder().encode(text).buffer as ArrayBuffer
 
@@ -56,5 +56,27 @@ describe('parseFile', () => {
 
   it('refuses anything that is not a .csv', () => {
     expect(() => parseFile(utf8('x'), 'leads.xlsx')).toThrow(/Only CSV/)
+  })
+})
+
+describe('parseFile — named failures', () => {
+  it('refuses a non-CSV with a code the API can turn into advice', () => {
+    try {
+      parseFile(utf8('x'), 'leads.xlsx')
+      throw new Error('expected parseFile to throw')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ImportParseError)
+      expect((e as ImportParseError).code).toBe('unsupportedFormat')
+    }
+  })
+
+  it('names an unterminated quote rather than failing as a generic 500', () => {
+    try {
+      parseFile(utf8('email,note\na@b.com,"never closed\n'), 'x.csv')
+      throw new Error('expected parseFile to throw')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ImportParseError)
+      expect((e as ImportParseError).code).toBe('unterminatedQuote')
+    }
   })
 })

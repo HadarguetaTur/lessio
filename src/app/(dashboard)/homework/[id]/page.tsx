@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { DateTime } from 'luxon'
 import { ArrowRight, Paperclip, FileText } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
+import { canAccessStudent } from '@/lib/auth/studentAccess'
 import { getAssignment } from '@/lib/homework'
 import { listAttachments, getAttachmentDownloadUrl } from '@/lib/homework/attachments'
 import { getSubmissionsForAssignment } from '@/lib/homework/submissions'
@@ -14,11 +15,20 @@ export default async function HomeworkDetailPage(props: {
   params: Promise<{ id: string }>
 }) {
   const { id } = await props.params
-  const { orgId, role } = await getSession()
+  const session = await getSession()
+  const { orgId, role } = session
   const t = await getTranslations('homework')
 
   const assignment = await getAssignment(orgId, id)
   if (!assignment) notFound()
+
+  // The signed download URLs minted below reach the student's homework files,
+  // submitted work and grading feedback, and they are generated on a
+  // service-role client — storage RLS never sees this. Org scope alone let any
+  // teacher who guessed or was shown an assignment id read another teacher's
+  // student. gradeSubmissionAction on this same page already fixed this bug
+  // class; only the read path was missed.
+  if (!(await canAccessStudent(session, assignment.studentId))) notFound()
 
   const [attachments, submissions] = await Promise.all([
     listAttachments(orgId, id),

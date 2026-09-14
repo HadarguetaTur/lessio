@@ -11,11 +11,11 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { decryptToken } from '@/lib/crypto'
 import { getPaymentProvider } from '@/lib/payments/factory'
+import { mintAmountForCharges } from '@/lib/payments/mintAmount'
 import { PaymentProviderNotConfiguredError } from '@/lib/payments'
 import { sendPaymentWithButton } from '@/lib/whatsapp/sendSmart'
 import { resolveRecipientLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
-import { getShareableBaseUrl } from '@/lib/url/appUrl'
 import { logChargeAudit } from '@/lib/charges/audit'
 import { formatBotMoney } from '@/lib/i18n/formatCurrency'
 import { getPendingChargesForParent, logPaymentRequestSent } from './index'
@@ -60,7 +60,8 @@ export async function sendConsolidatedPaymentRequest(
   const charges = await getPendingChargesForParent(parentId, orgId)
   if (charges.length === 0) return 'no_open_charges'
 
-  const total = Math.round(charges.reduce((sum, c) => sum + c.amount, 0) * 100) / 100
+  // One derivation for every mint path — see mintAmountForCharges.
+  const total = mintAmountForCharges(charges)
   if (total <= 0) return 'no_open_charges'
 
   const chargeIds = charges.map((c) => c.id)
@@ -113,18 +114,13 @@ export async function sendConsolidatedPaymentRequest(
     paymentUrl = result.url
     paymentReference = result.reference
   } catch (err) {
-    if (
-      process.env.DEMO_PAYMENT_LINK_ENABLED === '1' &&
-      err instanceof PaymentProviderNotConfiguredError
-    ) {
-      providerName = 'demo'
-      paymentUrl = `${getShareableBaseUrl()}/portal/${orgId}`
-      paymentReference = `demo-${requestId}`
-    } else {
-      await db.from('payment_requests').update({ status: 'failed' }).eq('id', requestId)
-      if (err instanceof PaymentProviderNotConfiguredError) return 'no_payment_provider'
-      throw err
-    }
+    // An org with no configured provider has nothing to send. The demo
+    // fallback that used to fire here handed the parent a portal link under
+    // reference `demo-<id>`, which no webhook or reconciliation could ever
+    // settle — the request looked sent and stayed unpaid forever.
+    await db.from('payment_requests').update({ status: 'failed' }).eq('id', requestId)
+    if (err instanceof PaymentProviderNotConfiguredError) return 'no_payment_provider'
+    throw err
   }
 
   // Any earlier open request covering these charges is replaced by this one.
@@ -146,7 +142,9 @@ export async function sendConsolidatedPaymentRequest(
     .eq('id', requestId)
 
   // The shared reference is what makes one payment settle every charge.
-  await db
+  // supabase-js returns { error } rather than throwing: a swallowed failure
+  // here hands the parent a link the webhook can never resolve to any charge.
+  const { error: persistError } = await db
     .from('charges')
     .update({
       payment_link: paymentUrl,
@@ -156,6 +154,13 @@ export async function sendConsolidatedPaymentRequest(
     })
     .in('id', chargeIds)
     .eq('organization_id', orgId)
+
+  if (persistError) {
+    await db.from('payment_requests').update({ status: 'failed' }).eq('id', requestId)
+    throw new Error(
+      `[sendConsolidatedPaymentRequest] failed to persist payment reference on ${chargeIds.length} charge(s): ${persistError.message}`
+    )
+  }
 
   const result = await sendPaymentWithButton({
     orgId,

@@ -48,7 +48,16 @@ export async function createCampaign(params: {
     throw err
   }
 
-  const classification = await classifyBroadcastText(params.orgId, params.message)
+  // EVERY owner-controlled field that reaches a template BODY is classified,
+  // not just `message`. `topic` is body parameter {{2}} of the UTILITY
+  // `class_update` template and ships verbatim: the same promotional sentence
+  // refused in `message` sailed through in `topic`, so `checkCampaignAllowed`
+  // never raised `promotional_content_in_update` and `consentRefusal` admitted
+  // every parent who had never opted into marketing.
+  const classification = await classifyBroadcastText(
+    params.orgId,
+    [params.topic, params.message].filter(Boolean).join('\n')
+  )
 
   const { data: created, error } = await db
     .from('broadcast_campaigns')

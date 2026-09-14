@@ -624,7 +624,8 @@
       "loadSubscriptionsFailed": "Could not load the subscriptions",
       "loadGoalsFailed": "Could not load the goals",
       "loadExamsFailed": "Could not load the exams",
-      "loadEmailsFailed": "Could not load the emails"
+      "loadEmailsFailed": "Could not load the emails",
+      "teacherNotInOrg": "The selected teacher was not found in this organization"
     },
     "goalErrors": {
       "createFailed": "Could not create the goal",
@@ -711,6 +712,7 @@
         "SAVE_FAILED": "Could not save. Try again.",
         "NOT_LINKED": "Link a WhatsApp group first.",
         "CREATE_FAILED": "Could not send the invitations. Try again.",
+        "already_started": "This campaign has already been started.",
         "not_connected": "WhatsApp is not connected. Connect a number in settings first.",
         "quality_red": "Sending is paused while your number’s quality rating recovers.",
         "broadcasts_disabled": "Broadcasts are switched off for this account.",
@@ -1070,7 +1072,9 @@
       "reminderOnlyScheduled": "Reminders can only be sent for a scheduled lesson",
       "reminderLessonPast": "A reminder cannot be sent for a lesson that has already passed",
       "noPrimaryParentPhone": "No active primary parent with a phone number was found",
-      "reminderSendFailed": "Could not send the reminder"
+      "reminderSendFailed": "Could not send the reminder",
+      "alreadyDelivered": "A lesson that already took place cannot be cancelled. Change its status instead.",
+      "noLinkedStudents": "Cannot cancel — this lesson has no linked students"
     },
     "chargeAlerts": {
       "noLinkedStudents": "Cannot create a cancellation charge — the lesson has no students linked",
@@ -1089,6 +1093,7 @@
     "lessonHistory": "Lesson history",
     "seriesErrors": {
       "endDateFuture": "The end date must be in the future",
+      "endDateTooFar": "A series can run at most {months} months ahead. You can extend it later.",
       "createSeriesFailed": "Could not create the series",
       "updateSeriesFailed": "Could not update the series",
       "seriesHasHistory": "This series has {count} lessons that already happened or were charged, so it cannot be removed. You can stop it instead.",
@@ -1109,6 +1114,7 @@
       "overrideBlocked": "The teacher has blocked this time — a lesson cannot be scheduled",
       "studentConflict": "The student already has a lesson at this time",
       "googleCalendar": "There is a Google Calendar event at the requested time. Schedule the lesson anyway?",
+      "googleCalendarUnavailable": "We could not read the Google Calendar, so we do not know whether this time is free — the calendar connection may have expired. Schedule the lesson anyway?",
       "outsideWindows": "The teacher is not available at this time. Schedule the lesson anyway?",
       "markedUnavailable": "The teacher marked this date as unavailable. Schedule the lesson anyway?",
       "outsideDayWindow": "The requested time is outside the availability window set for this date. Schedule the lesson anyway?",
@@ -1251,10 +1257,14 @@
       "chargeResolved": "This charge was waived or voided and cannot be marked paid",
       "chargeAlreadyPaid": "This charge is already paid. Refunds and credits are handled in your invoicing system, outside Lessio",
       "chargeAlreadyResolved": "This charge was already waived or voided",
+      "chargeSharedPaymentLink": "A payment request already sent covers this charge together with others. Handle those first, or send a new payment request, then try again",
       "chargeNotOpen": "This charge is not open for payment",
       "paymentTooLarge": "The amount is larger than the open balance ({max})",
       "invalidPaymentDate": "Choose a valid payment date that is not in the future",
-      "nothingOpen": "This parent has no open charges"
+      "nothingOpen": "This parent has no open charges",
+      "refundNotPaid": "No money was collected on this charge, so there is nothing to refund",
+      "refundAlreadyRecorded": "A refund has already been recorded on this charge",
+      "refundExceedsPaid": "The refund is larger than the amount that was collected"
     },
     "notification": {
       "queued": "A confirmation was sent to the parent on WhatsApp",
@@ -1359,7 +1369,19 @@
     },
     "partiallyPaid": "Paid {paid} of {total}",
     "filterFrom": "From date",
-    "filterTo": "To date"
+    "filterTo": "To date",
+    "refund": {
+      "action": "Record refund",
+      "title": "Record a refund",
+      "description": "The money goes back to the parent through your payment provider or bank, not through Lessio. Recording it here stops the amount counting as revenue and stops telling the parent the charge is paid.",
+      "receiptWarning": "A receipt was issued for this charge. The credit note is issued in your receipt system, not in Lessio.",
+      "amountLabel": "Refund amount (up to {max})",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Why was the money returned?",
+      "confirm": "Record refund",
+      "success": "Refund recorded",
+      "banner": "{amount} refunded on {date}. It no longer counts as revenue."
+    }
   },
   "billing": {
     "title": "Monthly Billing",
@@ -2374,6 +2396,11 @@
         "debugTokenFailed": "We couldn't confirm what Meta approved. Try connecting again.",
         "scopeMissing": "Setup didn't finish — Meta hasn't granted Lessio the permissions this number needs. That's a problem on our side, not yours. Write to us and we'll sort it.",
         "wabaMismatch": "The WhatsApp Business account returned by Meta is not one this connection was authorised for — please start the connection again.",
+        "phoneRegisterPinRequired": "Meta would not activate this number: it has two-step verification switched on with your own PIN, which Lessio cannot know. Turn two-step verification off for the number (WhatsApp Manager > number settings > two-step verification) and connect again. Retrying without turning it off will fail the same way.",
+        "phoneRegisterPinLocked": "Meta has temporarily locked activation for this number after too many PIN attempts. Wait about 12 hours and connect again.",
+        "phoneRegisterReverify": "Meta needs this number verified again. Verify it in WhatsApp Manager, then connect again.",
+        "numberInUse": "This WhatsApp number is already connected to another Lessio account. Disconnect it there, or write to us and we will sort it.",
+        "metaSaid": "Meta said: {detail}",
         "phoneRegisterFailed": "Meta didn't approve this number for sending. Try again, or check the number isn't active in the WhatsApp app.",
         "disconnectFailed": "Could not disconnect the account"
       }
@@ -2617,6 +2644,7 @@
         "RED": "Quality: low",
         "UNKNOWN": "Quality: not checked yet"
       },
+      "staleSnapshot": "These figures are from the last successful check with Meta. They stop updating while the connection is broken.",
       "limitPerDay": "Up to {n} conversations per day",
       "limitUnknown": "Daily limit not checked yet",
       "limitUnlimited": "Unlimited conversations per day",
@@ -3411,7 +3439,9 @@
         },
         "toast": {
           "done": "{name} deleted. {rows} rows removed.",
-          "partial": "{name} deleted, but {count} login accounts could not be removed. Check the server log."
+          "partial": "{name} deleted, but {count} login accounts could not be removed. Check the server log.",
+          "noSnapshot": "The pre-delete snapshot could not be taken. No copy of this tenant exists.",
+          "storageLeftBehind": "{count} files could not be removed from storage and are orphaned. Check the server log."
         },
         "errors": {
           "confirmationMismatch": "The slug you typed does not match this organization.",
@@ -4291,6 +4321,9 @@
       "error": "Error submitting request. Please try again.",
       "noPhone": "We couldn't find your phone number"
     },
+    "session": {
+      "logOut": "Log out"
+    },
     "nav": {
       "home": "Home",
       "schedule": "Schedule",
@@ -4405,7 +4438,8 @@
         "generic": "Cancellation failed"
       },
       "cancelledWithCharge": "The lesson was cancelled. Cancellation charge: {amount}",
-      "cancelledOk": "The lesson was cancelled successfully"
+      "cancelledOk": "The lesson was cancelled successfully",
+      "cancelledPendingCharge": "Lesson cancelled. A {amount} cancellation fee will be added to your monthly bill once the school approves it."
     },
     "payments": {
       "title": "Payments",
@@ -4430,7 +4464,8 @@
       "forMonth": "Monthly bill — {month}",
       "forPeriod": "Billing period {start}–{end}",
       "waived": "Written off",
-      "voided": "Voided"
+      "voided": "Voided",
+      "refunded": "Refunded"
     },
     "homework": {
       "title": "Homework",
@@ -4966,7 +5001,7 @@
     "uploadFile": "Upload another file",
     "dropzone": {
       "title": "Drag a file here or click to browse",
-      "formats": "XLSX, XLS, CSV — up to {maxSize}MB"
+      "formats": "CSV — up to {maxSize}MB"
     },
     "preview": {
       "title": "Preview — {entity}",
@@ -5000,6 +5035,8 @@
       "errorDetails": "Error details:",
       "row": "Row {row}",
       "importMore": "Import More",
+      "rolledBackNotice": "Nothing was imported. The run hit an error and was rolled back completely, so your data is exactly as it was — fix the rows listed below and upload the file again.",
+      "alreadyRanNotice": "This file was already imported. These are the results of that run — nothing was imported twice.",
       "linkedRelationships": "Relationships linked",
       "failedLinks": "Failed links (student not found):",
       "failedLinkDetail": "Link to \"{name}\" failed — student not found in the system"
@@ -5018,7 +5055,7 @@
       "duplicate": "Duplicate"
     },
     "fileErrors": {
-      "unsupportedFormat": "Unsupported file format. Upload XLSX, XLS, or CSV.",
+      "unsupportedFormat": "Only CSV files can be imported. In Excel choose File → Save As → CSV UTF-8, then upload that.",
       "fileTooLarge": "File is too large (max {maxSize}MB)"
     },
     "flowErrors": {
@@ -5032,7 +5069,12 @@
       "noFile": "No file uploaded",
       "invalidEntity": "Invalid entity type",
       "fileTooLarge": "File is too large (max 5MB)",
-      "unsupportedFormat": "Unsupported file format. Upload XLSX, XLS, or CSV.",
+      "unsupportedFormat": "Only CSV files can be imported. In Excel choose File → Save As → CSV UTF-8, then upload that.",
+      "unterminatedQuote": "A quoted value in the file is never closed. Check for a stray \" and try again.",
+      "unreadableFile": "We couldn't read that file. Make sure it is a valid CSV and try again.",
+      "noRecognisedColumns": "None of the required columns were recognised. Required: {expected}. Found in the file: {found}. Download the template and try again.",
+      "importAlreadyRan": "This import already ran. The results shown are from the original run — nothing was duplicated.",
+      "quotaExceeded": "This import exceeds your plan quota. Upgrade your plan or import fewer rows.",
       "emptyFile": "The file is empty or has no data",
       "parseError": "Failed to process file. Make sure it is valid and try again.",
       "noRowsToImport": "No rows to import",
@@ -5041,6 +5083,7 @@
     "warnings": {
       "existingRecord": "Record already exists in the system",
       "studentNotFound": "Student \"{name}\" was not found — the link will not be created",
+      "duplicateInFile": "Appears earlier in this file, on row {row}",
       "roleParent": " (parent)",
       "roleParent2": " (parent 2)",
       "roleStudent": " (student)"
@@ -5118,7 +5161,10 @@
       "teacherNotFound": "Teacher \"{name}\" was not found",
       "studentNotFound": "Student \"{name}\" was not found",
       "invalidDayOfWeek": "Invalid day of week",
-      "dbError": "{message}"
+      "dbError": "{message}",
+      "invalidStartTime": "Invalid start time",
+      "invalidDate": "Invalid date",
+      "rolledBack": "The whole import was rolled back after an error — nothing was created. Fix the errors and try again."
     },
     "templates": {
       "dataSheet": "Data",
@@ -5580,6 +5626,8 @@
     "supportTicketReply": "Support replied to your request",
     "supportTicketResolved": "Your request was resolved",
     "devIssueFixed": "The problem you reported was fixed",
+    "waTokenExpired": "Your WhatsApp connection has stopped — nothing is being sent",
+    "waTokenExpiredBody": "Meta rejected Lessio’s permission for your number. Reminders, payment requests and bot replies will not go out until you reconnect in Settings > WhatsApp.",
     "waHealthFlagged": "Your WhatsApp number was flagged by Meta",
     "waHealthFlaggedBody": "Parents are blocking or reporting messages. Sending is limited until the rating recovers.",
     "waHealthUnflagged": "Your WhatsApp number is back in good standing",
@@ -5857,6 +5905,7 @@
     "colRecipient": "Recipient",
     "colDelivery": "Delivery",
     "resultSummary": "{sent} sent · {skipped} skipped · {failed} failed",
+    "deferredNote": "{count} recipients are over today's safe limit for your number. They go out at the next opening, automatically — nothing to do.",
     "scheduledFor": "Scheduled for {when}",
     "types": {
       "class_update": "Class update",
@@ -5874,6 +5923,7 @@
     },
     "recipientStatuses": {
       "pending": "Waiting",
+      "deferred": "Waiting for tomorrow",
       "claimed": "Sending",
       "sent": "Sent",
       "skipped": "Skipped",
@@ -5888,6 +5938,7 @@
     "stats": {
       "total": "Recipients",
       "sent": "Sent",
+      "deferred": "Waiting for tomorrow",
       "skipped": "Skipped",
       "failed": "Failed"
     },
@@ -5960,8 +6011,7 @@
       "frequency_capped": "Had one too recently",
       "per_user_limit": "WhatsApp daily limit for this person",
       "already_invited": "Already invited",
-      "no_phone": "No phone number",
-      "over_cap": "Over today's safe limit"
+      "no_phone": "No phone number"
     },
     "blocked": {
       "not_connected": "WhatsApp is not connected. Connect a number in settings first.",

@@ -3,6 +3,8 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { canAccessStudent } from '@/lib/auth/studentAccess'
+import { teacherBelongsToOrg } from '@/lib/auth/orgScope'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { requireQuotaCapacity } from '@/lib/saas/quota'
@@ -140,14 +142,28 @@ export async function createStudent(
 
   const supabase = await createClient()
 
+  // `teacher_id` arrives from a form field that only shape-checks as a UUID.
+  // The FK is plain (`students_teacher_id_fkey`, not composite on
+  // organization_id) and `getStudents` reads with the service role, embedding
+  // `teachers!teacher_id(profiles(full_name))` with no org filter — so a
+  // planted foreign id rendered ANOTHER TENANT'S TEACHER NAME in this org's
+  // students list. Cross-tenant PII from a normal form field.
   let teacher_id = parsed.data.teacher_id ?? null
+  if (teacher_id && !(await teacherBelongsToOrg(teacher_id, orgId))) {
+    return { error: t('students.errors.teacherNotInOrg') }
+  }
+
   if (!teacher_id) {
-    const { data: teacherRows } = await supabase
+    const { data: teacherRows, error: teacherRowsError } = await supabase
       .from('teachers')
       .select('id')
       .eq('organization_id', orgId)
       .eq('is_active', true)
-    if (teacherRows && teacherRows.length === 1) {
+    // A solo tutor's only teacher is auto-assigned. If the read failed, or the
+    // org has none or several, the field is simply left unset: an unassigned
+    // student is a visible gap the owner can fill, whereas a guessed teacher
+    // is a wrong answer nobody notices.
+    if (!teacherRowsError && teacherRows && teacherRows.length === 1) {
       teacher_id = teacherRows[0].id as string
     }
   }
@@ -337,6 +353,12 @@ export async function updateStudent(
 
   if (role !== 'owner' && role !== 'admin') return { error: await commonError('noPermission') }
 
+  // Same client-supplied pointer as on create — see the note there. The update
+  // below writes it straight through, and the plain FK does not stop it.
+  if (parsed.data.teacher_id && !(await teacherBelongsToOrg(parsed.data.teacher_id, orgId))) {
+    return { error: t('students.errors.teacherNotInOrg') }
+  }
+
   let phoneForDb: string | null = parsed.data.phone ?? null
   if (parsed.data.phone) {
     try {
@@ -463,13 +485,44 @@ export async function fetchOrgParents(): Promise<
 
 // ── Lazy-tab server actions ───────────────────────────────────────────────────
 
+/**
+ * Authorizes one lazy-tab read.
+ *
+ * These actions each take a studentId from the browser and hand it to a
+ * service-role query, so org scope alone was never enough: within an org it
+ * let any teacher read any student's lessons, homework, goals, exams, billing
+ * and parent contact details. The financial tab is only *hidden* from the
+ * teacher tab bar (TAB_VALUES_TEACHER in StudentDetailSheet), and a hidden tab
+ * is not authorization — a server action is a live endpoint whatever the UI
+ * chooses to render.
+ *
+ * `billing: true` marks the reads the permissions matrix keeps away from
+ * teachers entirely, not merely scoped to their own roster.
+ *
+ * Returns the session on success, or an error state to return as-is.
+ */
+async function authorizeStudentRead(
+  studentId: string,
+  options?: { billing?: boolean }
+): Promise<{ ok: true; orgId: string } | { ok: false; error: string }> {
+  const session = await getSession()
+  if (options?.billing && session.role !== 'owner' && session.role !== 'admin') {
+    return { ok: false, error: await commonError('noPermission') }
+  }
+  if (!(await canAccessStudent(session, studentId))) {
+    return { ok: false, error: await commonError('noPermission') }
+  }
+  return { ok: true, orgId: session.orgId }
+}
+
 export async function fetchStudentParent(
   studentId: string
 ): Promise<{ data: StudentPrimaryParent | null } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId)
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getStudentPrimaryParent(studentId, orgId)
+    const data = await getStudentPrimaryParent(studentId, auth.orgId)
     return { data }
   } catch {
     return { error: t('students.errors.loadParentFailed') }
@@ -480,9 +533,10 @@ export async function fetchStudentLessons(
   studentId: string
 ): Promise<{ data: StudentLesson[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId)
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getStudentLessons(studentId, orgId)
+    const data = await getStudentLessons(studentId, auth.orgId)
     return { data }
   } catch {
     return { error: t('students.errors.loadLessonsFailed') }
@@ -493,9 +547,10 @@ export async function fetchStudentFinancial(
   studentId: string
 ): Promise<{ data: StudentFinancial } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId, { billing: true })
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getStudentFinancial(studentId, orgId)
+    const data = await getStudentFinancial(studentId, auth.orgId)
     return { data }
   } catch {
     return { error: t('students.errors.loadFinanceFailed') }
@@ -506,9 +561,10 @@ export async function fetchStudentHomework(
   studentId: string
 ): Promise<{ data: HomeworkAssignment[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId)
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getAssignments(orgId, { studentId })
+    const data = await getAssignments(auth.orgId, { studentId })
     return { data }
   } catch {
     return { error: t('students.errors.loadHomeworkFailed') }
@@ -519,9 +575,10 @@ export async function fetchStudentSubscriptions(
   studentId: string
 ): Promise<{ data: Subscription[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId, { billing: true })
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getSubscriptions(orgId, studentId)
+    const data = await getSubscriptions(auth.orgId, studentId)
     return { data }
   } catch {
     return { error: t('students.errors.loadSubscriptionsFailed') }
@@ -532,9 +589,10 @@ export async function fetchStudentGoals(
   studentId: string
 ): Promise<{ data: StudentGoal[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId)
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
-    const data = await getGoalsForStudent(orgId, studentId)
+    const data = await getGoalsForStudent(auth.orgId, studentId)
     return { data }
   } catch {
     return { error: t('students.errors.loadGoalsFailed') }
@@ -545,10 +603,11 @@ export async function fetchStudentExams(
   studentId: string
 ): Promise<{ data: import('@/lib/students/exams').StudentExam[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId)
+  if (!auth.ok) return { error: auth.error }
   try {
-    const { orgId } = await getSession()
     const { listExams } = await import('@/lib/students/exams')
-    const data = await listExams(orgId, studentId)
+    const data = await listExams(auth.orgId, studentId)
     return { data }
   } catch {
     return { error: t('students.errors.loadExamsFailed') }
@@ -559,8 +618,10 @@ export async function fetchStudentParentEmails(
   studentId: string
 ): Promise<{ data: { email: string; label: string }[] } | { error: string }> {
   const t = await getTranslations()
+  const auth = await authorizeStudentRead(studentId, { billing: true })
+  if (!auth.ok) return { error: auth.error }
+  const orgId = auth.orgId
   try {
-    const { orgId } = await getSession()
     const db = (await import('@/lib/supabase/service-role')).createServiceRoleClient()
     const { data } = await db
       .from('relationships')

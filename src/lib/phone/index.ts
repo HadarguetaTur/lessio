@@ -49,6 +49,39 @@ export function normalizePhone(phone: string): string {
 }
 
 /**
+ * Normalizes a number that arrived from Meta, rather than one a user typed.
+ *
+ * `normalizePhone` encodes a deliberate business rule — Lessio's own contact
+ * fields accept Israeli mobiles and nothing else — and that rule is right for
+ * a form. Applied to the WhatsApp webhook it was a bug: an inbound message from
+ * a foreign number, an Israeli landline, or a Meta reviewer's US handset was
+ * dropped before the org was even resolved, so it produced no reply, no lead
+ * and no transcript row. The English-language tenant, whose parents are not all
+ * on +9725 numbers, simply never heard from half of them.
+ *
+ * Israeli numbers keep their existing normalisation exactly — that is what
+ * parent identity is stored as (`parents` is unique on organization_id, phone),
+ * so this widens what we ACCEPT without changing what any existing row means.
+ * Everything else becomes plain E.164: a leading '+' and 8–15 digits.
+ *
+ * A local-format number with a leading zero is still rejected: '0' is not a
+ * country code, and Meta never sends one — accepting it would invent a country.
+ */
+export function normalizeInboundPhone(phone: string): string {
+  try {
+    return normalizePhone(phone)
+  } catch {
+    // Not an Israeli mobile. Fall through to generic E.164.
+  }
+
+  const digits = phone.trim().replace(/[^0-9]/g, '')
+  if (digits.startsWith('0') || digits.length < 8 || digits.length > 15) {
+    throw new PhoneNormalizationError(phone)
+  }
+  return `+${digits}`
+}
+
+/**
  * A phone number reduced to what a log line legitimately needs.
  *
  * A subscriber's phone is personal data, and the WhatsApp webhook logs on

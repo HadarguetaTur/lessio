@@ -69,6 +69,16 @@ export default async function BroadcastDetailPage({
     scheduled_at: string | null
   }
 
+  // Held back by today's cap, not lost. Counted separately from `skipped_count`
+  // because "waiting for tomorrow" and "will never be messaged" are different
+  // answers, and the owner of a 400-parent announcement needs to tell them apart.
+  const { count: deferredCount } = await db
+    .from('broadcast_recipients')
+    .select('*', { count: 'exact', head: true })
+    .eq('campaign_id', id)
+    .eq('organization_id', session.orgId)
+    .eq('status', 'deferred')
+
   const { data: recipientData } = await db
     .from('broadcast_recipients')
     .select('id, display_name, phone, status, skip_reason, error_code, sent_at, wa_message_id')
@@ -118,12 +128,19 @@ export default async function BroadcastDetailPage({
         }
       />
 
-      <section className="grid gap-3 sm:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-5">
         <Stat label={t('stats.total')} value={campaign.recipients_total} />
         <Stat label={t('stats.sent')} value={campaign.sent_count} />
+        <Stat label={t('stats.deferred')} value={deferredCount ?? 0} />
         <Stat label={t('stats.skipped')} value={campaign.skipped_count} />
         <Stat label={t('stats.failed')} value={campaign.failed_count} />
       </section>
+
+      {(deferredCount ?? 0) > 0 && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          {t('deferredNote', { count: deferredCount ?? 0 })}
+        </p>
+      )}
 
       <section className="rounded-lg border bg-card p-4 space-y-2">
         <div className="flex items-center gap-2">

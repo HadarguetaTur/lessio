@@ -50,7 +50,7 @@ export default async function PortalPaymentsPage({
   const { data: charges } = await db
     .from('charges')
     .select(
-      'id, amount, amount_paid, status, charge_type, payment_link, receipt_url, created_at, paid_at, due_date, billing_month, student_monthly_billing(period_start, period_end)'
+      'id, amount, amount_paid, status, charge_type, payment_link, receipt_url, created_at, paid_at, due_date, billing_month, refunded_at, refunded_amount, student_monthly_billing(period_start, period_end)'
     )
     .eq('parent_id', session.parentId)
     .eq('organization_id', orgId)
@@ -69,6 +69,8 @@ export default async function PortalPaymentsPage({
     paid_at: string | null
     due_date: string | null
     billing_month: string | null
+    refunded_at: string | null
+    refunded_amount: number | null
     student_monthly_billing?: { period_start: string | null; period_end: string | null } | null
   }
   const rows = (charges ?? []) as unknown as ChargeRow[]
@@ -115,7 +117,14 @@ export default async function PortalPaymentsPage({
   const chargeTypeLabel = (type: string) =>
     KNOWN_CHARGE_TYPES.has(type) ? t(`chargeType.${type}`) : type
   const KNOWN_SETTLED = new Set(['paid', 'waived', 'voided'])
-  const settledLabel = (status: string) => (KNOWN_SETTLED.has(status) ? t(status) : status)
+  /**
+   * A refunded charge is still `paid` in the database — status answers "is this
+   * collectable", and the money did arrive. But telling a parent "paid" in
+   * green next to a receipt link, for money that has since gone back to them,
+   * is the product asserting something false. The refund marker wins here.
+   */
+  const settledLabel = (c: ChargeRow) =>
+    c.refunded_at ? t('refunded') : KNOWN_SETTLED.has(c.status) ? t(c.status) : c.status
 
   /**
    * What the charge is for. A monthly bill says which month; everything else
@@ -233,12 +242,20 @@ export default async function PortalPaymentsPage({
                   <div className="flex items-center gap-2">
                     <span
                       className={`text-xs font-medium ${
-                        c.status === 'paid' ? 'text-green-700' : 'text-muted-foreground'
+                        c.refunded_at
+                          ? 'text-amber-700'
+                          : c.status === 'paid'
+                            ? 'text-green-700'
+                            : 'text-muted-foreground'
                       }`}
                     >
-                      {settledLabel(c.status)}
+                      {settledLabel(c)}
                     </span>
-                    {c.status === 'paid' && c.receipt_url && (
+                    {/* The receipt is for money that came back. Linking to it
+                        here would hand the parent a document their org's
+                        accountant has to credit; the credit note comes from
+                        the receipt provider, not from Lessio (decision #37). */}
+                    {c.status === 'paid' && !c.refunded_at && c.receipt_url && (
                       <a
                         href={c.receipt_url}
                         target="_blank"

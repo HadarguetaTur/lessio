@@ -3,6 +3,55 @@ import { normalizePhone } from '@/lib/phone'
 import type { EntityType, ValidatedRow } from './validators'
 import { markMissingLessonDependencies } from './lessonDependencies'
 
+/** How a repeat inside the uploaded file is treated. */
+type InFileSeverity = 'error' | 'warning'
+
+/**
+ * Flag rows that repeat a key already seen earlier in the same file.
+ *
+ * Duplicate detection only ever compared the file against the database, so a
+ * spreadsheet listing the same family twice imported them twice. The first
+ * occurrence is kept; later ones are flagged and named against the row they
+ * repeat, so the owner can see which line to delete.
+ */
+export function flagInFileDuplicates(
+  rows: ValidatedRow[],
+  keyOf: (row: ValidatedRow) => string | null,
+  severity: InFileSeverity,
+  message: (firstRowNumber: number) => string
+): ValidatedRow[] {
+  const firstSeen = new Map<string, number>()
+
+  return rows.map((row): ValidatedRow => {
+    const key = keyOf(row)
+    if (!key) return row
+
+    const seenAt = firstSeen.get(key)
+    if (seenAt === undefined) {
+      firstSeen.set(key, row.rowIndex + 2)
+      return row
+    }
+
+    const text = message(seenAt)
+    return severity === 'error'
+      ? { ...row, status: 'error', errors: [...row.errors, text] }
+      : {
+          ...row,
+          warnings: [...row.warnings, text],
+          status: row.status === 'error' ? 'error' : 'warning',
+        }
+  })
+}
+
+function normalizedPhoneKey(raw: string | null | undefined): string | null {
+  if (!raw?.trim()) return null
+  try {
+    return normalizePhone(raw)
+  } catch {
+    return null
+  }
+}
+
 /**
  * Detect duplicate rows against existing DB records.
  * Enriches each matching row with `existingId` / `existingStudentId` / `existingParentId` and warnings.
@@ -23,17 +72,63 @@ export async function detectDuplicates(
   lessonDependencyMessages?: {
     teacherNotFound: (name: string) => string
     studentNotFound: (name: string) => string
-  }
+  },
+  inFileDuplicateMessage: (firstRowNumber: number) => string = (n) => `duplicate of row ${n}`
 ): Promise<ValidatedRow[]> {
+  const msg = inFileDuplicateMessage
+
   switch (entityType) {
-    case 'parents':
-      return detectParentDuplicates(orgId, rows, existingRecordWarning, studentNotFoundWarning)
-    case 'teachers':
-      return detectTeacherDuplicates(orgId, rows, existingRecordWarning)
-    case 'students':
-      return detectStudentDuplicates(orgId, rows, existingRecordWarning)
-    case 'family-list':
-      return detectFamilyListDuplicates(orgId, rows, existingRecordWarning, roleSuffix)
+    case 'parents': {
+      const enriched = await detectParentDuplicates(
+        orgId,
+        rows,
+        existingRecordWarning,
+        studentNotFoundWarning
+      )
+      // Same phone twice in one file is the same person: hard error, since the
+      // second insert would only fail on the unique index anyway.
+      return flagInFileDuplicates(enriched, (r) => normalizedPhoneKey(r.data.phone), 'error', msg)
+    }
+    case 'teachers': {
+      const enriched = await detectTeacherDuplicates(orgId, rows, existingRecordWarning)
+      return flagInFileDuplicates(
+        enriched,
+        (r) => r.data.email?.trim().toLowerCase() || null,
+        'error',
+        msg
+      )
+    }
+    case 'students': {
+      const enriched = await detectStudentDuplicates(orgId, rows, existingRecordWarning)
+      // Two real students can share a name, so this is a warning the owner can
+      // overrule — not a refusal.
+      return flagInFileDuplicates(
+        enriched,
+        (r) => r.data.full_name?.trim().toLowerCase() || null,
+        'warning',
+        msg
+      )
+    }
+    case 'family-list': {
+      const enriched = await detectFamilyListDuplicates(
+        orgId,
+        rows,
+        existingRecordWarning,
+        roleSuffix
+      )
+      // Keyed on the family, not the student: siblings legitimately repeat a
+      // parent phone, so only an identical student+parent pair is a duplicate.
+      return flagInFileDuplicates(
+        enriched,
+        (r) => {
+          const phone = normalizedPhoneKey(r.data.parent_phone)
+          const student = r.data.student_name?.trim().toLowerCase()
+          return phone && student ? `${phone}|${student}` : null
+        },
+        'error',
+        msg
+      )
+    }
     case 'lessons-schedule':
     case 'lessons-history':
       return detectLessonDependencies(orgId, rows, lessonDependencyMessages)

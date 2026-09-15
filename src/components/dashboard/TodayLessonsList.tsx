@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { CalendarDays } from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getTranslations } from 'next-intl/server'
-import { formatTime, getLessonTitle, type Lesson } from '@/lib/lessons'
+import { filterCalendarLessons, formatTime, getLessonTitle, type Lesson } from '@/lib/lessons'
 import { findNextLessonId } from '@/lib/lessons/nextLesson'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { Button } from '@/components/ui/button'
@@ -36,12 +36,17 @@ export async function TodayLessonsList({
     getTranslations('lessons'),
   ])
 
-  const total = lessons.length
-  const completed = lessons.filter((l) => l.status === 'completed').length
-  const cancelled = lessons.filter((l) => l.status === 'cancelled').length
-  const nextLessonId = findNextLessonId(lessons, DateTime.utc().toISO()!)
+  // The dashboard and calendar share this rule: upcoming cancellations remain
+  // hidden until the person explicitly asks to see them.
+  const { visible: scheduledLessons, hiddenCount } = filterCalendarLessons(lessons, {
+    includeCancelled: false,
+  })
+  const total = scheduledLessons.length
+  const completed = scheduledLessons.filter((l) => l.status === 'completed').length
+  const cancelled = scheduledLessons.filter((l) => l.status === 'cancelled').length
+  const nextLessonId = findNextLessonId(scheduledLessons, DateTime.utc().toISO()!)
 
-  const visible = lessons.slice(0, limit)
+  const visible = scheduledLessons.slice(0, limit)
   const visibleGroups = visible.reduce<Array<{ time: string; lessons: Lesson[] }>>((groups, lesson) => {
     const time = formatTime(lesson.start_at, timezone, appLocale)
     const last = groups.at(-1)
@@ -53,7 +58,7 @@ export async function TodayLessonsList({
     return groups
   }, [])
 
-  if (total === 0) {
+  if (total === 0 && hiddenCount === 0) {
     return (
       <section aria-label={t('today.title')}>
         <h2 className="mb-3 text-base font-semibold text-foreground">{t('today.title')}</h2>
@@ -128,6 +133,15 @@ export async function TodayLessonsList({
           </li>
         ))}
       </ul>
+
+      {hiddenCount > 0 && (
+        <Link
+          href="/lessons?view=day&cancelled=1"
+          className="block border-t border-border/70 px-4 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+        >
+          {t('today.hiddenCancelled', { count: hiddenCount })}
+        </Link>
+      )}
 
       {total > limit && (
         <Link

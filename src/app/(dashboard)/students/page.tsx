@@ -35,6 +35,7 @@ export default async function StudentsPage(props: {
   const session = await getSession()
   const { orgId, role, profileId } = session
   const isTeacher = role === 'teacher'
+  const isOfficeManager = role === 'office_manager'
   const t = await getTranslations('students')
   const tCommon = await getTranslations('common')
   const showWeeklyQuota = await orgEnforcesWeeklyQuota(orgId)
@@ -60,7 +61,7 @@ export default async function StudentsPage(props: {
   }
 
   const [students, teachers, groups, initialSheetStudent] = await Promise.all([
-    getStudents(orgId, studentQuery),
+    getStudents(orgId, { ...studentQuery, includePricing: !isOfficeManager }),
     isTeacher ? Promise.resolve([]) : getTeachers(orgId),
     tab === 'groups'
       ? getGroups(orgId).then((g) => withInviteCounts(orgId, g))
@@ -77,7 +78,7 @@ export default async function StudentsPage(props: {
             )
             if (!allowed) return null
           }
-          return getStudentById(openStudentParsed.data, orgId)
+          return getStudentById(openStudentParsed.data, orgId, { includePricing: !isOfficeManager })
         })()
       : Promise.resolve(null),
   ])
@@ -110,7 +111,7 @@ export default async function StudentsPage(props: {
                         {tCommon('actions.import')}
                       </Button>
                     </Link>
-                    <NewStudentSheet action={createStudent} teachers={activeTeachers} showWeeklyQuota={showWeeklyQuota} />
+                    <NewStudentSheet action={createStudent} teachers={activeTeachers} showWeeklyQuota={showWeeklyQuota} showPricing={!isOfficeManager} />
                   </div>
                 )
         }
@@ -172,7 +173,7 @@ export default async function StudentsPage(props: {
                         <Link href="/students">{tCommon('actions.clear')}</Link>
                       </Button>
                     ) : !isTeacher ? (
-                      <NewStudentSheet action={createStudent} teachers={activeTeachers} showWeeklyQuota={showWeeklyQuota} />
+                      <NewStudentSheet action={createStudent} teachers={activeTeachers} showWeeklyQuota={showWeeklyQuota} showPricing={!isOfficeManager} />
                     ) : undefined
                   }
                 />
@@ -185,8 +186,8 @@ export default async function StudentsPage(props: {
                 tGrade={t('fields.grade')}
                 tStatus={tCommon('table.status')}
                 initialSheetStudent={initialSheetStudent}
-                canManage={role === 'owner' || role === 'admin'}
-                sheetVariant={isTeacher ? 'teacher' : 'admin'}
+                canManage={role === 'owner' || role === 'admin' || isOfficeManager}
+                sheetVariant={isTeacher || isOfficeManager ? 'teacher' : 'admin'}
                 showArchiveActions={!isTeacher}
                 showWeeklyQuota={showWeeklyQuota}
               />

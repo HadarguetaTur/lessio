@@ -25,8 +25,8 @@ describe('registry shape', () => {
 
   it('keeps platform billing separate from the nineteen business settings pages', () => {
     expect(ACCOUNT_NAV.map((entry) => entry.href)).toEqual(['/account/billing'])
-    expect(SETTINGS_NAV).toHaveLength(19)
-    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(19)
+    expect(SETTINGS_NAV).toHaveLength(20)
+    expect(SETTINGS_NAV.filter((e) => e.cardKey)).toHaveLength(20)
     expect(SETTINGS_NAV.map((entry) => entry.href)).not.toContain('/account/billing')
   })
 
@@ -43,7 +43,7 @@ describe('registry shape', () => {
     expect(revenue?.saasFeature).toBeUndefined()
     const others = REPORTS_NAV.filter((e) => e.href !== '/reports/revenue')
     expect(others.every((e) => e.saasFeature === 'full_reports')).toBe(true)
-    expect(REPORTS_NAV).toHaveLength(6)
+    expect(REPORTS_NAV).toHaveLength(8)
   })
 })
 
@@ -78,7 +78,7 @@ describe('filterNav', () => {
   })
 
   it('shows everything to an owner when no plan is resolved', () => {
-    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(19)
+    expect(filterNav(SETTINGS_NAV, 'owner')).toHaveLength(20)
   })
 
   it('drops plan-gated entries when the feature is off', () => {
@@ -360,6 +360,7 @@ describe('settings groups', () => {
     const billing = SETTINGS_GROUPS.find((g) => g.id === 'billing')!
     expect(billing.items.map((i) => i.href)).toEqual([
       '/settings/pricing',
+      '/settings/teacher-economics',
       '/settings/billing-policy',
       '/settings/cancellation-policy',
     ])

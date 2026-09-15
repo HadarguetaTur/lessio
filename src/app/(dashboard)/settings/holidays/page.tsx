@@ -17,7 +17,7 @@ export default async function HolidaysPage() {
   const t = await getTranslations('settings.holidays')
   const tCommon = await getTranslations('common')
 
-  if (role !== 'owner' && role !== 'admin') {
+  if (role !== 'owner' && role !== 'admin' && role !== 'office_manager') {
     forbidden()
   }
 

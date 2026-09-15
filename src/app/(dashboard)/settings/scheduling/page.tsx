@@ -12,7 +12,7 @@ export default async function SchedulingSettingsPage() {
   const { orgId, role } = await getSession()
   const t = await getTranslations('settings.scheduling')
 
-  if (role !== 'owner' && role !== 'admin') {
+  if (role !== 'owner' && role !== 'admin' && role !== 'office_manager') {
     forbidden()
   }
 

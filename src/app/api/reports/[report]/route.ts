@@ -19,6 +19,7 @@ import { getLessonsReport } from '@/lib/reports/lessons'
 import { getDebtReport } from '@/lib/reports/debt'
 import { getTeachersReport } from '@/lib/reports/teachers'
 import { getStudentsReport } from '@/lib/reports/students'
+import { getOwnerTeacherEconomicsReport } from '@/lib/teacher-economics/report'
 import { parseReportMonths } from '@/lib/reports/params'
 
 const BOM = '\uFEFF'
@@ -39,7 +40,10 @@ interface Context {
 
 export async function GET(request: NextRequest, { params }: Context) {
   const session = await getSession()
-  if (!['owner', 'admin'].includes(session.role)) {
+  if (reportIsEconomics(request) && session.role !== 'owner') {
+    return new NextResponse('Forbidden', { status: 403 })
+  }
+  if (!['owner', 'admin'].includes(session.role) && reportIsEconomics(request) === false) {
     return new NextResponse('Forbidden', { status: 403 })
   }
 
@@ -135,6 +139,26 @@ export async function GET(request: NextRequest, { params }: Context) {
         filename = 'students.csv'
         break
       }
+      case 'economics': {
+        if (session.role !== 'owner') return new NextResponse('Forbidden', { status: 403 })
+        const month = searchParams.get('month') ?? new Date().toISOString().slice(0, 7)
+        const rows = await getOwnerTeacherEconomicsReport(orgId, month, timezone)
+        csv = toCsv(
+          [tc('teacher'), tc('completed'), tc('noShow'), tc('cancellations'), tc('deliveryHours'), tc('attributedRevenue'), tc('estimatedCompensation'), tc('contribution')],
+          rows.map((row) => [
+            row.teacherName,
+            String(row.completedCount),
+            String(row.noShowCount),
+            String(row.cancelledCount),
+            row.deliveryHours.toFixed(2),
+            row.attributedRevenue.toFixed(2),
+            row.estimatedCompensation.toFixed(2),
+            row.contribution.toFixed(2),
+          ])
+        )
+        filename = 'teacher-economics.csv'
+        break
+      }
       default:
         return new NextResponse('Not Found', { status: 404 })
     }
@@ -149,4 +173,8 @@ export async function GET(request: NextRequest, { params }: Context) {
       'Content-Disposition': `attachment; filename="${filename}"`,
     },
   })
+}
+
+function reportIsEconomics(request: NextRequest): boolean {
+  return request.nextUrl.pathname.endsWith('/economics')
 }

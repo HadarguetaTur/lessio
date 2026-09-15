@@ -135,6 +135,7 @@ export interface CancelLessonInput {
   reason?: string
   /** Owner/admin only; ignored for every other actor. */
   waive?: boolean
+  actorProfileId?: string
   now?: Date
 }
 
@@ -245,6 +246,9 @@ export async function cancelLessonCore(input: CancelLessonInput): Promise<Cancel
     .update({
       status: 'cancelled',
       cancel_reason: input.reason?.trim() || CANCEL_REASON[source],
+      cancelled_at: now.toISOString(),
+      cancelled_by_profile_id: input.actorProfileId ?? null,
+      cancellation_source: actor.kind === 'teacher' ? 'teacher' : actor.kind === 'parent' ? source : 'staff',
       updated_at: now.toISOString(),
     })
     .eq('id', lessonId)

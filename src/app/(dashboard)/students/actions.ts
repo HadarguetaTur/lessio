@@ -86,7 +86,7 @@ export async function createStudent(
   }
 
   const session = await getSession()
-  if (session.role !== 'owner' && session.role !== 'admin') return { error: await commonError('noPermission') }
+  if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'office_manager') return { error: await commonError('noPermission') }
   requireMutation(session)
   await requireQuotaCapacity(session.orgId, 'students')
   const orgId = session.orgId
@@ -179,9 +179,11 @@ export async function createStudent(
     notes: parsed.data.notes,
     status: parsed.data.status,
     teacher_id,
-    hourly_rate: parsed.data.hourly_rate ?? null,
-    discount_percent: parsed.data.discount_percent ?? null,
-    discount_reason: parsed.data.discount_reason ?? null,
+    ...(session.role === 'office_manager' ? {} : {
+      hourly_rate: parsed.data.hourly_rate ?? null,
+      discount_percent: parsed.data.discount_percent ?? null,
+      discount_reason: parsed.data.discount_reason ?? null,
+    }),
   }
 
   const { data: insertedStudent, error: insErr } = await supabase
@@ -351,7 +353,7 @@ export async function updateStudent(
     return null
   }
 
-  if (role !== 'owner' && role !== 'admin') return { error: await commonError('noPermission') }
+  if (role !== 'owner' && role !== 'admin' && role !== 'office_manager') return { error: await commonError('noPermission') }
 
   // Same client-supplied pointer as on create — see the note there. The update
   // below writes it straight through, and the plain FK does not stop it.
@@ -383,9 +385,11 @@ export async function updateStudent(
       status: parsed.data.status,
       notes: parsed.data.notes,
       teacher_id: parsed.data.teacher_id,
-      hourly_rate: parsed.data.hourly_rate ?? null,
-      discount_percent: parsed.data.discount_percent ?? null,
-      discount_reason: parsed.data.discount_reason ?? null,
+      ...(role === 'office_manager' ? {} : {
+        hourly_rate: parsed.data.hourly_rate ?? null,
+        discount_percent: parsed.data.discount_percent ?? null,
+        discount_reason: parsed.data.discount_reason ?? null,
+      }),
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)

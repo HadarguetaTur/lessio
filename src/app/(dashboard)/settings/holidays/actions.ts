@@ -56,7 +56,7 @@ export async function addHoliday(
   requireMutation(session)
   const { orgId, role } = session
 
-  if (role !== 'owner' && role !== 'admin') {
+  if (role !== 'owner' && role !== 'admin' && role !== 'office_manager') {
     return { error: await commonError('noPermission') }
   }
 

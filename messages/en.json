@@ -293,6 +293,8 @@
     "reportsDebt": "Outstanding balances report",
     "reportsTeachers": "Teacher report",
     "reportsTeacherPerformance": "Teacher performance report",
+    "reportsOperations": "Delivery operations",
+    "reportsEconomics": "Teacher economics",
     "reportsStudents": "Student report",
     "settingsWhatsApp": "WhatsApp",
     "settingsMessages": "WhatsApp templates",
@@ -351,6 +353,7 @@
     "drawerDescription": "Main navigation",
     "openNavigation": "Open navigation",
     "settingsPricing": "Pricing",
+    "settingsTeacherEconomics": "Teacher economics",
     "settingsBillingPolicy": "Billing & subscription rules",
     "settingsPrivacy": "Privacy & data",
     "settingsCalendar": "Google Calendar",
@@ -379,6 +382,7 @@
       "title": "Today",
       "summary": "{total} lessons · {completed} completed · {cancelled} cancelled",
       "nextBadge": "Next",
+      "hiddenCancelled": "{count} cancelled lessons are hidden",
       "viewAll": "All today's lessons ({count})",
       "emptyAction": "Schedule a lesson"
     },
@@ -1003,6 +1007,8 @@
     "viewDay": "Daily",
     "viewWeek": "Weekly",
     "viewMonth": "Monthly",
+    "scheduleDensityCompact": "Use a denser schedule view",
+    "scheduleDensityExpand": "Use a roomier schedule view",
     "frequency": "Frequency",
     "weekly": "Weekly",
     "biweekly": "Bi-weekly",
@@ -1523,6 +1529,32 @@
   },
   "settings": {
     "title": "Settings",
+    "teacherEconomics": {
+      "title": "Teacher economics",
+      "description": "Operational estimates only, never payroll",
+      "enableTeacherEstimates": "Allow teachers to see their own estimated compensation",
+      "save": "Save",
+      "policies": "Versioned compensation policies",
+      "newPolicy": "Add policy",
+      "scope": "Scope",
+      "model": "Model",
+      "hourly": "Hourly eligible time",
+      "fixed": "Fixed per eligible lesson",
+      "percentage": "Percentage of attributed revenue",
+      "basePlus": "Base plus participant supplement",
+      "hourlyAmount": "Hourly amount",
+      "fixedAmount": "Fixed amount",
+      "revenuePercent": "Revenue percentage",
+      "participantAmount": "Additional participant amount",
+      "noShowPercent": "No-show percentage",
+      "lateCancellationPercent": "Late parent cancellation percentage",
+      "effectiveFrom": "Effective from",
+      "effectiveTo": "Effective to",
+      "requiresConfirmation": "Require teacher or staff confirmation",
+      "savePolicy": "Save policy",
+      "organizationDefault": "Organization default",
+      "teacherOverride": "Teacher override"
+    },
     "groups": {
       "business": {
         "description": "Core business details, operating rules, and data retention"
@@ -3003,6 +3035,40 @@
       "chartTitle": "Lessons by teacher chart",
       "emptyPeriod": "No data for this period"
     },
+    "operations": {
+      "title": "Delivery operations",
+      "description": "Lesson activity and delivery status",
+      "teacher": "Teacher",
+      "completed": "Completed",
+      "noShow": "Student no-show",
+      "cancelled": "Cancelled",
+      "scheduled": "Scheduled",
+      "hours": "Delivery hours",
+      "month": "Month"
+    },
+    "economics": {
+      "title": "Teacher economics",
+      "description": "Attributed revenue, estimated compensation and contribution",
+      "teacher": "Teacher",
+      "completed": "Completed",
+      "noShow": "Student no-show",
+      "cancelled": "Cancelled",
+      "scheduled": "Scheduled",
+      "hours": "Delivery hours",
+      "revenue": "Attributed revenue",
+      "compensation": "Estimated compensation",
+      "contribution": "Contribution",
+      "state": "Snapshot state",
+      "estimated": "Estimated",
+      "confirmed": "Confirmed",
+      "missingPolicy": "Missing policy",
+      "month": "Month",
+      "publish": "Publish snapshot",
+      "reopen": "Reopen snapshot"
+      ,"pendingAdjustments": "Pending adjustments",
+      "accepted": "Accept",
+      "rejected": "Reject"
+    },
     "students": {
       "title": "Students",
       "description": "Student activity and churn risk",
@@ -3050,7 +3116,14 @@
       "lastLesson": "Last lesson",
       "atRisk": "At risk",
       "yes": "Yes",
-      "no": "No"
+      "no": "No",
+      "completed": "Completed",
+      "noShow": "Student no-show",
+      "cancellations": "Cancellations",
+      "deliveryHours": "Delivery hours",
+      "attributedRevenue": "Attributed revenue",
+      "estimatedCompensation": "Estimated compensation",
+      "contribution": "Contribution"
     },
     "invalidEntity": "Invalid entity type"
   },
@@ -3203,7 +3276,15 @@
         "completed": "Completed",
         "cancelled": "Cancelled",
         "noShow": "No-show"
-      }
+      },
+      "personalEstimateTitle": "My estimated compensation",
+      "estimatedCompensation": "Estimated compensation",
+      "deliveryHours": "Delivery hours",
+      "completedCount": "Completed lessons",
+      "estimateState": "Estimate state",
+      "confirmed": "Confirmed",
+      "estimated": "Estimated",
+      "missing_policy": "Missing policy"
     },
     "teacherCalendar": {
       "title": "My Google Calendar",

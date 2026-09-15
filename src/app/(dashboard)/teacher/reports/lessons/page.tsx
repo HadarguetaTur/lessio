@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation'
+import { DateTime } from 'luxon'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { getTeacherLessonsReport } from '@/lib/reports/teacherReports'
+import { getTeacherPersonalEstimate } from '@/lib/teacher-economics/report'
 import { parseReportMonths } from '@/lib/reports/params'
 import { TeacherLessonsChart } from '@/components/reports/lazyCharts'
 import { PeriodSelector } from '@/components/reports/PeriodSelector'
@@ -37,6 +39,12 @@ export default async function TeacherLessonsReportPage({ searchParams }: Props) 
     getLocale(),
     getTranslations('teacherSelf.reports'),
   ])
+  const personalEstimate = await getTeacherPersonalEstimate(
+    orgId,
+    teacher.id,
+    DateTime.now().setZone(timezone).toFormat('yyyy-MM'),
+    timezone
+  )
 
   const appLocale = parseAppLocale(locale)
   const { buckets, totalCompleted, totalCancelled, totalNoShow } =
@@ -49,6 +57,18 @@ export default async function TeacherLessonsReportPage({ searchParams }: Props) 
         subtitle={t('lessonsSubtitle', { completed: totalCompleted, cancelled: totalCancelled, noShow: totalNoShow })}
         actions={<PeriodSelector current={months} />}
       />
+
+      {personalEstimate && (
+        <div className="mb-6 rounded-xl border border-border bg-card p-5">
+          <h2 className="font-semibold">{t('personalEstimateTitle')}</h2>
+          <div className="mt-3 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+            <div><div className="text-muted-foreground">{t('estimatedCompensation')}</div><div className="font-semibold">{personalEstimate.estimatedCompensation.toFixed(2)}</div></div>
+            <div><div className="text-muted-foreground">{t('deliveryHours')}</div><div className="font-semibold">{personalEstimate.deliveryHours.toFixed(2)}</div></div>
+            <div><div className="text-muted-foreground">{t('completedCount')}</div><div className="font-semibold">{personalEstimate.completedCount}</div></div>
+            <div><div className="text-muted-foreground">{t('estimateState')}</div><div className="font-semibold">{t(personalEstimate.confirmationState)}</div></div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-6 min-w-0 rounded-xl border border-border bg-card p-6">
         <TeacherLessonsChart buckets={buckets} />

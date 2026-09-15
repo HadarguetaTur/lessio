@@ -306,7 +306,8 @@ export function isValidStatusTransition(
 export async function updateLessonStatus(
   id: string,
   organizationId: string,
-  status: LessonStatus
+  status: LessonStatus,
+  confirmation?: { profileId: string; source: 'teacher' | 'staff' }
 ): Promise<void> {
   if (status === ('cancelled' as LessonStatus)) {
     throw new Error(
@@ -328,7 +329,17 @@ export async function updateLessonStatus(
   }
 
   // Only delivery statuses reach here, so the cancel reason is always cleared.
-  const update: Record<string, string | null> = { status, cancel_reason: null }
+  const update: Record<string, string | null> = {
+    status,
+    cancel_reason: null,
+    ...(status === 'completed' && confirmation
+      ? {
+          delivery_confirmed_at: new Date().toISOString(),
+          delivery_confirmed_by_profile_id: confirmation.profileId,
+          delivery_confirmation_source: confirmation.source,
+        }
+      : {}),
+  }
 
   const { error } = await supabase
     .from('lessons')

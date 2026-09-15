@@ -26,7 +26,7 @@ const groupSchema = z.object({
  */
 async function requireOwnerOrAdmin() {
   const session = await getSession()
-  if (session.role !== 'owner' && session.role !== 'admin') {
+  if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'office_manager') {
     throw new Error(await commonError('noPermission'))
   }
   requireMutation(session)

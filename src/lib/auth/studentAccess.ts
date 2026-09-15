@@ -11,7 +11,7 @@ import { getTeacherByProfileId } from '@/lib/teachers'
  * access only students currently assigned to their active teacher record.
  */
 export async function canAccessStudent(
-  session: Pick<UserSession, 'orgId' | 'profileId' | 'role'>,
+  session: Pick<UserSession, 'orgId' | 'profileId'> & { role: string },
   studentId: string
 ): Promise<boolean> {
   if (session.role !== 'owner' && session.role !== 'admin' && session.role !== 'teacher') {

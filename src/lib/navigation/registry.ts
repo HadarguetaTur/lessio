@@ -60,7 +60,7 @@ import {
 } from 'lucide-react'
 import type { SaasFeatures } from '@/lib/saas/types'
 
-export type NavRole = 'owner' | 'admin' | 'teacher'
+export type NavRole = 'owner' | 'admin' | 'office_manager' | 'teacher'
 
 export interface NavEntry {
   href: string
@@ -130,6 +130,14 @@ export const SETTINGS_NAV: NavEntry[] = [
     synonyms: ['pricing', 'price', 'rate', 'tariff', 'מחיר', 'מחירים', 'תמחור', 'תעריף'],
   },
   {
+    href: '/settings/teacher-economics',
+    navKey: 'settingsTeacherEconomics',
+    cardKey: 'teacherEconomics',
+    icon: BarChart2,
+    roles: ['owner'],
+    synonyms: ['teacher economics', 'compensation policy', 'teacher estimate', 'כלכלת הוראה', 'תגמול מורים'],
+  },
+  {
     href: '/settings/billing-policy',
     navKey: 'settingsBillingPolicy',
     cardKey: 'billingPolicy',
@@ -174,7 +182,7 @@ export const SETTINGS_NAV: NavEntry[] = [
     navKey: 'settingsScheduling',
     cardKey: 'scheduling',
     icon: CalendarClock,
-    roles: ['owner', 'admin'],
+    roles: ['owner', 'admin', 'office_manager'],
     synonyms: [
       'scheduling', 'break', 'buffer', 'gap', 'notice', 'lead time', 'slot',
       'שיבוץ', 'זימון', 'הפסקה', 'הפסקות', 'מרווח', 'התראה מראש', 'זמינות',
@@ -185,7 +193,7 @@ export const SETTINGS_NAV: NavEntry[] = [
     navKey: 'settingsHolidays',
     cardKey: 'holidays',
     icon: CalendarOff,
-    roles: ['owner', 'admin'],
+    roles: ['owner', 'admin', 'office_manager'],
     synonyms: ['holiday', 'holidays', 'vacation', 'closed', 'חג', 'חגים', 'חופשה', 'חופשות'],
   },
   {
@@ -303,6 +311,24 @@ export const REPORTS_NAV: NavEntry[] = [
     synonyms: ['teacher', 'teachers', 'staff', 'מורה', 'מורים', 'צוות'],
   },
   {
+    href: '/reports/operations',
+    navKey: 'reportsOperations',
+    cardKey: 'operations',
+    icon: ClipboardList,
+    roles: ['owner', 'admin', 'office_manager'],
+    saasFeature: 'full_reports',
+    synonyms: ['operations', 'delivery', 'activity', 'פעילות', 'תפעול', 'העברה'],
+  },
+  {
+    href: '/reports/economics',
+    navKey: 'reportsEconomics',
+    cardKey: 'economics',
+    icon: BarChart2,
+    roles: ['owner'],
+    saasFeature: 'full_reports',
+    synonyms: ['economics', 'contribution', 'compensation', 'כלכלה', 'תרומה', 'תגמול'],
+  },
+  {
     href: '/reports/teacher-performance',
     navKey: 'reportsTeacherPerformance',
     cardKey: 'teacherPerformance',
@@ -357,7 +383,7 @@ export const MAIN_NAV: NavEntry[] = [
     href: '/lessons',
     navKey: 'lessons',
     icon: BookOpen,
-    roles: ['owner', 'admin'],
+    roles: ['owner', 'admin', 'office_manager'],
     synonyms: ['lesson', 'lessons', 'schedule', 'שיעור', 'שיעורים', 'לוח זמנים'],
   },
   {
@@ -589,6 +615,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     icon: Banknote,
     items: [
       '/settings/pricing',
+      '/settings/teacher-economics',
       '/settings/billing-policy',
       '/settings/cancellation-policy',
     ].map(entryOf),
@@ -710,7 +737,7 @@ export const CATEGORIES: NavCategory[] = [
     sectionKey: 'sections.teachers',
     icon: UserRound,
     landing: '/teachers',
-    items: ['/teachers', '/reports/teachers', '/reports/teacher-performance'].map(entryOf),
+    items: ['/teachers', '/reports/teachers', '/reports/teacher-performance', '/reports/operations', '/reports/economics'].map(entryOf),
   },
 ]
 

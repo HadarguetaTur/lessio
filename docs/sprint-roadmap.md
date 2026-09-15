@@ -46,6 +46,7 @@ in `docs/archive/sprint-scopes/`.
 | 32 | Customer Support System (tickets, AI triage, recurring-bug detection) | ✅ M1–M3 done |
 | 33 | Integration Hub (API keys, `/api/v1`, Make payment provider, webhooks) | ✅ M1 shipped |
 | 34 | Platform Admin & Growth Console (SaaS metrics, lead CRM, pixels, attribution) | 🚧 M1 built |
+| 35 | Teacher Operations & Economics (activity, attributable revenue, estimated compensation) | 📌 Planned |
 
 ---
 

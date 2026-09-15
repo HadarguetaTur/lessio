@@ -293,6 +293,8 @@
     "reportsDebt": "דוח יתרות פתוחות",
     "reportsTeachers": "דוח מורים",
     "reportsTeacherPerformance": "דוח ביצועי מורים",
+    "reportsOperations": "תפעול והעברת שיעורים",
+    "reportsEconomics": "כלכלת הוראה",
     "reportsStudents": "דוח תלמידים",
     "settingsWhatsApp": "WhatsApp",
     "settingsMessages": "תבניות WhatsApp",
@@ -351,6 +353,7 @@
     "drawerDescription": "תפריט ניווט ראשי",
     "openNavigation": "פתיחת תפריט הניווט",
     "settingsPricing": "תמחור",
+    "settingsTeacherEconomics": "כלכלת הוראה",
     "settingsBillingPolicy": "כללי חיוב ומנויים",
     "settingsPrivacy": "פרטיות ונתונים",
     "settingsCalendar": "יומן Google",
@@ -379,6 +382,7 @@
       "title": "היום",
       "summary": "{total} שיעורים · {completed} הושלמו · {cancelled} בוטלו",
       "nextBadge": "הבא",
+      "hiddenCancelled": "{count} שיעורים מבוטלים מוסתרים",
       "viewAll": "לכל השיעורים של היום ({count})",
       "emptyAction": "קביעת שיעור"
     },
@@ -1003,6 +1007,8 @@
     "viewDay": "יומי",
     "viewWeek": "שבועי",
     "viewMonth": "חודשי",
+    "scheduleDensityCompact": "תצוגה צפופה יותר",
+    "scheduleDensityExpand": "תצוגה מרווחת יותר",
     "frequency": "תדירות",
     "weekly": "שבועי",
     "biweekly": "דו-שבועי",
@@ -1523,6 +1529,32 @@
   },
   "settings": {
     "title": "הגדרות",
+    "teacherEconomics": {
+      "title": "כלכלת הוראה",
+      "description": "הערכות תפעוליות בלבד, לא שכר",
+      "enableTeacherEstimates": "לאפשר למורים לראות את התגמול המוערך האישי שלהם",
+      "save": "שמירה",
+      "policies": "מדיניות תגמול לפי גרסאות",
+      "newPolicy": "הוספת מדיניות",
+      "scope": "תחולה",
+      "model": "מודל",
+      "hourly": "זמן הוראה שעתי",
+      "fixed": "סכום קבוע לשיעור זכאי",
+      "percentage": "אחוז מההכנסה המיוחסת",
+      "basePlus": "בסיס בתוספת משתתפים",
+      "hourlyAmount": "סכום שעתי",
+      "fixedAmount": "סכום קבוע",
+      "revenuePercent": "אחוז מההכנסה",
+      "participantAmount": "סכום למשתתף נוסף",
+      "noShowPercent": "אחוז אי-הגעה",
+      "lateCancellationPercent": "אחוז ביטול מאוחר על ידי הורה",
+      "effectiveFrom": "בתוקף מתאריך",
+      "effectiveTo": "בתוקף עד",
+      "requiresConfirmation": "נדרשת אישור מורה או צוות",
+      "savePolicy": "שמירת מדיניות",
+      "organizationDefault": "ברירת מחדל ארגונית",
+      "teacherOverride": "חריגת מורה"
+    },
     "groups": {
       "business": {
         "description": "הפרטים הבסיסיים של העסק, כללי הפעילות ושמירת נתונים"
@@ -3003,6 +3035,40 @@
       "chartTitle": "תרשים שיעורים לפי מורה",
       "emptyPeriod": "אין נתונים לתקופה זו"
     },
+    "operations": {
+      "title": "תפעול והעברת שיעורים",
+      "description": "פעילות שיעורים ומצב ביצוע",
+      "teacher": "מורה",
+      "completed": "הושלמו",
+      "noShow": "תלמיד לא הגיע",
+      "cancelled": "בוטלו",
+      "scheduled": "מתוכננים",
+      "hours": "שעות ביצוע",
+      "month": "חודש"
+    },
+    "economics": {
+      "title": "כלכלת הוראה",
+      "description": "הכנסה מיוחסת, תגמול תפעולי מוערך ותרומה",
+      "teacher": "מורה",
+      "completed": "הושלמו",
+      "noShow": "תלמיד לא הגיע",
+      "cancelled": "בוטלו",
+      "scheduled": "מתוכננים",
+      "hours": "שעות ביצוע",
+      "revenue": "הכנסה מיוחסת",
+      "compensation": "תגמול מוערך",
+      "contribution": "תרומה",
+      "state": "מצב תמונת מצב",
+      "estimated": "מוערך",
+      "confirmed": "מאושר",
+      "missingPolicy": "חסרה מדיניות",
+      "month": "חודש",
+      "publish": "פרסום תמונת מצב",
+      "reopen": "פתיחת תמונת מצב מחדש"
+      ,"pendingAdjustments": "התאמות ממתינות",
+      "accepted": "אישור",
+      "rejected": "דחייה"
+    },
     "students": {
       "title": "תלמידים",
       "description": "פעילות תלמידים וסיכוני נשירה",
@@ -3050,7 +3116,14 @@
       "lastLesson": "שיעור אחרון",
       "atRisk": "סיכון",
       "yes": "כן",
-      "no": "לא"
+      "no": "לא",
+      "completed": "הושלמו",
+      "noShow": "תלמיד לא הגיע",
+      "cancellations": "ביטולים",
+      "deliveryHours": "שעות ביצוע",
+      "attributedRevenue": "הכנסה מיוחסת",
+      "estimatedCompensation": "תגמול מוערך",
+      "contribution": "תרומה"
     },
     "invalidEntity": "סוג ישות לא תקין"
   },
@@ -3203,7 +3276,15 @@
         "completed": "הושלמו",
         "cancelled": "בוטלו",
         "noShow": "לא הגיעו"
-      }
+      },
+      "personalEstimateTitle": "התגמול המוערך שלי",
+      "estimatedCompensation": "תגמול מוערך",
+      "deliveryHours": "שעות ביצוע",
+      "completedCount": "שיעורים שהושלמו",
+      "estimateState": "מצב ההערכה",
+      "confirmed": "מאושר",
+      "estimated": "מוערך",
+      "missing_policy": "חסרה מדיניות"
     },
     "teacherCalendar": {
       "title": "היומן שלי ב-Google",

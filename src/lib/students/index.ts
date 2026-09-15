@@ -65,6 +65,8 @@ export interface GetStudentsOptions {
   isActive?: boolean
   /** Filter to only students assigned to this teacher */
   teacherId?: string
+  /** Financial pricing fields are omitted for operational-only staff. */
+  includePricing?: boolean
 }
 
 const STUDENT_SELECT =
@@ -117,12 +119,21 @@ export async function getStudents(
 
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return (data ?? []).map(mapStudent)
+  return (data ?? []).map((row) => {
+    const student = mapStudent(row)
+    if (options.includePricing === false) {
+      student.hourly_rate = null
+      student.discount_percent = null
+      student.discount_reason = null
+    }
+    return student
+  })
 }
 
 export async function getStudentById(
   id: string,
-  organizationId: string
+  organizationId: string,
+  options?: { includePricing?: boolean }
 ): Promise<Student | null> {
   const supabase = createServiceRoleClient()
 
@@ -133,7 +144,14 @@ export async function getStudentById(
     .eq('organization_id', organizationId)
     .single()
 
-  return data ? mapStudent(data) : null
+  if (!data) return null
+  const student = mapStudent(data)
+  if (options?.includePricing === false) {
+    student.hourly_rate = null
+    student.discount_percent = null
+    student.discount_reason = null
+  }
+  return student
 }
 
 /**

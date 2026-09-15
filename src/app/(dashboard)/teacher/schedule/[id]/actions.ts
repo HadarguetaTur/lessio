@@ -139,7 +139,11 @@ export async function updateTeacherLessonOutcome(
   }
 
   try {
-    await updateLessonStatus(lessonId, orgId, status)
+    if (status === 'completed' && session.profileId) {
+      await updateLessonStatus(lessonId, orgId, status, { profileId: session.profileId, source: 'teacher' })
+    } else {
+      await updateLessonStatus(lessonId, orgId, status)
+    }
   } catch (e) {
     return { error: t('teacherSelf.errors.statusUpdateFailed') }
   }

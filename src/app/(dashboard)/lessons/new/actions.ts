@@ -114,7 +114,7 @@ export async function createLessonAction(
   const session = await getSession()
   const { orgId, role, profileId } = session
   requireMutation(session)
-  if (role !== 'owner' && role !== 'admin' && role !== 'teacher') {
+  if (role !== 'owner' && role !== 'admin' && role !== 'office_manager' && role !== 'teacher') {
     return { error: await commonError('noPermission') }
   }
   await requireQuotaCapacity(orgId, 'lessons_monthly')

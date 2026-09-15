@@ -21,9 +21,10 @@ interface NewStudentSheetProps {
   teachers: { id: string; full_name: string }[]
   /** Hidden when the org does not enforce the weekly quota. */
   showWeeklyQuota?: boolean
+  showPricing?: boolean
 }
 
-export function NewStudentSheet({ action, teachers, showWeeklyQuota = true }: NewStudentSheetProps) {
+export function NewStudentSheet({ action, teachers, showWeeklyQuota = true, showPricing = true }: NewStudentSheetProps) {
   const t = useTranslations('students')
   const [open, setOpen] = useState(false)
 
@@ -44,6 +45,7 @@ export function NewStudentSheet({ action, teachers, showWeeklyQuota = true }: Ne
             action={action}
             teachers={teachers}
             showWeeklyQuota={showWeeklyQuota}
+            showPricing={showPricing}
             onSuccess={() => setOpen(false)}
             onCancel={() => setOpen(false)}
           />

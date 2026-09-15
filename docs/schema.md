@@ -34,7 +34,7 @@ payment_config_encrypted      text                     -- AES-256-GCM encrypted 
 -- Auto payment (Sprint 9)
 auto_send_payment_request     boolean not null default false
 payment_confirmation_default_enabled boolean not null default true
-                              -- pre-checks the "tell the parent" box in the
+role            text not null check (role in ('owner','admin','office_manager','teacher'))
                               -- mark-as-paid dialogs; a default only, staff
                               -- can flip it per payment
 -- Parent portal (owner/admin-editable at /settings/parent-portal since 2026-09)
@@ -563,27 +563,52 @@ All phones stored as E.164. Logic in `src/lib/phone/index.ts`:
 
 ## RLS Summary
 
-| Table | Owner | Admin | Teacher | Service Role |
-|---|---|---|---|---|
-| organizations | full | read | read (minimal) | full |
-| profiles | full | read (org) | read (self) | full |
-| teachers | full | full | read (self) | full |
-| parents | full | full | — | full |
-| students | full | full | lesson context | full |
-| relationships | full | full | — | full |
-| availability | full | full | self only | full |
-| availability_overrides | full | full | self only | full |
-| organization_holidays | full | full | read | full |
-| lesson_series | full | full | read (own) | full |
-| lessons | full | full | read + update outcome (own) | full |
-| lesson_students | full | full | read (own) | full |
-| slot_locks | — | — | — | full only |
-| charges | full | read | — | full |
-| cancellation_policies | full | read | — | full |
-| leads | full | full | — | full |
-| cancellation_sessions | — | — | — | full only |
-| notification_log | — | — | — | full only |
-| portal_otps | — | — | — | full only |
+| Table | Owner | Admin | Office Manager | Teacher | Service Role |
+|---|---|---|---|---|---|
+| organizations | full | read | read (operational) | read (minimal) | full |
+| profiles | full | read (org) | read (org) | read (self) | full |
+| teachers | full | full | read (org) | read (self) | full |
+| parents | full | full | — | — | full |
+| students | full | full | full | lesson context | full |
+| relationships | full | full | full | — | full |
+| availability | full | full | full | self only | full |
+| availability_overrides | full | full | full | self only | full |
+| organization_holidays | full | full | full | read | full |
+| lesson_series | full | full | full | read (own) | full |
+| lessons | full | full | full | read + update outcome (own) | full |
+| lesson_students | full | full | full | read (own) | full |
+| slot_locks | — | — | — | — | full only |
+| charges | full | read | — | — | full |
+| cancellation_policies | full | read | — | — | full |
+| leads | full | full | — | — | full |
+| cancellation_sessions | — | — | — | — | full only |
+| notification_log | — | — | — | — | full only |
+| portal_otps | — | — | — | — | full only |
+
+## Teacher Operations & Economics (Sprint 35)
+
+This domain reports lesson delivery, attributed lesson/cancellation revenue,
+estimated operational compensation, and contribution. It is not payroll and
+does not represent salary, tax, deductions, leave, payslips, or payment to a
+teacher.
+
+`organizations.teacher_estimates_enabled` controls whether teachers may see
+their own estimate. `lessons` stores new cancellation and delivery-confirmation
+provenance; legacy null provenance is treated as estimated by the calculator.
+
+`compensation_policies` stores the versioned organisation default or teacher
+override. Policies use one bounded model (`hourly`, `fixed_per_lesson`,
+`percentage_revenue`, or `base_plus_participant`), `effective_from`, optional
+`effective_to`, and a database exclusion constraint preventing overlapping
+versions for the same scope. The calculator resolves the policy at the lesson's
+local start time and snapshots it on estimate lines.
+
+`teacher_economics_snapshots` and `teacher_economics_snapshot_lines` retain
+published monthly values and policy snapshots. `teacher_economics_adjustments`
+records post-publication changes as pending before/after values, and
+`teacher_economics_audit_log` records policy, snapshot, and adjustment history.
+All five economics tables are service-role-only; server actions enforce the
+owner-only financial capability and return redacted DTOs to operational roles.
 
 ---
 

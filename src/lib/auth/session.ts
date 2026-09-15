@@ -5,12 +5,13 @@ import { redirect } from 'next/navigation'
 import { getActiveSupportSession } from '@/lib/support-session'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getOrgSubscriptionState, isOrgSaasReadOnly } from '@/lib/saas/subscriptions'
+import { isOrganizationRole, type OrganizationRole } from './roles'
 
 export interface UserSession {
   userId: string
   profileId: string  // same as userId — profiles.id references auth.users(id)
   orgId: string
-  role: string
+  role: OrganizationRole
   fullName: string
   /** True when a superadmin is viewing this org via support-mode cookie. */
   isSupportMode?: boolean
@@ -89,6 +90,7 @@ export const getSession = cache(async function getSession(): Promise<UserSession
   if (isPlatformRole(profile.role)) redirect('/admin')
 
   const orgId = profile.organization_id as string
+  if (!isOrganizationRole(profile.role)) redirect('/login')
 
   // One query per request: getOrgSubscriptionState is React-cached, and the
   // dashboard layout asks for the same row.

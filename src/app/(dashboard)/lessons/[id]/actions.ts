@@ -67,7 +67,7 @@ export async function setLessonStatus(
   }
   const { orgId, role } = session
 
-  if (role !== 'owner' && role !== 'admin') {
+  if (role !== 'owner' && role !== 'admin' && role !== 'office_manager') {
     return { error: await commonError('noPermission') }
   }
 
@@ -89,6 +89,7 @@ export async function setLessonStatus(
       actor: { kind: 'staff' },
       source: 'dashboard',
       reason: cancelReason,
+      actorProfileId: session.profileId,
     })
 
     if (!outcome.success) return { error: t(CANCEL_ERROR_MESSAGE[outcome.error]) }
@@ -110,7 +111,7 @@ export async function setLessonStatus(
   try {
     // `cancelReason` is consumed by the cancelLessonCore branch above; only
     // delivery statuses reach here, and they carry no reason.
-    await updateLessonStatus(lessonId, orgId, status)
+    await updateLessonStatus(lessonId, orgId, status, { profileId: session.profileId, source: 'staff' })
     revalidatePath(`/lessons/${lessonId}`)
     revalidatePath('/lessons')
     revalidatePath('/dashboard')
@@ -160,7 +161,7 @@ export async function cancelLesson(
   }
   const { userId, orgId, role } = session
 
-  const isStaff = role === 'owner' || role === 'admin'
+  const isStaff = role === 'owner' || role === 'admin' || role === 'office_manager'
   if (!isStaff && role !== 'teacher') {
     return { error: t('lessons.errors.noCancelPermission') }
   }
@@ -183,9 +184,10 @@ export async function cancelLesson(
     actor,
     source: isStaff ? 'dashboard' : 'teacher',
     reason,
+    actorProfileId: session.profileId,
     // Waiving the fee is a money decision, so it stays with owner/admin. A
     // teacher's cancellation always runs through the org's cancellation policy.
-    waive: isStaff && formData.get('waive') === 'true',
+    waive: (role === 'owner' || role === 'admin') && formData.get('waive') === 'true',
   })
 
   if (!outcome.success) {

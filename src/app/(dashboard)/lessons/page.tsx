@@ -93,7 +93,7 @@ export default async function LessonsPage(props: {
     </div>
   ) : null
 
-  const isAdmin = role === 'owner' || role === 'admin'
+  const isAdmin = role === 'owner' || role === 'admin' || role === 'office_manager'
 
   let scheduleForm: ScheduleFormResources | null = null
   if (isAdmin) {

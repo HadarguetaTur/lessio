@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useLiveRefreshEvent } from '@/lib/realtime/useLiveRefresh'
 
 /** Custom lessons escape the fixed durations; these bounds match the importer. */
 const CUSTOM_DURATION_MIN = 5
@@ -199,6 +200,11 @@ export function NewLessonForm({
   const [selectedTime, setSelectedTime] = useState('')
   const [recommendedSlots, setRecommendedSlots] = useState<{ startTime: string; endTime: string }[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
+  // The form can remain open while a lesson is cancelled elsewhere in the
+  // dashboard (or by another staff member). Keep a revision rather than
+  // relying on router.refresh(): a route refresh preserves this client state,
+  // including an already-rendered list of suggested times.
+  const [availabilityRevision, setAvailabilityRevision] = useState(0)
 
   const isPair = effectiveLessonType === 'pair'
   const isCustom = effectiveLessonType === 'custom'
@@ -239,6 +245,15 @@ export function NewLessonForm({
     onSuccessRef.current = onSuccess
   }, [onSuccess])
 
+  // The dashboard owns one Realtime stream per organization. A cancellation
+  // changes `lessons`, while editing hours changes either availability table;
+  // every one of those events means the open suggestion list may be stale.
+  // The hook coalesces bursts, so a multi-row update still yields one reload.
+  useLiveRefreshEvent(
+    ['lessons', 'availability', 'availability_overrides'],
+    () => setAvailabilityRevision((revision) => revision + 1)
+  )
+
   useEffect(() => {
     if (state.success) {
       onSuccessRef.current?.()
@@ -271,7 +286,7 @@ export function NewLessonForm({
     return () => {
       cancelled = true
     }
-  }, [teacherId, date, duration, timeMode, getRecommendedSlots])
+  }, [teacherId, date, duration, timeMode, getRecommendedSlots, availabilityRevision])
 
   // Submit through the action manually: the browser still runs native
   // constraint validation before firing `submit`, but preventDefault stops

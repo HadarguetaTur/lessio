@@ -1,6 +1,6 @@
 # Sprint 35 — Teacher Operations & Economics
 
-**Status:** Planned  
+**Status:** Shipped 15.09.2026. Attributed revenue is the list value of delivered activity (decision #45), never the charges actually recorded — see that decision before touching `src/lib/teacher-economics/report.ts`.  
 **Product boundary:** Lessio is an operational-management system. It reports teaching activity, attributed revenue, estimated compensation and contribution. It never calculates payroll, deductions, payslips, tax reporting or an amount legally due to an employee.
 
 ## Goal

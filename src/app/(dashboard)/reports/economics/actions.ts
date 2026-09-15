@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession, requireMutation } from '@/lib/auth/session'
+import { canPublishEconomics } from '@/lib/auth/roles'
 import { getOrgTimezone } from '@/lib/organizations'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getOwnerTeacherEconomicsReport } from '@/lib/teacher-economics/report'
@@ -19,7 +20,7 @@ const adjustmentSchema = z.object({
 async function ownerSession() {
   const session = await getSession()
   requireMutation(session)
-  if (session.role !== 'owner') throw new Error('FORBIDDEN')
+  if (!canPublishEconomics(session.role)) throw new Error('FORBIDDEN')
   return session
 }
 
@@ -58,8 +59,8 @@ export async function publishMonthlySnapshotAction(formData: FormData): Promise<
     duration_minutes: line.durationHours * 60,
     enrolled_student_count: line.enrolledStudentCount,
     attributed_revenue: line.attributedRevenue,
-    estimated_compensation: line.estimatedCompensation,
-    contribution: line.contribution,
+    estimated_compensation: line.estimatedCompensation ?? 0,
+    contribution: line.contribution ?? 0,
     confirmation_state: line.confirmationState,
   })))
   if (lines.length > 0) {

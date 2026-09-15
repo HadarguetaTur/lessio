@@ -3113,7 +3113,8 @@
         "unknownCancellation": "{count} cancellations with unknown source",
         "staffCancellation": "{count} cancellations by staff (0% compensation)",
         "missingPrice": "{count} lessons without a price",
-        "missingPriceAction": "Pricing settings"
+        "missingPriceAction": "Pricing settings",
+        "noStudents": "{count} completed lessons with no enrolled students"
       },
       "noPolicies": {
         "title": "No compensation policy yet",
@@ -3146,7 +3147,8 @@
         "reasonAwaitingConfirmation": "{count} awaiting confirmation",
         "reasonUnknownCancellation": "{count} cancellations with unknown source",
         "reasonStaffCancellation": "{count} staff cancellations",
-        "reasonMissingPrice": "{count} without price"
+        "reasonMissingPrice": "{count} without price",
+        "reasonNoStudents": "{count} without students"
       },
       "detail": {
         "back": "Back to teacher economics",

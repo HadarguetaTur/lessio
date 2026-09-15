@@ -999,6 +999,48 @@ must take one click.
   instead of rebuilding it, so view, week, day, month, student and cancelled
   all survive.
 
+## 45. Attributed Revenue Is the List Value of Delivered Activity
+
+✅ DECIDED (15 Sep 2026): the teacher-economics report answers "what was this
+teacher's activity worth to the centre", not "what cash did it bring in". The
+first implementation summed `charges` of type `lesson`/`cancellation` per
+lesson; a centre on monthly billing writes no such rows, so every teacher showed
+₪0 revenue and a negative contribution. That was the sprint-35 definition
+misread, not a data problem.
+
+* **Completed lesson → list price per enrolled student**, through
+  `resolveLessonBaseAmount` (the one pricing function every billing path uses),
+  with the student's own rate and discount applied. Billing mode is irrelevant:
+  a subscription-covered lesson is attributed at list price and only *flagged*
+  as covered on the drill-down. Subscription cash is never allocated to lessons
+  (sprint 35 already forbade inventing that allocation).
+* **Parent cancellation → the cancellation policy.** A recorded cancellation
+  charge wins; otherwise `calculateCancellationCharge` prices the cancellation
+  from `cancelled_at` and the org policy window, and the same call decides
+  whether it was "late" for the compensation percentage. Portal and WhatsApp
+  cancellations are the parent's own channels and count as parent
+  cancellations. Teacher and staff cancellations attribute nothing.
+* **No-show attributes nothing.** The centre does not bill a no-show
+  (`BILLABLE_STATUSES` is `completed` only), so counting list price would be
+  fabricated revenue. Compensation still follows `no_show_percent`, so a
+  no-show's contribution is honestly negative.
+* **A completed lesson is accepted operationally** unless the policy has
+  `requires_confirmation` and no delivery confirmation arrived. Automatic
+  completion writes no confirmation; under the old rule that made every line
+  "estimated" forever, which told the owner nothing.
+* **No policy means no number.** A line without an active policy has `null`
+  compensation and contribution and the teacher's totals go `null` too, with
+  a callout linking to the policy settings. The previous behaviour (0
+  compensation, contribution = revenue) quietly inflated contribution.
+* **Every warning is a named reason** — missing policy, awaiting confirmation,
+  unknown cancellation source, staff cancellation, missing price, no
+  cancellation policy — shown per teacher in the state badge and per lesson on
+  the drill-down. "Estimated" is never a label the owner has to guess at.
+
+The operations report (`/reports/operations`) renders the same
+`TeacherActivityTable` without the finance columns, so an office manager and
+the owner always see identical counts for a month.
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

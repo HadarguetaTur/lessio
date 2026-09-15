@@ -28,6 +28,27 @@ export interface CompensationPolicy {
 export type LessonOutcome = 'scheduled' | 'completed' | 'no_show' | 'cancelled'
 export type CancellationActor = 'parent' | 'teacher' | 'staff' | 'unknown' | null
 
+/**
+ * Where a lesson's attributed revenue comes from (decision #45). The number is
+ * the list value of the activity, never cash: a subscription-covered lesson is
+ * still attributed at list price and only flagged as covered.
+ */
+export type RevenueBasis =
+  | 'list_price'          // completed lesson priced by resolveLessonBaseAmount per enrolled student
+  | 'cancellation_charge' // a cancellation charge was actually recorded on the lesson
+  | 'cancellation_policy' // parent cancellation priced by the cancellation policy window
+  | 'not_billed'          // outcome the centre does not bill (student no-show)
+  | 'none'                // nothing attributable (scheduled, teacher cancellation, no students)
+
+export type LineWarning =
+  | 'missing_policy'
+  | 'awaiting_confirmation'
+  | 'unknown_provenance'
+  | 'staff_cancellation'
+  | 'missing_price'
+  | 'no_cancellation_policy'
+  | 'no_students'
+
 export interface EconomicsLesson {
   id: string
   teacherId: string
@@ -37,35 +58,63 @@ export interface EconomicsLesson {
   lessonType: 'individual' | 'pair' | 'group' | 'custom'
   enrolledStudentCount: number
   attributedRevenue: number
+  revenueBasis?: RevenueBasis
+  subscriptionCovered?: boolean
+  studentNames?: string[]
   cancellationActor?: CancellationActor
   lateParentCancellation?: boolean
   deliveryConfirmedAt?: string | null
   deliveryConfirmationSource?: 'teacher' | 'staff' | 'automatic' | 'unknown' | null
+  /** Data-quality warnings raised while sourcing the lesson (missing price, no cancellation policy). */
+  warnings?: LineWarning[]
 }
+
+export type ConfirmationState = 'confirmed' | 'estimated' | 'missing_policy'
 
 export interface EstimateLine {
   lessonId: string
   teacherId: string
+  startAt: string
+  endAt: string
   outcome: LessonOutcome
+  lessonType: EconomicsLesson['lessonType']
   durationHours: number
   enrolledStudentCount: number
+  studentNames: string[]
   attributedRevenue: number
-  estimatedCompensation: number
-  contribution: number
+  revenueBasis: RevenueBasis
+  subscriptionCovered: boolean
+  cancellationActor: CancellationActor
+  /** `null` when no policy covers the lesson — never silently zero. */
+  estimatedCompensation: number | null
+  contribution: number | null
   policyId: string | null
   policySnapshot: CompensationPolicy | null
-  confirmationState: 'confirmed' | 'estimated' | 'missing_policy'
-  warnings: string[]
+  confirmationState: ConfirmationState
+  warnings: LineWarning[]
+}
+
+export interface AttentionCounts {
+  missingPolicy: number
+  awaitingConfirmation: number
+  unknownCancellation: number
+  staffCancellation: number
+  missingPrice: number
+  noStudents: number
 }
 
 export interface TeacherEconomicsResult {
   deliveryCount: number
   deliveryHours: number
   attributedRevenue: number
-  estimatedCompensation: number
-  contribution: number
+  /** `null` when at least one delivered lesson has no policy: a partial sum would read as a real figure. */
+  estimatedCompensation: number | null
+  contribution: number | null
+  /** contribution / attributedRevenue, `null` when there is no revenue or no contribution. */
+  contributionRate: number | null
   missingPolicyWarnings: string[]
-  confirmationState: 'confirmed' | 'estimated' | 'missing_policy'
+  confirmationState: ConfirmationState
+  attention: AttentionCounts
   lines: EstimateLine[]
 }
 
@@ -126,16 +175,37 @@ function fullCompensation(
   }
 }
 
+/**
+ * Outcome → share of the full compensation. Teacher and staff cancellations
+ * are 0% (v1); a parent cancellation pays the late percentage only when it
+ * fell inside the cancellation-policy window.
+ */
 function compensationPercent(lesson: EconomicsLesson, policy: CompensationPolicy): number {
   if (lesson.status === 'completed') return 100
   if (lesson.status === 'no_show') return policy.noShowPercent
   if (lesson.status === 'cancelled') {
-    if (lesson.cancellationActor === 'teacher') return 0
     if (lesson.cancellationActor === 'parent' && lesson.lateParentCancellation) {
       return policy.lateParentCancellationPercent
     }
   }
   return 0
+}
+
+/**
+ * Whether the line can be trusted as-is. A completed lesson is accepted
+ * operationally unless the policy demands a delivery confirmation that has not
+ * arrived; a cancellation is trusted only when we know who cancelled.
+ */
+function provenanceWarnings(lesson: EconomicsLesson, policy: CompensationPolicy): LineWarning[] {
+  const warnings: LineWarning[] = []
+  if (lesson.status === 'completed' && policy.requiresConfirmation && !lesson.deliveryConfirmedAt) {
+    warnings.push('awaiting_confirmation')
+  }
+  if (lesson.status === 'cancelled') {
+    if (!lesson.cancellationActor || lesson.cancellationActor === 'unknown') warnings.push('unknown_provenance')
+    else if (lesson.cancellationActor === 'staff') warnings.push('staff_cancellation')
+  }
+  return warnings
 }
 
 function lineForLesson(
@@ -145,50 +215,50 @@ function lineForLesson(
 ): EstimateLine {
   const durationHours = Math.max(0, DateTime.fromISO(lesson.endAt).diff(DateTime.fromISO(lesson.startAt), 'minutes').minutes / 60)
   const policy = resolveCompensationPolicy(policies, lesson.teacherId, lesson.startAt, timezone)
-  const warnings: string[] = []
   const attributedRevenue = lesson.status === 'scheduled' ? 0 : roundMoney(Math.max(0, lesson.attributedRevenue))
+  const eligible = lesson.status !== 'scheduled'
+
+  const base = {
+    lessonId: lesson.id,
+    teacherId: lesson.teacherId,
+    startAt: lesson.startAt,
+    endAt: lesson.endAt,
+    outcome: lesson.status,
+    lessonType: lesson.lessonType,
+    durationHours: roundHours(durationHours),
+    enrolledStudentCount: lesson.enrolledStudentCount,
+    studentNames: lesson.studentNames ?? [],
+    attributedRevenue,
+    revenueBasis: lesson.status === 'scheduled' ? 'none' as const : lesson.revenueBasis ?? 'none',
+    subscriptionCovered: lesson.subscriptionCovered ?? false,
+    cancellationActor: lesson.cancellationActor ?? null,
+  }
 
   if (!policy) {
-    warnings.push('missing_policy')
     return {
-      lessonId: lesson.id,
-      teacherId: lesson.teacherId,
-      outcome: lesson.status,
-      durationHours: roundHours(durationHours),
-      enrolledStudentCount: lesson.enrolledStudentCount,
-      attributedRevenue,
-      estimatedCompensation: 0,
-      contribution: attributedRevenue,
+      ...base,
+      estimatedCompensation: null,
+      contribution: null,
       policyId: null,
       policySnapshot: null,
       confirmationState: 'missing_policy',
-      warnings,
+      warnings: ['missing_policy', ...(lesson.warnings ?? [])],
     }
   }
 
-  const eligible = lesson.status !== 'scheduled'
-  const base = eligible ? fullCompensation(lesson, policy, durationHours) : 0
-  const compensation = roundMoney(base * (compensationPercent(lesson, policy) / 100))
-  const needsConfirmation = policy.requiresConfirmation && lesson.status === 'completed' && !lesson.deliveryConfirmedAt
-  const unknownProvenance = lesson.status === 'cancelled'
-    ? !lesson.cancellationActor || lesson.cancellationActor === 'unknown'
-    : lesson.status === 'completed' && !lesson.deliveryConfirmedAt
-  const confirmationState = needsConfirmation || unknownProvenance ? 'estimated' : 'confirmed'
-  if (needsConfirmation) warnings.push('awaiting_confirmation')
-  if (unknownProvenance) warnings.push('unknown_provenance')
+  const full = eligible ? fullCompensation(lesson, policy, durationHours) : 0
+  const compensation = roundMoney(full * (compensationPercent(lesson, policy) / 100))
+  const warnings: LineWarning[] = eligible
+    ? [...provenanceWarnings(lesson, policy), ...(lesson.warnings ?? [])]
+    : []
 
   return {
-    lessonId: lesson.id,
-    teacherId: lesson.teacherId,
-    outcome: lesson.status,
-    durationHours: roundHours(durationHours),
-    enrolledStudentCount: lesson.enrolledStudentCount,
-    attributedRevenue,
+    ...base,
     estimatedCompensation: compensation,
     contribution: roundMoney(attributedRevenue - compensation),
     policyId: policy.id,
     policySnapshot: { ...policy },
-    confirmationState,
+    confirmationState: warnings.length > 0 ? 'estimated' : 'confirmed',
     warnings,
   }
 }
@@ -200,25 +270,44 @@ export function calculateTeacherEconomics(
 ): TeacherEconomicsResult {
   const lines = lessons.map((lesson) => lineForLesson(lesson, policies, timezone))
   const deliveryLines = lines.filter((line) => line.outcome !== 'scheduled')
-  const missingPolicyWarnings = lines
-    .filter((line) => line.confirmationState === 'missing_policy')
-    .map((line) => line.lessonId)
-  const confirmationState = lines.some((line) => line.confirmationState === 'missing_policy')
+  const missingPolicyLines = deliveryLines.filter((line) => line.confirmationState === 'missing_policy')
+  const missingPolicyWarnings = missingPolicyLines.map((line) => line.lessonId)
+
+  const confirmationState: ConfirmationState = missingPolicyLines.length > 0
     ? 'missing_policy'
-    : lines.some((line) => line.confirmationState === 'estimated')
+    : deliveryLines.some((line) => line.confirmationState === 'estimated')
       ? 'estimated'
       : 'confirmed'
 
-  const attributedRevenue = roundMoney(lines.reduce((sum, line) => sum + line.attributedRevenue, 0))
-  const estimatedCompensation = roundMoney(lines.reduce((sum, line) => sum + line.estimatedCompensation, 0))
+  const count = (warning: LineWarning) => deliveryLines.filter((line) => line.warnings.includes(warning)).length
+  const attention: AttentionCounts = {
+    missingPolicy: missingPolicyLines.length,
+    awaitingConfirmation: count('awaiting_confirmation'),
+    unknownCancellation: count('unknown_provenance'),
+    staffCancellation: count('staff_cancellation'),
+    missingPrice: count('missing_price'),
+    noStudents: count('no_students'),
+  }
+
+  const attributedRevenue = roundMoney(deliveryLines.reduce((sum, line) => sum + line.attributedRevenue, 0))
+  const estimatedCompensation = missingPolicyLines.length > 0
+    ? null
+    : roundMoney(deliveryLines.reduce((sum, line) => sum + (line.estimatedCompensation ?? 0), 0))
+  const contribution = estimatedCompensation == null ? null : roundMoney(attributedRevenue - estimatedCompensation)
+  const contributionRate = contribution == null || attributedRevenue <= 0
+    ? null
+    : Math.round((contribution / attributedRevenue) * 1000) / 10
+
   return {
     deliveryCount: deliveryLines.length,
     deliveryHours: roundHours(deliveryLines.reduce((sum, line) => sum + line.durationHours, 0)),
     attributedRevenue,
     estimatedCompensation,
-    contribution: roundMoney(attributedRevenue - estimatedCompensation),
+    contribution,
+    contributionRate,
     missingPolicyWarnings,
     confirmationState,
+    attention,
     lines,
   }
 }

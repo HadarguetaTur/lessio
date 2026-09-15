@@ -3113,7 +3113,8 @@
         "unknownCancellation": "{count} ביטולים ללא מקור ידוע",
         "staffCancellation": "{count} ביטולים על ידי הצוות (0% תגמול)",
         "missingPrice": "{count} שיעורים ללא מחיר",
-        "missingPriceAction": "הגדרות תמחור"
+        "missingPriceAction": "הגדרות תמחור",
+        "noStudents": "{count} שיעורים שהושלמו ללא תלמידים רשומים"
       },
       "noPolicies": {
         "title": "עדיין אין מדיניות תגמול",
@@ -3146,7 +3147,8 @@
         "reasonAwaitingConfirmation": "{count} ממתינים לאישור ביצוע",
         "reasonUnknownCancellation": "{count} ביטולים ללא מקור ידוע",
         "reasonStaffCancellation": "{count} ביטולי צוות",
-        "reasonMissingPrice": "{count} ללא מחיר"
+        "reasonMissingPrice": "{count} ללא מחיר",
+        "reasonNoStudents": "{count} ללא תלמידים"
       },
       "detail": {
         "back": "חזרה לכלכלת הוראה",

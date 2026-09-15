@@ -1,14 +1,15 @@
 import Link from 'next/link'
 import { forbidden } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { Megaphone, Users, Wallet, GraduationCap, Link2, ListChecks } from 'lucide-react'
 import { getSession } from '@/lib/auth/session'
-import { requireFeature } from '@/lib/saas/featureGate'
 import { getGroups } from '@/lib/groups'
 import { getTeachers } from '@/lib/teachers'
 import { getBroadcastLists, getListableParents } from '@/lib/broadcast-lists'
+import { getWaCapabilities, toLockedInfo, type LockedFeatureInfo } from '@/lib/whatsapp/capabilities'
 import { SectionHeader } from '@/components/inbox/SectionHeader'
 import { ManualListSheet } from '@/components/inbox/ManualListSheet'
+import { LockedFeatureNotice, LockedFeatureTrigger } from '@/components/whatsapp/LockedFeature'
 import { createListAction, deleteListAction, updateListAction } from './actions'
 
 /**
@@ -25,15 +26,35 @@ import { createListAction, deleteListAction, updateListAction } from './actions'
  * audience already selected. Groups themselves are still created and edited in
  * Students; this page links there rather than keeping a second editor for the
  * same thing.
+ *
+ * When the plan has no lists, the page says so in place — the redirect to
+ * billing it used to do arrived with no sentence, and the owner filled the
+ * silence with a Meta policy that does not exist. Server actions keep their
+ * own feature check; this is the reading surface.
  */
 export default async function ListsPage() {
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin') forbidden()
-  await requireFeature(session.orgId, 'broadcasts')
 
-  const t = await getTranslations('inbox.lists')
+  const [t, locale, capabilities] = await Promise.all([
+    getTranslations('inbox.lists'),
+    getLocale(),
+    getWaCapabilities(session.orgId, session),
+  ])
+  const canFix = session.role === 'owner'
+  const lists = toLockedInfo(capabilities.byKey.lists, capabilities.timezone, locale)
+  const send = toLockedInfo(capabilities.byKey.service_updates, capabilities.timezone, locale)
 
-  const [groups, teachers, lists, parents] = await Promise.all([
+  if (lists.status === 'locked') {
+    return (
+      <div className="space-y-8">
+        <SectionHeader title={t('title')} subtitle={t('subtitle')} />
+        <LockedFeatureNotice info={lists} canFix={canFix} />
+      </div>
+    )
+  }
+
+  const [groups, teachers, savedLists, parents] = await Promise.all([
     getGroups(session.orgId, { status: 'active' }),
     getTeachers(session.orgId),
     getBroadcastLists(session.orgId),
@@ -50,15 +71,17 @@ export default async function ListsPage() {
         actions={<ManualListSheet parents={parents} saveAction={createListAction} />}
       />
 
+      {send.status !== 'available' && <LockedFeatureNotice info={send} canFix={canFix} compact />}
+
       <section className="space-y-3">
         <h3 className="text-sm font-semibold text-muted-foreground">{t('savedTitle')}</h3>
-        {lists.length === 0 ? (
+        {savedLists.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
             {t('savedEmpty')}
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {lists.map((list) => (
+            {savedLists.map((list) => (
               <ListCard
                 key={list.id}
                 icon={ListChecks}
@@ -66,7 +89,10 @@ export default async function ListsPage() {
                 detail={t('parentsCount', { count: list.memberCount })}
                 sendHref={`/messages/broadcasts/new?audience=list:${list.id}`}
                 sendLabel={t('sendUpdate')}
-                disabled={list.memberCount === 0}
+                emptyLabel={t('noMembers')}
+                empty={list.memberCount === 0}
+                send={send}
+                canFix={canFix}
                 extra={
                   <ManualListSheet
                     parents={parents}
@@ -106,7 +132,10 @@ export default async function ListsPage() {
                 badge={group.waGroupMode !== 'none' ? t('linkedGroup') : undefined}
                 sendHref={`/messages/broadcasts/new?audience=student_group:${group.id}`}
                 sendLabel={t('sendUpdate')}
-                disabled={group.studentCount === 0}
+                emptyLabel={t('noMembers')}
+                empty={group.studentCount === 0}
+                send={send}
+                canFix={canFix}
               />
             ))}
           </div>
@@ -122,6 +151,9 @@ export default async function ListsPage() {
             detail={t('allActiveHint')}
             sendHref="/messages/broadcasts/new?audience=all_active"
             sendLabel={t('sendUpdate')}
+            emptyLabel={t('noMembers')}
+            send={send}
+            canFix={canFix}
           />
           <ListCard
             icon={Wallet}
@@ -129,6 +161,9 @@ export default async function ListsPage() {
             detail={t('openDebtHint')}
             sendHref="/messages/broadcasts/new?audience=open_debt"
             sendLabel={t('sendUpdate')}
+            emptyLabel={t('noMembers')}
+            send={send}
+            canFix={canFix}
           />
           {activeTeachers.map((teacher) => (
             <ListCard
@@ -138,6 +173,9 @@ export default async function ListsPage() {
               detail={t('byTeacherHint')}
               sendHref={`/messages/broadcasts/new?audience=teacher:${teacher.id}`}
               sendLabel={t('sendUpdate')}
+              emptyLabel={t('noMembers')}
+              send={send}
+              canFix={canFix}
             />
           ))}
         </div>
@@ -149,6 +187,10 @@ export default async function ListsPage() {
 /**
  * One audience. Same shape whatever kind it is, so the page reads as one list
  * of places to write to rather than three different features.
+ *
+ * The send link has three shapes and each says why: a link when sending
+ * works, a lock that explains when it does not, and "nobody to send to" when
+ * the list itself is empty — never a greyed label with no sentence.
  */
 function ListCard({
   icon: Icon,
@@ -157,7 +199,10 @@ function ListCard({
   badge,
   sendHref,
   sendLabel,
-  disabled = false,
+  emptyLabel,
+  empty = false,
+  send,
+  canFix,
   extra,
 }: {
   icon: typeof Users
@@ -166,7 +211,10 @@ function ListCard({
   badge?: string
   sendHref: string
   sendLabel: string
-  disabled?: boolean
+  emptyLabel: string
+  empty?: boolean
+  send: LockedFeatureInfo
+  canFix: boolean
   extra?: React.ReactNode
 }) {
   return (
@@ -187,10 +235,19 @@ function ListCard({
         </div>
       </div>
       <div className="flex items-center justify-between gap-2">
-        {disabled ? (
-          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        {send.status === 'locked' ? (
+          <LockedFeatureTrigger
+            info={send}
+            canFix={canFix}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
+          >
             <Megaphone size={14} aria-hidden />
             {sendLabel}
+          </LockedFeatureTrigger>
+        ) : empty ? (
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Megaphone size={14} aria-hidden />
+            {emptyLabel}
           </span>
         ) : (
           <Link

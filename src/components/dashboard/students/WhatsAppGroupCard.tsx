@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl'
 import { ExternalLink, Loader2, Send, Unlink } from 'lucide-react'
 import type { StudentGroup } from '@/lib/groups'
 import type { WaGroupActionResult } from '@/app/(dashboard)/students/wa-group-actions'
+import type { LockedFeatureInfo } from '@/lib/whatsapp/capabilities'
+import { LockedFeatureNotice } from '@/components/whatsapp/LockedFeature'
 
 const initial: WaGroupActionResult = { error: null }
 
@@ -16,14 +18,23 @@ const initial: WaGroupActionResult = { error: null }
  * gates that behind an Official Business Account), and it cannot read one. What
  * it can do is send each parent the invite privately from the business number,
  * and that is exactly what the card offers and says.
+ *
+ * And when even that is closed — no plan, no number, a restricted account —
+ * the card says that first, instead of offering a form whose submit would
+ * fail with a code.
  */
 export function WhatsAppGroupCard({
   group,
+  capability,
+  canFix = true,
   linkAction,
   unlinkAction,
   inviteAction,
 }: {
   group: StudentGroup
+  /** The `linked_groups` verdict, resolved on the server. */
+  capability: LockedFeatureInfo
+  canFix?: boolean
   linkAction: (prev: WaGroupActionResult, formData: FormData) => Promise<WaGroupActionResult>
   unlinkAction: (groupId: string) => Promise<WaGroupActionResult>
   inviteAction: (groupId: string) => Promise<WaGroupActionResult>
@@ -52,6 +63,20 @@ export function WhatsAppGroupCard({
     formData.set('invite_link', link)
     run(() => linkAction(initial, formData))
   }
+
+  if (capability.status === 'locked') {
+    return (
+      <section className="rounded-lg border border-dashed p-4 space-y-2">
+        <h3 className="text-sm font-semibold">{t('title')}</h3>
+        <LockedFeatureNotice info={capability} canFix={canFix} compact />
+      </section>
+    )
+  }
+
+  const limitNote =
+    capability.status === 'limited' ? (
+      <LockedFeatureNotice info={capability} canFix={canFix} compact />
+    ) : null
 
   if (!linked) {
     return (
@@ -83,6 +108,7 @@ export function WhatsAppGroupCard({
         {result?.error && (
           <p className="mt-2 text-xs text-destructive">{t(`errors.${result.error}`)}</p>
         )}
+        {limitNote && <div className="mt-3">{limitNote}</div>}
       </section>
     )
   }
@@ -106,6 +132,8 @@ export function WhatsAppGroupCard({
           {t('unlink')}
         </button>
       </div>
+
+      {limitNote}
 
       {uninvited > 0 && (
         <p className="rounded-md bg-amber-50 border border-amber-200 p-2 text-xs text-amber-800">

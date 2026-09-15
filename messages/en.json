@@ -4628,7 +4628,8 @@
           "homework": "Homework for students needs a higher plan. Choose one below.",
           "parent_portal": "The parent portal needs a higher plan. Choose one below.",
           "integrations": "Integrations and the API need a higher plan. Choose one below.",
-          "data_retention": "Custom data retention needs a higher plan. Choose one below."
+          "data_retention": "Custom data retention needs a higher plan. Choose one below.",
+          "broadcasts": "WhatsApp lists and broadcasts are available on a higher plan. Pick a subscription below."
         },
         "quotaPrompt": {
           "quota_teachers": "You've used every teacher seat on your current plan. A higher plan opens more seats.",
@@ -6035,7 +6036,8 @@
       "verified": "Business verified",
       "unknown": "Not checked",
       "yes": "Yes",
-      "no": "No"
+      "no": "No",
+      "nobody": "Nobody in this audience will receive the message — see the reasons above."
     },
     "quality": {
       "GREEN": "High",
@@ -6080,7 +6082,10 @@
       "resume": "Resume",
       "cancel": "Cancel",
       "confirmCancel": "Cancel this broadcast? Parents already messaged will keep their message."
-    }
+    },
+    "limitedCap": "This broadcast reaches up to {cap} recipients.",
+    "limitedCapUntil": "This broadcast reaches up to {cap} recipients, until {until}.",
+    "limitedWhy": "Why?"
   },
   "inbox": {
     "title": "Messages",
@@ -6206,7 +6211,163 @@
         "notFound": "List not found.",
         "saveFailed": "Saving failed. Try again.",
         "deleteFailed": "Deleting failed. Try again."
-      }
+      },
+      "noMembers": "Nobody to send to — the list is empty"
+    }
+  },
+  "whatsappCapability": {
+    "headings": {
+      "why": "Why it is closed",
+      "unlock": "What opens it",
+      "howYouKnow": "How you will know",
+      "limitedWhy": "Why it is limited"
+    },
+    "details": "Details",
+    "lockedBadge": "Locked",
+    "cta": {
+      "upgrade_plan": "See plans",
+      "renew_subscription": "Renew subscription",
+      "connect_number": "Connect a number",
+      "reconnect_number": "Reconnect",
+      "verify_business": "Verify at Meta",
+      "approve_templates": "Message templates",
+      "wait_until": "",
+      "wait_meta": "",
+      "ask_owner": "",
+      "none": ""
+    },
+    "capability": {
+      "conversations": "Conversations",
+      "service_updates": "Service updates",
+      "promo_broadcasts": "Promotional broadcasts",
+      "lists": "Lists",
+      "linked_groups": "Linked WhatsApp group"
+    },
+    "role": {
+      "title": "An owner and admin tool",
+      "body": "Lists, broadcasts and WhatsApp groups are managed by the business owner or an admin. A teacher can send a service update to the parents of their own students from the conversation itself.",
+      "unlock": "Ask the business owner.",
+      "howYouKnow": "If your role changes, these areas open on your next sign-in.",
+      "strip": "Owner and admin tool"
+    },
+    "plan_whatsapp": {
+      "title": "WhatsApp is not in your plan",
+      "body": "Your current plan does not include WhatsApp. Nothing is broken and Meta has not limited anything — the feature simply was not purchased.",
+      "unlock": "Upgrade to a plan that includes WhatsApp.",
+      "howYouKnow": "The areas open right after the upgrade, with no waiting period.",
+      "strip": "WhatsApp not in plan"
+    },
+    "plan_broadcasts": {
+      "title": "Broadcasts are not in your plan",
+      "body": "Conversations work as usual. Lists, broadcasts and WhatsApp groups belong to a higher plan. This has nothing to do with how long you have been on Lessio or with Meta policy.",
+      "unlock": "Upgrade to a plan that includes broadcasts.",
+      "howYouKnow": "Right after the upgrade — the lock disappears from the tabs.",
+      "strip": "Broadcasts not in plan"
+    },
+    "subscription_lapsed": {
+      "title": "Your subscription is not active",
+      "body": "You can read everything, but not send or create until the subscription is renewed.",
+      "unlock": "Renew the subscription on the billing page.",
+      "howYouKnow": "Right after payment.",
+      "strip": "Subscription not active"
+    },
+    "not_connected": {
+      "title": "No WhatsApp number connected yet",
+      "body": "Without a connected number there is nothing to send from. This is not a Meta limit and not a plan limit — just a connection not made yet.",
+      "unlock": "Connect the business number in WhatsApp settings. It takes a few minutes.",
+      "howYouKnow": "The line at the top of Messages will change to \"WhatsApp active\".",
+      "strip": "No number connected"
+    },
+    "reconnect_required": {
+      "title": "The connection has expired",
+      "body": "Meta no longer accepts the stored connection details. Nothing is sent or received until you reconnect.",
+      "unlock": "Reconnect the number in WhatsApp settings.",
+      "howYouKnow": "The line at the top of Messages updates immediately. You also received an in-app notification about this.",
+      "strip": "Connection expired"
+    },
+    "blocked_by_meta": {
+      "title": "Meta has restricted the number",
+      "body": "Meta has suspended the business WhatsApp account. Broadcasts do not go out until the restriction is lifted. Appeals go to Meta, not through Lessio.",
+      "unlock": "Contact Meta through Business Manager. There is nothing to do in Lessio.",
+      "howYouKnow": "As soon as Meta lifts the restriction you get an in-app notification and the line at the top updates. We check with Meta daily.",
+      "strip": "Meta restricted the number"
+    },
+    "quality_red": {
+      "title": "The number's quality rating is low",
+      "body": "Parents have blocked or reported messages. Broadcasts are paused so the number is not lost; reminders and payment requests keep going out.",
+      "unlock": "Send fewer proactive messages and wait. Meta updates the rating based on the last week.",
+      "howYouKnow": "An in-app notification when the rating recovers, and the line at the top turns green again.",
+      "strip": "Low quality rating: broadcasts paused"
+    },
+    "broadcasts_disabled": {
+      "title": "Broadcasts are switched off for this account",
+      "body": "Broadcasts were turned off for your account by support.",
+      "unlock": "Contact support.",
+      "howYouKnow": "The line at the top updates when it opens.",
+      "strip": "Broadcasts switched off"
+    },
+    "business_unverified": {
+      "title": "Your business is not verified with Meta yet",
+      "body": "Promotional broadcasts (offers, registration) can only be sent from a verified business number — a Meta rule, not a Lessio one. Service updates work without it.",
+      "unlock": "Verify the business in Meta's Security Centre. It takes a few days, and Lessio cannot submit it for you. The full checklist is on the \"Verification & trust\" card in WhatsApp settings.",
+      "howYouKnow": "An in-app notification when Meta approves, and the line at the top stops showing this.",
+      "strip": "Business not verified: promotional broadcasts closed"
+    },
+    "verification_pending": {
+      "title": "Meta is reviewing your business verification",
+      "body": "You submitted verification and Meta has not decided yet. Until then promotional broadcasts are closed; service updates work.",
+      "unlock": "Nothing to do — waiting on Meta.",
+      "howYouKnow": "An in-app notification when Meta approves.",
+      "strip": "Verification under review"
+    },
+    "no_daily_budget": {
+      "title": "Today's message allowance is used up",
+      "body": "The number reached Meta's daily limit today. Half the allowance is reserved for reminders so a large broadcast cannot block them.",
+      "unlock": "Schedule for tomorrow — it will go out on {until}.",
+      "howYouKnow": "It opens by itself tomorrow morning.",
+      "strip": "Daily allowance used up"
+    },
+    "warm_up": {
+      "title": "New number, warming up",
+      "body": "Meta limits a new number for its first two weeks. Until {until}, each broadcast reaches up to {cap} recipients. Conversations and reminders are not limited.",
+      "unlock": "Wait. Send as usual — as parents reply, the allowance grows.",
+      "howYouKnow": "On {until} the limit lifts by itself and the line at the top stops showing it.",
+      "strip": "New number: broadcasts up to {cap} recipients until {until}"
+    },
+    "unproven_tier": {
+      "title": "The number's daily allowance is still low",
+      "body": "Meta gives the number up to 250 conversations a day until it builds a history. Until then a broadcast is limited to {cap} recipients.",
+      "unlock": "Send as usual. Meta raises the allowance on its own based on use; business verification speeds it up.",
+      "howYouKnow": "An in-app notification when Meta raises the allowance.",
+      "strip": "Low daily allowance: broadcasts up to {cap} recipients"
+    },
+    "quality_yellow": {
+      "title": "The quality rating has dipped",
+      "body": "Parents blocked or reported a few messages. A broadcast is limited to {cap} recipients until the rating recovers.",
+      "unlock": "Fewer proactive messages over the next few days.",
+      "howYouKnow": "An in-app notification when the rating recovers.",
+      "strip": "Quality dipped: broadcasts up to {cap} recipients"
+    },
+    "capped_by_budget": {
+      "title": "Only part of today's allowance is left",
+      "body": "This broadcast reaches up to {cap} recipients; the rest go out tomorrow morning, automatically.",
+      "unlock": "Nothing to do.",
+      "howYouKnow": "The remainder goes out by itself on {until}.",
+      "strip": "{cap} recipients left today"
+    },
+    "templates_unapproved": {
+      "title": "Some message templates are awaiting Meta approval",
+      "body": "Until they are approved, a service update reaches only parents who wrote to you in the last 24 hours.",
+      "unlock": "Check the message templates. Meta approval usually takes up to a day.",
+      "howYouKnow": "The line at the top stops showing this once everything is approved.",
+      "strip": "Templates awaiting approval"
+    },
+    "unreachable": {
+      "title": "Could not reach Meta",
+      "body": "The figures here may be out of date. Nothing is locked because of this.",
+      "unlock": "Nothing to do.",
+      "howYouKnow": "Checked again within minutes.",
+      "strip": "Meta unavailable right now"
     }
   }
 }

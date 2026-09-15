@@ -48,22 +48,27 @@ export const DEFAULT_BATCH = 20
 const PAUSE_MIN_MS = 1_200
 const PAUSE_MAX_MS = 2_000
 
-const ORG_COLUMNS = `
-  id, name, timezone, default_locale,
-  whatsapp_phone_number_id, whatsapp_access_token,
+/**
+ * The columns {@link toGuardOrg} reads — the guard's view of the org, without
+ * credentials. Exported so the capability resolver (`../capabilities.ts`) can
+ * ask the same guard the same question without selecting the access token.
+ */
+export const GUARD_ORG_COLUMNS = `
+  timezone, whatsapp_phone_number_id,
   wa_quality_rating, wa_messaging_limit_tier, wa_business_verification_status,
   wa_connected_at, broadcasts_enabled, wa_health_error, wa_account_restricted,
   broadcast_quiet_start, broadcast_quiet_end,
   broadcast_max_promo_per_week, broadcast_max_updates_per_week
 `
 
-type OrgRow = {
-  id: string
-  name: string | null
+const ORG_COLUMNS = `
+  id, name, default_locale, whatsapp_access_token,
+  ${GUARD_ORG_COLUMNS}
+`
+
+export type GuardOrgRow = {
   timezone: string | null
-  default_locale: string | null
   whatsapp_phone_number_id: string | null
-  whatsapp_access_token: string | null
   wa_quality_rating: string | null
   wa_messaging_limit_tier: string | null
   wa_business_verification_status: string | null
@@ -75,6 +80,13 @@ type OrgRow = {
   broadcast_quiet_end: number | null
   broadcast_max_promo_per_week: number | null
   broadcast_max_updates_per_week: number | null
+}
+
+type OrgRow = GuardOrgRow & {
+  id: string
+  name: string | null
+  default_locale: string | null
+  whatsapp_access_token: string | null
 }
 
 export type CampaignRow = {
@@ -95,7 +107,7 @@ export type CampaignRow = {
 }
 
 /** The org row shaped for the guard, which knows nothing about the database. */
-export function toGuardOrg(org: OrgRow, subscriptionLapsed: boolean): GuardOrg {
+export function toGuardOrg(org: GuardOrgRow, subscriptionLapsed: boolean): GuardOrg {
   return {
     whatsappPhoneNumberId: org.whatsapp_phone_number_id,
     waQualityRating: (org.wa_quality_rating as GuardOrg['waQualityRating']) ?? 'UNKNOWN',

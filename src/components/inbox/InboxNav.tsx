@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { MessageSquare, Users, Megaphone } from 'lucide-react'
+import type { LockedFeatureInfo } from '@/lib/whatsapp/capabilities'
+import { LockedFeatureTrigger } from '@/components/whatsapp/LockedFeature'
 
 /**
  * The inbox's three places: conversations, lists, broadcasts.
@@ -15,6 +17,11 @@ import { MessageSquare, Users, Megaphone } from 'lucide-react'
  *
  * Teachers see only conversations, so the whole control disappears for them
  * rather than showing a single lonely segment.
+ *
+ * A segment the org cannot use stays where it is, with a lock. Hiding it made
+ * the owner wonder whether the feature existed; sending her to the billing
+ * page with no sentence made her guess at Meta policy. The lock opens the
+ * explanation instead.
  */
 
 const SEGMENTS = [
@@ -23,7 +30,18 @@ const SEGMENTS = [
   { href: '/messages/broadcasts', key: 'broadcasts', icon: Megaphone },
 ] as const
 
-export function InboxNav({ showAll }: { showAll: boolean }) {
+type SegmentKey = (typeof SEGMENTS)[number]['key']
+
+export function InboxNav({
+  showAll,
+  canFix = true,
+  locks = {},
+}: {
+  showAll: boolean
+  canFix?: boolean
+  /** Verdict per lockable segment; a `locked` one renders as a lock, not a link. */
+  locks?: Partial<Record<Exclude<SegmentKey, 'conversations'>, LockedFeatureInfo>>
+}) {
   const t = useTranslations('inbox.nav')
   const pathname = usePathname()
 
@@ -37,6 +55,11 @@ export function InboxNav({ showAll }: { showAll: boolean }) {
     return pathname.startsWith(href)
   }
 
+  const segmentClass = (active: boolean) =>
+    `inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+      active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+    }`
+
   return (
     <nav
       aria-label={t('label')}
@@ -44,16 +67,29 @@ export function InboxNav({ showAll }: { showAll: boolean }) {
     >
       {SEGMENTS.map(({ href, key, icon: Icon }) => {
         const active = isActive(href)
+        const lock = key === 'conversations' ? undefined : locks[key]
+
+        if (lock && lock.status === 'locked') {
+          return (
+            <LockedFeatureTrigger
+              key={href}
+              info={lock}
+              canFix={canFix}
+              className={segmentClass(active)}
+              aria-current={active ? 'page' : undefined}
+            >
+              <Icon size={15} aria-hidden />
+              {t(key)}
+            </LockedFeatureTrigger>
+          )
+        }
+
         return (
           <Link
             key={href}
             href={href}
             aria-current={active ? 'page' : undefined}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              active
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={segmentClass(active)}
           >
             <Icon size={15} aria-hidden />
             {t(key)}

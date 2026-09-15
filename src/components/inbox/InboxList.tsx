@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl'
 import { Search, MessageSquare } from 'lucide-react'
 import { INBOX_FILTERS, matchesFilter, type InboxFilter, type InboxTag } from '@/lib/inbox/tags'
 import type { InboxRow } from '@/lib/inbox/rows'
+import type { LockedFeatureInfo } from '@/lib/whatsapp/capabilities'
+import { LockedFeatureNotice } from '@/components/whatsapp/LockedFeature'
 import { ConversationRow } from './ConversationRow'
 
 /**
@@ -21,12 +23,17 @@ export function InboxList({
   tagsByKey,
   timezone,
   locale,
+  conversations,
+  canFix = true,
 }: {
   rows: InboxRow[]
   /** Derived on the server so the pure tag logic stays out of the bundle. */
   tagsByKey: Record<string, InboxTag[]>
   timezone: string
   locale: string
+  /** The `conversations` verdict: an empty rail on a plan without WhatsApp says that, not "no conversations yet". */
+  conversations: LockedFeatureInfo
+  canFix?: boolean
 }) {
   const t = useTranslations('inbox')
   const pathname = usePathname()
@@ -103,7 +110,11 @@ export function InboxList({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {visible.length === 0 ? (
+        {rows.length === 0 && conversations.status === 'locked' ? (
+          <div className="p-4">
+            <LockedFeatureNotice info={conversations} canFix={canFix} />
+          </div>
+        ) : visible.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
             <MessageSquare size={22} aria-hidden className="text-muted-foreground" />
             <p className="text-sm font-medium">

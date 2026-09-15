@@ -14,6 +14,8 @@ import {
   unlinkWhatsAppGroupAction,
 } from '@/app/(dashboard)/students/wa-group-actions'
 import type { StudentGroup } from '@/lib/groups'
+import type { LockedFeatureInfo } from '@/lib/whatsapp/capabilities'
+import { LockedFeatureTrigger } from '@/components/whatsapp/LockedFeature'
 
 interface Student {
   id: string
@@ -23,9 +25,12 @@ interface Student {
 interface GroupsTableProps {
   groups: StudentGroup[]
   students: Student[]
+  /** The `linked_groups` verdict — drives the WhatsApp card and the "message parents" link. */
+  waCapability: LockedFeatureInfo
+  canFix?: boolean
 }
 
-export function GroupsTable({ groups, students }: GroupsTableProps) {
+export function GroupsTable({ groups, students, waCapability, canFix = true }: GroupsTableProps) {
   const t = useTranslations('students')
   const tCommon = useTranslations('common')
   const [, startTransition] = useTransition()
@@ -118,6 +123,8 @@ export function GroupsTable({ groups, students }: GroupsTableProps) {
                         waGroupCard={
                           <WhatsAppGroupCard
                             group={group}
+                            capability={waCapability}
+                            canFix={canFix}
                             linkAction={linkWhatsAppGroupAction}
                             unlinkAction={unlinkWhatsAppGroupAction}
                             inviteAction={inviteGroupParentsAction}
@@ -125,13 +132,24 @@ export function GroupsTable({ groups, students }: GroupsTableProps) {
                         }
                       />
 
-                      <Link
-                        href={`/messages/broadcasts/new?audience=student_group:${group.id}`}
-                        className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-gray-600"
-                        title={t('groups.messageParents')}
-                      >
-                        <MessageSquare size={15} />
-                      </Link>
+                      {waCapability.status === 'locked' ? (
+                        <LockedFeatureTrigger
+                          info={waCapability}
+                          canFix={canFix}
+                          showIcon={false}
+                          className="rounded p-1.5 text-muted-foreground/60 transition-colors hover:bg-gray-100"
+                        >
+                          <MessageSquare size={15} aria-label={t('groups.messageParents')} />
+                        </LockedFeatureTrigger>
+                      ) : (
+                        <Link
+                          href={`/messages/broadcasts/new?audience=student_group:${group.id}`}
+                          className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-gray-600"
+                          title={t('groups.messageParents')}
+                        >
+                          <MessageSquare size={15} />
+                        </Link>
+                      )}
 
                       <button
                         onClick={() => handleToggleStatus(group.id, group.status)}

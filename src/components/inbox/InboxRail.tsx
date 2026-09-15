@@ -4,6 +4,7 @@ import { getOrgTimezone } from '@/lib/organizations'
 import { getTeacherByProfileId } from '@/lib/teachers'
 import { getInboxRows } from '@/lib/inbox/rows'
 import { deriveTags, type InboxTag } from '@/lib/inbox/tags'
+import { getWaCapabilities, toLockedInfo } from '@/lib/whatsapp/capabilities'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { InboxList } from './InboxList'
 
@@ -22,7 +23,7 @@ export async function InboxRail() {
     ? await getTeacherByProfileId(session.profileId, session.orgId, { activeOnly: true })
     : null
 
-  const [rows, timezone, locale] = await Promise.all([
+  const [rows, timezone, locale, capabilities] = await Promise.all([
     // A teacher with no teacher record reaches nobody, which is the correct
     // answer rather than an error: the rail simply comes back empty.
     isTeacher && !teacher
@@ -30,6 +31,7 @@ export async function InboxRail() {
       : getInboxRows(session.orgId, teacher ? { teacherId: teacher.id } : {}),
     getOrgTimezone(session.orgId),
     getLocale(),
+    getWaCapabilities(session.orgId, session),
   ])
 
   const tagsByKey: Record<string, InboxTag[]> = {}
@@ -40,7 +42,14 @@ export async function InboxRail() {
   return (
     <>
       <LiveRefresh tables={['whatsapp_messages', 'whatsapp_takeovers', 'portal_messages']} />
-      <InboxList rows={rows} tagsByKey={tagsByKey} timezone={timezone} locale={locale} />
+      <InboxList
+        rows={rows}
+        tagsByKey={tagsByKey}
+        timezone={timezone}
+        locale={locale}
+        conversations={toLockedInfo(capabilities.byKey.conversations, capabilities.timezone, locale)}
+        canFix={session.role === 'owner'}
+      />
     </>
   )
 }

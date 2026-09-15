@@ -1,7 +1,6 @@
 import { forbidden } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
-import { requireFeature } from '@/lib/saas/featureGate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getGroups } from '@/lib/groups'
 import { getTeachers } from '@/lib/teachers'
@@ -10,8 +9,10 @@ import { metaTemplateBody } from '@/lib/whatsapp/registerTemplates'
 import { BROADCAST_TEMPLATES, PARAM_LIMITS } from '@/lib/whatsapp/approvedTemplates'
 import { tierDailyLimit } from '@/lib/whatsapp/health'
 import { countConversationsLast24h } from '@/lib/whatsapp/broadcast/send'
+import { getWaCapabilities, toLockedInfo } from '@/lib/whatsapp/capabilities'
 import type { BroadcastType } from '@/lib/whatsapp/broadcast/types'
 import { SectionHeader } from '@/components/inbox/SectionHeader'
+import { LockedFeatureNotice } from '@/components/whatsapp/LockedFeature'
 import {
   BroadcastComposer,
   type AudienceOption,
@@ -23,6 +24,11 @@ import { createBroadcastAction, previewAudienceAction } from '../actions'
  *
  * The audience arrives ready-made when this was opened from a student group or
  * a lesson (`?audience=student_group:<id>`), which is the path most owners take.
+ *
+ * The composer is handed the verdict for each category rather than raw health
+ * flags: what would block an update blocks the whole screen and is said up
+ * front, what blocks only promos locks that one choice, and a limit shows its
+ * cap and date. The server guard still runs on submit as the backstop.
  */
 export default async function NewBroadcastPage({
   searchParams,
@@ -32,33 +38,44 @@ export default async function NewBroadcastPage({
   const t = await getTranslations('broadcasts')
   const session = await getSession()
   if (session.role !== 'owner' && session.role !== 'admin') forbidden()
-  await requireFeature(session.orgId, 'broadcasts')
+  const canFix = session.role === 'owner'
 
   const params = await searchParams
   const db = createServiceRoleClient()
 
-  const [{ data: orgData }, groups, teachers, lists] = await Promise.all([
+  const [{ data: orgData }, groups, teachers, lists, locale, used] = await Promise.all([
     db
       .from('organizations')
-      .select(
-        'wa_quality_rating, wa_messaging_limit_tier, wa_business_verification_status, whatsapp_phone_number_id'
-      )
+      .select('wa_quality_rating, wa_messaging_limit_tier, wa_business_verification_status')
       .eq('id', session.orgId)
       .maybeSingle(),
     getGroups(session.orgId),
     getTeachers(session.orgId),
     getBroadcastLists(session.orgId),
+    getLocale(),
+    countConversationsLast24h(db, session.orgId, new Date()),
   ])
+
+  const capabilities = await getWaCapabilities(session.orgId, session, { conversationsLast24h: used })
+  const update = toLockedInfo(capabilities.byKey.service_updates, capabilities.timezone, locale)
+  const promo = toLockedInfo(capabilities.byKey.promo_broadcasts, capabilities.timezone, locale)
+
+  if (update.status === 'locked') {
+    return (
+      <div className="space-y-6">
+        <SectionHeader title={t('newTitle')} subtitle={t('newSubtitle')} />
+        <LockedFeatureNotice info={update} canFix={canFix} />
+      </div>
+    )
+  }
 
   const org = orgData as {
     wa_quality_rating: string | null
     wa_messaging_limit_tier: string | null
     wa_business_verification_status: string | null
-    whatsapp_phone_number_id: string | null
   } | null
 
   const tier = tierDailyLimit(org?.wa_messaging_limit_tier)
-  const used = await countConversationsLast24h(db, session.orgId, new Date())
   const dailyRemaining =
     tier === null ? null : tier === Number.POSITIVE_INFINITY ? null : Math.max(0, tier - used)
 
@@ -98,8 +115,9 @@ export default async function NewBroadcastPage({
           qualityRating: org?.wa_quality_rating ?? 'UNKNOWN',
           dailyRemaining,
           verified: (org?.wa_business_verification_status ?? '').toLowerCase() === 'verified',
-          connected: Boolean(org?.whatsapp_phone_number_id),
         }}
+        capabilities={{ update, promo }}
+        canFix={canFix}
         previews={buildPreviews()}
         messageMax={PARAM_LIMITS.broadcast_message}
         topicMax={PARAM_LIMITS.broadcast_topic}

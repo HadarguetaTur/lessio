@@ -63,6 +63,7 @@ export const DASHBOARD_MESSAGE_NAMESPACES: readonly MessagePath[] = [
   'inbox',
   'waConversations',
   'broadcasts',
+  'whatsappCapability',
   'leads',
   'notifications',
   'reports',

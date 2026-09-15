@@ -15,7 +15,8 @@ import { NewStudentSheet } from '@/components/dashboard/students/StudentSheet'
 import { StudentsTable } from '@/components/dashboard/students/StudentsTable'
 import { GroupsTable } from '@/components/dashboard/students/GroupsTable'
 import { NewGroupSheet } from '@/components/dashboard/students/GroupFormSheet'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { getWaCapabilities, toLockedInfo } from '@/lib/whatsapp/capabilities'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -31,7 +32,8 @@ export default async function StudentsPage(props: {
   const q = searchParams.q ?? ''
   const openStudentParsed = z.string().uuid().safeParse(searchParams.openStudent)
 
-  const { orgId, role, profileId } = await getSession()
+  const session = await getSession()
+  const { orgId, role, profileId } = session
   const isTeacher = role === 'teacher'
   const t = await getTranslations('students')
   const tCommon = await getTranslations('common')
@@ -193,9 +195,23 @@ export default async function StudentsPage(props: {
         )}
 
         {tab === 'groups' && (
-          <GroupsTable groups={groups} students={allActiveStudents} />
+          <GroupsTable
+            groups={groups}
+            students={allActiveStudents}
+            waCapability={await linkedGroupsVerdict(orgId, session)}
+            canFix={role === 'owner'}
+          />
         )}
       </div>
     </div>
   )
+}
+
+/**
+ * What the WhatsApp card on every group may offer, resolved once per page.
+ * Only the groups tab pays for it; the students tab never asks.
+ */
+async function linkedGroupsVerdict(orgId: string, session: { role: string; isSaasReadOnly?: boolean }) {
+  const [capabilities, locale] = await Promise.all([getWaCapabilities(orgId, session), getLocale()])
+  return toLockedInfo(capabilities.byKey.linked_groups, capabilities.timezone, locale)
 }

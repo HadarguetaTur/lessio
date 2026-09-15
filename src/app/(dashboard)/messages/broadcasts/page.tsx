@@ -2,14 +2,16 @@ import Link from 'next/link'
 import { forbidden } from 'next/navigation'
 import { Megaphone, Plus } from 'lucide-react'
 import { DateTime } from 'luxon'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getWaCapabilities, toLockedInfo } from '@/lib/whatsapp/capabilities'
 import { LiveRefresh } from '@/lib/realtime/LiveRefresh'
 import { SectionHeader } from '@/components/inbox/SectionHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Badge } from '@/components/ui/badge'
+import { LockedFeatureNotice, LockedFeatureTrigger } from '@/components/whatsapp/LockedFeature'
 import {
   Table,
   TableBody,
@@ -24,12 +26,22 @@ import {
  *
  * Owners and admins only — a teacher's lesson update is raised and reported on
  * the lesson itself, which is the only context where it makes sense to them.
+ *
+ * History stays readable whatever the plan or the number's state (the
+ * read-only rule). What changes is the empty state and the "new" button: when
+ * sending is closed, the page says why instead of "no broadcasts yet".
  */
 export default async function BroadcastsPage() {
-  const t = await getTranslations('broadcasts')
   const session = await getSession()
-
   if (session.role !== 'owner' && session.role !== 'admin') forbidden()
+
+  const [t, locale, capabilities] = await Promise.all([
+    getTranslations('broadcasts'),
+    getLocale(),
+    getWaCapabilities(session.orgId, session),
+  ])
+  const canFix = session.role === 'owner'
+  const send = toLockedInfo(capabilities.byKey.service_updates, capabilities.timezone, locale)
 
   const db = createServiceRoleClient()
   const [{ data }, timezone] = await Promise.all([
@@ -57,6 +69,9 @@ export default async function BroadcastsPage() {
     scheduled_at: string | null
   }>
 
+  const newButtonClass =
+    'inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90'
+
   return (
     <div className="space-y-6">
       <LiveRefresh tables={['broadcast_campaigns']} />
@@ -64,61 +79,73 @@ export default async function BroadcastsPage() {
         title={t('title')}
         subtitle={t('subtitle')}
         actions={
-          <Link
-            href="/messages/broadcasts/new"
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus size={16} />
-            {t('new')}
-          </Link>
+          send.status === 'locked' ? (
+            <LockedFeatureTrigger info={send} canFix={canFix} className={`${newButtonClass} opacity-70`}>
+              <Plus size={16} />
+              {t('new')}
+            </LockedFeatureTrigger>
+          ) : (
+            <Link href="/messages/broadcasts/new" className={newButtonClass}>
+              <Plus size={16} />
+              {t('new')}
+            </Link>
+          )
         }
       />
 
-      {campaigns.length === 0 ? (
-        <EmptyState icon={Megaphone} title={t('emptyTitle')} subtitle={t('emptySubtitle')} />
+      {send.status === 'locked' && campaigns.length === 0 ? (
+        <LockedFeatureNotice info={send} canFix={canFix} />
       ) : (
-        <div className="rounded-lg border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('colName')}</TableHead>
-                <TableHead>{t('colType')}</TableHead>
-                <TableHead>{t('colStatus')}</TableHead>
-                <TableHead>{t('colResult')}</TableHead>
-                <TableHead>{t('colDate')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {campaigns.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>
-                    <Link href={`/messages/broadcasts/${c.id}`} className="font-medium hover:underline">
-                      {c.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {t(`types.${c.template_type}`)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant(c.status)}>{t(`statuses.${c.status}`)}</Badge>
-                  </TableCell>
-                  <TableCell className="text-sm tabular-nums" dir="ltr">
-                    {t('resultSummary', {
-                      sent: c.sent_count,
-                      skipped: c.skipped_count,
-                      failed: c.failed_count,
-                    })}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {DateTime.fromISO(c.scheduled_at ?? c.created_at)
-                      .setZone(timezone)
-                      .toFormat('dd.MM.yyyy HH:mm')}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <>
+          {send.status !== 'available' && <LockedFeatureNotice info={send} canFix={canFix} compact />}
+
+          {campaigns.length === 0 ? (
+            <EmptyState icon={Megaphone} title={t('emptyTitle')} subtitle={t('emptySubtitle')} />
+          ) : (
+            <div className="rounded-lg border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('colName')}</TableHead>
+                    <TableHead>{t('colType')}</TableHead>
+                    <TableHead>{t('colStatus')}</TableHead>
+                    <TableHead>{t('colResult')}</TableHead>
+                    <TableHead>{t('colDate')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {campaigns.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell>
+                        <Link href={`/messages/broadcasts/${c.id}`} className="font-medium hover:underline">
+                          {c.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {t(`types.${c.template_type}`)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariant(c.status)}>{t(`statuses.${c.status}`)}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm tabular-nums" dir="ltr">
+                        {t('resultSummary', {
+                          sent: c.sent_count,
+                          skipped: c.skipped_count,
+                          failed: c.failed_count,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {DateTime.fromISO(c.scheduled_at ?? c.created_at)
+                          .setZone(timezone)
+                          .toFormat('dd.MM.yyyy HH:mm')}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

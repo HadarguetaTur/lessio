@@ -25,6 +25,7 @@ import { CenterUpgradeInquiryDialog } from '@/components/dashboard/billing/Cente
 
 const SAAS_FEATURE_PARAM_KEYS = new Set([
   'whatsapp_automation',
+  'broadcasts',
   'ai_assistant',
   'full_reports',
   'leads',

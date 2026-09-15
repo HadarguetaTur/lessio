@@ -935,6 +935,37 @@ Decided:
   owner/admin tools; a teacher's service update to her own families goes
   through the thread's closed-window send.
 
+### Amendment 2026-09-14 — locked is shown, not hidden
+
+The owner opened the inbox, read "active with limits", and concluded that lists
+and groups were closed until she had been thirty days on the platform. No such
+rule exists; the thirty days are Meta's bar for the green tick, which nothing
+here needs. What existed was four surfaces each deriving a partial verdict —
+the nav from the role, the pages from the plan (a redirect to billing with no
+sentence), the composer from a half-read verification flag — and none of them
+saying why.
+
+* **One resolver answers "what can this number do"**:
+  `src/lib/whatsapp/capabilities.ts`. Five capabilities (conversations,
+  service updates, promotional broadcasts, lists, linked groups), each
+  `available | limited | locked` with the reason a person can act on, what
+  unlocks it, the cap and the date. It reads `computeWaState`, the broadcast
+  guard and the plan features together; it re-derives nothing.
+* **A closed segment stays visible, with a lock.** Clicking it opens the
+  explanation (why / what opens it / how you will know). The same explanation
+  is the page content where the neutral empty state used to say "no broadcasts
+  yet" to a plan that had none.
+* **Pages explain; server actions still gate.** `/messages/lists` and
+  `/messages/broadcasts/new` render the notice instead of redirecting.
+  `requireFeature` / `assertFeature` stay mandatory in every server action; the
+  navigation registry still hides the entries from the sidebar.
+* **The status line names each limit with its number and date** — "new
+  number: broadcasts up to 50 recipients until 28.09" — instead of "not
+  everything is open yet".
+* **No health email exists and none is invented.** "How you will know" is the
+  status line, the settings card, the in-app `whatsapp_health` notification for
+  Meta events, and a concrete date for the warm-up.
+
 ## 44. On the Calendar, Status Is the Background and the Teacher Is the Stripe
 
 ✅ DECIDED (Sep 2026): a centre with several teachers must be able to read the

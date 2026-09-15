@@ -3,9 +3,11 @@
 import { useActionState, useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { AlertTriangle, Loader2, Megaphone, Send, Users } from 'lucide-react'
+import { Loader2, Megaphone, Send, Users } from 'lucide-react'
 import type { BroadcastActionResult } from '@/app/(dashboard)/messages/broadcasts/actions'
 import type { AudienceFilter, BroadcastType } from '@/lib/whatsapp/broadcast/types'
+import type { LockedFeatureInfo } from '@/lib/whatsapp/capabilities'
+import { LockedFeatureNotice, LockedFeatureTrigger } from '@/components/whatsapp/LockedFeature'
 
 export interface AudienceOption {
   value: string
@@ -17,13 +19,15 @@ export interface ComposerHealth {
   qualityRating: string
   dailyRemaining: number | null
   verified: boolean
-  connected: boolean
 }
 
 interface Props {
   audiences: AudienceOption[]
   initialAudience?: string
   health: ComposerHealth
+  /** The verdict per category. `update` is never `locked` here — the page shows the notice instead. */
+  capabilities: { update: LockedFeatureInfo; promo: LockedFeatureInfo }
+  canFix?: boolean
   /** Preview copy per type and language, taken from what Meta actually approved. */
   previews: Record<BroadcastType, Record<'he' | 'en', { body: string; button: string | null }>>
   messageMax: number
@@ -41,6 +45,8 @@ export function BroadcastComposer({
   audiences,
   initialAudience,
   health,
+  capabilities,
+  canFix = true,
   previews,
   messageMax,
   topicMax,
@@ -84,7 +90,9 @@ export function BroadcastComposer({
   // multi-line announcement arrives as one line. Better to show that here.
   const flattened = message.replace(/\s+/g, ' ').trim()
   const tooLong = flattened.length > messageMax
-  const promoBlocked = type === 'promo' && !health.verified
+  const promoLocked = capabilities.promo.status === 'locked'
+  const updateLimited = capabilities.update.status === 'limited'
+  const nobody = !counting && count !== null && count.included === 0
 
   return (
     <form action={formAction} className="grid gap-6 lg:grid-cols-[1fr_20rem]">
@@ -92,6 +100,22 @@ export function BroadcastComposer({
       <input type="hidden" name="message" value={flattened} />
 
       <div className="space-y-5">
+        {updateLimited && (
+          <div className="space-y-2">
+            <LockedFeatureNotice info={capabilities.update} canFix={canFix} compact />
+            {capabilities.update.cap !== null && (
+              <p className="text-xs text-muted-foreground">
+                {capabilities.update.untilLabel
+                  ? t('limitedCapUntil', {
+                      cap: capabilities.update.cap,
+                      until: capabilities.update.untilLabel,
+                    })
+                  : t('limitedCap', { cap: capabilities.update.cap })}
+              </p>
+            )}
+          </div>
+        )}
+
         <section className="rounded-lg border bg-card p-5 space-y-4">
           <div>
             <label htmlFor="bc-name" className="block text-sm font-medium mb-1">
@@ -110,28 +134,41 @@ export function BroadcastComposer({
           <fieldset>
             <legend className="text-sm font-medium mb-2">{t('form.type')}</legend>
             <div className="grid gap-2 sm:grid-cols-2">
-              {(['class_update', 'promo'] as const).map((option) => (
-                <label
-                  key={option}
-                  className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 text-sm ${
-                    type === option ? 'border-primary bg-primary/5' : 'border-border'
-                  }`}
-                >
-                  <span className="flex items-center gap-2 font-medium">
-                    <input
-                      type="radio"
-                      name="template_type"
-                      value={option}
-                      checked={type === option}
-                      onChange={() => setType(option)}
-                    />
-                    {t(`typeChoice.${option}.title`)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {t(`typeChoice.${option}.hint`)}
-                  </span>
-                </label>
-              ))}
+              {(['class_update', 'promo'] as const).map((option) => {
+                const locked = option === 'promo' && promoLocked
+                return (
+                  <label
+                    key={option}
+                    className={`flex flex-col gap-1 rounded-md border p-3 text-sm ${
+                      locked ? 'cursor-not-allowed border-border opacity-80' : 'cursor-pointer'
+                    } ${type === option ? 'border-primary bg-primary/5' : 'border-border'}`}
+                  >
+                    <span className="flex items-center gap-2 font-medium">
+                      <input
+                        type="radio"
+                        name="template_type"
+                        value={option}
+                        checked={type === option}
+                        disabled={locked}
+                        onChange={() => setType(option)}
+                      />
+                      {t(`typeChoice.${option}.title`)}
+                      {locked && (
+                        <LockedFeatureTrigger
+                          info={capabilities.promo}
+                          canFix={canFix}
+                          className="ms-auto inline-flex items-center gap-1 text-xs font-medium text-primary underline underline-offset-4"
+                        >
+                          {t('limitedWhy')}
+                        </LockedFeatureTrigger>
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {t(`typeChoice.${option}.hint`)}
+                    </span>
+                  </label>
+                )
+              })}
             </div>
           </fieldset>
 
@@ -307,12 +344,7 @@ export function BroadcastComposer({
           />
         </section>
 
-        {promoBlocked && (
-          <p className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-            {t('blocked.promo_needs_verification')}
-          </p>
-        )}
+        {nobody && <p className="text-xs text-muted-foreground">{t('side.nobody')}</p>}
 
         {state.error && (
           <p className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
@@ -329,7 +361,7 @@ export function BroadcastComposer({
             tooLong ||
             flattened.length === 0 ||
             !audienceJson ||
-            promoBlocked ||
+            (type === 'promo' && promoLocked) ||
             (type === 'promo' && !attested) ||
             (count?.included ?? 0) === 0
           }

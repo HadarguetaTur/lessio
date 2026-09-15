@@ -1553,7 +1553,12 @@
       "requiresConfirmation": "Require teacher or staff confirmation",
       "savePolicy": "Save policy",
       "organizationDefault": "Organization default",
-      "teacherOverride": "Teacher override"
+      "teacherOverride": "Teacher override",
+      "required": "Required fields are marked in red",
+      "notUsed": "not used for this model",
+      "baseRateType": "Base type",
+      "baseHourly": "Hourly base",
+      "baseFixed": "Fixed lesson base"
     },
     "groups": {
       "business": {
@@ -3050,28 +3055,153 @@
       "hours": "Delivery hours",
       "month": "Month"
     },
-    "economics": {
-      "title": "Teacher economics",
-      "description": "Attributed revenue, estimated compensation and contribution",
+    "monthNav": {
+      "thisMonth": "This month",
+      "previous": "Previous month",
+      "next": "Next month"
+    },
+    "activityTable": {
+      "ariaLabel": "Teacher activity",
       "teacher": "Teacher",
       "completed": "Completed",
-      "noShow": "Student no-show",
+      "noShow": "No-show",
       "cancelled": "Cancelled",
       "scheduled": "Scheduled",
       "hours": "Delivery hours",
       "revenue": "Attributed revenue",
-      "compensation": "Estimated compensation",
+      "compensation": "Est. compensation",
       "contribution": "Contribution",
-      "state": "Snapshot state",
-      "estimated": "Estimated",
-      "confirmed": "Confirmed",
-      "missingPolicy": "Missing policy",
-      "month": "Month",
-      "publish": "Publish snapshot",
-      "reopen": "Reopen snapshot"
-      ,"pendingAdjustments": "Pending adjustments",
+      "contributionRate": "Contribution %",
+      "state": "State",
+      "totals": "Total ({count} teachers)",
+      "partial": "{amount} (partial)",
+      "emptyTitle": "No lessons this month",
+      "emptySubtitle": "Move to another month or schedule lessons on the calendar."
+    },
+    "economics": {
+      "title": "Teacher economics",
+      "description": "Value of delivered activity, estimated teacher compensation and what remains for the centre — an operational estimate, not payroll",
       "accepted": "Accept",
-      "rejected": "Reject"
+      "rejected": "Reject",
+      "pendingAdjustment": "Pending adjustment",
+      "snapshot": {
+        "draft": "Draft",
+        "published": "Published {date} · {name}",
+        "hint": "Publishing a snapshot freezes this month's values and policies for hand-off. It approves no salary and pays no one."
+      },
+      "publishDialog": {
+        "cancel": "Cancel",
+        "working": "Working…",
+        "publish": {
+          "trigger": "Publish snapshot",
+          "title": "Publish this month's snapshot?",
+          "body": "Every lesson's values and policy are frozen as they are now. A later change shows up as a pending adjustment that needs a decision. This is an operational estimate for hand-off, not a salary approval.",
+          "confirm": "Publish"
+        },
+        "reopen": {
+          "trigger": "Reopen",
+          "title": "Reopen the snapshot?",
+          "body": "The month goes back to draft. The published lines are kept until the next publish replaces them with current values.",
+          "confirm": "Reopen"
+        }
+      },
+      "attention": {
+        "title": "Needs attention",
+        "missingPolicy": "{count} lessons without a compensation policy",
+        "missingPolicyAction": "Set a policy",
+        "awaitingConfirmation": "{count} lessons awaiting delivery confirmation",
+        "unknownCancellation": "{count} cancellations with unknown source",
+        "staffCancellation": "{count} cancellations by staff (0% compensation)",
+        "missingPrice": "{count} lessons without a price",
+        "missingPriceAction": "Pricing settings"
+      },
+      "noPolicies": {
+        "title": "No compensation policy yet",
+        "body": "Attributed revenue is calculated, but without a policy there is no estimated compensation and no contribution. Set an organisation default or a per-teacher policy.",
+        "action": "Go to teacher economics settings"
+      },
+      "kpi": {
+        "revenue": "Attributed revenue",
+        "revenueHint": "List value of delivered activity",
+        "compensation": "Est. compensation",
+        "hours": "{hours} delivery hours",
+        "contribution": "Contribution",
+        "contributionHint": "Attributed revenue minus compensation",
+        "rate": "Contribution rate",
+        "rateHint": "Contribution as a share of attributed revenue",
+        "partial": "{amount} (partial)"
+      },
+      "stateBadge": {
+        "label": {
+          "confirmed": "Confirmed",
+          "estimated": "Estimated",
+          "missing_policy": "Missing policy"
+        },
+        "hint": {
+          "confirmed": "Every lesson is priced by a policy and its provenance is known",
+          "estimated": "Some lessons need review",
+          "missing_policy": "Lessons have no active compensation policy"
+        },
+        "reasonMissingPolicy": "{count} without policy",
+        "reasonAwaitingConfirmation": "{count} awaiting confirmation",
+        "reasonUnknownCancellation": "{count} cancellations with unknown source",
+        "reasonStaffCancellation": "{count} staff cancellations",
+        "reasonMissingPrice": "{count} without price"
+      },
+      "detail": {
+        "back": "Back to teacher economics",
+        "subtitle": "Lesson breakdown for the month",
+        "unknownTeacher": "Teacher",
+        "when": "When",
+        "students": "Students",
+        "outcome": "Outcome",
+        "duration": "Hours",
+        "basis": "Revenue basis",
+        "policy": "Policy",
+        "state": "State"
+      },
+      "outcome": {
+        "completed": "Completed",
+        "no_show": "No-show",
+        "cancelled": "Cancelled",
+        "scheduled": "Scheduled"
+      },
+      "actor": {
+        "parent": "parent cancelled",
+        "teacher": "teacher cancelled",
+        "staff": "staff cancelled",
+        "unknown": "unknown source"
+      },
+      "lessonType": {
+        "individual": "individual",
+        "pair": "pair",
+        "group": "group",
+        "custom": "custom"
+      },
+      "basis": {
+        "list_price": "List price",
+        "cancellation_charge": "Recorded cancellation charge",
+        "cancellation_policy": "Cancellation policy",
+        "not_billed": "Not billed",
+        "none": "—",
+        "subscriptionCovered": "subscription-covered"
+      },
+      "policy": {
+        "none": "No policy",
+        "hourly": "{amount}/hour",
+        "fixed": "{amount}/lesson",
+        "percentage": "{percent}% of revenue",
+        "basePlus": "{base} + {amount} per extra attendee"
+      },
+      "warnings": {
+        "missing_policy": "No compensation policy active at the lesson time",
+        "awaiting_confirmation": "Policy requires a delivery confirmation that has not arrived",
+        "unknown_provenance": "Unknown who cancelled — counted as 0% until clarified",
+        "staff_cancellation": "Cancelled by staff — 0% compensation",
+        "missing_price": "The lesson or a student has no price",
+        "no_cancellation_policy": "No cancellation policy, cannot tell whether the cancellation was late",
+        "no_students": "No students enrolled in the lesson"
+      }
     },
     "students": {
       "title": "Students",
@@ -3125,6 +3255,39 @@
       "noShow": "Student no-show",
       "cancellations": "Cancellations",
       "deliveryHours": "Delivery hours",
+      "scheduled": "Scheduled",
+      "contributionRate": "Contribution %",
+      "state": "State",
+      "lessonsWithoutPolicy": "Lessons without policy",
+      "lessonDate": "Date",
+      "lessonType": "Lesson type",
+      "outcome": "Outcome",
+      "revenueBasis": "Revenue basis",
+      "warnings": "Notes",
+      "state_confirmed": "Confirmed",
+      "state_estimated": "Estimated",
+      "state_missing_policy": "Missing policy",
+      "lessonType_individual": "Individual",
+      "lessonType_pair": "Pair",
+      "lessonType_group": "Group",
+      "lessonType_custom": "Custom",
+      "outcome_completed": "Completed",
+      "outcome_no_show": "No-show",
+      "outcome_cancelled": "Cancelled",
+      "outcome_scheduled": "Scheduled",
+      "basis_list_price": "List price",
+      "basis_cancellation_charge": "Cancellation charge",
+      "basis_cancellation_policy": "Cancellation policy",
+      "basis_not_billed": "Not billed",
+      "basis_none": "",
+      "basis_subscriptionCovered": "subscription-covered",
+      "warning_missing_policy": "No policy",
+      "warning_awaiting_confirmation": "Awaiting confirmation",
+      "warning_unknown_provenance": "Unknown cancellation source",
+      "warning_staff_cancellation": "Staff cancellation",
+      "warning_missing_price": "No price",
+      "warning_no_cancellation_policy": "No cancellation policy",
+      "warning_no_students": "No students",
       "attributedRevenue": "Attributed revenue",
       "estimatedCompensation": "Estimated compensation",
       "contribution": "Contribution"

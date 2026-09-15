@@ -8,8 +8,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { DateTime } from 'luxon'
 import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth/session'
+import { canViewEconomics } from '@/lib/auth/roles'
 import { requireFeature } from '@/lib/saas/featureGate'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { getT } from '@/lib/i18n/serverTranslator'
@@ -40,14 +42,11 @@ interface Context {
 
 export async function GET(request: NextRequest, { params }: Context) {
   const session = await getSession()
-  if (reportIsEconomics(request) && session.role !== 'owner') {
-    return new NextResponse('Forbidden', { status: 403 })
-  }
-  if (!['owner', 'admin'].includes(session.role) && reportIsEconomics(request) === false) {
-    return new NextResponse('Forbidden', { status: 403 })
-  }
-
   const { report } = await params
+  const economics = report === 'economics' || report === 'economics-lines'
+  if (economics ? !canViewEconomics(session.role) : !['owner', 'admin'].includes(session.role)) {
+    return new NextResponse('Forbidden', { status: 403 })
+  }
   if (report !== 'revenue') {
     await requireFeature(session.orgId, 'full_reports')
   }
@@ -140,23 +139,53 @@ export async function GET(request: NextRequest, { params }: Context) {
         break
       }
       case 'economics': {
-        if (session.role !== 'owner') return new NextResponse('Forbidden', { status: 403 })
-        const month = searchParams.get('month') ?? new Date().toISOString().slice(0, 7)
+        const month = searchParams.get('month') ?? DateTime.now().setZone(timezone).toFormat('yyyy-MM')
         const rows = await getOwnerTeacherEconomicsReport(orgId, month, timezone)
+        const optional = (value: number | null) => (value == null ? '' : value.toFixed(2))
         csv = toCsv(
-          [tc('teacher'), tc('completed'), tc('noShow'), tc('cancellations'), tc('deliveryHours'), tc('attributedRevenue'), tc('estimatedCompensation'), tc('contribution')],
+          [tc('teacher'), tc('completed'), tc('noShow'), tc('cancellations'), tc('scheduled'), tc('deliveryHours'), tc('attributedRevenue'), tc('estimatedCompensation'), tc('contribution'), tc('contributionRate'), tc('state'), tc('lessonsWithoutPolicy')],
           rows.map((row) => [
             row.teacherName,
             String(row.completedCount),
             String(row.noShowCount),
             String(row.cancelledCount),
+            String(row.scheduledCount),
             row.deliveryHours.toFixed(2),
             row.attributedRevenue.toFixed(2),
-            row.estimatedCompensation.toFixed(2),
-            row.contribution.toFixed(2),
+            optional(row.estimatedCompensation),
+            optional(row.contribution),
+            row.contributionRate == null ? '' : String(row.contributionRate),
+            tc(`state_${row.confirmationState}`),
+            String(row.attention.missingPolicy),
           ])
         )
-        filename = 'teacher-economics.csv'
+        filename = `teacher-economics-${month}.csv`
+        break
+      }
+      case 'economics-lines': {
+        const month = searchParams.get('month') ?? DateTime.now().setZone(timezone).toFormat('yyyy-MM')
+        const teacherId = searchParams.get('teacherId') ?? undefined
+        const rows = await getOwnerTeacherEconomicsReport(orgId, month, timezone, teacherId && /^[0-9a-f-]{36}$/i.test(teacherId) ? teacherId : undefined)
+        const optional = (value: number | null) => (value == null ? '' : value.toFixed(2))
+        const when = new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'short', timeZone: timezone })
+        csv = toCsv(
+          [tc('teacher'), tc('lessonDate'), tc('student'), tc('lessonType'), tc('outcome'), tc('deliveryHours'), tc('revenueBasis'), tc('attributedRevenue'), tc('estimatedCompensation'), tc('contribution'), tc('state'), tc('warnings')],
+          rows.flatMap((row) => row.estimateLines.map((line) => [
+            row.teacherName,
+            when.format(new Date(line.startAt)),
+            line.studentNames.join(' | '),
+            tc(`lessonType_${line.lessonType}`),
+            tc(`outcome_${line.outcome}`),
+            line.durationHours.toFixed(2),
+            tc(`basis_${line.revenueBasis}`) + (line.subscriptionCovered ? ` (${tc('basis_subscriptionCovered')})` : ''),
+            line.attributedRevenue.toFixed(2),
+            optional(line.estimatedCompensation),
+            optional(line.contribution),
+            tc(`state_${line.confirmationState}`),
+            line.warnings.map((warning) => tc(`warning_${warning}`)).join(' | '),
+          ]))
+        )
+        filename = `teacher-economics-lines-${month}.csv`
         break
       }
       default:
@@ -175,6 +204,3 @@ export async function GET(request: NextRequest, { params }: Context) {
   })
 }
 
-function reportIsEconomics(request: NextRequest): boolean {
-  return request.nextUrl.pathname.endsWith('/economics')
-}

@@ -4,6 +4,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getTeachers } from '@/lib/teachers'
 import { getTranslations } from 'next-intl/server'
 import { saveCompensationPolicy, saveTeacherEstimateVisibility } from './actions'
+import { PolicyForm } from './PolicyForm'
 
 export default async function TeacherEconomicsSettingsPage() {
   const session = await getSession()
@@ -28,22 +29,18 @@ export default async function TeacherEconomicsSettingsPage() {
         <div className="flex justify-between"><strong>{policy.model}</strong><span>{String(policy.effective_from).slice(0, 10)}{policy.effective_to ? ` - ${String(policy.effective_to).slice(0, 10)}` : ''}</span></div>
         <div className="mt-1 text-muted-foreground">{policy.teacher_id ? teachers.find((teacher) => teacher.id === policy.teacher_id)?.profile.full_name ?? t('teacherOverride') : t('organizationDefault')}</div>
       </div>)}
-      <form action={saveCompensationPolicy} className="grid gap-3 rounded-lg border bg-card p-5 sm:grid-cols-2">
-        <h2 className="sm:col-span-2 text-lg font-semibold">{t('newPolicy')}</h2>
-        <label>{t('scope')}<select name="teacher_id" className="mt-1 block w-full rounded border p-2"><option value="">{t('organizationDefault')}</option>{teachers.filter((teacher) => teacher.is_active).map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.profile.full_name}</option>)}</select></label>
-        <label>{t('model')}<select name="model" defaultValue="hourly" className="mt-1 block w-full rounded border p-2"><option value="hourly">{t('hourly')}</option><option value="fixed_per_lesson">{t('fixed')}</option><option value="percentage_revenue">{t('percentage')}</option><option value="base_plus_participant">{t('basePlus')}</option></select></label>
-        <label>{t('hourlyAmount')}<input name="hourly_amount" type="number" min="0" step="0.01" className="mt-1 block w-full rounded border p-2" /></label>
-        <label>{t('fixedAmount')}<input name="fixed_amount" type="number" min="0" step="0.01" className="mt-1 block w-full rounded border p-2" /></label>
-        <label>{t('revenuePercent')}<input name="revenue_percent" type="number" min="0" max="100" step="0.01" className="mt-1 block w-full rounded border p-2" /></label>
-        <label>{t('participantAmount')}<input name="participant_amount" type="number" min="0" step="0.01" className="mt-1 block w-full rounded border p-2" /></label>
-        <label>{t('noShowPercent')}<input name="no_show_percent" type="number" min="0" max="100" defaultValue="0" className="mt-1 block w-full rounded border p-2" /></label>
-        <label>{t('lateCancellationPercent')}<input name="late_parent_cancellation_percent" type="number" min="0" max="100" defaultValue="0" className="mt-1 block w-full rounded border p-2" /></label>
-        <label>{t('effectiveFrom')}<input name="effective_from" type="date" required className="mt-1 block w-full rounded border p-2" /></label>
-        <label>{t('effectiveTo')}<input name="effective_to" type="date" className="mt-1 block w-full rounded border p-2" /></label>
-        <label className="sm:col-span-2 flex items-center gap-2"><input type="checkbox" name="requires_confirmation" />{t('requiresConfirmation')}</label>
-        <input type="hidden" name="base_rate_type" value="hourly" />
-        <button className="sm:col-span-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground" type="submit">{t('savePolicy')}</button>
-      </form>
+      <PolicyForm
+        action={saveCompensationPolicy}
+        teachers={teachers.filter((teacher) => teacher.is_active).map((teacher) => ({ id: teacher.id, name: teacher.profile.full_name }))}
+        labels={{
+          newPolicy: t('newPolicy'), scope: t('scope'), model: t('model'), hourly: t('hourly'), fixed: t('fixed'),
+          percentage: t('percentage'), basePlus: t('basePlus'), hourlyAmount: t('hourlyAmount'), fixedAmount: t('fixedAmount'),
+          revenuePercent: t('revenuePercent'), participantAmount: t('participantAmount'), noShowPercent: t('noShowPercent'),
+          lateCancellationPercent: t('lateCancellationPercent'), effectiveFrom: t('effectiveFrom'), effectiveTo: t('effectiveTo'),
+          requiresConfirmation: t('requiresConfirmation'), savePolicy: t('savePolicy'), organizationDefault: t('organizationDefault'),
+          required: t('required'), notUsed: t('notUsed'), baseRateType: t('baseRateType'), baseHourly: t('baseHourly'), baseFixed: t('baseFixed'),
+        }}
+      />
     </div>
   </div>
 }

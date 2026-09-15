@@ -10,6 +10,7 @@ import { TeacherLessonsChart } from '@/components/reports/lazyCharts'
 import { PeriodSelector } from '@/components/reports/PeriodSelector'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { PageHeader } from '@/components/ui/page-header'
 import {
   Table,
@@ -62,7 +63,7 @@ export default async function TeacherLessonsReportPage({ searchParams }: Props) 
         <div className="mb-6 rounded-xl border border-border bg-card p-5">
           <h2 className="font-semibold">{t('personalEstimateTitle')}</h2>
           <div className="mt-3 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-            <div><div className="text-muted-foreground">{t('estimatedCompensation')}</div><div className="font-semibold">{personalEstimate.estimatedCompensation.toFixed(2)}</div></div>
+            <div><div className="text-muted-foreground">{t('estimatedCompensation')}</div><div className="font-semibold">{personalEstimate.estimatedCompensation == null ? "—" : formatMoney(personalEstimate.estimatedCompensation, locale)}</div></div>
             <div><div className="text-muted-foreground">{t('deliveryHours')}</div><div className="font-semibold">{personalEstimate.deliveryHours.toFixed(2)}</div></div>
             <div><div className="text-muted-foreground">{t('completedCount')}</div><div className="font-semibold">{personalEstimate.completedCount}</div></div>
             <div><div className="text-muted-foreground">{t('estimateState')}</div><div className="font-semibold">{t(personalEstimate.confirmationState)}</div></div>

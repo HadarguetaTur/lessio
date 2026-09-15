@@ -1553,7 +1553,12 @@
       "requiresConfirmation": "נדרשת אישור מורה או צוות",
       "savePolicy": "שמירת מדיניות",
       "organizationDefault": "ברירת מחדל ארגונית",
-      "teacherOverride": "חריגת מורה"
+      "teacherOverride": "חריגת מורה",
+      "required": "שדות חובה מסומנים באדום",
+      "notUsed": "לא בשימוש במודל הזה",
+      "baseRateType": "סוג בסיס",
+      "baseHourly": "בסיס שעתי",
+      "baseFixed": "בסיס קבוע לשיעור"
     },
     "groups": {
       "business": {
@@ -3050,28 +3055,153 @@
       "hours": "שעות ביצוע",
       "month": "חודש"
     },
-    "economics": {
-      "title": "כלכלת הוראה",
-      "description": "הכנסה מיוחסת, תגמול תפעולי מוערך ותרומה",
+    "monthNav": {
+      "thisMonth": "החודש",
+      "previous": "חודש קודם",
+      "next": "חודש הבא"
+    },
+    "activityTable": {
+      "ariaLabel": "פעילות מורים",
       "teacher": "מורה",
       "completed": "הושלמו",
-      "noShow": "תלמיד לא הגיע",
+      "noShow": "לא הגיע",
       "cancelled": "בוטלו",
       "scheduled": "מתוכננים",
       "hours": "שעות ביצוע",
       "revenue": "הכנסה מיוחסת",
       "compensation": "תגמול מוערך",
       "contribution": "תרומה",
-      "state": "מצב תמונת מצב",
-      "estimated": "מוערך",
-      "confirmed": "מאושר",
-      "missingPolicy": "חסרה מדיניות",
-      "month": "חודש",
-      "publish": "פרסום תמונת מצב",
-      "reopen": "פתיחת תמונת מצב מחדש"
-      ,"pendingAdjustments": "התאמות ממתינות",
+      "contributionRate": "תרומה %",
+      "state": "מצב",
+      "totals": "סה״כ ({count} מורים)",
+      "partial": "{amount} (חלקי)",
+      "emptyTitle": "אין שיעורים בחודש זה",
+      "emptySubtitle": "נווטו לחודש אחר או קבעו שיעורים ביומן."
+    },
+    "economics": {
+      "title": "כלכלת הוראה",
+      "description": "ערך הפעילות שבוצעה, התגמול המוערך למורים והתרומה שנשארת למרכז — הערכה תפעולית, לא שכר",
       "accepted": "אישור",
-      "rejected": "דחייה"
+      "rejected": "דחייה",
+      "pendingAdjustment": "התאמה ממתינה",
+      "snapshot": {
+        "draft": "טיוטה",
+        "published": "פורסם {date} · {name}",
+        "hint": "פרסום תמונת מצב מקפיא את הערכים והמדיניות של החודש להעברה הלאה. הוא לא מאשר שכר ולא משלם לאיש."
+      },
+      "publishDialog": {
+        "cancel": "ביטול",
+        "working": "מבצע…",
+        "publish": {
+          "trigger": "פרסום תמונת מצב",
+          "title": "לפרסם את תמונת המצב לחודש זה?",
+          "body": "הערכים והמדיניות של כל שיעור יוקפאו כפי שהם עכשיו. שינוי מאוחר יותר יופיע כהתאמה ממתינה שדורשת החלטה. זו הערכה תפעולית להעברה הלאה, לא אישור שכר.",
+          "confirm": "פרסום"
+        },
+        "reopen": {
+          "trigger": "פתיחה מחדש",
+          "title": "לפתוח את תמונת המצב מחדש?",
+          "body": "החודש יחזור להיות טיוטה. השורות שפורסמו נשמרות עד לפרסום הבא, שיחליף אותן בערכים העדכניים.",
+          "confirm": "פתיחה מחדש"
+        }
+      },
+      "attention": {
+        "title": "דורש תשומת לב",
+        "missingPolicy": "{count} שיעורים ללא מדיניות תגמול",
+        "missingPolicyAction": "הגדרת מדיניות",
+        "awaitingConfirmation": "{count} שיעורים ממתינים לאישור ביצוע",
+        "unknownCancellation": "{count} ביטולים ללא מקור ידוע",
+        "staffCancellation": "{count} ביטולים על ידי הצוות (0% תגמול)",
+        "missingPrice": "{count} שיעורים ללא מחיר",
+        "missingPriceAction": "הגדרות תמחור"
+      },
+      "noPolicies": {
+        "title": "עדיין אין מדיניות תגמול",
+        "body": "ההכנסה המיוחסת מחושבת, אבל בלי מדיניות אין תגמול מוערך ואין תרומה. הגדירו ברירת מחדל ארגונית או מדיניות למורה.",
+        "action": "להגדרות כלכלת הוראה"
+      },
+      "kpi": {
+        "revenue": "הכנסה מיוחסת",
+        "revenueHint": "ערך מחירון של הפעילות שבוצעה",
+        "compensation": "תגמול מוערך",
+        "hours": "{hours} שעות ביצוע",
+        "contribution": "תרומה",
+        "contributionHint": "הכנסה מיוחסת פחות תגמול",
+        "rate": "שיעור תרומה",
+        "rateHint": "תרומה מתוך ההכנסה המיוחסת",
+        "partial": "{amount} (חלקי)"
+      },
+      "stateBadge": {
+        "label": {
+          "confirmed": "מאושר",
+          "estimated": "מוערך",
+          "missing_policy": "חסרה מדיניות"
+        },
+        "hint": {
+          "confirmed": "כל השיעורים מתומחרים לפי מדיניות ומקורם ידוע",
+          "estimated": "חלק מהשיעורים דורשים בדיקה",
+          "missing_policy": "לשיעורים אין מדיניות תגמול פעילה"
+        },
+        "reasonMissingPolicy": "{count} ללא מדיניות",
+        "reasonAwaitingConfirmation": "{count} ממתינים לאישור ביצוע",
+        "reasonUnknownCancellation": "{count} ביטולים ללא מקור ידוע",
+        "reasonStaffCancellation": "{count} ביטולי צוות",
+        "reasonMissingPrice": "{count} ללא מחיר"
+      },
+      "detail": {
+        "back": "חזרה לכלכלת הוראה",
+        "subtitle": "פירוט שיעורים לחודש",
+        "unknownTeacher": "מורה",
+        "when": "מועד",
+        "students": "תלמידים",
+        "outcome": "תוצאה",
+        "duration": "שעות",
+        "basis": "בסיס ההכנסה",
+        "policy": "מדיניות",
+        "state": "מצב"
+      },
+      "outcome": {
+        "completed": "הושלם",
+        "no_show": "לא הגיע",
+        "cancelled": "בוטל",
+        "scheduled": "מתוכנן"
+      },
+      "actor": {
+        "parent": "ביטול הורה",
+        "teacher": "ביטול מורה",
+        "staff": "ביטול צוות",
+        "unknown": "מקור לא ידוע"
+      },
+      "lessonType": {
+        "individual": "פרטי",
+        "pair": "זוגי",
+        "group": "קבוצתי",
+        "custom": "מותאם"
+      },
+      "basis": {
+        "list_price": "מחירון",
+        "cancellation_charge": "חיוב ביטול שנרשם",
+        "cancellation_policy": "לפי מדיניות ביטולים",
+        "not_billed": "לא מחויב",
+        "none": "—",
+        "subscriptionCovered": "מכוסה במנוי"
+      },
+      "policy": {
+        "none": "אין מדיניות",
+        "hourly": "{amount} לשעה",
+        "fixed": "{amount} לשיעור",
+        "percentage": "{percent}% מההכנסה",
+        "basePlus": "{base} + {amount} למשתתף נוסף"
+      },
+      "warnings": {
+        "missing_policy": "אין מדיניות תגמול פעילה במועד השיעור",
+        "awaiting_confirmation": "המדיניות דורשת אישור ביצוע שטרם התקבל",
+        "unknown_provenance": "לא ידוע מי ביטל — נחשב 0% עד לבירור",
+        "staff_cancellation": "בוטל על ידי הצוות — 0% תגמול",
+        "missing_price": "לשיעור או לתלמיד אין מחיר מוגדר",
+        "no_cancellation_policy": "אין מדיניות ביטולים, לא ניתן לקבוע אם הביטול מאוחר",
+        "no_students": "אין תלמידים רשומים לשיעור"
+      }
     },
     "students": {
       "title": "תלמידים",
@@ -3125,6 +3255,39 @@
       "noShow": "תלמיד לא הגיע",
       "cancellations": "ביטולים",
       "deliveryHours": "שעות ביצוע",
+      "scheduled": "מתוכננים",
+      "contributionRate": "תרומה %",
+      "state": "מצב",
+      "lessonsWithoutPolicy": "שיעורים ללא מדיניות",
+      "lessonDate": "מועד",
+      "lessonType": "סוג שיעור",
+      "outcome": "תוצאה",
+      "revenueBasis": "בסיס ההכנסה",
+      "warnings": "הערות",
+      "state_confirmed": "מאושר",
+      "state_estimated": "מוערך",
+      "state_missing_policy": "חסרה מדיניות",
+      "lessonType_individual": "פרטי",
+      "lessonType_pair": "זוגי",
+      "lessonType_group": "קבוצתי",
+      "lessonType_custom": "מותאם",
+      "outcome_completed": "הושלם",
+      "outcome_no_show": "לא הגיע",
+      "outcome_cancelled": "בוטל",
+      "outcome_scheduled": "מתוכנן",
+      "basis_list_price": "מחירון",
+      "basis_cancellation_charge": "חיוב ביטול",
+      "basis_cancellation_policy": "מדיניות ביטולים",
+      "basis_not_billed": "לא מחויב",
+      "basis_none": "",
+      "basis_subscriptionCovered": "מכוסה במנוי",
+      "warning_missing_policy": "אין מדיניות",
+      "warning_awaiting_confirmation": "ממתין לאישור",
+      "warning_unknown_provenance": "מקור ביטול לא ידוע",
+      "warning_staff_cancellation": "ביטול צוות",
+      "warning_missing_price": "אין מחיר",
+      "warning_no_cancellation_policy": "אין מדיניות ביטולים",
+      "warning_no_students": "אין תלמידים",
       "attributedRevenue": "הכנסה מיוחסת",
       "estimatedCompensation": "תגמול מוערך",
       "contribution": "תרומה"

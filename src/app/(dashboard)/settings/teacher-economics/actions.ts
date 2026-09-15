@@ -50,15 +50,33 @@ export async function saveCompensationPolicy(formData: FormData): Promise<void> 
   const db = createServiceRoleClient()
   const effectiveFrom = `${parsed.data.effectiveFrom}T00:00:00.000Z`
   const effectiveTo = parsed.data.effectiveTo ? `${parsed.data.effectiveTo}T00:00:00.000Z` : null
+  const modelValues = {
+    base_rate_type: null as 'hourly' | 'fixed_per_lesson' | null,
+    hourly_amount: null as number | null,
+    fixed_amount: null as number | null,
+    revenue_percent: null as number | null,
+    participant_amount: null as number | null,
+  }
+  if (parsed.data.model === 'hourly') {
+    modelValues.hourly_amount = parsed.data.hourlyAmount
+  } else if (parsed.data.model === 'fixed_per_lesson') {
+    modelValues.fixed_amount = parsed.data.fixedAmount
+  } else if (parsed.data.model === 'percentage_revenue') {
+    modelValues.revenue_percent = parsed.data.revenuePercent
+  } else {
+    modelValues.base_rate_type = parsed.data.baseRateType ?? (parsed.data.hourlyAmount != null ? 'hourly' : 'fixed_per_lesson')
+    if (modelValues.base_rate_type === 'hourly') {
+      modelValues.hourly_amount = parsed.data.hourlyAmount
+    } else {
+      modelValues.fixed_amount = parsed.data.fixedAmount
+    }
+    modelValues.participant_amount = parsed.data.participantAmount
+  }
   const values = {
     organization_id: session.orgId,
     teacher_id: parsed.data.teacherId,
     model: parsed.data.model,
-    base_rate_type: parsed.data.baseRateType,
-    hourly_amount: parsed.data.hourlyAmount,
-    fixed_amount: parsed.data.fixedAmount,
-    revenue_percent: parsed.data.revenuePercent,
-    participant_amount: parsed.data.participantAmount,
+    ...modelValues,
     no_show_percent: parsed.data.noShowPercent,
     late_parent_cancellation_percent: parsed.data.lateParentCancellationPercent,
     requires_confirmation: parsed.data.requiresConfirmation,
@@ -70,7 +88,11 @@ export async function saveCompensationPolicy(formData: FormData): Promise<void> 
     ? db.from('compensation_policies').update(values).eq('id', parsed.data.id).eq('organization_id', session.orgId).select('id').single()
     : db.from('compensation_policies').insert(values).select('id').single()
   const { data: saved, error } = await query
-  if (error || !saved) throw new Error(error?.code === '23P01' ? 'POLICY_OVERLAP' : 'POLICY_SAVE_FAILED')
+  if (error || !saved) {
+    if (error?.code === '23P01') throw new Error('POLICY_OVERLAP')
+    if (error?.code === '23514') throw new Error('POLICY_MODEL_VALUES_INVALID')
+    throw new Error('POLICY_SAVE_FAILED')
+  }
 
   await db.from('teacher_economics_audit_log').insert({
     organization_id: session.orgId,

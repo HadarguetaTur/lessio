@@ -19,6 +19,10 @@ function formatHours(hours: number): string {
   return hours.toFixed(2).replace(/\.?0+$/, '')
 }
 
+function formatAvg(value: number | null): string {
+  return value == null ? '—' : value.toFixed(1).replace(/\.0$/, '')
+}
+
 function formatRate(rate: number | null): string {
   return rate == null ? '—' : `${rate.toFixed(1).replace(/\.0$/, '')}%`
 }
@@ -47,20 +51,25 @@ export async function TeacherActivityTable(props: Props) {
       if (props.finance) {
         const owner = row as OwnerTeacherEconomicsReport
         acc.revenue += owner.attributedRevenue
+        acc.students += (owner.avgStudents ?? 0) * (owner.completedCount + owner.noShowCount + owner.cancelledCount)
+        acc.delivered += owner.completedCount + owner.noShowCount + owner.cancelledCount
         if (owner.estimatedCompensation != null) acc.compensation += owner.estimatedCompensation
         if (owner.contribution != null) acc.contribution += owner.contribution
         else acc.incomplete = true
       }
       return acc
     },
-    { completed: 0, noShow: 0, cancelled: 0, scheduled: 0, hours: 0, revenue: 0, compensation: 0, contribution: 0, incomplete: false }
+    { completed: 0, noShow: 0, cancelled: 0, scheduled: 0, hours: 0, revenue: 0, compensation: 0, contribution: 0, students: 0, delivered: 0, incomplete: false }
   )
   const totalRate = totals.revenue > 0 && !totals.incomplete ? Math.round((totals.contribution / totals.revenue) * 1000) / 10 : null
+  const totalAvgStudents = totals.delivered > 0 ? Math.round((totals.students / totals.delivered) * 10) / 10 : null
+  const totalValuePerHour = totals.hours > 0 ? totals.revenue / totals.hours : null
+  const totalCompPerHour = totals.hours > 0 && !totals.incomplete ? totals.compensation / totals.hours : null
 
   return (
     <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div tabIndex={0} role="region" aria-label={t('ariaLabel')} className="h-full min-h-0 w-full overflow-x-auto overflow-y-auto overscroll-x-contain">
-        <Table className={cn('w-full', props.finance ? 'min-w-[1100px]' : 'min-w-[680px]')}>
+        <Table className={cn('w-full', props.finance ? 'min-w-[1400px]' : 'min-w-[680px]')}>
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
               <TableHead className={cn(HEAD, 'text-start')}>{t('teacher')}</TableHead>
@@ -71,8 +80,11 @@ export async function TeacherActivityTable(props: Props) {
               <TableHead className={cn(HEAD, 'text-end')}>{t('hours')}</TableHead>
               {props.finance && (
                 <>
-                  <TableHead className={cn(HEAD, 'text-end')}>{t('revenue')}</TableHead>
+                  <TableHead className={cn(HEAD, 'text-end')}>{t('students')}</TableHead>
+                  <TableHead className={cn(HEAD, 'text-end')} title={t('revenueHint')}>{t('revenue')}</TableHead>
+                  <TableHead className={cn(HEAD, 'text-end')}>{t('valuePerHour')}</TableHead>
                   <TableHead className={cn(HEAD, 'text-end')}>{t('compensation')}</TableHead>
+                  <TableHead className={cn(HEAD, 'text-end')}>{t('compensationPerHour')}</TableHead>
                   <TableHead className={cn(HEAD, 'text-end')}>{t('contribution')}</TableHead>
                   <TableHead className={cn(HEAD, 'text-end')}>{t('contributionRate')}</TableHead>
                   <TableHead className={cn(HEAD, 'text-start')}>{t('state')}</TableHead>
@@ -99,8 +111,11 @@ export async function TeacherActivityTable(props: Props) {
                   <TableCell className={NUM}>{formatHours(row.deliveryHours)}</TableCell>
                   {owner && (
                     <>
+                      <TableCell className={cn(NUM, 'text-muted-foreground')}>{formatAvg(owner.avgStudents)}</TableCell>
                       <TableCell className={NUM}>{money(owner.attributedRevenue)}</TableCell>
+                      <TableCell className={cn(NUM, 'text-muted-foreground')}>{money(owner.valuePerHour)}</TableCell>
                       <TableCell className={NUM}>{money(owner.estimatedCompensation)}</TableCell>
+                      <TableCell className={cn(NUM, 'text-muted-foreground')}>{money(owner.compensationPerHour)}</TableCell>
                       <TableCell className={cn(NUM, 'font-medium', owner.contribution != null && owner.contribution < 0 && 'text-red-700')}>
                         {money(owner.contribution)}
                       </TableCell>
@@ -124,8 +139,11 @@ export async function TeacherActivityTable(props: Props) {
               <TableCell className={NUM}>{formatHours(totals.hours)}</TableCell>
               {props.finance && (
                 <>
+                  <TableCell className={cn(NUM, 'text-muted-foreground')}>{formatAvg(totalAvgStudents)}</TableCell>
                   <TableCell className={NUM}>{money(totals.revenue)}</TableCell>
+                  <TableCell className={cn(NUM, 'text-muted-foreground')}>{money(totalValuePerHour)}</TableCell>
                   <TableCell className={NUM}>{totals.incomplete ? t('partial', { amount: money(totals.compensation) }) : money(totals.compensation)}</TableCell>
+                  <TableCell className={cn(NUM, 'text-muted-foreground')}>{money(totalCompPerHour)}</TableCell>
                   <TableCell className={cn(NUM, totals.contribution < 0 && 'text-red-700')}>
                     {totals.incomplete ? t('partial', { amount: money(totals.contribution) }) : money(totals.contribution)}
                   </TableCell>

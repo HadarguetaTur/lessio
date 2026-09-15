@@ -38,6 +38,11 @@ export interface OwnerTeacherEconomicsReport extends OperationalTeacherReport {
   estimatedCompensation: number | null
   contribution: number | null
   contributionRate: number | null
+  /** Enrolled students per delivered lesson — the reason a group lesson is worth several times an individual one. */
+  avgStudents: number | null
+  /** Attributed revenue and compensation per delivery hour; comparable across teachers regardless of load. */
+  valuePerHour: number | null
+  compensationPerHour: number | null
   confirmationState: ConfirmationState
   attention: AttentionCounts
   missingPolicyWarnings: string[]
@@ -275,6 +280,16 @@ function toEconomicsLesson(row: OwnerLessonRow, ctx: AttributionContext): Econom
   }
 }
 
+function perHour(amount: number | null, hours: number): number | null {
+  return amount == null || hours <= 0 ? null : Math.round((amount / hours) * 100) / 100
+}
+
+function perLessonAverage(lines: readonly EstimateLine[]): number | null {
+  const delivered = lines.filter((line) => line.outcome !== 'scheduled')
+  if (delivered.length === 0) return null
+  return Math.round((delivered.reduce((sum, line) => sum + line.enrolledStudentCount, 0) / delivered.length) * 10) / 10
+}
+
 export async function getOwnerTeacherEconomicsReport(
   organizationId: string,
   month: string,
@@ -344,6 +359,9 @@ export async function getOwnerTeacherEconomicsReport(
         estimatedCompensation: result.estimatedCompensation,
         contribution: result.contribution,
         contributionRate: result.contributionRate,
+        avgStudents: perLessonAverage(result.lines),
+        valuePerHour: perHour(result.attributedRevenue, result.deliveryHours),
+        compensationPerHour: perHour(result.estimatedCompensation, result.deliveryHours),
         confirmationState: result.confirmationState,
         attention: result.attention,
         missingPolicyWarnings: result.missingPolicyWarnings,

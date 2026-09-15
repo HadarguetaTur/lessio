@@ -66,6 +66,8 @@ export default async function EconomicsReportPage({ searchParams }: { searchPara
     { revenue: 0, compensation: 0, contribution: 0, hours: 0, incomplete: false, attention: { missingPolicy: 0, awaitingConfirmation: 0, unknownCancellation: 0, staffCancellation: 0, missingPrice: 0, noStudents: 0 } }
   )
   const rate = totals.revenue > 0 && !totals.incomplete ? Math.round((totals.contribution / totals.revenue) * 1000) / 10 : null
+  const valuePerHour = totals.hours > 0 ? totals.revenue / totals.hours : null
+  const compensationPerHour = totals.hours > 0 && !totals.incomplete ? totals.compensation / totals.hours : null
   const attentionItems: { key: string; count: number; href?: string }[] = [
     { key: 'missingPolicy', count: totals.attention.missingPolicy, href: '/settings/teacher-economics' },
     { key: 'awaitingConfirmation', count: totals.attention.awaitingConfirmation },
@@ -105,6 +107,7 @@ export default async function EconomicsReportPage({ searchParams }: { searchPara
         )}
         <span className="text-muted-foreground">{t('snapshot.hint')}</span>
       </div>
+      <p className="mb-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">{t('valueNote')}</p>
 
       {(attentionItems.length > 0 || (adjustments ?? []).length > 0) && (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
@@ -149,7 +152,7 @@ export default async function EconomicsReportPage({ searchParams }: { searchPara
       {rows.length > 0 && (
         <div className="mb-6 grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
           <KpiCard label={t('kpi.revenue')} value={money(totals.revenue)} icon={Wallet} variant="revenue" subLabel={t('kpi.revenueHint')} />
-          <KpiCard label={t('kpi.compensation')} value={totals.incomplete ? t('kpi.partial', { amount: money(totals.compensation) }) : money(totals.compensation)} icon={Scale} subLabel={t('kpi.hours', { hours: totals.hours.toFixed(2).replace(/\.?0+$/, '') })} />
+          <KpiCard label={t('kpi.compensation')} value={totals.incomplete ? t('kpi.partial', { amount: money(totals.compensation) }) : money(totals.compensation)} icon={Scale} subLabel={compensationPerHour != null && valuePerHour != null ? t('kpi.perHour', { compensation: money(Math.round(compensationPerHour * 100) / 100), value: money(Math.round(valuePerHour * 100) / 100) }) : t('kpi.hours', { hours: totals.hours.toFixed(2).replace(/\.?0+$/, '') })} />
           <KpiCard
             label={t('kpi.contribution')}
             value={totals.incomplete ? t('kpi.partial', { amount: money(totals.contribution) }) : money(totals.contribution)}

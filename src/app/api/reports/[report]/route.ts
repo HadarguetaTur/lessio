@@ -143,7 +143,7 @@ export async function GET(request: NextRequest, { params }: Context) {
         const rows = await getOwnerTeacherEconomicsReport(orgId, month, timezone)
         const optional = (value: number | null) => (value == null ? '' : value.toFixed(2))
         csv = toCsv(
-          [tc('teacher'), tc('completed'), tc('noShow'), tc('cancellations'), tc('scheduled'), tc('deliveryHours'), tc('attributedRevenue'), tc('estimatedCompensation'), tc('contribution'), tc('contributionRate'), tc('state'), tc('lessonsWithoutPolicy')],
+          [tc('teacher'), tc('completed'), tc('noShow'), tc('cancellations'), tc('scheduled'), tc('deliveryHours'), tc('avgStudents'), tc('attributedRevenue'), tc('valuePerHour'), tc('estimatedCompensation'), tc('compensationPerHour'), tc('contribution'), tc('contributionRate'), tc('state'), tc('lessonsWithoutPolicy')],
           rows.map((row) => [
             row.teacherName,
             String(row.completedCount),
@@ -151,8 +151,11 @@ export async function GET(request: NextRequest, { params }: Context) {
             String(row.cancelledCount),
             String(row.scheduledCount),
             row.deliveryHours.toFixed(2),
+            row.avgStudents == null ? '' : String(row.avgStudents),
             row.attributedRevenue.toFixed(2),
+            optional(row.valuePerHour),
             optional(row.estimatedCompensation),
+            optional(row.compensationPerHour),
             optional(row.contribution),
             row.contributionRate == null ? '' : String(row.contributionRate),
             tc(`state_${row.confirmationState}`),

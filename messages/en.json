@@ -1655,6 +1655,10 @@
         "title": "Pricing",
         "description": "Hourly rate, pair and group prices"
       },
+      "teacherEconomics": {
+        "title": "Teacher economics",
+        "description": "Operational compensation estimates and contribution"
+      },
       "billingPolicy": {
         "title": "Billing Policy",
         "description": "Which lesson types a monthly subscription covers"

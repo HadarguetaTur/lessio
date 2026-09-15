@@ -70,21 +70,39 @@ export function analyzeFreeSegment(params: {
     params.allowedDurations,
     params.breakMinutes
   )
-  const leftRemainder = remainderAfterPacking(leftEnd - segmentStart, reachableSpans)
-  const rightRemainder = remainderAfterPacking(segmentEnd - rightStart, reachableSpans)
   const fragments: ScheduleFragment[] = []
-  if (leftRemainder > 0) {
+
+  // When a lesson can be packed into the side, the break beside the proposed
+  // lesson is real and the stranded piece sits next to it. When nothing fits,
+  // there is no second lesson to separate — only the neighbour's break is owed,
+  // so the whole stretch up to the proposed lesson is stranded. Subtracting the
+  // break on both sides here used to report a 15-minute gap with a 5-minute
+  // break as "5 minutes free" instead of 10.
+  const leftPacked = bestPackedSpan(leftEnd - segmentStart, reachableSpans)
+  if (leftPacked > 0) {
+    const minutes = leftEnd - segmentStart - leftPacked
+    if (minutes > 0) {
+      fragments.push({ start: toTime(leftEnd - minutes), end: toTime(leftEnd), minutes })
+    }
+  } else if (proposedStart - segmentStart > 0) {
     fragments.push({
-      start: toTime(leftEnd - leftRemainder),
-      end: toTime(leftEnd),
-      minutes: leftRemainder,
+      start: toTime(segmentStart),
+      end: toTime(proposedStart),
+      minutes: proposedStart - segmentStart,
     })
   }
-  if (rightRemainder > 0) {
+
+  const rightPacked = bestPackedSpan(segmentEnd - rightStart, reachableSpans)
+  if (rightPacked > 0) {
+    const minutes = segmentEnd - rightStart - rightPacked
+    if (minutes > 0) {
+      fragments.push({ start: toTime(rightStart), end: toTime(rightStart + minutes), minutes })
+    }
+  } else if (segmentEnd - proposedEnd > 0) {
     fragments.push({
-      start: toTime(rightStart),
-      end: toTime(rightStart + rightRemainder),
-      minutes: rightRemainder,
+      start: toTime(proposedEnd),
+      end: toTime(segmentEnd),
+      minutes: segmentEnd - proposedEnd,
     })
   }
 
@@ -130,10 +148,10 @@ function getReachableSpans(limit: number, durations: number[], breakMinutes: num
   return [...reachable].sort((a, b) => a - b)
 }
 
-function remainderAfterPacking(length: number, reachableSpans: number[]): number {
+/** The longest span of lessons (with their internal breaks) that fits, or 0. */
+function bestPackedSpan(length: number, reachableSpans: number[]): number {
   if (length <= 0) return 0
-  const best = reachableSpans.reduce((max, span) => (span <= length ? Math.max(max, span) : max), 0)
-  return length - best
+  return reachableSpans.reduce((max, span) => (span <= length ? Math.max(max, span) : max), 0)
 }
 
 /** Analyze whether a manual lesson strands time too short for any allowed lesson. */

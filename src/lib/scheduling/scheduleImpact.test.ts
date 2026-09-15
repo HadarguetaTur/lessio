@@ -29,11 +29,39 @@ describe('analyzeFreeSegment', () => {
       busy: [{ start: 16 * 60, end: 17 * 60 }],
     })).toEqual({
       fragments: [
-        { start: '17:15', end: '17:20', minutes: 5 },
+        // 35-minute gap after the 17:00 lesson: one 15-minute break, 20 stranded.
+        { start: '17:15', end: '17:35', minutes: 20 },
         { start: '18:50', end: '19:00', minutes: 10 },
       ],
       suggestions: ['17:45', '17:15', '18:00', '18:15'],
     })
+  })
+
+  it('owes only one break when nothing fits between two lessons', () => {
+    // Lesson ends 18:00, next starts 18:15, break 5: 10 minutes are stranded,
+    // not 5 (the break is not reserved on both sides of an empty gap).
+    const result = analyzeFreeSegment({
+      windowStart: '17:00', windowEnd: '21:30', proposedStart: '17:00',
+      durationMinutes: 60, breakMinutes: 5, allowedDurations: [45, 60],
+      busy: [{ start: 18 * 60 + 15, end: 19 * 60 + 15 }],
+    })
+    expect(result?.fragments).toEqual([{ start: '18:00', end: '18:10', minutes: 10 }])
+  })
+
+  it('stays silent when the gap is exactly the break', () => {
+    expect(analyzeFreeSegment({
+      windowStart: '17:00', windowEnd: '21:30', proposedStart: '17:00',
+      durationMinutes: 60, breakMinutes: 5, allowedDurations: [45, 60],
+      busy: [{ start: 18 * 60 + 5, end: 21 * 60 + 30 }],
+    })).toBeNull()
+  })
+
+  it('counts the whole gap at a window edge, where no break is owed', () => {
+    const result = analyzeFreeSegment({
+      windowStart: '16:00', windowEnd: '17:20', proposedStart: '16:20',
+      durationMinutes: 60, breakMinutes: 5, allowedDurations: [45, 60], busy: [],
+    })
+    expect(result?.fragments).toEqual([{ start: '16:00', end: '16:20', minutes: 20 }])
   })
 
   it('warns when an arbitrary minute breaks the cadence even with room on both sides', () => {

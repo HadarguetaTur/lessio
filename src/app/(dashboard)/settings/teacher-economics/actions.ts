@@ -64,7 +64,11 @@ export async function saveCompensationPolicy(formData: FormData): Promise<void> 
   } else if (parsed.data.model === 'percentage_revenue') {
     modelValues.revenue_percent = parsed.data.revenuePercent
   } else {
-    modelValues.base_rate_type = parsed.data.baseRateType ?? (parsed.data.hourlyAmount != null ? 'hourly' : 'fixed_per_lesson')
+    modelValues.base_rate_type = parsed.data.hourlyAmount != null
+      ? 'hourly'
+      : parsed.data.fixedAmount != null
+        ? 'fixed_per_lesson'
+        : parsed.data.baseRateType
     if (modelValues.base_rate_type === 'hourly') {
       modelValues.hourly_amount = parsed.data.hourlyAmount
     } else {
@@ -89,6 +93,15 @@ export async function saveCompensationPolicy(formData: FormData): Promise<void> 
     : db.from('compensation_policies').insert(values).select('id').single()
   const { data: saved, error } = await query
   if (error || !saved) {
+    console.error('[teacher-economics/policy] save failed', {
+      organizationId: session.orgId,
+      policyId: parsed.data.id ?? null,
+      model: parsed.data.model,
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    })
     if (error?.code === '23P01') throw new Error('POLICY_OVERLAP')
     if (error?.code === '23514') throw new Error('POLICY_MODEL_VALUES_INVALID')
     throw new Error('POLICY_SAVE_FAILED')

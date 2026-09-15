@@ -15,6 +15,7 @@ prefix, so the two never collide.
 | --- | --- |
 | `seed-review-demo.ts` / `cleanup-review-demo.ts` | "Brightpath Tutoring", the English tenant Meta App Review logs into (`d2000000-`) |
 | `seed-video-demo.ts` / `cleanup-video-demo.ts` | "סטודיו מיכל למוזיקה", the Hebrew tenant used to film marketing video (`d3000000-`). Local-only unless `VIDEO_DEMO_ALLOW_REMOTE=1` |
+| `center-demo/seed.ts` / `center-demo/wipe.ts` / `center-demo/snapshot.ts` | "מרכז אופק ללמידה — DEMO" — the same `d3000000-` org, re-seeded on 14.09.2026 as a large learning centre (up to 1,000 students, 45 staff, 100 groups, ~11k lessons, four billed months, local WhatsApp threads). Works *inside* the org: the organizations row and every integration column are never touched, new rows carry the `d3000001-` prefix. Remote runs need `CENTER_DEMO_ALLOW_REMOTE=1` and an explicit `--org-id`; `--dry-run` proves the timetable fits without writing. **Do not run `cleanup-video-demo.ts` on this org any more** — it deletes the organizations row |
 
 Both seeds build a populated org from nothing — auth users, teachers with
 availability, parents, students, ~14 weeks of lessons, four months of billing

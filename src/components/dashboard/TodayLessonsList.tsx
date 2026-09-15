@@ -42,6 +42,16 @@ export async function TodayLessonsList({
   const nextLessonId = findNextLessonId(lessons, DateTime.utc().toISO()!)
 
   const visible = lessons.slice(0, limit)
+  const visibleGroups = visible.reduce<Array<{ time: string; lessons: Lesson[] }>>((groups, lesson) => {
+    const time = formatTime(lesson.start_at, timezone, appLocale)
+    const last = groups.at(-1)
+    if (last?.time === time) {
+      last.lessons.push(lesson)
+    } else {
+      groups.push({ time, lessons: [lesson] })
+    }
+    return groups
+  }, [])
 
   if (total === 0) {
     return (
@@ -74,53 +84,54 @@ export async function TodayLessonsList({
       </div>
 
       <ul className="px-2 pb-2 sm:px-3">
-        {visible.map((lesson) => {
-          const isNext = lesson.id === nextLessonId
-          const title = getLessonTitle(lesson, tLessons)
-          return (
-            <li key={lesson.id}>
-              <Link
-                href={`/lessons/${lesson.id}`}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/50 sm:gap-4 sm:px-3',
-                  isNext && 'bg-primary/5 hover:bg-primary/10'
-                )}
-              >
-                {/* Time range stays LTR in an RTL row so 17:00–18:00 does not
-                    render reversed. */}
-                <span
-                  className="w-[5.5rem] shrink-0 text-start font-mono text-xs tabular-nums text-muted-foreground sm:w-24 sm:text-[13px]"
-                  dir="ltr"
-                >
-                  {formatTime(lesson.start_at, timezone, appLocale)}–
-                  {formatTime(lesson.end_at, timezone, appLocale)}
-                </span>
-                <UserAvatar name={title} />
-                <span className="flex min-w-0 flex-1 items-center gap-2">
-                  {/* bdi keeps the ellipsis at the logical end of a Latin
-                      name inside an RTL row (was "…phie Bennett"). */}
-                  <bdi className="min-w-0 truncate text-sm font-medium text-foreground">
-                    {title}
-                  </bdi>
-                  {isNext && (
-                    <span className="inline-flex shrink-0 items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                      {t('today.nextBadge')}
-                    </span>
-                  )}
-                </span>
-                <bdi className="hidden truncate text-xs text-muted-foreground sm:block sm:max-w-40">
-                  {lesson.teacher.full_name}
-                </bdi>
-                <StatusBadge status={lesson.status} />
-              </Link>
-            </li>
-          )
-        })}
+        {visibleGroups.map((group, groupIndex) => (
+          <li key={group.time} className={cn(groupIndex > 0 && 'border-t border-border/70')}>
+            <div className="flex gap-2 py-2 sm:gap-3">
+              {/* A fixed time rail makes the day's rhythm scannable even when
+                  several teachers begin at the same moment. */}
+              <span dir="ltr" className="w-11 shrink-0 pt-1 font-mono text-xs font-semibold tabular-nums text-muted-foreground sm:w-16">
+                {group.time}
+              </span>
+              <ul className="min-w-0 flex-1 space-y-1">
+                {group.lessons.map((lesson) => {
+                  const isNext = lesson.id === nextLessonId
+                  const title = getLessonTitle(lesson, tLessons)
+                  return (
+                    <li key={lesson.id}>
+                      <Link
+                        href={`/lessons/${lesson.id}`}
+                        className={cn(
+                          'flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/50 sm:gap-4 sm:px-3',
+                          isNext && 'bg-primary/5 hover:bg-primary/10'
+                        )}
+                      >
+                        <span dir="ltr" className="hidden w-[4.25rem] shrink-0 text-start font-mono text-xs tabular-nums text-muted-foreground sm:block">
+                          {formatTime(lesson.end_at, timezone, appLocale)}
+                        </span>
+                        <UserAvatar name={title} />
+                        <span className="flex min-w-0 flex-1 items-center gap-2">
+                          <bdi className="min-w-0 truncate text-sm font-medium text-foreground">{title}</bdi>
+                          {isNext && (
+                            <span className="inline-flex shrink-0 items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                              {t('today.nextBadge')}
+                            </span>
+                          )}
+                        </span>
+                        <bdi className="truncate text-xs text-muted-foreground sm:max-w-40">{lesson.teacher.full_name}</bdi>
+                        <StatusBadge status={lesson.status} />
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          </li>
+        ))}
       </ul>
 
       {total > limit && (
         <Link
-          href="/lessons"
+          href="/lessons?view=day"
           className="block border-t border-border/70 px-4 py-2.5 text-center text-xs font-medium text-primary transition-colors hover:bg-muted/40"
         >
           {t('today.viewAll', { count: total })}

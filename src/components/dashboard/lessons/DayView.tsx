@@ -65,6 +65,13 @@ export async function DayView({
   }
 
   const holiday = holidays.find((h) => h.date === dateStr)
+  const timelineGroups = lessons.reduce<Array<{ time: string; lessons: Lesson[] }>>((groups, lesson) => {
+    const time = formatTime(lesson.start_at, timezone, appLocale)
+    const last = groups.at(-1)
+    if (last?.time === time) last.lessons.push(lesson)
+    else groups.push({ time, lessons: [lesson] })
+    return groups
+  }, [])
 
   if (lessons.length === 0 && !holiday) {
     return (
@@ -76,7 +83,7 @@ export async function DayView({
   }
 
   return (
-    <div className="space-y-2 max-w-2xl">
+    <div className="max-w-3xl">
       {holiday && (
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-50 border border-purple-100 text-purple-700 text-sm">
           <span className="font-medium">{holiday.name}</span>
@@ -84,52 +91,45 @@ export async function DayView({
         </div>
       )}
 
-      {lessons.map((lesson) => {
-        const startTime = formatTime(lesson.start_at, timezone, appLocale)
-        const endTime = formatTime(lesson.end_at, timezone, appLocale)
-        const durationMin = Math.round(
-          (new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / 60000
-        )
+      <ol className="relative space-y-3 before:absolute before:inset-y-2 before:start-[2.15rem] before:w-px before:bg-border sm:before:start-[3.15rem]">
+        {timelineGroups.map((group) => (
+          <li key={group.time} className="relative flex gap-3 sm:gap-4">
+            <time dir="ltr" className="z-10 w-11 shrink-0 bg-background pt-3 text-center font-mono text-xs font-bold tabular-nums text-muted-foreground sm:w-16 sm:text-sm">
+              {group.time}
+            </time>
+            <div className="min-w-0 flex-1 space-y-2">
+              {group.lessons.map((lesson) => {
+                const endTime = formatTime(lesson.end_at, timezone, appLocale)
+                const durationMin = Math.round((new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / 60000)
+                const lessonHref = scheduleBasePath === '/teacher/schedule'
+                  ? `/teacher/schedule/${lesson.id}?week=${encodeURIComponent(weekStr)}`
+                  : `/lessons/${lesson.id}?${lessonListQuery(weekStr, teacherId, studentId)}`
 
-        const lessonHref =
-          scheduleBasePath === '/teacher/schedule'
-            ? `/teacher/schedule/${lesson.id}?week=${encodeURIComponent(weekStr)}`
-            : `/lessons/${lesson.id}?${lessonListQuery(weekStr, teacherId, studentId)}`
-
-        return (
-          <Link
-            key={lesson.id}
-            href={lessonHref}
-            className={cn(
-              'flex items-center gap-4 px-4 py-3 rounded-lg border transition-opacity hover:opacity-80',
-              STATUS_STYLES[lesson.status],
-              showTeacherStripe && 'border-s-4',
-              showTeacherStripe && TEACHER_COLOR_CLASSES[resolveTeacherColor(lesson.teacher)].stripe
-            )}
-          >
-            <div className="text-center min-w-[56px]">
-              <p dir="ltr" className="font-mono text-sm font-bold">{startTime}</p>
-              <p dir="ltr" className="font-mono text-xs">{endTime}</p>
+                return (
+                  <Link key={lesson.id} href={lessonHref} className={cn(
+                    'flex items-center gap-3 rounded-lg border px-3 py-3 transition-opacity hover:opacity-80 sm:gap-4 sm:px-4',
+                    STATUS_STYLES[lesson.status],
+                    showTeacherStripe && 'border-s-4',
+                    showTeacherStripe && TEACHER_COLOR_CLASSES[resolveTeacherColor(lesson.teacher)].stripe
+                  )}>
+                    <div className="text-center">
+                      <p dir="ltr" className="font-mono text-xs font-semibold">{endTime}</p>
+                      <p className="text-[10px]">{durationMin} {t('minutesSuffix')}</p>
+                    </div>
+                    <div className="w-px self-stretch bg-current opacity-20" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{getLessonTitle(lesson, t)}</p>
+                      <p className="truncate text-xs">{lesson.teacher.full_name}</p>
+                    </div>
+                    <span className="hidden shrink-0 text-xs font-medium sm:block">{STATUS_LABELS[lesson.status]}</span>
+                    {lesson.series_id && <Repeat size={14} className="shrink-0 opacity-50" />}
+                  </Link>
+                )
+              })}
             </div>
-
-            <div className="w-px self-stretch bg-current opacity-20" />
-
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{getLessonTitle(lesson, t)}</p>
-              <p className="text-xs truncate">{lesson.teacher.full_name}</p>
-            </div>
-
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <span className="text-xs font-medium">{STATUS_LABELS[lesson.status]}</span>
-              <span className="text-xs">{durationMin} {t('minutesSuffix')}</span>
-            </div>
-
-            {lesson.series_id && (
-              <Repeat size={14} className="shrink-0 opacity-50" />
-            )}
-          </Link>
-        )
-      })}
+          </li>
+        ))}
+      </ol>
 
       <p className="text-xs text-muted-foreground pt-1">
         {t('lessonsCount', { count: lessons.length })}

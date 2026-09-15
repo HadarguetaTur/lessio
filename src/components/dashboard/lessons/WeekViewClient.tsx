@@ -88,6 +88,13 @@ export function WeekViewClient({
     return `/lessons/${lessonId}?week=${weekStr}${teacherQs}${studentQs}`
   }
 
+  function dayHref(dateStr: string) {
+    const params = new URLSearchParams({ view: 'day', date: dateStr })
+    if (scheduleBasePath === '/lessons' && teacherId) params.set('teacher', teacherId)
+    if (studentId) params.set('student', studentId)
+    return `${scheduleBasePath}?${params.toString()}`
+  }
+
   function renderDayColumn(dateStr: string, i: number) {
     const dayLessons = byDay.get(dateStr) ?? []
     const isToday = dateStr === todayStr
@@ -135,7 +142,16 @@ export function WeekViewClient({
             {headerInner}
           </button>
         ) : (
-          <div className={headerClass}>{headerInner}</div>
+          <Link
+            href={dayHref(dateStr)}
+            aria-label={`${dayNames[i]} ${dayNum}`}
+            className={cn(
+              headerClass,
+              'block w-full transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            )}
+          >
+            {headerInner}
+          </Link>
         )}
 
         {holidayDates.has(dateStr) && (
@@ -144,36 +160,49 @@ export function WeekViewClient({
           </div>
         )}
 
-        <div className="p-1 space-y-1">
-          {dayLessons.map((lesson) => {
+        {/* A capped, independently scrollable day keeps a busy centre from
+            stretching the whole weekly page. */}
+        <div className="max-h-[28rem] space-y-1 overflow-y-auto overscroll-contain p-1 scrollbar-thin">
+          {dayLessons.map((lesson, lessonIndex) => {
             const title = getLessonTitle(lesson, t)
+            const hour = formatTime(lesson.start_at, timezone, appLocale).slice(0, 2)
+            const previousHour = lessonIndex > 0
+              ? formatTime(dayLessons[lessonIndex - 1].start_at, timezone, appLocale).slice(0, 2)
+              : null
             return (
-              <Link
-                key={lesson.id}
-                href={lessonHref(lesson.id)}
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-                title={showTeacherStripe ? `${title} — ${lesson.teacher.full_name}` : undefined}
-                className={cn(
-                  'block rounded px-1.5 py-1 text-xs leading-snug hover:opacity-75 transition-opacity',
-                  STATUS_STYLES[lesson.status],
-                  showTeacherStripe && 'border-s-4',
-                  showTeacherStripe && TEACHER_COLOR_CLASSES[resolveTeacherColor(lesson.teacher)].stripe
+              <div key={lesson.id}>
+                {hour !== previousHour && (
+                  <div className="flex items-center gap-1.5 px-0.5 pt-1 text-[10px] font-medium text-muted-foreground">
+                    <span dir="ltr" className="font-mono">{hour}:00</span>
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
                 )}
-              >
-                <span className="flex items-center justify-between gap-1">
-                  <span dir="ltr" className="font-mono">
-                    {formatTime(lesson.start_at, timezone, appLocale)}
+                <Link
+                  href={lessonHref(lesson.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  title={showTeacherStripe ? `${title} — ${lesson.teacher.full_name}` : undefined}
+                  className={cn(
+                    'block rounded px-1.5 py-1 text-xs leading-snug hover:opacity-75 transition-opacity',
+                    STATUS_STYLES[lesson.status],
+                    showTeacherStripe && 'border-s-4',
+                    showTeacherStripe && TEACHER_COLOR_CLASSES[resolveTeacherColor(lesson.teacher)].stripe
+                  )}
+                >
+                  <span className="flex items-center justify-between gap-1">
+                    <span dir="ltr" className="font-mono">
+                      {formatTime(lesson.start_at, timezone, appLocale)}
+                    </span>
+                    {lesson.series_id && <Repeat size={10} className="shrink-0 opacity-70" />}
                   </span>
-                  {lesson.series_id && <Repeat size={10} className="shrink-0 opacity-70" />}
-                </span>
-                <span className="truncate block">{title}</span>
-                {showTeacherName && (
-                  <span className="truncate block text-[10px] opacity-75">
-                    {lesson.teacher.full_name}
-                  </span>
-                )}
-              </Link>
+                  <span className="truncate block">{title}</span>
+                  {showTeacherName && (
+                    <span className="truncate block text-[10px] opacity-75">
+                      {lesson.teacher.full_name}
+                    </span>
+                  )}
+                </Link>
+              </div>
             )
           })}
         </div>

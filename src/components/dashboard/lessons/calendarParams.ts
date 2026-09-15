@@ -5,6 +5,10 @@ export const CANCELLED_ON = '1'
 /** Query param that narrows the admin calendar to one teacher. */
 export const TEACHER_PARAM = 'teacher'
 
+/** A visual preference only: the compact weekly schedule fits more lessons per day. */
+export const CALENDAR_DENSITY_PARAM = 'density'
+export const CALENDAR_DENSITY_COMPACT = 'compact'
+
 /**
  * Params that must survive every calendar navigation: the student deep-link and the
  * "show cancelled" toggle. Every nav control rebuilds its URL from scratch (so the
@@ -14,7 +18,7 @@ export function preserveCalendarParams(
   from: { get(name: string): string | null },
   into: URLSearchParams
 ): URLSearchParams {
-  for (const key of ['student', CANCELLED_PARAM]) {
+  for (const key of ['student', CANCELLED_PARAM, CALENDAR_DENSITY_PARAM]) {
     const value = from.get(key)
     if (value) into.set(key, value)
   }

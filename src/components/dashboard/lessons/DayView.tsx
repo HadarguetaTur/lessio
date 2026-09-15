@@ -99,6 +99,7 @@ export async function DayView({
             </time>
             <div className="min-w-0 flex-1 space-y-2">
               {group.lessons.map((lesson) => {
+                const startTime = formatTime(lesson.start_at, timezone, appLocale)
                 const endTime = formatTime(lesson.end_at, timezone, appLocale)
                 const durationMin = Math.round((new Date(lesson.end_at).getTime() - new Date(lesson.start_at).getTime()) / 60000)
                 const lessonHref = scheduleBasePath === '/teacher/schedule'
@@ -113,7 +114,11 @@ export async function DayView({
                     showTeacherStripe && TEACHER_COLOR_CLASSES[resolveTeacherColor(lesson.teacher)].stripe
                   )}>
                     <div className="text-center">
-                      <p dir="ltr" className="font-mono text-xs font-semibold">{endTime}</p>
+                      {/* The range stays LTR inside the RTL card: start always
+                          reads first (14:00–15:00), never visually reversed. */}
+                      <p dir="ltr" className="whitespace-nowrap font-mono text-xs font-semibold">
+                        {startTime}–{endTime}
+                      </p>
                       <p className="text-[10px]">{durationMin} {t('minutesSuffix')}</p>
                     </div>
                     <div className="w-px self-stretch bg-current opacity-20" />

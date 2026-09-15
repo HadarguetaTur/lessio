@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Repeat } from 'lucide-react'
+import { Maximize2, Minimize2, Repeat } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { formatTime } from '@/lib/lessons/format'
 import { getLessonTitle } from '@/lib/lessons/title'
@@ -9,6 +10,7 @@ import type { Lesson, LessonStatus } from '@/lib/lessons/types'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { TEACHER_COLOR_CLASSES, resolveTeacherColor } from '@/lib/teachers/color'
 import { cn } from '@/lib/utils'
+import { CALENDAR_DENSITY_COMPACT, CALENDAR_DENSITY_PARAM } from './calendarParams'
 
 const STATUS_STYLES: Record<LessonStatus, string> = {
   scheduled: 'bg-blue-50 text-blue-700 border border-blue-200',
@@ -69,7 +71,18 @@ export function WeekViewClient({
   legend,
 }: WeekViewClientProps) {
   const t = useTranslations('lessons')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const isCompact = searchParams.get(CALENDAR_DENSITY_PARAM) === CALENDAR_DENSITY_COMPACT
   const holidayDates = new Set(holidays.map((h) => h.date))
+
+  function toggleDensity() {
+    const params = new URLSearchParams(searchParams.toString())
+    if (isCompact) params.delete(CALENDAR_DENSITY_PARAM)
+    else params.set(CALENDAR_DENSITY_PARAM, CALENDAR_DENSITY_COMPACT)
+    const query = params.toString()
+    router.replace(query ? `${scheduleBasePath}?${query}` : scheduleBasePath, { scroll: false })
+  }
 
   const byDay = new Map<string, Lesson[]>()
   weekDays.forEach((d) => byDay.set(d, []))
@@ -92,6 +105,7 @@ export function WeekViewClient({
     const params = new URLSearchParams({ view: 'day', date: dateStr })
     if (scheduleBasePath === '/lessons' && teacherId) params.set('teacher', teacherId)
     if (studentId) params.set('student', studentId)
+    if (isCompact) params.set(CALENDAR_DENSITY_PARAM, CALENDAR_DENSITY_COMPACT)
     return `${scheduleBasePath}?${params.toString()}`
   }
 
@@ -112,7 +126,8 @@ export function WeekViewClient({
     const pickable = Boolean(pickDayEnabled && onPickDay)
 
     const headerClass = cn(
-      'px-2 py-1.5 text-center border-b',
+      'px-2 text-center border-b',
+      isCompact ? 'py-1' : 'py-1.5',
       isToday ? 'border-primary/20' : 'border-border'
     )
 
@@ -121,7 +136,8 @@ export function WeekViewClient({
         key={dateStr}
         onClick={pickable ? () => onPickDay!(dateStr) : undefined}
         className={cn(
-          'rounded-lg border min-h-36 min-w-0 text-start',
+          'rounded-lg border min-w-0 text-start',
+          isCompact ? 'min-h-28' : 'min-h-36',
           isToday ? 'border-primary/30 bg-primary/5' : 'border-border bg-card',
           pickable && 'cursor-pointer transition-colors hover:bg-muted/30'
         )}
@@ -162,7 +178,10 @@ export function WeekViewClient({
 
         {/* A capped, independently scrollable day keeps a busy centre from
             stretching the whole weekly page. */}
-        <div className="max-h-[28rem] space-y-1 overflow-y-auto overscroll-contain p-1 scrollbar-thin">
+        <div className={cn(
+          'space-y-1 overflow-y-auto overscroll-contain p-1 scrollbar-thin',
+          isCompact ? 'max-h-[20rem]' : 'max-h-[28rem]'
+        )}>
           {dayLessons.map((lesson, lessonIndex) => {
             const title = getLessonTitle(lesson, t)
             const hour = formatTime(lesson.start_at, timezone, appLocale).slice(0, 2)
@@ -172,7 +191,7 @@ export function WeekViewClient({
             return (
               <div key={lesson.id}>
                 {hour !== previousHour && (
-                  <div className="flex items-center gap-1.5 px-0.5 pt-1 text-[10px] font-medium text-muted-foreground">
+                  <div className={cn('flex items-center gap-1.5 px-0.5 text-[10px] font-medium text-muted-foreground', isCompact ? 'pt-0.5' : 'pt-1')}>
                     <span dir="ltr" className="font-mono">{hour}:00</span>
                     <span className="h-px flex-1 bg-border" />
                   </div>
@@ -183,7 +202,8 @@ export function WeekViewClient({
                   onKeyDown={(e) => e.stopPropagation()}
                   title={showTeacherStripe ? `${title} — ${lesson.teacher.full_name}` : undefined}
                   className={cn(
-                    'block rounded px-1.5 py-1 text-xs leading-snug hover:opacity-75 transition-opacity',
+                    'block rounded px-1.5 text-xs leading-snug hover:opacity-75 transition-opacity',
+                    isCompact ? 'py-0.5' : 'py-1',
                     STATUS_STYLES[lesson.status],
                     showTeacherStripe && 'border-s-4',
                     showTeacherStripe && TEACHER_COLOR_CLASSES[resolveTeacherColor(lesson.teacher)].stripe
@@ -212,6 +232,16 @@ export function WeekViewClient({
 
   return (
     <>
+      <div className="mb-2 flex justify-end">
+        <button
+          type="button"
+          onClick={toggleDensity}
+          aria-label={isCompact ? 'Expand schedule' : 'Compact schedule'}
+          className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {isCompact ? <Maximize2 size={15} /> : <Minimize2 size={15} />}
+        </button>
+      </div>
       {/* One pass, laid out by CSS: stacked on mobile, seven columns from md.
           Rendering the week twice and hiding one copy put every lesson link in
           the DOM twice — duplicated for screen readers and tab order, and

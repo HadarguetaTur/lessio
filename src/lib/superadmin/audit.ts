@@ -37,6 +37,8 @@ export type AdminAuditAction =
   | 'outbound.mailbox_test'
   | 'outbound.opener_approve'
   | 'outbound.opener_regenerate'
+  | 'outbound.discovery_run'
+  | 'outbound.discovery_approve'
   | 'outbound.suppress_prospect'
   | 'outbound.reply_reviewed'
   | 'lead.status_change'

@@ -12,9 +12,11 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { reportError } from '@/lib/telemetry/reportError'
 import { renderCampaignMessage, type RenderedMessage } from './renderTemplate'
 import type { Campaign, Prospect } from './types'
+import { startOfLocalDay } from './mailboxes'
 
 export const MAX_SEND_ATTEMPTS = 3
 export const DEFAULT_LEASE_MINUTES = 30
+export const COLD_PERMISSION_DAILY_LIMIT = 50
 
 export interface ClaimedProspect {
   prospect: Prospect
@@ -37,6 +39,8 @@ export async function claimNextProspects(opts: {
     p_lease: `${lease} minutes`,
     p_limit: opts.limit,
     p_campaign_id: opts.campaignId ?? null,
+    p_day_start: startOfLocalDay(now),
+    p_daily_limit: COLD_PERMISSION_DAILY_LIMIT,
   })
   if (error) throw new Error(`[outbound/queue] claim failed: ${error.message}`)
 

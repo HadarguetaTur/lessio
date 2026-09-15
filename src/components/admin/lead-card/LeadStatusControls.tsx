@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -28,9 +29,24 @@ export function LeadStatusControls({
   setStatus: LeadAction
 }) {
   const t = useTranslations('admin.leads')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [state, formAction, pending] = useActionState(setStatus, null)
   const [askingLost, setAskingLost] = useState(false)
   const [reason, setReason] = useState<string>('no_response')
+  const [terminalStatus, setTerminalStatus] = useState<PlatformLeadStatus | null>(null)
+
+  // A completed sale or a disqualified lead is a terminal decision. Returning
+  // the operator to the inbox makes "close lead" behave like an actual close,
+  // while every in-progress status intentionally keeps the full card open.
+  useEffect(() => {
+    if (!state?.ok || !terminalStatus) return
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('open')
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [pathname, router, searchParams, state?.ok, terminalStatus])
 
   return (
     <form action={formAction} className="flex flex-col gap-2">
@@ -58,6 +74,7 @@ export function LeadStatusControls({
               size="sm"
               variant={status === current ? 'default' : 'outline'}
               disabled={pending || status === current}
+              onClick={() => setTerminalStatus(status === 'won' ? 'won' : null)}
             >
               {pending ? <Loader2 size={14} className="animate-spin" /> : null}
               {t(`status.${status}`)}
@@ -94,7 +111,15 @@ export function LeadStatusControls({
             <Input name="lostReasonText" placeholder={t('statusActions.lostReasonText')} maxLength={200} required />
           )}
           <div className="flex gap-2">
-            <Button type="submit" name="status" value="lost" size="sm" variant="destructive" disabled={pending}>
+            <Button
+              type="submit"
+              name="status"
+              value="lost"
+              size="sm"
+              variant="destructive"
+              disabled={pending}
+              onClick={() => setTerminalStatus('lost')}
+            >
               {pending ? <Loader2 size={14} className="animate-spin" /> : null}
               {t('statusActions.confirmLost')}
             </Button>

@@ -23,6 +23,7 @@ import { OutboundImportForm } from '@/components/admin/OutboundImportForm'
 import { OutboundMailboxesCard } from '@/components/admin/OutboundMailboxesCard'
 import { OutboundOpenerReview } from '@/components/admin/OutboundOpenerReview'
 import { OutboundSuppressionForm } from '@/components/admin/OutboundSuppressionForm'
+import { OutboundCandidateReview } from '@/components/admin/OutboundCandidateReview'
 import { ProspectStatusBadge } from '@/components/admin/ProspectStatusBadge'
 import { LeadCard } from '@/components/admin/lead-card/LeadCard'
 import { LeadCardSheet } from '@/components/admin/lead-card/LeadCardSheet'
@@ -37,7 +38,10 @@ import {
   saveMailboxAction,
   sendMailboxTestAction,
   suppressProspectAction,
+  approveDiscoveryCandidatesAction,
+  runDiscoveryAction,
 } from './actions'
+import { listDiscoveryCandidates } from '@/lib/outbound/discovery'
 import {
   createLeadFromProspectAction,
   saveLeadNotesAction,
@@ -54,7 +58,7 @@ import {
  * A row anywhere opens the lead card beside the table (`?open=<prospectId>`).
  */
 
-const TABS = ['attention', 'queue', 'openers', 'replies', 'settings'] as const
+const TABS = ['attention', 'candidates', 'queue', 'openers', 'replies', 'settings'] as const
 type Tab = (typeof TABS)[number]
 const STATUS_FILTERS = ['all', ...PROSPECT_STATUSES] as const
 
@@ -107,17 +111,19 @@ export default async function AdminOutboundPage({
     .limit(500)
   if (statusFilter) prospectsQuery = prospectsQuery.eq('status', statusFilter)
 
-  const [prospectsRes, openers, replies, suppressions, card] = await Promise.all([
+  const [prospectsRes, openers, replies, suppressions, card, candidates] = await Promise.all([
     tab === 'queue' ? prospectsQuery : Promise.resolve({ data: [] as ProspectListRow[] }),
     tab === 'openers' ? listOpenersToReview() : Promise.resolve([]),
     tab === 'replies' ? listInboundReplies(100) : Promise.resolve([]),
     tab === 'settings' ? listSuppressions(50) : Promise.resolve([]),
     open ? getLeadCardData({ prospectId: open }) : Promise.resolve(null),
+    tab === 'candidates' ? listDiscoveryCandidates() : Promise.resolve([]),
   ])
   const prospects = (prospectsRes.data ?? []) as ProspectListRow[]
 
   const tabs = [
     { key: 'attention', label: t('tabs.attention'), count: cockpit.openersToReview + cockpit.repliesToReview + cockpit.newLeads + cockpit.dueNextActions + cockpit.mailboxErrors.length },
+    { key: 'candidates', label: 'מועמדים' },
     { key: 'queue', label: t('tabs.queue'), count: cockpit.queued },
     { key: 'openers', label: t('tabs.openers'), count: cockpit.openersToReview },
     { key: 'replies', label: t('tabs.replies'), count: cockpit.repliesToReview },
@@ -233,6 +239,14 @@ export default async function AdminOutboundPage({
             dueActions: '/admin/leads?status=attention',
             settings: outboundHref({ tab: 'settings' }),
           }}
+        />
+      )}
+
+      {tab === 'candidates' && (
+        <OutboundCandidateReview
+          candidates={candidates}
+          discoverAction={runDiscoveryAction}
+          approveAction={approveDiscoveryCandidatesAction}
         />
       )}
 

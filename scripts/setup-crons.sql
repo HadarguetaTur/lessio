@@ -141,6 +141,7 @@ declare
     {"name": "outbound-replies",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-replies"},
     {"name": "outbound-followups",          "cron": "5,20,35,50 5-15 * * 0-4", "path": "/api/internal/outbound/run-followups"},
     {"name": "outbound-openers",            "cron": "*/5 * * * *",   "path": "/api/internal/outbound/run-openers"},
+    {"name": "outbound-discovery",          "cron": "0 4 * * 0-4",   "path": "/api/internal/outbound/run-discovery"},
     {"name": "whatsapp-health",             "cron": "30 3 * * *",    "path": "/api/internal/whatsapp/health"},
     {"name": "whatsapp-broadcast",          "cron": "*/2 * * * *",   "path": "/api/internal/whatsapp/broadcast"}
   ]'::jsonb;

@@ -11,6 +11,7 @@ import { addSuppression, suppressProspect } from '@/lib/outbound/suppressions'
 import { markInboundReviewed } from '@/lib/outbound/messages'
 import { approveOpener, regenerateOpener } from '@/lib/outbound/opener'
 import { saveMailbox } from '@/lib/outbound/mailboxes'
+import { approveDiscoveryCandidates, runDiscovery } from '@/lib/outbound/discovery'
 import { isServiceAccountConfigured, sendAsUser } from '@/lib/gmail/serviceAccount'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
@@ -31,6 +32,62 @@ export type OutboundActionState = {
   /** For the test send: where the email went. */
   sentTo?: string
   detail?: string
+}
+
+const candidateIdsSchema = z.object({
+  candidateIds: z.array(z.string().uuid()).min(1).max(50),
+})
+
+/** Starts a public-business collection run. It only creates review rows. */
+export async function runDiscoveryAction(
+  _prev: OutboundActionState | null,
+  _formData: FormData
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+  try {
+    const result = await runDiscovery({ limit: 50 })
+    await recordAdminAction({
+      actorProfileId: session.profileId,
+      action: 'outbound.discovery_run',
+      targetType: 'outbound_discovery_runs',
+      metadata: result,
+    })
+    revalidatePath('/admin/outbound')
+    return { ok: true, detail: `${result.ready}` }
+  } catch (error) {
+    console.error('[admin/outbound] discovery failed', error)
+    return { error: 'DISCOVERY_FAILED' }
+  }
+}
+
+/** Approves one or many reviewed candidates into the existing send queue. */
+export async function approveDiscoveryCandidatesAction(
+  _prev: OutboundActionState | null,
+  formData: FormData
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+  let candidateIds: unknown
+  try {
+    candidateIds = JSON.parse(String(formData.get('candidateIds') ?? '[]'))
+  } catch {
+    return { error: 'INVALID_INPUT' }
+  }
+  const parsed = candidateIdsSchema.safeParse({ candidateIds })
+  if (!parsed.success) return { error: 'INVALID_INPUT' }
+  try {
+    const result = await approveDiscoveryCandidates({ candidateIds: parsed.data.candidateIds, actorProfileId: session.profileId })
+    await recordAdminAction({
+      actorProfileId: session.profileId,
+      action: 'outbound.discovery_approve',
+      targetType: 'outbound_candidates',
+      metadata: { count: parsed.data.candidateIds.length, ...result },
+    })
+    revalidatePath('/admin/outbound')
+    return { ok: true, detail: `${result.approved}` }
+  } catch (error) {
+    console.error('[admin/outbound] candidate approval failed', error)
+    return { error: 'SAVE_FAILED' }
+  }
 }
 
 const MAX_CSV_BYTES = 5 * 1024 * 1024

@@ -811,14 +811,18 @@
    a whole number of lines tall, so a field's line IS a page ruling. */
 .diary .note-page {
   --line: 2.25rem;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent calc(var(--line) - 1px),
-    var(--rule-soft) calc(var(--line) - 1px),
-    var(--rule-soft) var(--line)
-  );
   padding-bottom: var(--line);
+}
+/* The paper column around the note: ruled from its top edge, padded in whole
+   lines, so the note's grid lands on the column's ruling. */
+.diary .np-column {
+  --line: 2.25rem;
+  padding-block: var(--line) calc(var(--line) * 2);
+}
+@media (min-width: 1024px) {
+  .diary .np-column {
+    padding-block: calc(var(--line) * 2) calc(var(--line) * 3);
+  }
 }
 .diary .note-page > h1 {
   margin: 0;
@@ -850,10 +854,8 @@
 }
 .diary .note-page .field {
   gap: 0;
+  align-content: start;
   margin-bottom: var(--line);
-}
-.diary .note-page .field:last-of-type {
-  margin-bottom: 0;
 }
 .diary .note-page .field label,
 .diary .note-page .field-head {

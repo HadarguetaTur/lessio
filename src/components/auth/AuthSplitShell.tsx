@@ -36,7 +36,7 @@ export async function AuthSplitShell({ children, highlightTrial = false }: { chi
 
       <main className="grid flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <aside className="cover flex flex-col justify-center px-4 py-5 text-center sm:px-6 lg:justify-start lg:px-12 lg:py-16 lg:text-start">
-          <p className="pen text-[1.5rem] leading-tight text-[color:var(--cover-ink-2)] lg:hidden">
+          <p className="pen text-[1.2rem] leading-tight text-[color:var(--cover-ink-2)] lg:hidden">
             {hero.headline.less}
             {hero.headline.lessRest}
           </p>
@@ -58,7 +58,7 @@ export async function AuthSplitShell({ children, highlightTrial = false }: { chi
           </div>
         </aside>
 
-        <div id="auth-note" className="flex justify-center px-4 py-10 sm:px-6 lg:items-start lg:px-12 lg:py-16">
+        <div id="auth-note" className="np-column ruled flex justify-center px-4 sm:px-6 lg:items-start lg:px-12">
           {children}
         </div>
       </main>

@@ -43,30 +43,33 @@ export async function sendDemoEmailOnce(prospect: Prospect): Promise<DemoEmailOu
     prospect.locale === 'en' ? 'en' : 'he'
   )
 
-  const ok = await sendPlatformEmail({
+  const result = await sendPlatformEmail({
     to: prospect.email,
     subject: email.subject,
     html: email.html,
     headers: unsubscribeHeaders(prospect.unsubscribe_token),
   })
 
+  // The provider's id is the only thing that lets a "sent" row be traced in
+  // the Resend dashboard; a rejection keeps the provider's reason.
   await db.from('outbound_messages').insert({
     prospect_id: prospect.id,
     direction: 'out',
     kind: 'demo_email',
     transport: 'resend',
+    transport_message_id: result.ok ? result.id : null,
     subject: email.subject,
     body: null,
-    error: ok ? null : 'provider rejected or not configured',
+    error: result.ok ? null : result.error.slice(0, 500),
   })
 
-  if (!ok) {
+  if (!result.ok) {
     // Release the claim so the send can be retried; the message row above
     // keeps the record that this attempt happened.
     await db.from('outbound_prospects').update({ demo_email_sent_at: null }).eq('id', prospect.id)
     await reportError({
       name: 'OutboundDemoEmailFailed',
-      message: `demo email to prospect ${prospect.id} was not accepted by the provider`,
+      message: `demo email to prospect ${prospect.id} was not accepted by the provider: ${result.error}`,
       route: '/api/internal/outbound/replies',
       source: 'server',
     })

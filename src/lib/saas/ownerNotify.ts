@@ -66,7 +66,7 @@ export async function sendOwnerEmailOnce(params: {
   }
 
   const email = params.build(owner)
-  const ok = await sendPlatformEmail({ to: owner.email, subject: email.subject, html: email.html })
-  await finish(ok ? 'sent' : 'failed', ok ? undefined : 'provider rejected')
-  return ok ? 'sent' : 'failed'
+  const result = await sendPlatformEmail({ to: owner.email, subject: email.subject, html: email.html })
+  await finish(result.ok ? 'sent' : 'failed', result.ok ? undefined : result.error)
+  return result.ok ? 'sent' : 'failed'
 }

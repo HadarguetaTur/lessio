@@ -73,13 +73,18 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
   const from = params.orgName ? `${params.orgName} <${fromEmail}>` : fromEmail
 
   try {
-    await resend.emails.send({
+    // The Resend SDK reports an API rejection in the result, not as a throw.
+    const { error } = await resend.emails.send({
       from,
       to: params.to,
       subject: params.subject,
       html: params.html,
       attachments: params.attachments,
     })
+    if (error) {
+      console.error('[email] Resend rejected the email', { to: params.to, subject: params.subject, error })
+      return false
+    }
     console.info('[email] Email sent via Resend', { to: params.to, subject: params.subject })
     return true
   } catch (err) {
@@ -87,6 +92,10 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
     return false
   }
 }
+
+export type PlatformEmailResult =
+  | { ok: true; id: string | null }
+  | { ok: false; error: string }
 
 /**
  * Email from Lessio itself to an org owner (subscription, receipts). Always the
@@ -100,25 +109,31 @@ export async function sendPlatformEmail(params: {
   html: string
   /** Extra RFC headers, e.g. List-Unsubscribe on an outbound demo email. */
   headers?: Record<string, string>
-}): Promise<boolean> {
+}): Promise<PlatformEmailResult> {
   const resend = getResend()
   if (!resend) {
     console.warn('[email] No platform email provider configured — skipping', { to: params.to })
-    return false
+    return { ok: false, error: 'not configured' }
   }
   try {
-    await resend.emails.send({
+    // The Resend SDK reports an API rejection in the result, not as a throw,
+    // so "no exception" alone never meant the email was accepted.
+    const { data, error } = await resend.emails.send({
       from: `Lessio <${getFromEmail()}>`,
       to: params.to,
       subject: params.subject,
       html: params.html,
       ...(params.headers ? { headers: params.headers } : {}),
     })
-    console.info('[email] Platform email sent', { to: params.to, subject: params.subject })
-    return true
+    if (error) {
+      console.error('[email] Platform email rejected', { to: params.to, subject: params.subject, error })
+      return { ok: false, error: `${error.name ?? 'resend'}: ${error.message ?? 'rejected'}` }
+    }
+    console.info('[email] Platform email sent', { to: params.to, subject: params.subject, id: data?.id ?? null })
+    return { ok: true, id: data?.id ?? null }
   } catch (err) {
     console.error('[email] Platform email failed', { to: params.to, subject: params.subject, err })
-    return false
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
 }
 

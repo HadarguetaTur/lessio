@@ -4,8 +4,8 @@ import type { LegalDocProps } from '../terms/types'
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-base font-semibold text-foreground mb-2">{title}</h2>
-      <div className="text-sm leading-relaxed text-muted-foreground space-y-3">{children}</div>
+      <h2>{title}</h2>
+      <div>{children}</div>
     </section>
   )
 }
@@ -13,7 +13,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function SubSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>
+      <h3>{title}</h3>
       <div className="space-y-2">{children}</div>
     </div>
   )
@@ -21,7 +21,7 @@ function SubSection({ title, children }: { title: string; children: React.ReactN
 
 function Ul({ items }: { items: string[] }) {
   return (
-    <ul className="list-disc list-inside space-y-1 pr-2">
+    <ul>
       {items.map((item) => (
         <li key={item}>{item}</li>
       ))}
@@ -41,15 +41,15 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
   const ENTITY_NAME = entityName
   const CONTACT_PERSON = entityName
   return (
-      <div className="mt-8 space-y-8">
+      <div className="space-y-8">
 
         {/* 1 */}
         <Section title="1. מי אנחנו">
           <p>
-            <strong className="text-foreground">{ENTITY_NAME}</strong>, עוסק פטור מספר{' '}
-            <strong className="text-foreground">{ENTITY_NUMBER}</strong>, שכתובתו{' '}
-            <strong className="text-foreground">{CONTACT_ADDRESS}</strong>, מפעיל את פלטפורמת{' '}
-            <strong className="text-foreground">Lessio</strong> — מערכת SaaS לניהול עסקי שיעורים
+            <strong>{ENTITY_NAME}</strong>, עוסק פטור מספר{' '}
+            <strong>{ENTITY_NUMBER}</strong>, שכתובתו{' '}
+            <strong>{CONTACT_ADDRESS}</strong>, מפעיל את פלטפורמת{' '}
+            <strong>Lessio</strong> — מערכת SaaS לניהול עסקי שיעורים
             פרטיים ומרכזי למידה.
           </p>
           <p>
@@ -59,7 +59,7 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
             לפניות בעניין פרטיות:{' '}
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="text-violet-600 hover:underline dark:text-violet-400"
+             
             >
               {CONTACT_EMAIL}
             </a>
@@ -92,7 +92,7 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
           <SubSection title="3.2 מידע שהלקוח העסקי מזין על תלמידים, הורים ואחרים">
             <p>
               כאשר לקוח עסקי מזין למערכת מידע על תלמידיו, הוריהם, מוריו, עובדיו ולקוחותיו —{' '}
-              <strong className="text-foreground">הלקוח העסקי הוא הגורם העיקרי האחראי</strong>{' '}
+              <strong>הלקוח העסקי הוא הגורם העיקרי האחראי</strong>{' '}
               לאותו מידע. האחריות לעמידה בחוק ביחס לאותו מידע — לרבות הבטחת בסיס חוקי לאיסוף,
               מסירת הודעה לנושאי המידע וקבלת הסכמות נדרשות — מוטלת בראש ובראשונה על הלקוח
               העסקי.
@@ -134,7 +134,7 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
             <p>
               סכומי חיוב, מועדי חיוב, סטטוס תשלום, קישורי תשלום שנוצרו, היסטוריית חיובים
               וקבלות, מזהים שהתקבלו מספקי סליקה וחשבוניות חיצוניים.{' '}
-              <strong className="text-foreground">
+              <strong>
                 Lessio אינה ספקית סליקה ואינה שומרת פרטי אשראי מלאים
               </strong>{' '}
               — אלה מוחזקים אצל ספקי הסליקה בלבד, בהתאם לתקנות PCI-DSS.
@@ -212,7 +212,7 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
 
         {/* 7 */}
         <Section title="7. מסירת מידע לצדדים שלישיים">
-          <p className="font-medium text-foreground">אנו לא מוכרים מידע אישי לצדדים שלישיים.</p>
+          <p>אנו לא מוכרים מידע אישי לצדדים שלישיים.</p>
           <p>המידע עשוי להיות מועבר לגורמים הבאים אך ורק לצורך הפעלת השירות:</p>
           <Ul
             items={[
@@ -252,23 +252,23 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
               ]}
             />
             <p>
-              <strong className="text-foreground">שימוש:</strong> ההרשאות משמשות אך ורק לפעולות
+              <strong>שימוש:</strong> ההרשאות משמשות אך ורק לפעולות
               שהלקוח העסקי יוזם מתוך המערכת — שליחת מיילים בשמו ומחשבונו (למשל דרישות תשלום
               ועדכונים ללקוחותיו) וקריאת זמינות ביומן. נתוני Google אינם משמשים לפרסום, אינם
               נמכרים ואינם מועברים לצדדים שלישיים, ואינם נקראים על ידי בני אדם — למעט בהסכמת
               המשתמש, לצורכי אבטחה, או כנדרש לפי דין.
             </p>
             <p>
-              <strong className="text-foreground">אחסון:</strong> אסימוני הגישה (tokens) המתקבלים
+              <strong>אחסון:</strong> אסימוני הגישה (tokens) המתקבלים
               מ-Google נשמרים מוצפנים ומשמשים אך ורק לביצוע הפעולות המתוארות לעיל.
             </p>
             <p>
-              <strong className="text-foreground">ניתוק ומחיקה:</strong> ניתן לנתק את חשבון
+              <strong>ניתוק ומחיקה:</strong> ניתן לנתק את חשבון
               Google בכל עת מהגדרות המערכת — ועם הניתוק אסימוני הגישה נמחקים. ניתן גם לשלול את
               הרשאת Lessio ישירות בהגדרות האבטחה של Google בכתובת{' '}
               <a
                 href="https://myaccount.google.com/permissions"
-                className="text-violet-600 hover:underline dark:text-violet-400"
+               
               >
                 myaccount.google.com/permissions
               </a>
@@ -279,7 +279,7 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
               במדיניות{' '}
               <a
                 href="https://developers.google.com/terms/api-services-user-data-policy"
-                className="text-violet-600 hover:underline dark:text-violet-400"
+               
               >
                 Google API Services User Data Policy
               </a>
@@ -310,30 +310,30 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
             אנו שומרים מידע אישי כל עוד הוא נדרש להפעלת החשבון, מתן השירות, עמידה בחובות חוק
             ורגולציה, פתרון מחלוקות, אבטחת מידע וניהול גיבויים.
           </p>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
+          <div>
+            <table>
+              <thead>
                 <tr>
-                  <th className="text-right px-3 py-2 font-medium text-foreground">סוג מידע</th>
-                  <th className="text-right px-3 py-2 font-medium text-foreground">תקופת שמירה</th>
+                  <th>סוג מידע</th>
+                  <th>תקופת שמירה</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 <tr>
-                  <td className="px-3 py-2">מידע תפעולי (שיעורים, תלמידים, חיובים)</td>
-                  <td className="px-3 py-2">3 שנים מתום ההתקשרות</td>
+                  <td>מידע תפעולי (שיעורים, תלמידים, חיובים)</td>
+                  <td>3 שנים מתום ההתקשרות</td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2">לוגי מערכת ואבטחה</td>
-                  <td className="px-3 py-2">12 חודשים</td>
+                  <td>לוגי מערכת ואבטחה</td>
+                  <td>12 חודשים</td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2">גיבויים</td>
-                  <td className="px-3 py-2">90 יום</td>
+                  <td>גיבויים</td>
+                  <td>90 יום</td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2">מסמכים חשבונאיים</td>
-                  <td className="px-3 py-2">לא פחות מ-7 שנים (לפי דיני מס)</td>
+                  <td>מסמכים חשבונאיים</td>
+                  <td>לא פחות מ-7 שנים (לפי דיני מס)</td>
                 </tr>
               </tbody>
             </table>
@@ -359,10 +359,10 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
             ]}
           />
           <p>
-            <strong className="text-foreground">הגשת בקשה:</strong> יש לפנות בכתב לאימייל{' '}
+            <strong>הגשת בקשה:</strong> יש לפנות בכתב לאימייל{' '}
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="text-violet-600 hover:underline dark:text-violet-400"
+             
             >
               {CONTACT_EMAIL}
             </a>{' '}
@@ -370,14 +370,14 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
             לאמת את זהות הפונה לפני מתן מענה. הוראות מפורטות לבקשת מחיקת נתונים זמינות בעמוד{' '}
             <Link
               href="/data-deletion"
-              className="text-violet-600 hover:underline dark:text-violet-400"
+             
             >
               הוראות מחיקת נתונים
             </Link>
             .
           </p>
           <p>
-            <strong className="text-foreground">כאשר המידע הוזן על ידי לקוח עסקי:</strong> Lessio
+            <strong>כאשר המידע הוזן על ידי לקוח עסקי:</strong> Lessio
             עשויה להפנות את הפונה לאותו לקוח עסקי, שכן הוא הגורם שאסף את המידע ואחראי לו, או
             לטפל בבקשה בתיאום עמו.
           </p>
@@ -465,17 +465,17 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
         {/* 15 */}
         <Section title="15. דיוור שיווקי ותקשורת">
           <p>
-            <strong className="text-foreground">הודעות תפעוליות:</strong> הודעות הנחוצות להפעלת
+            <strong>הודעות תפעוליות:</strong> הודעות הנחוצות להפעלת
             השירות (עדכוני מערכת, אישורי רישום, שינויים בתנאי השירות, התראות אבטחה) יישלחו ללא
             אפשרות ביטול, מאחר שהן חלק בלתי נפרד מהשירות.
           </p>
           <p>
-            <strong className="text-foreground">הודעות שיווקיות של Lessio:</strong> משלוח עדכונים,
+            <strong>הודעות שיווקיות של Lessio:</strong> משלוח עדכונים,
             טיפים ומבצעים ללקוחות עסקיים ייעשה בהתאם לדין הישראלי, בהסכמה ועם אפשרות הסרה
             בכל הודעה.
           </p>
           <p>
-            <strong className="text-foreground">הודעות שהלקוח העסקי שולח ללקוחותיו:</strong>{' '}
+            <strong>הודעות שהלקוח העסקי שולח ללקוחותיו:</strong>{' '}
             Lessio מהווה תשתית טכנית לשליחת הודעות WhatsApp ותזכורות מטעם הלקוח העסקי. הלקוח
             העסקי הוא האחראי לקבלת הסכמה ולציות לחוק ביחס לאותן הודעות.
           </p>
@@ -496,28 +496,28 @@ export function PrivacyHe({ email, addr, tel, reg, entityName }: LegalDocProps &
         {/* 17 */}
         <Section title="17. יצירת קשר">
           <p>לכל שאלה, בקשה או פנייה בעניין פרטיות:</p>
-          <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 space-y-1">
+          <div className="legal-note">
             <p>
-              <strong className="text-foreground">{ENTITY_NAME}</strong>
+              <strong>{ENTITY_NAME}</strong>
             </p>
             <p>
               איש קשר לענייני פרטיות:{' '}
-              <strong className="text-foreground">{CONTACT_PERSON}</strong>
+              <strong>{CONTACT_PERSON}</strong>
             </p>
             <p>
               דוא"ל:{' '}
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="text-violet-600 hover:underline dark:text-violet-400"
+               
               >
                 {CONTACT_EMAIL}
               </a>
             </p>
             <p>
-              טלפון: <strong className="text-foreground">{CONTACT_PHONE}</strong>
+              טלפון: <strong>{CONTACT_PHONE}</strong>
             </p>
             <p>
-              כתובת: <strong className="text-foreground">{CONTACT_ADDRESS}</strong>
+              כתובת: <strong>{CONTACT_ADDRESS}</strong>
             </p>
           </div>
           <p>אנו נשתדל להשיב לפניות בנושאי פרטיות תוך 30 יום.</p>

@@ -5,8 +5,8 @@ import type { LegalDocProps } from '../terms/types'
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-base font-semibold text-foreground mb-2">{title}</h2>
-      <div className="text-sm leading-relaxed text-muted-foreground space-y-3">{children}</div>
+      <h2>{title}</h2>
+      <div>{children}</div>
     </section>
   )
 }
@@ -14,7 +14,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function SubSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>
+      <h3>{title}</h3>
       <div className="space-y-2">{children}</div>
     </div>
   )
@@ -22,7 +22,7 @@ function SubSection({ title, children }: { title: string; children: React.ReactN
 
 function Ul({ items }: { items: string[] }) {
   return (
-    <ul className="list-disc list-inside space-y-1 ps-2">
+    <ul>
       {items.map((item) => (
         <li key={item}>{item}</li>
       ))}
@@ -43,15 +43,15 @@ export function PrivacyEn({
   entityName,
 }: LegalDocProps & { entityName: string }) {
   return (
-      <div className="mt-8 space-y-8">
+      <div className="space-y-8">
 
         {/* 1 */}
         <Section title="1. Who we are">
           <p>
-            <strong className="text-foreground">{entityName}</strong>, exempt dealer number{' '}
-            <strong className="text-foreground">{reg}</strong>, of{' '}
-            <strong className="text-foreground">{addr}</strong>, operates the{' '}
-            <strong className="text-foreground">Lessio</strong> platform — a SaaS system for running
+            <strong>{entityName}</strong>, exempt dealer number{' '}
+            <strong>{reg}</strong>, of{' '}
+            <strong>{addr}</strong>, operates the{' '}
+            <strong>Lessio</strong> platform — a SaaS system for running
             private tutoring businesses and learning centres.
           </p>
           <p>
@@ -62,7 +62,7 @@ export function PrivacyEn({
             Privacy enquiries:{' '}
             <a
               href={`mailto:${email}`}
-              className="text-violet-600 hover:underline dark:text-violet-400"
+             
             >
               {email}
             </a>
@@ -97,7 +97,7 @@ export function PrivacyEn({
             <p>
               When a business customer enters information about its students, their parents, its teachers,
               its employees and its customers —{' '}
-              <strong className="text-foreground">the business customer is primarily responsible</strong>{' '}
+              <strong>the business customer is primarily responsible</strong>{' '}
               for that information. Responsibility for legal compliance in respect of it — including
               establishing a lawful basis for collection, giving notice to data subjects and obtaining the
               required consents — rests first and foremost with the business customer.
@@ -143,7 +143,7 @@ export function PrivacyEn({
             <p>
               Charge amounts, charge dates, payment status, payment links created, charge and receipt
               history, and identifiers received from external payment and invoicing providers.{' '}
-              <strong className="text-foreground">
+              <strong>
                 Lessio is not a payment processor and does not store full card details
               </strong>{' '}
               — those are held only by the payment processors, in accordance with PCI-DSS.
@@ -223,7 +223,7 @@ export function PrivacyEn({
 
         {/* 7 */}
         <Section title="7. Sharing information with third parties">
-          <p className="font-medium text-foreground">We do not sell personal information to third parties.</p>
+          <p>We do not sell personal information to third parties.</p>
           <p>Information may be passed to the following parties solely in order to operate the service:</p>
           <Ul
             items={[
@@ -268,7 +268,7 @@ export function PrivacyEn({
               ]}
             />
             <p>
-              <strong className="text-foreground">Use:</strong> these permissions are used solely for
+              <strong>Use:</strong> these permissions are used solely for
               actions the business customer initiates from within the system — sending emails in the
               customer&apos;s name and from the customer&apos;s account (for example payment requests and
               updates to their clients) and reading calendar availability. Google user data is not
@@ -277,17 +277,17 @@ export function PrivacyEn({
               law.
             </p>
             <p>
-              <strong className="text-foreground">Storage:</strong> the access tokens received from
+              <strong>Storage:</strong> the access tokens received from
               Google are stored encrypted and are used solely to perform the actions described above.
             </p>
             <p>
-              <strong className="text-foreground">Disconnection and deletion:</strong> the Google
+              <strong>Disconnection and deletion:</strong> the Google
               account can be disconnected at any time from the system settings — upon disconnection
               the access tokens are deleted. Lessio&apos;s access can also be revoked directly in
               Google&apos;s security settings at{' '}
               <a
                 href="https://myaccount.google.com/permissions"
-                className="text-violet-600 hover:underline dark:text-violet-400"
+               
               >
                 myaccount.google.com/permissions
               </a>
@@ -298,7 +298,7 @@ export function PrivacyEn({
               will adhere to the{' '}
               <a
                 href="https://developers.google.com/terms/api-services-user-data-policy"
-                className="text-violet-600 hover:underline dark:text-violet-400"
+               
               >
                 Google API Services User Data Policy
               </a>
@@ -331,30 +331,30 @@ export function PrivacyEn({
             service, meet legal and regulatory obligations, resolve disputes, secure information and
             manage backups.
           </p>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
+          <div>
+            <table>
+              <thead>
                 <tr>
-                  <th className="text-start px-3 py-2 font-medium text-foreground">Type of information</th>
-                  <th className="text-start px-3 py-2 font-medium text-foreground">Retention period</th>
+                  <th>Type of information</th>
+                  <th>Retention period</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 <tr>
-                  <td className="px-3 py-2">Operational data (lessons, students, charges)</td>
-                  <td className="px-3 py-2">3 years from the end of the engagement</td>
+                  <td>Operational data (lessons, students, charges)</td>
+                  <td>3 years from the end of the engagement</td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2">System and security logs</td>
-                  <td className="px-3 py-2">12 months</td>
+                  <td>System and security logs</td>
+                  <td>12 months</td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2">Backups</td>
-                  <td className="px-3 py-2">90 days</td>
+                  <td>Backups</td>
+                  <td>90 days</td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2">Accounting documents</td>
-                  <td className="px-3 py-2">No less than 7 years (under tax law)</td>
+                  <td>Accounting documents</td>
+                  <td>No less than 7 years (under tax law)</td>
                 </tr>
               </tbody>
             </table>
@@ -381,10 +381,10 @@ export function PrivacyEn({
             ]}
           />
           <p>
-            <strong className="text-foreground">Making a request:</strong> write to{' '}
+            <strong>Making a request:</strong> write to{' '}
             <a
               href={`mailto:${email}`}
-              className="text-violet-600 hover:underline dark:text-violet-400"
+             
             >
               {email}
             </a>{' '}
@@ -393,14 +393,14 @@ export function PrivacyEn({
             responding. Detailed instructions for requesting data deletion are available on the{' '}
             <Link
               href="/data-deletion"
-              className="text-violet-600 hover:underline dark:text-violet-400"
+             
             >
               data deletion instructions
             </Link>{' '}
             page.
           </p>
           <p>
-            <strong className="text-foreground">Where the information was entered by a business customer:</strong>{' '}
+            <strong>Where the information was entered by a business customer:</strong>{' '}
             Lessio may refer the requester to that business customer, since it is the party that collected
             the information and is responsible for it, or handle the request in coordination with it.
           </p>
@@ -491,18 +491,18 @@ export function PrivacyEn({
         {/* 15 */}
         <Section title="15. Marketing and communications">
           <p>
-            <strong className="text-foreground">Operational messages:</strong> messages necessary to
+            <strong>Operational messages:</strong> messages necessary to
             operate the service (system updates, registration confirmations, changes to the terms of
             service, security alerts) are sent without an opt-out, since they are an inseparable part of
             the service.
           </p>
           <p>
-            <strong className="text-foreground">Lessio marketing messages:</strong> updates, tips and
+            <strong>Lessio marketing messages:</strong> updates, tips and
             offers are sent to business customers in accordance with Israeli law, with consent and with an
             opt-out in every message.
           </p>
           <p>
-            <strong className="text-foreground">Messages a business customer sends to its own customers:</strong>{' '}
+            <strong>Messages a business customer sends to its own customers:</strong>{' '}
             Lessio is the technical infrastructure for sending WhatsApp messages and reminders on the
             business customer&apos;s behalf. The business customer is responsible for obtaining consent
             and complying with the law in respect of those messages.
@@ -525,27 +525,27 @@ export function PrivacyEn({
         {/* 17 */}
         <Section title="17. Contact">
           <p>For any question, request or enquiry regarding privacy:</p>
-          <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 space-y-1">
+          <div className="legal-note">
             <p>
-              <strong className="text-foreground">{entityName}</strong>
+              <strong>{entityName}</strong>
             </p>
             <p>
-              Privacy contact: <strong className="text-foreground">{entityName}</strong>
+              Privacy contact: <strong>{entityName}</strong>
             </p>
             <p>
               Email:{' '}
               <a
                 href={`mailto:${email}`}
-                className="text-violet-600 hover:underline dark:text-violet-400"
+               
               >
                 {email}
               </a>
             </p>
             <p>
-              Phone: <strong className="text-foreground">{tel}</strong>
+              Phone: <strong>{tel}</strong>
             </p>
             <p>
-              Address: <strong className="text-foreground">{addr}</strong>
+              Address: <strong>{addr}</strong>
             </p>
           </div>
           <p>We aim to respond to privacy enquiries within 30 days.</p>

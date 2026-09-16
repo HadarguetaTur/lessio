@@ -9,16 +9,16 @@ import type { TermsDocProps } from './types'
  */
 export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
   return (
-      <div className="mt-8 space-y-10 text-sm leading-relaxed text-muted-foreground" dir="ltr">
+      <div dir="ltr">
 
         {/* 1 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">1. Introduction and identity of the parties</h2>
+          <h2>1. Introduction and identity of the parties</h2>
           <p>
             These terms of use (&quot;the Terms&quot;) govern the relationship between{' '}
-            <strong className="text-foreground">Turgeman Guetta Hadar Mazal</strong>, exempt dealer number{' '}
-            <strong className="text-foreground">{reg}</strong>, address:{' '}
-            <strong className="text-foreground">{addr}</strong> (&quot;the Company&quot;, &quot;Lessio&quot;),
+            <strong>Turgeman Guetta Hadar Mazal</strong>, exempt dealer number{' '}
+            <strong>{reg}</strong>, address:{' '}
+            <strong>{addr}</strong> (&quot;the Company&quot;, &quot;Lessio&quot;),
             and anyone using the Lessio platform (&quot;the Customer&quot;, &quot;the User&quot;).
           </p>
           <p className="mt-3">
@@ -28,15 +28,15 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
             of the Lessio privacy policy.
           </p>
           <p className="mt-3">
-            Support enquiries: <a href={`mailto:${email}`} className="text-violet-600 hover:underline">{email}</a>
+            Support enquiries: <a href={`mailto:${email}`}>{email}</a>
             {' · '}
-            Legal enquiries: <a href={`mailto:${email}`} className="text-violet-600 hover:underline">{email}</a>
+            Legal enquiries: <a href={`mailto:${email}`}>{email}</a>
           </p>
         </section>
 
         {/* 2 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">2. Definitions</h2>
+          <h2>2. Definitions</h2>
           <dl className="space-y-2">
             {[
               ['Lessio / the system', 'The software-as-a-service (SaaS) platform operated by the Company, including all user interfaces, the API, the parent portal, accompanying applications, databases and related services.'],
@@ -49,7 +49,7 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
               ['The service / the services', 'All functionality, tools, interfaces and capabilities offered through Lessio, as they may be from time to time.'],
             ].map(([term, def]) => (
               <div key={term} className="flex gap-2">
-                <dt className="font-medium text-foreground shrink-0">&quot;{term}&quot;</dt>
+                <dt className="shrink-0 font-semibold text-[color:var(--ink)]">&quot;{term}&quot;</dt>
                 <dd>— {def}</dd>
               </div>
             ))}
@@ -58,9 +58,9 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 3 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">3. Acceptance of the Terms</h2>
+          <h2>3. Acceptance of the Terms</h2>
           <p className="mb-2">Doing any of the following constitutes binding acceptance of these Terms:</p>
-          <ul className="list-disc list-inside space-y-1 ms-3">
+          <ul>
             {['Registering and creating an account', 'Signing in to the system', 'Using any part of the service, including during a pilot or trial period', 'Clicking "I agree", "Join", "Continue" or a similar confirmation during sign-up', 'Using the parent portal'].map(item => (
               <li key={item}>{item}</li>
             ))}
@@ -74,7 +74,7 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 4 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">4. Description of the service</h2>
+          <h2>4. Description of the service</h2>
           <p>
             Lessio provides operational infrastructure for running businesses in private tutoring and
             learning centres. The system may include, from time to time, capabilities for managing:
@@ -84,7 +84,7 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
           </p>
           <p className="mt-3">
             Lessio is an operational system that supports running these processes. It is{' '}
-            <strong className="text-foreground">not</strong> a payment processor, a bank, a credit card
+            <strong>not</strong> a payment processor, a bank, a credit card
             company, a bookkeeping service or a tax adviser, and it does not issue tax invoices on the
             customer&apos;s behalf unless expressly agreed otherwise.
           </p>
@@ -97,14 +97,14 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 5 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">5. Pilot, beta and free use</h2>
+          <h2>5. Pilot, beta and free use</h2>
           <p>
             Lessio offers a trial period of{' '}
-            <strong className="text-foreground">30 days at no charge and with no credit card required</strong>.
+            <strong>30 days at no charge and with no credit card required</strong>.
             At the end of that period, moving to a paid plan requires express consent.
           </p>
           <p className="mt-3">
-            Free use is provided <strong className="text-foreground">&quot;as is&quot;</strong>, without
+            Free use is provided <strong>&quot;as is&quot;</strong>, without
             any undertaking as to availability, stability, continuity, data integrity, performance, full
             support or fitness for any particular need.
           </p>
@@ -117,14 +117,14 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 6 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">6. User accounts and permissions</h2>
-          <ul className="list-disc list-inside space-y-2 ms-3">
+          <h2>6. User accounts and permissions</h2>
+          <ul>
             <li>The business customer is responsible for keeping its account credentials confidential.</li>
             <li>The customer is responsible for every action taken through its account — whether by the customer or by authorised users it has added.</li>
             <li>The customer is responsible for setting appropriate permissions for teachers, employees and authorised users. The Company is not responsible for unauthorised access resulting from the customer&apos;s own configuration.</li>
             <li>
               The customer undertakes to notify the Company immediately at{' '}
-              <a href={`mailto:${email}`} className="text-violet-600 hover:underline">{email}</a>
+              <a href={`mailto:${email}`}>{email}</a>
               {' '}in any case of suspected unauthorised use of its account.
             </li>
           </ul>
@@ -132,21 +132,21 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 7 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">7. Business customer responsibilities</h2>
+          <h2>7. Business customer responsibilities</h2>
           <div className="space-y-3">
-            <p><strong className="text-foreground">Accuracy of information:</strong> the customer is responsible for the correctness, accuracy and currency of all information it enters into the system.</p>
-            <p><strong className="text-foreground">Consents and authorisations:</strong> the customer represents that it has obtained every consent, permission and approval required by law in order to enter personal information about students, parents, teachers and employees, and to send messages and payment requests.</p>
-            <p><strong className="text-foreground">Legal compliance:</strong> the customer is responsible for complying with every law that applies to it — the Protection of Privacy Law, the Communications Law (commercial messages), the Consumer Protection Law, bookkeeping rules, tax law and any relevant sector-specific requirement.</p>
-            <p><strong className="text-foreground">Message content:</strong> the customer is responsible for all content it sends to its own customers through the system. Lessio is a delivery channel only.</p>
-            <p><strong className="text-foreground">Welcome notice and opt-out:</strong> before the first business-initiated message is sent to a parent, the system sends a one-time welcome notice stating on whose behalf the messages are sent, what kinds of messages will follow, and how to stop them (by replying &quot;stop&quot; or &quot;הסר&quot;). A parent who asks to stop receives no further business-initiated messages of any kind. None of this reduces the customer&apos;s responsibility to obtain the consents required by law.</p>
-            <p><strong className="text-foreground">Customer relationships:</strong> the customer is responsible for its rates, cancellation terms, refunds, collection, payment policy and any dispute between it and its own customers.</p>
-            <p><strong className="text-foreground">Professional advice:</strong> operating Lessio does not constitute legal, accounting, commercial or tax advice, and does not replace such professional advice.</p>
+            <p><strong>Accuracy of information:</strong> the customer is responsible for the correctness, accuracy and currency of all information it enters into the system.</p>
+            <p><strong>Consents and authorisations:</strong> the customer represents that it has obtained every consent, permission and approval required by law in order to enter personal information about students, parents, teachers and employees, and to send messages and payment requests.</p>
+            <p><strong>Legal compliance:</strong> the customer is responsible for complying with every law that applies to it — the Protection of Privacy Law, the Communications Law (commercial messages), the Consumer Protection Law, bookkeeping rules, tax law and any relevant sector-specific requirement.</p>
+            <p><strong>Message content:</strong> the customer is responsible for all content it sends to its own customers through the system. Lessio is a delivery channel only.</p>
+            <p><strong>Welcome notice and opt-out:</strong> before the first business-initiated message is sent to a parent, the system sends a one-time welcome notice stating on whose behalf the messages are sent, what kinds of messages will follow, and how to stop them (by replying &quot;stop&quot; or &quot;הסר&quot;). A parent who asks to stop receives no further business-initiated messages of any kind. None of this reduces the customer&apos;s responsibility to obtain the consents required by law.</p>
+            <p><strong>Customer relationships:</strong> the customer is responsible for its rates, cancellation terms, refunds, collection, payment policy and any dispute between it and its own customers.</p>
+            <p><strong>Professional advice:</strong> operating Lessio does not constitute legal, accounting, commercial or tax advice, and does not replace such professional advice.</p>
           </div>
         </section>
 
         {/* 8 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">8. Information about minors</h2>
+          <h2>8. Information about minors</h2>
           <p>The system may be used to manage information about students who are minors (under 18).</p>
           <p className="mt-3">
             The business customer represents and confirms that it has the legal right to enter, store and
@@ -163,10 +163,10 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 9 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">9. Privacy and data processing</h2>
+          <h2>9. Privacy and data processing</h2>
           <p>
             The use of personal information collected through the service is governed by the Lessio
-            privacy policy (available at <Link href="/privacy" className="text-violet-600 hover:underline">/privacy</Link>),
+            privacy policy (available at <Link href="/privacy">/privacy</Link>),
             which forms an integral part of these Terms.
           </p>
           <p className="mt-3">
@@ -175,7 +175,7 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
             security, technical support, performance analysis, legal compliance and prevention of misuse.
           </p>
           <p className="mt-3">
-            Lessio <strong className="text-foreground">will not sell</strong> identifiable personal
+            Lessio <strong>will not sell</strong> identifiable personal
             information to third parties for marketing purposes. The Company may process anonymous or
             aggregated data (which does not allow a specific person to be identified) in order to improve
             the service and analyse trends.
@@ -184,14 +184,14 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 10 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">10. Third-party providers</h2>
+          <h2>10. Third-party providers</h2>
           <p>
             In order to provide the service, Lessio may rely on external providers, including but not
             limited to: WhatsApp/Meta, card-payment processors, invoicing providers, cloud providers,
             email and SMS services, and analytics providers.
           </p>
           <p className="mt-3">
-            The Company is <strong className="text-foreground">not responsible</strong> for the
+            The Company is <strong>not responsible</strong> for the
             availability, performance, policies, changes, blocks, faults, changes of terms or any failure
             of third-party providers — including a WhatsApp account being blocked, a payment failure, an
             API change, or a cloud service outage.
@@ -205,16 +205,16 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 11 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">11. Payments, subscriptions and cancellations</h2>
+          <h2>11. Payments, subscriptions and cancellations</h2>
 
-          <h3 className="font-medium text-foreground mt-4 mb-2">11.1 Plans and prices</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse border border-border rounded">
+          <h3>11.1 Plans and prices</h3>
+          <div>
+            <table>
               <thead>
-                <tr className="bg-muted">
-                  <th className="border border-border px-3 py-2 text-start font-medium text-foreground">Plan</th>
-                  <th className="border border-border px-3 py-2 text-start font-medium text-foreground">Monthly</th>
-                  <th className="border border-border px-3 py-2 text-start font-medium text-foreground">Annual</th>
+                <tr>
+                  <th>Plan</th>
+                  <th>Monthly</th>
+                  <th>Annual</th>
                 </tr>
               </thead>
               <tbody>
@@ -227,42 +227,42 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
                   ]),
                 ].map(([plan, monthly, annual]) => (
                   <tr key={plan}>
-                    <td className="border border-border px-3 py-2">{plan}</td>
-                    <td className="border border-border px-3 py-2">{monthly}</td>
-                    <td className="border border-border px-3 py-2">{annual}</td>
+                    <td>{plan}</td>
+                    <td>{monthly}</td>
+                    <td>{annual}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p>
             Prices are final and carry no VAT. Lessio reserves the right to change prices on 30
             days&apos; notice.
           </p>
 
-          <h3 className="font-medium text-foreground mt-4 mb-2">11.2 Late payment</h3>
+          <h3>11.2 Late payment</h3>
           <p>
             Late payment may lead to restricted access to the service, suspension of the account, and — in
             the case of prolonged non-payment — termination of the engagement. The Company will send a
             reminder before taking any such step.
           </p>
 
-          <h3 className="font-medium text-foreground mt-4 mb-2">11.3 Cancellation</h3>
+          <h3>11.3 Cancellation</h3>
           <p>
             The customer may cancel its subscription at any time by emailing{' '}
-            <a href={`mailto:${email}`} className="text-violet-600 hover:underline">{email}</a>
+            <a href={`mailto:${email}`}>{email}</a>
             {' '}or by clicking &quot;Cancel subscription&quot; in the account management screen.
             Cancellation takes effect at the end of the current billing period. No pro-rata refund is given
             for a period that has already begun, subject to any mandatory law.
           </p>
 
-          <h3 className="font-medium text-foreground mt-4 mb-2">11.4 Refund policy</h3>
+          <h3>11.4 Refund policy</h3>
           <p>
-            A customer within <strong className="text-foreground">14 days of the first charge only</strong>{' '}
+            A customer within <strong>14 days of the first charge only</strong>{' '}
             may request a full refund. After that, no pro-rata refund is given, subject to any mandatory law.
           </p>
 
-          <h3 className="font-medium text-foreground mt-4 mb-2">11.5 Consumer customers</h3>
+          <h3>11.5 Consumer customers</h3>
           <p>
             Where the customer is a &quot;consumer&quot; as defined in the Israeli Consumer Protection Law,
             5741-1981, the cancellation rights set out in that law apply, including the right to cancel a
@@ -273,9 +273,9 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 12 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">12. Availability, maintenance and changes</h2>
+          <h2>12. Availability, maintenance and changes</h2>
           <p>
-            The service is provided <strong className="text-foreground">&quot;as is&quot; and &quot;as available&quot;</strong>,
+            The service is provided <strong>&quot;as is&quot; and &quot;as available&quot;</strong>,
             without any undertaking as to continuous availability, a particular level of performance,
             freedom from faults, or full fitness for the customer&apos;s needs. The Company does not commit
             to a specific service level (SLA) unless agreed otherwise in a separate written agreement.
@@ -289,9 +289,9 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 13 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">13. Prohibited use</h2>
+          <h2>13. Prohibited use</h2>
           <p className="mb-2">The customer undertakes not to do, and not to allow others to do, any of the following:</p>
-          <ul className="list-disc list-inside space-y-1 ms-3">
+          <ul>
             {[
               'Use the service for any unlawful, misleading or fraudulent purpose, or one that infringes the rights of others.',
               'Process, store or transmit personal information without lawful authorisation, contrary to the Protection of Privacy Law.',
@@ -307,7 +307,7 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 14 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">14. Intellectual property</h2>
+          <h2>14. Intellectual property</h2>
           <p>
             All rights in the Lessio platform — including source code, design, brand, logo, business
             logic, processes, screens, interfaces and documentation — belong to the Company and/or its
@@ -327,7 +327,7 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 15 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">15. Confidentiality</h2>
+          <h2>15. Confidentiality</h2>
           <p>
             Each party undertakes to keep confidential the other party&apos;s confidential business
             information disclosed to it during the engagement. This undertaking does not apply to
@@ -340,7 +340,7 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 16 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">16. Limitation of liability</h2>
+          <h2>16. Limitation of liability</h2>
           <p>
             To the fullest extent permitted by law, Lessio will not be liable for indirect,
             consequential, incidental, special or punitive damages, or for loss of profits, revenue,
@@ -355,7 +355,7 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
           </p>
           <p className="mt-3">
             Lessio&apos;s total liability to the customer, on any cause of action, will not exceed{' '}
-            <strong className="text-foreground">the amounts actually paid to Lessio in the 3 months
+            <strong>the amounts actually paid to Lessio in the 3 months
             preceding the event giving rise to the damage</strong>.
           </p>
           <p className="mt-3">
@@ -366,12 +366,12 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 17 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">17. Indemnity</h2>
+          <h2>17. Indemnity</h2>
           <p className="mb-2">
             The customer undertakes to indemnify, defend and hold harmless Lessio, its directors,
             employees and suppliers against any claim, damage, expense or legal cost arising from:
           </p>
-          <ul className="list-disc list-inside space-y-1 ms-3">
+          <ul>
             {[
               'Prohibited use of the service by the customer or anyone on its behalf.',
               'Breach of any provision of these Terms or of any law applying to the customer.',
@@ -385,11 +385,11 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 18 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">18. Suspension, restriction and termination</h2>
+          <h2>18. Suspension, restriction and termination</h2>
           <p className="mb-2">
             Lessio may suspend, restrict or terminate the customer&apos;s access in the following cases:
           </p>
-          <ul className="list-disc list-inside space-y-1 ms-3 mb-3">
+          <ul>
             {[
               'A material breach of these terms of use.',
               'Non-payment not remedied within 7 business days of notice.',
@@ -401,20 +401,20 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
           <p>Where possible, Lessio will give advance notice before suspending access, except in security emergencies.</p>
           <p className="mt-3">
             After the engagement ends, access to the system may be blocked. Customer data is retained for{' '}
-            <strong className="text-foreground">90 days</strong> after the engagement ends. During that
+            <strong>90 days</strong> after the engagement ends. During that
             period a data export may be requested in writing at{' '}
-            <a href={`mailto:${email}`} className="text-violet-600 hover:underline">{email}</a>.
+            <a href={`mailto:${email}`}>{email}</a>.
             After 90 days the information may be permanently deleted.
           </p>
         </section>
 
         {/* 19 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">19. Changes to the Terms</h2>
+          <h2>19. Changes to the Terms</h2>
           <p>
             Lessio may update these Terms from time to time. A material change will be published in the
             user interface and/or sent by notice to the email address registered on the account, at least{' '}
-            <strong className="text-foreground">14 days</strong> before the change takes effect.
+            <strong>14 days</strong> before the change takes effect.
             Continued use of the service after the changes take effect will be treated as acceptance of the
             updated Terms. A customer who does not agree may cancel its subscription before the changes
             take effect.
@@ -423,11 +423,11 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 20 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">20. Governing law and jurisdiction</h2>
+          <h2>20. Governing law and jurisdiction</h2>
           <p>
             These Terms are governed by the law of the State of Israel, without applying conflict-of-law
             rules that would refer to foreign law. Exclusive jurisdiction over any dispute lies with the
-            competent courts of the <strong className="text-foreground">Tel Aviv district</strong>. Nothing
+            competent courts of the <strong>Tel Aviv district</strong>. Nothing
             in this clause derogates from a consumer&apos;s right to choose another competent forum, where
             the law allows it.
           </p>
@@ -435,18 +435,18 @@ export function TermsEn({ email, addr, tel, reg, pricing }: TermsDocProps) {
 
         {/* 21 */}
         <section>
-          <h2 className="text-base font-semibold text-foreground mb-3">21. Contact</h2>
+          <h2>21. Contact</h2>
           <div className="space-y-1">
             <p>
-              <strong className="text-foreground">General support:</strong>{' '}
-              <a href={`mailto:${email}`} className="text-violet-600 hover:underline">{email}</a>
+              <strong>General support:</strong>{' '}
+              <a href={`mailto:${email}`}>{email}</a>
             </p>
             <p>
-              <strong className="text-foreground">Legal and privacy enquiries:</strong>{' '}
-              <a href={`mailto:${email}`} className="text-violet-600 hover:underline">{email}</a>
+              <strong>Legal and privacy enquiries:</strong>{' '}
+              <a href={`mailto:${email}`}>{email}</a>
             </p>
-            <p><strong className="text-foreground">Phone:</strong> {tel}</p>
-            <p><strong className="text-foreground">Postal address:</strong> {addr}</p>
+            <p><strong>Phone:</strong> {tel}</p>
+            <p><strong>Postal address:</strong> {addr}</p>
           </div>
         </section>
 

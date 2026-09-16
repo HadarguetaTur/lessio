@@ -16,15 +16,15 @@ export async function generateMetadata(): Promise<Metadata> {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-base font-semibold text-foreground mb-2">{title}</h2>
-      <div className="text-sm leading-relaxed text-muted-foreground space-y-3">{children}</div>
+      <h2>{title}</h2>
+      <div className="space-y-3">{children}</div>
     </section>
   )
 }
 
 function Ul({ items }: { items: string[] }) {
   return (
-    <ul className="list-disc list-inside space-y-1 ps-2">
+    <ul>
       {items.map((item) => (
         <li key={item}>{item}</li>
       ))}
@@ -43,26 +43,12 @@ export default async function DataDeletionPage() {
     '{email}'
   )
 
-  const emailLink = (
-    <a
-      href={`mailto:${email}`}
-      className="text-violet-600 hover:underline dark:text-violet-400"
-    >
-      {email}
-    </a>
-  )
+  const emailLink = <a href={`mailto:${email}`}>{email}</a>
 
   return (
-    <LegalSimpleLayout>
-      <h1 className="text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        {t('title')}
-      </h1>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {tLegal('lastUpdated')}: {t('lastUpdatedDate')}
-      </p>
-
-      <div className="mt-8 space-y-8">
-        <p className="text-sm leading-relaxed text-muted-foreground">{t('intro')}</p>
+    <LegalSimpleLayout title={t('title')} meta={`${tLegal('lastUpdated')}: ${t('lastUpdatedDate')}`}>
+      <div className="space-y-8">
+        <p>{t('intro')}</p>
 
         <Section title={t('sections.whatData.heading')}>
           <p>{t('sections.whatData.body')}</p>
@@ -95,23 +81,9 @@ export default async function DataDeletionPage() {
             {contactAfter}
           </p>
           <p>
-            <Link
-              href="/privacy"
-              className="text-violet-600 hover:underline dark:text-violet-400"
-            >
-              {tLegal('privacy.title')}
-            </Link>
+            <Link href="/privacy">{tLegal('privacy.title')}</Link>
           </p>
         </Section>
-      </div>
-
-      <div className="mt-12">
-        <Link
-          href="/"
-          className="text-sm font-medium text-violet-600 hover:underline dark:text-violet-400"
-        >
-          &larr; {tLegal('backHome')}
-        </Link>
       </div>
     </LegalSimpleLayout>
   )

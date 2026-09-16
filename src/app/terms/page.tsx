@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { getLocale, getTranslations } from 'next-intl/server'
 
 import { LegalSimpleLayout } from '@/components/marketing/LegalSimpleLayout'
@@ -38,22 +37,11 @@ export default async function TermsPage() {
   const docProps = { email, addr, tel, reg, pricing }
 
   return (
-    <LegalSimpleLayout>
-      <h1 className="text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        {tLegal('terms.title')}
-      </h1>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {tLegal('version', { version: '1.0' })} · {tLegal('lastUpdated')}: {today}
-      </p>
-
+    <LegalSimpleLayout
+      title={tLegal('terms.title')}
+      meta={`${tLegal('version', { version: '1.0' })} · ${tLegal('lastUpdated')}: ${today}`}
+    >
       {locale === 'en' ? <TermsEn {...docProps} /> : <TermsHe {...docProps} />}
-
-      <Link
-        href="/"
-        className="mt-10 inline-flex text-sm font-semibold text-violet-600 underline-offset-4 transition-colors hover:text-violet-500 hover:underline dark:text-violet-400 dark:hover:text-violet-300"
-      >
-        {tLegal('backHome')}
-      </Link>
     </LegalSimpleLayout>
   )
 }

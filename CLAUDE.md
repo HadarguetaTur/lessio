@@ -138,7 +138,7 @@ Locale is stored as a cookie named `locale` (read in `src/i18n/request.ts`) and 
 UI components that invoke server actions must receive the action as a prop — never import server actions directly inside shared UI components. This prevents cross-context contamination between dashboard, admin, and portal shells.
 
 **SaaS platform layer (distinct from org-level billing):**
-Organizations themselves are tenants on the Lessio SaaS platform. Platform billing (plan selection, payment for Lessio itself) lives in `src/lib/saas/` and `src/app/(dashboard)/subscriptions/`. This is entirely separate from the org-level billing engine (`src/lib/billing/monthly/`) that bills *students*. The superadmin shell (`/admin/`) manages the platform; org owners manage their own org's student billing.
+Organizations themselves are tenants on the Lessio SaaS platform. Platform billing (plan selection, payment for Lessio itself) lives in `src/lib/saas/` and the owner's `/account/billing` page. (`/subscriptions` is the org's list of *student* subscriptions, not platform billing.) This is entirely separate from the org-level billing engine (`src/lib/billing/monthly/`) that bills *students*. The superadmin shell (`/admin/`) manages the platform; org owners manage their own org's student billing.
 
 The SaaS billing provider is **Sumit** (`src/lib/saas/sumit.ts`, parsing in `sumitParse.ts`). Credentials (`SUMIT_COMPANY_ID`, `SUMIT_API_KEY`) are platform-level env vars (always required).
 

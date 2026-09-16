@@ -39,6 +39,8 @@ export type AdminAuditAction =
   | 'outbound.opener_regenerate'
   | 'outbound.discovery_run'
   | 'outbound.discovery_approve'
+  | 'outbound.research_requested'
+  | 'outbound.automation_changed'
   | 'outbound.suppress_prospect'
   | 'outbound.reply_reviewed'
   | 'lead.status_change'

@@ -40,8 +40,10 @@ import {
   suppressProspectAction,
   approveDiscoveryCandidatesAction,
   runDiscoveryAction,
+  researchCandidatesAction,
+  saveDiscoveryAutomationAction,
 } from './actions'
-import { listDiscoveryCandidates } from '@/lib/outbound/discovery'
+import { listDiscoveryCandidates, getDiscoveryAutomation } from '@/lib/outbound/discovery'
 import {
   createLeadFromProspectAction,
   saveLeadNotesAction,
@@ -111,19 +113,20 @@ export default async function AdminOutboundPage({
     .limit(500)
   if (statusFilter) prospectsQuery = prospectsQuery.eq('status', statusFilter)
 
-  const [prospectsRes, openers, replies, suppressions, card, candidates] = await Promise.all([
+  const [prospectsRes, openers, replies, suppressions, card, candidates, automation] = await Promise.all([
     tab === 'queue' ? prospectsQuery : Promise.resolve({ data: [] as ProspectListRow[] }),
     tab === 'openers' ? listOpenersToReview() : Promise.resolve([]),
     tab === 'replies' ? listInboundReplies(100) : Promise.resolve([]),
     tab === 'settings' ? listSuppressions(50) : Promise.resolve([]),
     open ? getLeadCardData({ prospectId: open }) : Promise.resolve(null),
     tab === 'candidates' ? listDiscoveryCandidates() : Promise.resolve([]),
+    tab === 'candidates' ? getDiscoveryAutomation() : Promise.resolve(null),
   ])
   const prospects = (prospectsRes.data ?? []) as ProspectListRow[]
 
   const tabs = [
     { key: 'attention', label: t('tabs.attention'), count: cockpit.openersToReview + cockpit.repliesToReview + cockpit.newLeads + cockpit.dueNextActions + cockpit.mailboxErrors.length },
-    { key: 'candidates', label: 'מועמדים' },
+    { key: 'candidates', label: t('discovery.tab') },
     { key: 'queue', label: t('tabs.queue'), count: cockpit.queued },
     { key: 'openers', label: t('tabs.openers'), count: cockpit.openersToReview },
     { key: 'replies', label: t('tabs.replies'), count: cockpit.repliesToReview },
@@ -245,6 +248,10 @@ export default async function AdminOutboundPage({
       {tab === 'candidates' && (
         <OutboundCandidateReview
           candidates={candidates}
+          automation={automation!}
+          campaigns={campaigns.filter((c) => c.is_active && c.locale === 'he' && c.body_text.includes('{{personal_line}}'))}
+          researchAction={researchCandidatesAction}
+          automationAction={saveDiscoveryAutomationAction}
           discoverAction={runDiscoveryAction}
           approveAction={approveDiscoveryCandidatesAction}
         />

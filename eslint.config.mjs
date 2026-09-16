@@ -85,6 +85,10 @@ const HEBREW_ALLOWED = [
   // Cold-outreach copy is bilingual by its own branch (he/en per prospect
   // locale), exactly like src/lib/email/templates/**, and is addressed to
   // strangers rather than to a signed-in user whose locale next-intl knows.
+  // Hebrew discovery input patterns and canonical evidence-based outreach copy.
+  "src/lib/outbound/discovery.ts",
+  "src/lib/outbound/discoveryResearch.ts",
+  "src/lib/outbound/candidateOpener.ts",
   "src/lib/outbound/followups.ts",
   "src/lib/outbound/unsubscribe.ts",
   // The one-click unsubscribe page. A recipient of a Hebrew cold email is the

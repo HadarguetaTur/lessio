@@ -11,7 +11,7 @@ import { addSuppression, suppressProspect } from '@/lib/outbound/suppressions'
 import { markInboundReviewed } from '@/lib/outbound/messages'
 import { approveOpener, regenerateOpener } from '@/lib/outbound/opener'
 import { saveMailbox } from '@/lib/outbound/mailboxes'
-import { approveDiscoveryCandidates, runDiscovery } from '@/lib/outbound/discovery'
+import { approveDiscoveryCandidates, runDiscovery, requestCandidateResearch, saveDiscoveryAutomation } from '@/lib/outbound/discovery'
 import { isServiceAccountConfigured, sendAsUser } from '@/lib/gmail/serviceAccount'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
@@ -38,14 +38,16 @@ const candidateIdsSchema = z.object({
   candidateIds: z.array(z.string().uuid()).min(1).max(50),
 })
 
-/** Starts a public-business collection run. It only creates review rows. */
+/** Collects business identities for the durable research queue. */
 export async function runDiscoveryAction(
   _prev: OutboundActionState | null,
   _formData: FormData
 ): Promise<OutboundActionState> {
+  void _prev
+  void _formData
   const session = await requirePlatformSession('growth.write')
   try {
-    const result = await runDiscovery({ limit: 50 })
+    const result = await runDiscovery()
     await recordAdminAction({
       actorProfileId: session.profileId,
       action: 'outbound.discovery_run',
@@ -53,7 +55,9 @@ export async function runDiscoveryAction(
       metadata: result,
     })
     revalidatePath('/admin/outbound')
-    return { ok: true, detail: `${result.ready}` }
+    // Zero with no room left is the daily cap, not a failed search.
+    if (result.found === 0 && result.budget_left === 0) return { error: 'DAILY_BUDGET_FULL' }
+    return { ok: true, detail: `${result.found}` }
   } catch (error) {
     console.error('[admin/outbound] discovery failed', error)
     return { error: 'DISCOVERY_FAILED' }
@@ -458,4 +462,44 @@ export async function markReplyReviewedAction(
   revalidatePath('/admin/outbound')
   revalidatePath('/admin/leads')
   return { ok: true }
+}
+
+/** Research runs in the durable background queue, avoiding action timeouts. */
+export async function researchCandidatesAction(
+  _prev: OutboundActionState | null,
+  formData: FormData,
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+  let ids: unknown
+  try { ids = JSON.parse(String(formData.get('candidateIds') ?? '[]')) } catch { return { error: 'INVALID_INPUT' } }
+  const parsed = candidateIdsSchema.safeParse({ candidateIds: ids })
+  if (!parsed.success) return { error: 'INVALID_INPUT' }
+  try {
+    const count = await requestCandidateResearch(parsed.data.candidateIds)
+    await recordAdminAction({ actorProfileId: session.profileId, action: 'outbound.research_requested',
+      targetType: 'outbound_candidates', metadata: { ids: parsed.data.candidateIds, count } })
+    revalidatePath('/admin/outbound')
+    return { ok: true, detail: String(count) }
+  } catch { return { error: 'RESEARCH_FAILED' } }
+}
+
+export async function saveDiscoveryAutomationAction(
+  _prev: OutboundActionState | null,
+  formData: FormData,
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+  const parsed = z.object({ auto_approve: z.boolean(), campaign_id: z.string().uuid().nullable() }).safeParse({
+    auto_approve: formData.get('autoApprove') === 'on', campaign_id: formData.get('campaignId') || null,
+  })
+  if (!parsed.success) return { error: 'INVALID_INPUT' }
+  try {
+    await saveDiscoveryAutomation({ ...parsed.data, actorProfileId: session.profileId })
+    await recordAdminAction({ actorProfileId: session.profileId, action: 'outbound.automation_changed',
+      targetType: 'outbound_discovery_settings', metadata: parsed.data })
+    revalidatePath('/admin/outbound')
+    return { ok: true }
+  } catch (error) {
+    const code = error instanceof Error ? error.message : ''
+    return { error: ['CAMPAIGN_REQUIRED', 'CAMPAIGN_REQUIRES_PERSONAL_LINE'].includes(code) ? code : 'SAVE_FAILED' }
+  }
 }

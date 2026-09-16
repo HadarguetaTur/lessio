@@ -4387,6 +4387,88 @@
           "mailboxError": "Mailbox {email} failed: {error}"
         },
         "waitingTitle": "Waiting for you"
+      },
+      "discovery": {
+        "title": "Candidate discovery and research",
+        "tab": "Candidates",
+        "criteria": "Joining the queue requires a score of 70+, a sourced email address, two distinct facts, and a grounded opening line.",
+        "limits": "Up to 50 new candidates and 50 initial emails per day.",
+        "collect": "Discover candidates",
+        "automationStatus": "Automatic queue entry: {status}",
+        "on": "On",
+        "off": "Off — manual approval required",
+        "automationDescription": "When enabled, candidates who pass all quality checks join the selected campaign without further approval.",
+        "pauseDescription": "Turning this off also pauses queued automatic outreach. A send already in progress may finish.",
+        "enable": "Enable automatic queue entry",
+        "campaign": "Campaign",
+        "chooseCampaign": "Choose a campaign",
+        "save": "Save mode",
+        "campaignRequired": "An active Hebrew campaign that includes the personal opening line is required.",
+        "saved": "Setting saved.",
+        "saveFailed": "Could not save. To enable automation, choose an active Hebrew campaign that includes the opening line.",
+        "collectFailed": "Could not discover candidates.",
+        "budgetFull": "Today's cap of 50 candidates is already used. Collection resumes tomorrow.",
+        "collected": "Added {count} new candidates. Research runs in the background; refresh later for results.",
+        "show": "Show",
+        "all": "All ({count})",
+        "ready": "Ready for approval",
+        "approved": "Added to queue",
+        "blocked": "Researching or held",
+        "researchMany": "Research up to 50 candidates again",
+        "researchOne": "Research again",
+        "researchQueued": "Queued {count} candidates for research.",
+        "researchFailed": "Could not queue research. Try again.",
+        "selectAll": "Select all ready candidates ({count})",
+        "approve": "Approve for queue ({count})",
+        "approveFailed": "Approval was not saved. Try again.",
+        "approvedCount": "Added {count} candidates to the queue.",
+        "empty": "No candidates in this view.",
+        "select": "Approve {name}",
+        "score": "Score {score}/100",
+        "website": "Business website",
+        "noEmail": "No email found",
+        "emailSource": "Email source",
+        "source": "Source",
+        "promoted": "Added to queue {mode}",
+        "automatic": "automatically",
+        "manual": "with manual approval",
+        "duplicate": "Duplicate — no additional outreach will be sent.",
+        "researchRunning": "Research in progress",
+        "researchPending": "Waiting for background research",
+        "attempt": "Attempt {count}/3",
+        "researchStuck": "If research is stuck, you can queue it again.",
+        "quality": {
+          "EXCLUDED": "Business or source excluded",
+          "NOT_TARGET": "No tutoring business fit found",
+          "TARGET": "Target audience match",
+          "WEBSITE": "Independent business website",
+          "EMAIL": "Valid public email",
+          "PHONE": "Business phone",
+          "FACTS_MULTIPLE": "{count} sourced facts",
+          "FACT_ONE": "One sourced fact"
+        },
+        "reasons": {
+          "NO_WEBSITE": "No business website to research",
+          "ROBOTS_DENIED": "The site's robots policy blocks research or could not be read",
+          "FETCH_FAILED": "Could not read the website",
+          "NO_CONTACT": "No valid public email found",
+          "AMBIGUOUS_EMAIL": "Multiple email addresses; the intended contact is unclear",
+          "INSUFFICIENT_FACTS": "At least two distinct sourced facts are required",
+          "LOW_QUALITY": "Quality score below 70",
+          "EXCLUDED_BUSINESS": "Business or source is outside the target audience",
+          "SUPPRESSED": "Address is on the suppression list",
+          "DUPLICATE_EMAIL": "Email already belongs to another candidate",
+          "RESEARCH_FAILED": "Research failed",
+          "NO_API_KEY": "The writing service key is not configured",
+          "MODEL_AUTH": "The writing service rejected the key",
+          "MODEL_FORBIDDEN": "Access to the writing model was denied",
+          "MODEL_RATE_LIMIT": "Writing service quota exceeded or rate limited",
+          "MODEL_NOT_FOUND": "Writing model not found",
+          "MODEL_UNAVAILABLE": "Writing service temporarily unavailable",
+          "MODEL_FAILED": "Writing service failed",
+          "INVALID_MODEL_OUTPUT": "Model returned invalid output",
+          "UNGROUNDED_OPENER": "Opening line failed the evidence check"
+        }
       }
     },
     "leads": {
@@ -6751,8 +6833,6 @@
       "howYouKnow": "Checked again within minutes.",
       "strip": "Meta unavailable right now"
     }
-  }
-}
   },
   "packs": {
     "notifications": {
@@ -6863,3 +6943,5 @@
       "missing_parent": "This student has no paying parent — set a primary parent first",
       "invalid_price": "The price is not valid"
     }
+  }
+}

@@ -11,7 +11,7 @@ export function ResetPasswordForm() {
   const t = useTranslations('auth.resetPassword')
 
   return (
-    <form action={action} className="grid gap-6">
+    <form action={action}>
       <DiaryField
         id="password"
         name="password"
@@ -35,7 +35,7 @@ export function ResetPasswordForm() {
         error={state?.error ?? null}
       />
 
-      <div>
+      <div className="np-action">
         <button type="submit" disabled={pending} className="hl-cta" data-cta="reset-submit">
           {pending ? t('submitting') : t('submit')}
         </button>

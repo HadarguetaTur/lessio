@@ -15,7 +15,7 @@ async function SignupNote() {
     <AuthNotePage
       title={t('title')}
       after={
-        <div className="grid gap-6">
+        <div>
           <p className="divider-pen">
             <span>{t('divider')}</span>
           </p>
@@ -38,7 +38,7 @@ async function SignupNote() {
 
 export default function SignupPage() {
   return (
-    <AuthSplitShell>
+    <AuthSplitShell highlightTrial>
       <SignupNote />
     </AuthSplitShell>
   )

@@ -14,7 +14,7 @@ async function LoginNote() {
     <AuthNotePage
       title={t('title')}
       after={
-        <div className="grid gap-6">
+        <div>
           <p className="divider-pen">
             <span>{t('divider')}</span>
           </p>

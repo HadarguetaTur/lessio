@@ -16,7 +16,7 @@ export function CompleteSignupForm({ defaultFullName, email }: Props) {
   const t = useTranslations('auth.signupComplete')
 
   return (
-    <form action={action} className="grid gap-6">
+    <form action={action}>
       <DiaryField id="email" label={t('email')} type="email" value={email} readOnly dir="ltr" />
 
       <DiaryField
@@ -37,7 +37,7 @@ export function CompleteSignupForm({ defaultFullName, email }: Props) {
         </p>
       ) : null}
 
-      <div>
+      <div className="np-action">
         <button type="submit" disabled={pending} className="hl-cta" data-cta="signup-complete-submit">
           {pending ? t('submitting') : t('submit')}
         </button>

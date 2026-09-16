@@ -12,8 +12,8 @@ export function VerifyEmailCard({ email }: { email: string }) {
   const t = useTranslations('auth.signup.verify')
 
   return (
-    <div className="grid gap-6 text-center sm:text-start" data-pen>
-      <PenCheckbox className="doodle mx-auto size-14 sm:mx-0" />
+    <div className="text-center sm:text-start" data-pen>
+      <PenCheckbox className="doodle mx-auto sm:mx-0" />
 
       <p className="text-[color:var(--ink-2)]">{t('body', { email })}</p>
 
@@ -25,7 +25,7 @@ export function VerifyEmailCard({ email }: { email: string }) {
 
       {state?.sent ? <p className="pen text-[1.4rem] text-[color:var(--cover)]">{t('resent')}</p> : null}
 
-      <form action={action}>
+      <form action={action} className="np-action">
         <input type="hidden" name="email" value={email} />
         <button type="submit" disabled={pending || !!state?.sent} className="link-rule min-h-11 disabled:opacity-60">
           {pending ? t('resending') : t('resend')}

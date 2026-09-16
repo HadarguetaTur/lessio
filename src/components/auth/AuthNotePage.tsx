@@ -26,9 +26,9 @@ export function AuthNotePage({
           <PenUnderline />
         </span>
       </h1>
-      <div className="mt-8">{children}</div>
-      {after ? <div className="mt-8">{after}</div> : null}
-      {footer ? <div className="mt-8 text-[color:var(--ink-2)]">{footer}</div> : null}
+      <div className="np-block">{children}</div>
+      {after ? <div className="np-block">{after}</div> : null}
+      {footer ? <div className="np-block text-[color:var(--ink-2)]">{footer}</div> : null}
     </div>
   )
 }

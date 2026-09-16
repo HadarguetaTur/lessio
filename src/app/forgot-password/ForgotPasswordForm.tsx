@@ -13,15 +13,15 @@ export function ForgotPasswordForm() {
 
   if (state?.sent) {
     return (
-      <div className="grid gap-6 text-center sm:text-start" data-pen>
-        <PenCheckbox className="doodle mx-auto size-14 sm:mx-0" />
+      <div className="text-center sm:text-start" data-pen>
+        <PenCheckbox className="doodle mx-auto sm:mx-0" />
         <p className="text-[color:var(--ink-2)]">{t('successBody', { email: state.email ?? '' })}</p>
       </div>
     )
   }
 
   return (
-    <form action={action} className="grid gap-6">
+    <form action={action}>
       <DiaryField
         id="email"
         name="email"
@@ -34,7 +34,7 @@ export function ForgotPasswordForm() {
         error={state?.error ?? null}
       />
 
-      <div>
+      <div className="np-action">
         <button type="submit" disabled={pending} className="hl-cta" data-cta="forgot-submit">
           {pending ? t('submitting') : t('submit')}
         </button>

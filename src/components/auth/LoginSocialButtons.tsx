@@ -36,8 +36,6 @@ export function LoginSocialButtons({ variant = 'login' }: LoginSocialButtonsProp
   const t = useTranslations('auth.social')
   const [loading, setLoading] = useState(false)
 
-  const helperText = variant === 'signup' ? t('helperSignup') : t('helperLogin')
-
   async function handleGoogleLogin() {
     setLoading(true)
     const supabase = createClient()
@@ -51,12 +49,17 @@ export function LoginSocialButtons({ variant = 'login' }: LoginSocialButtonsProp
   }
 
   return (
-    <div className="flex w-full flex-col gap-2">
-      <button type="button" onClick={handleGoogleLogin} disabled={loading} className="stub">
+    <div className="np-stub w-full">
+      <button
+        type="button"
+        onClick={handleGoogleLogin}
+        disabled={loading}
+        className="stub"
+        aria-label={variant === 'signup' ? t('helperSignup') : t('helperLogin')}
+      >
         <GoogleGlyph className="size-[1.125rem] shrink-0" />
         <span>{loading ? t('signingIn') : t('continueGoogle')}</span>
       </button>
-      <p className="text-center text-xs text-[color:var(--ink-3)]">{helperText}</p>
     </div>
   )
 }

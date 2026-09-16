@@ -21,7 +21,7 @@ export function SignupForm() {
   }, [])
 
   return (
-    <form action={action} className="grid gap-6">
+    <form action={action}>
       <DiaryField id="org_name" name="org_name" label={t('orgName')} type="text" required placeholder={t('orgNamePlaceholder')} />
 
       <DiaryField
@@ -36,7 +36,7 @@ export function SignupForm() {
 
       <DiaryField id="email" name="email" label={t('email')} type="email" required autoComplete="email" placeholder="you@example.com" dir="ltr" />
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="sm:grid sm:grid-cols-2 sm:gap-x-6">
         <DiaryField
           id="password"
           name="password"
@@ -67,13 +67,13 @@ export function SignupForm() {
         </p>
       ) : null}
 
-      <div>
+      <div className="np-action">
         <button type="submit" disabled={pending} className="hl-cta" data-cta="signup-submit">
           {pending ? t('submitting') : t('submit')}
         </button>
       </div>
 
-      <p className="text-sm leading-relaxed text-[color:var(--ink-2)]">
+      <p className="text-[color:var(--ink-2)]">
         {t('consentPrefix')}{' '}
         <Link href="/terms" className="link-rule">
           {t('consentTerms')}

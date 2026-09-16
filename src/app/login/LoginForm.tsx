@@ -29,7 +29,7 @@ export function LoginForm() {
   }, [])
 
   return (
-    <form action={action} className="grid gap-6">
+    <form action={action}>
       <DiaryField
         id="email"
         name="email"
@@ -60,7 +60,7 @@ export function LoginForm() {
         error={state?.error ?? null}
       />
 
-      <div>
+      <div className="np-action">
         <button type="submit" disabled={pending} className="hl-cta" data-cta="login-submit">
           {pending ? t('submitting') : t('submit')}
         </button>

@@ -805,3 +805,106 @@
 .diary .legal-doc .legal-note p {
   margin: 0;
 }
+
+/* ── Note page rhythm: everything on the page sits on a ruling ─────────── */
+/* The note page rules itself from its own top edge, and every block on it is
+   a whole number of lines tall, so a field's line IS a page ruling. */
+.diary .note-page {
+  --line: 2.25rem;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--line) - 1px),
+    var(--rule-soft) calc(var(--line) - 1px),
+    var(--rule-soft) var(--line)
+  );
+  padding-bottom: var(--line);
+}
+.diary .note-page > h1 {
+  margin: 0;
+  min-height: calc(var(--line) * 2);
+  font-size: 2.1rem;
+  line-height: var(--line);
+  display: flex;
+  align-items: flex-end;
+}
+@media (max-width: 639px) {
+  .diary .note-page > h1 {
+    justify-content: center;
+  }
+}
+.diary .note-page .title-pen {
+  padding-bottom: 0;
+  line-height: var(--line);
+}
+.diary .note-page .title-pen > svg {
+  bottom: -0.1em;
+  height: 0.3em;
+}
+.diary .note-page .np-block {
+  margin-top: var(--line);
+}
+.diary .note-page p {
+  margin: 0;
+  line-height: var(--line);
+}
+.diary .note-page .field {
+  gap: 0;
+  margin-bottom: var(--line);
+}
+.diary .note-page .field:last-of-type {
+  margin-bottom: 0;
+}
+.diary .note-page .field label,
+.diary .note-page .field-head {
+  height: var(--line);
+  line-height: var(--line);
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0.1rem;
+}
+.diary .note-page .field-head {
+  justify-content: space-between;
+}
+.diary .note-page .field-head label {
+  height: auto;
+  padding-bottom: 0;
+}
+.diary .note-page .field input {
+  height: var(--line);
+  min-height: var(--line);
+  padding: 0 0.15em;
+  line-height: var(--line);
+}
+.diary .note-page .field-error {
+  height: var(--line);
+  margin: 0;
+  line-height: var(--line);
+}
+.diary .note-page .form-error {
+  min-height: var(--line);
+  line-height: var(--line);
+}
+.diary .note-page .np-action {
+  min-height: calc(var(--line) * 2);
+  display: flex;
+  align-items: center;
+}
+@media (max-width: 639px) {
+  .diary .note-page .np-action {
+    justify-content: center;
+  }
+}
+.diary .note-page .divider-pen {
+  height: var(--line);
+}
+.diary .note-page .np-stub {
+  min-height: calc(var(--line) * 2);
+  display: flex;
+  align-items: center;
+}
+.diary .note-page .doodle {
+  display: block;
+  height: calc(var(--line) * 2);
+  width: calc(var(--line) * 2);
+}

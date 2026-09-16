@@ -14,7 +14,7 @@ import { getSiteContact } from '@/lib/marketing/siteContact'
  * side carries the form. On phones the cover shrinks to the header strip
  * and one line in the pen's hand above the note.
  */
-export async function AuthSplitShell({ children }: { children: ReactNode }) {
+export async function AuthSplitShell({ children, highlightTrial = false }: { children: ReactNode; highlightTrial?: boolean }) {
   const locale = await getLocale()
   const dir = locale === 'he' ? 'rtl' : 'ltr'
   const t = await getTranslations('auth.common')
@@ -39,7 +39,6 @@ export async function AuthSplitShell({ children }: { children: ReactNode }) {
           <p className="pen text-[1.5rem] leading-tight text-[color:var(--cover-ink-2)] lg:hidden">
             {hero.headline.less}
             {hero.headline.lessRest}
-            {hero.headline.more ? ` ${hero.headline.more}${hero.headline.moreRest}` : null}
           </p>
           <div className="hidden lg:block">
             <p className="display max-w-[16ch] text-[2.4rem] leading-[1.1] xl:text-[2.9rem]">
@@ -54,12 +53,12 @@ export async function AuthSplitShell({ children }: { children: ReactNode }) {
             </p>
             <p className="mt-8 max-w-[44ch] text-lg text-[color:var(--cover-ink-2)]">{hero.subheadline}</p>
             <p className="pen mt-10 text-[1.6rem]">
-              <span className="hl-mark text-[color:var(--ink)]">{pricing.trialNote}</span>
+              {highlightTrial ? <span className="hl-mark text-[color:var(--ink)]">{pricing.trialNote}</span> : pricing.trialNote}
             </p>
           </div>
         </aside>
 
-        <div id="auth-note" className="ruled flex justify-center px-4 py-10 sm:px-6 lg:items-start lg:px-12 lg:py-16">
+        <div id="auth-note" className="flex justify-center px-4 py-10 sm:px-6 lg:items-start lg:px-12 lg:py-16">
           {children}
         </div>
       </main>

@@ -66,15 +66,15 @@ export type LandingChatMessage = {
 
 const landingEnCore = {
   hero: {
-    eyebrow: 'For tutoring centres that have outgrown spreadsheets and chat threads',
+    eyebrow: 'For tutoring centres with 2 to 5 teachers that bill monthly',
     headline: {
-      less: 'Less',
-      lessRest: ' chasing what happens at your centre.',
-      more: 'More',
-      moreRest: ' certainty that it is handled.',
+      less: 'Every cancellation',
+      lessRest: ' is priced and collected.',
+      more: 'Every month',
+      moreRest: ' closes with one approval.',
     },
     subheadline:
-      'Lessons, parents, teachers, cancellations and billing in one operating system. When a parent writes on WhatsApp, the right part of the business updates without copying messages or chasing balances.',
+      'A parent cancels on WhatsApp. Your policy prices the cancellation and the parent confirms the amount. At month end each student’s bill is already built from lessons, subscriptions and cancellations. You approve, and the payment request goes out.',
     ctaPrimary: 'Try Lessio free',
     ctaPrimaryNote: '30 days with every feature unlocked. No credit card.',
     ctaSecondary: 'See how it works',
@@ -240,8 +240,8 @@ const landingEnCore = {
       'For the moment teaching has become a business: dozens of students, several teachers, and billing you can no longer keep in your head.',
     forTitle: 'Good fit',
     forBullets: [
-      'Private tutor with real operational load',
-      'Center with several teachers or several rooms',
+      'A centre with 2 to 5 teachers that bills monthly',
+      'Several teachers or several rooms under one roof',
       'A business that is growing and needs infrastructure that keeps pace',
       'You want orderly billing without chasing payments yourself',
     ] as const,
@@ -375,23 +375,23 @@ const landingEnCore = {
     faq: 'FAQ',
   },
   meta: {
-    title: 'LESSIO | The operating system for tutoring centres',
+    title: 'LESSIO | Every cancellation priced and collected',
     description:
-      'Run lessons, parents, teachers, WhatsApp and billing from one system for tutoring centres. 30 days free, no credit card.',
+      'For tutoring centres with 2 to 5 teachers. A parent cancels on WhatsApp, your policy prices it, the charge lands on the monthly bill. 30 days free, no credit card.',
   },
 } as const
 
 const landingHeCore = {
   hero: {
-    eyebrow: 'למרכזי למידה שכבר גדלו מעבר לאקסל ולשרשורי WhatsApp',
+    eyebrow: 'למרכזי למידה עם 2 עד 5 מורים שגובים חודשית',
     headline: {
-      less: 'פחות',
-      lessRest: ' לרדוף אחרי מה שקורה במרכז.',
-      more: 'יותר',
-      moreRest: ' לדעת שהכול מטופל.',
+      less: 'כל ביטול',
+      lessRest: ' מתומחר ונגבה.',
+      more: 'כל חודש',
+      moreRest: ' נסגר באישור אחד.',
     },
     subheadline:
-      'שיעורים, הורים, מורים, ביטולים וגבייה במערכת אחת. כשהורה כותב ב־WhatsApp, החלק הנכון בעסק מתעדכן בלי להעתיק הודעות ובלי לרדוף אחרי יתרות.',
+      'הורה מבטל בוואטסאפ. המדיניות שלכם מתמחרת את הביטול, וההורה מאשר את הסכום. בסוף החודש החשבון של כל תלמיד כבר בנוי משיעורים, מנויים וביטולים. מאשרים, ובקשת התשלום יוצאת.',
     ctaPrimary: 'נסו את Lessio בחינם',
     ctaPrimaryNote: '30 יום עם כל היכולות פתוחות. בלי כרטיס אשראי.',
     ctaSecondary: 'איך זה עובד',
@@ -557,8 +557,8 @@ const landingHeCore = {
       'לרגע שבו ההוראה כבר הפכה לעסק: עשרות תלמידים, כמה מורים וגבייה שאי אפשר להחזיק בראש.',
     forTitle: 'מתאים',
     forBullets: [
-      'מורה פרטי עם עומס תפעולי אמיתי',
-      'מרכז עם כמה מורים או כמה חדרים',
+      'מרכז עם 2 עד 5 מורים וגבייה חודשית',
+      'כמה מורים או כמה חדרים תחת קורת גג אחת',
       'עסק שגדל וצריך תשתית שתעמוד בקצב',
       'מי שרוצה גבייה מסודרת בלי לרדוף בעצמו',
     ] as const,
@@ -689,9 +689,9 @@ const landingHeCore = {
     faq: 'שאלות',
   },
   meta: {
-    title: 'LESSIO | מערכת ההפעלה למרכזי למידה',
+    title: 'LESSIO | כל ביטול מתומחר ונגבה',
     description:
-      'שיעורים, הורים, מורים, WhatsApp וגבייה במערכת אחת למרכזי למידה. 30 יום ניסיון ללא כרטיס אשראי.',
+      'למרכזי למידה עם 2 עד 5 מורים. הורה מבטל בוואטסאפ, המדיניות שלכם מתמחרת, והחיוב נכנס לחשבון החודשי. 30 יום ניסיון ללא כרטיס אשראי.',
   },
 } as const
 

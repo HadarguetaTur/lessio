@@ -6,7 +6,7 @@ import { ImageResponse } from 'next/og'
 // Shared by every locale (OG routes can't read the locale cookie), so the card
 // is bilingual: Hebrew headline, English subline.
 export const alt =
-  'LESSIO. מערכת ההפעלה למרכזי למידה. The operating system for tutoring centres'
+  'LESSIO. כל ביטול מתומחר ונגבה. Every cancellation priced and collected'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -109,7 +109,7 @@ export default async function OpenGraphImage() {
             justifyContent: 'center',
           }}
         >
-          מרכז למידה, בשליטה.
+          כל ביטול מתומחר ונגבה.
         </div>
 
         <div
@@ -122,7 +122,7 @@ export default async function OpenGraphImage() {
             justifyContent: 'center',
           }}
         >
-          Lessons, parents, WhatsApp and billing in one system
+          Every cancellation priced and collected. For tutoring centres.
         </div>
       </div>
     ),

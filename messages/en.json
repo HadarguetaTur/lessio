@@ -5162,16 +5162,16 @@
               "Full WhatsApp automation",
               "Unlimited students and lessons",
               "Billing, cancellations, and receipts",
-              "Parent portal and homework"
+              "Reports, AI assistant, parent portal and integrations"
             ]
           },
           "studio": {
             "bullets": [
               "Up to 5 teachers",
-              "Everything in Solo",
-              "Advanced reports and revenue forecasting",
-              "AI assistance for messaging and ops",
-              "Integrations and API"
+              "Every feature, exactly as in Solo",
+              "A schedule and students for each teacher",
+              "Performance and economics reports per teacher",
+              "One picture of the whole centre"
             ]
           },
           "center": {
@@ -5416,7 +5416,7 @@
             "Full WhatsApp automation",
             "Unlimited students and lessons",
             "Billing, cancellations, and receipts",
-            "Parent portal and homework"
+            "Reports, AI assistant, parent portal and integrations"
           ]
         },
         "studio": {
@@ -5426,10 +5426,10 @@
           "cta": "Choose Studio",
           "bullets": [
             "Up to 5 teachers",
-            "Everything in Solo",
-            "Advanced reports and revenue forecasting",
-            "AI assistance for messaging and ops",
-            "Integrations and API"
+            "Every feature, exactly as in Solo",
+            "A schedule and students for each teacher",
+            "Performance and economics reports per teacher",
+            "One picture of the whole centre"
           ]
         },
         "center": {

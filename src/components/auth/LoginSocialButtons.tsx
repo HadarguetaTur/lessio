@@ -31,6 +31,7 @@ type LoginSocialButtonsProps = {
   variant?: 'login' | 'signup'
 }
 
+/** Google sign-in as a hairline stub on the paper; Google's own glyph, never a filled button. */
 export function LoginSocialButtons({ variant = 'login' }: LoginSocialButtonsProps) {
   const t = useTranslations('auth.social')
   const [loading, setLoading] = useState(false)
@@ -50,17 +51,12 @@ export function LoginSocialButtons({ variant = 'login' }: LoginSocialButtonsProp
   }
 
   return (
-    <div className="flex w-full flex-col items-center gap-3">
-      <button
-        type="button"
-        onClick={handleGoogleLogin}
-        disabled={loading}
-        className="flex h-11 w-full max-w-sm items-center justify-center gap-2.5 rounded-xl border border-border/80 bg-card px-4 text-sm font-semibold text-foreground shadow-sm ring-1 ring-foreground/[0.04] transition-[box-shadow,transform] hover:bg-muted/40 hover:shadow-md active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
-      >
+    <div className="flex w-full flex-col gap-2">
+      <button type="button" onClick={handleGoogleLogin} disabled={loading} className="stub">
         <GoogleGlyph className="size-[1.125rem] shrink-0" />
         <span>{loading ? t('signingIn') : t('continueGoogle')}</span>
       </button>
-      <p className="text-center text-[11px] text-muted-foreground">{helperText}</p>
+      <p className="text-center text-xs text-[color:var(--ink-3)]">{helperText}</p>
     </div>
   )
 }

@@ -1,36 +1,34 @@
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 
-import { AuthEntryColumn } from '@/components/auth/AuthEntryColumn'
+import { AuthNotePage } from '@/components/auth/AuthNotePage'
 import { AuthSplitShell } from '@/components/auth/AuthSplitShell'
 import { ForgotPasswordForm } from './ForgotPasswordForm'
 
-async function ForgotPasswordColumn() {
+async function ForgotPasswordNote() {
   const t = await getTranslations('auth.forgotPassword')
 
   return (
-    <AuthEntryColumn
+    <AuthNotePage
       title={t('title')}
-      card={<ForgotPasswordForm />}
       footer={
-        <p className="mt-8 text-sm leading-relaxed text-muted-foreground">
+        <p>
           {t('remember')}{' '}
-          <Link
-            href="/login"
-            className="font-semibold text-violet-600 underline-offset-4 transition-colors hover:text-violet-500 hover:underline dark:text-violet-400 dark:hover:text-violet-300"
-          >
+          <Link href="/login" className="link-rule">
             {t('loginLink')}
           </Link>
         </p>
       }
-    />
+    >
+      <ForgotPasswordForm />
+    </AuthNotePage>
   )
 }
 
 export default function ForgotPasswordPage() {
   return (
     <AuthSplitShell>
-      <ForgotPasswordColumn />
+      <ForgotPasswordNote />
     </AuthSplitShell>
   )
 }

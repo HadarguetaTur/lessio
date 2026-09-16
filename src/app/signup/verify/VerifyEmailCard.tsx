@@ -2,44 +2,34 @@
 
 import { useActionState } from 'react'
 import { useTranslations } from 'next-intl'
-import { MailCheck, AlertCircle } from 'lucide-react'
 
+import { PenCheckbox } from '@/components/marketing/LandingPenMarks'
 import { resendVerificationEmail } from './actions'
-import { Button } from '@/components/ui/button'
 
+/** The "check your email" note: a ticked box the pen draws, then the address it went to. */
 export function VerifyEmailCard({ email }: { email: string }) {
   const [state, action, pending] = useActionState(resendVerificationEmail, null)
   const t = useTranslations('auth.signup.verify')
 
   return (
-    <div className="flex flex-col items-center gap-6 text-center">
-      <MailCheck className="size-10 text-teal-600" />
+    <div className="grid gap-6 text-center sm:text-start" data-pen>
+      <PenCheckbox className="doodle mx-auto size-14 sm:mx-0" />
 
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        {t('body', { email })}
-      </p>
+      <p className="text-[color:var(--ink-2)]">{t('body', { email })}</p>
 
-      {state?.error && (
-        <div className="flex w-full items-center gap-2 rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-sm text-destructive">
-          <AlertCircle size={16} className="shrink-0" aria-hidden />
-          <span>{t('error')}</span>
-        </div>
-      )}
+      {state?.error ? (
+        <p role="alert" className="form-error">
+          {t('error')}
+        </p>
+      ) : null}
 
-      {state?.sent && (
-        <p className="text-sm font-medium text-teal-600">{t('resent')}</p>
-      )}
+      {state?.sent ? <p className="pen text-[1.4rem] text-[color:var(--cover)]">{t('resent')}</p> : null}
 
-      <form action={action} className="w-full">
+      <form action={action}>
         <input type="hidden" name="email" value={email} />
-        <Button
-          type="submit"
-          variant="outline"
-          disabled={pending || !!state?.sent}
-          className="h-11 w-full"
-        >
+        <button type="submit" disabled={pending || !!state?.sent} className="link-rule min-h-11 disabled:opacity-60">
           {pending ? t('resending') : t('resend')}
-        </Button>
+        </button>
       </form>
     </div>
   )

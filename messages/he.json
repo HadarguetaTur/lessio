@@ -4606,7 +4606,8 @@
   "auth": {
     "common": {
       "backToHome": "חזרה לדף הבית",
-      "backToHomeShort": "בית"
+      "backToHomeShort": "בית",
+      "skipToForm": "דילוג לטופס"
     },
     "login": {
       "title": "ברוכים הבאים",

@@ -4606,7 +4606,8 @@
   "auth": {
     "common": {
       "backToHome": "Back to home",
-      "backToHomeShort": "Home"
+      "backToHomeShort": "Home",
+      "skipToForm": "Skip to the form"
     },
     "login": {
       "title": "Welcome back",

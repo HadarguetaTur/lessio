@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { AuthNotePage } from '@/components/auth/AuthNotePage'
 import { AuthSplitShell } from '@/components/auth/AuthSplitShell'
-import { AuthEntryColumn } from '@/components/auth/AuthEntryColumn'
 import { CompleteSignupForm } from './CompleteSignupForm'
 
 export default async function SignupCompletePage() {
@@ -30,10 +30,9 @@ export default async function SignupCompletePage() {
 
   return (
     <AuthSplitShell>
-      <AuthEntryColumn
-        title={t('title')}
-        card={<CompleteSignupForm defaultFullName={fullName} email={email} />}
-      />
+      <AuthNotePage title={t('title')}>
+        <CompleteSignupForm defaultFullName={fullName} email={email} />
+      </AuthNotePage>
     </AuthSplitShell>
   )
 }

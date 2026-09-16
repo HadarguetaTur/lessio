@@ -108,11 +108,12 @@ export function extractResearchFacts(text: string, sourceUrl: string): ResearchF
 export function scoreDiscoveryCandidate(input: { businessName: string; websiteUrl: string | null; email: string | null; phone: string | null; facts: ResearchFact[] }): { score: number; reasons: string[]; excluded: boolean } {
   const host = input.websiteUrl ? businessHost(input.websiteUrl) : null
   if ((host && NON_BUSINESS_HOSTS.some((blocked) => host === blocked || host.endsWith('.' + blocked))) ||
-    /אינדקס|מאגר מורים|בית[ -]?ספר|אוניברסיט|מכלל|רשת\s|קידום|יואל גבע|אנקורי|היי[ -]?קיו/i.test(input.businessName)) {
+    /אינדקס|מאגר מורים|בית[ -]?ספר|אוניברסיט|מכלל|רשת\s|קידום אתרים|יואל גבע|אנקורי|היי[ -]?קיו/i.test(input.businessName)) {
     return { score: 0, reasons: ['EXCLUDED'], excluded: true }
   }
-  const target = /מרכז למידה|מורה|הוראה|תגבור|בגרות/i.test(input.businessName) ||
-    input.facts.some((fact) => ['מרכז למידה', 'הוראה מתקנת', 'הוראה פרטנית', 'צוות מורים'].includes(fact.label))
+  // A tutoring business names itself by what it teaches at least as often as by "teacher".
+  const target = /מרכז למידה|מור(?:ה|ים|ות)|הוראה|תגבור|בגרות|שיעורים|לימוד|מתמטיקה|אנגלית|פיזיקה|פסיכומטרי|tutor|learning/i.test(input.businessName) ||
+    input.facts.some((fact) => ['מרכז למידה', 'הוראה מתקנת', 'הוראה פרטנית', 'צוות מורים', 'מתמטיקה', 'הכנה לבגרות'].includes(fact.label))
   if (!target) return { score: 0, reasons: ['NOT_TARGET'], excluded: true }
   let score = 20
   const reasons = ['TARGET']

@@ -48,6 +48,15 @@ export function PenPlus({ className, ...props }: MarkProps) {
   )
 }
 
+/** The pen's underline beneath a page title: one stroke, drawn slightly uphill. */
+export function PenUnderline({ className, ...props }: MarkProps) {
+  return (
+    <svg viewBox="0 0 200 12" preserveAspectRatio="none" aria-hidden className={className} {...props}>
+      <path d="M3 8.5 C 40 6.5, 80 9.5, 120 7 S 180 5.5, 197 6.8" {...base} />
+    </svg>
+  )
+}
+
 /** A paperclip, one continuous stroke, holding a printout to the page. */
 export function PenClip({ className, ...props }: MarkProps) {
   return (

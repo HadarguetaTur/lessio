@@ -8,7 +8,7 @@ import { LandingCtaTracker } from '@/components/marketing/LandingCtaTracker'
 import { LandingFaqAccordion } from '@/components/marketing/LandingFaqAccordion'
 import { LandingLocaleToggle } from '@/components/marketing/LandingLocaleToggle'
 import { LandingPen } from '@/components/marketing/LandingPen'
-import { PenCheck, PenClip, PenX } from '@/components/marketing/LandingPenMarks'
+import { PenCheck, PenClip, PenUnderline, PenX } from '@/components/marketing/LandingPenMarks'
 import { LandingPricing } from '@/components/marketing/LandingPricing'
 import { LandingStickyCta } from '@/components/marketing/LandingStickyCta'
 import { LandingWeekSpread } from '@/components/marketing/LandingWeekSpread'
@@ -16,6 +16,7 @@ import { LandingWhatsAppChat } from '@/components/marketing/LandingWhatsAppChat'
 import { cn } from '@/lib/utils'
 import type { PublicPricingRow } from '@/lib/marketing/publicPricing'
 import {
+  DEMO_VIDEO_URL,
   LANDING_IMAGE_SIZES,
   landingImageSrc,
   type LandingContent,
@@ -109,11 +110,17 @@ function Page({
   )
 }
 
+/** A page title, underlined by the pen as it scrolls into view. Centred on phones. */
 function PageTitle({ title, intro }: { title: string; intro?: string }) {
   return (
-    <header className="max-w-[40rem]">
-      <h2 className="display text-[2rem] sm:text-[2.5rem] lg:text-[2.9rem]">{title}</h2>
-      {intro ? <p className="mt-4 max-w-[58ch] text-[color:var(--ink-2)] sm:text-lg">{intro}</p> : null}
+    <header className="mx-auto max-w-[40rem] text-center sm:mx-0 sm:text-start" data-pen>
+      <h2 className="display text-[2rem] sm:text-[2.5rem] lg:text-[2.9rem]">
+        <span className="title-pen">
+          {title}
+          <PenUnderline />
+        </span>
+      </h2>
+      {intro ? <p className="mx-auto mt-4 max-w-[58ch] text-[color:var(--ink-2)] sm:mx-0 sm:text-lg">{intro}</p> : null}
     </header>
   )
 }
@@ -212,7 +219,7 @@ export function LandingPage({
         {/* ── The week ─────────────────────────────────────────────────── */}
         <section id="week" className="scroll-mt-16">
           <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
-            <div className="rule-b flex items-baseline justify-between gap-4 pb-2">
+            <div className="rule-b flex flex-col items-center gap-1 pb-2 text-center sm:flex-row sm:items-baseline sm:justify-between sm:gap-4 sm:text-start">
               <p className="pen shrink-0 whitespace-nowrap text-[1.5rem] sm:text-[1.75rem]">{hero.diary.weekLabel}</p>
               <p className="text-[0.7rem] text-[color:var(--ink-3)] sm:text-xs">{hero.diary.synthetic}</p>
             </div>
@@ -283,10 +290,19 @@ export function LandingPage({
               </li>
             ))}
           </ol>
-          <div className="mt-10">
+          <div className="mt-10 flex flex-col items-center gap-5 text-center sm:flex-row sm:items-baseline sm:gap-8 sm:text-start">
             <Link href={links.signup} data-cta="chain-primary" className="hl-cta">
               {chain.cta}
             </Link>
+            <a
+              href={DEMO_VIDEO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-cta="chain-video"
+              className="pen text-[1.5rem] text-[color:var(--ink-2)] underline decoration-[color:var(--rule)] decoration-2 underline-offset-[6px] hover:text-[color:var(--ink)] hover:decoration-[color:var(--ink)]"
+            >
+              {chain.videoLink}
+            </a>
           </div>
         </Page>
 
@@ -301,7 +317,7 @@ export function LandingPage({
               </li>
             ))}
           </ul>
-          <p className="display mt-10 max-w-[30ch] text-[1.5rem] sm:text-[1.9rem]">{problem.closing}</p>
+          <p className="display mx-auto mt-10 max-w-[30ch] text-center text-[1.5rem] sm:mx-0 sm:text-start sm:text-[1.9rem]">{problem.closing}</p>
         </Page>
 
         {/* ── The centre, from one system ───────────────────────────────── */}
@@ -316,9 +332,9 @@ export function LandingPage({
                   i % 2 === 1 && 'lg:[&>*:first-child]:order-last'
                 )}
               >
-                <div>
+                <div className="text-center sm:text-start">
                   <p className="pen pen-red text-[1.6rem]">{item.title}</p>
-                  <p className="mt-2 max-w-[44ch] text-[color:var(--ink-2)]">{item.body}</p>
+                  <p className="mx-auto mt-2 max-w-[44ch] text-[color:var(--ink-2)] sm:mx-0">{item.body}</p>
                 </div>
                 <Clip
                   locale={locale}
@@ -333,7 +349,7 @@ export function LandingPage({
           </ul>
 
           <div className="mt-14 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-14">
-            <h3 className="display max-w-[16ch] text-[1.5rem] sm:text-[1.75rem]">{israel.title}</h3>
+            <h3 className="display mx-auto max-w-[16ch] text-center text-[1.5rem] sm:mx-0 sm:text-start sm:text-[1.75rem]">{israel.title}</h3>
             <ul className="rule-t mt-5 list-none lg:mt-0">
               {israel.items.map((item) => (
                 <li key={item} className="rule-b flex items-start gap-3 py-3">
@@ -401,7 +417,7 @@ export function LandingPage({
               </ul>
             </div>
           </div>
-          <p className="display mt-10 max-w-[34ch] text-[1.5rem] sm:text-[1.9rem]">{audience.closing}</p>
+          <p className="display mx-auto mt-10 max-w-[34ch] text-center text-[1.5rem] sm:mx-0 sm:text-start sm:text-[1.9rem]">{audience.closing}</p>
         </Page>
 
         {/* ── Plans ─────────────────────────────────────────────────────── */}
@@ -414,7 +430,12 @@ export function LandingPage({
         {/* ── Questions ─────────────────────────────────────────────────── */}
         <Page id="faq">
           <div className="max-w-[46rem]">
-            <h2 className="display text-[2rem] sm:text-[2.5rem]">{faq.title}</h2>
+            <h2 className="display text-center text-[2rem] sm:text-start sm:text-[2.5rem]" data-pen>
+              <span className="title-pen">
+                {faq.title}
+                <PenUnderline />
+              </span>
+            </h2>
             <LandingFaqAccordion items={faq.items} dir={dir} />
           </div>
         </Page>
@@ -422,31 +443,33 @@ export function LandingPage({
         {/* ── The inside back cover ─────────────────────────────────────── */}
         <section className="cover">
           <div className="mx-auto grid w-full max-w-7xl gap-14 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-20 lg:px-8 lg:py-28">
-            <div>
-              <h2 className="display max-w-[22ch] text-[2rem] sm:text-[2.75rem] lg:text-[3.25rem]">{finalCta.title}</h2>
-              <p className="muted mt-5 max-w-[52ch] text-lg">{finalCta.body}</p>
-              <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div className="text-center sm:text-start">
+              <h2 className="display mx-auto max-w-[22ch] text-[2rem] sm:mx-0 sm:text-[2.75rem] lg:text-[3.25rem]">{finalCta.title}</h2>
+              <p className="muted mx-auto mt-5 max-w-[52ch] text-lg sm:mx-0">{finalCta.body}</p>
+              <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 sm:justify-start">
                 <Link href={links.signup} data-cta="final-cta" className="hl-cta">
                   {finalCta.cta}
                 </Link>
                 <p className="muted text-sm">{finalCta.note}</p>
               </div>
             </div>
-            <Ledger ledger={chain.ledger} />
+            <div className="mx-auto w-full max-w-[28rem] lg:mx-0 lg:justify-self-end">
+              <Ledger ledger={chain.ledger} />
+            </div>
           </div>
         </section>
       </main>
 
       <footer className="cover mt-auto border-t border-white/10 pb-24 sm:pb-10" style={{ background: 'var(--cover-deep)' }}>
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-8 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-4 px-4 py-8 text-center text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6 sm:text-start lg:px-8">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             <span className="muted flex items-center gap-2">
               <span className="size-2 rounded-full bg-[color:var(--hl)]" aria-hidden />
               {footer.statusLabel}
             </span>
             <span className="display tracking-wide">{footer.domain}</span>
           </div>
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-1" aria-label={footer.legalNavLabel}>
+          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1" aria-label={footer.legalNavLabel}>
             <Link href="/privacy" className="hover:underline">
               {footer.privacy}
             </Link>
@@ -457,7 +480,7 @@ export function LandingPage({
               {footer.dataDeletion}
             </Link>
           </nav>
-          <div className="muted flex w-full flex-col gap-1 text-xs sm:flex-row sm:flex-wrap sm:gap-x-6">
+          <div className="muted flex w-full flex-col items-center gap-1 text-xs sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-6">
             {siteContact.address ? (
               <p>
                 {footer.addressLabel}: {siteContact.address}
@@ -484,7 +507,7 @@ export function LandingPage({
 
 function Headline({ hero, links, compact = false }: { hero: LandingContent['hero']; links: LandingContent['links']; compact?: boolean }) {
   return (
-    <div className={cn(compact ? 'grid h-full grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start gap-10' : 'flex flex-col gap-5')}>
+    <div className={cn(compact ? 'grid h-full grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start gap-10' : 'flex flex-col gap-5 text-center sm:text-start')}>
       <h1 className={cn('display', compact ? 'text-[2.3rem] xl:text-[2.7rem]' : 'text-[2.25rem] sm:text-[2.9rem]')}>
         <span className="block">
           {hero.headline.less}
@@ -496,8 +519,8 @@ function Headline({ hero, links, compact = false }: { hero: LandingContent['hero
         </span>
       </h1>
       <div className={cn(compact && 'pt-1')}>
-        <p className={cn('max-w-[52ch] text-[color:var(--ink-2)]', compact ? 'text-[1.02rem] leading-[1.5]' : 'text-lg')}>{hero.subheadline}</p>
-        <div className={cn('flex flex-wrap items-center gap-x-5 gap-y-2', compact ? 'mt-3' : 'mt-6')}>
+        <p className={cn('max-w-[52ch] text-[color:var(--ink-2)]', compact ? 'text-[1.02rem] leading-[1.5]' : 'mx-auto text-lg sm:mx-0')}>{hero.subheadline}</p>
+        <div className={cn('flex flex-wrap items-center gap-x-5 gap-y-2', compact ? 'mt-3' : 'mt-6 justify-center sm:justify-start')}>
           <Link href={links.signup} data-cta="hero-primary" className="hl-cta">
             {hero.ctaPrimary}
           </Link>
@@ -545,7 +568,7 @@ function PolicyTable({ card }: { card: LandingContent['chain']['policyCard'] }) 
  */
 function Ledger({ ledger }: { ledger: LandingContent['chain']['ledger'] }) {
   return (
-    <div className="w-full max-w-[28rem] lg:justify-self-end" data-pen>
+    <div className="w-full" data-pen>
       <p className="display rule-b pb-2 text-[1.35rem]">{ledger.title}</p>
       <ul className="list-none">
         {ledger.rows.map(([label, amount], i) => {

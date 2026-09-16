@@ -44,6 +44,9 @@
   outline-offset: 3px;
   border-radius: 2px;
 }
+.diary .cover :focus-visible {
+  outline-color: var(--cover-ink);
+}
 
 .diary a {
   text-underline-offset: 0.2em;
@@ -140,8 +143,10 @@
    drawn on the page like a real marker, not a rounded button. */
 .diary .hl-cta {
   position: relative;
-  display: inline-block;
-  padding: 0.35em 0.5em 0.3em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3em 0.5em;
   font-family: var(--font-display), var(--font-text), sans-serif;
   font-size: 1.375rem;
   line-height: 1.1;
@@ -217,6 +222,36 @@
 }
 .diary .is-on .strike {
   animation: pen-draw 520ms cubic-bezier(0.3, 0, 0.1, 1) 300ms forwards;
+}
+
+/* A page title is underlined by the same pen once it scrolls into view. */
+.diary .title-pen {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 0.18em;
+}
+.diary .title-pen > svg {
+  position: absolute;
+  inset-inline: -0.15em;
+  bottom: 0;
+  width: calc(100% + 0.3em);
+  height: 0.34em;
+  overflow: visible;
+  pointer-events: none;
+  clip-path: inset(0 100% 0 0);
+}
+[dir='rtl'] .diary .title-pen > svg {
+  clip-path: inset(0 0 0 100%);
+}
+.diary .title-pen > svg path {
+  stroke: var(--pen);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.diary .is-on .title-pen > svg {
+  animation: pen-draw 460ms cubic-bezier(0.3, 0, 0.1, 1) 120ms forwards;
 }
 
 /* The entry itself fades to "struck" after the pen has passed. */
@@ -297,6 +332,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .diary .strike { clip-path: inset(0 0 0 0); animation: none; }
+  .diary .title-pen > svg { clip-path: inset(0 0 0 0); animation: none; }
   .diary .sweep::before { transform: skew(-5deg) scaleX(1); animation: none; }
   .diary .sweep > *, .diary .after-note { opacity: 1; animation: none; }
   .diary .arrive { opacity: 1; transform: none; animation: none; }

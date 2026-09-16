@@ -21,6 +21,9 @@
  * competitors, testimonials/metrics (none exist yet).
  */
 
+/** The 75-second demo, linked (never embedded) from the landing page and the demo email. */
+export const DEMO_VIDEO_URL = 'https://youtu.be/LrdokOpDhF0'
+
 /** Screenshot assets under public/landing/{he,en}/<key>.webp */
 export type LandingImageKey =
   | 'wa-cancel-flow'
@@ -150,6 +153,7 @@ const landingEnCore = {
     title: 'How Lessio handles the everyday work while you teach',
     intro: 'A cancellation is only one example. This is what happens when one WhatsApp message needs to update the whole business.',
     cta: 'Try Lessio free',
+    videoLink: 'See it in 75 seconds',
     beats: [
       {
         title: 'The parent cancels on WhatsApp',
@@ -509,6 +513,7 @@ const landingHeCore = {
     title: 'ככה Lessio מטפלת בשוטף בזמן שאתם מלמדים',
     intro: 'ביטול הוא רק דוגמה אחת. כך הודעה אחת ב־WhatsApp מעדכנת את כל מה שצריך במרכז.',
     cta: 'נסו את Lessio בחינם',
+    videoLink: 'לראות את זה ב-75 שניות',
     beats: [
       {
         title: 'ההורה מבטל בוואטסאפ',

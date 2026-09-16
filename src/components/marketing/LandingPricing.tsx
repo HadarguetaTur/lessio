@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
 import { CenterPlanInquiryDialog } from '@/components/marketing/CenterPlanInquiryDialog'
+import { PenUnderline } from '@/components/marketing/LandingPenMarks'
 import type { PublicPricingRow } from '@/lib/marketing/publicPricing'
 import type { LandingContent } from '@/lib/marketing/landingCopy'
 
@@ -37,8 +38,15 @@ export function LandingPricing({
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <h2 className="display max-w-[22ch] text-[2rem] sm:text-[2.5rem]">{copy.title}</h2>
-      <p className="mt-3 max-w-[60ch] text-[color:var(--ink-2)]">{copy.intro}</p>
+      <header className="text-center sm:text-start" data-pen>
+        <h2 className="display mx-auto max-w-[22ch] text-[2rem] sm:mx-0 sm:text-[2.5rem]">
+          <span className="title-pen">
+            {copy.title}
+            <PenUnderline />
+          </span>
+        </h2>
+        <p className="mx-auto mt-3 max-w-[60ch] text-[color:var(--ink-2)] sm:mx-0">{copy.intro}</p>
+      </header>
 
       <div className="rule-t mt-14 grid sm:grid-cols-3">
         {rows.map((row, i) => {
@@ -48,13 +56,13 @@ export function LandingPricing({
             <div
               key={row.name}
               className={cn(
-                'rule-b relative flex flex-col gap-1 py-7 pe-6',
+                'rule-b relative flex flex-col items-center gap-1 py-7 text-center sm:items-start sm:pe-6 sm:text-start',
                 i > 0 && 'sm:rule-s sm:ps-6',
                 featured && 'pt-11 sm:pt-7'
               )}
             >
               {featured ? (
-                <p className="pen pen-red absolute -top-7 start-0 -rotate-2 text-[1.5rem] sm:start-6">{copy.featuredLabel}</p>
+                <p className="pen pen-red absolute -top-7 inset-x-0 -rotate-2 text-center text-[1.5rem] sm:inset-x-auto sm:start-6 sm:text-start">{copy.featuredLabel}</p>
               ) : null}
               <h3 className="display text-[1.75rem]">{isHe ? row.labelHe : row.labelEn}</h3>
               <p className="text-[color:var(--ink-2)]">{seats(row.teachersQuota)}</p>
@@ -62,7 +70,7 @@ export function LandingPricing({
               {row.isCustom ? (
                 <p className="display mt-5 text-[1.75rem]">{copy.customPricing}</p>
               ) : (
-                <p className="tabular mt-5" dir="ltr" style={{ textAlign: isHe ? 'right' : 'left' }}>
+                <p className="tabular mt-5 text-center sm:text-start" dir="ltr" style={{ textAlign: undefined }}>
                   <span className="display text-[2.75rem] leading-none">{money(row.priceMonthly)}</span>
                   <span className="ms-1.5 text-sm text-[color:var(--ink-2)]">{copy.perMonth}</span>
                 </p>
@@ -101,7 +109,7 @@ export function LandingPricing({
         })}
       </div>
 
-      <p className="mt-5 text-sm text-[color:var(--ink-2)]">
+      <p className="mt-5 text-center text-sm text-[color:var(--ink-2)] sm:text-start">
         {copy.trialNote} {copy.trialIncludes} {copy.yearlyNote} {copy.vatNote}
       </p>
     </div>

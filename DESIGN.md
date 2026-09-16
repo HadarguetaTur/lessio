@@ -265,11 +265,13 @@ Server-rendered grid (`role="img"` with the synthetic-week label). Day heads are
 On the cover, max 28rem. Secular One 1.35rem title on a `rule-b` hairline; `rule-b` rows at `py-3` with the label at the start and the tabular amount at the end; the final row is bold 1.15rem. The cancellation line is the last row: bold, `.arrive`, with its amount at 1.35rem in `.sweep`. Under the ledger, the "approved" line in pen hand at 1.6rem in `highlighter`.
 
 ### The pen writes (motion)
-One `IntersectionObserver` (`root` = the diary scroller, threshold 0.45) adds `.is-on` to each `data-pen` element once and unobserves it. The two `data-pen` elements are the spread and the ledger. From `.is-on`:
+One `IntersectionObserver` (`root` = the diary scroller, threshold 0.45) adds `.is-on` to each `data-pen` element once and unobserves it. The `data-pen` elements are the spread, the ledger, and every page title (`PageTitle`, the plans title, the questions title). From `.is-on`:
 - **Strike:** `clip-path` wipe from the reading start, 520ms `cubic-bezier(0.3, 0, 0.1, 1)`, delay 300ms; the struck entry fades to `ink-3` over 300ms after 700ms.
 - **Sweep:** `scaleX(0 → 1)` from the reading-start origin, 420ms `cubic-bezier(0.2, 0.8, 0.2, 1)`, delay 900ms; the note's text inks in over 240ms after 1100ms.
 - **After-note:** inks in over 360ms after 1500ms.
 - **Arrive (ledger):** the ₪60 row comes down 1.25rem into place while fading in, 520ms `cubic-bezier(0.2, 0.8, 0.2, 1)`, delay 200ms, then its amount is swept.
+- **Title underline:** each page title is wrapped in `.title-pen` with a `PenUnderline` SVG (one hand stroke, red pen, 2.6 non-scaling) sitting on its baseline; it is revealed by the same `clip-path` wipe from the reading start, 460ms, delay 120ms. The hero headline and the cover titles are not underlined.
+- **Phones (under 640px):** page titles, intros, closing lines, the hero headline block, the plans, the closing spread and the footer are centred; ruled lists keep their start alignment and are centred as blocks. The highlighter action is an inline-flex box so its label sits in the middle of the stroke.
 - **Reduced motion:** every one of these is set to its final state with `animation: none`, and `scroll-behavior` is `auto`.
 
 ## Do's and Don'ts

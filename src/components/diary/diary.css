@@ -198,7 +198,7 @@
 /* ── The signature motion: the pen writes ─────────────────────────────── */
 
 /* Strike-through drawn across a diary entry. The SVG path animates its dash
-   offset once the [data-pen] ancestor gets .is-on (see LandingPen.tsx). */
+   offset once the [data-pen] ancestor gets .is-on (see DiaryPen.tsx). */
 .diary .strike {
   position: absolute;
   inset: 0;
@@ -538,5 +538,183 @@
   .diary .cell .entry-story {
     white-space: nowrap;
     font-size: 0.85rem;
+  }
+}
+
+/* ── Forms: writing on the line ────────────────────────────────────────── */
+
+/* A field is a ruled line: the label in the pen's hand above it, the answer
+   written in ink on it. No box, no radius. */
+.diary .field {
+  display: grid;
+  gap: 0.15rem;
+}
+.diary .field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.diary .field label {
+  font-family: var(--font-pen), cursive;
+  font-weight: 700;
+  font-size: 1.3rem;
+  line-height: 1.05;
+  color: var(--ink-2);
+}
+.diary .field input {
+  appearance: none;
+  width: 100%;
+  min-height: var(--line);
+  padding: 0.2rem 0.15em;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  color: var(--ink);
+  font-family: var(--font-text), system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  transition: border-color 160ms, box-shadow 160ms;
+}
+.diary .field input::placeholder {
+  color: var(--ink-3);
+  opacity: 1;
+}
+.diary .field input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--ink);
+  box-shadow: 0 1px 0 var(--ink);
+}
+.diary .field input[readonly] {
+  color: var(--ink-3);
+  border-bottom-style: dashed;
+}
+.diary .field input[aria-invalid='true'] {
+  border-bottom-color: var(--pen);
+  box-shadow: 0 1px 0 var(--pen);
+}
+/* Browser autofill paints its own yellow box; keep the paper. */
+.diary .field input:-webkit-autofill,
+.diary .field input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--paper) inset;
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--ink);
+}
+.diary .field-error {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+  font-size: 0.95rem;
+  color: var(--pen);
+}
+
+/* A form-level error is a note in red pen above the action. */
+.diary .form-error {
+  font-family: var(--font-pen), cursive;
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  color: var(--pen);
+}
+
+/* The highlighter action as a real <button>. */
+.diary button.hl-cta {
+  appearance: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font-display), var(--font-text), sans-serif;
+  font-size: 1.375rem;
+}
+.diary .hl-cta:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.diary .hl-cta:disabled::before {
+  transform: skew(-6deg, -0.6deg);
+}
+
+/* A secondary action: underlined on the ruling. */
+.diary .link-rule {
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+  transition: text-decoration-color 160ms;
+}
+.diary .link-rule:hover {
+  text-decoration-color: var(--ink);
+}
+.diary .cover .link-rule {
+  color: var(--cover-ink);
+  text-decoration-color: var(--cover-ink-2);
+}
+.diary .cover .link-rule:hover {
+  text-decoration-color: var(--cover-ink);
+}
+
+/* A stub for a foreign sign-in: a hairline ticket on the paper, never a
+   filled button. The only bordered thing besides a printout. */
+.diary .stub {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  color: var(--ink);
+  font-family: var(--font-text), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 160ms;
+}
+.diary .stub:hover {
+  border-color: var(--ink);
+}
+.diary .stub:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* "or", written on the line. */
+.diary .divider-pen {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  font-family: var(--font-pen), cursive;
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--ink-3);
+}
+.diary .divider-pen::before,
+.diary .divider-pen::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* A note page: one column on ruled paper, centred on phones. */
+.diary .note-page {
+  width: 100%;
+  max-width: 26rem;
+}
+@media (max-width: 639px) {
+  .diary .note-page {
+    text-align: center;
+  }
+  .diary .note-page .field,
+  .diary .note-page .field-head {
+    text-align: start;
   }
 }

@@ -46,7 +46,7 @@ const HEBREW_ALLOWED = [
   // is correct in both locales.
   "src/components/dashboard/LocaleSwitcher.tsx",
   "src/components/i18n/LocaleToggle.tsx",
-  "src/components/marketing/LandingLocaleToggle.tsx",
+  "src/components/diary/DiaryLocaleToggle.tsx",
   "src/app/(dashboard)/settings/locale/page.tsx",
   "src/app/(dashboard)/settings/message-templates/page.tsx",
   // The system prompt is sent to the model, never shown to a user, and the

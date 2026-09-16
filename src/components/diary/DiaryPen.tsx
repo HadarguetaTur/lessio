@@ -13,7 +13,7 @@ import { useEffect } from 'react'
  *
  * Also keeps the thumb index (.tabs) pointing at the page in view.
  */
-export function LandingPen({ scrollRootId }: { scrollRootId: string }) {
+export function DiaryPen({ scrollRootId }: { scrollRootId: string }) {
   useEffect(() => {
     const root = document.getElementById(scrollRootId)
     const pens = Array.from(document.querySelectorAll<HTMLElement>('[data-pen]'))

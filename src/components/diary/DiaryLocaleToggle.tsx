@@ -4,7 +4,7 @@ import { useTransition } from 'react'
 import { setLandingLocaleAction } from '@/app/landing-locale-action'
 import { cn } from '@/lib/utils'
 
-export function LandingLocaleToggle({ currentLocale, className }: { currentLocale: string; className?: string }) {
+export function DiaryLocaleToggle({ currentLocale, className }: { currentLocale: string; className?: string }) {
   const [isPending, startTransition] = useTransition()
   const next = currentLocale === 'he' ? 'en' : 'he'
   const label = currentLocale === 'he' ? 'EN' : 'עב'

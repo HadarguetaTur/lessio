@@ -1,13 +1,12 @@
 import type { CSSProperties, ReactNode } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import localFont from 'next/font/local'
 
-import './landing-diary.css'
+import { DiaryFooter } from '@/components/diary/DiaryFooter'
+import { DiaryHeader } from '@/components/diary/DiaryHeader'
+import { DiaryShell } from '@/components/diary/DiaryShell'
 import { LandingCtaTracker } from '@/components/marketing/LandingCtaTracker'
 import { LandingFaqAccordion } from '@/components/marketing/LandingFaqAccordion'
-import { LandingLocaleToggle } from '@/components/marketing/LandingLocaleToggle'
-import { LandingPen } from '@/components/marketing/LandingPen'
 import {
   PenCheck,
   PenCheckbox,
@@ -34,35 +33,10 @@ import {
 import type { SiteContact } from '@/lib/marketing/siteContact'
 
 /**
- * The landing page is set as a teacher's paper week diary. Three faces, all
- * self-hosted under public/fonts and all carrying Hebrew and Latin:
- * Secular One for display, Assistant for text, Amatic SC for the pen.
+ * The landing page is set as a teacher's paper week diary. The shell, faces,
+ * cover strip and back cover live in src/components/diary and are shared with
+ * the auth and legal pages.
  */
-const display = localFont({
-  src: '../../../public/fonts/SecularOne-Regular.ttf',
-  weight: '400',
-  variable: '--font-display',
-  display: 'swap',
-  fallback: ['system-ui', 'arial'],
-})
-const text = localFont({
-  src: '../../../public/fonts/Assistant-Variable.ttf',
-  weight: '200 800',
-  variable: '--font-text',
-  display: 'swap',
-  fallback: ['system-ui', 'arial'],
-})
-const pen = localFont({
-  src: [
-    { path: '../../../public/fonts/AmaticSC-Regular.ttf', weight: '400' },
-    { path: '../../../public/fonts/AmaticSC-Bold.ttf', weight: '700' },
-  ],
-  variable: '--font-pen',
-  display: 'swap',
-  fallback: ['cursive'],
-})
-
-const SCROLL_ROOT_ID = 'diary-scroll'
 
 /** Official channel → human takeover → confirmations → parent control, in the copy's order. */
 const TRUST_DOODLES = [PenSeal, PenQuietBubble, PenCheckbox, PenToggle] as const
@@ -166,57 +140,36 @@ export function LandingPage({
   ] as const
 
   return (
-    <div
-      id={SCROLL_ROOT_ID}
-      className={cn(
-        // The root <body> is overflow-hidden; this wrapper is the scroll container.
-        'diary relative flex min-h-dvh flex-col overflow-y-auto overflow-x-hidden',
-        display.variable,
-        text.variable,
-        pen.variable
-      )}
-      dir={dir}
-    >
-      <a
-        href="#week"
-        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-[60] focus:bg-[color:var(--hl)] focus:px-3 focus:py-2"
-      >
-        {nav.tabs.week}
-      </a>
-
-      {/* The cover's edge: the diary is closed above this line. */}
-      <header className="cover sticky top-0 z-50">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-violet-600 shadow-sm ring-1 ring-white/15">
-              <span className="text-sm font-bold leading-none text-white">L</span>
-            </div>
-            <span className="display text-lg tracking-wide">LESSIO</span>
-            <nav className="ms-6 hidden items-center gap-5 md:flex" aria-label="Sections">
-              {(
-                [
-                  [nav.howItWorks, '#chain'],
-                  [nav.pricing, '#pricing'],
-                  [nav.faq, '#faq'],
-                ] as const
-              ).map(([label, href]) => (
-                <a key={href} href={href} className="muted text-sm font-semibold hover:!text-[color:var(--cover-ink)] hover:underline">
-                  {label}
-                </a>
-              ))}
-            </nav>
-          </div>
-          <nav className="flex shrink-0 items-center gap-2 sm:gap-4" aria-label="Primary">
-            <LandingLocaleToggle currentLocale={locale} className="muted hover:!text-[color:var(--cover-ink)]" />
+    <DiaryShell dir={dir} skipTo="week" skipLabel={nav.tabs.week}>
+      <DiaryHeader
+        locale={locale}
+        wordmarkHref="#week"
+        nav={
+          <nav className="ms-6 hidden items-center gap-5 md:flex" aria-label="Sections">
+            {(
+              [
+                [nav.howItWorks, '#chain'],
+                [nav.pricing, '#pricing'],
+                [nav.faq, '#faq'],
+              ] as const
+            ).map(([label, href]) => (
+              <a key={href} href={href} className="muted text-sm font-semibold hover:!text-[color:var(--cover-ink)] hover:underline">
+                {label}
+              </a>
+            ))}
+          </nav>
+        }
+        actions={
+          <>
             <Link href={links.login} className="min-h-9 text-sm font-semibold leading-9 hover:underline">
               {nav.login}
             </Link>
             <Link href={links.signup} data-cta="nav-signup" className="hl-cta !text-[1rem]">
               {nav.signup}
             </Link>
-          </nav>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {/* Thumb index: one tab per page. */}
       <nav className="tabs" aria-label={nav.tabs.week}>
@@ -231,9 +184,8 @@ export function LandingPage({
         {/* ── The week ─────────────────────────────────────────────────── */}
         <section id="week" className="scroll-mt-16">
           <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
-            <div className="rule-b flex flex-col items-center gap-1 pb-2 text-center sm:flex-row sm:items-baseline sm:justify-between sm:gap-4 sm:text-start">
-              <p className="pen shrink-0 whitespace-nowrap text-[1.5rem] sm:text-[1.75rem]">{hero.diary.weekLabel}</p>
-              <p className="text-[0.7rem] text-[color:var(--ink-3)] sm:text-xs">{hero.diary.synthetic}</p>
+            <div className="rule-b pb-2 text-center sm:text-start">
+              <p className="pen whitespace-nowrap text-[1.5rem] sm:text-[1.75rem]">{hero.diary.weekLabel}</p>
             </div>
 
             {/* Below lg the headline is written above the spread. */}
@@ -268,6 +220,8 @@ export function LandingPage({
             <div className="mx-auto max-w-[22rem] py-10 lg:hidden">
               <Printout hero={hero} />
             </div>
+
+            <p className="pb-6 text-center text-[0.7rem] text-[color:var(--ink-3)] sm:text-start sm:text-xs lg:pt-3">{hero.diary.synthetic}</p>
           </div>
         </section>
 
@@ -479,48 +433,11 @@ export function LandingPage({
         </section>
       </main>
 
-      <footer className="cover mt-auto border-t border-white/10 pb-24 sm:pb-10" style={{ background: 'var(--cover-deep)' }}>
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-4 px-4 py-8 text-center text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6 sm:text-start lg:px-8">
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            <span className="muted flex items-center gap-2">
-              <span className="size-2 rounded-full bg-[color:var(--hl)]" aria-hidden />
-              {footer.statusLabel}
-            </span>
-            <span className="display tracking-wide">{footer.domain}</span>
-          </div>
-          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1" aria-label={footer.legalNavLabel}>
-            <Link href="/privacy" className="hover:underline">
-              {footer.privacy}
-            </Link>
-            <Link href="/terms" className="hover:underline">
-              {footer.terms}
-            </Link>
-            <Link href="/data-deletion" className="hover:underline">
-              {footer.dataDeletion}
-            </Link>
-          </nav>
-          <div className="muted flex w-full flex-col items-center gap-1 text-xs sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-6">
-            {siteContact.address ? (
-              <p>
-                {footer.addressLabel}: {siteContact.address}
-              </p>
-            ) : null}
-            {siteContact.supportEmail ? (
-              <p>
-                {footer.supportLabel}:{' '}
-                <a href={`mailto:${siteContact.supportEmail}`} className="hover:underline">
-                  {siteContact.supportEmail}
-                </a>
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </footer>
+      <DiaryFooter copy={footer} siteContact={siteContact} className="pb-24 sm:pb-10" />
 
       <LandingStickyCta href={links.signup} label={hero.ctaPrimary} note={pricing.trialNote} />
       <LandingCtaTracker />
-      <LandingPen scrollRootId={SCROLL_ROOT_ID} />
-    </div>
+    </DiaryShell>
   )
 }
 
@@ -528,24 +445,26 @@ function Headline({ hero, links, compact = false }: { hero: LandingContent['hero
   return (
     <div className={cn(compact ? 'grid h-full grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start gap-10' : 'flex flex-col gap-5 text-center sm:text-start')}>
       <h1 className={cn('display', compact ? 'text-[2.3rem] xl:text-[2.7rem]' : 'text-[2.25rem] sm:text-[2.9rem]')}>
-        <span className="block">
+        <span className="block text-balance">
           {hero.headline.less}
           {hero.headline.lessRest}
         </span>
-        <span className="block">
-          {hero.headline.more}
-          {hero.headline.moreRest}
-        </span>
+        {hero.headline.more || hero.headline.moreRest ? (
+          <span className="block">
+            {hero.headline.more}
+            {hero.headline.moreRest}
+          </span>
+        ) : null}
       </h1>
       <div className={cn(compact && 'pt-1')}>
         <p className={cn('max-w-[52ch] text-[color:var(--ink-2)]', compact ? 'text-[1.02rem] leading-[1.5]' : 'mx-auto text-lg sm:mx-0')}>{hero.subheadline}</p>
-        <div className={cn('flex flex-wrap items-center gap-x-5 gap-y-2', compact ? 'mt-3' : 'mt-6 justify-center sm:justify-start')}>
+        <div className={cn('flex flex-col gap-2', compact ? 'mt-3 items-start' : 'mt-6 items-center sm:items-start')}>
           <Link href={links.signup} data-cta="hero-primary" className="hl-cta">
             {hero.ctaPrimary}
           </Link>
-          <p className="text-sm text-[color:var(--ink-2)]">{hero.ctaPrimaryNote}</p>
+          <p className="text-sm text-[color:var(--ink-2)]">{hero.trustLine}</p>
         </div>
-        <p className={cn('pen pen-red text-[1.35rem]', compact ? 'mt-2' : 'mt-4')}>{hero.forLine}</p>
+        {hero.forLine ? <p className={cn('pen pen-red text-[1.35rem]', compact ? 'mt-2' : 'mt-4')}>{hero.forLine}</p> : null}
       </div>
     </div>
   )
@@ -556,7 +475,6 @@ function Printout({ hero }: { hero: LandingContent['hero'] }) {
     <div className="clip tilt-b">
       <PenClip className="paperclip" />
       <LandingWhatsAppChat contactName={hero.chat.contactName} statusLabel={hero.chat.statusLabel} messages={hero.chat.messages} />
-      <p className="text-balance px-3 py-1.5 text-[0.68rem] leading-snug text-[color:var(--ink-2)]">{hero.trustLine}</p>
     </div>
   )
 }

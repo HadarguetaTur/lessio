@@ -7,7 +7,7 @@ const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22] as cons
  * The hero: a teacher's week spread, hours down the reading-start side, five
  * day columns in reading order. One entry is the story; when the spread
  * scrolls into view the pen strikes it, prices it in the margin and marks the
- * slot free. Server-rendered; motion is a class toggled by LandingPen.
+ * slot free. Server-rendered; motion is a class toggled by DiaryPen.
  */
 export function LandingWeekSpread({
   diary,

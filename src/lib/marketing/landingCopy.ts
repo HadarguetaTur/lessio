@@ -7,6 +7,11 @@
  * and a line on the monthly bill — and everything else hangs off that rail.
  * English is written natively, not translated sentence-by-sentence.
  *
+ * The page is set as a teacher's paper week diary (see the surface brief under
+ * .impeccable/surfaces/): the hero is a week spread, and the diary block below
+ * carries the demonstration week around the worked example. There is no
+ * eyebrow above the headline by design; "forLine" is a pen note under the CTA.
+ *
  * Every product claim here is backed by shipped behavior. Things that are NOT
  * claimable (and must stay out): free-text NLU ("Noa won't come tomorrow" is
  * not parsed — the flow is button/menu driven), WhatsApp rescheduling (demo
@@ -53,6 +58,9 @@ export function landingImageSrc(locale: string, key: LandingImageKey): string {
   return `/landing/${locale === 'en' ? 'en' : 'he'}/${key}.webp`
 }
 
+/** One entry on the hero week spread; the story entry is the one the pen strikes. */
+export type LandingDiaryEntry = { day: number; hour: number; text: string; story?: boolean }
+
 /** One bubble in the hero chat. Mirrors the real cancellation flow verbatim. */
 export type LandingChatMessage = {
   from: 'parent' | 'business'
@@ -66,7 +74,7 @@ export type LandingChatMessage = {
 
 const landingEnCore = {
   hero: {
-    eyebrow: 'For tutoring centres with 2 to 5 teachers that bill monthly',
+    forLine: 'For tutoring centres with 2 to 5 teachers that bill monthly.',
     headline: {
       less: 'Every cancellation',
       lessRest: ' is priced and collected.',
@@ -80,6 +88,27 @@ const landingEnCore = {
     ctaSecondary: 'See how it works',
     trustLine: "Built on Meta's official WhatsApp Business Platform",
     outcomes: ['The parent confirms', 'The charge is recorded', 'The calendar updates'],
+    diary: {
+      weekLabel: 'Week of 30 Aug – 3 Sep',
+      days: [
+        { name: 'Sun', date: '30/08' },
+        { name: 'Mon', date: '31/08' },
+        { name: 'Tue', date: '01/09' },
+        { name: 'Wed', date: '02/09' },
+        { name: 'Thu', date: '03/09' },
+      ],
+      /** Demonstration entries, all fictional; the Monday 14:00 one is the story. */
+      entries: [
+        { day: 0, hour: 16, text: 'Yuval Cohen · guitar' },
+        { day: 1, hour: 14, text: 'Noa Levi · piano', story: true },
+        { day: 2, hour: 17, text: 'Maths group' },
+        { day: 3, hour: 15, text: 'Dana · piano' },
+        { day: 3, hour: 19, text: 'Ori · drums' },
+      ] as readonly LandingDiaryEntry[],
+      marginNote: 'Cancelled 21:40 · ₪60',
+      freedNote: 'Slot open again',
+      synthetic: 'Illustrative week. Noa Levi is the worked example used across this page.',
+    },
     chat: {
       contactName: 'Michal Music Studio',
       statusLabel: 'online',
@@ -152,6 +181,15 @@ const landingEnCore = {
       title: 'Cancellation policy',
       rules: ['Up to 24 hours: full charge', 'Up to 2 hours: 50%'],
       result: 'Partial cancellation charge: ₪60',
+    },
+    ledger: {
+      title: 'Noa Levi · August bill',
+      rows: [
+        ['Piano lessons · 4 × ₪120', '₪480'],
+        ['Cancellation 31/08 14:00', '₪60'],
+      ],
+      total: ['Total', '₪540'],
+      approved: 'Approved. Payment request sent on WhatsApp.',
     },
   },
   problem: {
@@ -272,7 +310,7 @@ const landingEnCore = {
     teachersOne: '1 teacher',
     teachersUpTo: 'Up to {count} teachers',
     teachersUnlimited: 'Unlimited teachers',
-    featuredLabel: 'Best fit for most centres',
+    featuredLabel: 'For centres with 2 to 5 teachers',
     featureLine: 'All features included',
     cta: 'Try Lessio free',
     trialNote: '30 days with every feature unlocked. No credit card.',
@@ -373,6 +411,18 @@ const landingEnCore = {
     howItWorks: 'How it works',
     pricing: 'Pricing',
     faq: 'FAQ',
+    /** The diary's thumb index: one tab per page, in page order. */
+    tabs: {
+      week: 'This week',
+      chain: 'One cancellation',
+      problem: 'Without a system',
+      centre: 'The centre',
+      rollout: 'Rollout',
+      trust: 'Trust',
+      audience: 'Who it is for',
+      pricing: 'Plans',
+      faq: 'Questions',
+    },
   },
   meta: {
     title: 'LESSIO | Every cancellation priced and collected',
@@ -383,7 +433,7 @@ const landingEnCore = {
 
 const landingHeCore = {
   hero: {
-    eyebrow: 'למרכזי למידה עם 2 עד 5 מורים שגובים חודשית',
+    forLine: 'למרכזי למידה עם 2 עד 5 מורים שגובים חודשית.',
     headline: {
       less: 'כל ביטול',
       lessRest: ' מתומחר ונגבה.',
@@ -397,6 +447,27 @@ const landingHeCore = {
     ctaSecondary: 'איך זה עובד',
     trustLine: 'מחוברת ל-WhatsApp Business Platform הרשמית של Meta',
     outcomes: ['ההורה מאשר', 'החיוב נרשם', 'היומן מתעדכן'],
+    diary: {
+      weekLabel: 'שבוע 30.08 – 03.09',
+      days: [
+        { name: 'א׳', date: '30/08' },
+        { name: 'ב׳', date: '31/08' },
+        { name: 'ג׳', date: '01/09' },
+        { name: 'ד׳', date: '02/09' },
+        { name: 'ה׳', date: '03/09' },
+      ],
+      /** רשומות הדגמה, כולן בדויות; הרשומה של יום ב׳ 14:00 היא הסיפור. */
+      entries: [
+        { day: 0, hour: 16, text: 'יובל כהן · גיטרה' },
+        { day: 1, hour: 14, text: 'נועה לוי · פסנתר', story: true },
+        { day: 2, hour: 17, text: 'קבוצת מתמטיקה' },
+        { day: 3, hour: 15, text: 'דנה · פסנתר' },
+        { day: 3, hour: 19, text: 'אורי · תופים' },
+      ] as readonly LandingDiaryEntry[],
+      marginNote: 'ביטול 21:40 · ₪60',
+      freedNote: 'המשבצת התפנתה',
+      synthetic: 'שבוע להמחשה. נועה לוי היא הדוגמה שמלווה את כל הדף.',
+    },
     chat: {
       contactName: 'סטודיו מיכל למוזיקה',
       statusLabel: 'מקוון',
@@ -469,6 +540,15 @@ const landingHeCore = {
       title: 'מדיניות ביטולים',
       rules: ['עד 24 שעות: חיוב מלא', 'עד שעתיים: 50%'],
       result: 'חיוב ביטול חלקי: 60₪',
+    },
+    ledger: {
+      title: 'נועה לוי · חשבון אוגוסט',
+      rows: [
+        ['שיעורי פסנתר · 4 × ₪120', '₪480'],
+        ['ביטול 31/08 14:00', '₪60'],
+      ],
+      total: ['סה״כ', '₪540'],
+      approved: 'אושר. בקשת התשלום נשלחה בוואטסאפ.',
     },
   },
   problem: {
@@ -586,7 +666,7 @@ const landingHeCore = {
     teachersOne: 'מורה אחד',
     teachersUpTo: 'עד {count} מורים',
     teachersUnlimited: 'מורים ללא הגבלה',
-    featuredLabel: 'הבחירה של רוב המרכזים',
+    featuredLabel: 'למרכז עם 2 עד 5 מורים',
     featureLine: 'כל הפיצ׳רים כלולים',
     cta: 'נסו את Lessio בחינם',
     trialNote: '30 יום עם כל היכולות פתוחות. בלי כרטיס אשראי.',
@@ -687,6 +767,18 @@ const landingHeCore = {
     howItWorks: 'איך זה עובד',
     pricing: 'מחירים',
     faq: 'שאלות',
+    /** לשוניות היומן: לשונית לכל עמוד, לפי סדר העמודים. */
+    tabs: {
+      week: 'השבוע',
+      chain: 'ביטול אחד',
+      problem: 'בלי מערכת',
+      centre: 'המרכז',
+      rollout: 'הטמעה',
+      trust: 'אמון',
+      audience: 'למי',
+      pricing: 'מסלולים',
+      faq: 'שאלות',
+    },
   },
   meta: {
     title: 'LESSIO | כל ביטול מתומחר ונגבה',

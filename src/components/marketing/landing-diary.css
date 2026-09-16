@@ -1,0 +1,493 @@
+/*
+ * The landing page's visual world: a teacher's paper week diary.
+ * Scoped under .diary so nothing here leaks into the app shell.
+ *
+ * Materials: white paper ruled in pale blue, black ink, one red pen, one
+ * fluorescent highlighter, and the diary's deep teal-green hard cover.
+ * The ruling is the page's only geometry; there are no cards.
+ */
+
+.diary {
+  --paper: #ffffff;
+  --rule: #a9c4db;
+  --rule-soft: #dbe6f0;
+  --ink: #141618;
+  --ink-2: #4a5058;
+  --ink-3: #6b7280;
+  --pen: #c8102e;
+  --hl: #ffe34d;
+  --hl-deep: #ffd60a;
+  --cover: #115e59;
+  --cover-deep: #0c4744;
+  --cover-ink: #f2f7f5;
+  --cover-ink-2: #b9d6d1;
+  --wa-green: #075e54;
+  --wa-bubble: #d9fdd3;
+  --line: 2.25rem;
+
+  color: var(--ink);
+  background: var(--paper);
+  font-family: var(--font-text), system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+.diary ::selection {
+  background: var(--hl);
+  color: var(--ink);
+}
+
+.diary :focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.diary a {
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+/* Custom scrollbar on the diary only: ink thumb on paper. */
+.diary::-webkit-scrollbar {
+  width: 10px;
+}
+.diary::-webkit-scrollbar-thumb {
+  background: var(--rule);
+  border: 3px solid var(--paper);
+  border-radius: 999px;
+}
+.diary::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-3);
+}
+.diary {
+  scrollbar-color: var(--rule) var(--paper);
+  scrollbar-width: thin;
+}
+
+/* ── Type ─────────────────────────────────────────────────────────────── */
+
+.diary .display {
+  font-family: var(--font-display), var(--font-text), sans-serif;
+  font-weight: 400;
+  line-height: 1.08;
+  text-wrap: balance;
+  letter-spacing: 0;
+}
+
+.diary .pen {
+  font-family: var(--font-pen), cursive;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+}
+
+.diary .tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Paper ───────────────────────────────────────────────────────────── */
+
+/* Horizontal ruling that reads as real lines: one hairline per --line. */
+.diary .ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--line) - 1px),
+    var(--rule-soft) calc(var(--line) - 1px),
+    var(--rule-soft) var(--line)
+  );
+  background-attachment: local;
+}
+
+.diary .ruled-strong {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--line) - 1px),
+    var(--rule) calc(var(--line) - 1px),
+    var(--rule) var(--line)
+  );
+}
+
+/* A single hairline, the diary's own. */
+.diary .rule-t { border-top: 1px solid var(--rule); }
+.diary .rule-b { border-bottom: 1px solid var(--rule); }
+.diary .rule-s { border-inline-start: 1px solid var(--rule); }
+.diary .rule-e { border-inline-end: 1px solid var(--rule); }
+
+/* The diary's hard cover: the committed colour field. */
+.diary .cover {
+  background: var(--cover);
+  color: var(--cover-ink);
+}
+.diary .cover ::selection {
+  background: var(--hl);
+  color: var(--ink);
+}
+.diary .cover a:not(.hl-cta) {
+  color: var(--cover-ink);
+}
+.diary .cover .muted {
+  color: var(--cover-ink-2);
+}
+
+/* ── Highlighter ───────────────────────────────────────────────────────── */
+
+/* A highlighter stroke behind text: slightly skewed, bleeds past the glyphs,
+   drawn on the page like a real marker, not a rounded button. */
+.diary .hl-cta {
+  position: relative;
+  display: inline-block;
+  padding: 0.35em 0.5em 0.3em;
+  font-family: var(--font-display), var(--font-text), sans-serif;
+  font-size: 1.375rem;
+  line-height: 1.1;
+  color: var(--ink);
+  text-decoration: none;
+  isolation: isolate;
+  min-height: 44px;
+}
+.diary .hl-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0.08em -0.25em 0.12em -0.35em;
+  background: var(--hl);
+  transform: skew(-6deg, -0.6deg);
+  z-index: -1;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 220ms;
+}
+.diary .hl-cta:hover::before {
+  background: var(--hl-deep);
+  transform: skew(-6deg, -0.6deg) scale(1.035, 1.08);
+}
+.diary .hl-cta:active::before {
+  transform: skew(-6deg, -0.6deg) scale(0.99, 0.98);
+}
+
+/* The same highlighter as an inline mark on a number or phrase. */
+.diary .hl-mark {
+  background: linear-gradient(to bottom, transparent 8%, var(--hl) 8%, var(--hl) 88%, transparent 88%);
+  padding-inline: 0.15em;
+  margin-inline: -0.15em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* ── Red pen ───────────────────────────────────────────────────────────── */
+
+.diary .pen-red {
+  color: var(--pen);
+}
+
+.diary .pen-underline {
+  text-decoration: underline;
+  text-decoration-color: var(--pen);
+  text-decoration-thickness: 2px;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 0.18em;
+}
+
+/* ── The signature motion: the pen writes ─────────────────────────────── */
+
+/* Strike-through drawn across a diary entry. The SVG path animates its dash
+   offset once the [data-pen] ancestor gets .is-on (see LandingPen.tsx). */
+.diary .strike {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.diary .strike path {
+  stroke: var(--pen);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  fill: none;
+}
+/* Hidden until the pen passes: the wipe reveals it from the reading start. */
+.diary .strike {
+  clip-path: inset(0 100% 0 0);
+}
+[dir='rtl'] .diary .strike {
+  clip-path: inset(0 0 0 100%);
+}
+.diary .is-on .strike {
+  animation: pen-draw 520ms cubic-bezier(0.3, 0, 0.1, 1) 300ms forwards;
+}
+
+/* The entry itself fades to "struck" after the pen has passed. */
+.diary .entry-story {
+  transition: color 300ms 700ms;
+}
+.diary .is-on .entry-story {
+  color: var(--ink-3);
+}
+
+/* Highlighter sweep: a note that gets marked from its reading start. */
+.diary .sweep {
+  position: relative;
+  isolation: isolate;
+}
+/* A note pinned inside a diary cell keeps its absolute placement. */
+.diary .sweep.absolute {
+  position: absolute;
+}
+.diary .sweep::before {
+  content: '';
+  position: absolute;
+  inset: 0.05em -0.2em 0.05em -0.3em;
+  background: var(--hl);
+  transform: skew(-5deg) scaleX(0);
+  transform-origin: 0 50%;
+  z-index: -1;
+}
+[dir='rtl'] .diary .sweep::before {
+  transform-origin: 100% 50%;
+}
+.diary .sweep > * {
+  opacity: 0;
+}
+.diary .is-on .sweep::before {
+  animation: hl-sweep 420ms cubic-bezier(0.2, 0.8, 0.2, 1) 900ms forwards;
+}
+.diary .is-on .sweep > * {
+  animation: ink-in 240ms ease-out 1100ms forwards;
+}
+
+/* On the cover the highlighter still carries ink-coloured text. */
+.diary .cover .sweep > * {
+  color: var(--ink);
+}
+.diary .cover .rule-t { border-top-color: rgba(242, 247, 245, 0.35); }
+.diary .cover .rule-b { border-bottom-color: rgba(242, 247, 245, 0.35); }
+
+/* The month-end line: the amount comes down the page into the summary. */
+.diary .arrive {
+  opacity: 0;
+  transform: translateY(-1.25rem);
+}
+.diary .is-on .arrive {
+  animation: arrive 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms forwards;
+}
+@keyframes arrive {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* A second beat: the freed slot appears after the note. */
+.diary .after-note {
+  opacity: 0;
+}
+.diary .is-on .after-note {
+  animation: ink-in 360ms ease-out 1500ms forwards;
+}
+
+@keyframes pen-draw {
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes hl-sweep {
+  to { transform: skew(-5deg) scaleX(1); }
+}
+@keyframes ink-in {
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diary .strike { clip-path: inset(0 0 0 0); animation: none; }
+  .diary .sweep::before { transform: skew(-5deg) scaleX(1); animation: none; }
+  .diary .sweep > *, .diary .after-note { opacity: 1; animation: none; }
+  .diary .arrive { opacity: 1; transform: none; animation: none; }
+  .diary .entry-story { color: var(--ink-3); transition: none; }
+  .diary .hl-cta::before, .diary .hl-cta:hover::before { transition: none; }
+  .diary { scroll-behavior: auto; }
+}
+
+/* Under a desk lamp at night the paper is the same paper; only the shadows
+   warm up. The diary never turns into a black page. */
+@media (prefers-color-scheme: dark) {
+  .diary .clip {
+    box-shadow: 0 8px 22px -8px rgba(70, 45, 10, 0.42), 0 1px 0 rgba(70, 45, 10, 0.08);
+  }
+}
+
+/* ── The week spread ───────────────────────────────────────────────────── */
+
+.diary .spread {
+  display: grid;
+  grid-template-columns: 3.25rem repeat(5, minmax(0, 1fr));
+  grid-auto-rows: var(--line);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+@media (min-width: 640px) {
+  .diary .spread { grid-template-columns: 4rem repeat(5, minmax(0, 1fr)); }
+}
+.diary .spread > * {
+  border-bottom: 1px solid var(--rule-soft);
+  border-inline-start: 1px solid var(--rule-soft);
+  min-width: 0;
+}
+.diary .spread > .hour {
+  border-inline-start: 0;
+  border-inline-end: 1px solid var(--rule);
+  padding-inline-end: 0.5rem;
+  text-align: end;
+  font-size: 0.72rem;
+  color: var(--ink-3);
+  line-height: var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.diary .spread > .dayhead {
+  border-bottom: 1px solid var(--rule);
+  line-height: 1.05;
+  padding: 0.35rem 0.5rem 0;
+  min-height: var(--line);
+}
+.diary .spread > .cell {
+  position: relative;
+  padding: 0.3rem 0.45rem 0;
+}
+.diary .cell .entry {
+  font-family: var(--font-pen), cursive;
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.diary .cell .entry-story {
+  display: inline-block;
+  max-width: 100%;
+  overflow: visible;
+  padding-inline: 0.15em;
+}
+@media (min-width: 640px) {
+  .diary .cell .entry { font-size: 1.3rem; }
+}
+@media (min-width: 1024px) {
+  .diary .cell .entry { font-size: 1.5rem; }
+}
+
+/* On phones the spread shows the working hours around the story. */
+@media (max-width: 639px) {
+  .diary .spread > [data-hour] { display: none; }
+  .diary .spread > [data-hour='12'],
+  .diary .spread > [data-hour='13'],
+  .diary .spread > [data-hour='14'],
+  .diary .spread > [data-hour='15'],
+  .diary .spread > [data-hour='16'],
+  .diary .spread > [data-hour='17'] { display: block; }
+}
+
+/* ── Clipped-in printouts (real screenshots) ────────────────────────────── */
+
+.diary .clip {
+  position: relative;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  box-shadow: 0 6px 18px -8px rgba(20, 22, 24, 0.28), 0 1px 0 rgba(20, 22, 24, 0.04);
+}
+.diary .clip > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.diary .clip .paperclip {
+  position: absolute;
+  top: -0.9rem;
+  inset-inline-end: 1.1rem;
+  width: 1.6rem;
+  height: 3.2rem;
+  color: var(--ink-3);
+}
+.diary .tilt-a { transform: rotate(-0.8deg); }
+.diary .tilt-b { transform: rotate(0.7deg); }
+
+/* ── Thumb index tabs ──────────────────────────────────────────────────── */
+
+.diary .tabs {
+  position: fixed;
+  inset-inline-end: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+}
+@media (min-width: 1280px) {
+  .diary .tabs { display: flex; }
+}
+.diary .tabs a {
+  display: block;
+  writing-mode: vertical-rl;
+  padding: 0.6rem 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-inline-end: 0;
+  text-decoration: none;
+  transition: background-color 160ms, color 160ms;
+}
+[dir='rtl'] .diary .tabs a { transform: rotate(180deg); border-inline-end: 1px solid var(--rule); border-inline-start: 0; }
+.diary .tabs a:hover,
+.diary .tabs a[aria-current='true'] {
+  background: var(--hl);
+  color: var(--ink);
+}
+
+/* ── WhatsApp printout: real chrome, kept as the parent sees it ─────────── */
+
+.diary .wa {
+  background: #efeae2;
+  border: 1px solid var(--rule);
+  font-family: var(--font-text), system-ui, sans-serif;
+}
+.diary .wa-head {
+  background: var(--wa-green);
+  color: #fff;
+}
+.diary .wa-bubble {
+  background: #fff;
+  color: #111b21;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+.diary .wa-bubble.mine {
+  background: var(--wa-bubble);
+}
+.diary .wa-btn {
+  color: #0b5fc4;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Desktop: taller rows so the story cell has air and the top rows can hold
+   the headline note without hiding any entry. */
+@media (min-width: 1024px) {
+  /* Scoped on the wrapper so the notes overlaid on the spread share its rows. */
+  .diary .spread-scope,
+  .diary .spread { --line: 2.75rem; }
+}
+
+/* Phones: entries wrap onto two pen lines instead of truncating; the story
+   entry stays on one line so the strike reads as one stroke. */
+@media (max-width: 639px) {
+  .diary .cell .entry {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 0.95rem;
+    line-height: 0.95;
+  }
+  .diary .cell .entry-story {
+    white-space: nowrap;
+    font-size: 0.85rem;
+  }
+}

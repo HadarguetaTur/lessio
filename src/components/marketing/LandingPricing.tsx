@@ -6,12 +6,9 @@ import type { PublicPricingRow } from '@/lib/marketing/publicPricing'
 import type { LandingContent } from '@/lib/marketing/landingCopy'
 
 /**
- * The pricing section. The landing page had no prices at all — a visitor could
- * not find out what Lessio costs without signing up, which loses exactly the
- * qualified buyer the "not built for every teacher" positioning is aimed at.
- *
- * Copy comes from landingCopy; the numbers come from saas_plans at render time,
- * so this section and checkout can never disagree.
+ * The plans page of the diary: a ruled table, three columns, hairlines only.
+ * Copy comes from landingCopy; the numbers come from saas_plans at render
+ * time, so this page and checkout can never disagree.
  */
 export function LandingPricing({
   copy,
@@ -40,86 +37,72 @@ export function LandingPricing({
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-balance text-xl font-semibold leading-snug tracking-tight text-foreground sm:text-2xl md:text-3xl">
-          {copy.title}
-        </h2>
-        <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-          {copy.intro}
-        </p>
-      </div>
+      <h2 className="display max-w-[22ch] text-[2rem] sm:text-[2.5rem]">{copy.title}</h2>
+      <p className="mt-3 max-w-[60ch] text-[color:var(--ink-2)]">{copy.intro}</p>
 
-      <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {rows.map((row) => {
-          // Studio is the tier most businesses land on, so it carries the
-          // emphasis rather than the most expensive one.
+      <div className="rule-t mt-14 grid sm:grid-cols-3">
+        {rows.map((row, i) => {
+          // Studio is the tier most centres land on, so it carries the pen note.
           const featured = row.name === 'studio'
           return (
             <div
               key={row.name}
               className={cn(
-                'relative flex flex-col gap-4 rounded-2xl border border-border/70 bg-background/85 px-6 py-7 shadow-sm backdrop-blur-sm',
-                featured && 'border-2 border-violet-500/45 shadow-lg ring-2 ring-violet-500/10'
+                'rule-b relative flex flex-col gap-1 py-7 pe-6',
+                i > 0 && 'sm:rule-s sm:ps-6',
+                featured && 'pt-11 sm:pt-7'
               )}
             >
               {featured ? (
-                <p className="absolute -top-3 start-5 rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                  {copy.featuredLabel}
-                </p>
+                <p className="pen pen-red absolute -top-7 start-0 -rotate-2 text-[1.5rem] sm:start-6">{copy.featuredLabel}</p>
               ) : null}
-              <h3 className="text-lg font-semibold tracking-tight text-foreground">
-                {isHe ? row.labelHe : row.labelEn}
-              </h3>
-
-              <p className="text-sm font-medium text-muted-foreground">{seats(row.teachersQuota)}</p>
-              <p className="-mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                {copy.featureLine}
-              </p>
+              <h3 className="display text-[1.75rem]">{isHe ? row.labelHe : row.labelEn}</h3>
+              <p className="text-[color:var(--ink-2)]">{seats(row.teachersQuota)}</p>
 
               {row.isCustom ? (
-                <div className="text-2xl font-bold leading-none tracking-tight text-foreground">
-                  {copy.customPricing}
-                </div>
+                <p className="display mt-5 text-[1.75rem]">{copy.customPricing}</p>
               ) : (
-                <div className="tabular-nums" dir="ltr">
-                  <span className="text-3xl font-bold leading-none tracking-tight text-foreground">
-                    {money(row.priceMonthly)}
-                  </span>
-                  <span className="ms-1.5 text-sm font-medium text-muted-foreground">
-                    {copy.perMonth}
-                  </span>
-                </div>
+                <p className="tabular mt-5" dir="ltr" style={{ textAlign: isHe ? 'right' : 'left' }}>
+                  <span className="display text-[2.75rem] leading-none">{money(row.priceMonthly)}</span>
+                  <span className="ms-1.5 text-sm text-[color:var(--ink-2)]">{copy.perMonth}</span>
+                </p>
               )}
-
               {!row.isCustom && row.priceYearly != null ? (
-                <p className="text-xs text-muted-foreground tabular-nums">
+                <p className="tabular text-sm text-[color:var(--ink-2)]">
                   <span dir="ltr">{money(row.priceYearly)}</span> {copy.perYear}
                 </p>
               ) : null}
 
-              {row.isCustom ? (
-                <CenterPlanInquiryDialog copy={copy.centerInquiry} locale={locale} className="mt-auto" />
-              ) : (
-                <Link
-                  href={signupHref}
-                  data-cta={`pricing-${row.name}`}
-                  className={cn(
-                    'mt-auto inline-flex h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors',
-                    featured
-                      ? 'bg-violet-600 text-white hover:bg-violet-500'
-                      : 'border border-border/70 text-foreground hover:bg-muted/60'
-                  )}
-                >
-                  {copy.cta}
-                </Link>
-              )}
+              <p className="mt-3 text-sm text-[color:var(--ink-2)]">{copy.featureLine}</p>
+
+              <div className="mt-6">
+                {row.isCustom ? (
+                  <CenterPlanInquiryDialog
+                    copy={copy.centerInquiry}
+                    locale={locale}
+                    className="h-auto min-h-11 w-auto rounded-none border-0 bg-transparent p-0 text-[1.0625rem] font-semibold text-[color:var(--ink)] underline decoration-[color:var(--rule)] decoration-2 underline-offset-[6px] shadow-none hover:bg-transparent hover:decoration-[color:var(--ink)]"
+                  />
+                ) : featured ? (
+                  <Link href={signupHref} data-cta={`pricing-${row.name}`} className="hl-cta">
+                    {copy.cta}
+                  </Link>
+                ) : (
+                  <Link
+                    href={signupHref}
+                    data-cta={`pricing-${row.name}`}
+                    className="inline-flex min-h-11 items-center font-semibold text-[color:var(--ink)] underline decoration-[color:var(--rule)] decoration-2 underline-offset-[6px] hover:decoration-[color:var(--ink)]"
+                  >
+                    {copy.cta}
+                  </Link>
+                )}
+              </div>
             </div>
           )
         })}
       </div>
 
-      <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
-        {copy.trialNote} {copy.trialIncludes} · {copy.yearlyNote} · {copy.vatNote}
+      <p className="mt-5 text-sm text-[color:var(--ink-2)]">
+        {copy.trialNote} {copy.trialIncludes} {copy.yearlyNote} {copy.vatNote}
       </p>
     </div>
   )

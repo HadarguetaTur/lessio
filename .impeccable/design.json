@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-16T00:00:00Z",
+  "title": "Design System: Lessio landing (the week diary)",
+  "scope": "Landing/marketing surface only (src/components/marketing/, scoped under .diary). The dashboard, admin, portal, login and signup keep their own shadcn/oklch system in src/app/globals.css, which this world does not replace.",
+  "extensions": {
+    "colorMeta": {
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "#ffffff", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(38% 0 0)", "oklch(50% 0 0)", "oklch(62% 0 0)", "oklch(73% 0 0)", "oklch(84% 0 0)", "oklch(100% 0 0)"] },
+      "rule": { "role": "neutral", "displayName": "Ruling", "canonical": "#a9c4db", "tonalRamp": ["oklch(15% 0.04 240)", "oklch(27% 0.04 240)", "oklch(38% 0.04 240)", "oklch(50% 0.04 240)", "oklch(62% 0.04 240)", "oklch(73% 0.04 240)", "oklch(80% 0.04 240)", "oklch(95% 0.02 240)"] },
+      "rule-soft": { "role": "neutral", "displayName": "Ruling Soft", "canonical": "#dbe6f0", "tonalRamp": ["oklch(15% 0.02 240)", "oklch(27% 0.02 240)", "oklch(38% 0.02 240)", "oklch(50% 0.02 240)", "oklch(62% 0.02 240)", "oklch(73% 0.02 240)", "oklch(84% 0.02 240)", "oklch(92% 0.02 240)"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#141618", "tonalRamp": ["oklch(15% 0.006 250)", "oklch(20% 0.006 250)", "oklch(38% 0.006 250)", "oklch(50% 0.006 250)", "oklch(62% 0.006 250)", "oklch(73% 0.006 250)", "oklch(84% 0.006 250)", "oklch(95% 0.006 250)"] },
+      "ink-2": { "role": "neutral", "displayName": "Ink 2", "canonical": "#4a5058", "tonalRamp": ["oklch(15% 0.012 260)", "oklch(27% 0.012 260)", "oklch(42% 0.012 260)", "oklch(50% 0.012 260)", "oklch(62% 0.012 260)", "oklch(73% 0.012 260)", "oklch(84% 0.012 260)", "oklch(95% 0.012 260)"] },
+      "ink-3": { "role": "neutral", "displayName": "Ink 3", "canonical": "#6b7280", "tonalRamp": ["oklch(15% 0.02 260)", "oklch(27% 0.02 260)", "oklch(38% 0.02 260)", "oklch(55% 0.02 260)", "oklch(62% 0.02 260)", "oklch(73% 0.02 260)", "oklch(84% 0.02 260)", "oklch(95% 0.02 260)"] },
+      "pen": { "role": "primary", "displayName": "Red Pen", "canonical": "#c8102e", "tonalRamp": ["oklch(15% 0.08 22)", "oklch(27% 0.14 22)", "oklch(38% 0.18 22)", "oklch(52% 0.21 22)", "oklch(62% 0.2 22)", "oklch(73% 0.15 22)", "oklch(84% 0.09 22)", "oklch(95% 0.03 22)"] },
+      "highlighter": { "role": "primary", "displayName": "Highlighter", "canonical": "#ffe34d", "tonalRamp": ["oklch(15% 0.04 98)", "oklch(27% 0.07 98)", "oklch(38% 0.09 98)", "oklch(50% 0.12 98)", "oklch(62% 0.14 98)", "oklch(73% 0.16 98)", "oklch(84% 0.17 98)", "oklch(91% 0.17 98)"] },
+      "highlighter-deep": { "role": "primary", "displayName": "Highlighter Deep", "canonical": "#ffd60a", "tonalRamp": ["oklch(15% 0.04 92)", "oklch(27% 0.07 92)", "oklch(38% 0.1 92)", "oklch(50% 0.13 92)", "oklch(62% 0.15 92)", "oklch(73% 0.17 92)", "oklch(84% 0.18 92)", "oklch(88% 0.18 92)"] },
+      "cover": { "role": "secondary", "displayName": "Cover Teal", "canonical": "#115e59", "tonalRamp": ["oklch(15% 0.03 185)", "oklch(27% 0.05 185)", "oklch(35% 0.06 185)", "oklch(43% 0.07 185)", "oklch(62% 0.08 185)", "oklch(73% 0.07 185)", "oklch(85% 0.03 180)", "oklch(97% 0.005 170)"] },
+      "cover-deep": { "role": "secondary", "displayName": "Cover Deep", "canonical": "#0c4744", "tonalRamp": ["oklch(15% 0.03 185)", "oklch(27% 0.05 185)", "oklch(35% 0.06 185)", "oklch(50% 0.07 185)", "oklch(62% 0.08 185)", "oklch(73% 0.07 185)", "oklch(84% 0.04 185)", "oklch(95% 0.01 185)"] },
+      "cover-ink": { "role": "secondary", "displayName": "Cover Ink", "canonical": "#f2f7f5", "tonalRamp": ["oklch(15% 0.005 170)", "oklch(27% 0.005 170)", "oklch(38% 0.005 170)", "oklch(50% 0.005 170)", "oklch(62% 0.005 170)", "oklch(73% 0.005 170)", "oklch(84% 0.005 170)", "oklch(97% 0.005 170)"] },
+      "cover-ink-2": { "role": "secondary", "displayName": "Cover Ink Muted", "canonical": "#b9d6d1", "tonalRamp": ["oklch(15% 0.03 180)", "oklch(27% 0.03 180)", "oklch(38% 0.03 180)", "oklch(50% 0.03 180)", "oklch(62% 0.03 180)", "oklch(73% 0.03 180)", "oklch(85% 0.03 180)", "oklch(95% 0.01 180)"] },
+      "wa-green": { "role": "tertiary", "displayName": "WhatsApp Green", "canonical": "#075e54", "tonalRamp": ["oklch(15% 0.03 185)", "oklch(27% 0.06 185)", "oklch(42% 0.08 185)", "oklch(50% 0.08 185)", "oklch(62% 0.09 185)", "oklch(73% 0.08 185)", "oklch(84% 0.05 185)", "oklch(95% 0.02 185)"] },
+      "wa-bubble": { "role": "tertiary", "displayName": "WhatsApp Bubble", "canonical": "#d9fdd3", "tonalRamp": ["oklch(15% 0.03 140)", "oklch(27% 0.05 140)", "oklch(38% 0.07 140)", "oklch(50% 0.09 140)", "oklch(62% 0.1 140)", "oklch(73% 0.1 140)", "oklch(84% 0.08 140)", "oklch(96% 0.06 140)"] },
+      "wa-paper": { "role": "tertiary", "displayName": "WhatsApp Paper", "canonical": "#efeae2", "tonalRamp": ["oklch(15% 0.01 80)", "oklch(27% 0.01 80)", "oklch(38% 0.01 80)", "oklch(50% 0.01 80)", "oklch(62% 0.01 80)", "oklch(73% 0.01 80)", "oklch(84% 0.01 80)", "oklch(94% 0.01 80)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The two-line headline over the week and the closing cover's title. Secular One 400, text-wrap balance." },
+      "headline": { "displayName": "Headline", "purpose": "Page titles (h2) at the top of each diary page, max 40rem." },
+      "title": { "displayName": "Title", "purpose": "Beat and sub-page titles (h3), closing lines, pricing tier names, the pricing monthly figure at 2.75rem." },
+      "row-title": { "displayName": "Row title", "purpose": "The bold lead of a hairline row (problem, rollout, trust) in Assistant 700." },
+      "body": { "displayName": "Body", "purpose": "All paragraphs; supporting copy in ink-2; measures 44-62ch." },
+      "pen": { "displayName": "Pen", "purpose": "Amatic SC 700, only where a hand would write: diary entries, the week label, margin notes, short notes, the approved line." },
+      "pen-number": { "displayName": "Pen number", "purpose": "Beat and step numerals in the red pen at 2.25rem." },
+      "label": { "displayName": "Label", "purpose": "The vertical thumb tabs; hour labels and dates use the same size in ink-3 with tabular numerals." }
+    },
+    "fonts": [
+      { "variable": "--font-display", "family": "Secular One", "file": "public/fonts/SecularOne-Regular.ttf", "weights": "400", "license": "OFL" },
+      { "variable": "--font-text", "family": "Assistant", "file": "public/fonts/Assistant-Variable.ttf", "weights": "200-800 (variable)", "license": "OFL" },
+      { "variable": "--font-pen", "family": "Amatic SC", "file": "public/fonts/AmaticSC-Regular.ttf, public/fonts/AmaticSC-Bold.ttf", "weights": "400, 700", "license": "OFL" }
+    ],
+    "shadows": [
+      { "name": "printout", "value": "0 6px 18px -8px rgba(20, 22, 24, 0.28), 0 1px 0 rgba(20, 22, 24, 0.04)", "purpose": "Under .clip only: a screenshot lying on the page." },
+      { "name": "printout-desk-lamp", "value": "0 8px 22px -8px rgba(70, 45, 10, 0.42), 0 1px 0 rgba(70, 45, 10, 0.08)", "purpose": "The same shadow under prefers-color-scheme: dark; the only thing the dark scheme changes." },
+      { "name": "wa-bubble", "value": "0 1px 0 rgba(0, 0, 0, 0.06)", "purpose": "WhatsApp's own bubble chrome inside the printout." }
+    ],
+    "motion": [
+      { "name": "ease-highlighter", "value": "cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Highlighter band hover (220ms), the sweep (420ms), the ledger arrive (520ms)." },
+      { "name": "ease-pen", "value": "cubic-bezier(0.3, 0, 0.1, 1)", "purpose": "The red strike's clip-path wipe (520ms, 300ms delay)." },
+      { "name": "ink-in", "value": "ease-out", "purpose": "Notes fading in after the pen (240ms at 1100ms; 360ms at 1500ms)." },
+      { "name": "struck", "value": "color 300ms 700ms", "purpose": "The struck entry fades to ink-3 after the pen has passed." },
+      { "name": "tab", "value": "background-color 160ms, color 160ms", "purpose": "Thumb tab hover and current state." },
+      { "name": "accordion-mark", "value": "transform 300ms ease-out", "purpose": "The FAQ plus rotating 45deg into a minus." },
+      { "name": "sticky-strip", "value": "transform, opacity 300ms", "purpose": "The mobile action strip sliding in once the week has left the viewport." },
+      { "name": "trigger", "value": "IntersectionObserver threshold 0.45 on [data-pen], fires once, adds .is-on", "purpose": "The single authored scroll motion; reduced motion shows the final state." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px", "purpose": "Two-column rows, larger pen entries, hour column 4rem, sticky strip hidden." },
+      { "name": "md", "value": "768px", "purpose": "Header section links appear." },
+      { "name": "lg", "value": "1024px", "purpose": "Headline note laid over the spread, printout clipped over the far columns, --line 2.75rem on the spread, alternating illustrated rows." },
+      { "name": "xl", "value": "1280px", "purpose": "Thumb index tabs appear." }
+    ],
+    "line": { "value": "2.25rem", "lg": "2.75rem", "purpose": "The vertical unit: ruling repeat, spread row height, note offsets." },
+    "carriedBrand": [
+      "The LESSIO wordmark set in caps (Secular One, tracking-wide, on the cover).",
+      "The existing L logo: white L on a rounded-xl square with a teal-500 to violet-600 gradient, shadow-sm, ring-1 ring-white/15."
+    ],
+    "buildVersusContract": [
+      "The spread's hours run 08:00-22:00; on phones only 12:00-17:00 are shown.",
+      "The story entry is in the second day column at 14:00 (Mon 31/08 in the shipped copy).",
+      "The ₪60 does not travel down the page; it arrives at the month-end line on the cover (translateY -1.25rem to 0, fade) when the ledger enters view, then is swept.",
+      "Diary entries are set in Amatic SC 700 whether scheduled or not; the struck entry fades to ink-3; the charged ledger row is Assistant bold."
+    ]
+  },
+  "components": [
+    {
+      "name": "Highlighter action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The primary action: display type with a skewed highlighter stroke behind it. Deepens and swells on hover.",
+      "html": "<a class=\"ds-hl-cta\" href=\"#\">Try Lessio free</a>",
+      "css": ".ds-hl-cta { position: relative; display: inline-block; padding: 0.35em 0.5em 0.3em; font-family: 'Secular One', Assistant, system-ui, sans-serif; font-size: 1.375rem; line-height: 1.1; color: #141618; text-decoration: none; isolation: isolate; min-height: 44px; } .ds-hl-cta::before { content: ''; position: absolute; inset: 0.08em -0.25em 0.12em -0.35em; background: #ffe34d; transform: skew(-6deg, -0.6deg); z-index: -1; transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 220ms; } .ds-hl-cta:hover::before { background: #ffd60a; transform: skew(-6deg, -0.6deg) scale(1.035, 1.08); } .ds-hl-cta:active::before { transform: skew(-6deg, -0.6deg) scale(0.99, 0.98); } .ds-hl-cta:focus-visible { outline: 2px solid #141618; outline-offset: 3px; border-radius: 2px; }"
+    },
+    {
+      "name": "Underlined action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The secondary action: bold text on a ruling-coloured underline that turns ink on hover. Non-featured pricing tiers and the Center inquiry trigger.",
+      "html": "<a class=\"ds-link-cta\" href=\"#\">Start the trial</a>",
+      "css": ".ds-link-cta { display: inline-flex; align-items: center; min-height: 44px; font-family: Assistant, system-ui, sans-serif; font-size: 1.0625rem; font-weight: 600; color: #141618; text-decoration: underline; text-decoration-color: #a9c4db; text-decoration-thickness: 2px; text-underline-offset: 6px; } .ds-link-cta:hover { text-decoration-color: #141618; } .ds-link-cta:focus-visible { outline: 2px solid #141618; outline-offset: 3px; border-radius: 2px; }"
+    },
+    {
+      "name": "Highlighter mark",
+      "kind": "chip",
+      "refersTo": "button-primary",
+      "description": "The inline highlighter on a number or phrase (the ₪60). A vertical band that bleeds slightly past the glyphs and clones across line breaks.",
+      "html": "<p class=\"ds-line\">Partial cancellation charge: <span class=\"ds-hl-mark\">₪60</span></p>",
+      "css": ".ds-line { font-family: Assistant, system-ui, sans-serif; font-size: 1.0625rem; line-height: 1.6; color: #141618; } .ds-hl-mark { background: linear-gradient(to bottom, transparent 8%, #ffe34d 8%, #ffe34d 88%, transparent 88%); padding-inline: 0.15em; margin-inline: -0.15em; box-decoration-break: clone; -webkit-box-decoration-break: clone; font-weight: 700; }"
+    },
+    {
+      "name": "Thumb index tab",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "One vertical tab per diary page, fixed at the reading-end edge on wide screens. The page in view is highlighted.",
+      "html": "<nav class=\"ds-tabs\"><a href=\"#\">The week</a><a href=\"#\" aria-current=\"true\">Pricing</a><a href=\"#\">Questions</a></nav>",
+      "css": ".ds-tabs { display: flex; flex-direction: column; gap: 2px; width: max-content; } .ds-tabs a { display: block; writing-mode: vertical-rl; padding: 0.6rem 0.35rem; font-family: Assistant, system-ui, sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; color: #4a5058; background: #ffffff; border: 1px solid #a9c4db; border-inline-end: 0; text-decoration: none; transition: background-color 160ms, color 160ms; } .ds-tabs a:hover, .ds-tabs a[aria-current='true'] { background: #ffe34d; color: #141618; } .ds-tabs a:focus-visible { outline: 2px solid #141618; outline-offset: 3px; }"
+    },
+    {
+      "name": "Hairline row list",
+      "kind": "card",
+      "refersTo": "printout",
+      "description": "How every list, table and FAQ is built: a top rule, then rows separated by hairlines, with a bold lead and ink-2 body. No cards.",
+      "html": "<ul class=\"ds-rows\"><li><h3>Cancellations that were never charged</h3><p>The parent said sorry, the lesson was gone, and no one priced it.</p></li><li><h3>A month-end that takes days</h3><p>Every bill built by hand from the calendar and a WhatsApp thread.</p></li></ul>",
+      "css": ".ds-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid #a9c4db; font-family: Assistant, system-ui, sans-serif; color: #141618; } .ds-rows li { display: grid; gap: 0.25rem 1.5rem; grid-template-columns: 14rem minmax(0, 1fr); padding: 1.25rem 0; border-bottom: 1px solid #a9c4db; } .ds-rows h3 { margin: 0; font-size: 1.2rem; font-weight: 700; line-height: 1.6; } .ds-rows p { margin: 0; font-size: 1.0625rem; line-height: 1.6; color: #4a5058; max-width: 52ch; }"
+    },
+    {
+      "name": "Clipped printout",
+      "kind": "card",
+      "refersTo": "printout",
+      "description": "A real screenshot clipped into the diary: paper-backed, hairline border, soft shadow, slight tilt, drawn paperclip at the top reading-end corner.",
+      "html": "<figure class=\"ds-clip\"><svg class=\"ds-paperclip\" viewBox=\"0 0 24 48\" aria-hidden=\"true\"><path d=\"M16.5 10 V 34 a 4.5 4.5 0 0 1 -9 0 V 12 a 3 3 0 0 1 6 0 V 32 a 1.2 1.2 0 0 1 -2.4 0 V 14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/></svg><div class=\"ds-clip-img\"></div></figure>",
+      "css": ".ds-clip { position: relative; margin: 1.5rem 0 0; width: 20rem; background: #ffffff; border: 1px solid #a9c4db; box-shadow: 0 6px 18px -8px rgba(20, 22, 24, 0.28), 0 1px 0 rgba(20, 22, 24, 0.04); transform: rotate(-0.8deg); } .ds-clip-img { aspect-ratio: 16 / 9; background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(2.25rem - 1px), #dbe6f0 calc(2.25rem - 1px), #dbe6f0 2.25rem); } .ds-paperclip { position: absolute; top: -0.9rem; inset-inline-end: 1.1rem; width: 1.6rem; height: 3.2rem; color: #6b7280; } @media (prefers-color-scheme: dark) { .ds-clip { box-shadow: 0 8px 22px -8px rgba(70, 45, 10, 0.42), 0 1px 0 rgba(70, 45, 10, 0.08); } }"
+    },
+    {
+      "name": "Week spread cell with strike",
+      "kind": "custom",
+      "refersTo": "printout",
+      "description": "The signature: a pen entry on the ruled hour grid, struck by the red pen, priced in the margin by the highlighter, with the freed slot noted after. Hover the cell to replay the motion.",
+      "html": "<div class=\"ds-spread\"><div class=\"ds-hour\">14:00</div><div class=\"ds-cell ds-on\"><span class=\"ds-entry ds-entry-story\">Noa Levi · piano<svg class=\"ds-strike\" viewBox=\"0 0 100 20\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><path pathLength=\"1\" d=\"M2 11 C 20 9, 40 13, 60 10 S 90 9, 98 11\" vector-effect=\"non-scaling-stroke\"/></svg></span><span class=\"ds-after\">Slot open again</span><span class=\"ds-sweep\"><span>Cancelled 21:40 · ₪60</span></span></div><div class=\"ds-hour\">15:00</div><div class=\"ds-cell\"></div></div>",
+      "css": ".ds-spread { display: grid; grid-template-columns: 4rem minmax(0, 1fr); grid-auto-rows: 2.75rem; width: 24rem; border-top: 1px solid #a9c4db; border-bottom: 1px solid #a9c4db; font-family: Assistant, system-ui, sans-serif; color: #141618; } .ds-spread > * { border-bottom: 1px solid #dbe6f0; min-width: 0; } .ds-hour { border-inline-end: 1px solid #a9c4db; padding-inline-end: 0.5rem; text-align: end; font-size: 0.72rem; color: #6b7280; line-height: 2.75rem; font-variant-numeric: tabular-nums; } .ds-cell { position: relative; padding: 0.3rem 0.45rem 0; overflow: visible; } .ds-entry { font-family: 'Amatic SC', cursive; font-weight: 700; font-size: 1.5rem; line-height: 1; white-space: nowrap; display: inline-block; position: relative; padding-inline: 0.15em; transition: color 300ms 700ms; } .ds-strike { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; clip-path: inset(0 100% 0 0); } .ds-strike path { stroke: #c8102e; stroke-width: 2.5; stroke-linecap: round; fill: none; } .ds-after { font-family: 'Amatic SC', cursive; font-weight: 700; font-size: 1.1rem; color: #6b7280; margin-inline-start: 0.5rem; white-space: nowrap; opacity: 0; } .ds-sweep { position: absolute; inset-inline-start: -0.25rem; top: calc(2.75rem + 0.2rem); z-index: 1; isolation: isolate; display: inline-block; white-space: nowrap; font-family: 'Amatic SC', cursive; font-weight: 700; font-size: 1.35rem; line-height: 1.05; } .ds-sweep::before { content: ''; position: absolute; inset: 0.05em -0.2em 0.05em -0.3em; background: #ffe34d; transform: skew(-5deg) scaleX(0); transform-origin: 0 50%; z-index: -1; } .ds-sweep > span { opacity: 0; } .ds-on .ds-strike { animation: ds-pen-draw 520ms cubic-bezier(0.3, 0, 0.1, 1) 300ms forwards; } .ds-on .ds-entry-story { color: #6b7280; } .ds-on .ds-sweep::before { animation: ds-hl-sweep 420ms cubic-bezier(0.2, 0.8, 0.2, 1) 900ms forwards; } .ds-on .ds-sweep > span { animation: ds-ink-in 240ms ease-out 1100ms forwards; } .ds-on .ds-after { animation: ds-ink-in 360ms ease-out 1500ms forwards; } @keyframes ds-pen-draw { to { clip-path: inset(0 0 0 0); } } @keyframes ds-hl-sweep { to { transform: skew(-5deg) scaleX(1); } } @keyframes ds-ink-in { to { opacity: 1; } } @media (prefers-reduced-motion: reduce) { .ds-strike { clip-path: inset(0 0 0 0); animation: none !important; } .ds-sweep::before { transform: skew(-5deg) scaleX(1); animation: none !important; } .ds-sweep > span, .ds-after { opacity: 1; animation: none !important; } .ds-entry-story { transition: none; } }"
+    },
+    {
+      "name": "Month-end ledger on the cover",
+      "kind": "custom",
+      "refersTo": "cover-section",
+      "description": "The summary page at the back of the diary, on the teal cover. The cancellation line arrives from above and its amount is swept; the approved note is written in highlighter.",
+      "html": "<div class=\"ds-cover\"><div class=\"ds-ledger ds-on\"><p class=\"ds-ledger-title\">Noa Levi · August</p><ul><li><span>4 piano lessons</span><span class=\"ds-tab\">₪480</span></li><li class=\"ds-arrive\"><span>Cancellation 31/08</span><span class=\"ds-sweep\"><span>₪60</span></span></li><li class=\"ds-total\"><span>Total</span><span class=\"ds-tab\">₪540</span></li></ul><p class=\"ds-approved ds-after\">Approved. Payment request sent on WhatsApp.</p></div></div>",
+      "css": ".ds-cover { background: #115e59; color: #f2f7f5; padding: 2.5rem 2rem; font-family: Assistant, system-ui, sans-serif; font-size: 1.0625rem; line-height: 1.6; } .ds-ledger { max-width: 28rem; } .ds-ledger-title { margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(242, 247, 245, 0.35); font-family: 'Secular One', Assistant, sans-serif; font-size: 1.35rem; line-height: 1.08; } .ds-ledger ul { list-style: none; margin: 0; padding: 0; } .ds-ledger li { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid rgba(242, 247, 245, 0.35); } .ds-ledger li.ds-total { border-bottom: 0; font-size: 1.15rem; font-weight: 700; } .ds-tab { font-variant-numeric: tabular-nums; } .ds-arrive { font-weight: 700; opacity: 0; transform: translateY(-1.25rem); } .ds-on .ds-arrive { animation: ds-arrive 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms forwards; } .ds-sweep { position: relative; isolation: isolate; font-size: 1.35rem; font-variant-numeric: tabular-nums; } .ds-sweep::before { content: ''; position: absolute; inset: 0.05em -0.2em 0.05em -0.3em; background: #ffe34d; transform: skew(-5deg) scaleX(0); transform-origin: 0 50%; z-index: -1; } .ds-sweep > span { opacity: 0; color: #141618; } .ds-on .ds-sweep::before { animation: ds-hl-sweep 420ms cubic-bezier(0.2, 0.8, 0.2, 1) 900ms forwards; } .ds-on .ds-sweep > span { animation: ds-ink-in 240ms ease-out 1100ms forwards; } .ds-approved { margin: 0.75rem 0 0; font-family: 'Amatic SC', cursive; font-weight: 700; font-size: 1.6rem; line-height: 1.05; color: #ffe34d; opacity: 0; } .ds-on .ds-approved { animation: ds-ink-in 360ms ease-out 1500ms forwards; } @keyframes ds-arrive { to { opacity: 1; transform: translateY(0); } } @keyframes ds-hl-sweep { to { transform: skew(-5deg) scaleX(1); } } @keyframes ds-ink-in { to { opacity: 1; } } @media (prefers-reduced-motion: reduce) { .ds-arrive, .ds-sweep > span, .ds-approved { opacity: 1; transform: none; animation: none !important; } .ds-sweep::before { transform: skew(-5deg) scaleX(1); animation: none !important; } }"
+    },
+    {
+      "name": "Pen marks",
+      "kind": "custom",
+      "refersTo": "printout",
+      "description": "The icon system: four marks a pen makes on ruled paper. Round caps, stroke 2.4, one or two strokes with a hand wobble. The only icons on the page.",
+      "html": "<div class=\"ds-marks\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 13.2 C 7 15.5, 8.6 17.4, 9.6 19 C 12 13.5, 15.4 8.6, 20.4 4.8\"/></svg><svg class=\"ds-red\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5.5 5.2 C 9.5 9.6, 14 14.4, 18.8 18.9\"/><path d=\"M18.6 5.4 C 14.2 9.4, 9.8 13.8, 5.3 18.7\"/></svg><svg class=\"ds-muted\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12.2 4.6 C 12 9.2, 12 14.6, 11.8 19.4\"/><path d=\"M4.4 12.2 C 9.4 11.9, 14.6 12, 19.8 11.9\"/></svg><svg class=\"ds-muted ds-clip-mark\" viewBox=\"0 0 24 48\" aria-hidden=\"true\"><path d=\"M16.5 10 V 34 a 4.5 4.5 0 0 1 -9 0 V 12 a 3 3 0 0 1 6 0 V 32 a 1.2 1.2 0 0 1 -2.4 0 V 14\" stroke-width=\"1.9\"/></svg></div>",
+      "css": ".ds-marks { display: flex; align-items: center; gap: 1rem; color: #141618; } .ds-marks svg { width: 1.25rem; height: 1.25rem; } .ds-marks svg path { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; } .ds-marks .ds-red { color: #c8102e; } .ds-marks .ds-muted { color: #6b7280; } .ds-marks .ds-clip-mark { width: 1.5rem; height: 3rem; }"
+    },
+    {
+      "name": "FAQ row",
+      "kind": "custom",
+      "refersTo": "printout",
+      "description": "A question on a hairline row with a drawn plus that rotates into a minus when open.",
+      "html": "<div class=\"ds-faq\"><button class=\"ds-faq-q\" aria-expanded=\"false\"><span>Does the parent have to install anything?</span><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12.2 4.6 C 12 9.2, 12 14.6, 11.8 19.4\"/><path d=\"M4.4 12.2 C 9.4 11.9, 14.6 12, 19.8 11.9\"/></svg></button></div>",
+      "css": ".ds-faq { border-top: 1px solid #a9c4db; border-bottom: 1px solid #a9c4db; width: 28rem; font-family: Assistant, system-ui, sans-serif; color: #141618; } .ds-faq-q { display: flex; width: 100%; align-items: flex-start; gap: 1rem; padding: 1rem 0; background: none; border: 0; cursor: pointer; text-align: start; font: inherit; font-size: 1.0625rem; font-weight: 600; line-height: 1.375; color: inherit; } .ds-faq-q span { flex: 1; min-width: 0; } .ds-faq-q svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; margin-top: 0.25rem; color: #4a5058; transition: transform 300ms ease-out; } .ds-faq-q svg path { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; vector-effect: non-scaling-stroke; } .ds-faq-q:hover svg, .ds-faq-q[aria-expanded='true'] svg { transform: rotate(45deg); } .ds-faq-q:focus-visible { outline: 2px solid #141618; outline-offset: 3px; border-radius: 2px; } @media (prefers-reduced-motion: reduce) { .ds-faq-q svg { transition: none; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Teacher's Week Diary",
+    "overview": "The page is a paper week diary that belongs to a tutoring-centre owner, opened to the week a parent cancelled. The materials are literal and few: white paper ruled in pale blue on an hour grid, black ink, one red pen, one fluorescent highlighter, and the diary's deep teal-green hard cover. The ruling is the page's only geometry. The calendar, the pricing table, the FAQ and every list on the page are hairline rows on the same paper; there are no cards, no filled panels, no gradient text, no glass, no eyebrows. Where the product has to be shown, a real screenshot is clipped into the page with a drawn paperclip and a slight tilt, like a printout.\n\nThe page carries one authored motion, \"the pen writes\": when the week spread scrolls into view, the red pen strikes the cancelled lesson, the highlighter sweeps the margin note, and the freed slot is inked in. At the back of the diary, on the cover, the same pen marks the ₪60 line on the month-end ledger. Nothing else on the page animates on scroll. Under prefers-reduced-motion the final state is shown outright. Dark scheme is the diary under a desk lamp: the paper stays white, and only the printout shadow warms.",
+    "keyCharacteristics": [
+      "Hairline ruling (rule, rule-soft) is the only structure; no cards or boxed containers on paper.",
+      "Three self-hosted faces with Hebrew and Latin: Secular One (display), Assistant variable (text), Amatic SC (pen).",
+      "One highlighter, reserved for the primary action, the ₪60 and the active thumb tab.",
+      "One red pen for strikes, numerals, pen-hand titles and the cross mark; never a status colour.",
+      "The teal cover is the single committed colour field: header strip, closing spread with the ledger, footer.",
+      "Icons are four hand-drawn pen marks (check, x, plus, paperclip); no glyph libraries.",
+      "Motion is authored once, fires once, and is class-toggled (data-pen → .is-on).",
+      "RTL is the baseline; every offset is logical (inset-inline-*, ps-/pe-), and the strike and sweep reveal from the reading start."
+    ],
+    "rules": [
+      { "name": "The One Highlighter Rule", "body": "The highlighter marks the primary action, the ₪60 wherever it appears, and the page in view. Nothing else is highlighted; a second highlighted thing on a page cancels the first.", "section": "colors" },
+      { "name": "The Red Pen Rule", "body": "Red is a pen, not a status. It strikes, numbers and annotates in the pen hand. It never fills a button, never flags an error, never appears as a border.", "section": "colors" },
+      { "name": "The Cover Rule", "body": "The teal cover is the only colour field. It holds the header strip, the closing spread with the ledger, and the footer, and nowhere else. The highlighter keeps ink-coloured text on the cover.", "section": "colors" },
+      { "name": "The Pen Writes What a Person Would Write Rule", "body": "Amatic SC appears only where a hand would: entries, the week label, margin notes, numerals and short notes. It never sets a paragraph, a heading, or a button.", "section": "typography" },
+      { "name": "The Tabular Money Rule", "body": "Every amount, hour and date is set with font-variant-numeric: tabular-nums (.tabular), and currency is formatted per locale with dir=\"ltr\" on the figure.", "section": "typography" },
+      { "name": "The No Eyebrow Rule", "body": "There is no kicker above any heading. The \"who it is for\" line is a red pen note written under the primary action, after the headline, not above it.", "section": "typography" },
+      { "name": "The Desk Lamp Rule", "body": "Dark scheme never turns the page black. The paper stays paper, the ink stays ink; only the printout shadow warms to brown.", "section": "elevation" },
+      { "name": "The Clip Rule", "body": "A screenshot is never shown bare and never inside a card. It is a .clip: paper-backed, rule-bordered, softly shadowed, tilted, with the drawn paperclip at its top reading-end corner. Portrait phone captures are cropped to 24rem and anchored top or bottom by content.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do structure every list, table and calendar as hairline rows (rule between sections, rule-soft inside), on ruled paper at one line per --line (2.25rem; 2.75rem on the spread at lg).",
+      "Do set the primary action as the highlighter stroke (.hl-cta: Secular One 1.375rem on ink, highlighter band skewed −6°, 44px minimum) and keep data-cta on it.",
+      "Do keep the highlighter to the primary action, the ₪60 and the page in view, and let it deepen to highlighter-deep only on hover.",
+      "Do use the red pen for strikes, numerals, pen-hand titles and the cross mark, always as ink, never as a fill.",
+      "Do clip screenshots into the page (.clip: paper, rule border, Printout shadow, ±0.8° tilt, drawn paperclip) and keep the WhatsApp exchange in WhatsApp's own colours.",
+      "Do write in Amatic SC only where a hand would write, and set every amount, hour and date tabular.",
+      "Do use the four pen marks for icons; draw a new one the same way (stroke 2.4, round caps, one or two wobbly strokes) if one is missing.",
+      "Do author motion once, class-toggled from data-pen, and give every animated element a reduced-motion final state.",
+      "Do write layout in logical properties so the Hebrew RTL baseline and English LTR share one stylesheet; reveal strokes from the reading start."
+    ],
+    "donts": [
+      "Don't put a card, panel, filled box, border-radius or glass surface on the paper; the ruling is the only geometry.",
+      "Don't add an eyebrow or kicker above a heading; notes go under the action, in pen.",
+      "Don't use a second colour field beyond the cover teal, and don't put the cover anywhere but the header strip, the closing spread and the footer.",
+      "Don't use gradient text, hard offset shadows, or blur; the only shadow is the printout's diffuse one.",
+      "Don't import glyph icons (Lucide, Heroicons, icon fonts) onto the landing page.",
+      "Don't turn the page dark under prefers-color-scheme: dark; only the printout shadow changes.",
+      "Don't let the diary's tokens or .diary rules leak into the app shell, and don't restyle the app shell's shadcn/oklch system from here.",
+      "Don't set the whole page in the pen face, and don't set body copy below 1.0625rem outside labels, hours and printout chrome."
+    ]
+  }
+}

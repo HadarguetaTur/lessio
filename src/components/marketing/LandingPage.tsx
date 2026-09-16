@@ -2,29 +2,17 @@ import type { ReactNode } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import localFont from 'next/font/local'
-import {
-  ArrowDown,
-  BadgeCheck,
-  CalendarX,
-  Check,
-  CheckCheck,
-  FileQuestion,
-  ShieldCheck,
-  UserRound,
-  Wallet,
-  X,
-} from 'lucide-react'
 
-import { AuthPageDecorations } from '@/components/auth/AuthPageDecorations'
+import './landing-diary.css'
 import { LandingCtaTracker } from '@/components/marketing/LandingCtaTracker'
 import { LandingFaqAccordion } from '@/components/marketing/LandingFaqAccordion'
 import { LandingLocaleToggle } from '@/components/marketing/LandingLocaleToggle'
+import { LandingPen } from '@/components/marketing/LandingPen'
+import { PenCheck, PenClip, PenX } from '@/components/marketing/LandingPenMarks'
 import { LandingPricing } from '@/components/marketing/LandingPricing'
-import { LandingReveal } from '@/components/marketing/LandingReveal'
-import { LandingStagger } from '@/components/marketing/LandingStagger'
 import { LandingStickyCta } from '@/components/marketing/LandingStickyCta'
+import { LandingWeekSpread } from '@/components/marketing/LandingWeekSpread'
 import { LandingWhatsAppChat } from '@/components/marketing/LandingWhatsAppChat'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { PublicPricingRow } from '@/lib/marketing/publicPricing'
 import {
@@ -36,163 +24,97 @@ import {
 import type { SiteContact } from '@/lib/marketing/siteContact'
 
 /**
- * Geist (the app font) has no Hebrew glyphs, so Hebrew headlines were falling
- * back to system fonts. Heebo is the deliberate Hebrew pairing — the same face
- * the OG image already uses.
+ * The landing page is set as a teacher's paper week diary. Three faces, all
+ * self-hosted under public/fonts and all carrying Hebrew and Latin:
+ * Secular One for display, Assistant for text, Amatic SC for the pen.
  */
-const heebo = localFont({
-  src: [
-    { path: '../../../public/fonts/Heebo-Regular.ttf', weight: '400' },
-    { path: '../../../public/fonts/Heebo-Bold.ttf', weight: '700' },
-  ],
+const display = localFont({
+  src: '../../../public/fonts/SecularOne-Regular.ttf',
+  weight: '400',
+  variable: '--font-display',
   display: 'swap',
   fallback: ['system-ui', 'arial'],
 })
+const text = localFont({
+  src: '../../../public/fonts/Assistant-Variable.ttf',
+  weight: '200 800',
+  variable: '--font-text',
+  display: 'swap',
+  fallback: ['system-ui', 'arial'],
+})
+const pen = localFont({
+  src: [
+    { path: '../../../public/fonts/AmaticSC-Regular.ttf', weight: '400' },
+    { path: '../../../public/fonts/AmaticSC-Bold.ttf', weight: '700' },
+  ],
+  variable: '--font-pen',
+  display: 'swap',
+  fallback: ['cursive'],
+})
 
-const PROBLEM_ICONS = [Wallet, CalendarX, FileQuestion] as const
+const SCROLL_ROOT_ID = 'diary-scroll'
 
-/**
- * Where to anchor the crop of each tall (phone) screenshot: WhatsApp captures
- * carry their content at the bottom of the thread, portal/dashboard at the top.
- */
-const IMAGE_CROP: Partial<Record<LandingImageKey, string>> = {
-  'wa-cancel-flow': 'object-bottom',
-  'wa-payment-request': 'object-bottom',
-}
+/** Phone captures carry their content at the bottom of the thread. */
+const BOTTOM_ANCHORED: ReadonlySet<LandingImageKey> = new Set(['wa-cancel-flow', 'wa-payment-request'])
 
-/** Official channel → human takeover → confirmations → parent control */
-const TRUST_ICONS = [BadgeCheck, UserRound, CheckCheck, ShieldCheck] as const
-
-const HERO_MOTION =
-  'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-700 motion-safe:ease-out motion-safe:fill-mode-both motion-reduce:animate-none'
-
-function CtaLink({
-  href,
-  className,
-  dataCta,
-  children,
-}: {
-  href: string
-  className?: string
-  dataCta?: string
-  children: ReactNode
-}) {
-  const external = href.startsWith('http://') || href.startsWith('https://')
-  if (external) {
-    return (
-      <a href={href} className={className} data-cta={dataCta} target="_blank" rel="noopener noreferrer">
-        {children}
-      </a>
-    )
-  }
-  return (
-    <Link href={href} className={className} data-cta={dataCta}>
-      {children}
-    </Link>
-  )
-}
-
-/** The one gradient on the page (besides the logo): the primary CTA. */
-function PrimaryCta({
-  href,
-  dataCta,
-  children,
-}: {
-  href: string
-  dataCta: string
-  children: ReactNode
-}) {
-  return (
-    <Button
-      size="lg"
-      className="h-12 min-h-12 w-full min-w-[11rem] border-0 bg-gradient-to-l from-teal-600 via-emerald-600 to-violet-600 px-7 text-base font-semibold text-white shadow-md shadow-teal-600/15 transition-[filter,box-shadow,transform] duration-300 hover:scale-[1.02] hover:brightness-[1.05] hover:shadow-lg hover:shadow-violet-500/25 active:scale-[0.98] motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:w-auto"
-      asChild
-    >
-      <CtaLink href={href} dataCta={dataCta}>
-        {children}
-      </CtaLink>
-    </Button>
-  )
-}
-
-function SectionShell({
-  id,
-  className,
-  children,
-}: {
-  id?: string
-  className?: string
-  children: React.ReactNode
-}) {
-  return (
-    <section
-      id={id}
-      className={cn(
-        'border-t border-border/50 px-4 py-14 sm:px-6 md:py-20 lg:px-8 xl:py-24',
-        className
-      )}
-    >
-      {children}
-    </section>
-  )
-}
-
-function SectionTitle({ title, intro }: { title: string; intro?: string }) {
-  return (
-    <LandingReveal variant="blur" className="mx-auto max-w-3xl text-center">
-      <h2 className="text-balance text-pretty text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl xl:text-4xl">
-        {title}
-      </h2>
-      {intro ? (
-        <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-          {intro}
-        </p>
-      ) : null}
-    </LandingReveal>
-  )
-}
-
-/** A product screenshot in a minimal browser frame. */
-function Screenshot({
+/** A real screenshot, clipped into the diary. */
+function Clip({
   locale,
   image,
   alt,
   className,
-  imgClassName,
-  sizes = '(min-width: 1024px) 32rem, (min-width: 640px) 50vw, 100vw',
-  priority = false,
+  tilt = 'a',
+  sizes = '(min-width: 1024px) 34rem, 100vw',
 }: {
   locale: string
   image: LandingImageKey
   alt: string
   className?: string
-  imgClassName?: string
+  tilt?: 'a' | 'b'
   sizes?: string
-  priority?: boolean
 }) {
-  const dims = LANDING_IMAGE_SIZES[image]
+  const size = LANDING_IMAGE_SIZES[image]
+  const portrait = size.height > size.width
   return (
-    <div
-      className={cn(
-        'overflow-hidden rounded-xl border border-border/70 bg-card shadow-md shadow-black/[0.06] ring-1 ring-black/[0.03] dark:shadow-black/30 dark:ring-white/[0.04]',
-        className
-      )}
-    >
-      <div className="flex items-center gap-1.5 border-b border-border/60 bg-muted/60 px-3 py-2" aria-hidden>
-        <span className="size-2 rounded-full bg-rose-400/70" />
-        <span className="size-2 rounded-full bg-amber-400/70" />
-        <span className="size-2 rounded-full bg-emerald-400/70" />
-      </div>
+    <figure className={cn('clip', tilt === 'a' ? 'tilt-a' : 'tilt-b', portrait && 'max-h-[24rem] overflow-hidden', className)}>
+      <PenClip className="paperclip" />
       <Image
         src={landingImageSrc(locale, image)}
         alt={alt}
-        width={dims.width}
-        height={dims.height}
+        width={size.width}
+        height={size.height}
         sizes={sizes}
-        priority={priority}
-        className={cn('w-full', imgClassName)}
+        className={cn(portrait && 'h-[24rem] w-full object-cover', portrait && (BOTTOM_ANCHORED.has(image) ? 'object-bottom' : 'object-top'))}
       />
-    </div>
+    </figure>
+  )
+}
+
+/** A diary page: a section with the ruled paper and a page heading. */
+function Page({
+  id,
+  children,
+  className,
+  ruled = true,
+}: {
+  id: string
+  children: ReactNode
+  className?: string
+  ruled?: boolean
+}) {
+  return (
+    <section id={id} className={cn('scroll-mt-16', ruled && 'ruled', className)}>
+      <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-14 lg:px-8 lg:py-16">{children}</div>
+    </section>
+  )
+}
+
+function PageTitle({ title, intro }: { title: string; intro?: string }) {
+  return (
+    <header className="max-w-[40rem]">
+      <h2 className="display text-[2rem] sm:text-[2.5rem] lg:text-[2.9rem]">{title}</h2>
+      {intro ? <p className="mt-4 max-w-[58ch] text-[color:var(--ink-2)] sm:text-lg">{intro}</p> : null}
+    </header>
   )
 }
 
@@ -209,621 +131,444 @@ export function LandingPage({
   pricingRows?: PublicPricingRow[]
   siteContact?: SiteContact
 }) {
-  const {
-    hero,
-    chain,
-    problem,
-    capabilities,
-    implementation,
-    israel,
-    trust,
-    audience,
-    pricing,
-    faq,
-    finalCta,
-    footer,
-    links,
-    nav,
-  } = content
+  const { hero, chain, problem, capabilities, implementation, israel, trust, audience, pricing, faq, finalCta, footer, links, nav } =
+    content
+
+  const tabs = [
+    ['week', nav.tabs.week],
+    ['chain', nav.tabs.chain],
+    ['problem', nav.tabs.problem],
+    ['centre', nav.tabs.centre],
+    ['rollout', nav.tabs.rollout],
+    ['trust', nav.tabs.trust],
+    ['audience', nav.tabs.audience],
+    ['pricing', nav.tabs.pricing],
+    ['faq', nav.tabs.faq],
+  ] as const
 
   return (
     <div
+      id={SCROLL_ROOT_ID}
       className={cn(
         // The root <body> is overflow-hidden; this wrapper is the scroll container.
-        'relative flex min-h-dvh flex-col overflow-y-auto overflow-x-hidden bg-background',
-        locale !== 'en' && heebo.className
+        'diary relative flex min-h-dvh flex-col overflow-y-auto overflow-x-hidden',
+        display.variable,
+        text.variable,
+        pen.variable
       )}
       dir={dir}
     >
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[60rem] opacity-40 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-1000 motion-safe:ease-out motion-safe:fill-mode-both"
-        aria-hidden
+      <a
+        href="#week"
+        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-[60] focus:bg-[color:var(--hl)] focus:px-3 focus:py-2"
       >
-        <AuthPageDecorations />
-      </div>
+        {nav.tabs.week}
+      </a>
 
-      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/90 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
+      {/* The cover's edge: the diary is closed above this line. */}
+      <header className="cover sticky top-0 z-50">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-violet-600 shadow-sm shadow-violet-500/15 ring-1 ring-violet-500/10">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-violet-600 shadow-sm ring-1 ring-white/15">
               <span className="text-sm font-bold leading-none text-white">L</span>
             </div>
-            <span className="truncate text-sm font-semibold tracking-tight text-foreground">
-              LESSIO
-            </span>
-            <nav className="ms-4 hidden items-center gap-1 md:flex" aria-label="Sections">
+            <span className="display text-lg tracking-wide">LESSIO</span>
+            <nav className="ms-6 hidden items-center gap-5 md:flex" aria-label="Sections">
               {(
                 [
-                  [nav.howItWorks, '#how-it-works'],
+                  [nav.howItWorks, '#chain'],
                   [nav.pricing, '#pricing'],
                   [nav.faq, '#faq'],
                 ] as const
               ).map(([label, href]) => (
-                <a
-                  key={href}
-                  href={href}
-                  className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                >
+                <a key={href} href={href} className="muted text-sm font-semibold hover:!text-[color:var(--cover-ink)] hover:underline">
                   {label}
                 </a>
               ))}
             </nav>
           </div>
-          <nav className="flex shrink-0 items-center justify-end gap-1 sm:gap-2" aria-label="Primary">
-            <LandingLocaleToggle currentLocale={locale} />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9 px-3 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground sm:text-sm"
-              asChild
-            >
-              <Link href={links.login}>{nav.login}</Link>
-            </Button>
-            <Button
-              size="sm"
-              className="h-9 bg-foreground px-3.5 text-xs font-semibold text-background transition-opacity hover:bg-foreground hover:opacity-85 sm:text-sm"
-              asChild
-            >
-              <Link href={links.signup} data-cta="nav-signup">
-                {nav.signup}
-              </Link>
-            </Button>
+          <nav className="flex shrink-0 items-center gap-2 sm:gap-4" aria-label="Primary">
+            <LandingLocaleToggle currentLocale={locale} className="muted hover:!text-[color:var(--cover-ink)]" />
+            <Link href={links.login} className="min-h-9 text-sm font-semibold leading-9 hover:underline">
+              {nav.login}
+            </Link>
+            <Link href={links.signup} data-cta="nav-signup" className="hl-cta !text-[1rem]">
+              {nav.signup}
+            </Link>
           </nav>
         </div>
       </header>
 
-      <main className="relative z-10 flex flex-1 flex-col">
-        {/* Hero — the message that closes itself */}
-        <section
-          id="landing-hero"
-          className="relative px-4 pb-16 pt-10 sm:px-6 sm:pt-14 md:pb-20 lg:px-8 xl:pt-20"
-        >
-          <div className="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8 xl:gap-14">
-            <div className="text-center lg:text-start">
-              <p
-                className={cn(
-                  'text-xs font-semibold text-teal-700 dark:text-teal-400 sm:text-sm',
-                  locale === 'he' ? 'tracking-normal' : 'uppercase tracking-[0.14em]',
-                  HERO_MOTION
-                )}
-              >
-                {hero.eyebrow}
-              </p>
-              <h1
-                className={cn(
-                  'mt-4 text-balance text-pretty text-[2rem] font-bold leading-[1.15] tracking-tight text-foreground sm:text-4xl sm:leading-[1.12] xl:text-[2.9rem] xl:leading-[1.1]',
-                  HERO_MOTION,
-                  'motion-safe:delay-75'
-                )}
-              >
-                <span className="block text-foreground/72">
-                  <span className="font-extrabold text-rose-600 dark:text-rose-400">{hero.headline.less}</span>
-                  {hero.headline.lessRest}
-                </span>
-                <span className="mt-1 block text-foreground">
-                  <span className="bg-gradient-to-l from-teal-600 via-emerald-600 to-violet-600 bg-clip-text font-extrabold text-transparent dark:from-teal-400 dark:via-emerald-400 dark:to-violet-400">
-                    {hero.headline.more}
-                  </span>
-                  {hero.headline.moreRest}
-                </span>
-              </h1>
-              <p
-                className={cn(
-                  'mx-auto mt-5 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg lg:mx-0',
-                  HERO_MOTION,
-                  'motion-safe:delay-150'
-                )}
-              >
-                {hero.subheadline}
-              </p>
+      {/* Thumb index: one tab per page. */}
+      <nav className="tabs" aria-label={nav.tabs.week}>
+        {tabs.map(([id, label]) => (
+          <a key={id} href={`#${id}`}>
+            {label}
+          </a>
+        ))}
+      </nav>
 
-              <div
-                className={cn(
-                  'mx-auto mt-9 flex max-w-md flex-col items-center gap-3 sm:max-w-none sm:flex-row sm:justify-center lg:justify-start',
-                  HERO_MOTION,
-                  'motion-safe:delay-300'
-                )}
-              >
-                <div className="flex w-full flex-col items-center gap-1.5 sm:w-auto lg:items-start">
-                  <PrimaryCta href={links.signup} dataCta="hero-primary">
-                    {hero.ctaPrimary}
-                  </PrimaryCta>
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {hero.ctaPrimaryNote}
-                  </span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-12 min-h-12 w-full border-border/90 bg-background/80 px-6 text-base font-semibold shadow-sm backdrop-blur-sm sm:w-auto"
-                  asChild
-                >
-                  <a href={links.howItWorks} data-cta="hero-how">
-                    {hero.ctaSecondary}
-                    <ArrowDown className="ms-1 size-4" aria-hidden />
-                  </a>
-                </Button>
-              </div>
-
-              <p
-                className={cn(
-                  'mt-6 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground lg:justify-start',
-                  HERO_MOTION,
-                  'motion-safe:delay-500'
-                )}
-              >
-                <BadgeCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                {hero.trustLine}
-              </p>
+      <main className="flex flex-1 flex-col">
+        {/* ── The week ─────────────────────────────────────────────────── */}
+        <section id="week" className="scroll-mt-16">
+          <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+            <div className="rule-b flex items-baseline justify-between gap-4 pb-2">
+              <p className="pen shrink-0 whitespace-nowrap text-[1.5rem] sm:text-[1.75rem]">{hero.diary.weekLabel}</p>
+              <p className="text-[0.7rem] text-[color:var(--ink-3)] sm:text-xs">{hero.diary.synthetic}</p>
             </div>
 
-            {/* The chain, live: chat → thread → dashboard card */}
-            <div className="mx-auto flex w-full max-w-sm flex-col items-center lg:max-w-none">
-              <LandingWhatsAppChat
-                contactName={hero.chat.contactName}
-                statusLabel={hero.chat.statusLabel}
-                messages={hero.chat.messages}
-              />
+            {/* Below lg the headline is written above the spread. */}
+            <div className="py-8 lg:hidden">
+              <Headline hero={hero} links={links} />
+            </div>
+
+            <div className="spread-scope relative">
+              <LandingWeekSpread diary={hero.diary} />
+
+              {/* lg+: the headline is a note across the spread's top rows, the
+                  chat a printout clipped over the far columns; the story
+                  entry at 14:00 stays in the clear beneath the note. */}
               <div
-                className="h-8 w-px bg-gradient-to-b from-emerald-500/70 to-violet-500/50 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 motion-safe:delay-[3200ms] motion-safe:fill-mode-both motion-reduce:animate-none"
-                aria-hidden
-              />
-              <div className="w-full max-w-[21rem] rounded-2xl border border-border/70 bg-card p-4 shadow-lg shadow-black/[0.06] ring-1 ring-black/[0.03] dark:shadow-black/30 dark:ring-white/[0.04] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-600 motion-safe:delay-[3400ms] motion-safe:fill-mode-both motion-reduce:animate-none">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    {hero.dashCard.title}
-                  </p>
-                  <span className="flex size-2 rounded-full bg-rose-500/80" aria-hidden />
+                className="pointer-events-none absolute inset-x-0 hidden lg:block"
+                style={{ top: 'var(--line)', insetInlineStart: '4rem', height: 'calc(var(--line) * 5)' }}
+              >
+                <div className="pointer-events-auto h-full bg-[color:var(--paper)] px-6 pt-3">
+                  <Headline hero={hero} links={links} compact />
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background px-3 py-2.5">
-                  <p className="min-w-0 truncate text-sm font-medium text-foreground">
-                    {hero.dashCard.line}
-                  </p>
-                  <span className="shrink-0 rounded-lg bg-violet-600/10 px-2 py-1 text-sm font-bold tabular-nums text-violet-700 dark:text-violet-300">
-                    {hero.dashCard.amount}
-                  </span>
+              </div>
+              <div
+                className="pointer-events-none absolute hidden lg:block"
+                style={{ top: 'calc(var(--line) * 6.6)', insetInlineEnd: '1.25%', width: '21%' }}
+              >
+                <div className="pointer-events-auto">
+                  <Printout hero={hero} />
                 </div>
-                <p className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden strokeWidth={3} />
-                  {hero.dashCard.slot}
-                </p>
               </div>
-              <div className="mt-3 grid w-full max-w-[25rem] grid-cols-3 gap-2 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:delay-[4000ms] motion-safe:fill-mode-both motion-reduce:animate-none">
-                {hero.outcomes.map((outcome) => (
-                  <p
-                    key={outcome}
-                    className="rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-2 py-2 text-[0.68rem] font-semibold leading-snug text-foreground/85"
-                  >
-                    <Check className="mx-auto mb-1 size-3 text-emerald-600" aria-hidden strokeWidth={3} />
-                    {outcome}
-                  </p>
-                ))}
-              </div>
+            </div>
+
+            <div className="mx-auto max-w-[22rem] py-10 lg:hidden">
+              <Printout hero={hero} />
             </div>
           </div>
         </section>
 
-        {/* How it works — one cancellation, step by step */}
-        <SectionShell id="how-it-works" className="bg-muted/[0.35]">
-          <span id="why-lessio" aria-hidden />
-          <div className="mx-auto max-w-5xl">
-            <SectionTitle title={chain.title} intro={chain.intro} />
-            <ol className="relative mt-14 list-none space-y-14 lg:space-y-20">
-              <div
-                className="absolute inset-y-2 start-[1.05rem] w-px bg-gradient-to-b from-teal-500/50 via-border to-violet-500/40"
-                aria-hidden
-              />
-              {chain.beats.map((beat, index) => (
-                <li key={beat.title} className="relative ps-12 sm:ps-14">
-                  <span className="absolute start-0 top-0 flex size-9 items-center justify-center rounded-full border border-border/70 bg-background text-sm font-bold tabular-nums text-foreground shadow-sm">
+        {/* ── One cancellation, page by page ────────────────────────────── */}
+        <Page id="chain" className="rule-t">
+          <PageTitle title={chain.title} intro={chain.intro} />
+          <ol className="rule-t mt-12 list-none">
+            {chain.beats.map((beat, index) => (
+              <li key={beat.title} className="rule-b grid gap-6 py-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-14 lg:py-14">
+                <div className="flex gap-4">
+                  <span className="pen pen-red mt-1 w-8 shrink-0 text-[2.25rem] leading-none" aria-hidden>
                     {index + 1}
                   </span>
-                  <LandingReveal
-                    variant="fade-up"
-                    className={cn(
-                      'grid items-center gap-6 lg:grid-cols-2 lg:gap-12',
-                      index % 2 === 1 && 'lg:[&>*:first-child]:order-last'
-                    )}
-                  >
-                    <div className="text-start">
-                      <h3 className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
-                        {beat.title}
-                      </h3>
-                      <p className="mt-2.5 max-w-xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-                        {beat.body}
-                      </p>
-                    </div>
-                    {beat.image ? (
-                      <Screenshot
-                        locale={locale}
-                        image={beat.image}
-                        alt={beat.title}
-                        imgClassName={
-                          LANDING_IMAGE_SIZES[beat.image].height > LANDING_IMAGE_SIZES[beat.image].width
-                            ? cn('max-h-[22rem] object-cover', IMAGE_CROP[beat.image] ?? 'object-top')
-                            : undefined
-                        }
-                        className={
-                          LANDING_IMAGE_SIZES[beat.image].height > LANDING_IMAGE_SIZES[beat.image].width
-                            ? 'mx-auto w-full max-w-[17rem]'
-                            : undefined
-                        }
-                      />
-                    ) : (
-                      /* Beat 2 — the policy, typographic. The ₪60 must match the
-                         chat, the hero card and the billing screenshot. */
-                      <div className="mx-auto w-full max-w-sm rounded-2xl border border-border/70 bg-card p-5 shadow-md ring-1 ring-black/[0.03] dark:ring-white/[0.04]">
-                        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                          {chain.policyCard.title}
-                        </p>
-                        <ul className="mt-3 space-y-2">
-                          {chain.policyCard.rules.map((rule) => (
-                            <li
-                              key={rule}
-                              className="rounded-lg border border-border/50 bg-background px-3 py-2 text-sm font-medium text-foreground"
-                            >
-                              {rule}
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="mt-4 border-t border-border/60 pt-3.5 text-sm font-bold text-violet-700 dark:text-violet-300">
-                          {chain.policyCard.result}
-                        </p>
-                      </div>
-                    )}
-                  </LandingReveal>
-                </li>
-              ))}
-            </ol>
-            <LandingReveal variant="fade-up" className="mt-12 text-center">
-              <PrimaryCta href={links.signup} dataCta="chain-primary">
-                {chain.cta}
-              </PrimaryCta>
-            </LandingReveal>
-          </div>
-        </SectionShell>
-
-        {/* Without a system — the pain, once, after the mechanism earned it */}
-        <SectionShell>
-          <div className="mx-auto max-w-5xl">
-            <SectionTitle title={problem.title} />
-            <LandingStagger
-              as="ul"
-              className="mt-10 grid list-none gap-4 sm:grid-cols-3 sm:gap-5"
-              stepMs={110}
-            >
-              {problem.items.map((item, index) => {
-                const Icon = PROBLEM_ICONS[index] ?? Wallet
-                return (
-                  <li
-                    key={item.title}
-                    className="rounded-2xl border border-border/60 bg-card/90 p-5 text-start shadow-sm ring-1 ring-black/[0.02] dark:bg-card/40 dark:ring-white/[0.04]"
-                  >
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-700 ring-1 ring-rose-500/10 dark:text-rose-300">
-                      <Icon className="size-[1.15rem]" aria-hidden />
-                    </span>
-                    <h3 className="mt-3.5 text-base font-bold text-foreground sm:text-lg">{item.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-                  </li>
-                )
-              })}
-            </LandingStagger>
-            <LandingReveal variant="fade-up" className="mx-auto mt-8 max-w-2xl" threshold={0.15}>
-              <p className="text-pretty text-center text-base font-bold leading-relaxed text-foreground sm:text-lg">
-                {problem.closing}
-              </p>
-            </LandingReveal>
-          </div>
-        </SectionShell>
-
-        {/* Capabilities — everything on the same rail, shown not claimed */}
-        <SectionShell className="bg-muted/[0.35]">
-          <div className="mx-auto max-w-6xl">
-            <SectionTitle title={capabilities.title} intro={capabilities.intro} />
-            <LandingStagger
-              as="ul"
-              className="mt-12 grid list-none gap-5 sm:grid-cols-2 lg:grid-cols-3"
-              stepMs={90}
-            >
-              {capabilities.items.map((item) => (
-                <li
-                  key={item.title}
-                  className="flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm ring-1 ring-black/[0.02] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-lg dark:ring-white/[0.04] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-                >
-                  <div className="relative aspect-[16/10] overflow-hidden border-b border-border/60 bg-muted/40">
-                    <Image
-                      src={landingImageSrc(locale, item.image)}
-                      alt={item.title}
-                      width={LANDING_IMAGE_SIZES[item.image].width}
-                      height={LANDING_IMAGE_SIZES[item.image].height}
-                      sizes="(min-width: 1024px) 24rem, (min-width: 640px) 50vw, 100vw"
-                      className={cn('size-full object-cover', IMAGE_CROP[item.image] ?? 'object-top')}
+                  <div>
+                    <h3 className="display text-[1.5rem] sm:text-[1.75rem]">{beat.title}</h3>
+                    <p className="mt-3 max-w-[52ch] text-[color:var(--ink-2)]">{beat.body}</p>
+                  </div>
+                </div>
+                <div className="ps-12 lg:ps-0">
+                  {index === 1 ? (
+                    <PolicyTable card={chain.policyCard} />
+                  ) : beat.image ? (
+                    <Clip
+                      locale={locale}
+                      image={beat.image}
+                      alt={beat.title}
+                      tilt={index % 2 ? 'b' : 'a'}
+                      className={LANDING_IMAGE_SIZES[beat.image].height > LANDING_IMAGE_SIZES[beat.image].width ? 'mx-auto w-full max-w-[16rem]' : ''}
                     />
-                  </div>
-                  <div className="flex flex-1 flex-col p-5 text-start">
-                    <h3 className="text-base font-bold text-foreground sm:text-lg">{item.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-                  </div>
-                </li>
-              ))}
-            </LandingStagger>
-
-            {/* Built for Israel */}
-            <LandingReveal variant="fade-up" className="mt-12">
-              <div className="mx-auto max-w-4xl rounded-2xl border border-border/60 bg-card/90 px-6 py-6 text-center shadow-sm dark:bg-card/40 sm:px-8">
-                <h3 className="text-base font-bold text-foreground sm:text-lg">{israel.title}</h3>
-                <ul className="mt-4 flex list-none flex-wrap items-center justify-center gap-2.5">
-                  {israel.items.map((item) => (
-                    <li
-                      key={item}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground/90 sm:text-sm"
-                    >
-                      <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden strokeWidth={3} />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </LandingReveal>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-10">
+            <Link href={links.signup} data-cta="chain-primary" className="hl-cta">
+              {chain.cta}
+            </Link>
           </div>
-        </SectionShell>
+        </Page>
 
-        {/* Implementation — answer the rollout objection before asking for a plan choice. */}
-        <SectionShell>
-          <div className="mx-auto max-w-5xl">
-            <SectionTitle title={implementation.title} intro={implementation.intro} />
-            <LandingStagger as="ol" className="mt-10 grid list-none gap-4 md:grid-cols-3" stepMs={120}>
-              {implementation.steps.map(([title, body], index) => (
-                <li
-                  key={title}
-                  className="relative rounded-2xl border border-border/60 bg-card/90 p-5 shadow-sm ring-1 ring-black/[0.02] dark:bg-card/40 dark:ring-white/[0.04]"
-                >
-                  <span className="flex size-9 items-center justify-center rounded-xl bg-violet-600 text-sm font-bold tabular-nums text-white shadow-sm shadow-violet-500/20">
-                    {index + 1}
-                  </span>
-                  <h3 className="mt-4 text-base font-bold text-foreground sm:text-lg">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-                </li>
-              ))}
-            </LandingStagger>
-          </div>
-        </SectionShell>
+        {/* ── Without a system ──────────────────────────────────────────── */}
+        <Page id="problem">
+          <PageTitle title={problem.title} />
+          <ul className="rule-t mt-10 max-w-[44rem] list-none">
+            {problem.items.map((item) => (
+              <li key={item.title} className="rule-b grid gap-1 py-5 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-6">
+                <h3 className="pen-underline text-[1.2rem] font-bold">{item.title}</h3>
+                <p className="text-[color:var(--ink-2)]">{item.body}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="display mt-10 max-w-[30ch] text-[1.5rem] sm:text-[1.9rem]">{problem.closing}</p>
+        </Page>
 
-        {/* Trust — automation with a seatbelt */}
-        <SectionShell>
-          <div className="mx-auto max-w-5xl">
-            <SectionTitle title={trust.title} />
-            <LandingStagger
-              as="ul"
-              className="mt-10 grid list-none gap-4 sm:grid-cols-2 sm:gap-5"
-              stepMs={100}
-            >
-              {trust.items.map((item, index) => {
-                const Icon = TRUST_ICONS[index] ?? ShieldCheck
-                return (
-                  <li
-                    key={item.title}
-                    className="flex gap-4 rounded-2xl border border-border/60 bg-card/90 p-5 text-start shadow-sm ring-1 ring-black/[0.02] dark:bg-card/40 dark:ring-white/[0.04]"
-                  >
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-700 ring-1 ring-teal-500/10 dark:text-teal-300">
-                      <Icon className="size-[1.15rem]" aria-hidden />
-                    </span>
-                    <div>
-                      <h3 className="text-base font-bold text-foreground">{item.title}</h3>
-                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-                    </div>
-                  </li>
-                )
-              })}
-            </LandingStagger>
-          </div>
-        </SectionShell>
-
-        {/* Audience */}
-        <SectionShell className="bg-muted/[0.35]">
-          <div className="relative mx-auto max-w-5xl">
-            <LandingReveal variant="zoom" className="text-center">
-              <h2 className="mx-auto max-w-[34rem] text-balance text-pretty text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl">
-                {audience.title}
-              </h2>
-              <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-                {audience.subtitle}
-              </p>
-            </LandingReveal>
-            <LandingStagger
-              className="mt-10 grid gap-5 lg:grid-cols-2 lg:items-stretch lg:gap-8"
-              stepMs={140}
-            >
-              <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-emerald-500/45 bg-gradient-to-br from-emerald-500/[0.07] via-card to-card p-6 shadow-lg shadow-emerald-500/[0.07] ring-1 ring-emerald-500/15 dark:from-emerald-500/[0.11] sm:p-8">
-                <div
-                  className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-emerald-500 via-teal-500 to-emerald-400 opacity-95"
-                  aria-hidden
+        {/* ── The centre, from one system ───────────────────────────────── */}
+        <Page id="centre">
+          <PageTitle title={capabilities.title} intro={capabilities.intro} />
+          <ul className="rule-t mt-12 list-none">
+            {capabilities.items.map((item, i) => (
+              <li
+                key={item.title}
+                className={cn(
+                  'rule-b grid items-center gap-6 py-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-14',
+                  i % 2 === 1 && 'lg:[&>*:first-child]:order-last'
+                )}
+              >
+                <div>
+                  <p className="pen pen-red text-[1.6rem]">{item.title}</p>
+                  <p className="mt-2 max-w-[44ch] text-[color:var(--ink-2)]">{item.body}</p>
+                </div>
+                <Clip
+                  locale={locale}
+                  image={item.image}
+                  alt={item.title}
+                  tilt={i % 2 ? 'b' : 'a'}
+                  className={LANDING_IMAGE_SIZES[item.image].height > LANDING_IMAGE_SIZES[item.image].width ? 'mx-auto w-full max-w-[15rem]' : ''}
+                  sizes="(min-width: 1024px) 36rem, 100vw"
                 />
-                <h3 className="relative flex items-center gap-1.5 text-base font-bold leading-none text-foreground sm:text-lg">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
-                    <Check className="size-3.5" aria-hidden strokeWidth={2.5} />
-                  </span>
-                  {audience.forTitle}
-                </h3>
-                <ul className="relative mt-4 flex flex-1 flex-col gap-1 text-pretty text-sm leading-snug text-foreground/92 sm:gap-1.5 sm:text-[0.95rem]">
-                  {audience.forBullets.map((line) => (
-                    <li key={line} className="flex items-start gap-2 rounded-xl px-2 py-1.5 -mx-1">
-                      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md bg-emerald-500/12 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
-                        <Check className="size-2.5" aria-hidden strokeWidth={3} />
-                      </span>
-                      <span className="min-w-0 pt-0.5">{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border/55 bg-gradient-to-br from-background via-card to-muted/25 p-6 ring-1 ring-border/35 sm:p-8">
-                <h3 className="flex items-center gap-1.5 text-base font-bold leading-none text-foreground sm:text-lg">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-border/65 bg-background/90 text-foreground/50 shadow-sm">
-                    <X className="size-3.5" aria-hidden strokeWidth={2.5} />
-                  </span>
-                  {audience.notForTitle}
-                </h3>
-                <ul className="mt-4 flex flex-1 flex-col gap-1 text-pretty text-sm leading-snug text-foreground/80 sm:gap-1.5 sm:text-[0.95rem]">
-                  {audience.notForBullets.map((line) => (
-                    <li key={line} className="flex items-start gap-2 rounded-xl px-2 py-1.5 -mx-1">
-                      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border border-border/50 bg-muted/30 text-foreground/40">
-                        <X className="size-2.5" aria-hidden strokeWidth={2.75} />
-                      </span>
-                      <span className="min-w-0 pt-0.5">{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </LandingStagger>
-            <LandingReveal variant="fade-up" className="mx-auto mt-6 max-w-2xl sm:mt-7" threshold={0.15}>
-              <p className="text-pretty rounded-2xl border border-border/55 bg-background/85 px-5 py-4 text-center text-sm font-semibold leading-relaxed text-foreground shadow-sm sm:px-6 sm:text-base">
-                {audience.closing}
-              </p>
-            </LandingReveal>
-          </div>
-        </SectionShell>
+              </li>
+            ))}
+          </ul>
 
-        {/* Pricing — after the qualifying section, before the FAQ */}
+          <div className="mt-14 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-14">
+            <h3 className="display max-w-[16ch] text-[1.5rem] sm:text-[1.75rem]">{israel.title}</h3>
+            <ul className="rule-t mt-5 list-none lg:mt-0">
+              {israel.items.map((item) => (
+                <li key={item} className="rule-b flex items-start gap-3 py-3">
+                  <PenCheck className="mt-1 shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Page>
+
+        {/* ── Rollout ───────────────────────────────────────────────────── */}
+        <Page id="rollout">
+          <PageTitle title={implementation.title} intro={implementation.intro} />
+          <ol className="rule-t mt-10 max-w-[52rem] list-none">
+            {implementation.steps.map(([title, body], i) => (
+              <li key={title} className="rule-b grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 py-5 sm:grid-cols-[2.5rem_14rem_minmax(0,1fr)] sm:gap-x-6">
+                <span className="pen pen-red row-span-2 text-[2.25rem] leading-none sm:row-span-1" aria-hidden>
+                  {i + 1}
+                </span>
+                <h3 className="text-[1.2rem] font-bold">{title}</h3>
+                <p className="text-[color:var(--ink-2)]">{body}</p>
+              </li>
+            ))}
+          </ol>
+        </Page>
+
+        {/* ── Trust ─────────────────────────────────────────────────────── */}
+        <Page id="trust">
+          <PageTitle title={trust.title} />
+          <ul className="rule-t mt-10 max-w-[52rem] list-none">
+            {trust.items.map((item) => (
+              <li key={item.title} className="rule-b grid gap-1 py-5 sm:grid-cols-[16rem_minmax(0,1fr)] sm:gap-6">
+                <h3 className="text-[1.2rem] font-bold">{item.title}</h3>
+                <p className="max-w-[52ch] text-[color:var(--ink-2)]">{item.body}</p>
+              </li>
+            ))}
+          </ul>
+        </Page>
+
+        {/* ── Who it is for ─────────────────────────────────────────────── */}
+        <Page id="audience">
+          <PageTitle title={audience.title} intro={audience.subtitle} />
+          <div className="rule-t mt-10 grid sm:grid-cols-2">
+            <div className="rule-b py-6 pe-6">
+              <h3 className="display text-[1.4rem]">{audience.forTitle}</h3>
+              <ul className="mt-4 list-none space-y-3">
+                {audience.forBullets.map((line) => (
+                  <li key={line} className="flex items-start gap-3">
+                    <PenCheck className="mt-1 shrink-0" />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rule-b py-6 sm:rule-s sm:ps-6">
+              <h3 className="display text-[1.4rem] text-[color:var(--ink-2)]">{audience.notForTitle}</h3>
+              <ul className="mt-4 list-none space-y-3 text-[color:var(--ink-2)]">
+                {audience.notForBullets.map((line) => (
+                  <li key={line} className="flex items-start gap-3">
+                    <PenX className="pen-red mt-1 shrink-0" />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <p className="display mt-10 max-w-[34ch] text-[1.5rem] sm:text-[1.9rem]">{audience.closing}</p>
+        </Page>
+
+        {/* ── Plans ─────────────────────────────────────────────────────── */}
         {pricingRows.length > 0 ? (
-          <SectionShell id="pricing">
-            <LandingReveal variant="fade-up">
-              <LandingPricing
-                copy={pricing}
-                rows={pricingRows}
-                locale={locale}
-                signupHref={links.signup}
-              />
-            </LandingReveal>
-          </SectionShell>
+          <Page id="pricing">
+            <LandingPricing copy={pricing} rows={pricingRows} locale={locale} signupHref={links.signup} />
+          </Page>
         ) : null}
 
-        {/* FAQ */}
-        <SectionShell id="faq" className="bg-muted/[0.35]">
-          <LandingReveal variant="blur" className="mx-auto max-w-3xl">
-            <div className="rounded-2xl border border-border/70 bg-card/80 p-6 shadow-sm ring-1 ring-black/[0.02] dark:bg-card/50 dark:ring-white/[0.04] sm:p-8">
-              <h2 className="text-balance text-pretty text-xl font-bold leading-snug tracking-tight text-foreground sm:text-2xl">
-                {faq.title}
-              </h2>
-              <LandingFaqAccordion items={faq.items} dir={dir} />
-            </div>
-          </LandingReveal>
-        </SectionShell>
+        {/* ── Questions ─────────────────────────────────────────────────── */}
+        <Page id="faq">
+          <div className="max-w-[46rem]">
+            <h2 className="display text-[2rem] sm:text-[2.5rem]">{faq.title}</h2>
+            <LandingFaqAccordion items={faq.items} dir={dir} />
+          </div>
+        </Page>
 
-        {/* Final CTA */}
-        <SectionShell>
-          <LandingReveal variant="zoom" className="mx-auto max-w-3xl">
-            <div className="rounded-3xl bg-foreground px-6 py-12 text-center text-background shadow-xl sm:px-12 sm:py-14">
-              <h2 className="text-balance text-pretty text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
-                {finalCta.title}
-              </h2>
-              <p className="mx-auto mt-3 max-w-xl text-pretty text-sm leading-relaxed opacity-80 sm:text-base">
-                {finalCta.body}
-              </p>
-              <div className="mt-8 flex flex-col items-center gap-3">
-                <Button
-                  size="lg"
-                  className="h-12 min-h-12 w-full max-w-xs border-0 bg-background px-7 text-base font-semibold text-foreground shadow-md transition-transform duration-300 hover:scale-[1.02] hover:bg-background active:scale-[0.98] motion-reduce:hover:scale-100 sm:w-auto"
-                  asChild
-                >
-                  <Link href={links.signup} data-cta="final-cta">
-                    {finalCta.cta}
-                  </Link>
-                </Button>
-                <p className="text-xs opacity-70">{finalCta.note}</p>
+        {/* ── The inside back cover ─────────────────────────────────────── */}
+        <section className="cover">
+          <div className="mx-auto grid w-full max-w-7xl gap-14 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-20 lg:px-8 lg:py-28">
+            <div>
+              <h2 className="display max-w-[22ch] text-[2rem] sm:text-[2.75rem] lg:text-[3.25rem]">{finalCta.title}</h2>
+              <p className="muted mt-5 max-w-[52ch] text-lg">{finalCta.body}</p>
+              <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+                <Link href={links.signup} data-cta="final-cta" className="hl-cta">
+                  {finalCta.cta}
+                </Link>
+                <p className="muted text-sm">{finalCta.note}</p>
               </div>
             </div>
-          </LandingReveal>
-        </SectionShell>
+            <Ledger ledger={chain.ledger} />
+          </div>
+        </section>
       </main>
 
-      <footer className="relative z-10 mt-auto border-t border-border/60 bg-background/80 py-8 pb-24 backdrop-blur-sm sm:py-10 sm:pb-10">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-5 px-4 text-center sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
-            <div className="flex items-center gap-2">
-              <span
-                className="flex size-2 shrink-0 animate-pulse rounded-full bg-emerald-500/90 shadow-[0_0_10px_rgba(16,185,129,0.35)] motion-reduce:animate-none"
-                aria-hidden
-              />
-              <span className="text-xs font-medium text-muted-foreground">{footer.statusLabel}</span>
-            </div>
-            <span className="text-xs font-semibold tracking-wide text-muted-foreground/75">
-              {footer.domain}
+      <footer className="cover mt-auto border-t border-white/10 pb-24 sm:pb-10" style={{ background: 'var(--cover-deep)' }}>
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-8 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <span className="muted flex items-center gap-2">
+              <span className="size-2 rounded-full bg-[color:var(--hl)]" aria-hidden />
+              {footer.statusLabel}
             </span>
+            <span className="display tracking-wide">{footer.domain}</span>
           </div>
-
-          <nav
-            className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm"
-            aria-label={footer.legalNavLabel}
-          >
-            <Link
-              href="/privacy"
-              className="font-semibold text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-            >
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-1" aria-label={footer.legalNavLabel}>
+            <Link href="/privacy" className="hover:underline">
               {footer.privacy}
             </Link>
-            <span className="text-muted-foreground/35" aria-hidden>
-              ·
-            </span>
-            <Link
-              href="/terms"
-              className="font-semibold text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-            >
+            <Link href="/terms" className="hover:underline">
               {footer.terms}
             </Link>
-            <span className="text-muted-foreground/35" aria-hidden>
-              ·
-            </span>
-            <Link
-              href="/data-deletion"
-              className="font-semibold text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-            >
+            <Link href="/data-deletion" className="hover:underline">
               {footer.dataDeletion}
             </Link>
           </nav>
-
-          {siteContact.address ? (
-            <p className="max-w-md text-pretty text-xs leading-relaxed text-muted-foreground sm:text-sm">
-              <span className="font-semibold text-foreground/80">{footer.addressLabel}: </span>
-              {siteContact.address}
-            </p>
-          ) : null}
-
-          {siteContact.supportEmail ? (
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              <span className="font-semibold text-foreground/80">{footer.supportLabel}: </span>
-              <a
-                href={`mailto:${siteContact.supportEmail}`}
-                className="font-medium text-teal-700 underline-offset-4 transition-colors hover:underline dark:text-teal-400"
-              >
-                {siteContact.supportEmail}
-              </a>
-            </p>
-          ) : null}
+          <div className="muted flex w-full flex-col gap-1 text-xs sm:flex-row sm:flex-wrap sm:gap-x-6">
+            {siteContact.address ? (
+              <p>
+                {footer.addressLabel}: {siteContact.address}
+              </p>
+            ) : null}
+            {siteContact.supportEmail ? (
+              <p>
+                {footer.supportLabel}:{' '}
+                <a href={`mailto:${siteContact.supportEmail}`} className="hover:underline">
+                  {siteContact.supportEmail}
+                </a>
+              </p>
+            ) : null}
+          </div>
         </div>
       </footer>
 
       <LandingStickyCta href={links.signup} label={hero.ctaPrimary} note={pricing.trialNote} />
       <LandingCtaTracker />
+      <LandingPen scrollRootId={SCROLL_ROOT_ID} />
+    </div>
+  )
+}
+
+function Headline({ hero, links, compact = false }: { hero: LandingContent['hero']; links: LandingContent['links']; compact?: boolean }) {
+  return (
+    <div className={cn(compact ? 'grid h-full grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start gap-10' : 'flex flex-col gap-5')}>
+      <h1 className={cn('display', compact ? 'text-[2.3rem] xl:text-[2.7rem]' : 'text-[2.25rem] sm:text-[2.9rem]')}>
+        <span className="block">
+          {hero.headline.less}
+          {hero.headline.lessRest}
+        </span>
+        <span className="block">
+          {hero.headline.more}
+          {hero.headline.moreRest}
+        </span>
+      </h1>
+      <div className={cn(compact && 'pt-1')}>
+        <p className={cn('max-w-[52ch] text-[color:var(--ink-2)]', compact ? 'text-[1.02rem] leading-[1.5]' : 'text-lg')}>{hero.subheadline}</p>
+        <div className={cn('flex flex-wrap items-center gap-x-5 gap-y-2', compact ? 'mt-3' : 'mt-6')}>
+          <Link href={links.signup} data-cta="hero-primary" className="hl-cta">
+            {hero.ctaPrimary}
+          </Link>
+          <p className="text-sm text-[color:var(--ink-2)]">{hero.ctaPrimaryNote}</p>
+        </div>
+        <p className={cn('pen pen-red text-[1.35rem]', compact ? 'mt-2' : 'mt-4')}>{hero.forLine}</p>
+      </div>
+    </div>
+  )
+}
+
+function Printout({ hero }: { hero: LandingContent['hero'] }) {
+  return (
+    <div className="clip tilt-b">
+      <PenClip className="paperclip" />
+      <LandingWhatsAppChat contactName={hero.chat.contactName} statusLabel={hero.chat.statusLabel} messages={hero.chat.messages} />
+      <p className="text-balance px-3 py-1.5 text-[0.68rem] leading-snug text-[color:var(--ink-2)]">{hero.trustLine}</p>
+    </div>
+  )
+}
+
+/** Beat 2: the policy, as the diary's printed front-matter table. */
+function PolicyTable({ card }: { card: LandingContent['chain']['policyCard'] }) {
+  return (
+    <div className="max-w-[24rem]">
+      <p className="display rule-b pb-2 text-[1.25rem]">{card.title}</p>
+      <ul className="list-none">
+        {card.rules.map((rule) => (
+          <li key={rule} className="rule-b py-2.5">
+            {rule}
+          </li>
+        ))}
+      </ul>
+      <p className="pen mt-3 text-[1.6rem]">
+        <span className="hl-mark">{card.result}</span>
+      </p>
+    </div>
+  )
+}
+
+/**
+ * The month-end summary page at the back of the diary, on the cover. The
+ * cancellation line arrives from above and is marked, the same pen that
+ * struck the entry on the week spread; the month closes under it.
+ */
+function Ledger({ ledger }: { ledger: LandingContent['chain']['ledger'] }) {
+  return (
+    <div className="w-full max-w-[28rem] lg:justify-self-end" data-pen>
+      <p className="display rule-b pb-2 text-[1.35rem]">{ledger.title}</p>
+      <ul className="list-none">
+        {ledger.rows.map(([label, amount], i) => {
+          const story = i === ledger.rows.length - 1
+          return (
+            <li key={label} className={cn('rule-b flex items-baseline justify-between gap-4 py-3', story && 'arrive font-bold')}>
+              <span>{label}</span>
+              {story ? (
+                <span className="sweep tabular text-[1.35rem]">
+                  <span>{amount}</span>
+                </span>
+              ) : (
+                <span className="tabular">{amount}</span>
+              )}
+            </li>
+          )
+        })}
+        <li className="flex items-baseline justify-between gap-4 py-3 text-[1.15rem] font-bold">
+          <span>{ledger.total[0]}</span>
+          <span className="tabular">{ledger.total[1]}</span>
+        </li>
+      </ul>
+      <p className="after-note pen mt-3 text-[1.6rem] text-[color:var(--hl)]">{ledger.approved}</p>
     </div>
   )
 }

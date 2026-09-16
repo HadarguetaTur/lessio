@@ -55,3 +55,8 @@ video-assets/
 
 # Cardcom preview E2E scratch (browser profiles + secrets env)
 .tmp-cardcom-*
+
+# Impeccable design-skill scratch: screenshots, decision pages, hook cache (the surface briefs under .impeccable/surfaces are committed)
+.impeccable/review/
+.impeccable/questions/
+.impeccable/hook.cache.json

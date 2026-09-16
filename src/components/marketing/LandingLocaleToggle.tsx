@@ -2,9 +2,9 @@
 
 import { useTransition } from 'react'
 import { setLandingLocaleAction } from '@/app/landing-locale-action'
-import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
-export function LandingLocaleToggle({ currentLocale }: { currentLocale: string }) {
+export function LandingLocaleToggle({ currentLocale, className }: { currentLocale: string; className?: string }) {
   const [isPending, startTransition] = useTransition()
   const next = currentLocale === 'he' ? 'en' : 'he'
   const label = currentLocale === 'he' ? 'EN' : 'עב'
@@ -16,15 +16,17 @@ export function LandingLocaleToggle({ currentLocale }: { currentLocale: string }
   return (
     <form action={handleSubmit}>
       <input type="hidden" name="locale" value={next} />
-      <Button
+      <button
         type="submit"
-        variant="ghost"
-        size="sm"
         disabled={isPending}
-        className="h-9 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground sm:px-3 sm:text-sm"
+        aria-label={next === 'en' ? 'Switch to English' : 'החלפה לעברית'}
+        className={cn(
+          'inline-flex min-h-9 items-center px-2.5 text-xs font-semibold underline-offset-4 hover:underline disabled:opacity-60 sm:text-sm',
+          className
+        )}
       >
         {label}
-      </Button>
+      </button>
     </form>
   )
 }

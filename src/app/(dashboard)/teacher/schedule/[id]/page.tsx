@@ -7,6 +7,7 @@ import { getSession } from '@/lib/auth/session'
 import { getOrgTimezone } from '@/lib/organizations'
 import { getLessonAccessScope, getLessonById, formatTime, formatDate, LessonStatus } from '@/lib/lessons'
 import { getTeacherByProfileId } from '@/lib/teachers'
+import { getLessonRoster } from '@/lib/lessons/roster'
 import { TeacherLessonOutcomeForm } from '@/components/dashboard/lessons/TeacherLessonOutcomeForm'
 import { CancelLessonForm } from '@/components/dashboard/lessons/CancelLessonForm'
 import { updateTeacherLessonOutcome, sendLessonUpdateAction } from './actions'
@@ -58,6 +59,7 @@ export default async function TeacherLessonDetailPage(props: {
 
   const timezone = await getOrgTimezone(orgId)
   const lesson = await getLessonById(id, orgId)
+  const roster = lesson ? await getLessonRoster(id, orgId) : []
 
   if (!lesson) {
     const scope = await getLessonAccessScope(id)
@@ -160,6 +162,7 @@ export default async function TeacherLessonDetailPage(props: {
         <h2 className="text-sm font-semibold text-gray-700 mb-3">{tLessons('statusUpdate')}</h2>
         <TeacherLessonOutcomeForm
           currentStatus={lesson.status}
+          roster={roster}
           action={updateTeacherLessonOutcome.bind(null, lesson.id)}
         />
       </div>

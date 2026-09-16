@@ -1041,6 +1041,71 @@ The operations report (`/reports/operations`) renders the same
 `TeacherActivityTable` without the finance columns, so an office manager and
 the owner always see identical counts for a month.
 
+## 46. A Punch Card Is a Ledger, and Attendance Is Recorded per Student
+
+✅ DECIDED (15 Sep 2026): punch cards (כרטיסיות) are built on the existing
+money engine — charges, partial payments, the payment providers, receipts —
+not as a parallel payment path. Plan: `scalable-greeting-token.md`.
+
+* **A pack is a ledger, not a pricing rule and not a balance column.**
+  `lesson_pack_ledger` is append-only (`purchase`, `consume_lesson`,
+  `consume_late_cancel`, `consume_no_show`, `manual_adjust`, `expire`); the
+  balance is `SUM(delta)` over un-reversed rows. An undo marks `reversed_at`,
+  so the same (lesson, student) can be punched again. A lesson is covered by a
+  pack exactly when an un-reversed `consume_*` row exists for it.
+* **One serialised punch.** `consume_pack_credit` (SECURITY DEFINER, service
+  role only) picks the student's own card before a family card, then the one
+  expiring first, then the oldest, under `FOR UPDATE`. A unique index on
+  (lesson_id, student_id) makes every retry and race a no-op.
+* **Attendance is the source; the lesson status is derived.**
+  `lesson_students.attendance` is `present | absent | NULL`; NULL on a
+  completed lesson means present (the completion cron marks nobody). A lesson
+  is `no_show` iff every enrolled student was absent. `isStudentAbsent` in
+  `src/lib/lessons/attendance.ts` is the only place that decides.
+* **One reconciler.** `settleLessonOutcome` replaces `createLessonCharge` at
+  every completion entry point and aligns ledger and charges to what the
+  outcome should leave behind, per student: subscription → pack → money, for a
+  present and an absent student alike. What exists for the current outcome
+  stays (a charge raised before a pack was activated is never retroactively
+  punched); what belongs to another outcome is retired — a pending charge is
+  voided, a punch reversed. A paid charge is never touched: the attendance
+  stands and an `outcome_conflict` alert is returned.
+* **One collection policy.** No-show percentage, what a pack does on a
+  no-show and on a late cancellation, activation (`immediate | on_payment`),
+  ownership (`student | family`), the running-low threshold and parent
+  notifications live on `cancellation_policies`, edited on one settings page
+  together with the pack catalog. Every default is the behaviour before
+  packs: a no-show is free.
+* **Billing mode decides the money, not the pack.** Per lesson: a sale is a
+  `pack` charge. Monthly: no charge — `lesson_packs.charge_id IS NULL` is how
+  the monthly engine knows to bill `price` on `billing_student_id`'s bill, and
+  the card is active at once. `BILLABLE_STATUSES` now includes `no_show`,
+  billed from the `absence_amount` snapshot written at settlement.
+* **Booking without an entitlement pays first — only where the org collects
+  through packs.** Collecting through punch cards is an explicit org choice
+  (`cancellation_policies.pack_collection_enabled`, default off), never
+  inferred from having a catalog. With it on, in a per-lesson org with a
+  payment provider and an active catalog, a portal parent with no covering
+  subscription or spare credit picks a pack or a single lesson and pays before
+  the lesson exists (`booking_checkout_sessions`, slot lock held 15 minutes).
+  Only a verified payment on a live lock confirms. A paid pack is issued even
+  if the slot was lost; a lost slot on a paid single lesson becomes
+  `needs_attention`. Everywhere else booking is unchanged.
+* **No refund flow (#37).** Cancelling a paid card is two steps: record the
+  refund on its charge (`markChargeRefunded`), then cancel with a reason; the
+  remaining credits are written off with an `expire` row. A refund reported on
+  a live card never cancels it — owners and admins are notified. An owner may
+  "cancel anyway" without a refund marker.
+* **Office managers see balances, not money.** They mark attendance (an
+  operational act; the reconciler writes charges with the service role) and
+  see what is left on a card. Selling, cancelling, correcting and the catalog
+  are owner/admin; the new tables carry owner/admin read policies only.
+* **Amends #45.** A lesson a pack paid for is attributed at list value and
+  flagged `packCovered`, like subscription coverage. Attribution follows
+  attendance per student: an absent student in a completed group lesson
+  attributes what their no-show was billed (`no_show_charge`), or list value
+  when the absence burned a punch, or nothing.
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

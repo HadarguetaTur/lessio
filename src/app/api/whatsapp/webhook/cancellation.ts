@@ -407,6 +407,10 @@ function formatWhen(
  * not billed.
  */
 function chargeLineFor(outcome: ExecuteCancellationResult, locale: AppLocale): string {
+  // A late cancellation paid with a punch instead of a fee (decision #46).
+  if (outcome.lines?.some((line) => line.recorded === 'pack')) {
+    return `\n${botString('cancel_pack_credit_used', locale)}`
+  }
   const { chargeType, amount } = outcome.chargeResult
   if (chargeType && amount > 0) {
     const label = botString(chargeType === 'full' ? 'charge_full' : 'charge_partial', locale)

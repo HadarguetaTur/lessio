@@ -11,7 +11,7 @@ import { OPEN_CHARGE_STATUSES, sumRemaining } from '@/lib/charges'
 export interface PaymentRequestCharge {
   id: string
   amount: number
-  charge_type: 'lesson' | 'cancellation' | 'manual' | 'monthly'
+  charge_type: 'lesson' | 'cancellation' | 'manual' | 'monthly' | 'pack' | 'no_show'
   lesson_start_at: string | null
   student_name: string | null
 }

@@ -58,7 +58,7 @@ export async function saveBillingPolicySettings(
 
   if (currentOrg?.billing_mode && currentOrg.billing_mode !== parsed.data.billing_mode) {
     const conflictingTypes = parsed.data.billing_mode === 'monthly'
-      ? ['lesson', 'cancellation']
+      ? ['lesson', 'cancellation', 'no_show', 'pack']
       : ['monthly']
     const { count, error: conflictError } = await db
       .from('charges')

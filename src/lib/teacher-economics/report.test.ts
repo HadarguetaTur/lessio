@@ -107,3 +107,38 @@ describe('cancellationActorFromSource', () => {
     expect(cancellationActorFromSource(null)).toBe('unknown')
   })
 })
+
+describe('attributeLessonRevenue — attendance and punches (decision #46)', () => {
+  const group = (students: Array<{ id: string; attendance?: string | null; absence_amount?: number | null }>) =>
+    row({
+      lesson_type: 'group',
+      lesson_students: students.map((s) => ({
+        student_id: s.id,
+        attendance: s.attendance ?? null,
+        absence_amount: s.absence_amount ?? null,
+        students: { full_name: s.id, hourly_rate: null, discount_percent: null },
+      })),
+    })
+
+  it('attributes a billed no-show at what it was billed', () => {
+    const result = attributeLessonRevenue({ ...group([{ id: 's1', absence_amount: 30 }]), status: 'no_show' }, ctx())
+    expect(result).toMatchObject({ attributedRevenue: 30, revenueBasis: 'no_show_charge' })
+  })
+
+  it('keeps an unbilled no-show at zero', () => {
+    expect(attributeLessonRevenue({ ...group([{ id: 's1' }]), status: 'no_show' }, ctx())).toMatchObject({
+      attributedRevenue: 0, revenueBasis: 'not_billed',
+    })
+  })
+
+  it('an absent student in a completed group lesson is not worth list price', () => {
+    const result = attributeLessonRevenue(group([{ id: 's1' }, { id: 's2', attendance: 'absent', absence_amount: 0 }]), ctx())
+    expect(result.attributedRevenue).toBe(60)
+  })
+
+  it('a punched lesson is list value and flagged packCovered; a punched absence too', () => {
+    const packUses = new Set(['lesson-1:s1', 'lesson-1:s2'])
+    const result = attributeLessonRevenue(group([{ id: 's1' }, { id: 's2', attendance: 'absent' }]), ctx({ packUses }))
+    expect(result).toMatchObject({ attributedRevenue: 120, packCovered: true })
+  })
+})

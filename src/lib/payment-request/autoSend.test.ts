@@ -62,7 +62,7 @@ function makeDbClient(orgRow: Record<string, unknown>) {
       })
       const chain: Record<string, unknown> = {}
       const pass = () => chain
-      ;['select', 'eq', 'update'].forEach((m) => { chain[m] = pass })
+      ;['select', 'eq', 'in', 'update'].forEach((m) => { chain[m] = pass })
       chain['single'] = single
       return chain
     }),
@@ -87,6 +87,7 @@ function makeSendableDbClient(orgRow: Record<string, unknown>) {
       const pass = () => chain
       chain['select'] = pass
       chain['eq'] = pass
+      chain['in'] = pass
       chain['update'] = vi.fn((payload: Record<string, unknown>) => {
         updates.push(payload)
         return chain

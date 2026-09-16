@@ -13,6 +13,8 @@ type BillingRecord = {
   lessons_amount: number
   subscriptions_amount: number
   cancellations_amount: number
+  no_show_amount?: number | null
+  packs_amount?: number | null
   total_amount: number
   lessons_count: number
   manual_adjustment_amount: number | null
@@ -34,6 +36,8 @@ interface Props {
     lessons: string
     subscriptions: string
     cancellations: string
+    noShows: string
+    packs: string
     adjustment: string
     total: string
     paid: string
@@ -110,6 +114,22 @@ export function BillingRecordsMobileList({
                   {money(Number(record.cancellations_amount))}
                 </dd>
               </div>
+              {Number(record.no_show_amount ?? 0) > 0 && (
+                <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
+                  <dt className="col-start-2 row-start-1 text-end text-muted-foreground">{labels.noShows}</dt>
+                  <dd className="col-start-1 row-start-1 font-mono text-foreground" dir="ltr">
+                    {money(Number(record.no_show_amount))}
+                  </dd>
+                </div>
+              )}
+              {Number(record.packs_amount ?? 0) > 0 && (
+                <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
+                  <dt className="col-start-2 row-start-1 text-end text-muted-foreground">{labels.packs}</dt>
+                  <dd className="col-start-1 row-start-1 font-mono text-foreground" dir="ltr">
+                    {money(Number(record.packs_amount))}
+                  </dd>
+                </div>
+              )}
               <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-2">
                 <dt className="col-start-2 row-start-1 text-end text-muted-foreground">
                   {labels.adjustment}

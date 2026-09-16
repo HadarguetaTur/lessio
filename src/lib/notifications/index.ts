@@ -39,6 +39,9 @@ export type NotificationType =
   // WhatsApp number health (owner/admin): quality flagged, tier change,
   // account restriction, template paused, verification granted.
   | 'whatsapp_health'
+  // Punch cards (decision #46): a refund landed on a card that is still live,
+  // or a paid booking could not be confirmed because its slot was lost.
+  | 'pack_attention'
 
 export interface CreateNotificationParams {
   orgId: string

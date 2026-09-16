@@ -58,7 +58,16 @@ export type AttentionHomework = {
   dueDate: string | null
 }
 
+/** A punch card at or under the org's running-low threshold (decision #46). */
+export type AttentionPack = {
+  packId: string
+  name: string
+  holderName: string
+  remaining: number
+}
+
 export type AttentionData = {
+  packsRunningOut?: { top: AttentionPack[]; count: number }
   unloggedLessons: { top: AttentionLesson[]; count: number }
   pendingBilling: { top: AttentionBilling[]; count: number; total: number }
   debtors: { top: AttentionDebtor[]; count: number; totalDebt: number }
@@ -89,6 +98,50 @@ export function topAtRiskStudents(rows: StudentRow[], limit = 5): AttentionStude
     }))
 }
 
+/** Active, still-valid cards with credit left at or under the threshold. */
+async function getPacksRunningOut(orgId: string, limit: number): Promise<{ top: AttentionPack[]; count: number }> {
+  const { getCollectionPolicyServiceRole } = await import('@/lib/cancellation-policy/service')
+  const policy = await getCollectionPolicyServiceRole(orgId)
+  const db = createServiceRoleClient()
+  const { data, error } = await db
+    .from('lesson_pack_balances')
+    .select('id, name, remaining, valid_until, student_id, billing_student_id')
+    .eq('organization_id', orgId)
+    .is('cancelled_at', null)
+    .not('activated_at', 'is', null)
+    .gt('remaining', 0)
+    .lte('remaining', policy.packLowBalanceThreshold)
+    .order('remaining', { ascending: true })
+  if (error) throw new Error(error.message)
+
+  const today = new Date().toISOString().slice(0, 10)
+  const rows = ((data ?? []) as Array<{
+    id: string
+    name: string
+    remaining: number
+    valid_until: string | null
+    student_id: string | null
+    billing_student_id: string | null
+  }>).filter((row) => !row.valid_until || row.valid_until >= today)
+
+  const top = rows.slice(0, limit)
+  const studentIds = [...new Set(top.map((row) => row.student_id ?? row.billing_student_id).filter(Boolean))] as string[]
+  const { data: students } = studentIds.length
+    ? await db.from('students').select('id, full_name').eq('organization_id', orgId).in('id', studentIds)
+    : { data: [] }
+  const names = new Map(((students ?? []) as Array<{ id: string; full_name: string }>).map((s) => [s.id, s.full_name]))
+
+  return {
+    top: top.map((row) => ({
+      packId: row.id,
+      name: row.name,
+      holderName: names.get((row.student_id ?? row.billing_student_id) as string) ?? '',
+      remaining: Number(row.remaining),
+    })),
+    count: rows.length,
+  }
+}
+
 export async function getAttentionData(
   orgId: string,
   timezone: string,
@@ -99,7 +152,7 @@ export async function getAttentionData(
   const nowISO = DateTime.utc().toISO()
   const billingMonth = getCurrentBillingMonth(timezone)
 
-  const [debtorsOverview, studentsReport, leadsRes, unloggedRes, billingRes, homeworkRows] =
+  const [debtorsOverview, studentsReport, leadsRes, unloggedRes, billingRes, homeworkRows, packsRunningOut] =
     await Promise.all([
       getDebtorsOverview(orgId),
       getStudentsReport(orgId, timezone),
@@ -132,6 +185,7 @@ export async function getAttentionData(
         .order('total_amount', { ascending: false })
         .limit(limit),
       getAssignments(orgId, { status: 'overdue' }).catch(() => []),
+      getPacksRunningOut(orgId, limit).catch(() => ({ top: [], count: 0 })),
     ])
 
   type LessonRow = {
@@ -187,6 +241,7 @@ export async function getAttentionData(
       count: debtorsOverview.debtorCount,
       totalDebt: debtorsOverview.totalDebt,
     },
+    packsRunningOut,
     newLeads: leadsRes
       ? {
           top: (leadsRes.data ?? []).map((lead) => ({

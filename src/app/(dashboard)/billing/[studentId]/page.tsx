@@ -267,6 +267,30 @@ export default async function BillingDetailPage(props: {
               {money(Number(billingData.cancellations_amount))}
             </p>
           </div>
+          {/* Decision #46 — shown only when there is something to show, so an
+              org without no-show fees or packs sees the bill it always had. */}
+          {Number(billingData.no_show_amount ?? 0) > 0 && (
+            <div className="text-start">
+              <p className="text-[11px] font-semibold text-muted-foreground tracking-wider mb-1">
+                {tBilling('table.noShows')}
+                <span className="ms-1 font-normal">({billingData.no_show_count})</span>
+              </p>
+              <p className="text-lg font-bold text-foreground tabular-nums">
+                {money(Number(billingData.no_show_amount))}
+              </p>
+            </div>
+          )}
+          {Number(billingData.packs_amount ?? 0) > 0 && (
+            <div className="text-start">
+              <p className="text-[11px] font-semibold text-muted-foreground tracking-wider mb-1">
+                {tBilling('table.packs')}
+                <span className="ms-1 font-normal">({billingData.packs_count})</span>
+              </p>
+              <p className="text-lg font-bold text-foreground tabular-nums">
+                {money(Number(billingData.packs_amount))}
+              </p>
+            </div>
+          )}
           <div className="text-start rounded-lg bg-primary/5 px-3 py-2 -my-2 lg:-my-1">
             <p className="text-[11px] font-semibold text-primary tracking-wider mb-1">
               {tBilling('table.total')}

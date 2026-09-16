@@ -192,6 +192,8 @@ export type ConfirmBookingActionResult =
         | 'slot_taken'
         | 'student_conflict'
         | 'token_expired'
+        /** No entitlement: pay-first bookings go through the parent portal (decision #46). */
+        | 'payment_required'
         | 'unknown'
     }
 
@@ -204,6 +206,18 @@ export async function confirmBookingAction(
   try {
     const { organizationId, parentId, studentId } = await verifyBookingToken(token)
     const db = createServiceRoleClient()
+
+    // The bot's link has no checkout of its own: a booking that must be paid
+    // for first is refused here and completed from the portal (decision #46).
+    const [{ validateSlotLock }, { getBookingOptions }] = await Promise.all([
+      import('@/lib/booking/validateSlotLock'),
+      import('@/lib/booking/checkout'),
+    ])
+    const held = await validateSlotLock(lockId, organizationId)
+    if (held.valid) {
+      const options = await getBookingOptions({ organizationId, studentId, lock: held.lock })
+      if (options.required && options.entitlement === 'none') return { success: false, error: 'payment_required' }
+    }
 
     const result = await confirmBooking({ lockId, studentId, teacherId, organizationId })
 

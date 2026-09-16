@@ -2,9 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSession, requireMutation } from '@/lib/auth/session'
-import { getLessonById, getLessonTitle, updateLessonStatus, LessonStatus } from '@/lib/lessons'
+import { z } from 'zod'
+import { getLessonById, getLessonTitle, LessonStatus } from '@/lib/lessons'
 import { getTeacherByProfileId } from '@/lib/teachers'
-import { createLessonCharge } from '@/lib/billing/createCharge'
+import { recordLessonOutcome } from '@/lib/lessons/outcome'
 import { getTranslations } from 'next-intl/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { requireFeature } from '@/lib/saas/featureGate'
@@ -134,16 +135,26 @@ export async function updateTeacherLessonOutcome(
     return { error: t('teacherSelf.errors.lessonCancelled') }
   }
 
-  if (lesson.status === status) {
-    return { error: null }
+  // No same-status shortcut: a completed lesson can still get its attendance
+  // corrected, and that is exactly the case the reconciler exists for.
+  let presentStudentIds: string[] | null = null
+  if (formData.get('attendance_form') === '1') {
+    const parsed = presentListSchema.safeParse(formData.getAll('present').map(String))
+    if (!parsed.success) return { error: t('teacherSelf.errors.invalidStatus') }
+    presentStudentIds = parsed.data
   }
 
+  let chargeAlert
   try {
-    if (status === 'completed' && session.profileId) {
-      await updateLessonStatus(lessonId, orgId, status, { profileId: session.profileId, source: 'teacher' })
-    } else {
-      await updateLessonStatus(lessonId, orgId, status)
-    }
+    const outcome = await recordLessonOutcome({
+      lessonId,
+      organizationId: orgId,
+      status: status as 'completed' | 'no_show',
+      presentStudentIds,
+      confirmation: session.profileId ? { profileId: session.profileId, source: 'teacher' } : undefined,
+      actorProfileId: session.profileId ?? null,
+    })
+    chargeAlert = outcome.chargeAlert
   } catch (e) {
     return { error: t('teacherSelf.errors.statusUpdateFailed') }
   }
@@ -151,13 +162,7 @@ export async function updateTeacherLessonOutcome(
   revalidatePath(`/teacher/schedule/${lessonId}`)
   revalidatePath('/teacher/schedule')
 
-  // Preserve existing Sprint 3 charge flow — do not redefine billing rules
-  if (status === 'completed') {
-    const alert = await createLessonCharge(lessonId, orgId)
-    if (alert) {
-      return { error: null, chargeAlert: alert.message }
-    }
-  }
-
-  return { error: null }
+  return chargeAlert ? { error: null, chargeAlert: chargeAlert.message } : { error: null }
 }
+
+const presentListSchema = z.array(z.string().min(1).max(64)).max(200)

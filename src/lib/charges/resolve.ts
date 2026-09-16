@@ -40,7 +40,8 @@ export function canTransition(from: ChargeStatus, to: ResolutionKind): boolean {
 interface ResolveChargeInput {
   chargeId: string
   organizationId: string
-  actorProfileId: string
+  /** NULL for a system resolution (the lesson-outcome reconciler). */
+  actorProfileId: string | null
   reason: string
   kind: ResolutionKind
 }
@@ -182,7 +183,7 @@ export function waiveCharge(
 export function voidCharge(
   chargeId: string,
   organizationId: string,
-  actorProfileId: string,
+  actorProfileId: string | null,
   reason: string
 ): Promise<ResolveChargeResult> {
   return resolveCharge({ chargeId, organizationId, actorProfileId, reason, kind: 'voided' })

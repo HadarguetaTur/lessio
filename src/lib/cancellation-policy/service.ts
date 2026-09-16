@@ -1,5 +1,28 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { CancellationPolicy } from './index'
+import {
+  COLLECTION_POLICY_COLUMNS,
+  toCollectionPolicy,
+  type CollectionPolicy,
+  type CollectionPolicyRow,
+} from './collection'
+
+/**
+ * No-show and punch-card settings, read with the service role for the same
+ * reason as the cancellation policy below: the completion cron, the portal and
+ * the webhook have no Supabase Auth session. A missing row is the defaults.
+ */
+export async function getCollectionPolicyServiceRole(organizationId: string): Promise<CollectionPolicy> {
+  const db = createServiceRoleClient()
+  const { data, error } = await db
+    .from('cancellation_policies')
+    .select(COLLECTION_POLICY_COLUMNS)
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+  // A failed read must not quietly become "no-shows are free" on a money path.
+  if (error) throw new Error(`[collectionPolicy] read failed: ${error.message}`)
+  return toCollectionPolicy(data as CollectionPolicyRow | null)
+}
 
 /**
  * The cancellation policy, read with the service-role client.

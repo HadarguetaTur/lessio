@@ -19,6 +19,7 @@ import { LessonNotesSection } from '@/components/dashboard/lessons/LessonNotesSe
 import { setLessonStatus, cancelLesson, cancelSeriesAction, addLessonNote, deleteLessonNote } from './actions'
 import { SendLessonReminderButton } from './SendLessonReminderButton'
 import { getNotes } from '@/lib/lessons/notes'
+import { getLessonRoster } from '@/lib/lessons/roster'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { parseAppLocale } from '@/lib/i18n/locale'
 import { renderCancelReason } from '@/lib/lessons/renderCancelReason'
@@ -40,9 +41,12 @@ export default async function LessonDetailPage(props: {
   const canCancel = role === 'owner' || role === 'admin'
   const timezone = await getOrgTimezone(orgId)
 
-  const [lesson, notes] = await Promise.all([
+  const [lesson, notes, roster] = await Promise.all([
     getLessonById(id, orgId),
     getNotes(orgId, id),
+    // Who came, per student (decision #46). Empty for a lesson from another org,
+    // which notFound()/forbidden() below turns away before anything renders.
+    getLessonRoster(id, orgId),
   ])
   if (!lesson) {
     const scope = await getLessonAccessScope(id)
@@ -184,6 +188,7 @@ export default async function LessonDetailPage(props: {
           <LessonStatusForm
             currentStatus={lesson.status}
             lessonLabel={`${getLessonTitle(lesson, t)} · ${formatTime(lesson.start_at, timezone, appLocale)}`}
+            roster={roster}
             action={boundAction}
           />
         </div>

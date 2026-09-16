@@ -34,6 +34,17 @@ vi.mock('@/lib/booking', async (importOriginal) => ({
   confirmBooking: mockConfirmBooking,
 }))
 
+// The pay-first gate (decision #46) is covered in checkout.test.ts; these orgs
+// have no catalog, so booking confirms as it always did.
+vi.mock('@/lib/booking/validateSlotLock', () => ({
+  validateSlotLock: vi.fn().mockResolvedValue({ valid: false, reason: 'not_found' }),
+}))
+vi.mock('@/lib/booking/checkout', () => ({
+  getBookingOptions: vi.fn().mockResolvedValue({ required: false, entitlement: 'none', products: [], singleLessonPrice: null }),
+  startCheckout: vi.fn(),
+  cancelCheckout: vi.fn(),
+}))
+
 import {
   LockExpiredError,
   SlotUnavailableError,

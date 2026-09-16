@@ -7,6 +7,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { DateTime } from 'luxon'
+import { Ticket } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { formatCurrency } from '@/lib/i18n/formatCurrency'
 import type { AttentionData } from '@/lib/dashboard/attention'
@@ -57,6 +58,7 @@ export async function AttentionPanel({
   const hasOverdueHomework = data.overdueHomework.count > 0
   const hasLeads = (data.newLeads?.count ?? 0) > 0
   const hasAtRisk = data.atRisk.count > 0
+  const hasPacksRunningOut = (data.packsRunningOut?.count ?? 0) > 0
   const allClear =
     !hasUnlogged &&
     !hasPendingBilling &&
@@ -90,7 +92,8 @@ export async function AttentionPanel({
     data.debtors.count +
     data.overdueHomework.count +
     (data.newLeads?.count ?? 0) +
-    data.atRisk.count
+    data.atRisk.count +
+    (data.packsRunningOut?.count ?? 0)
 
   if (allClear) {
     return (
@@ -286,6 +289,30 @@ export async function AttentionPanel({
                 trailing={t('attention.daysOld', {
                   days: daysAgo(lead.createdAt),
                 })}
+              />
+            ))}
+          </AttentionCard>
+        )}
+
+        {/* Punch cards at or under the running-low threshold (decision #46). */}
+        {hasPacksRunningOut && data.packsRunningOut && (
+          <AttentionCard
+            icon={Ticket}
+            tone="violet"
+            title={t('attention.cards.packsRunningOut')}
+            count={data.packsRunningOut.count}
+            href="/packs?status=low"
+            hasMore={data.packsRunningOut.count > ROW_LIMIT}
+            viewAllLabel={t('attention.viewAll')}
+            emptyLabel={t('attention.sectionClear')}
+          >
+            {data.packsRunningOut.top.slice(0, ROW_LIMIT).map((pack) => (
+              <AttentionRow
+                key={pack.packId}
+                href={`/packs?status=low&open=${pack.packId}`}
+                primary={<bdi>{pack.holderName || pack.name}</bdi>}
+                secondary={pack.holderName ? pack.name : undefined}
+                trailing={t('attention.packsLeft', { remaining: pack.remaining })}
               />
             ))}
           </AttentionCard>

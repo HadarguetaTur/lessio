@@ -128,6 +128,7 @@ export default async function TeacherEconomicsDetailPage({ params, searchParams 
                     <TableCell className="px-4 py-3 text-xs">
                       <span>{t(`basis.${line.revenueBasis}`)}</span>
                       {line.subscriptionCovered && <span className="ms-1 rounded bg-blue-50 px-1.5 py-0.5 text-blue-700">{t('basis.subscriptionCovered')}</span>}
+                      {line.packCovered && <span className="ms-1 rounded bg-violet-50 px-1.5 py-0.5 text-violet-700">{t('basis.packCovered')}</span>}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-xs">{describe(line)}</TableCell>
                     <TableCell className={NUM}>{money(line.attributedRevenue)}</TableCell>

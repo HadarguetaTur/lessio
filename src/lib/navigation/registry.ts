@@ -52,6 +52,7 @@ import {
   Banknote,
   Languages,
   Wallet,
+  Ticket,
   Building2,
   Mail,
   Shield,
@@ -424,6 +425,15 @@ export const MAIN_NAV: NavEntry[] = [
     synonyms: ['subscription', 'subscriptions', 'recurring', 'מנוי', 'מנויים'],
   },
   {
+    href: '/packs',
+    navKey: 'packs',
+    icon: Ticket,
+    // Selling and managing cards is money (decision #46). No saasFeature: the
+    // card and its balance live on every plan.
+    roles: ['owner', 'admin'],
+    synonyms: ['pack', 'packs', 'punch card', 'lesson pack', 'credits', 'כרטיסייה', 'כרטיסיות', 'ניקוב', 'ניקובים'],
+  },
+  {
     href: '/leads',
     navKey: 'leads',
     icon: UserPlus,
@@ -730,7 +740,7 @@ export const CATEGORIES: NavCategory[] = [
     sectionKey: 'sections.money',
     icon: Banknote,
     landing: '/charges',
-    items: ['/charges', '/billing', '/billing/debts', '/subscriptions', '/reports/revenue', '/reports/debt'].map(entryOf),
+    items: ['/charges', '/billing', '/billing/debts', '/subscriptions', '/packs', '/reports/revenue', '/reports/debt'].map(entryOf),
   },
   {
     id: 'teachers',

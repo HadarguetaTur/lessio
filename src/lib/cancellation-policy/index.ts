@@ -1,4 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import {
+  COLLECTION_POLICY_COLUMNS,
+  toCollectionPolicy,
+  type CollectionPolicy,
+  type CollectionPolicyRow,
+} from './collection'
 
 export interface CancellationPolicy {
   id: string
@@ -15,21 +21,26 @@ const DEFAULTS: Omit<CancellationPolicy, 'id'> = {
 
 export async function getCancellationPolicy(
   organizationId: string
-): Promise<CancellationPolicy | null> {
+): Promise<(CancellationPolicy & CollectionPolicyRow) | null> {
   const supabase = await createClient()
 
   const { data } = await supabase
     .from('cancellation_policies')
-    .select('id, notice_hours_full, notice_hours_partial, partial_charge_percent')
+    .select(`id, notice_hours_full, notice_hours_partial, partial_charge_percent, ${COLLECTION_POLICY_COLUMNS}`)
     .eq('organization_id', organizationId)
     .single()
 
-  return data ?? null
+  return (data as (CancellationPolicy & CollectionPolicyRow) | null) ?? null
 }
 
 export async function getCancellationPolicyOrDefaults(
   organizationId: string
-): Promise<{ policy: CancellationPolicy | null; values: Omit<CancellationPolicy, 'id'> }> {
+): Promise<{
+  policy: CancellationPolicy | null
+  values: Omit<CancellationPolicy, 'id'>
+  /** No-show and punch-card settings (decision #46); defaults when unset. */
+  collection: CollectionPolicy
+}> {
   const policy = await getCancellationPolicy(organizationId)
   const values = policy
     ? {
@@ -38,5 +49,5 @@ export async function getCancellationPolicyOrDefaults(
         partial_charge_percent: policy.partial_charge_percent,
       }
     : DEFAULTS
-  return { policy, values }
+  return { policy, values, collection: toCollectionPolicy(policy) }
 }

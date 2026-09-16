@@ -68,6 +68,8 @@ export default async function BillingPage(props: {
     lessons_amount: number
     subscriptions_amount: number
     cancellations_amount: number
+    no_show_amount?: number | null
+    packs_amount?: number | null
     total_amount: number
     lessons_count: number
     manual_adjustment_amount: number | null
@@ -196,6 +198,8 @@ export default async function BillingPage(props: {
               lessons: t('table.lessons'),
               subscriptions: t('table.subscriptions'),
               cancellations: t('table.cancellations'),
+              noShows: t('table.noShows'),
+              packs: t('table.packs'),
               adjustment: t('table.adjustment'),
               total: t('table.total'),
               paid: t('status.paid'),
@@ -269,6 +273,19 @@ export default async function BillingPage(props: {
                         </td>
                         <td className="px-5 py-3.5 font-mono text-sm text-foreground text-end" dir="ltr">
                           {money(Number(record.cancellations_amount))}
+                          {/* No-shows and pack sales ride along in this cell
+                              rather than widening a table already at 900px
+                              (decision #46). */}
+                          {Number(record.no_show_amount ?? 0) > 0 && (
+                            <span className="block text-xs text-muted-foreground">
+                              {t('table.noShows')}: {money(Number(record.no_show_amount))}
+                            </span>
+                          )}
+                          {Number(record.packs_amount ?? 0) > 0 && (
+                            <span className="block text-xs text-muted-foreground">
+                              {t('table.packs')}: {money(Number(record.packs_amount))}
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-3.5 font-mono text-sm text-end" dir="ltr">
                           {record.manual_adjustment_amount != null ? (

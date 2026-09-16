@@ -272,3 +272,54 @@ describe('calculateLessonsContribution', () => {
     expect(isMissingFieldsError(result)).toBe(true)
   })
 })
+
+describe('calculateLessonsContribution — attendance and punches (decision #46)', () => {
+  const context = (over: {
+    attendance?: Array<[string, string | null, number | null]>
+    packUses?: string[]
+    percent?: number
+  } = {}) => ({
+    attendanceByLesson: new Map(
+      (over.attendance ?? []).map(([id, attendance, amount]) => [id, { attendance, absence_amount: amount }])
+    ),
+    packUseLessonIds: new Set(over.packUses ?? []),
+    collection: { noShowChargePercent: over.percent ?? 0 },
+  })
+
+  const run = (lessons: LessonRow[], ctx: ReturnType<typeof context>, subs: SubscriptionRow[] = []) => {
+    const result = calculateLessonsContribution(
+      lessons, '2026-04', 'student-1', subs, TZ, new Set(), new Map(), PRICING, 1, undefined, ctx
+    )
+    if (isMissingFieldsError(result)) throw new Error('unexpected MissingFieldsError')
+    return result
+  }
+
+  it('bills a recorded absence at its snapshot and does not count it as a lesson', () => {
+    const result = run([lesson()], context({ attendance: [['lesson-1', 'absent', 80]] }))
+    expect(result).toEqual({ lessonsTotal: 0, lessonsCount: 0, noShowTotal: 80, noShowCount: 1 })
+  })
+
+  it('prices a legacy no_show under today’s percentage when there is no snapshot', () => {
+    const result = run([lesson({ status: 'no_show' })], context({ percent: 50 }))
+    expect(result).toMatchObject({ noShowTotal: 100, noShowCount: 1 })
+  })
+
+  it('keeps a no_show free when the policy is 0% — the old behaviour', () => {
+    expect(run([lesson({ status: 'no_show' })], context())).toEqual({
+      lessonsTotal: 0, lessonsCount: 0, noShowTotal: 0, noShowCount: 0,
+    })
+  })
+
+  it('bills nothing for a lesson a punch paid for, present or absent', () => {
+    const result = run(
+      [lesson(), lesson({ id: 'lesson-2', status: 'no_show' })],
+      context({ packUses: ['lesson-1', 'lesson-2'], percent: 100 })
+    )
+    expect(result).toEqual({ lessonsTotal: 0, lessonsCount: 0, noShowTotal: 0, noShowCount: 0 })
+  })
+
+  it('a subscription covers an absence', () => {
+    const result = run([lesson({ lesson_type: 'group' })], context({ attendance: [['lesson-1', 'absent', 60]] }), [APRIL_SUB])
+    expect(result.noShowTotal).toBe(0)
+  })
+})

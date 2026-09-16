@@ -47,6 +47,9 @@ export type MessageTemplateType =
   | 'class_update'
   | 'promo'
   | 'group_invite'
+  // Punch cards (decision #46, M2): the card is running low / used up.
+  | 'pack_low_balance'
+  | 'pack_exhausted'
 
 /**
  * System-default strings per language (used when no custom template is
@@ -92,7 +95,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
     homework_reminder:
       '📚 תזכורת: שיעורי הבית "{{title}}" צריכים להיות מוכנים מחר{{due_date_suffix}}.\nבהצלחה!',
     balance_reply:
-      'יתרתך לתשלום היא {{total}}.\n\nלצפייה בפירוט החיוב אפשר להיכנס לאזור האישי.\n{{portal_url}}\n\n{{payment_line}}',
+      'יתרתך לתשלום היא {{total}}.{{pack_line}}\n\nלצפייה בפירוט החיוב אפשר להיכנס לאזור האישי.\n{{portal_url}}\n\n{{payment_line}}',
     payment_history_reply:
       'התשלומים האחרונים שלך:{{charge_lines}}',
     schedule_reply:
@@ -121,6 +124,10 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'הודעה מ-{{org_name}}:\n{{message}}\nלפרטים והרשמה אפשר להשיב כאן.',
     group_invite:
       'שלום! {{org_name}} פתחו קבוצת ואטסאפ להורי {{group_name}}. ההצטרפות רשות, וכל העדכונים ממשיכים להגיע גם כאן.\n{{invite_url}}',
+    pack_low_balance:
+      'היי {{parent_name}} 👋\nבכרטיסייה "{{pack_name}}" של {{student_name}} נשארו {{remaining}} שיעורים.\nאפשר לחדש אותה אצלנו בכל שלב 😊',
+    pack_exhausted:
+      'היי {{parent_name}} 👋\nהכרטיסייה "{{pack_name}}" של {{student_name}} נוצלה עד הסוף.\nכדי להמשיך בלי הפסקה אפשר לרכוש כרטיסייה חדשה אצלנו 😊',
   },
   en: {
     booking_link:
@@ -148,7 +155,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
     homework_reminder:
       '📚 Reminder: the homework "{{title}}" is due tomorrow{{due_date_suffix}}.\nGood luck!',
     balance_reply:
-      'Your outstanding balance is {{total}}.\n\nTo see the full breakdown, open your personal area.\n{{portal_url}}\n\n{{payment_line}}',
+      'Your outstanding balance is {{total}}.{{pack_line}}\n\nTo see the full breakdown, open your personal area.\n{{portal_url}}\n\n{{payment_line}}',
     payment_history_reply:
       'Your recent payments:{{charge_lines}}',
     schedule_reply:
@@ -177,6 +184,10 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'A message from {{org_name}}:\n{{message}}\nReply here for details and to sign up.',
     group_invite:
       'Hi! {{org_name}} opened a WhatsApp group for the parents of {{group_name}}. Joining is optional, and every update keeps arriving here too.\n{{invite_url}}',
+    pack_low_balance:
+      'Hi {{parent_name}} 👋\nThe pack "{{pack_name}}" for {{student_name}} has {{remaining}} lessons left.\nYou can renew it with us any time 😊',
+    pack_exhausted:
+      'Hi {{parent_name}} 👋\nThe pack "{{pack_name}}" for {{student_name}} is used up.\nTo keep going without a break, you can buy a new pack with us 😊',
   },
 }
 
@@ -346,7 +357,8 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   homework_graded: ['title', 'score', 'feedback_line'],
   // charge_lines is still substituted for orgs that customised the pre-Sprint-28
   // body, but it is deliberately not advertised — the portal holds the breakdown.
-  balance_reply: ['total', 'portal_url', 'payment_line'],
+  // pack_line: the family's punch-card balances, empty without cards (decision #46).
+  balance_reply: ['total', 'pack_line', 'portal_url', 'payment_line'],
   payment_history_reply: ['total', 'charge_lines'],
   schedule_reply: ['lesson_lines'],
   portal_link_reply: ['portal_url'],
@@ -360,6 +372,8 @@ export const TEMPLATE_VARIABLES: Record<MessageTemplateType, string[]> = {
   class_update: ['org_name', 'topic', 'message'],
   promo: ['org_name', 'message'],
   group_invite: ['org_name', 'group_name', 'invite_url'],
+  pack_low_balance: ['parent_name', 'student_name', 'pack_name', 'remaining'],
+  pack_exhausted: ['parent_name', 'student_name', 'pack_name'],
 }
 
 /**
@@ -397,6 +411,8 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
     class_update: 'עדכון להורי קבוצה או שיעור (תפוצה)',
     promo: 'הודעה שיווקית (תפוצה, דורשת הסכמה נפרדת)',
     group_invite: 'הזמנה לקבוצת ואטסאפ של הקבוצה',
+    pack_low_balance: 'כרטיסייה עומדת להיגמר (להורה)',
+    pack_exhausted: 'כרטיסייה נוצלה (להורה)',
   },
   en: {
     booking_link: 'Booking link',
@@ -426,6 +442,8 @@ export const TEMPLATE_LABELS: Record<AppLocale, Record<MessageTemplateType, stri
     class_update: 'Update to the parents of a group or lesson (broadcast)',
     promo: 'Marketing message (broadcast, separate opt-in)',
     group_invite: 'Invite to the group\'s WhatsApp group',
+    pack_low_balance: 'Lesson pack running low (to parent)',
+    pack_exhausted: 'Lesson pack used up (to parent)',
   },
 }
 
@@ -458,7 +476,7 @@ export const TEMPLATE_PREVIEW_VARS: Record<
     homework_assignment: { title: 'עמ׳ 45–47', body: 'תרגילים 1–10', due_line: '\nלהגשה עד: יום חמישי' },
     homework_reminder: { title: 'עמ׳ 45–47', due_date_suffix: ' (21.4)' },
     homework_graded: { title: 'עמ׳ 45–47', score: '92', feedback_line: 'עבודה מצוינת!' },
-    balance_reply: { total: '₪500.00', portal_url: 'https://www.getlessio.com/portal/org-id/payments', payment_line: 'להסדרת התשלום אפשר לשלם כאן:\nhttps://pay.example.com/1' },
+    balance_reply: { total: '₪500.00', pack_line: '\nיתרת כרטיסייה "10 שיעורים": 3/10', portal_url: 'https://www.getlessio.com/portal/org-id/payments', payment_line: 'להסדרת התשלום אפשר לשלם כאן:\nhttps://pay.example.com/1' },
     payment_history_reply: { total: '₪500.00', charge_lines: '\n21/04/2026: ₪250.00 ✅\n14/04/2026: ₪250.00 ✅' },
     schedule_reply: { lesson_lines: '1. יום שני, 21.4 בשעה 17:00 עם אהרון כהן\n2. יום רביעי, 23.4 בשעה 15:00 עם אהרון כהן' },
     portal_link_reply: { portal_url: 'https://www.getlessio.com/portal/org-id' },
@@ -472,6 +490,8 @@ export const TEMPLATE_PREVIEW_VARS: Record<
     class_update: { org_name: 'מרכז הלמידה של אהרון', topic: 'חוג גיטרה יום ראשון', message: 'השיעור השבוע יתקיים בחדר 3 במקום בחדר 1.' },
     promo: { org_name: 'מרכז הלמידה של אהרון', message: 'נפתחה ההרשמה לסדנת הקיץ. מספר המקומות מוגבל.' },
     group_invite: { org_name: 'מרכז הלמידה של אהרון', group_name: 'חוג גיטרה יום ראשון', invite_url: 'https://chat.whatsapp.com/ExampleInviteCode' },
+    pack_low_balance: { parent_name: 'רונית', student_name: 'דנה', pack_name: '10 שיעורים', remaining: '2' },
+    pack_exhausted: { parent_name: 'רונית', student_name: 'דנה', pack_name: '10 שיעורים' },
   },
   en: {
     booking_link: { booking_url: 'https://www.getlessio.com/book/example-token' },
@@ -487,7 +507,7 @@ export const TEMPLATE_PREVIEW_VARS: Record<
     homework_assignment: { title: 'pp. 45–47', body: 'Exercises 1–10', due_line: '\nDue by: Thursday' },
     homework_reminder: { title: 'pp. 45–47', due_date_suffix: ' (21 Apr)' },
     homework_graded: { title: 'pp. 45–47', score: '92', feedback_line: 'Excellent work!' },
-    balance_reply: { total: '₪500.00', portal_url: 'https://www.getlessio.com/portal/org-id/payments', payment_line: 'You can settle it here:\nhttps://pay.example.com/1' },
+    balance_reply: { total: '₪500.00', pack_line: '\nPack balance "10 lessons": 3/10', portal_url: 'https://www.getlessio.com/portal/org-id/payments', payment_line: 'You can settle it here:\nhttps://pay.example.com/1' },
     payment_history_reply: { total: '₪500.00', charge_lines: '\n21/04/2026: ₪250.00 ✅\n14/04/2026: ₪250.00 ✅' },
     schedule_reply: { lesson_lines: '1. Monday, 21 Apr at 17:00 with Aaron Cohen\n2. Wednesday, 23 Apr at 15:00 with Aaron Cohen' },
     portal_link_reply: { portal_url: 'https://www.getlessio.com/portal/org-id' },
@@ -501,5 +521,7 @@ export const TEMPLATE_PREVIEW_VARS: Record<
     class_update: { org_name: "Aaron's Learning Centre", topic: 'Sunday guitar class', message: 'This week the class meets in room 3 instead of room 1.' },
     promo: { org_name: "Aaron's Learning Centre", message: 'Registration for the summer workshop is open. Places are limited.' },
     group_invite: { org_name: "Aaron's Learning Centre", group_name: 'Sunday guitar class', invite_url: 'https://chat.whatsapp.com/ExampleInviteCode' },
+    pack_low_balance: { parent_name: 'Ronit', student_name: 'Dana', pack_name: '10 lessons', remaining: '2' },
+    pack_exhausted: { parent_name: 'Ronit', student_name: 'Dana', pack_name: '10 lessons' },
   },
 }

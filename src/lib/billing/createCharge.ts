@@ -23,7 +23,12 @@ import type { LessonType } from '@/lib/lessons/types'
 import { getOrgBillingPolicy } from './orgBillingPolicy'
 
 export type ChargeAlert = {
-  type: 'missing_rate' | 'missing_price' | 'missing_parent' | 'error'
+  /**
+   * `outcome_conflict`: attendance changed a lesson whose charge is already
+   * paid or on a shared link. The attendance stands; the money is left alone
+   * for a human (decision #46).
+   */
+  type: 'missing_rate' | 'missing_price' | 'missing_parent' | 'error' | 'outcome_conflict'
   message: string
 }
 

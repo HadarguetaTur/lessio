@@ -125,11 +125,28 @@
       "student_conflict": {
         "title": "כבר קבוע שיעור בשעה הזו",
         "body": "לתלמיד כבר קבוע שיעור באותה שעה. אפשר לבחור מועד אחר."
+      },
+      "payment_required": {
+        "title": "לקביעה הזו צריך לשלם מראש",
+        "body": "היכנסו לאזור האישי כדי לבחור כרטיסייה או שיעור בודד ולשלם. השיעור ייקבע מיד אחרי התשלום."
+      },
+      "payment_failed": {
+        "title": "לא הצלחנו לפתוח את דף התשלום",
+        "body": "השיעור לא נקבע. נסו שוב בעוד רגע, ואם זה חוזר — פנו אלינו."
       }
     },
     "student": {
       "title": "למי מהילדים לקבוע שיעור?",
       "back": "חזרה"
+    },
+    "checkout": {
+      "title": "כדי לקבוע את השיעור צריך לשלם מראש",
+      "subtitle": "אין כרגע מנוי או כרטיסייה שמכסים את השיעור. בחרו איך לשלם — השיעור ייקבע מיד אחרי התשלום.",
+      "packOption": "{name} — {credits} שיעורים",
+      "validity": "בתוקף {days} ימים",
+      "singleLesson": "שיעור בודד",
+      "held": "המועד שמור לכם ל-15 דקות מרגע המעבר לתשלום.",
+      "redirecting": "מעבירים לתשלום…"
     }
   },
   "common": {
@@ -360,7 +377,8 @@
     "support": "תמיכה",
     "settingsIntegrations": "מפתחות API לאוטומציה",
     "messagesLists": "רשימות",
-    "messagesBroadcasts": "תפוצות"
+    "messagesBroadcasts": "תפוצות",
+    "packs": "כרטיסיות"
   },
   "dashboard": {
     "title": "לוח הבקרה",
@@ -404,7 +422,8 @@
         "billing": "חיוב חודשי וגבייה",
         "overdueHomework": "שיעורי בית באיחור",
         "newLeads": "לידים חדשים",
-        "atRisk": "תלמידים בסיכון"
+        "atRisk": "תלמידים בסיכון",
+        "packsRunningOut": "כרטיסיות שעומדות להיגמר"
       },
       "pendingApproval": "ממתין לאישור",
       "debtorsLabel": "גבייה",
@@ -413,7 +432,8 @@
       "openItems": "{count} פריטים פתוחים",
       "markLessonDone": "סימון השיעור כהתקיים",
       "markHomeworkDone": "סימון שיעורי הבית כהושלמו",
-      "markDoneFailed": "העדכון נכשל, נסו שוב"
+      "markDoneFailed": "העדכון נכשל, נסו שוב",
+      "packsLeft": "נותרו {remaining}"
     },
     "business": {
       "title": "החודש",
@@ -1182,7 +1202,13 @@
     "studentSecond": "תלמיד שני",
     "customDuration": "משך השיעור (דקות)",
     "customDurationHint": "בין 5 ל-480 דקות",
-    "pricePerStudentRequired": "מחיר לתלמיד (₪) — חובה"
+    "pricePerStudentRequired": "מחיר לתלמיד (₪) — חובה",
+    "attendance": {
+      "title": "מי הגיע?",
+      "hint": "סמנו את מי שהגיע. אם אף אחד לא סומן, השיעור יירשם כ'לא הגיע'.",
+      "noneMarked": "אף אחד לא סומן — השיעור יירשם כ'לא הגיע'.",
+      "update": "עדכון נוכחות"
+    }
   },
   "debts": {
     "title": "גבייה",
@@ -1223,7 +1249,9 @@
       "lesson": "שיעור",
       "cancellation": "ביטול",
       "manual": "ידני",
-      "monthly": "חודשי"
+      "monthly": "חודשי",
+      "pack": "כרטיסייה",
+      "no_show": "אי-הגעה"
     },
     "fields": {
       "parent": "הורה",
@@ -1428,7 +1456,9 @@
       "cancellations": "ביטולים",
       "adjustment": "התאמה ידנית",
       "total": "סה\"כ",
-      "status": "סטטוס"
+      "status": "סטטוס",
+      "noShows": "אי-הגעה",
+      "packs": "כרטיסיות"
     },
     "status": {
       "paid": "שולם",
@@ -1785,8 +1815,49 @@
         "partialHoursPositive": "שעות הודעה מוקדמת (ביטול חלקי) חייבות להיות מספר חיובי",
         "partialLessThanFull": "סף ביטול חלקי חייב להיות קטן מסף ביטול מלא",
         "percentRange": "אחוז חיוב חלקי חייב להיות בין 0 ל-100",
-        "saveFailed": "שגיאה בשמירת המדיניות"
-      }
+        "saveFailed": "שגיאה בשמירת המדיניות",
+        "noShowPercentRange": "אחוז החיוב על אי-הגעה חייב להיות מספר שלם בין 0 ל-100",
+        "thresholdRange": "סף ההתראה חייב להיות מספר שלם בין 0 ל-100"
+      },
+      "sections": {
+        "cancellations": "ביטולים",
+        "noShow": "אי-הגעה",
+        "packs": "כרטיסיות"
+      },
+      "noShowPercent": "חיוב על אי-הגעה (% ממחיר השיעור)",
+      "noShowPercentHint": "0 = אי-הגעה ללא חיוב. חל על כל תלמיד שסומן 'לא הגיע'.",
+      "noShowPackAction": "תלמיד עם כרטיסייה שלא הגיע",
+      "packActions": {
+        "consume": "מנקבים ניקוב אחד",
+        "charge": "גובים לפי האחוז, בלי לנקב"
+      },
+      "lateCancelPackAction": "ביטול מאוחר של תלמיד עם כרטיסייה",
+      "lateCancelPackActionHint": "חל רק כשהמדיניות הייתה גובה דמי ביטול. ביטול בזמן לא נוגע בכרטיסייה.",
+      "lateCancelActions": {
+        "consume": "מנקבים ניקוב אחד במקום דמי ביטול",
+        "charge": "גובים דמי ביטול לפי המדיניות"
+      },
+      "packScope": "למי שייכת כרטיסייה חדשה",
+      "packScopes": {
+        "student": "לתלמיד אחד",
+        "family": "למשפחה — כל הילדים מנקבים מאותה כרטיסייה"
+      },
+      "packActivation": "מתי כרטיסייה נכנסת לשימוש",
+      "packActivations": {
+        "immediate": "מיד עם המכירה",
+        "on_payment": "רק אחרי תשלום מלא"
+      },
+      "packActivationMonthlyHint": "בחיוב חודשי כרטיסייה פעילה מיד — היא נגבית בחשבון החודשי.",
+      "lowBalanceThreshold": "כרטיסייה 'עומדת להיגמר' כשנשארו",
+      "lowBalanceThresholdHint": "מספר הניקובים שמתחתיו הכרטיסייה מסומנת ברשימה.",
+      "notificationsEnabled": "לשלוח להורה הודעת WhatsApp כשהכרטיסייה עומדת להיגמר ושוב כשנגמרה",
+      "notificationsEnabledHint": "הודעה אחת לכל שלב, לכל כרטיסייה.",
+      "ruleNoShow": "תלמיד שלא הגיע — חיוב של {percent}% ממחיר השיעור",
+      "ruleNoShowFree": "תלמיד שלא הגיע — ללא חיוב",
+      "rulePrecedence": "מנוי מכסה קודם, אחריו כרטיסייה, ורק אז חיוב בכסף",
+      "packCollectionEnabled": "הארגון גובה בכרטיסיות",
+      "packCollectionEnabledHint": "הורה שאין לו מנוי או כרטיסייה בתוקף יבחר בפורטל כרטיסייה או שיעור בודד וישלם לפני שהשיעור נקבע. דורש ספק סליקה וכרטיסייה פעילה בקטלוג.",
+      "packCollectionMonthlyHint": "בחיוב חודשי אין תשלום לפני קביעה — הכרטיסיות נגבות בחשבון החודשי."
     },
     "holidays": {
       "title": "חגים וחופשות",
@@ -2824,6 +2895,42 @@
       },
       "viewPlans": "הצגת המסלולים",
       "fixLink": "לתיקון בהגדרות"
+    },
+    "packs": {
+      "title": "קטלוג כרטיסיות",
+      "subtitle": "אלה הכרטיסיות שאפשר למכור מכרטיס התלמיד. שינוי כאן לא משנה כרטיסיות שכבר נמכרו.",
+      "empty": "עוד אין כרטיסיות בקטלוג.",
+      "add": "הוספת כרטיסייה",
+      "edit": "עריכה",
+      "archive": "העברה לארכיון",
+      "restore": "החזרה לקטלוג",
+      "archived": "בארכיון",
+      "summary": "{credits} שיעורים · {price}",
+      "validity": "תוקף {days} ימים",
+      "noValidity": "ללא תוקף",
+      "save": "שמירה",
+      "saving": "שומר…",
+      "cancel": "ביטול",
+      "fields": {
+        "name": "שם",
+        "credits": "מספר שיעורים",
+        "price": "מחיר",
+        "validityDays": "תוקף בימים",
+        "validityHint": "ללא תוקף",
+        "coveredTypes": "סוגי שיעור שהכרטיסייה מכסה"
+      },
+      "lessonTypes": {
+        "individual": "פרטני",
+        "pair": "זוגי",
+        "group": "קבוצתי",
+        "custom": "מותאם"
+      },
+      "errors": {
+        "nameRequired": "צריך לתת לכרטיסייה שם",
+        "invalidNumbers": "מספר השיעורים, המחיר או התוקף אינם תקינים",
+        "typesRequired": "צריך לבחור לפחות סוג שיעור אחד",
+        "saveFailed": "שמירת הכרטיסייה נכשלה"
+      }
     }
   },
   "quota": {
@@ -3010,7 +3117,8 @@
       "count": "מספר שיעורים",
       "legendPaidRevenue": "הכנסות ששולמו",
       "legendMonthlyBilling": "חיוב חודשי",
-      "columnsLegend": "הכנסות = תשלומים שנרשמו בפועל · חיוב חודשי = מה שחויב, בין אם שולם ובין אם לא"
+      "columnsLegend": "הכנסות = תשלומים שנרשמו בפועל · חיוב חודשי = מה שחויב, בין אם שולם ובין אם לא",
+      "packSales": "מתוכן: מכירת כרטיסיות"
     },
     "lessons": {
       "title": "שיעורים",
@@ -3192,7 +3300,9 @@
         "cancellation_policy": "לפי מדיניות ביטולים",
         "not_billed": "לא מחויב",
         "none": "—",
-        "subscriptionCovered": "מכוסה במנוי"
+        "subscriptionCovered": "מכוסה במנוי",
+        "no_show_charge": "חיוב אי-הגעה",
+        "packCovered": "שולם בכרטיסייה"
       },
       "policy": {
         "none": "אין מדיניות",
@@ -3261,7 +3371,6 @@
       "no": "לא",
       "completed": "הושלמו",
       "noShow": "תלמיד לא הגיע",
-      "cancellations": "ביטולים",
       "deliveryHours": "שעות ביצוע",
       "scheduled": "מתוכננים",
       "contributionRate": "תרומה %",
@@ -4688,7 +4797,16 @@
       "noUpcoming": "אין שיעורים מתוכננים",
       "goalsTitle": "יעדי למידה",
       "paymentHistory": "היסטוריית תשלומים",
-      "goalTarget": "יעד: {date}"
+      "goalTarget": "יעד: {date}",
+      "packsTitle": "הכרטיסיות שלכם",
+      "packBalance": "{remaining}/{total}",
+      "packValidUntil": "בתוקף עד {date}",
+      "packNoExpiry": "ללא תוקף",
+      "packPending": "ממתינה לתשלום",
+      "packPendingCta": "לתשלום",
+      "checkoutPending": "התשלום על השיעור עוד לא הושלם",
+      "checkoutContinue": "להשלמת התשלום",
+      "checkoutAttention": "התשלום התקבל, אבל המועד כבר לא היה פנוי והשיעור לא נקבע. ניצור איתכם קשר."
     },
     "schedule": {
       "title": "לוח שיעורים",
@@ -4743,7 +4861,9 @@
         "lesson": "שיעור",
         "cancellation": "ביטול",
         "manual": "ידני",
-        "monthly": "חודשי"
+        "monthly": "חודשי",
+        "pack": "כרטיסייה",
+        "no_show": "אי-הגעה"
       },
       "back": "חזרה לדף הבית",
       "overdueBy": "באיחור של {days} ימים",
@@ -6052,7 +6172,8 @@
     "noLessonPrice": "לא הוגדר מחיר לשיעור",
     "invalidPhone": "מספר טלפון חייב להיות בפורמט בינלאומי, למשל ‎+972501234567",
     "webhookUrlInvalid": "כתובת webhook לא תקינה",
-    "paymentUrlInvalid": "קישור התשלום אינו כתובת תקינה"
+    "paymentUrlInvalid": "קישור התשלום אינו כתובת תקינה",
+    "outcomeConflictsPaidCharge": "הנוכחות נשמרה, אבל החיוב על השיעור כבר שולם — לא שינינו אותו. אם צריך, בטלו או זכו אותו ידנית."
   },
   "receipts": {
     "customer": "לקוח",
@@ -6063,7 +6184,9 @@
     "chargeFallback": "חיוב {month}",
     "consolidatedPayment": "תשלום עבור {count} חיובים פתוחים",
     "waConsolidated": "{count} חיובים פתוחים",
-    "waLessonCharge": "השיעור האחרון"
+    "waLessonCharge": "השיעור האחרון",
+    "packPayment": "תשלום כרטיסייה — {name}",
+    "waPackCharge": "כרטיסיית השיעורים"
   },
   "support": {
     "list": {
@@ -6630,3 +6753,113 @@
     }
   }
 }
+  },
+  "packs": {
+    "notifications": {
+      "refundedTitle": "הוחזר תשלום על כרטיסייה פעילה",
+      "refundedBody": "נרשם החזר על \"{name}\", אבל הכרטיסייה עדיין פעילה. אם צריך, בטלו אותה בדף הכרטיסיות.",
+      "bookingNeedsAttentionTitle": "תשלום על קביעה שלא אושרה",
+      "bookingNeedsAttentionBody": "הורה שילם על שיעור, אבל המשבצת כבר לא הייתה פנויה. השיעור לא נקבע — צרו קשר עם ההורה."
+    },
+    "title": "כרטיסיות",
+    "searchPlaceholder": "חיפוש לפי תלמיד, הורה או כרטיסייה",
+    "filters": {
+      "active": "פעילות",
+      "low": "עומדות להיגמר",
+      "pending": "ממתינות לתשלום"
+    },
+    "empty": "עוד לא נמכרו כרטיסיות.",
+    "emptyFiltered": "אין כרטיסיות שמתאימות לסינון.",
+    "emptyHint": "מוכרים כרטיסייה מכרטיס התלמיד, בלשונית הכספים. קודם מגדירים קטלוג.",
+    "emptyCta": "להגדרת הקטלוג",
+    "columns": {
+      "holder": "שייכת ל",
+      "card": "כרטיסייה",
+      "balance": "יתרה",
+      "validity": "תוקף",
+      "payment": "תשלום",
+      "status": "סטטוס",
+      "actions": "פעולות"
+    },
+    "family": "משפחת {parent}",
+    "balance": "נותרו {remaining} מתוך {total}",
+    "validUntil": "עד {date}",
+    "noExpiry": "ללא תוקף",
+    "status": {
+      "pending_payment": "ממתינה לתשלום",
+      "active": "פעילה",
+      "exhausted": "נוצלה",
+      "expired": "פג תוקף",
+      "cancelled": "בוטלה"
+    },
+    "lowBadge": "עומדת להיגמר",
+    "refundedBadge": "הוחזר תשלום",
+    "payment": {
+      "paid": "שולם",
+      "pending": "לא שולם",
+      "monthly": "בחשבון החודשי",
+      "free": "ללא תשלום"
+    },
+    "actions": {
+      "cancel": "ביטול כרטיסייה",
+      "adjust": "תיקון יתרה",
+      "extend": "הארכת תוקף"
+    },
+    "cancelPanel": {
+      "reason": "סיבת הביטול",
+      "confirm": "ביטול הכרטיסייה",
+      "force": "לבטל בכל זאת",
+      "openCharge": "לרישום החזר בדף החיוב"
+    },
+    "adjustPanel": {
+      "delta": "שינוי ביתרה (למשל 2 או ‎-1)",
+      "reason": "סיבה",
+      "confirm": "עדכון יתרה"
+    },
+    "extendPanel": {
+      "validUntil": "תוקף עד",
+      "emptyMeansNoExpiry": "ריק = ללא תוקף",
+      "notes": "הערות",
+      "confirm": "שמירה"
+    },
+    "card": {
+      "none": "אין כרטיסייה",
+      "sell": "מכירת כרטיסייה",
+      "family": "משפחתית",
+      "showAll": "לכל הכרטיסיות",
+      "title": "כרטיסיות"
+    },
+    "sell": {
+      "product": "כרטיסייה",
+      "productOption": "{name} — {credits} שיעורים, {price}",
+      "scope": "שייכת ל",
+      "scopeStudent": "{name} בלבד",
+      "scopeFamily": "כל ילדי המשפחה",
+      "priceOverride": "מחיר (אפשר לשנות)",
+      "invalidPrice": "המחיר אינו תקין",
+      "notes": "הערות",
+      "submit": "מכירה",
+      "submitting": "מוכר…",
+      "cancel": "ביטול",
+      "noProducts": "אין כרטיסיות בקטלוג.",
+      "setupCatalog": "להגדרת הקטלוג",
+      "perLessonNote": "ייווצר חיוב, ואם שליחה אוטומטית מופעלת, תישלח להורה בקשת תשלום.",
+      "onPaymentNote": "הכרטיסייה תיכנס לשימוש אחרי תשלום מלא.",
+      "monthlyNote": "המכירה תופיע בחשבון החודשי של {name}, והכרטיסייה פעילה מיד."
+    },
+    "errors": {
+      "not_found": "הכרטיסייה לא נמצאה",
+      "already_cancelled": "הכרטיסייה כבר בוטלה",
+      "reason_required": "צריך לכתוב סיבה",
+      "paid_not_refunded": "הכרטיסייה שולמה ולא נרשם החזר. רשמו החזר בדף החיוב, ואז בטלו.",
+      "charge_locked": "החיוב על הכרטיסייה קשור לקישור תשלום משותף — טפלו בו בדף החיובים קודם.",
+      "failed": "הפעולה נכשלה, נסו שוב",
+      "cancelled": "הכרטיסייה בוטלה",
+      "invalid_delta": "השינוי חייב להיות מספר שלם שאינו 0",
+      "negative_balance": "היתרה לא יכולה לרדת מתחת ל-0",
+      "invalid_dates": "התוקף לא יכול להיות לפני תאריך ההתחלה",
+      "product_not_found": "הכרטיסייה לא נמצאה בקטלוג",
+      "student_not_found": "התלמיד לא נמצא",
+      "missing_parent": "לתלמיד אין הורה משלם — הגדירו הורה ראשי קודם",
+      "invalid_price": "המחיר אינו תקין"
+    }

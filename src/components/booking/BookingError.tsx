@@ -12,6 +12,10 @@ const KNOWN_ERROR_CODES = [
   'slot_taken',
   'student_conflict',
   'token_expired',
+  // Decision #46: the booking needs payment first (bot link → portal), or the
+  // payment page could not be opened.
+  'payment_required',
+  'payment_failed',
   'unknown',
 ] as const
 

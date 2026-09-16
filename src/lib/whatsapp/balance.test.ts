@@ -100,6 +100,8 @@ function renderBalanceReply(charges: OpenCharge[], locale: AppLocale): string {
     total: formatBotMoney(sumOpenCharges(charges), locale),
     portal_url: 'https://www.getlessio.com/portal/org-id/payments',
     payment_line: resolvePaymentLine(charges, locale),
+    // A family with no punch card (decision #46): the fragment is empty.
+    pack_line: '',
   })
 }
 
@@ -135,6 +137,6 @@ describe('balance reply — bilingual', () => {
       [...DEFAULT_TEMPLATES[locale].balance_reply.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort()
 
     expect(placeholders('en')).toEqual(placeholders('he'))
-    expect(placeholders('he')).toEqual(['payment_line', 'portal_url', 'total'])
+    expect(placeholders('he')).toEqual(['pack_line', 'payment_line', 'portal_url', 'total'])
   })
 })

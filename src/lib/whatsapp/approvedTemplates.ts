@@ -224,6 +224,39 @@ const HE_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = {
     ],
   },
 
+  pack_low_balance: {
+    // A punch card running low (decision #46, M2). Sent after a lesson is
+    // settled, typically long after the parent last wrote in.
+    name: 'lessio_pack_low_balance_he_v2',
+    languageCode: 'he',
+    buildComponents: (vars) => [
+      {
+        type: 'body',
+        parameters: [
+          param(vars.parent_name, 'הורים יקרים'),
+          param(vars.pack_name, 'הכרטיסייה'),
+          param(vars.student_name, 'התלמיד'),
+          param(vars.remaining, '0'),
+        ],
+      },
+    ],
+  },
+
+  pack_exhausted: {
+    name: 'lessio_pack_exhausted_he_v2',
+    languageCode: 'he',
+    buildComponents: (vars) => [
+      {
+        type: 'body',
+        parameters: [
+          param(vars.parent_name, 'הורים יקרים'),
+          param(vars.pack_name, 'הכרטיסייה'),
+          param(vars.student_name, 'התלמיד'),
+        ],
+      },
+    ],
+  },
+
   payment_received: {
     // Confirms a payment the tutor recorded by hand, usually days after the
     // parent last wrote in — so almost always outside the window. {{3}} is the
@@ -293,6 +326,7 @@ const EN_TEMPLATES: Partial<Record<MessageTemplateType, ApprovedTemplate>> = Obj
           decision: vars.decision || 'updated',
           org_name: vars.org_name || 'your tutor',
           payment_received_closing: vars.payment_received_closing || 'Everything is settled.',
+          pack_name: vars.pack_name || 'your pack',
         }),
     } satisfies ApprovedTemplate,
   ])

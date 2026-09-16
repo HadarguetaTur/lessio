@@ -2,9 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { phoneDigits, searchable } from '@/lib/search/text'
 import { logChargeAudit } from './audit'
+import { activatePacksForCharges } from '@/lib/billing/packs/activate'
 
 export type ChargeStatus = 'pending' | 'invoiced' | 'paid' | 'waived' | 'voided'
-export type ChargeType = 'lesson' | 'cancellation' | 'manual' | 'monthly'
+export type ChargeType = 'lesson' | 'cancellation' | 'manual' | 'monthly' | 'pack' | 'no_show'
 
 export const OPEN_CHARGE_STATUSES = ['pending', 'invoiced'] as const
 
@@ -409,6 +410,11 @@ export async function markChargeAsPaid(
     afterAmount: existing?.amount == null ? null : Number(existing.amount),
     reason: notes?.trim() || null,
   })
+
+  // A punch card waiting for payment becomes usable now (decision #46).
+  if (updatedCharge?.charge_type === 'pack') {
+    await activatePacksForCharges([chargeId])
+  }
 
   if (
     updatedCharge?.charge_type === 'monthly' &&

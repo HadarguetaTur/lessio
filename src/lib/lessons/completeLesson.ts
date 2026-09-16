@@ -1,4 +1,5 @@
-import { createLessonCharge, type ChargeAlert } from '@/lib/billing/createCharge'
+import type { ChargeAlert } from '@/lib/billing/createCharge'
+import { settleLessonOutcome } from '@/lib/billing/outcome/settleLessonOutcome'
 import { autoSendPaymentRequest } from '@/lib/payment-request/autoSend'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
@@ -42,9 +43,21 @@ export async function completeLesson(params: {
     const { data, error } = await update.select('id')
     if (error) throw new Error(error.message)
     if (!data?.length) return { claimed: false, chargeAlert: null }
+
+    // A manual completion may be correcting a no-show: "completed" with no
+    // attendance list means everyone came (decision #46). Left in place, the
+    // old 'absent' marks would bill a delivered lesson as a no-show.
+    if (source === 'manual') {
+      const { error: resetError } = await db
+        .from('lesson_students')
+        .update({ attendance: null, attendance_recorded_at: null })
+        .eq('lesson_id', lessonId)
+        .eq('attendance', 'absent')
+      if (resetError) throw new Error(resetError.message)
+    }
   }
 
-  const alert = await createLessonCharge(lessonId, organizationId)
+  const alert = await settleLessonOutcome(lessonId, organizationId)
   // completion_error is what the retry cron scans for. supabase-js returns
   // { error } rather than throwing, so a swallowed failure here loses the retry
   // entirely: the charge never happened and nothing will ever look again.

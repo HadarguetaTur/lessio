@@ -38,6 +38,7 @@ export type RevenueBasis =
   | 'cancellation_charge' // a cancellation charge was actually recorded on the lesson
   | 'cancellation_policy' // parent cancellation priced by the cancellation policy window
   | 'not_billed'          // outcome the centre does not bill (student no-show)
+  | 'no_show_charge'      // absences billed under the org's no-show policy (decision #46)
   | 'none'                // nothing attributable (scheduled, teacher cancellation, no students)
 
 export type LineWarning =
@@ -60,6 +61,8 @@ export interface EconomicsLesson {
   attributedRevenue: number
   revenueBasis?: RevenueBasis
   subscriptionCovered?: boolean
+  /** Every enrolled student's part was paid with a punch (decision #46). */
+  packCovered?: boolean
   studentNames?: string[]
   cancellationActor?: CancellationActor
   lateParentCancellation?: boolean
@@ -84,6 +87,7 @@ export interface EstimateLine {
   attributedRevenue: number
   revenueBasis: RevenueBasis
   subscriptionCovered: boolean
+  packCovered: boolean
   cancellationActor: CancellationActor
   /** `null` when no policy covers the lesson — never silently zero. */
   estimatedCompensation: number | null
@@ -231,6 +235,7 @@ function lineForLesson(
     attributedRevenue,
     revenueBasis: lesson.status === 'scheduled' ? 'none' as const : lesson.revenueBasis ?? 'none',
     subscriptionCovered: lesson.subscriptionCovered ?? false,
+    packCovered: lesson.packCovered ?? false,
     cancellationActor: lesson.cancellationActor ?? null,
   }
 

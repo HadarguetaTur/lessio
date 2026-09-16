@@ -64,6 +64,10 @@ export type BotStringKey =
   | 'charge_line_label'
   | 'charge_none'
   | 'charge_pending'
+  // Punch cards (decision #46): a late cancellation paid with a punch, and the
+  // label for a card's balance in the balance reply.
+  | 'cancel_pack_credit_used'
+  | 'balance_pack_label'
   // Fragments composed into the {{charge_lines}} variable of payment_request.
   // They used to live in a private table inside payment-request/index.ts, which
   // is how the automatic payment request ended up ignoring the body an owner
@@ -72,6 +76,8 @@ export type BotStringKey =
   | 'charge_type_cancellation'
   | 'charge_type_manual'
   | 'charge_type_monthly'
+  | 'charge_type_pack'
+  | 'charge_type_no_show'
   | 'charge_item_of'
   | 'charge_item_line'
   | 'charge_lines_total'
@@ -305,11 +311,15 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_line_label: 'חיוב',
     charge_none: 'ללא חיוב ביטול',
     charge_pending: 'דמי ביטול לפי המדיניות, ממתינים לאישור לחשבון החודשי',
+    cancel_pack_credit_used: 'נוצל ניקוב אחד מהכרטיסייה, בלי דמי ביטול',
+    balance_pack_label: 'יתרת כרטיסייה',
 
     charge_type_lesson: 'שיעור',
     charge_type_cancellation: 'חיוב ביטול',
     charge_type_manual: 'חיוב ידני',
     charge_type_monthly: 'חיוב חודשי',
+    charge_type_pack: 'כרטיסייה',
+    charge_type_no_show: 'אי-הגעה',
     charge_item_of: 'של',
     charge_item_line: '{{index}}. {{label}}{{detail}}: {{amount}}',
     charge_lines_total: 'סה״כ לתשלום: {{total}}',
@@ -572,11 +582,15 @@ const STRINGS: Record<AppLocale, Record<BotStringKey, string>> = {
     charge_line_label: 'Charge',
     charge_none: 'No cancellation charge',
     charge_pending: 'Cancellation fee per policy, pending approval onto the monthly bill',
+    cancel_pack_credit_used: 'One lesson was used from the pack instead of a cancellation fee',
+    balance_pack_label: 'Pack balance',
 
     charge_type_lesson: 'Lesson',
     charge_type_cancellation: 'Cancellation charge',
     charge_type_manual: 'Manual charge',
     charge_type_monthly: 'Monthly charge',
+    charge_type_pack: 'Lesson pack',
+    charge_type_no_show: 'No-show',
     charge_item_of: 'for',
     charge_item_line: '{{index}}. {{label}}{{detail}}: {{amount}}',
     charge_lines_total: 'Total due: {{total}}',

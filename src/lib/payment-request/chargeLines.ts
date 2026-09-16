@@ -26,6 +26,8 @@ const TYPE_KEYS: Record<PaymentRequestCharge['charge_type'], BotStringKey> = {
   cancellation: 'charge_type_cancellation',
   manual: 'charge_type_manual',
   monthly: 'charge_type_monthly',
+  pack: 'charge_type_pack',
+  no_show: 'charge_type_no_show',
 }
 
 export interface ChargeLinesOptions {

@@ -72,14 +72,21 @@ type OwnerLessonRow = {
   cancellation_source: string | null
   delivery_confirmed_at: string | null
   delivery_confirmation_source: EconomicsLesson['deliveryConfirmationSource']
-  lesson_students: Array<{ student_id: string; students: StudentJoin | StudentJoin[] | null }>
+  lesson_students: Array<{
+    student_id: string
+    students: StudentJoin | StudentJoin[] | null
+    /** Decision #46. Absent on rows fetched before attendance existed. */
+    attendance?: string | null
+    absence_amount?: number | string | null
+    absence_covered_by?: string | null
+  }>
   teachers: unknown
   charges: Array<{ amount: number | string | null; charge_type: string | null; status: string | null }>
 }
 
 const OWNER_SELECT =
   'id, teacher_id, status, start_at, end_at, lesson_type, price_per_student, cancelled_at, cancellation_source, delivery_confirmed_at, delivery_confirmation_source, ' +
-  'lesson_students(student_id, students(full_name, hourly_rate, discount_percent)), teachers(hourly_rate, profiles(full_name)), charges(amount, charge_type, status)'
+  'lesson_students(student_id, attendance, absence_amount, absence_covered_by, students(full_name, hourly_rate, discount_percent)), teachers(hourly_rate, profiles(full_name)), charges(amount, charge_type, status)'
 
 function monthBounds(month: string, timezone: string): { start: string; end: string } {
   const start = DateTime.fromFormat(month, 'yyyy-MM', { zone: timezone }).startOf('month')
@@ -167,12 +174,15 @@ interface AttributionContext {
   cancellationPolicy: CancellationPolicy | null
   subscriptions: CoverageSubscription[]
   timezone: string
+  /** `${lessonId}:${studentId}` of every live punch (decision #46). */
+  packUses?: ReadonlySet<string>
 }
 
 interface Attribution {
   attributedRevenue: number
   revenueBasis: RevenueBasis
   subscriptionCovered: boolean
+  packCovered: boolean
   lateParentCancellation: boolean
   warnings: LineWarning[]
 }
@@ -208,7 +218,6 @@ export function attributeLessonRevenue(row: OwnerLessonRow, ctx: AttributionCont
     )
     return isMissingPrice(amount) ? null : amount
   })
-  const listTotal = priced.reduce<number>((sum, amount) => sum + (amount ?? 0), 0)
   if (priced.some((amount) => amount == null)) warnings.push('missing_price')
 
   const subscriptionCovered = students.length > 0 && students.every((entry) =>
@@ -219,23 +228,47 @@ export function attributeLessonRevenue(row: OwnerLessonRow, ctx: AttributionCont
     )
   )
 
+  // Decision #46 (amends #45): a punch counts like subscription coverage — list
+  // value, flagged. An absence is worth what it was billed, or list value when
+  // it burned a punch, or nothing.
+  const punched = (studentId: string) => ctx.packUses?.has(`${row.id}:${studentId}`) ?? false
+  const packCovered = students.length > 0 && students.every((entry) => punched(entry.student_id))
+  const absenceValue = (index: number): number => {
+    const entry = students[index]!
+    if (punched(entry.student_id)) return priced[index] ?? 0
+    return entry.absence_amount == null ? 0 : Number(entry.absence_amount)
+  }
+
   const none = (extra: LineWarning[] = []): Attribution => ({
-    attributedRevenue: 0, revenueBasis: 'none', subscriptionCovered, lateParentCancellation: false, warnings: [...warnings, ...extra],
+    attributedRevenue: 0, revenueBasis: 'none', subscriptionCovered, packCovered, lateParentCancellation: false, warnings: [...warnings, ...extra],
   })
 
   switch (row.status) {
     case 'completed': {
       if (students.length === 0) return none(['no_students'])
-      return { attributedRevenue: listTotal, revenueBasis: 'list_price', subscriptionCovered, lateParentCancellation: false, warnings }
+      const total = students.reduce(
+        (sum, entry, index) => sum + (entry.attendance === 'absent' ? absenceValue(index) : priced[index] ?? 0),
+        0
+      )
+      return { attributedRevenue: total, revenueBasis: 'list_price', subscriptionCovered, packCovered, lateParentCancellation: false, warnings }
     }
-    case 'no_show':
-      return { attributedRevenue: 0, revenueBasis: 'not_billed', subscriptionCovered, lateParentCancellation: false, warnings }
+    case 'no_show': {
+      const total = students.reduce((sum, _entry, index) => sum + absenceValue(index), 0)
+      return {
+        attributedRevenue: total,
+        revenueBasis: total > 0 ? 'no_show_charge' : 'not_billed',
+        subscriptionCovered,
+        packCovered,
+        lateParentCancellation: false,
+        warnings,
+      }
+    }
     case 'cancelled': {
       const recorded = (Array.isArray(row.charges) ? row.charges : [])
         .filter((charge) => charge.charge_type === 'cancellation' && charge.status !== 'voided')
         .reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
       if (recorded > 0) {
-        return { attributedRevenue: recorded, revenueBasis: 'cancellation_charge', subscriptionCovered, lateParentCancellation: true, warnings }
+        return { attributedRevenue: recorded, revenueBasis: 'cancellation_charge', subscriptionCovered, packCovered, lateParentCancellation: true, warnings }
       }
       if (cancellationActorFromSource(row.cancellation_source) !== 'parent') return none()
       if (!row.cancelled_at || !ctx.cancellationPolicy) return none(['no_cancellation_policy'])
@@ -250,7 +283,7 @@ export function attributeLessonRevenue(row: OwnerLessonRow, ctx: AttributionCont
         late = late || charge.shouldCharge
         amount += charge.amount
       }
-      return { attributedRevenue: amount, revenueBasis: late ? 'cancellation_policy' : 'none', subscriptionCovered, lateParentCancellation: late, warnings }
+      return { attributedRevenue: amount, revenueBasis: late ? 'cancellation_policy' : 'none', subscriptionCovered, packCovered, lateParentCancellation: late, warnings }
     }
     default:
       return none()
@@ -272,6 +305,7 @@ function toEconomicsLesson(row: OwnerLessonRow, ctx: AttributionContext): Econom
     attributedRevenue: attribution.attributedRevenue,
     revenueBasis: attribution.revenueBasis,
     subscriptionCovered: attribution.subscriptionCovered,
+    packCovered: attribution.packCovered,
     cancellationActor: row.status === 'cancelled' ? cancellationActorFromSource(row.cancellation_source) : null,
     lateParentCancellation: attribution.lateParentCancellation,
     deliveryConfirmedAt: row.delivery_confirmed_at,
@@ -334,13 +368,28 @@ export async function getOwnerTeacherEconomicsReport(
     effectiveTo: row.effective_to,
   }))
 
+  const rows = (lessonsResult.data ?? []) as unknown as OwnerLessonRow[]
+  const packUses = new Set<string>()
+  if (rows.length > 0) {
+    const { data: uses, error: usesError } = await db
+      .from('lesson_pack_ledger')
+      .select('lesson_id, student_id')
+      .eq('organization_id', organizationId)
+      .is('reversed_at', null)
+      .in('kind', ['consume_lesson', 'consume_no_show'])
+      .in('lesson_id', rows.map((r) => r.id))
+    if (usesError) throw new Error(usesError.message)
+    for (const use of (uses ?? []) as Array<{ lesson_id: string; student_id: string | null }>) {
+      if (use.student_id) packUses.add(`${use.lesson_id}:${use.student_id}`)
+    }
+  }
   const ctx: AttributionContext = {
     pricing,
     cancellationPolicy,
     subscriptions: (subscriptionResult.data ?? []) as CoverageSubscription[],
     timezone,
+    packUses,
   }
-  const rows = (lessonsResult.data ?? []) as unknown as OwnerLessonRow[]
   const operations = operationRows(rows)
   const grouped = new Map<string, EconomicsLesson[]>()
   for (const row of rows) {

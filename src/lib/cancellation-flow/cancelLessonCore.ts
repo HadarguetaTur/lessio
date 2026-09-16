@@ -30,6 +30,14 @@ import { resolveBillingParent, MissingPrimaryParentError } from '@/lib/billing/r
 import { getCancellationPolicyServiceRole } from '@/lib/cancellation-policy/service'
 import { getOrgBillingPolicy, type BillingMode } from '@/lib/billing/orgBillingPolicy'
 import { createCancellationEvent } from '@/lib/billing/monthly/cancellationEvents'
+import { DateTime } from 'luxon'
+import { getCollectionPolicyServiceRole } from '@/lib/cancellation-policy/service'
+import { lateCancelWantsPack } from '@/lib/billing/outcome/priceOutcome'
+import { consumePackCredit } from '@/lib/billing/packs/ledger'
+import { notifyPackBalances } from '@/lib/billing/packs/notify'
+import { isLessonCoveredBySubscription } from '@/lib/billing/lessonPricing'
+import { checkActiveSubscriptionForLesson, type CoverageSubscription } from '@/lib/billing/monthly/subscriptions'
+import type { LessonType } from '@/lib/lessons/types'
 import { previewCancellationCharge, isCancellableByParent } from './previewCancellationCharge'
 
 /** Who is cancelling. Decides what may be waived and what must be re-checked. */
@@ -76,8 +84,10 @@ export interface CancellationLine {
    *               on the monthly bill, and only once an admin confirms it.
    *   'none'    — nothing is owed (waived, outside the notice window, or the
    *               fee could not be attributed to a billing parent).
+   *   'pack'    — a late cancellation burned a punch instead of a fee
+   *               (policy late_cancel_pack_action = 'consume', decision #46).
    */
-  recorded: 'charge' | 'event' | 'none'
+  recorded: 'charge' | 'event' | 'none' | 'pack'
 }
 
 export interface CancellationSuccess {
@@ -208,12 +218,15 @@ export async function cancelLessonCore(input: CancelLessonInput): Promise<Cancel
   // returns null for a teacher (no SELECT policy on cancellation_policies), for
   // the portal and for the webhook, and a null policy reads as "cancelling is
   // free" — a teacher's cancellation silently waived every fee.
-  const [pricing, policy, billing, timezone] = await Promise.all([
+  const [pricing, policy, billing, timezone, collection] = await Promise.all([
     getOrgPricing(orgId),
     getCancellationPolicyServiceRole(orgId),
     getOrgBillingPolicy(orgId),
     getOrgTimezone(orgId),
+    getCollectionPolicyServiceRole(orgId),
   ])
+  const lessonType = ((lesson.lesson_type as LessonType | null) ?? 'individual')
+  const lessonDate = DateTime.fromISO(lesson.start_at as string, { zone: timezone }).toISODate()!
 
   const priceFor = (row: RosterRow): CancellationChargeResult =>
     waive
@@ -265,6 +278,23 @@ export async function cancelLessonCore(input: CancelLessonInput): Promise<Cancel
   const alerts: ChargeAlert[] = []
   const lines: CancellationLine[] = []
 
+  // Only read when some fee could turn into a punch: a subscription-covered
+  // student's pack must not be burned for a lesson the subscription pays for.
+  let subscriptions: CoverageSubscription[] = []
+  const anyPackCandidate = priced.some(({ charge }) => lateCancelWantsPack(charge, collection.lateCancelPackAction))
+  const burnedPackIds: string[] = []
+  if (!waive && anyPackCandidate && pricing.subscriptionCoveredLessonTypes.includes(lessonType)) {
+    const { data: subs, error: subsError } = await db
+      .from('subscriptions')
+      .select('student_id, start_date, end_date, is_paused')
+      .eq('organization_id', orgId)
+      .in('student_id', roster.map((r) => r.student_id))
+    if (subsError) {
+      console.error('[cancelLessonCore] subscription lookup failed', { lessonId, error: subsError.message })
+    }
+    subscriptions = (subs as CoverageSubscription[] | null) ?? []
+  }
+
   for (const { row, charge } of priced) {
     const studentName = row.students?.full_name ?? '—'
     const base: CancellationLine = {
@@ -275,6 +305,58 @@ export async function cancelLessonCore(input: CancelLessonInput): Promise<Cancel
       chargeType: null,
       reasonCode: charge.reasonCode,
       recorded: 'none',
+    }
+
+    // ── A late cancellation with a pack burns a punch, not a fee ───────────
+    const subscriptionCovered = isLessonCoveredBySubscription(
+      lessonType,
+      pricing.subscriptionCoveredLessonTypes,
+      checkActiveSubscriptionForLesson(row.student_id, lessonDate, subscriptions)
+    )
+    if (!waive && !subscriptionCovered && lateCancelWantsPack(charge, collection.lateCancelPackAction)) {
+      let burned = false
+      try {
+        const punch = await consumePackCredit({
+          organizationId: orgId,
+          studentId: row.student_id,
+          lessonId,
+          lessonType,
+          lessonDate,
+          kind: 'consume_late_cancel',
+        })
+        burned = punch.outcome !== 'none'
+        if (punch.outcome === 'consumed' && punch.packId) burnedPackIds.push(punch.packId)
+      } catch (err) {
+        // The lesson is already cancelled; fall through to the ordinary fee
+        // rather than leave the cancellation unrecorded.
+        console.error('[cancelLessonCore] pack punch failed — charging the policy fee instead', {
+          lessonId,
+          studentId: row.student_id,
+          err,
+        })
+      }
+      if (burned) {
+        if (billing.billingMode === 'monthly') {
+          // The monthly engine still needs the event to know the lesson was
+          // cancelled; it carries no fee because the punch paid for it.
+          try {
+            await createCancellationEvent({
+              organizationId: orgId,
+              lessonId,
+              studentId: row.student_id,
+              lessonStartAt: lesson.start_at as string,
+              timezone,
+              charge: { ...NO_CHARGE, reasonCode: 'pack_credit_burned' },
+              cancelledAt: now,
+            })
+          } catch (err) {
+            console.error('[cancelLessonCore] cancellation event failed', { lessonId, studentId: row.student_id, err })
+            alerts.push({ type: 'error', message: 'validation.createCancellationChargeFailed' })
+          }
+        }
+        lines.push({ ...base, reasonCode: 'pack_credit_burned', recorded: 'pack' })
+        continue
+      }
     }
 
     // The monthly engine needs the event whether or not a fee applies: it is the
@@ -354,6 +436,9 @@ export async function cancelLessonCore(input: CancelLessonInput): Promise<Cancel
       recorded: 'charge',
     })
   }
+
+  // A punch burned on a late cancellation can leave the card low (M2). Never throws.
+  await notifyPackBalances(orgId, burnedPackIds)
 
   const billedTotal = round2(sum(lines.filter((l) => l.recorded === 'charge').map((l) => l.amount)))
   const pendingTotal = round2(sum(lines.filter((l) => l.recorded === 'event').map((l) => l.amount)))

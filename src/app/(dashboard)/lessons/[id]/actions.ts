@@ -7,7 +7,8 @@ import { getSession, requireMutation } from '@/lib/auth/session'
 import { updateLessonStatus, LessonStatus } from '@/lib/lessons'
 import { createNote, deleteNote } from '@/lib/lessons/notes'
 import { getTeacherByProfileId } from '@/lib/teachers'
-import { createLessonCharge } from '@/lib/billing/createCharge'
+import { recordLessonOutcome } from '@/lib/lessons/outcome'
+import { settleLessonOutcome } from '@/lib/billing/outcome/settleLessonOutcome'
 import {
   cancelLessonCore,
   type CancellationActor,
@@ -108,31 +109,64 @@ export async function setLessonStatus(
     }
   }
 
-  try {
-    // `cancelReason` is consumed by the cancelLessonCore branch above; only
-    // delivery statuses reach here, and they carry no reason.
-    await updateLessonStatus(lessonId, orgId, status, { profileId: session.profileId, source: 'staff' })
+  const revalidateLesson = () => {
     revalidatePath(`/lessons/${lessonId}`)
     revalidatePath('/lessons')
     revalidatePath('/dashboard')
+    revalidatePath('/charges')
     revalidatePath('/teacher/schedule')
     revalidatePath(`/teacher/schedule/${lessonId}`)
-  } catch (e) {
-    return { error: t('lessons.errors.statusUpdateFailed') }
   }
 
-  // Automatic charge creation on completed
-  if (status === 'completed') {
-    const alert = await createLessonCharge(lessonId, orgId)
-    if (alert) {
-      return { error: null, chargeAlert: t(alert.message) }
+  // A delivered outcome goes through the one outcome entry: attendance per
+  // student, the derived status, then the reconciler (decision #46).
+  if (status === 'completed' || status === 'no_show') {
+    const presentStudentIds = parsePresentList(formData)
+    if (presentStudentIds === 'invalid') return { error: t('lessons.errors.invalidStatus') }
+
+    let alert
+    try {
+      const outcome = await recordLessonOutcome({
+        lessonId,
+        organizationId: orgId,
+        status,
+        presentStudentIds,
+        confirmation: { profileId: session.profileId, source: 'staff' },
+        actorProfileId: session.profileId,
+      })
+      alert = outcome.chargeAlert
+    } catch (e) {
+      return { error: t('lessons.errors.statusUpdateFailed') }
     }
+    revalidateLesson()
+    if (alert) return { error: null, chargeAlert: t(alert.message) }
     // After the response: auto payment request if the org has it enabled.
     // autoSendPaymentRequest never throws.
     await runAfterResponse(autoSendPaymentRequest(lessonId, orgId))
+    return { error: null }
   }
 
-  return { error: null }
+  // Back to scheduled: the reconciler retires whatever the delivered outcome left.
+  try {
+    await updateLessonStatus(lessonId, orgId, status, { profileId: session.profileId, source: 'staff' })
+  } catch (e) {
+    return { error: t('lessons.errors.statusUpdateFailed') }
+  }
+  revalidateLesson()
+  const alert = await settleLessonOutcome(lessonId, orgId, { actorProfileId: session.profileId })
+  return alert ? { error: null, chargeAlert: t(alert.message) } : { error: null }
+}
+
+const presentListSchema = z.array(z.string().min(1).max(64)).max(200)
+
+/**
+ * The attendance checkboxes. `attendance_form=1` says the list was on screen,
+ * so an empty list means "nobody came" rather than "no list submitted".
+ */
+function parsePresentList(formData: FormData): string[] | null | 'invalid' {
+  if (formData.get('attendance_form') !== '1') return null
+  const parsed = presentListSchema.safeParse(formData.getAll('present').map(String))
+  return parsed.success ? parsed.data : 'invalid'
 }
 
 export type CancelLessonResult = {

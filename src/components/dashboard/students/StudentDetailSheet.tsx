@@ -50,6 +50,8 @@ import {
   type GoalActionState,
 } from '@/app/(dashboard)/students/[id]/actions'
 import type { Subscription } from '@/lib/subscriptions'
+import { StudentPacksCard } from '@/components/dashboard/packs/StudentPacksSection'
+import { fetchStudentPacksAction, sellPackAction } from '@/app/(dashboard)/packs/actions'
 import type { StudentGoal } from '@/lib/goals'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -539,12 +541,14 @@ function FinancialTab({
   lazy,
   subscriptionsLazy,
   studentId,
+  studentName,
   canManage,
   onRefreshSubscriptions,
 }: {
   lazy: Lazy<StudentFinancial>
   subscriptionsLazy: Lazy<Subscription[]>
   studentId: string
+  studentName: string
   canManage?: boolean
   onRefreshSubscriptions?: () => void
 }) {
@@ -654,6 +658,13 @@ function FinancialTab({
           </div>
         )}
       </SectionCard>
+
+      <StudentPacksCard
+        studentId={studentId}
+        studentName={studentName}
+        fetchAction={fetchStudentPacksAction}
+        sellAction={sellPackAction}
+      />
 
       {fin.monthly_billings.length > 0 && (
         <div className="space-y-2">
@@ -1013,6 +1024,18 @@ export function StudentDetailSheet({
                   <div className="px-6 py-5 sm:px-8">
                     <Tabs.Content value="overview" forceMount className="data-[state=inactive]:hidden">
                       <OverviewTab student={student} parent={parent} parentLoading={parentLoading} showWeeklyQuota={showWeeklyQuota} />
+                      {/* A teacher or office manager sees what is left on the
+                          card, never the money (decision #46). */}
+                      {!canManage && (
+                        <div className="mt-4">
+                          <StudentPacksCard
+                            studentId={student.id}
+                            studentName={student.full_name}
+                            fetchAction={fetchStudentPacksAction}
+                            sellAction={sellPackAction}
+                          />
+                        </div>
+                      )}
                     </Tabs.Content>
                     <Tabs.Content value="history" forceMount className="data-[state=inactive]:hidden">
                       <HistoryTab lazy={lessonsLazy} />
@@ -1022,6 +1045,7 @@ export function StudentDetailSheet({
                         lazy={financialLazy}
                         subscriptionsLazy={subscriptionsLazy}
                         studentId={student.id}
+                        studentName={student.full_name}
                         canManage={canManage}
                         onRefreshSubscriptions={refreshSubscriptions}
                       />

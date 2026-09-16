@@ -250,8 +250,10 @@ function calculateProRataAmount(monthlyAmount, billingMonth, startDate, endDate?
 ### 4.1 Formula
 
 ```
-total_amount = lessonsTotal + cancellationsTotal + subscriptionsTotal + manualAdjustment
+total_amount = lessonsTotal + noShowTotal + cancellationsTotal + subscriptionsTotal + packsTotal + manualAdjustment
 ```
+
+`noShowTotal` and `packsTotal` were added with punch cards (decision #46, §9.10).
 
 `manualAdjustment` is read from the **existing** `student_monthly_billing` record (if any) and preserved as-is.
 
@@ -262,8 +264,9 @@ total_amount = lessonsTotal + cancellationsTotal + subscriptionsTotal + manualAd
 For each lesson in `billingMonth` linked to `studentId` (via `lesson_students`):
 
 1. Derive `billing_month` from `lesson.start_at` in org timezone; skip if it doesn't match the target month.
-2. Skip if `status` is `'cancelled'` or `'no_show'`.
-3. Skip if `status` is not `'scheduled'` or `'completed'`.
+2. Skip unless `status` is in `BILLABLE_STATUSES` (`'completed'`, `'no_show'`).
+3. Skip if a live punch paid for this (lesson, student) — `lesson_pack_ledger` consume row.
+3a. An absent student (`isStudentAbsent`: a `no_show` lesson, or `attendance = 'absent'`) is billed into `noShowTotal`, not `lessonsTotal`: the `absence_amount` snapshot, or — when never settled — today's `no_show_charge_percent` of the price. Subscription coverage zeroes it.
 4. Skip if lesson ID is in `cancelledLessonIds` set (lessons that have a `student_cancellation_events` record are excluded from lessons total — they appear in cancellations instead).
 5. Calculate amount via §2 rules.
 6. For `pair`/`group`: include only if `amount > 0` (amount = 0 means subscription covered).
@@ -290,8 +293,10 @@ See §5 for full logic.
 
 If after calculation:
 - `lessonsCount === 0`
+- `noShowCount === 0`
 - `cancellationsCount === 0`
 - `activeSubscriptionsCount === 0`
+- `packsCount === 0`
 
 → Do **not** create a billing record. Skip the student silently.  
 This prevents empty billing records for students with no activity in the month.
@@ -499,6 +504,15 @@ On every recalculation, `manual_adjustment_amount`, `manual_adjustment_reason`, 
 ### 9.9 Multi-Tenant Isolation
 
 Every query in the billing engine **must** filter by `organization_id`. Subscriptions, cancellation events, lessons, and billing records are all org-scoped. The RLS policies on each new table must enforce this at the DB level as well.
+
+### 9.10 Punch Cards and No-Shows (decision #46)
+
+- **Precedence** for every student on a delivered lesson: subscription → pack → money.
+- **Pack sale in a monthly org** has no charge (`lesson_packs.charge_id IS NULL`). Its `price` is billed in `packsTotal` on the bill of `billing_student_id` for `sold_billing_month`; cancelled sales are excluded. In a per-lesson org the sale is a `pack` charge and never reaches this engine.
+- **A punched lesson** (present or absent) contributes nothing; the card already paid for it.
+- **No-shows** are billed under `cancellation_policies.no_show_charge_percent` (default 0 — the pre-packs behaviour). The amount is snapshotted on `lesson_students.absence_amount` when the lesson is settled, so a later policy edit does not rewrite an old bill.
+- **Late cancellation with a pack** (`late_cancel_pack_action = 'consume'`) burns a punch and writes a zero-fee cancellation event.
+- New record columns: `packs_amount`, `packs_count`, `no_show_amount`, `no_show_count`.
 
 ---
 

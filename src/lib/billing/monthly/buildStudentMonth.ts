@@ -16,6 +16,65 @@ import { getBillingMonthRange, getBillingPeriodDates } from './month'
 import { syncMonthlyCharge } from './syncMonthlyCharge'
 import { getOrgPricing, type OrgPricing } from '@/lib/organizations/pricing'
 import { toStudentPricing, type StudentPricing } from '@/lib/billing/lessonPricing'
+import type { LessonOutcomeContext } from './lessonAmount'
+import { calculatePacksContribution, PACK_SALE_COLUMNS, type PackSaleRow } from './packs'
+import { getCollectionPolicyServiceRole } from '@/lib/cancellation-policy/service'
+import { DEFAULT_COLLECTION_POLICY } from '@/lib/cancellation-policy/collection'
+
+const PACK_PAID_KINDS = ['consume_lesson', 'consume_no_show']
+
+/** One student's attendance, punches and pack sales for the lessons of a month. */
+async function loadOutcomes(
+  organizationId: string,
+  studentId: string,
+  billingMonth: string,
+  lessonIds: string[]
+): Promise<{ outcomes: LessonOutcomeContext; packsSold: PackSaleRow[] }> {
+  const supabase = createServiceRoleClient()
+  const [attendanceRes, usesRes, packsRes, collection] = await Promise.all([
+    lessonIds.length
+      ? supabase
+          .from('lesson_students')
+          .select('lesson_id, attendance, absence_amount')
+          .eq('student_id', studentId)
+          .in('lesson_id', lessonIds)
+      : Promise.resolve({ data: [], error: null }),
+    lessonIds.length
+      ? supabase
+          .from('lesson_pack_ledger')
+          .select('lesson_id')
+          .eq('organization_id', organizationId)
+          .eq('student_id', studentId)
+          .is('reversed_at', null)
+          .in('kind', PACK_PAID_KINDS)
+          .in('lesson_id', lessonIds)
+      : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from('lesson_packs')
+      .select(PACK_SALE_COLUMNS)
+      .eq('organization_id', organizationId)
+      .eq('billing_student_id', studentId)
+      .eq('sold_billing_month', billingMonth)
+      .is('cancelled_at', null)
+      .is('charge_id', null),
+    getCollectionPolicyServiceRole(organizationId),
+  ])
+  assertNoQueryError('load attendance', attendanceRes.error)
+  assertNoQueryError('load pack uses', usesRes.error)
+  assertNoQueryError('load pack sales', packsRes.error)
+
+  type AttendanceRow = { lesson_id: string; attendance: string | null; absence_amount: number | string | null }
+  return {
+    outcomes: {
+      attendanceByLesson: new Map(
+        ((attendanceRes.data ?? []) as AttendanceRow[]).map((r) => [r.lesson_id, r])
+      ),
+      packUseLessonIds: new Set(((usesRes.data ?? []) as Array<{ lesson_id: string }>).map((r) => r.lesson_id)),
+      collection,
+    },
+    packsSold: (packsRes.data ?? []) as unknown as PackSaleRow[],
+  }
+}
 
 export interface PrefetchedData {
   lessons: LessonRow[]
@@ -28,6 +87,10 @@ export interface PrefetchedData {
   pricing: OrgPricing
   /** This student's personal rate and discount (students.hourly_rate / discount_percent). */
   studentPricing: StudentPricing
+  /** Attendance, punches and the no-show policy (decision #46). */
+  outcomes?: LessonOutcomeContext
+  /** Pack sales carried on this student's bill. */
+  packsSold?: PackSaleRow[]
 }
 
 function assertNoQueryError(
@@ -66,6 +129,8 @@ export async function buildStudentMonth(
   let studentCountByLesson: Map<string, number>
   let pricing: OrgPricing
   let studentPricing: StudentPricing
+  let outcomes: LessonOutcomeContext
+  let packsSold: PackSaleRow[]
 
   if (prefetched) {
     lessons = prefetched.lessons
@@ -75,6 +140,12 @@ export async function buildStudentMonth(
     studentCountByLesson = prefetched.studentCountByLesson
     pricing = prefetched.pricing
     studentPricing = prefetched.studentPricing
+    outcomes = prefetched.outcomes ?? {
+      attendanceByLesson: new Map(),
+      packUseLessonIds: new Set(),
+      collection: DEFAULT_COLLECTION_POLICY,
+    }
+    packsSold = prefetched.packsSold ?? []
   } else {
     pricing = await getOrgPricing(organizationId)
 
@@ -166,6 +237,10 @@ export async function buildStudentMonth(
     assertNoQueryError('load existing billing record', billingError)
 
     existingBilling = billingData as MonthlyBillingRow | null
+
+    const loaded = await loadOutcomes(organizationId, studentId, billingMonth, lessons.map((l) => l.id))
+    outcomes = loaded.outcomes
+    packsSold = loaded.packsSold
   }
 
   // ── Build cancelledLessonIds set (spec §5.2) ─────────────────────────────
@@ -184,9 +259,12 @@ export async function buildStudentMonth(
     studentCountByLesson,
     pricing,
     cycleStartDay,
-    studentPricing
+    studentPricing,
+    outcomes
   )
   if (isMissingFieldsError(lessonsResult)) return lessonsResult
+
+  const packsResult = calculatePacksContribution(packsSold, billingMonth)
 
   // Build lesson lookup for cancellation amount resolution
   const lessonLookup = new Map<string, LessonRow>()
@@ -215,8 +293,10 @@ export async function buildStudentMonth(
 
   if (
     lessonsResult.lessonsCount === 0 &&
+    lessonsResult.noShowCount === 0 &&
     cancellationsResult.cancellationsCount === 0 &&
-    subscriptionsResult.activeSubscriptionsCount === 0
+    subscriptionsResult.activeSubscriptionsCount === 0 &&
+    packsResult.packsCount === 0
   ) {
     return 'skipped'
   }
@@ -225,8 +305,10 @@ export async function buildStudentMonth(
 
   const computedTotal = round2(
     lessonsResult.lessonsTotal +
+      lessonsResult.noShowTotal +
       cancellationsResult.cancellationsTotal +
-      subscriptionsResult.subscriptionsTotal
+      subscriptionsResult.subscriptionsTotal +
+      packsResult.packsTotal
   )
 
   const manualAdjustment = existingBilling?.manual_adjustment_amount ?? 0
@@ -260,6 +342,10 @@ export async function buildStudentMonth(
     cancellations_amount: cancellationsResult.cancellationsTotal,
     total_amount: totalAmount,
     lessons_count: lessonsResult.lessonsCount,
+    no_show_amount: lessonsResult.noShowTotal,
+    no_show_count: lessonsResult.noShowCount,
+    packs_amount: packsResult.packsTotal,
+    packs_count: packsResult.packsCount,
     // Preserve manual adjustment fields
     manual_adjustment_amount: existingBilling?.manual_adjustment_amount ?? null,
     manual_adjustment_reason: existingBilling?.manual_adjustment_reason ?? null,
@@ -320,6 +406,8 @@ export async function buildStudentMonth(
     lessonsAmount: lessonsResult.lessonsTotal,
     subscriptionsAmount: subscriptionsResult.subscriptionsTotal,
     cancellationsAmount: cancellationsResult.cancellationsTotal,
+    noShowAmount: lessonsResult.noShowTotal,
+    packsAmount: packsResult.packsTotal,
     totalAmount,
     lessonsCount: lessonsResult.lessonsCount,
     isApproved,

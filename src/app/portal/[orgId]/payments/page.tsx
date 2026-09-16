@@ -113,7 +113,7 @@ export default async function PortalPaymentsPage({
         )
 
   // next-intl throws on missing keys — guard unknown values with the raw string.
-  const KNOWN_CHARGE_TYPES = new Set(['lesson', 'cancellation', 'manual', 'monthly'])
+  const KNOWN_CHARGE_TYPES = new Set(['lesson', 'cancellation', 'manual', 'monthly', 'pack', 'no_show'])
   const chargeTypeLabel = (type: string) =>
     KNOWN_CHARGE_TYPES.has(type) ? t(`chargeType.${type}`) : type
   const KNOWN_SETTLED = new Set(['paid', 'waived', 'voided'])

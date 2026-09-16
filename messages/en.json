@@ -125,11 +125,28 @@
       "student_conflict": {
         "title": "There is already a lesson at that time",
         "body": "The student already has a lesson at the same time. Please pick another time."
+      },
+      "payment_required": {
+        "title": "This booking is paid in advance",
+        "body": "Open your personal area to choose a pack or a single lesson and pay. The lesson is booked as soon as you have paid."
+      },
+      "payment_failed": {
+        "title": "We could not open the payment page",
+        "body": "The lesson was not booked. Try again in a moment, and contact us if it keeps happening."
       }
     },
     "student": {
       "title": "Which child is this lesson for?",
       "back": "Back"
+    },
+    "checkout": {
+      "title": "This lesson is paid in advance",
+      "subtitle": "No subscription or pack covers this lesson right now. Choose how to pay — the lesson is booked as soon as you have paid.",
+      "packOption": "{name} — {credits} lessons",
+      "validity": "valid {days} days",
+      "singleLesson": "Single lesson",
+      "held": "The time is held for you for 15 minutes once you go to payment.",
+      "redirecting": "Taking you to payment…"
     }
   },
   "common": {
@@ -360,7 +377,8 @@
     "support": "Support",
     "settingsIntegrations": "Automation API keys",
     "messagesLists": "Lists",
-    "messagesBroadcasts": "Broadcasts"
+    "messagesBroadcasts": "Broadcasts",
+    "packs": "Lesson packs"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -404,7 +422,8 @@
         "billing": "Monthly billing & collection",
         "overdueHomework": "Overdue homework",
         "newLeads": "New leads",
-        "atRisk": "At-risk students"
+        "atRisk": "At-risk students",
+        "packsRunningOut": "Packs running low"
       },
       "pendingApproval": "Awaiting approval",
       "debtorsLabel": "Collection",
@@ -413,7 +432,8 @@
       "openItems": "{count} open items",
       "markLessonDone": "Mark lesson as completed",
       "markHomeworkDone": "Mark homework as done",
-      "markDoneFailed": "Update failed, please try again"
+      "markDoneFailed": "Update failed, please try again",
+      "packsLeft": "{remaining} left"
     },
     "business": {
       "title": "This month",
@@ -1182,7 +1202,13 @@
     "studentSecond": "Second student",
     "customDuration": "Duration (minutes)",
     "customDurationHint": "Between 5 and 480 minutes",
-    "pricePerStudentRequired": "Price per student (₪) — required"
+    "pricePerStudentRequired": "Price per student (₪) — required",
+    "attendance": {
+      "title": "Who came?",
+      "hint": "Tick everyone who came. If nobody is ticked, the lesson is recorded as a no-show.",
+      "noneMarked": "Nobody ticked — the lesson will be recorded as a no-show.",
+      "update": "Update attendance"
+    }
   },
   "debts": {
     "title": "Collection",
@@ -1223,7 +1249,9 @@
       "lesson": "Lesson",
       "cancellation": "Cancellation",
       "manual": "Manual",
-      "monthly": "Monthly"
+      "monthly": "Monthly",
+      "pack": "Lesson pack",
+      "no_show": "No-show"
     },
     "fields": {
       "parent": "Parent",
@@ -1428,7 +1456,9 @@
       "cancellations": "Cancellations",
       "adjustment": "Manual Adjustment",
       "total": "Total",
-      "status": "Status"
+      "status": "Status",
+      "noShows": "No-shows",
+      "packs": "Packs"
     },
     "status": {
       "paid": "Paid",
@@ -1785,8 +1815,49 @@
         "partialHoursPositive": "Notice hours for a partial cancellation must be a positive number",
         "partialLessThanFull": "The partial cancellation threshold must be lower than the full one",
         "percentRange": "The partial charge percentage must be between 0 and 100",
-        "saveFailed": "Could not save the policy"
-      }
+        "saveFailed": "Could not save the policy",
+        "noShowPercentRange": "The no-show charge must be a whole number between 0 and 100",
+        "thresholdRange": "The running-low threshold must be a whole number between 0 and 100"
+      },
+      "sections": {
+        "cancellations": "Cancellations",
+        "noShow": "No-shows",
+        "packs": "Lesson packs"
+      },
+      "noShowPercent": "No-show charge (% of the lesson price)",
+      "noShowPercentHint": "0 = a no-show is free. Applies to every student marked as not attending.",
+      "noShowPackAction": "A student with a pack who did not come",
+      "packActions": {
+        "consume": "Use one credit",
+        "charge": "Charge the percentage, keep the credit"
+      },
+      "lateCancelPackAction": "A late cancellation by a student with a pack",
+      "lateCancelPackActionHint": "Only when the policy would charge a fee. A timely cancellation never touches a pack.",
+      "lateCancelActions": {
+        "consume": "Use one credit instead of a fee",
+        "charge": "Charge the cancellation fee"
+      },
+      "packScope": "Who a new pack belongs to",
+      "packScopes": {
+        "student": "One student",
+        "family": "The family — every child uses the same pack"
+      },
+      "packActivation": "When a pack can be used",
+      "packActivations": {
+        "immediate": "As soon as it is sold",
+        "on_payment": "Only once fully paid"
+      },
+      "packActivationMonthlyHint": "With monthly billing a pack is active at once — it is billed on the monthly bill.",
+      "lowBalanceThreshold": "A pack is 'running low' at",
+      "lowBalanceThresholdHint": "Credits left at or below which the pack is flagged on the list.",
+      "notificationsEnabled": "Send the parent a WhatsApp message when a pack is running low, and again when it is used up",
+      "notificationsEnabledHint": "One message per stage, per pack.",
+      "ruleNoShow": "A student who does not come — {percent}% of the lesson price",
+      "ruleNoShowFree": "A student who does not come — no charge",
+      "rulePrecedence": "A subscription covers first, then a pack, and only then money",
+      "packCollectionEnabled": "This organisation collects through lesson packs",
+      "packCollectionEnabledHint": "A parent with no valid subscription or pack chooses a pack or a single lesson in the portal and pays before the lesson is booked. Needs a payment provider and an active pack in the catalog.",
+      "packCollectionMonthlyHint": "With monthly billing there is no payment before booking — packs are billed on the monthly bill."
     },
     "holidays": {
       "title": "Holidays",
@@ -2824,6 +2895,42 @@
       },
       "viewPlans": "View plans",
       "fixLink": "Fix in settings"
+    },
+    "packs": {
+      "title": "Pack catalog",
+      "subtitle": "The packs you can sell from a student's card. Changes here never affect packs already sold.",
+      "empty": "No packs in the catalog yet.",
+      "add": "Add a pack",
+      "edit": "Edit",
+      "archive": "Archive",
+      "restore": "Restore",
+      "archived": "Archived",
+      "summary": "{credits} lessons · {price}",
+      "validity": "valid {days} days",
+      "noValidity": "no expiry",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "fields": {
+        "name": "Name",
+        "credits": "Lessons",
+        "price": "Price",
+        "validityDays": "Valid for (days)",
+        "validityHint": "No expiry",
+        "coveredTypes": "Lesson types it covers"
+      },
+      "lessonTypes": {
+        "individual": "Individual",
+        "pair": "Pair",
+        "group": "Group",
+        "custom": "Custom"
+      },
+      "errors": {
+        "nameRequired": "Give the pack a name",
+        "invalidNumbers": "The lesson count, price or validity is not valid",
+        "typesRequired": "Pick at least one lesson type",
+        "saveFailed": "Could not save the pack"
+      }
     }
   },
   "quota": {
@@ -3010,7 +3117,8 @@
       "count": "Lesson Count",
       "legendPaidRevenue": "Paid revenue",
       "legendMonthlyBilling": "Monthly billing",
-      "columnsLegend": "Revenue = payments actually recorded · Monthly billing = what was charged, paid or not"
+      "columnsLegend": "Revenue = payments actually recorded · Monthly billing = what was charged, paid or not",
+      "packSales": "of which pack sales"
     },
     "lessons": {
       "title": "Lessons",
@@ -3192,7 +3300,9 @@
         "cancellation_policy": "Cancellation policy",
         "not_billed": "Not billed",
         "none": "—",
-        "subscriptionCovered": "subscription-covered"
+        "subscriptionCovered": "subscription-covered",
+        "no_show_charge": "No-show charge",
+        "packCovered": "Paid by pack"
       },
       "policy": {
         "none": "No policy",
@@ -3261,7 +3371,6 @@
       "no": "No",
       "completed": "Completed",
       "noShow": "Student no-show",
-      "cancellations": "Cancellations",
       "deliveryHours": "Delivery hours",
       "scheduled": "Scheduled",
       "contributionRate": "Contribution %",
@@ -4688,7 +4797,16 @@
       "noUpcoming": "No scheduled lessons",
       "goalsTitle": "Learning goals",
       "paymentHistory": "Payment history",
-      "goalTarget": "Target: {date}"
+      "goalTarget": "Target: {date}",
+      "packsTitle": "Your lesson packs",
+      "packBalance": "{remaining}/{total}",
+      "packValidUntil": "valid until {date}",
+      "packNoExpiry": "no expiry",
+      "packPending": "awaiting payment",
+      "packPendingCta": "Pay",
+      "checkoutPending": "Payment for your lesson is not finished yet",
+      "checkoutContinue": "Finish paying",
+      "checkoutAttention": "We received your payment, but the time was no longer free and the lesson was not booked. We will be in touch."
     },
     "schedule": {
       "title": "Lesson schedule",
@@ -4743,7 +4861,9 @@
         "lesson": "Lesson",
         "cancellation": "Cancellation",
         "manual": "Manual",
-        "monthly": "Monthly"
+        "monthly": "Monthly",
+        "pack": "Lesson pack",
+        "no_show": "No-show"
       },
       "back": "Back to home",
       "overdueBy": "{days} days overdue",
@@ -6052,7 +6172,8 @@
     "noLessonPrice": "No price is set for this lesson",
     "invalidPhone": "The phone number must be in international format, e.g. +972501234567",
     "webhookUrlInvalid": "Enter a valid webhook URL",
-    "paymentUrlInvalid": "Enter a valid payment link URL"
+    "paymentUrlInvalid": "Enter a valid payment link URL",
+    "outcomeConflictsPaidCharge": "Attendance was saved, but this lesson's charge is already paid, so we left it unchanged. Void or credit it by hand if needed."
   },
   "receipts": {
     "customer": "Customer",
@@ -6063,7 +6184,9 @@
     "chargeFallback": "Charge {month}",
     "consolidatedPayment": "Payment for {count} open charges",
     "waConsolidated": "{count} open charges",
-    "waLessonCharge": "your most recent lesson"
+    "waLessonCharge": "your most recent lesson",
+    "packPayment": "Lesson pack payment — {name}",
+    "waPackCharge": "your lesson pack"
   },
   "support": {
     "list": {
@@ -6630,3 +6753,113 @@
     }
   }
 }
+  },
+  "packs": {
+    "notifications": {
+      "refundedTitle": "Refund on a pack that is still active",
+      "refundedBody": "A refund was recorded on \"{name}\", but the pack is still active. Cancel it on the Packs page if needed.",
+      "bookingNeedsAttentionTitle": "Payment for a booking that was not confirmed",
+      "bookingNeedsAttentionBody": "A parent paid for a lesson, but the slot was no longer free. No lesson was booked — contact the parent."
+    },
+    "title": "Lesson packs",
+    "searchPlaceholder": "Search by student, parent or pack",
+    "filters": {
+      "active": "Active",
+      "low": "Running low",
+      "pending": "Awaiting payment"
+    },
+    "empty": "No packs sold yet.",
+    "emptyFiltered": "No packs match this filter.",
+    "emptyHint": "Sell a pack from the student's card, on the money tab. Set up a catalog first.",
+    "emptyCta": "Set up the catalog",
+    "columns": {
+      "holder": "Belongs to",
+      "card": "Pack",
+      "balance": "Balance",
+      "validity": "Valid until",
+      "payment": "Payment",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "family": "{parent}'s family",
+    "balance": "{remaining} of {total} left",
+    "validUntil": "until {date}",
+    "noExpiry": "no expiry",
+    "status": {
+      "pending_payment": "Awaiting payment",
+      "active": "Active",
+      "exhausted": "Used up",
+      "expired": "Expired",
+      "cancelled": "Cancelled"
+    },
+    "lowBadge": "Running low",
+    "refundedBadge": "Refunded",
+    "payment": {
+      "paid": "Paid",
+      "pending": "Unpaid",
+      "monthly": "On the monthly bill",
+      "free": "Free"
+    },
+    "actions": {
+      "cancel": "Cancel pack",
+      "adjust": "Correct balance",
+      "extend": "Extend validity"
+    },
+    "cancelPanel": {
+      "reason": "Reason",
+      "confirm": "Cancel the pack",
+      "force": "Cancel anyway",
+      "openCharge": "Record the refund on the charge"
+    },
+    "adjustPanel": {
+      "delta": "Change (e.g. 2 or -1)",
+      "reason": "Reason",
+      "confirm": "Update balance"
+    },
+    "extendPanel": {
+      "validUntil": "Valid until",
+      "emptyMeansNoExpiry": "Empty = no expiry",
+      "notes": "Notes",
+      "confirm": "Save"
+    },
+    "card": {
+      "none": "No pack",
+      "sell": "Sell a pack",
+      "family": "Family",
+      "showAll": "All packs",
+      "title": "Lesson packs"
+    },
+    "sell": {
+      "product": "Pack",
+      "productOption": "{name} — {credits} lessons, {price}",
+      "scope": "Belongs to",
+      "scopeStudent": "{name} only",
+      "scopeFamily": "Every child in the family",
+      "priceOverride": "Price (can be changed)",
+      "invalidPrice": "The price is not valid",
+      "notes": "Notes",
+      "submit": "Sell",
+      "submitting": "Selling…",
+      "cancel": "Cancel",
+      "noProducts": "No packs in the catalog.",
+      "setupCatalog": "Set up the catalog",
+      "perLessonNote": "A charge is created and, if automatic sending is on, the parent gets a payment request.",
+      "onPaymentNote": "The pack can be used once it is fully paid.",
+      "monthlyNote": "The sale appears on {name}'s monthly bill, and the pack is active at once."
+    },
+    "errors": {
+      "not_found": "Pack not found",
+      "already_cancelled": "This pack is already cancelled",
+      "reason_required": "Add a reason",
+      "paid_not_refunded": "This pack was paid and no refund is recorded. Record the refund on its charge, then cancel.",
+      "charge_locked": "The pack's charge shares a payment link — resolve it on the charges page first.",
+      "failed": "Something went wrong, try again",
+      "cancelled": "This pack is cancelled",
+      "invalid_delta": "The change must be a whole number other than 0",
+      "negative_balance": "The balance cannot go below 0",
+      "invalid_dates": "Validity cannot end before the pack starts",
+      "product_not_found": "That pack is not in the catalog",
+      "student_not_found": "Student not found",
+      "missing_parent": "This student has no paying parent — set a primary parent first",
+      "invalid_price": "The price is not valid"
+    }

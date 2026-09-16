@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import type { CollectionPolicy } from '@/lib/cancellation-policy/collection'
 
 type ActionState = { error: string } | { success: true } | null
 type FormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
@@ -14,12 +15,20 @@ interface CancellationPolicyFormProps {
     notice_hours_partial: number
     partial_charge_percent: number
   }
+  /** No-show and punch-card settings (decision #46). */
+  collection: CollectionPolicy
+  billingMode: 'monthly' | 'per_lesson'
   readOnly?: boolean
 }
+
+const INPUT =
+  'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-muted-foreground'
 
 export function CancellationPolicyForm({
   action,
   defaultValues,
+  collection,
+  billingMode,
   readOnly = false,
 }: CancellationPolicyFormProps) {
   const t = useTranslations('settings.cancellationPolicy')
@@ -41,16 +50,22 @@ export function CancellationPolicyForm({
   const [fullHours, setFullHours] = useState(String(defaultValues.notice_hours_full))
   const [partialHours, setPartialHours] = useState(String(defaultValues.notice_hours_partial))
   const [percent, setPercent] = useState(String(defaultValues.partial_charge_percent))
+  const [noShowPercent, setNoShowPercent] = useState(String(collection.noShowChargePercent))
+  const [threshold, setThreshold] = useState(String(collection.packLowBalanceThreshold))
 
   const full = Number(fullHours)
   const partial = Number(partialHours)
   const pct = Number(percent)
+  const noShowPct = Number(noShowPercent)
+  const lowThreshold = Number(threshold)
 
   function validate(): string | null {
     if (!Number.isFinite(full) || full < 1) return t('errors.fullHoursPositive')
     if (!Number.isFinite(partial) || partial < 0) return t('errors.partialHoursPositive')
     if (partial >= full) return t('errors.partialLessThanFull')
     if (!Number.isFinite(pct) || pct < 0 || pct > 100) return t('errors.percentRange')
+    if (!Number.isInteger(noShowPct) || noShowPct < 0 || noShowPct > 100) return t('errors.noShowPercentRange')
+    if (!Number.isInteger(lowThreshold) || lowThreshold < 0 || lowThreshold > 100) return t('errors.thresholdRange')
     return null
   }
 
@@ -78,7 +93,9 @@ export function CancellationPolicyForm({
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-5">
+      {/* ── Cancellations ───────────────────────────────────────────────── */}
+      <section className="bg-white border border-gray-200 rounded-lg p-5 space-y-5" aria-labelledby="policy-cancellations">
+        <h2 id="policy-cancellations" className="text-sm font-semibold text-gray-900">{t('sections.cancellations')}</h2>
         <div className="space-y-1">
           <label htmlFor="notice_hours_full" className="block text-sm font-medium text-gray-700">
             {t('noticeHoursFull')}
@@ -93,7 +110,7 @@ export function CancellationPolicyForm({
             value={fullHours}
             onChange={(e) => setFullHours(e.target.value)}
             disabled={readOnly}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-muted-foreground"
+            className={INPUT}
           />
         </div>
 
@@ -111,7 +128,7 @@ export function CancellationPolicyForm({
             value={partialHours}
             onChange={(e) => setPartialHours(e.target.value)}
             disabled={readOnly}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-muted-foreground"
+            className={INPUT}
           />
         </div>
 
@@ -130,10 +147,120 @@ export function CancellationPolicyForm({
             value={percent}
             onChange={(e) => setPercent(e.target.value)}
             disabled={readOnly}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-muted-foreground"
+            className={INPUT}
           />
         </div>
-      </div>
+      </section>
+
+      {/* ── No-shows ────────────────────────────────────────────────────── */}
+      <section className="bg-white border border-gray-200 rounded-lg p-5 space-y-5" aria-labelledby="policy-no-show">
+        <h2 id="policy-no-show" className="text-sm font-semibold text-gray-900">{t('sections.noShow')}</h2>
+        <div className="space-y-1">
+          <label htmlFor="no_show_charge_percent" className="block text-sm font-medium text-gray-700">
+            {t('noShowPercent')}
+          </label>
+          <p className="text-xs text-muted-foreground">{t('noShowPercentHint')}</p>
+          <input
+            id="no_show_charge_percent"
+            name="no_show_charge_percent"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            value={noShowPercent}
+            onChange={(e) => setNoShowPercent(e.target.value)}
+            disabled={readOnly}
+            className={INPUT}
+          />
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="no_show_pack_action" className="block text-sm font-medium text-gray-700">
+            {t('noShowPackAction')}
+          </label>
+          <select id="no_show_pack_action" name="no_show_pack_action" defaultValue={collection.noShowPackAction} disabled={readOnly} className={INPUT}>
+            <option value="consume">{t('packActions.consume')}</option>
+            <option value="charge">{t('packActions.charge')}</option>
+          </select>
+        </div>
+      </section>
+
+      {/* ── Punch cards ─────────────────────────────────────────────────── */}
+      <section className="bg-white border border-gray-200 rounded-lg p-5 space-y-5" aria-labelledby="policy-packs">
+        <h2 id="policy-packs" className="text-sm font-semibold text-gray-900">{t('sections.packs')}</h2>
+        {/* Collecting through punch cards is an org choice, not something
+            inferred from having a catalog (decision #46). */}
+        <label className="flex items-start gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            name="pack_collection_enabled"
+            defaultChecked={collection.packCollectionEnabled}
+            disabled={readOnly}
+            className="mt-0.5 size-4 accent-blue-600"
+          />
+          <span>
+            {t('packCollectionEnabled')}
+            <span className="block text-xs text-muted-foreground">
+              {billingMode === 'monthly' ? t('packCollectionMonthlyHint') : t('packCollectionEnabledHint')}
+            </span>
+          </span>
+        </label>
+        <div className="space-y-1">
+          <label htmlFor="pack_scope" className="block text-sm font-medium text-gray-700">{t('packScope')}</label>
+          <select id="pack_scope" name="pack_scope" defaultValue={collection.packScope} disabled={readOnly} className={INPUT}>
+            <option value="student">{t('packScopes.student')}</option>
+            <option value="family">{t('packScopes.family')}</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="pack_activation" className="block text-sm font-medium text-gray-700">{t('packActivation')}</label>
+          {billingMode === 'monthly' && <p className="text-xs text-muted-foreground">{t('packActivationMonthlyHint')}</p>}
+          <select id="pack_activation" name="pack_activation" defaultValue={collection.packActivation} disabled={readOnly} className={INPUT}>
+            <option value="immediate">{t('packActivations.immediate')}</option>
+            <option value="on_payment">{t('packActivations.on_payment')}</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="late_cancel_pack_action" className="block text-sm font-medium text-gray-700">
+            {t('lateCancelPackAction')}
+          </label>
+          <p className="text-xs text-muted-foreground">{t('lateCancelPackActionHint')}</p>
+          <select id="late_cancel_pack_action" name="late_cancel_pack_action" defaultValue={collection.lateCancelPackAction} disabled={readOnly} className={INPUT}>
+            <option value="consume">{t('lateCancelActions.consume')}</option>
+            <option value="charge">{t('lateCancelActions.charge')}</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="pack_low_balance_threshold" className="block text-sm font-medium text-gray-700">
+            {t('lowBalanceThreshold')}
+          </label>
+          <p className="text-xs text-muted-foreground">{t('lowBalanceThresholdHint')}</p>
+          <input
+            id="pack_low_balance_threshold"
+            name="pack_low_balance_threshold"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            value={threshold}
+            onChange={(e) => setThreshold(e.target.value)}
+            disabled={readOnly}
+            className={INPUT}
+          />
+        </div>
+        <label className="flex items-start gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            name="pack_notifications_enabled"
+            defaultChecked={collection.packNotificationsEnabled}
+            disabled={readOnly}
+            className="mt-0.5 size-4 accent-blue-600"
+          />
+          <span>
+            {t('notificationsEnabled')}
+            <span className="block text-xs text-muted-foreground">{t('notificationsEnabledHint')}</span>
+          </span>
+        </label>
+      </section>
 
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600 space-y-1">
         <p className="font-medium text-gray-700">{t('howItWorks')}</p>
@@ -141,6 +268,8 @@ export function CancellationPolicyForm({
           <li>{t('ruleNoCharge', { hours: full })}</li>
           <li>{t('rulePartial', { partialHours: partial, fullHours: full, percent: pct })}</li>
           <li>{t('ruleFull', { hours: partial })}</li>
+          <li>{noShowPct > 0 ? t('ruleNoShow', { percent: noShowPct }) : t('ruleNoShowFree')}</li>
+          <li>{t('rulePrecedence')}</li>
         </ul>
       </div>
 

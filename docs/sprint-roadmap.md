@@ -931,6 +931,24 @@ broadcasts and health migrations listed above.
 
 ---
 
+## Punch cards & attendance (2026-09-15)
+
+Standalone track, not a sprint (like "Automatic lesson completion"). Decision
+#46; plan `scalable-greeting-token.md`; migration
+`20260916120000_packs_attendance_collection_policy.sql` must reach production
+before the code.
+
+**M1 — core** 🚧 built, not yet deployed
+- Pack catalog, sale (student or family), activation (immediate / on payment), cancel with refund rules, balance correction, extension — `/packs`, the student card, `/settings/cancellation-policy`.
+- Per-student attendance on the lesson and teacher outcome forms; the lesson status derives from it.
+- `settleLessonOutcome` replaces `createLessonCharge`; late cancellation can burn a punch.
+- Monthly engine bills no-shows and monthly-org pack sales; teacher economics attributes by attendance (amends #45).
+- Portal: card balances, and pay-before-confirm booking when there is no entitlement — only in orgs that turned on "collects through packs" (per-lesson, with a provider and a catalog).
+
+**M2 — parent notifications** 🚧 built — "running low" and "used up" WhatsApp messages behind `pack_notifications_enabled` (default off). New Meta templates `lessio_pack_low_balance_{he,en}_v2`, `lessio_pack_exhausted_{he,en}_v2` must be registered and approved.
+
+**M3** — attendance-based progress/teacher reports, list badges, schedule chip, forecast. **M4** — copilot `sell_pack`. **v2** — credit notes via the receipt provider, freeze, transfer between students, duration-based units.
+
 ## Full Roadmap Summary
 
 | Sprint | Theme | Primary Value |

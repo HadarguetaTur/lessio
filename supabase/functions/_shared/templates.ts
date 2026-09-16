@@ -65,6 +65,9 @@ export type MessageTemplateType =
   | 'class_update'
   | 'promo'
   | 'group_invite'
+  // Punch cards (decision #46, M2): the card is running low / used up.
+  | 'pack_low_balance'
+  | 'pack_exhausted'
 
 /**
  * System-default strings per language (used when no custom template is
@@ -97,7 +100,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
     homework_reminder:
       '📚 תזכורת: שיעורי הבית "{{title}}" צריכים להיות מוכנים מחר{{due_date_suffix}}.\nבהצלחה!',
     balance_reply:
-      'יתרתך לתשלום היא {{total}}.\n\nלצפייה בפירוט החיוב אפשר להיכנס לאזור האישי.\n{{portal_url}}\n\n{{payment_line}}',
+      'יתרתך לתשלום היא {{total}}.{{pack_line}}\n\nלצפייה בפירוט החיוב אפשר להיכנס לאזור האישי.\n{{portal_url}}\n\n{{payment_line}}',
     payment_history_reply:
       'התשלומים האחרונים שלך:{{charge_lines}}',
     schedule_reply:
@@ -126,6 +129,10 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'הודעה מ-{{org_name}}:\n{{message}}\nלפרטים והרשמה אפשר להשיב כאן.',
     group_invite:
       'שלום! {{org_name}} פתחו קבוצת ואטסאפ להורי {{group_name}}. ההצטרפות רשות, וכל העדכונים ממשיכים להגיע גם כאן.\n{{invite_url}}',
+    pack_low_balance:
+      'היי {{parent_name}} 👋\nבכרטיסייה "{{pack_name}}" של {{student_name}} נשארו {{remaining}} שיעורים.\nאפשר לחדש אותה אצלנו בכל שלב 😊',
+    pack_exhausted:
+      'היי {{parent_name}} 👋\nהכרטיסייה "{{pack_name}}" של {{student_name}} נוצלה עד הסוף.\nכדי להמשיך בלי הפסקה אפשר לרכוש כרטיסייה חדשה אצלנו 😊',
   },
   en: {
     booking_link:
@@ -153,7 +160,7 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
     homework_reminder:
       '📚 Reminder: the homework "{{title}}" is due tomorrow{{due_date_suffix}}.\nGood luck!',
     balance_reply:
-      'Your outstanding balance is {{total}}.\n\nTo see the full breakdown, open your personal area.\n{{portal_url}}\n\n{{payment_line}}',
+      'Your outstanding balance is {{total}}.{{pack_line}}\n\nTo see the full breakdown, open your personal area.\n{{portal_url}}\n\n{{payment_line}}',
     payment_history_reply:
       'Your recent payments:{{charge_lines}}',
     schedule_reply:
@@ -182,6 +189,10 @@ export const DEFAULT_TEMPLATES: Record<AppLocale, Record<MessageTemplateType, st
       'A message from {{org_name}}:\n{{message}}\nReply here for details and to sign up.',
     group_invite:
       'Hi! {{org_name}} opened a WhatsApp group for the parents of {{group_name}}. Joining is optional, and every update keeps arriving here too.\n{{invite_url}}',
+    pack_low_balance:
+      'Hi {{parent_name}} 👋\nThe pack "{{pack_name}}" for {{student_name}} has {{remaining}} lessons left.\nYou can renew it with us any time 😊',
+    pack_exhausted:
+      'Hi {{parent_name}} 👋\nThe pack "{{pack_name}}" for {{student_name}} is used up.\nTo keep going without a break, you can buy a new pack with us 😊',
   },
 }
 

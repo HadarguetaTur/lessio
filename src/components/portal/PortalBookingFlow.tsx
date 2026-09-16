@@ -20,9 +20,13 @@ import {
   portalLockSlotAction,
   portalConfirmBookingAction,
   portalReleaseSlotLockAction,
+  portalBookingOptionsAction,
+  portalStartCheckoutAction,
   type PortalTeacher,
   type PortalStudent,
 } from '@/app/portal/[orgId]/book/actions'
+import type { BookingOptions } from '@/lib/booking/checkout'
+import { formatMoney } from '@/lib/i18n/formatCurrency'
 import { BookingSuccess } from '@/components/booking/BookingSuccess'
 import { BookingError } from '@/components/booking/BookingError'
 import { parseAppLocale, toIntlLocale } from '@/lib/i18n/locale'
@@ -700,6 +704,45 @@ function ConfirmStep({
   const intlLocale = toIntlLocale(parseAppLocale(useLocale()))
   const [confirming, setConfirming] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(0)
+  const tc = useTranslations('booking.checkout')
+  const appLocale = parseAppLocale(useLocale())
+  // Whether this booking has to be paid for first (decision #46). Until the
+  // answer arrives the ordinary button shows; the server refuses a confirm
+  // that needs payment either way.
+  const [options, setOptions] = useState<BookingOptions | null>(null)
+  const [redirecting, setRedirecting] = useState<string | null>(null)
+  const mustPay = options?.required === true && options.entitlement === 'none'
+
+  useEffect(() => {
+    let alive = true
+    portalBookingOptionsAction(orgId, lock.id, studentId)
+      .then((result) => {
+        if (!alive) return
+        if (result.success) setOptions(result.options)
+        else if (result.error === 'lock_expired') onLockExpired()
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [orgId, lock.id, studentId, onLockExpired])
+
+  async function handleCheckout(selection: 'pack' | 'single_lesson', productId: string | null) {
+    setRedirecting(productId ?? 'single')
+    try {
+      const result = await portalStartCheckoutAction(orgId, lock.id, teacherId, studentId, selection, productId)
+      if (result.success) {
+        window.location.href = result.url
+        return
+      }
+      setRedirecting(null)
+      if (result.error === 'lock_invalid') onLockExpired()
+      else onError('payment_failed')
+    } catch {
+      setRedirecting(null)
+      onError('payment_failed')
+    }
+  }
 
   useEffect(() => {
     const expiresAt = new Date(lock.expires_at).getTime()
@@ -720,6 +763,12 @@ function ConfirmStep({
     try {
       const result = await portalConfirmBookingAction(orgId, lock.id, teacherId, studentId)
       if (!result.success) {
+        if (result.error === 'payment_required') {
+          const fresh = await portalBookingOptionsAction(orgId, lock.id, studentId)
+          if (fresh.success) setOptions(fresh.options)
+          else onError('payment_failed')
+          return
+        }
         if (result.error === 'lock_expired') onLockExpired()
         else onError(result.error)
         return
@@ -782,13 +831,57 @@ function ConfirmStep({
         {secondsLeft > 0 ? t('held', { countdown }) : t('heldExpired')}
       </div>
 
-      <button
-        onClick={handleConfirm}
-        disabled={confirming || secondsLeft === 0}
-        className="w-full py-3.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-40 active:scale-95 transition-all"
-      >
-        {confirming ? t('submitting') : t('submit')}
-      </button>
+      {mustPay && options ? (
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">{tc('title')}</h3>
+            <p className="mt-1 text-xs text-muted-foreground">{tc('subtitle')}</p>
+          </div>
+          {options.products.map((product) => (
+            <button
+              key={product.id}
+              type="button"
+              onClick={() => handleCheckout('pack', product.id)}
+              disabled={redirecting !== null || secondsLeft === 0}
+              className="w-full rounded-xl border border-gray-200 bg-white p-4 text-start hover:border-blue-400 disabled:opacity-40"
+            >
+              <span className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-gray-900">
+                  {tc('packOption', { name: product.name, credits: product.credits })}
+                </span>
+                <span className="text-sm font-semibold tabular-nums" dir="ltr">{formatMoney(product.price, appLocale)}</span>
+              </span>
+              {product.validity_days && (
+                <span className="mt-1 block text-xs text-muted-foreground">{tc('validity', { days: product.validity_days })}</span>
+              )}
+              {redirecting === product.id && <span className="mt-1 block text-xs text-blue-700">{tc('redirecting')}</span>}
+            </button>
+          ))}
+          {options.singleLessonPrice != null && (
+            <button
+              type="button"
+              onClick={() => handleCheckout('single_lesson', null)}
+              disabled={redirecting !== null || secondsLeft === 0}
+              className="w-full rounded-xl border border-gray-200 bg-white p-4 text-start hover:border-blue-400 disabled:opacity-40"
+            >
+              <span className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-gray-900">{tc('singleLesson')}</span>
+                <span className="text-sm font-semibold tabular-nums" dir="ltr">{formatMoney(options.singleLessonPrice, appLocale)}</span>
+              </span>
+              {redirecting === 'single' && <span className="mt-1 block text-xs text-blue-700">{tc('redirecting')}</span>}
+            </button>
+          )}
+          <p className="text-center text-xs text-muted-foreground">{tc('held')}</p>
+        </div>
+      ) : (
+        <button
+          onClick={handleConfirm}
+          disabled={confirming || secondsLeft === 0}
+          className="w-full py-3.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-40 active:scale-95 transition-all"
+        >
+          {confirming ? t('submitting') : t('submit')}
+        </button>
+      )}
 
       {/* Picking the wrong hour used to mean the browser back button. */}
       <button

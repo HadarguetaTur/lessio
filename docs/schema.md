@@ -612,6 +612,27 @@ owner-only financial capability and return redacted DTOs to operational roles.
 
 ---
 
+## Punch cards & attendance (decision #46)
+
+Migration `20260916120000_packs_attendance_collection_policy.sql`.
+
+| Table / column | Purpose |
+|---|---|
+| `lesson_pack_products` | Catalog: `name`, `credits`, `price`, `covered_lesson_types text[]`, `validity_days` (NULL = no expiry), `is_active`, `sort_order` |
+| `lesson_packs` | One sale, snapshotting the product: `parent_id` (payer/owner), `student_id` (NULL = family card), `billing_student_id` (whose monthly bill carries it), `total_credits`, `price`, `covered_lesson_types`, `valid_from`/`valid_until`, `sold_billing_month`, `activated_at` (NULL = awaiting payment), `charge_id` (NULL ⇔ monthly org), `cancelled_at`/`cancel_reason`, `low_balance_notified_at`/`exhausted_notified_at` |
+| `lesson_pack_ledger` | Append-only: `kind` ∈ purchase, consume_lesson, consume_late_cancel, consume_no_show, manual_adjust, expire; `delta`; `lesson_id`/`student_id`; `reversed_at`/`reversed_reason`. Unique (lesson_id, student_id) over un-reversed consume rows |
+| view `lesson_pack_balances` | `lesson_packs.*` + `remaining` (SUM of un-reversed deltas) + `used_count`; `security_invoker` |
+| fn `consume_pack_credit(org, student, lesson, lesson_type, lesson_date, kind)` | Returns `(consumed_pack_id, remaining_credits, outcome ∈ consumed/already/none, consumed_kind)`; service role only |
+| `booking_checkout_sessions` | A portal booking held on a slot lock until paid: `selection` (pack / single_lesson), `pack_product_id`, `charge_id`, `pack_id`, `lesson_id`, `quoted_amount`, `status` ∈ pending, paid, confirmed, expired, cancelled, needs_attention, `expires_at`, `payment_reference`, `payment_link` |
+| `lesson_students` + | `attendance` (present/absent/NULL), `attendance_recorded_at`, `absence_amount` (policy snapshot), `absence_covered_by` (subscription/pack) |
+| `cancellation_policies` + | `no_show_charge_percent` (0), `no_show_pack_action` / `late_cancel_pack_action` (consume/charge, default consume), `pack_activation` (immediate/on_payment), `pack_scope` (student/family), `pack_low_balance_threshold` (2), `pack_notifications_enabled` (false), `pack_collection_enabled` (false — the org collects through packs; gates pay-first portal booking) |
+| `charges.charge_type` + | `pack`, `no_show`; unique (lesson_id, student_id) for un-voided `no_show` |
+| `student_monthly_billing` + | `packs_amount`, `packs_count`, `no_show_amount`, `no_show_count` |
+| `notification_log.type` + | `pack_low_balance`, `pack_exhausted` |
+
+RLS: the four new tables have owner/admin SELECT policies only; all writes go
+through server code with the service role. No office_manager policy.
+
 ## Planned Tables (Future Sprints)
 
 ### homework_templates (Sprint 14)

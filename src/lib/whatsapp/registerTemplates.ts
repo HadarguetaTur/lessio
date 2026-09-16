@@ -208,6 +208,32 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Hi {{1}}! Your {{2}} exam ({{3}}) is today. Good luck, we believe in you!',
     example: [['Dana', 'Maths', 'Chapter 3 test']],
   },
+  // ── Punch cards (decision #46, M2) ──────────────────────────────────────
+  // No variable at the start or end of a body, no emoji — Meta rejects both.
+  {
+    name: 'lessio_pack_low_balance_he_v2',
+    language: 'he',
+    bodyText: 'שלום {{1}}, בכרטיסייה "{{2}}" של {{3}} נשארו {{4}} שיעורים. אפשר לחדש אותה בכל שלב.',
+    example: [['דנה', '10 שיעורים', 'יואב', '2']],
+  },
+  {
+    name: 'lessio_pack_low_balance_en_v2',
+    language: 'en',
+    bodyText: 'Hi {{1}}, the pack "{{2}}" for {{3}} has {{4}} lessons left. You can renew it any time.',
+    example: [['Dana', '10 lessons', 'Yoav', '2']],
+  },
+  {
+    name: 'lessio_pack_exhausted_he_v2',
+    language: 'he',
+    bodyText: 'שלום {{1}}, הכרטיסייה "{{2}}" של {{3}} נוצלה עד הסוף. אפשר לרכוש כרטיסייה חדשה בכל שלב.',
+    example: [['דנה', '10 שיעורים', 'יואב']],
+  },
+  {
+    name: 'lessio_pack_exhausted_en_v2',
+    language: 'en',
+    bodyText: 'Hi {{1}}, the pack "{{2}}" for {{3}} is used up. You can buy a new pack any time.',
+    example: [['Dana', '10 lessons', 'Yoav']],
+  },
   // ── Payment received ────────────────────────────────────────────────────
   // Sent when the tutor records a payment by hand, which is typically days
   // after the parent last wrote in — so a template, not text. {{2}} is the

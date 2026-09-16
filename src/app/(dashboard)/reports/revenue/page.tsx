@@ -84,6 +84,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
               <TableRow className="bg-muted/40 hover:bg-muted/40">
                 <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-start text-muted-foreground backdrop-blur">{t('revenue.month')}</TableHead>
                 <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('revenue.revenue')}</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('revenue.packSales')}</TableHead>
                 <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('revenue.monthlyBilling')}</TableHead>
                 <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('revenue.monthlyBillingPaid')}</TableHead>
                 <TableHead className="sticky top-0 z-10 bg-muted/95 px-4 text-end text-muted-foreground backdrop-blur">{t('revenue.monthlyBillingOpen')}</TableHead>
@@ -95,6 +96,9 @@ export default async function RevenueReportPage({ searchParams }: Props) {
                   <TableCell className="px-4 py-3 text-foreground">{b.label}</TableCell>
                   <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
                     {money(b.revenue)}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 tabular-nums text-muted-foreground text-end">
+                    {money(b.packSales)}
                   </TableCell>
                   <TableCell className="px-4 py-3 font-medium tabular-nums text-foreground text-end">
                     {money(b.billingTotal)}

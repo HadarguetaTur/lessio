@@ -26,6 +26,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { logChargeAudit } from './audit'
+import { flagRefundedPack } from '@/lib/billing/packs/manage'
 
 export type RefundSource = 'manual' | 'provider_webhook'
 
@@ -144,6 +145,9 @@ export async function markChargeRefunded(params: {
       receipt_needs_credit_note: Boolean(charge.receipt_url),
     },
   })
+
+  // A refund on a punch card's charge leaves the card live; say so.
+  await flagRefundedPack(params.chargeId, params.organizationId)
 
   return {
     ok: true,

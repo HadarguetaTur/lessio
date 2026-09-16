@@ -16,6 +16,21 @@ import {
 } from '@/lib/billing/lessonPricing'
 import type { OrgPricing } from '@/lib/organizations/pricing'
 import { getBillingMonthRange } from './month'
+import { isStudentAbsent } from '@/lib/lessons/attendance'
+import type { CollectionPolicy } from '@/lib/cancellation-policy/collection'
+
+/**
+ * One student's side of the lessons in a month (decision #46). Absent from a
+ * caller = the pre-packs engine: nobody absent beyond a no_show status, no
+ * punches, and a no-show costs nothing.
+ */
+export interface LessonOutcomeContext {
+  /** lessonId → this student's attendance row on that lesson. */
+  attendanceByLesson: Map<string, { attendance: string | null; absence_amount: number | string | null }>
+  /** Lessons this student's pack paid for (un-reversed consume_lesson / consume_no_show). */
+  packUseLessonIds: Set<string>
+  collection: Pick<CollectionPolicy, 'noShowChargePercent'>
+}
 
 /**
  * Is this lesson covered by the student's subscription under the org's policy?
@@ -100,10 +115,13 @@ export function calculateLessonsContribution(
   studentCountByLesson: Map<string, number>,
   pricing: OrgPricing,
   cycleStartDay = 1,
-  studentPricing: StudentPricing = NO_STUDENT_PRICING
+  studentPricing: StudentPricing = NO_STUDENT_PRICING,
+  outcomes?: LessonOutcomeContext
 ): LessonsContribution | MissingFieldsError {
   let lessonsTotal = 0
   let lessonsCount = 0
+  let noShowTotal = 0
+  let noShowCount = 0
 
   for (const lesson of lessons) {
     const { monthStart, monthEnd } = getBillingMonthRange(billingMonth, timezone, cycleStartDay)
@@ -116,7 +134,31 @@ export function calculateLessonsContribution(
     // Skip lessons with cancellation events (counted in cancellations instead)
     if (cancelledLessonIds.has(lesson.id)) continue
 
+    // A punch paid for this lesson, present or absent: nothing more to bill.
+    if (outcomes?.packUseLessonIds.has(lesson.id)) continue
+
     const studentCount = studentCountByLesson.get(lesson.id) ?? 1
+    const attendanceRow = outcomes?.attendanceByLesson.get(lesson.id)
+
+    if (isStudentAbsent(lesson.status, attendanceRow?.attendance)) {
+      if (isCoveredForStudent(lesson, studentId, subscriptions, timezone, pricing)) continue
+      let fee: number
+      if (attendanceRow?.absence_amount != null) {
+        // The policy as it stood when the absence was settled.
+        fee = Number(attendanceRow.absence_amount)
+      } else {
+        // Never settled (a legacy no_show): price it under today's policy.
+        const percent = outcomes?.collection.noShowChargePercent ?? 0
+        if (percent <= 0) continue
+        const base = calculateLessonAmount(lesson, studentId, subscriptions, timezone, studentCount, pricing, studentPricing)
+        if (typeof base === 'object') return base
+        fee = round2((base * percent) / 100)
+      }
+      if (fee <= 0) continue
+      noShowTotal += fee
+      noShowCount++
+      continue
+    }
     const amount = calculateLessonAmount(
       lesson,
       studentId,
@@ -139,5 +181,7 @@ export function calculateLessonsContribution(
   return {
     lessonsTotal: round2(lessonsTotal),
     lessonsCount,
+    noShowTotal: round2(noShowTotal),
+    noShowCount,
   }
 }

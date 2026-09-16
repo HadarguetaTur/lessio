@@ -35,6 +35,36 @@ import {
 } from '@/lib/payments/settlement'
 import type { ReferenceCharge } from '@/lib/payments/settlement'
 import { round2 } from '@/lib/charges/paymentMethods'
+import { activatePacksForCharges } from '@/lib/billing/packs/activate'
+import { confirmCheckoutsForCharges } from '@/lib/booking/checkout'
+
+/**
+ * Follow-ups for charges this callback may have closed. Reads the settled state
+ * back rather than trusting the loop: a charge a partial payment did not close
+ * activates nothing.
+ */
+async function onChargesSettled(
+  db: ReturnType<typeof createServiceRoleClient>,
+  orgId: string,
+  chargeIds: string[]
+): Promise<void> {
+  try {
+    const { data } = await db
+      .from('charges')
+      .select('id, charge_type')
+      .eq('organization_id', orgId)
+      .in('id', chargeIds)
+      .eq('status', 'paid')
+    const paid = (data ?? []) as Array<{ id: string; charge_type: string }>
+    const packChargeIds = paid.filter((c) => c.charge_type === 'pack').map((c) => c.id)
+    if (packChargeIds.length > 0) await activatePacksForCharges(packChargeIds)
+    // A portal booking held on this payment: issue the card and confirm the
+    // lesson while its slot is still held. No-op for every other charge.
+    if (paid.length > 0) await confirmCheckoutsForCharges(orgId, paid.map((c) => c.id))
+  } catch (err) {
+    console.error('[payments/webhook] post-settlement follow-up failed', { orgId, chargeIds, err })
+  }
+}
 
 /**
  * Confirms receipt of the notification back to the provider, for the ones that
@@ -462,6 +492,10 @@ export async function POST(
     chargeIds,
     paymentReference,
   })
+
+  // Punch cards waiting for this payment become usable, and a portal booking
+  // held on it is confirmed (decision #46). Both are idempotent.
+  await onChargesSettled(db, orgId, chargeIds)
 
   // Some providers issue the tax document themselves and announce it later on a
   // separate webhook keyed by a transaction id rather than by our payment

@@ -88,6 +88,46 @@ export default async function PortalHomePage({
         .limit(3)
     : { data: [] }
 
+  // Punch cards and bookings waiting for payment (decision #46). A card is
+  // the family's if it is theirs or any of their children's.
+  const [packsResult, checkoutsResult] = await Promise.all([
+    db
+      .from('lesson_pack_balances')
+      .select('id, name, remaining, total_credits, valid_until, activated_at, student_id')
+      .eq('organization_id', orgId)
+      .is('cancelled_at', null)
+      .or(
+        studentIds.length > 0
+          ? `parent_id.eq.${session.parentId},student_id.in.(${studentIds.join(',')})`
+          : `parent_id.eq.${session.parentId}`
+      )
+      .order('purchased_at', { ascending: false }),
+    db
+      .from('booking_checkout_sessions')
+      .select('id, status, payment_link, expires_at, lesson_start_at')
+      .eq('organization_id', orgId)
+      .eq('parent_id', session.parentId)
+      .in('status', ['pending', 'needs_attention'])
+      .order('created_at', { ascending: false })
+      .limit(3),
+  ])
+  const today = new Date().toISOString().slice(0, 10)
+  const packs = ((packsResult.data ?? []) as Array<{
+    id: string
+    name: string
+    remaining: number
+    total_credits: number
+    valid_until: string | null
+    activated_at: string | null
+  }>).filter((p) => !p.activated_at || (Number(p.remaining) > 0 && (!p.valid_until || p.valid_until >= today)))
+  const checkouts = ((checkoutsResult.data ?? []) as Array<{
+    id: string
+    status: string
+    payment_link: string | null
+    expires_at: string
+    lesson_start_at: string
+  }>).filter((c) => c.status === 'needs_attention' || (c.payment_link && c.expires_at > new Date().toISOString()))
+
   const parentName = parentResult.data?.full_name ?? ''
   const orgName = orgResult.data?.name ?? ''
   const marketingOptIn = Boolean(parentResult.data?.marketing_opt_in_at)
@@ -146,6 +186,62 @@ export default async function PortalHomePage({
                 {t('balanceCta')}
                 <ArrowLeft size={14} className="rtl:rotate-180" aria-hidden />
               </Link>
+            </div>
+          </div>
+        )}
+
+        {/* A booking that is waiting for payment, or was paid for a slot that
+            was no longer free (decision #46). */}
+        {checkouts.map((checkout) => (
+          <div
+            key={checkout.id}
+            className={`rounded-xl border px-4 py-3 text-sm ${
+              checkout.status === 'needs_attention' ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-800'
+            }`}
+          >
+            <p className="font-medium">
+              {checkout.status === 'needs_attention' ? t('checkoutAttention') : t('checkoutPending')}
+            </p>
+            <p className="mt-0.5 text-xs" dir="ltr">
+              {formatDate(checkout.lesson_start_at, timezone, appLocale)} · {formatTime(checkout.lesson_start_at, timezone, appLocale)}
+            </p>
+            {checkout.status === 'pending' && checkout.payment_link && (
+              <a href={checkout.payment_link} className="mt-2 inline-flex text-sm font-medium underline">
+                {t('checkoutContinue')}
+              </a>
+            )}
+          </div>
+        ))}
+
+        {/* Punch cards */}
+        {packs.length > 0 && (
+          <div>
+            <p className="mb-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{t('packsTitle')}</p>
+            <div className="space-y-2">
+              {packs.map((pack) => (
+                <div key={pack.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{pack.name}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {pack.activated_at
+                        ? pack.valid_until
+                          ? t('packValidUntil', { date: formatDate(`${pack.valid_until}T12:00:00Z`, timezone, appLocale) })
+                          : t('packNoExpiry')
+                        : t('packPending')}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-end">
+                    <p className="text-lg font-bold tabular-nums text-foreground">
+                      {t('packBalance', { remaining: Number(pack.remaining), total: Number(pack.total_credits) })}
+                    </p>
+                    {!pack.activated_at && portal.payments && (
+                      <Link href={`/portal/${orgId}/payments`} className="text-xs text-primary hover:underline">
+                        {t('packPendingCta')}
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

@@ -4,8 +4,10 @@ import type { LessonType } from '@/lib/lessons/types'
 // src/lib/organizations/pricing.ts) and are edited at /settings/pricing.
 
 // Final bills contain delivered service only. Scheduled lessons belong to
-// forecasting and must never become payable debt.
-export const BILLABLE_STATUSES = ['completed'] as const
+// forecasting and must never become payable debt. A no-show is delivered too:
+// what it costs is the org's no-show policy, which defaults to nothing
+// (decision #46).
+export const BILLABLE_STATUSES = ['completed', 'no_show'] as const
 export type BillableStatus = (typeof BILLABLE_STATUSES)[number]
 
 // ─── DB row shapes (subset of columns used by the engine) ──────────────────
@@ -66,6 +68,10 @@ export interface MonthlyBillingRow {
   cancellations_amount: number
   total_amount: number
   lessons_count: number
+  packs_amount?: number
+  packs_count?: number
+  no_show_amount?: number
+  no_show_count?: number
   manual_adjustment_amount: number | null
   manual_adjustment_reason: string | null
   manual_adjustment_date: string | null
@@ -100,6 +106,14 @@ export function isMissingFieldsError(v: unknown): v is MissingFieldsError {
 export interface LessonsContribution {
   lessonsTotal: number
   lessonsCount: number
+  /** Absences billed under the no-show policy — not counted as lessons. */
+  noShowTotal: number
+  noShowCount: number
+}
+
+export interface PacksContribution {
+  packsTotal: number
+  packsCount: number
 }
 
 export interface CancellationsContribution {
@@ -119,6 +133,8 @@ export interface BillingResult {
   lessonsAmount: number
   subscriptionsAmount: number
   cancellationsAmount: number
+  noShowAmount: number
+  packsAmount: number
   totalAmount: number
   lessonsCount: number
   isApproved: boolean

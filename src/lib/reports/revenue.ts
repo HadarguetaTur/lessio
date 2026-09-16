@@ -15,6 +15,8 @@ export type MonthlyRevenueBucket = {
   revenue: number
   billingTotal: number   // monthly billing total for this month
   billingPaid: number    // monthly billing paid for this month
+  /** Money received for punch-card sales, net of their refunds — part of `revenue` (decision #46). */
+  packSales: number
 }
 
 export type RevenueReportData = {
@@ -22,6 +24,7 @@ export type RevenueReportData = {
   total: number
   billingTotal: number
   billingPaid: number
+  packSales: number
 }
 
 /**
@@ -125,7 +128,7 @@ export async function getRevenueReport(
     // Bucketed by when the money arrived — see getMonthlyRevenueTrend.
     db
       .from('charge_payments')
-      .select('amount, paid_at')
+      .select('amount, paid_at, charges(charge_type)')
       .eq('organization_id', orgId)
       .gte('paid_at', from),
     db
@@ -136,7 +139,7 @@ export async function getRevenueReport(
     // Netted out below — see subtractRefunds.
     db
       .from('charges')
-      .select('refunded_amount, refunded_at')
+      .select('refunded_amount, refunded_at, charge_type')
       .eq('organization_id', orgId)
       .not('refunded_at', 'is', null)
       .gte('refunded_at', from),
@@ -155,11 +158,13 @@ export async function getRevenueReport(
   const bucketMap = new Map<string, number>()
   const billingTotalMap = new Map<string, number>()
   const billingPaidMap = new Map<string, number>()
+  const packSalesMap = new Map<string, number>()
   for (let i = months - 1; i >= 0; i--) {
     const key = now.minus({ months: i }).startOf('month').toFormat('yyyy-MM')
     bucketMap.set(key, 0)
     billingTotalMap.set(key, 0)
     billingPaidMap.set(key, 0)
+    packSalesMap.set(key, 0)
   }
 
   for (const payment of data ?? []) {
@@ -169,10 +174,20 @@ export async function getRevenueReport(
       .toFormat('yyyy-MM')
     if (bucketMap.has(key)) {
       bucketMap.set(key, (bucketMap.get(key) ?? 0) + Number(payment.amount))
+      // A pack sale is its own category (decision #46); a lesson a punch paid
+      // for brings in nothing here, because no money moved for it.
+      const charge = (payment as { charges?: { charge_type?: string } | { charge_type?: string }[] | null }).charges
+      const chargeType = Array.isArray(charge) ? charge[0]?.charge_type : charge?.charge_type
+      if (chargeType === 'pack') packSalesMap.set(key, (packSalesMap.get(key) ?? 0) + Number(payment.amount))
     }
   }
 
   subtractRefunds(bucketMap, refundsRes.data, timezone)
+  subtractRefunds(
+    packSalesMap,
+    (refundsRes.data ?? []).filter((r) => (r as { charge_type?: string }).charge_type === 'pack'),
+    timezone
+  )
 
   for (const b of billingRes.data ?? []) {
     const key = b.billing_month as string
@@ -193,6 +208,7 @@ export async function getRevenueReport(
     revenue,
     billingTotal: billingTotalMap.get(month) ?? 0,
     billingPaid: billingPaidMap.get(month) ?? 0,
+    packSales: packSalesMap.get(month) ?? 0,
   }))
 
   return {
@@ -200,5 +216,6 @@ export async function getRevenueReport(
     total: buckets.reduce((s, b) => s + b.revenue, 0),
     billingTotal: buckets.reduce((s, b) => s + b.billingTotal, 0),
     billingPaid: buckets.reduce((s, b) => s + b.billingPaid, 0),
+    packSales: buckets.reduce((s, b) => s + b.packSales, 0),
   }
 }

@@ -19,7 +19,10 @@ vi.mock('@/lib/organizations/pricing', () => ({ getOrgPricing: vi.fn() }))
 vi.mock('@/lib/organizations', () => ({ getOrgTimezone: vi.fn() }))
 vi.mock('@/lib/cancellation-policy/service', () => ({
   getCancellationPolicyServiceRole: vi.fn(),
+  getCollectionPolicyServiceRole: vi.fn(),
 }))
+vi.mock('@/lib/billing/packs/ledger', () => ({ consumePackCredit: vi.fn() }))
+vi.mock('@/lib/billing/packs/notify', () => ({ notifyPackBalances: vi.fn() }))
 vi.mock('@/lib/billing/orgBillingPolicy', () => ({ getOrgBillingPolicy: vi.fn() }))
 vi.mock('@/lib/billing/resolveBillingParent', async () => {
   const actual = await vi.importActual<typeof import('@/lib/billing/resolveBillingParent')>(
@@ -33,7 +36,9 @@ vi.mock('@/lib/billing/monthly/cancellationEvents', () => ({ createCancellationE
 import { cancelLessonCore } from './cancelLessonCore'
 import { getOrgPricing } from '@/lib/organizations/pricing'
 import { getOrgTimezone } from '@/lib/organizations'
-import { getCancellationPolicyServiceRole } from '@/lib/cancellation-policy/service'
+import { getCancellationPolicyServiceRole, getCollectionPolicyServiceRole } from '@/lib/cancellation-policy/service'
+import { consumePackCredit } from '@/lib/billing/packs/ledger'
+import { DEFAULT_COLLECTION_POLICY } from '@/lib/cancellation-policy/collection'
 import { getOrgBillingPolicy } from '@/lib/billing/orgBillingPolicy'
 import { resolveBillingParent } from '@/lib/billing/resolveBillingParent'
 import { createCancellationCharge } from '@/lib/billing/createCharge'
@@ -114,6 +119,9 @@ function wire(opts: WiringOpts = {}) {
   mockPricing.mockResolvedValue(PRICING as never)
   mockTimezone.mockResolvedValue('Asia/Jerusalem')
   mockPolicy.mockResolvedValue(opts.policy === undefined ? POLICY : opts.policy)
+  vi.mocked(getCollectionPolicyServiceRole).mockResolvedValue(DEFAULT_COLLECTION_POLICY)
+  // No pack unless a test says so: every pre-existing case bills money.
+  vi.mocked(consumePackCredit).mockResolvedValue({ outcome: 'none', packId: null, remaining: 0, kind: null })
   mockBilling.mockResolvedValue({
     billingMode: opts.billingMode ?? 'per_lesson',
     cycleStartDay: 1,
@@ -513,6 +521,46 @@ describe('10. two siblings sharing one parent (MONEY-01)', () => {
     expect(mockCharge.mock.calls.map((c) => c[4])).toEqual(['student-1', 'student-2'])
     expect(mockCharge.mock.calls.map((c) => c[2])).toEqual(['parent-shared', 'parent-shared'])
     expect(outcome.success && outcome.billedTotal).toBe(160)
+  })
+})
+
+describe('a late cancellation with a punch card (decision #46)', () => {
+  const consumed = { outcome: 'consumed' as const, packId: 'pack-1', remaining: 4, kind: 'consume_late_cancel' as const }
+
+  it('burns a punch instead of charging the fee in a per-lesson org', async () => {
+    wire({ hoursAhead: 1 })
+    vi.mocked(consumePackCredit).mockResolvedValue(consumed)
+    const outcome = await cancelLessonCore({ lessonId: 'lesson-1', orgId: 'org-1', actor: STAFF, source: 'dashboard', now: NOW })
+
+    expect(vi.mocked(consumePackCredit)).toHaveBeenCalledWith(expect.objectContaining({ kind: 'consume_late_cancel', studentId: 'student-1' }))
+    expect(mockCharge).not.toHaveBeenCalled()
+    expect(outcome.success && outcome.billedTotal).toBe(0)
+    expect(outcome.success && outcome.lines[0]).toMatchObject({ recorded: 'pack', reasonCode: 'pack_credit_burned' })
+  })
+
+  it('still writes a zero-fee event in a monthly org', async () => {
+    wire({ hoursAhead: 1, billingMode: 'monthly' })
+    vi.mocked(consumePackCredit).mockResolvedValue(consumed)
+    await cancelLessonCore({ lessonId: 'lesson-1', orgId: 'org-1', actor: STAFF, source: 'dashboard', now: NOW })
+    expect(mockEvent).toHaveBeenCalledTimes(1)
+    expect(mockEvent.mock.calls[0][0].charge).toMatchObject({ amount: 0, reasonCode: 'pack_credit_burned' })
+  })
+
+  it('falls back to the fee when no pack has credit', async () => {
+    wire({ hoursAhead: 1 })
+    await cancelLessonCore({ lessonId: 'lesson-1', orgId: 'org-1', actor: STAFF, source: 'dashboard', now: NOW })
+    expect(mockCharge).toHaveBeenCalledTimes(1)
+  })
+
+  it('never touches a pack for a free early cancel, a waiver, or a charge policy', async () => {
+    wire({ hoursAhead: 72 })
+    await cancelLessonCore({ lessonId: 'lesson-1', orgId: 'org-1', actor: STAFF, source: 'dashboard', now: NOW })
+    wire({ hoursAhead: 1 })
+    await cancelLessonCore({ lessonId: 'lesson-1', orgId: 'org-1', actor: STAFF, source: 'dashboard', waive: true, now: NOW })
+    wire({ hoursAhead: 1 })
+    vi.mocked(getCollectionPolicyServiceRole).mockResolvedValue({ ...DEFAULT_COLLECTION_POLICY, lateCancelPackAction: 'charge' })
+    await cancelLessonCore({ lessonId: 'lesson-1', orgId: 'org-1', actor: STAFF, source: 'dashboard', now: NOW })
+    expect(vi.mocked(consumePackCredit)).not.toHaveBeenCalled()
   })
 })
 

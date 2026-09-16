@@ -83,6 +83,8 @@ export default async function ChargeDetailPage({
     cancellation: t('types.cancellation'),
     manual: t('types.manual'),
     monthly: t('types.monthly'),
+    pack: t('types.pack'),
+    no_show: t('types.no_show'),
   }
 
   return (

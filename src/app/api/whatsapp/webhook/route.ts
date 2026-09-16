@@ -1795,6 +1795,9 @@ async function handleBalanceQuery(
     payment_link: (c as { payment_link: string | null }).payment_link,
   }))
   const total = sumOpenCharges(chargeRows)
+  // What is left on the family's punch cards (decision #46). '' without cards.
+  const { buildParentPackLine } = await import('@/lib/billing/packs/parentLine')
+  const packLine = await buildParentPackLine(orgId, parentId, locale)
 
   // Nothing open — the template body ("here is what you owe, here is how to pay")
   // would be nonsense against a zero total.
@@ -1831,6 +1834,7 @@ async function handleBalanceQuery(
         total: formatBotMoney(total, locale, currency),
         payment_line: paymentLine,
         charge_lines: chargeLines,
+        pack_line: packLine,
         portal_url: '',
       },
       locale
@@ -1862,6 +1866,7 @@ async function handleBalanceQuery(
       total: formatBotMoney(total, locale, currency),
       payment_line: paymentLine,
       charge_lines: chargeLines,
+      pack_line: packLine,
     },
   })
 

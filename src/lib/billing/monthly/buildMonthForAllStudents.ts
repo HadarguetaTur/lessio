@@ -12,6 +12,8 @@ import { buildStudentMonth } from './buildStudentMonth'
 import { getBillingMonthRange } from './month'
 import { getOrgPricing } from '@/lib/organizations/pricing'
 import { toStudentPricing } from '@/lib/billing/lessonPricing'
+import { PACK_SALE_COLUMNS, type PackSaleRow } from './packs'
+import { getCollectionPolicyServiceRole } from '@/lib/cancellation-policy/service'
 
 function assertNoQueryError(
   operation: string,
@@ -44,7 +46,7 @@ export async function buildMonthForAllStudents(
 
   // ── 5 bulk queries ───────────────────────────────────────────────────────
 
-  const [studentsRes, lessonsRes, cancelRes, subsRes, billingRes] =
+  const [studentsRes, lessonsRes, cancelRes, subsRes, billingRes, usesRes, packsRes, collection] =
     await Promise.all([
       supabase
         .from('students')
@@ -54,7 +56,7 @@ export async function buildMonthForAllStudents(
       supabase
         .from('lessons')
         .select(
-          'id, start_at, end_at, status, lesson_type, price_per_student, teachers(id, hourly_rate), lesson_students(student_id)'
+          'id, start_at, end_at, status, lesson_type, price_per_student, teachers(id, hourly_rate), lesson_students(student_id, attendance, absence_amount)'
         )
         .eq('organization_id', organizationId)
         .gte('start_at', monthStartUTC)
@@ -77,9 +79,29 @@ export async function buildMonthForAllStudents(
         .select('*')
         .eq('organization_id', organizationId)
         .eq('billing_month', billingMonth),
+      // Punches on this month's lessons (decision #46).
+      supabase
+        .from('lesson_pack_ledger')
+        .select('lesson_id, student_id, lessons!inner(start_at)')
+        .eq('organization_id', organizationId)
+        .is('reversed_at', null)
+        .in('kind', ['consume_lesson', 'consume_no_show'])
+        .gte('lessons.start_at', monthStartUTC)
+        .lt('lessons.start_at', monthEndUTC),
+      // Pack sales billed through the monthly bill.
+      supabase
+        .from('lesson_packs')
+        .select(PACK_SALE_COLUMNS)
+        .eq('organization_id', organizationId)
+        .eq('sold_billing_month', billingMonth)
+        .is('cancelled_at', null)
+        .is('charge_id', null),
+      getCollectionPolicyServiceRole(organizationId),
     ])
 
   assertNoQueryError('load students', studentsRes.error)
+  assertNoQueryError('load pack uses', usesRes.error)
+  assertNoQueryError('load pack sales', packsRes.error)
   assertNoQueryError('load lessons', lessonsRes.error)
   assertNoQueryError('load cancellation events', cancelRes.error)
   assertNoQueryError('load subscriptions', subsRes.error)
@@ -157,6 +179,35 @@ export async function buildMonthForAllStudents(
     billingByStudent.set(b.student_id, b)
   }
 
+  // Attendance by student → lesson
+  type AttendanceRow = { lesson_id: string; attendance: string | null; absence_amount: number | string | null }
+  const attendanceByStudent = new Map<string, Map<string, AttendanceRow>>()
+  for (const l of lessonsRes.data ?? []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = ((l as any).lesson_students ?? []) as Array<{ student_id: string; attendance: string | null; absence_amount: number | string | null }>
+    for (const r of rows) {
+      const map = attendanceByStudent.get(r.student_id) ?? new Map<string, AttendanceRow>()
+      map.set(l.id, { lesson_id: l.id, attendance: r.attendance, absence_amount: r.absence_amount })
+      attendanceByStudent.set(r.student_id, map)
+    }
+  }
+
+  // Punched lessons by student
+  const packUsesByStudent = new Map<string, Set<string>>()
+  for (const u of (usesRes.data ?? []) as Array<{ lesson_id: string; student_id: string | null }>) {
+    if (!u.student_id) continue
+    const set = packUsesByStudent.get(u.student_id) ?? new Set<string>()
+    set.add(u.lesson_id)
+    packUsesByStudent.set(u.student_id, set)
+  }
+
+  // Pack sales by the student whose bill carries them
+  const packsByStudent = new Map<string, PackSaleRow[]>()
+  for (const p of (packsRes.data ?? []) as unknown as Array<PackSaleRow & { billing_student_id: string | null }>) {
+    if (!p.billing_student_id) continue
+    packsByStudent.set(p.billing_student_id, [...(packsByStudent.get(p.billing_student_id) ?? []), p])
+  }
+
   // ── Process each student ─────────────────────────────────────────────────
 
   // Org price defaults are the same for every student — fetch once.
@@ -181,6 +232,12 @@ export async function buildMonthForAllStudents(
       studentCountByLesson,
       pricing,
       studentPricing: toStudentPricing(student),
+      outcomes: {
+        attendanceByLesson: attendanceByStudent.get(sid) ?? new Map(),
+        packUseLessonIds: packUsesByStudent.get(sid) ?? new Set<string>(),
+        collection,
+      },
+      packsSold: packsByStudent.get(sid) ?? [],
     }
 
     try {

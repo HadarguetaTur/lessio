@@ -21,6 +21,14 @@ import {
   WeeklyQuotaExceededError,
 } from '@/lib/booking'
 import { LessonConflictError } from '@/lib/lessons/createLesson'
+import { validateSlotLock } from '@/lib/booking/validateSlotLock'
+import {
+  cancelCheckout,
+  getBookingOptions,
+  startCheckout,
+  type BookingOptions,
+  type StartCheckoutFailure,
+} from '@/lib/booking/checkout'
 import { isLessonDurationAllowed } from '@/lib/organizations/lessonDurations'
 
 async function requirePortalSession(orgId: string) {
@@ -204,8 +212,74 @@ export type PortalConfirmBookingResult =
         | 'quota_exceeded'
         | 'slot_taken'
         | 'student_conflict'
+        /** No entitlement: this booking goes through checkout (decision #46). */
+        | 'payment_required'
         | 'unknown'
     }
+
+export type PortalBookingOptionsResult =
+  | { success: true; options: BookingOptions }
+  | { success: false; error: 'lock_expired' | 'unknown' }
+
+/** Does confirming this held slot need a payment first, and what can be bought? */
+export async function portalBookingOptionsAction(
+  orgId: string,
+  lockId: string,
+  studentId: string
+): Promise<PortalBookingOptionsResult> {
+  const session = await requirePortalSession(orgId)
+  await assertOwnsStudent(orgId, session.parentId, studentId)
+  const lock = await validateSlotLock(lockId, orgId)
+  if (!lock.valid || lock.lock.student_id !== studentId) return { success: false, error: 'lock_expired' }
+  try {
+    return { success: true, options: await getBookingOptions({ organizationId: orgId, studentId, lock: lock.lock }) }
+  } catch (err) {
+    console.error('[portalBookingOptionsAction]', err)
+    return { success: false, error: 'unknown' }
+  }
+}
+
+export type PortalStartCheckoutResult =
+  | { success: true; url: string }
+  | { success: false; error: StartCheckoutFailure }
+
+export async function portalStartCheckoutAction(
+  orgId: string,
+  lockId: string,
+  teacherId: string,
+  studentId: string,
+  selection: 'pack' | 'single_lesson',
+  productId: string | null
+): Promise<PortalStartCheckoutResult> {
+  const session = await requirePortalSession(orgId)
+  await assertOwnsStudent(orgId, session.parentId, studentId)
+  if (selection !== 'pack' && selection !== 'single_lesson') return { success: false, error: 'failed' }
+
+  try {
+    const result = await startCheckout({ organizationId: orgId, studentId, teacherId, lockId, selection, productId })
+    if (!result.ok) return { success: false, error: result.reason }
+    revalidatePath(`/portal/${orgId}/home`)
+    return { success: true, url: result.url }
+  } catch (err) {
+    console.error('[portalStartCheckoutAction]', err)
+    return { success: false, error: 'failed' }
+  }
+}
+
+/** The parent backed out of a checkout before paying. */
+export async function portalCancelCheckoutAction(orgId: string, sessionId: string): Promise<void> {
+  const session = await requirePortalSession(orgId)
+  const db = createServiceRoleClient()
+  const { data: mine } = await db
+    .from('relationships')
+    .select('student_id')
+    .eq('parent_id', session.parentId)
+    .eq('organization_id', orgId)
+  const studentIds = (mine ?? []).map((r) => r.student_id as string)
+  if (studentIds.length === 0) return
+  await cancelCheckout({ organizationId: orgId, sessionId, parentStudentIds: studentIds })
+  revalidatePath(`/portal/${orgId}/home`)
+}
 
 export async function portalConfirmBookingAction(
   orgId: string,
@@ -215,6 +289,14 @@ export async function portalConfirmBookingAction(
 ): Promise<PortalConfirmBookingResult> {
   const session = await requirePortalSession(orgId)
   await assertOwnsStudent(orgId, session.parentId, studentId)
+
+  // Enforced here, not only in the UI: without an entitlement the lesson is
+  // confirmed by the payment, never by this button (decision #46).
+  const held = await validateSlotLock(lockId, orgId)
+  if (held.valid) {
+    const options = await getBookingOptions({ organizationId: orgId, studentId, lock: held.lock })
+    if (options.required && options.entitlement === 'none') return { success: false, error: 'payment_required' }
+  }
 
   let result: ConfirmBookingResult
   try {

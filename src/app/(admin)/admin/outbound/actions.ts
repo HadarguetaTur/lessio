@@ -11,7 +11,10 @@ import { addSuppression, suppressProspect } from '@/lib/outbound/suppressions'
 import { markInboundReviewed } from '@/lib/outbound/messages'
 import { approveOpener, regenerateOpener } from '@/lib/outbound/opener'
 import { saveMailbox } from '@/lib/outbound/mailboxes'
-import { approveDiscoveryCandidates, runDiscovery, requestCandidateResearch, saveDiscoveryAutomation } from '@/lib/outbound/discovery'
+import {
+  approveDiscoveryCandidates, runDiscovery, requestCandidateResearch, saveDiscoveryAutomation,
+  rejectDiscoveryCandidates, deleteDiscoveryCandidates, updateDiscoveryCandidate,
+} from '@/lib/outbound/discovery'
 import { isServiceAccountConfigured, sendAsUser } from '@/lib/gmail/serviceAccount'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
@@ -481,6 +484,73 @@ export async function researchCandidatesAction(
     revalidatePath('/admin/outbound')
     return { ok: true, detail: String(count) }
   } catch { return { error: 'RESEARCH_FAILED' } }
+}
+
+function parseCandidateIds(formData: FormData): string[] | null {
+  let ids: unknown
+  try { ids = JSON.parse(String(formData.get('candidateIds') ?? '[]')) } catch { return null }
+  const parsed = candidateIdsSchema.safeParse({ candidateIds: ids })
+  return parsed.success ? parsed.data.candidateIds : null
+}
+
+/** "Not relevant": the candidate stays visible under blocked, and research leaves it alone. */
+export async function rejectCandidatesAction(
+  _prev: OutboundActionState | null,
+  formData: FormData,
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+  const ids = parseCandidateIds(formData)
+  if (!ids) return { error: 'INVALID_INPUT' }
+  try {
+    const count = await rejectDiscoveryCandidates(ids)
+    await recordAdminAction({ actorProfileId: session.profileId, action: 'outbound.candidate_reject',
+      targetType: 'outbound_candidates', metadata: { ids, count } })
+    revalidatePath('/admin/outbound')
+    return { ok: true, detail: String(count) }
+  } catch { return { error: 'SAVE_FAILED' } }
+}
+
+export async function deleteCandidatesAction(
+  _prev: OutboundActionState | null,
+  formData: FormData,
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+  const ids = parseCandidateIds(formData)
+  if (!ids) return { error: 'INVALID_INPUT' }
+  try {
+    const count = await deleteDiscoveryCandidates(ids)
+    await recordAdminAction({ actorProfileId: session.profileId, action: 'outbound.candidate_delete',
+      targetType: 'outbound_candidates', metadata: { ids, count } })
+    revalidatePath('/admin/outbound')
+    return { ok: true, detail: String(count) }
+  } catch { return { error: 'SAVE_FAILED' } }
+}
+
+const candidateEditSchema = z.object({
+  id: z.string().uuid(),
+  businessName: z.string().trim().min(2).max(200),
+  email: z.email().nullable(),
+})
+
+export async function updateCandidateAction(
+  _prev: OutboundActionState | null,
+  formData: FormData,
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+  const parsed = candidateEditSchema.safeParse({
+    id: formData.get('id'),
+    businessName: formData.get('businessName'),
+    email: String(formData.get('email') ?? '').trim().toLowerCase() || null,
+  })
+  if (!parsed.success) return { error: 'INVALID_INPUT' }
+  try {
+    const result = await updateDiscoveryCandidate(parsed.data)
+    if (result !== 'ok') return { error: result }
+    await recordAdminAction({ actorProfileId: session.profileId, action: 'outbound.candidate_edit',
+      targetType: 'outbound_candidates', targetId: parsed.data.id, metadata: { businessName: parsed.data.businessName, email: parsed.data.email } })
+    revalidatePath('/admin/outbound')
+    return { ok: true }
+  } catch { return { error: 'SAVE_FAILED' } }
 }
 
 export async function saveDiscoveryAutomationAction(

@@ -1,8 +1,8 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Check, Loader2, Search, RefreshCw } from 'lucide-react'
+import { Check, Loader2, Search, RefreshCw, Ban, Trash2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { DiscoveryCandidate, DiscoveryAutomation } from '@/lib/outbound/discovery'
 import type { OutboundActionState } from '@/app/(admin)/admin/outbound/actions'
@@ -12,6 +12,10 @@ function ready(c: DiscoveryCandidate) {
   return c.review_status === 'ready_for_review' && c.quality_score >= 70 && c.email && c.email_source_url &&
     c.research_facts.length >= 2 && c.personal_line && c.opener_status === 'generated' &&
     !c.research_requested_at && !c.research_claimed_at && !c.rejection_reason
+}
+/** Anything not yet in the send queue is the operator's to reject, delete or correct. */
+function editable(c: DiscoveryCandidate) {
+  return c.review_status !== 'approved'
 }
 function SourceLink({ href, children }: { href: string; children: React.ReactNode }) {
   if (!/^https?:\/\//i.test(href)) return null
@@ -29,25 +33,68 @@ function ResearchButton({ ids, action, children }: { ids: string[]; action: Acti
     {state?.error && <span role="alert" className="text-xs text-destructive">{t('researchFailed')}</span>}
   </form>
 }
+/** One button that posts a list of ids: "not relevant" or "delete", single row or the selection. */
+function IdsButton({ ids, action, label, doneKey, confirm, icon, variant = 'outline', onDone }: {
+  ids: string[]; action: Action; label: string; doneKey: 'rejected' | 'deleted'; confirm?: string
+  icon: React.ReactNode; variant?: 'outline' | 'ghost' | 'destructive'; onDone?: () => void
+}) {
+  const t = useTranslations('admin.outbound.discovery')
+  const [state, submit, pending] = useActionState(action, null)
+  useEffect(() => { if (state?.ok) onDone?.() }, [state, onDone])
+  return <form action={submit} className="flex items-center gap-2"
+    onSubmit={(event) => { if (confirm && !window.confirm(confirm)) event.preventDefault() }}>
+    <input type="hidden" name="candidateIds" value={JSON.stringify(ids.slice(0, 50))} />
+    <Button type="submit" variant={variant} size="sm" disabled={pending || !ids.length}>
+      {pending ? <Loader2 size={14} className="animate-spin" /> : icon}{label}
+    </Button>
+    {state?.ok && <span role="status" className="text-xs">{t(doneKey, { count: Number(state.detail ?? 0) })}</span>}
+    {state?.error && <span role="alert" className="text-xs text-destructive">{t('actionFailed')}</span>}
+  </form>
+}
+function EditForm({ candidate, action, onClose }: { candidate: DiscoveryCandidate; action: Action; onClose: () => void }) {
+  const t = useTranslations('admin.outbound.discovery')
+  const [state, submit, pending] = useActionState(action, null)
+  useEffect(() => { if (state?.ok) onClose() }, [state, onClose])
+  return <form action={submit} className="space-y-2 rounded-md border p-3">
+    <input type="hidden" name="id" value={candidate.id} />
+    <label className="block text-xs">{t('editName')}
+      <input name="businessName" defaultValue={candidate.business_name} required minLength={2} maxLength={200}
+        className="mt-1 w-full rounded-md border bg-background p-2 text-sm" />
+    </label>
+    <label className="block text-xs">{t('editEmail')}
+      <input name="email" type="email" dir="ltr" defaultValue={candidate.email ?? ''}
+        className="mt-1 w-full rounded-md border bg-background p-2 text-sm" />
+    </label>
+    <p className="text-xs text-muted-foreground">{t('editHint')}</p>
+    <div className="flex items-center gap-2">
+      <Button type="submit" size="sm" disabled={pending}>{pending ? <Loader2 size={14} className="animate-spin" /> : null}{t('editSave')}</Button>
+      <Button type="button" size="sm" variant="ghost" onClick={onClose}>{t('editCancel')}</Button>
+      {state?.error && <span role="alert" className="text-xs text-destructive">{t(state.error === 'DUPLICATE_EMAIL' ? 'editDuplicate' : 'editFailed')}</span>}
+    </div>
+  </form>
+}
 
 export function OutboundCandidateReview({
-  candidates, discoverAction, approveAction, researchAction, automationAction, automation, campaigns,
+  candidates, discoverAction, approveAction, researchAction, automationAction, rejectAction, deleteAction, updateAction, automation, campaigns,
 }: {
   candidates: DiscoveryCandidate[]; discoverAction: Action; approveAction: Action
-  researchAction: Action; automationAction: Action; automation: DiscoveryAutomation
-  campaigns: { id: string; name: string }[]
+  researchAction: Action; automationAction: Action; rejectAction: Action; deleteAction: Action; updateAction: Action
+  automation: DiscoveryAutomation; campaigns: { id: string; name: string }[]
 }) {
   const t = useTranslations('admin.outbound.discovery')
   const [selected, setSelected] = useState<string[]>([])
+  const [editing, setEditing] = useState<string | null>(null)
   const [filter, setFilter] = useState('all')
   const [discoverState, discover, discovering] = useActionState(discoverAction, null)
   const [approveState, approve, approving] = useActionState(approveAction, null)
   const [automationState, saveAutomation, savingAutomation] = useActionState(automationAction, null)
-  const selectable = candidates.filter(ready).slice(0, 50)
-  const activeSelection = selected.filter((id) => selectable.some((c) => c.id === id))
   const retryable = candidates.filter((c) => ['new', 'ready_for_review'].includes(c.review_status))
   const visible = candidates.filter((c) => filter === 'all' || (filter === 'ready' ? ready(c) :
     filter === 'approved' ? c.review_status === 'approved' : ['new', 'rejected', 'duplicate'].includes(c.review_status)))
+  const selectable = visible.filter(editable)
+  const activeSelection = selected.filter((id) => selectable.some((c) => c.id === id))
+  const approvable = activeSelection.filter((id) => candidates.some((c) => c.id === id && ready(c))).slice(0, 50)
+  const clearSelection = () => setSelected([])
 
   function toggle(id: string) {
     setSelected((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])
@@ -96,7 +143,7 @@ export function OutboundCandidateReview({
       {discoverState?.ok && <p role="status" className="text-xs">{t('collected', { count: Number(discoverState.detail ?? 0) })}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="text-sm">{t('show')}{' '}
-          <select value={filter} onChange={(event) => setFilter(event.target.value)} className="rounded-md border bg-background p-2">
+          <select value={filter} onChange={(event) => { setFilter(event.target.value); clearSelection() }} className="rounded-md border bg-background p-2">
             <option value="all">{t('all', { count: candidates.length })}</option><option value="ready">{t('ready')}</option>
             <option value="approved">{t('approved')}</option><option value="blocked">{t('blocked')}</option>
           </select>
@@ -104,26 +151,32 @@ export function OutboundCandidateReview({
         <ResearchButton ids={retryable.slice(0, 50).map((c) => c.id)} action={researchAction}>{t('researchMany')}</ResearchButton>
       </div>
       {selectable.length > 0 && (
-        <form action={approve} className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/50 p-3">
-          <input type="hidden" name="candidateIds" value={JSON.stringify(activeSelection)} />
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/50 p-3">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={activeSelection.length > 0 && activeSelection.length === selectable.length}
               onChange={(event) => setSelected(event.target.checked ? selectable.map((c) => c.id) : [])} />
-            {t('selectAll', { count: selectable.length })}
+            {t('selectAllVisible', { count: selectable.length })}
           </label>
-          <Button type="submit" disabled={!activeSelection.length || approving}>
-            {approving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}{t('approve', { count: activeSelection.length })}
-          </Button>
-          {approveState?.error && <span role="alert" className="text-xs text-destructive">{t('approveFailed')}</span>}
-          {approveState?.ok && <span role="status" className="text-xs">{t('approvedCount', { count: Number(approveState.detail ?? 0) })}</span>}
-        </form>
+          <form action={approve} className="flex items-center gap-2">
+            <input type="hidden" name="candidateIds" value={JSON.stringify(approvable)} />
+            <Button type="submit" size="sm" disabled={!approvable.length || approving}>
+              {approving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}{t('approve', { count: approvable.length })}
+            </Button>
+            {approveState?.error && <span role="alert" className="text-xs text-destructive">{t('approveFailed')}</span>}
+            {approveState?.ok && <span role="status" className="text-xs">{t('approvedCount', { count: Number(approveState.detail ?? 0) })}</span>}
+          </form>
+          <IdsButton ids={activeSelection} action={rejectAction} doneKey="rejected" icon={<Ban size={14} />}
+            label={t('rejectMany', { count: activeSelection.length })} onDone={clearSelection} />
+          <IdsButton ids={activeSelection} action={deleteAction} doneKey="deleted" icon={<Trash2 size={14} />} variant="ghost"
+            label={t('deleteMany', { count: activeSelection.length })} confirm={t('deleteConfirm')} onDone={clearSelection} />
+        </div>
       )}
       {!visible.length ? <p className="text-sm text-muted-foreground">{t('empty')}</p> : (
         <ul className="divide-y divide-border">
           {visible.map((c) => (
             <li key={c.id} className="flex gap-3 py-4">
               <input aria-label={t('select', { name: c.business_name })} type="checkbox" className="mt-1 self-start"
-                disabled={!selectable.some((item) => item.id === c.id)} checked={activeSelection.includes(c.id)} onChange={() => toggle(c.id)} />
+                disabled={!editable(c)} checked={activeSelection.includes(c.id)} onChange={() => toggle(c.id)} />
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-medium">{c.business_name} <span className="text-sm text-muted-foreground">{t('score', { score: c.quality_score })}</span></p>
@@ -147,7 +200,14 @@ export function OutboundCandidateReview({
                 {c.research_claimed_at && c.research_attempts >= 3 && <p className="text-xs text-amber-700">{t('researchStuck')}</p>}
                 {c.rejection_reason && <p className="text-xs text-amber-700">{t.has('reasons.' + c.rejection_reason) ? t('reasons.' + c.rejection_reason) : c.rejection_reason}</p>}
                 {c.opener_error && <p className="text-xs text-destructive">{t.has('reasons.' + c.opener_error) ? t('reasons.' + c.opener_error) : c.opener_error} <span dir="ltr">({c.opener_error})</span></p>}
-                {retryable.some((item) => item.id === c.id) && <ResearchButton ids={[c.id]} action={researchAction}>{t('researchOne')}</ResearchButton>}
+                {editing === c.id ? <EditForm candidate={c} action={updateAction} onClose={() => setEditing(null)} /> : editable(c) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {retryable.some((item) => item.id === c.id) && <ResearchButton ids={[c.id]} action={researchAction}>{t('researchOne')}</ResearchButton>}
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(c.id)}><Pencil size={14} />{t('edit')}</Button>
+                    {c.review_status !== 'rejected' && <IdsButton ids={[c.id]} action={rejectAction} doneKey="rejected" icon={<Ban size={14} />} label={t('reject')} variant="ghost" />}
+                    <IdsButton ids={[c.id]} action={deleteAction} doneKey="deleted" icon={<Trash2 size={14} />} label={t('delete')} variant="ghost" confirm={t('deleteConfirm')} />
+                  </div>
+                )}
               </div>
             </li>
           ))}

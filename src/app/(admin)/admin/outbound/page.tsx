@@ -42,6 +42,9 @@ import {
   runDiscoveryAction,
   researchCandidatesAction,
   saveDiscoveryAutomationAction,
+  rejectCandidatesAction,
+  deleteCandidatesAction,
+  updateCandidateAction,
 } from './actions'
 import { listDiscoveryCandidates, getDiscoveryAutomation } from '@/lib/outbound/discovery'
 import {
@@ -251,6 +254,9 @@ export default async function AdminOutboundPage({
           automation={automation!}
           campaigns={campaigns.filter((c) => c.is_active && c.locale === 'he' && c.body_text.includes('{{personal_line}}'))}
           researchAction={researchCandidatesAction}
+          rejectAction={rejectCandidatesAction}
+          deleteAction={deleteCandidatesAction}
+          updateAction={updateCandidateAction}
           automationAction={saveDiscoveryAutomationAction}
           discoverAction={runDiscoveryAction}
           approveAction={approveDiscoveryCandidatesAction}

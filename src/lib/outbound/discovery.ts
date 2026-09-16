@@ -104,6 +104,43 @@ export async function requestCandidateResearch(candidateIds: string[]): Promise<
   return data?.length ?? 0
 }
 
+/** The operator's own verdict. Nothing already in the send queue can be touched here. */
+export async function rejectDiscoveryCandidates(candidateIds: string[]): Promise<number> {
+  const { data, error } = await createServiceRoleClient().from('outbound_candidates').update({
+    review_status: 'rejected', rejection_reason: 'MANUAL', research_requested_at: null,
+    research_claimed_at: null, personal_line: null, opener_status: 'skipped', opener_fact_ids: [],
+  }).in('id', [...new Set(candidateIds)].slice(0, 50)).is('prospect_id', null)
+    .in('review_status', ['new', 'ready_for_review', 'rejected', 'duplicate']).select('id')
+  if (error) throw new Error('[outbound/discovery] reject failed: ' + error.message)
+  return data?.length ?? 0
+}
+
+export async function deleteDiscoveryCandidates(candidateIds: string[]): Promise<number> {
+  const { data, error } = await createServiceRoleClient().from('outbound_candidates').delete()
+    .in('id', [...new Set(candidateIds)].slice(0, 50)).is('prospect_id', null).select('id')
+  if (error) throw new Error('[outbound/discovery] delete failed: ' + error.message)
+  return data?.length ?? 0
+}
+
+/**
+ * A corrected name or email. A manual email is its own source, so a later
+ * research rerun keeps it instead of the address scraped from the site.
+ */
+export async function updateDiscoveryCandidate(input: { id: string; businessName: string; email: string | null }): Promise<'ok' | 'DUPLICATE_EMAIL' | 'NOT_EDITABLE'> {
+  const db = createServiceRoleClient()
+  const { data: current } = await db.from('outbound_candidates').select('email, email_source_url').eq('id', input.id).is('prospect_id', null).maybeSingle()
+  if (!current) return 'NOT_EDITABLE'
+  const emailChanged = (input.email ?? null) !== (current.email ?? null)
+  const { error } = await db.from('outbound_candidates').update({
+    business_name: input.businessName,
+    email: input.email,
+    email_source_url: emailChanged ? (input.email ? 'manual' : null) : current.email_source_url,
+    ...(emailChanged ? { rejection_reason: null, review_status: 'new' } : {}),
+  }).eq('id', input.id).is('prospect_id', null)
+  if (error) return error.code === '23505' ? 'DUPLICATE_EMAIL' : (() => { throw new Error('[outbound/discovery] update failed: ' + error.message) })()
+  return 'ok'
+}
+
 export async function approveDiscoveryCandidates(input: { candidateIds: string[]; actorProfileId: string }): Promise<{ approved: number; skipped: number }> {
   const db = createServiceRoleClient()
   let approved = 0
@@ -144,6 +181,7 @@ export async function runCandidateResearch(): Promise<{ researched: number; read
   for (const candidate of (data ?? []) as DiscoveryCandidate[]) {
     try {
       const research = await researchWebsite(candidate.website_url)
+      if (candidate.email_source_url === 'manual' && candidate.email) { research.email = candidate.email; research.emailSourceUrl = 'manual' }
       const quality = scoreDiscoveryCandidate({
         businessName: candidate.business_name, websiteUrl: candidate.website_url,
         email: research.email, phone: candidate.phone, facts: research.facts,

@@ -38,6 +38,11 @@
 /src/app/api/sumit/                        @HadarguetaTur
 /src/app/api/internal/                     @HadarguetaTur
 /src/lib/ai-assistant/                     @HadarguetaTur
+/src/lib/google-calendar/                  @HadarguetaTur
+/src/lib/gmail/                            @HadarguetaTur
+/src/app/api/google-calendar/              @HadarguetaTur
+/src/app/api/gmail/                        @HadarguetaTur
+/src/app/(dashboard)/settings/email/callback/ @HadarguetaTur
 /src/lib/auth/                             @HadarguetaTur
 /src/lib/jwt/                              @HadarguetaTur
 /src/lib/portal/                           @HadarguetaTur

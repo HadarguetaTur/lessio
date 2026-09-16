@@ -28,7 +28,7 @@ never lower it.
 | Class | What it is | Agent may | Merge needs |
 |---|---|---|---|
 | **GREEN** | docs, copy (`messages/*`), tests, presentational UI, safe refactors | implement end-to-end, open PR | CI + one approval |
-| **YELLOW** | billing, charges, cancellation, scheduling, lessons, booking, WhatsApp, AI copilot, auth/JWT/portal, SaaS logic, payment/receipt adapters, cron route logic, edge functions, **additive** migrations, `env.ts`, `CLAUDE.md` | implement with a failing-then-passing regression test; state Node/Deno mirror parity | CI + Hadar as code owner |
+| **YELLOW** | billing, charges, cancellation, scheduling, lessons, booking, WhatsApp, AI copilot, auth/JWT/portal, SaaS logic, payment/receipt adapters, Google Calendar/Gmail OAuth and token handling, cron route logic, edge functions, **additive** migrations, `env.ts`, `CLAUDE.md` | implement with a failing-then-passing regression test; state Node/Deno mirror parity | CI + Hadar as code owner |
 | **RED** | anything that changes production *state or configuration*: data-mutating or destructive migrations, `setup-crons.sql`, `config.toml`, `proxy.ts` bypass list, cron auth, crypto, provider config decoding, Sumit credentials, ops scripts, `.github/`, `.env*`, `docs/ops/`, real-tenant data | investigate and propose only (issue comment or draft PR); never run it | Hadar authors and performs it |
 
 Human-only in V1, regardless of class: applying migrations, deploying edge

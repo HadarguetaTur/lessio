@@ -254,6 +254,18 @@
   animation: pen-draw 460ms cubic-bezier(0.3, 0, 0.1, 1) 120ms forwards;
 }
 
+/* Margin doodles: drawn in with the same wipe, one after another. */
+.diary .doodle {
+  color: var(--ink);
+  clip-path: inset(0 100% 0 0);
+}
+[dir='rtl'] .diary .doodle {
+  clip-path: inset(0 0 0 100%);
+}
+.diary .is-on .doodle {
+  animation: pen-draw 520ms cubic-bezier(0.3, 0, 0.1, 1) var(--doodle-delay, 0ms) forwards;
+}
+
 /* The entry itself fades to "struck" after the pen has passed. */
 .diary .entry-story {
   transition: color 300ms 700ms;
@@ -333,6 +345,7 @@
 @media (prefers-reduced-motion: reduce) {
   .diary .strike { clip-path: inset(0 0 0 0); animation: none; }
   .diary .title-pen > svg { clip-path: inset(0 0 0 0); animation: none; }
+  .diary .doodle { clip-path: inset(0 0 0 0); animation: none; }
   .diary .sweep::before { transform: skew(-5deg) scaleX(1); animation: none; }
   .diary .sweep > *, .diary .after-note { opacity: 1; animation: none; }
   .diary .arrive { opacity: 1; transform: none; animation: none; }

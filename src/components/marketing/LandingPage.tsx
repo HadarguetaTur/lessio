@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import localFont from 'next/font/local'
@@ -8,7 +8,16 @@ import { LandingCtaTracker } from '@/components/marketing/LandingCtaTracker'
 import { LandingFaqAccordion } from '@/components/marketing/LandingFaqAccordion'
 import { LandingLocaleToggle } from '@/components/marketing/LandingLocaleToggle'
 import { LandingPen } from '@/components/marketing/LandingPen'
-import { PenCheck, PenClip, PenUnderline, PenX } from '@/components/marketing/LandingPenMarks'
+import {
+  PenCheck,
+  PenCheckbox,
+  PenClip,
+  PenQuietBubble,
+  PenSeal,
+  PenToggle,
+  PenUnderline,
+  PenX,
+} from '@/components/marketing/LandingPenMarks'
 import { LandingPricing } from '@/components/marketing/LandingPricing'
 import { LandingStickyCta } from '@/components/marketing/LandingStickyCta'
 import { LandingWeekSpread } from '@/components/marketing/LandingWeekSpread'
@@ -54,6 +63,9 @@ const pen = localFont({
 })
 
 const SCROLL_ROOT_ID = 'diary-scroll'
+
+/** Official channel → human takeover → confirmations → parent control, in the copy's order. */
+const TRUST_DOODLES = [PenSeal, PenQuietBubble, PenCheckbox, PenToggle] as const
 
 /** Phone captures carry their content at the bottom of the thread. */
 const BOTTOM_ANCHORED: ReadonlySet<LandingImageKey> = new Set(['wa-cancel-flow', 'wa-payment-request'])
@@ -380,13 +392,20 @@ export function LandingPage({
         {/* ── Trust ─────────────────────────────────────────────────────── */}
         <Page id="trust">
           <PageTitle title={trust.title} />
-          <ul className="rule-t mt-10 max-w-[52rem] list-none">
-            {trust.items.map((item) => (
-              <li key={item.title} className="rule-b grid gap-1 py-5 sm:grid-cols-[16rem_minmax(0,1fr)] sm:gap-6">
-                <h3 className="text-[1.2rem] font-bold">{item.title}</h3>
-                <p className="max-w-[52ch] text-[color:var(--ink-2)]">{item.body}</p>
-              </li>
-            ))}
+          <ul className="rule-t mt-10 max-w-[56rem] list-none" data-pen>
+            {trust.items.map((item, i) => {
+              const Doodle = TRUST_DOODLES[i] ?? PenSeal
+              return (
+                <li
+                  key={item.title}
+                  className="rule-b grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-x-4 gap-y-1 py-6 sm:grid-cols-[4.5rem_15rem_minmax(0,1fr)] sm:gap-x-6"
+                >
+                  <Doodle className="doodle row-span-2 size-12 sm:row-span-1 sm:size-14" style={{ '--doodle-delay': `${i * 260}ms` } as CSSProperties} />
+                  <h3 className="text-[1.2rem] font-bold">{item.title}</h3>
+                  <p className="max-w-[52ch] text-[color:var(--ink-2)]">{item.body}</p>
+                </li>
+              )
+            })}
           </ul>
         </Page>
 

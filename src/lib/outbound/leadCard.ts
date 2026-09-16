@@ -9,6 +9,7 @@
  */
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { demoState, type DemoState } from './leadInbox'
 import type { Mailbox } from './mailboxes'
 import type { Campaign, OutboundMessage, PlatformLead, Prospect } from './types'
 
@@ -27,6 +28,17 @@ export interface LeadCardData {
   mailbox: Pick<Mailbox, 'id' | 'email' | 'display_name'> | null
   thread: OutboundMessage[]
   events: LeadEvent[]
+  /** Whether the demo email went out, derived from the thread and the prospect. */
+  demo: DemoState
+}
+
+/** The last demo email in a thread, newest first. Pure. */
+export function lastDemoInThread(thread: OutboundMessage[]): OutboundMessage | null {
+  let last: OutboundMessage | null = null
+  for (const m of thread) {
+    if (m.direction === 'out' && m.kind === 'demo_email' && (!last || m.created_at > last.created_at)) last = m
+  }
+  return last
 }
 
 export type LeadCardKey = { leadId: string } | { prospectId: string }
@@ -69,7 +81,7 @@ export async function getLeadCardData(key: LeadCardKey): Promise<LeadCardData | 
     prospect
       ? db
           .from('outbound_messages')
-          .select('id, prospect_id, direction, kind, mailbox_id, from_email, subject, body, classification, error, reviewed_at, created_at')
+          .select('id, prospect_id, direction, kind, mailbox_id, from_email, subject, body, classification, error, reviewed_at, transport, transport_message_id, created_at')
           .eq('prospect_id', prospect.id)
           .order('created_at', { ascending: true })
           .limit(200)
@@ -84,13 +96,15 @@ export async function getLeadCardData(key: LeadCardKey): Promise<LeadCardData | 
       : Promise.resolve({ data: [] }),
   ])
 
+  const thread = (threadRes.data ?? []) as OutboundMessage[]
   return {
     lead,
     prospect,
     campaign: (campaignRes.data as LeadCardData['campaign']) ?? null,
     mailbox: (mailboxRes.data as LeadCardData['mailbox']) ?? null,
-    thread: (threadRes.data ?? []) as OutboundMessage[],
+    thread,
     events: (eventsRes.data ?? []) as LeadEvent[],
+    demo: demoState(prospect, lastDemoInThread(thread)),
   }
 }
 

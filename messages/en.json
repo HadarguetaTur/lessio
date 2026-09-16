@@ -4384,7 +4384,8 @@
           "replies": "{count} replies need a look",
           "newLeads": "{count} new leads",
           "dueActions": "{count} reminders are due",
-          "mailboxError": "Mailbox {email} failed: {error}"
+          "mailboxError": "Mailbox {email} failed: {error}",
+          "demoFailed": "{count, plural, one {One demo email} other {# demo emails}} to people who said yes did not go out"
         },
         "waitingTitle": "Waiting for you"
       },
@@ -4519,10 +4520,25 @@
         "all": "All",
         "attention": "Needs attention"
       },
+      "demo": {
+        "sent": "Demo email sent",
+        "sentAt": "Demo email sent {when} through Resend",
+        "failed": "Demo email failed",
+        "failedAt": "Demo email did not go out ({when}): {error}",
+        "pending": "Said yes, demo email not sent yet",
+        "send": "Send demo email",
+        "resend": "Send demo email again",
+        "resendConfirmTitle": "Send the demo email again?",
+        "resendConfirmBody": "This person already received it. Confirming sends it to them a second time.",
+        "resent": "Demo email sent.",
+        "resendFailed": "Resend rejected the email. The reason is at the top of the card.",
+        "resendRefused": "This address cannot be emailed."
+      },
       "attention": {
         "next_action_due": "Reminder due",
         "new": "New",
         "unanswered_reply": "Waiting for you",
+        "demo_failed": "Demo email failed",
         "none": ""
       },
       "statusActions": {
@@ -4566,6 +4582,9 @@
         "clearNextAction": "Clear",
         "dueNow": "due",
         "followupScheduled": "Automatic follow-up scheduled for {when}",
+        "demoBody": "The video and signup link, sent through Resend from support@getlessio.com",
+        "demoResentEvent": "Demo email resent by hand",
+        "demoResendFailedEvent": "Resending the demo email failed",
         "createLead": "Make this a lead",
         "suppress": "Never email again",
         "suppressConfirmTitle": "Stop emailing this address?",

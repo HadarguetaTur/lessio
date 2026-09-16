@@ -1,16 +1,21 @@
 import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { DateTime } from 'luxon'
 import { Building2, Globe, Mail, MessageCircle, Phone } from 'lucide-react'
 
 import { ProspectStatusBadge } from '@/components/admin/ProspectStatusBadge'
 import { normalizePhone } from '@/lib/phone'
 import type { LeadCardData } from '@/lib/outbound/leadCard'
+import { OUTBOUND_TIMEZONE } from '@/lib/outbound/mailboxes'
+import { cn } from '@/lib/utils'
 
 /** The person, and every way to reach them, in one glance. */
 export async function LeadCardHeader({ data }: { data: LeadCardData }) {
   const t = await getTranslations('admin.leads')
   const tOut = await getTranslations('admin.outbound')
-  const { lead, prospect, campaign, mailbox } = data
+  const locale = await getLocale()
+  const { lead, prospect, campaign, mailbox, demo } = data
+  const when = (iso: string) => DateTime.fromISO(iso).setZone(OUTBOUND_TIMEZONE).setLocale(locale).toFormat('dd.MM HH:mm')
 
   const name =
     lead?.name ??
@@ -49,6 +54,31 @@ export async function LeadCardHeader({ data }: { data: LeadCardData }) {
           )}
         </div>
       </div>
+
+      {/* The one email that follows a "yes": did it go out? Says so plainly. */}
+      {demo.state !== 'none' && (
+        <p
+          className={cn(
+            'mt-3 rounded-md border px-3 py-2 text-xs',
+            demo.state === 'sent' && 'border-emerald-500/30 bg-emerald-500/5 text-emerald-800 dark:text-emerald-300',
+            demo.state === 'failed' && 'border-destructive/30 bg-destructive/5 text-destructive',
+            demo.state === 'pending' && 'border-amber-500/30 bg-amber-500/5 text-amber-800 dark:text-amber-300'
+          )}
+        >
+          {demo.state === 'sent' && (
+            <>
+              {t('demo.sentAt', { when: when(demo.at) })}
+              {demo.providerId && (
+                <span dir="ltr" className="ms-2 font-mono text-[10px] opacity-70">
+                  {demo.providerId}
+                </span>
+              )}
+            </>
+          )}
+          {demo.state === 'failed' && t('demo.failedAt', { when: when(demo.at), error: demo.error })}
+          {demo.state === 'pending' && t('demo.pending')}
+        </p>
+      )}
 
       <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-2">
         {email && (

@@ -34,15 +34,29 @@ describe('getOutboundCockpit', () => {
 
     const c = await getOutboundCockpit([box()], new Date('2026-09-09T07:00:00Z')) // 10:00 Israel, Wednesday
 
-    // Head counts: nothing selected but the count.
-    for (const q of db.queries) expect(q.filters.select).toBe('id')
+    // Head counts: nothing selected but the count. The one exception is the
+    // failed-demo query, which returns prospect ids so a person is counted once.
+    const demoFailed = db.queries.find((q) => q.filters['eq:kind'] === 'demo_email')!
+    for (const q of db.queries) if (q !== demoFailed) expect(q.filters.select).toBe('id')
 
     const replies = db.queries.find((q) => q.filters['is:reviewed_at'] === null)!
     expect(replies.table).toBe('outbound_messages')
     expect(replies.filters).toMatchObject({ 'eq:direction': 'in', 'in:classification': ['unknown', 'unmatched'] })
 
     const sentToday = db.queries.find((q) => q.filters['in:kind'])!
-    expect(sentToday.filters).toMatchObject({ 'eq:direction': 'out', 'in:kind': ['cold_email', 'followup'], 'is:error': null })
+    expect(sentToday.filters).toMatchObject({
+      'eq:direction': 'out',
+      'in:kind': ['cold_email', 'followup', 'demo_email'],
+      'is:error': null,
+    })
+
+    // A rejected demo whose claim was released and nobody has resent since.
+    expect(demoFailed.table).toBe('outbound_messages')
+    expect(demoFailed.filters).toMatchObject({
+      'eq:direction': 'out',
+      'not:error': 'is null',
+      'is:prospect.demo_email_sent_at': null,
+    })
     expect(String(sentToday.filters['gte:created_at'])).toBe('2026-09-08T21:00:00.000Z') // Israel midnight in UTC
 
     expect(c.repliesToReview).toBe(4)
@@ -70,5 +84,16 @@ describe('getOutboundCockpit', () => {
       { id: 'b1', email: 'hadar@getlessio.com', last_error: 'invalid_grant', last_error_at: '2026-09-09T06:00:00Z' },
     ])
     expect(db.tables()).not.toContain('outbound_mailboxes')
+  })
+
+  it('counts each person with a failed demo once, however many attempts failed', async () => {
+    const db = recordingClient({
+      count: 0,
+      data: [{ prospect_id: 'p1' }, { prospect_id: 'p1' }, { prospect_id: 'p2' }],
+    })
+    mockCreateServiceRoleClient.mockReturnValue(db.client)
+
+    const c = await getOutboundCockpit([box()], new Date('2026-09-16T12:00:00Z'))
+    expect(c.demoFailed).toBe(2)
   })
 })

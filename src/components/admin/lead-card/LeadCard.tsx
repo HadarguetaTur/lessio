@@ -25,6 +25,7 @@ export interface LeadCardActions {
   markReviewed: OutboundAction
   approveOpener: OutboundAction
   regenerateOpener: OutboundAction
+  resendDemo: LeadAction
 }
 
 /**
@@ -106,9 +107,11 @@ export async function LeadCard({
             hasLead={Boolean(lead)}
             unreviewedReplies={unreviewed}
             suppressed={prospect.status === 'suppressed' || prospect.status === 'unsubscribed'}
+            demo={data.demo}
             createLead={actions.createLead}
             suppress={actions.suppress}
             markReviewed={actions.markReviewed}
+            resendDemo={actions.resendDemo}
           />
         </section>
       )}

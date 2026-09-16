@@ -16,6 +16,7 @@ import { LeadCardSheet } from '@/components/admin/lead-card/LeadCardSheet'
 import { cn } from '@/lib/utils'
 import {
   createLeadFromProspectAction,
+  resendDemoEmailAction,
   saveLeadNotesAction,
   setLeadStatusAction,
   setNextActionAction,
@@ -115,7 +116,24 @@ export default async function AdminLeadsPage({
         ),
         status: <ProspectStatusBadge status={lead.status} label={t(`status.${lead.status}`)} />,
         prospectStatus: lead.prospect ? (
-          <ProspectStatusBadge status={lead.prospect.status} label={tOut(`status.${lead.prospect.status}`)} />
+          <div className="flex flex-col items-start gap-1">
+            <ProspectStatusBadge status={lead.prospect.status} label={tOut(`status.${lead.prospect.status}`)} />
+            {lead.demo.state !== 'none' && (
+              <span
+                className={cn(
+                  'rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                  lead.demo.state === 'sent' && 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+                  lead.demo.state === 'failed' && 'bg-destructive/10 text-destructive',
+                  lead.demo.state === 'pending' && 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                )}
+                title={lead.demo.state === 'failed' ? lead.demo.error : undefined}
+              >
+                {lead.demo.state === 'sent' && `${t('demo.sent')} · ${relative(lead.demo.at)}`}
+                {lead.demo.state === 'failed' && t('demo.failed')}
+                {lead.demo.state === 'pending' && t('demo.pending')}
+              </span>
+            )}
+          </div>
         ) : (
           '—'
         ),
@@ -215,6 +233,7 @@ export default async function AdminLeadsPage({
               markReviewed: markReplyReviewedAction,
               approveOpener: approveOpenerAction,
               regenerateOpener: regenerateOpenerAction,
+              resendDemo: resendDemoEmailAction,
             }}
           />
         )}

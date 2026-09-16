@@ -49,6 +49,7 @@ import {
 import { listDiscoveryCandidates, getDiscoveryAutomation } from '@/lib/outbound/discovery'
 import {
   createLeadFromProspectAction,
+  resendDemoEmailAction,
   saveLeadNotesAction,
   setLeadStatusAction,
   setNextActionAction,
@@ -243,6 +244,7 @@ export default async function AdminOutboundPage({
             replies: outboundHref({ tab: 'replies' }),
             newLeads: '/admin/leads?status=new',
             dueActions: '/admin/leads?status=attention',
+            demoFailed: '/admin/leads?status=attention',
             settings: outboundHref({ tab: 'settings' }),
           }}
         />
@@ -389,6 +391,7 @@ export default async function AdminOutboundPage({
               markReviewed: markReplyReviewedAction,
               approveOpener: approveOpenerAction,
               regenerateOpener: regenerateOpenerAction,
+              resendDemo: resendDemoEmailAction,
             }}
           />
         )}

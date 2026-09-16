@@ -1,14 +1,45 @@
 import { describe, expect, it } from 'vitest'
 import { DateTime } from 'luxon'
-import { countByStatus, leadAttention, rankLeads } from './leadInbox'
+import { countByStatus, demoState, leadAttention, rankLeads } from './leadInbox'
 import type { LeadListItem } from './leads'
 import { makeLead } from './testFixtures'
 
 const NOW = DateTime.fromISO('2026-09-10T10:00:00Z')
 
 function item(overrides: Partial<LeadListItem> = {}): LeadListItem {
-  return { ...makeLead(), prospect: null, lastInbound: null, ...overrides }
+  return { ...makeLead(), prospect: null, lastInbound: null, demo: { state: 'none' }, ...overrides }
 }
+
+describe('demoState', () => {
+  const interested = { status: 'interested' as const, demo_email_sent_at: null }
+
+  it('is sent when the prospect holds the claim and the last row has no error, with the provider id', () => {
+    const state = demoState(
+      { status: 'interested', demo_email_sent_at: '2026-09-16T11:20:05Z' },
+      { created_at: '2026-09-16T11:20:05.6Z', error: null, transport_message_id: 're_1' }
+    )
+    expect(state).toEqual({ state: 'sent', at: '2026-09-16T11:20:05.6Z', providerId: 're_1' })
+  })
+
+  it('is sent for a demo recorded before provider ids were stored', () => {
+    const state = demoState({ status: 'interested', demo_email_sent_at: '2026-09-16T11:20:05Z' }, null)
+    expect(state).toEqual({ state: 'sent', at: '2026-09-16T11:20:05Z', providerId: null })
+  })
+
+  it('is failed when the last demo row carries the provider reason', () => {
+    const state = demoState(interested, { created_at: '2026-09-16T11:20:05Z', error: 'validation_error: domain not verified', transport_message_id: null })
+    expect(state).toEqual({ state: 'failed', at: '2026-09-16T11:20:05Z', error: 'validation_error: domain not verified' })
+  })
+
+  it('is pending for someone who said yes and has not been sent anything', () => {
+    expect(demoState(interested, null)).toEqual({ state: 'pending' })
+  })
+
+  it('is none before anyone said yes, and with no prospect at all', () => {
+    expect(demoState({ status: 'sent', demo_email_sent_at: null }, null)).toEqual({ state: 'none' })
+    expect(demoState(null, null)).toEqual({ state: 'none' })
+  })
+})
 
 describe('leadAttention', () => {
   it('a reminder that came due outranks everything', () => {
@@ -46,6 +77,20 @@ describe('leadAttention', () => {
     expect(leadAttention(lead, NOW)).toBe('none')
   })
 
+  it('a demo email that did not go out needs a person, ahead of a new lead', () => {
+    const failed = item({ status: 'new', demo: { state: 'failed', at: '2026-09-10T09:00:00Z', error: 'rejected' } })
+    expect(leadAttention(failed, NOW)).toBe('demo_failed')
+  })
+
+  it('a due reminder still comes first', () => {
+    const lead = item({
+      status: 'contacted',
+      next_action_at: '2026-09-10T09:00:00Z',
+      demo: { state: 'failed', at: '2026-09-10T09:00:00Z', error: 'rejected' },
+    })
+    expect(leadAttention(lead, NOW)).toBe('next_action_due')
+  })
+
   it('a closed lead never surfaces, even with a due reminder', () => {
     expect(leadAttention(item({ status: 'lost', next_action_at: '2026-09-01T00:00:00Z' }), NOW)).toBe('none')
     expect(leadAttention(item({ status: 'won', next_action_at: '2026-09-01T00:00:00Z' }), NOW)).toBe('none')
@@ -67,8 +112,14 @@ describe('rankLeads', () => {
     const dueLater = item({ id: 'dueLater', status: 'qualified', next_action_at: '2026-09-10T09:30:00Z' })
     const dueFirst = item({ id: 'dueFirst', status: 'qualified', next_action_at: '2026-09-09T09:00:00Z' })
 
-    const ranked = rankLeads([quiet, won, fresh, older, waiting, dueLater, dueFirst], NOW).map((l) => l.id)
-    expect(ranked).toEqual(['dueFirst', 'dueLater', 'fresh', 'older', 'waiting', 'quiet', 'won'])
+    const demoFailed = item({
+      id: 'demoFailed',
+      status: 'contacted',
+      demo: { state: 'failed', at: '2026-09-10T08:00:00Z', error: 'rejected' },
+    })
+
+    const ranked = rankLeads([quiet, won, fresh, older, waiting, dueLater, dueFirst, demoFailed], NOW).map((l) => l.id)
+    expect(ranked).toEqual(['dueFirst', 'dueLater', 'demoFailed', 'fresh', 'older', 'waiting', 'quiet', 'won'])
   })
 
   it('is stable', () => {

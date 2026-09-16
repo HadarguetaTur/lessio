@@ -44,6 +44,7 @@ export type AdminAuditAction =
   | 'outbound.candidate_reject'
   | 'outbound.candidate_delete'
   | 'outbound.candidate_edit'
+  | 'outbound.demo_resend'
   | 'outbound.suppress_prospect'
   | 'outbound.reply_reviewed'
   | 'lead.status_change'

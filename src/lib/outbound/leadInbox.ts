@@ -9,15 +9,41 @@
 
 import { DateTime } from 'luxon'
 import type { LeadListItem } from './leads'
-import type { PlatformLeadStatus } from './types'
+import type { OutboundMessage, PlatformLeadStatus, Prospect } from './types'
 
-export type LeadAttention = 'next_action_due' | 'new' | 'unanswered_reply' | 'none'
+export type LeadAttention = 'next_action_due' | 'demo_failed' | 'new' | 'unanswered_reply' | 'none'
 
 const CLOSED: readonly PlatformLeadStatus[] = ['won', 'lost']
+
+/**
+ * What the demo email did for this person, in one word. `sent` is the claim on
+ * the prospect plus a message row without an error; `failed` is a message row
+ * with the provider's reason (the claim was released so it can be retried);
+ * `pending` is someone who said yes and has not been sent anything yet.
+ */
+export type DemoState =
+  | { state: 'sent'; at: string; providerId: string | null }
+  | { state: 'failed'; at: string; error: string }
+  | { state: 'pending' }
+  | { state: 'none' }
+
+export function demoState(
+  prospect: Pick<Prospect, 'status' | 'demo_email_sent_at'> | null,
+  lastDemo: Pick<OutboundMessage, 'created_at' | 'error' | 'transport_message_id'> | null
+): DemoState {
+  if (!prospect) return { state: 'none' }
+  if (lastDemo?.error) return { state: 'failed', at: lastDemo.created_at, error: lastDemo.error }
+  if (prospect.demo_email_sent_at) {
+    return { state: 'sent', at: lastDemo?.created_at ?? prospect.demo_email_sent_at, providerId: lastDemo?.transport_message_id ?? null }
+  }
+  return prospect.status === 'interested' ? { state: 'pending' } : { state: 'none' }
+}
 
 export function leadAttention(lead: LeadListItem, now: DateTime): LeadAttention {
   if (CLOSED.includes(lead.status)) return 'none'
   if (lead.next_action_at && DateTime.fromISO(lead.next_action_at) <= now) return 'next_action_due'
+  // They said yes and the one email that matters did not go out.
+  if (lead.demo.state === 'failed') return 'demo_failed'
   if (lead.status === 'new') return 'new'
   // They wrote after the last time anyone touched the lead.
   if (lead.lastInbound && DateTime.fromISO(lead.lastInbound.created_at) > DateTime.fromISO(lead.updated_at)) {
@@ -26,7 +52,9 @@ export function leadAttention(lead: LeadListItem, now: DateTime): LeadAttention 
   return 'none'
 }
 
-const RANK: Record<LeadAttention, number> = { next_action_due: 0, new: 1, unanswered_reply: 2, none: 3 }
+const RANK: Record<LeadAttention, number> = { next_action_due: 0, demo_failed: 1, new: 2, unanswered_reply: 3, none: 4 }
+/** Below every attention rank, so a won or lost lead always sinks to the bottom. */
+const CLOSED_RANK = Math.max(...Object.values(RANK)) + 1
 
 /** Stable: equal keys keep their input order, so a re-render never shuffles rows. */
 export function rankLeads(leads: LeadListItem[], now: DateTime): LeadListItem[] {
@@ -38,6 +66,9 @@ export function rankLeads(leads: LeadListItem[], now: DateTime): LeadListItem[] 
       case 'next_action_due':
         secondary = DateTime.fromISO(lead.next_action_at!).toMillis() // earliest due first
         break
+      case 'demo_failed':
+        secondary = -DateTime.fromISO((lead.demo as { at: string }).at).toMillis()
+        break
       case 'new':
         secondary = -DateTime.fromISO(lead.created_at).toMillis() // newest first
         break
@@ -47,7 +78,7 @@ export function rankLeads(leads: LeadListItem[], now: DateTime): LeadListItem[] 
       default:
         secondary = -DateTime.fromISO(lead.updated_at).toMillis()
     }
-    return { lead, index, primary: closed ? 4 : RANK[attention], secondary }
+    return { lead, index, primary: closed ? CLOSED_RANK : RANK[attention], secondary }
   })
   keyed.sort((a, b) => a.primary - b.primary || a.secondary - b.secondary || a.index - b.index)
   return keyed.map((k) => k.lead)

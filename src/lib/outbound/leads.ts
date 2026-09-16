@@ -10,9 +10,10 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { INBOUND_TERMINAL } from './transitions'
+import { demoState, type DemoState } from './leadInbox'
 import type { OutboundMessage, PlatformLead, PlatformLeadStatus, Prospect } from './types'
 
-export type LeadEventType = 'outbound_reply' | 'demo_email' | 'status_change' | 'note'
+export type LeadEventType = 'outbound_reply' | 'demo_email' | 'demo_email_resent' | 'status_change' | 'note'
 
 export async function upsertLeadFromProspect(
   prospect: Prospect,
@@ -263,21 +264,54 @@ export async function createLeadFromProspect(
 // ── The inbox read ───────────────────────────────────────────────────────────
 
 export interface LeadListItem extends PlatformLead {
-  prospect: Pick<Prospect, 'id' | 'status' | 'next_followup_at' | 'last_inbound_at' | 'sent_at'> | null
+  prospect: Pick<Prospect, 'id' | 'status' | 'next_followup_at' | 'last_inbound_at' | 'sent_at' | 'demo_email_sent_at'> | null
   lastInbound: Pick<OutboundMessage, 'body' | 'created_at' | 'classification'> | null
+  /** Whether the demo email, the one thing that follows a "yes", went out. */
+  demo: DemoState
+}
+
+export type LastDemoMessage = Pick<OutboundMessage, 'created_at' | 'error' | 'transport_message_id'>
+
+/** The most recent demo email row per prospect, one query for all of them. */
+export async function lastDemoMessages(
+  db: ReturnType<typeof createServiceRoleClient>,
+  prospectIds: string[]
+): Promise<Map<string, LastDemoMessage>> {
+  const last = new Map<string, LastDemoMessage>()
+  if (prospectIds.length === 0) return last
+  const { data } = await db
+    .from('outbound_messages')
+    .select('prospect_id, created_at, error, transport_message_id')
+    .in('prospect_id', prospectIds)
+    .eq('direction', 'out')
+    .eq('kind', 'demo_email')
+    .order('created_at', { ascending: false })
+    .limit(prospectIds.length * 2)
+  for (const m of data ?? []) {
+    const key = m.prospect_id as string
+    if (!last.has(key)) {
+      last.set(key, {
+        created_at: m.created_at as string,
+        error: m.error as string | null,
+        transport_message_id: m.transport_message_id as string | null,
+      })
+    }
+  }
+  return last
 }
 
 /**
- * Every lead with what the inbox row needs beside it: the prospect's state and
- * the last thing the person wrote. Two queries, not N: the inbound messages of
- * all listed prospects come back in one call and are folded in memory.
+ * Every lead with what the inbox row needs beside it: the prospect's state,
+ * the last thing the person wrote, and whether the demo went out. Three
+ * queries, not N: the messages of all listed prospects come back in one call
+ * each and are folded in memory.
  */
 export async function listLeadsWithContext(limit = 500): Promise<LeadListItem[]> {
   const db = createServiceRoleClient()
   const { data, error } = await db
     .from('platform_leads')
     .select(
-      '*, prospect:outbound_prospects!platform_leads_prospect_id_fkey(id, status, next_followup_at, last_inbound_at, sent_at)'
+      '*, prospect:outbound_prospects!platform_leads_prospect_id_fkey(id, status, next_followup_at, last_inbound_at, sent_at, demo_email_sent_at)'
     )
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -287,14 +321,19 @@ export async function listLeadsWithContext(limit = 500): Promise<LeadListItem[]>
   const prospectIds = leads.map((l) => l.prospect_id).filter((id): id is string => Boolean(id))
 
   const lastInbound = new Map<string, LeadListItem['lastInbound']>()
+  let lastDemo = new Map<string, LastDemoMessage>()
   if (prospectIds.length > 0) {
-    const { data: messages } = await db
-      .from('outbound_messages')
-      .select('prospect_id, body, created_at, classification')
-      .in('prospect_id', prospectIds)
-      .eq('direction', 'in')
-      .order('created_at', { ascending: false })
-      .limit(prospectIds.length * 3)
+    const [{ data: messages }, demos] = await Promise.all([
+      db
+        .from('outbound_messages')
+        .select('prospect_id, body, created_at, classification')
+        .in('prospect_id', prospectIds)
+        .eq('direction', 'in')
+        .order('created_at', { ascending: false })
+        .limit(prospectIds.length * 3),
+      lastDemoMessages(db, prospectIds),
+    ])
+    lastDemo = demos
     for (const m of messages ?? []) {
       const key = m.prospect_id as string
       if (!lastInbound.has(key)) {
@@ -307,9 +346,13 @@ export async function listLeadsWithContext(limit = 500): Promise<LeadListItem[]>
     }
   }
 
-  return leads.map((lead) => ({
-    ...lead,
-    prospect: lead.prospect ?? null,
-    lastInbound: lead.prospect_id ? (lastInbound.get(lead.prospect_id) ?? null) : null,
-  }))
+  return leads.map((lead) => {
+    const prospect = lead.prospect ?? null
+    return {
+      ...lead,
+      prospect,
+      lastInbound: lead.prospect_id ? (lastInbound.get(lead.prospect_id) ?? null) : null,
+      demo: demoState(prospect, lead.prospect_id ? (lastDemo.get(lead.prospect_id) ?? null) : null),
+    }
+  })
 }

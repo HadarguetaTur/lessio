@@ -139,6 +139,10 @@ export interface OutboundMessage {
   classification: string | null
   error: string | null
   reviewed_at: string | null
+  /** 'gmail' for the outreach mailboxes, 'resend' for the demo email. */
+  transport: 'gmail' | 'resend' | null
+  /** The provider's id, so a sent message can be found in its dashboard. */
+  transport_message_id: string | null
   created_at: string
 }
 

@@ -4384,7 +4384,8 @@
           "replies": "{count} תשובות דורשות מבט",
           "newLeads": "{count} לידים חדשים",
           "dueActions": "{count} תזכורות הגיע זמנן",
-          "mailboxError": "התיבה {email} נכשלה: {error}"
+          "mailboxError": "התיבה {email} נכשלה: {error}",
+          "demoFailed": "{count, plural, one {מייל דמו אחד לא נשלח} other {# מיילי דמו לא נשלחו}} למי שענה בחיוב"
         },
         "waitingTitle": "מחכה לך"
       },
@@ -4519,10 +4520,25 @@
         "all": "הכול",
         "attention": "דורש טיפול"
       },
+      "demo": {
+        "sent": "מייל דמו נשלח",
+        "sentAt": "מייל הדמו נשלח ב-{when} דרך Resend",
+        "failed": "מייל דמו נכשל",
+        "failedAt": "מייל הדמו לא נשלח ({when}): {error}",
+        "pending": "ענו בחיוב ומייל הדמו עוד לא נשלח",
+        "send": "שליחת מייל דמו",
+        "resend": "שליחת מייל הדמו שוב",
+        "resendConfirmTitle": "לשלוח את מייל הדמו פעם נוספת?",
+        "resendConfirmBody": "המייל כבר נשלח לאדם הזה. אישור ישלח לו אותו שוב.",
+        "resent": "מייל הדמו נשלח.",
+        "resendFailed": "Resend דחה את המייל. הסיבה מופיעה בראש הכרטיס.",
+        "resendRefused": "אי אפשר לשלוח לכתובת הזו."
+      },
       "attention": {
         "next_action_due": "תזכורת",
         "new": "חדש",
         "unanswered_reply": "מחכה לך",
+        "demo_failed": "מייל דמו נכשל",
         "none": ""
       },
       "statusActions": {
@@ -4566,6 +4582,9 @@
         "clearNextAction": "ניקוי",
         "dueNow": "הגיע הזמן",
         "followupScheduled": "פולואו-אפ אוטומטי מתוכנן ל-{when}",
+        "demoBody": "הסרטון וקישור ההרשמה נשלחו דרך Resend מ-support@getlessio.com",
+        "demoResentEvent": "מייל הדמו נשלח שוב ידנית",
+        "demoResendFailedEvent": "שליחה חוזרת של מייל הדמו נכשלה",
         "createLead": "להפוך לליד",
         "suppress": "לא לשלוח יותר",
         "suppressConfirmTitle": "להפסיק לשלוח לכתובת הזו?",

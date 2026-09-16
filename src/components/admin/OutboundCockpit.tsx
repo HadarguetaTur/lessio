@@ -18,7 +18,7 @@ export async function OutboundCockpit({
 }: {
   cockpit: Cockpit
   locale: string
-  hrefs: { openers: string; replies: string; newLeads: string; dueActions: string; settings: string }
+  hrefs: { openers: string; replies: string; newLeads: string; dueActions: string; demoFailed: string; settings: string }
 }) {
   const t = await getTranslations('admin.outbound.cockpit')
 
@@ -30,6 +30,10 @@ export async function OutboundCockpit({
       href: hrefs.settings,
       title: t('items.mailboxError', { email: err.email, error: err.last_error.slice(0, 80) }),
     })
+  }
+  // Someone said yes and the email that answers them did not go out.
+  if (cockpit.demoFailed > 0) {
+    items.push({ key: 'demo', severity: 'critical', href: hrefs.demoFailed, title: t('items.demoFailed', { count: cockpit.demoFailed }) })
   }
   if (cockpit.dueNextActions > 0) {
     items.push({ key: 'due', severity: 'warning', href: hrefs.dueActions, title: t('items.dueActions', { count: cockpit.dueNextActions }) })

@@ -52,6 +52,8 @@ export async function ConversationThread({
                 label = t('nextActionEvent', { when: when(String(p.nextActionAt)) })
               } else if (event.type === 'note') {
                 label = t('noteEvent')
+              } else if (event.type === 'demo_email_resent') {
+                label = t(p.outcome === 'sent' ? 'demoResentEvent' : 'demoResendFailedEvent')
               } else {
                 label = event.type
               }
@@ -85,7 +87,7 @@ export async function ConversationThread({
                   )}
                   {message.body ?? (
                     <span className={cn('text-xs', mine ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
-                      {t(`kind.${message.kind}`)}
+                      {message.kind === 'demo_email' ? t('demoBody') : t(`kind.${message.kind}`)}
                     </span>
                   )}
                   {failed && <div className="mt-1 text-xs text-destructive">{message.error}</div>}

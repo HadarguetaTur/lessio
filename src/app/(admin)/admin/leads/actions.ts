@@ -7,20 +7,23 @@ import { z } from 'zod'
 import { requirePlatformSession } from '@/lib/superadmin/session'
 import { recordAdminAction } from '@/lib/superadmin/audit'
 import {
+  addLeadEvent,
   createLeadFromProspect,
   saveLeadNotes,
   setLeadNextAction,
   updateLeadStatus,
 } from '@/lib/outbound/leads'
+import { sendDemoEmailOnce } from '@/lib/outbound/demoEmail'
 import { OUTBOUND_TIMEZONE } from '@/lib/outbound/mailboxes'
-import { LOST_REASONS, PLATFORM_LEAD_STATUSES } from '@/lib/outbound/types'
+import { LOST_REASONS, PLATFORM_LEAD_STATUSES, type Prospect } from '@/lib/outbound/types'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 /**
  * The founder working a lead by hand from the lead card. Every write here
  * also stops the automated follow-ups for that person (see leads.ts).
  */
 
-export type LeadActionState = { error: string | null; ok?: boolean }
+export type LeadActionState = { error: string | null; ok?: boolean; detail?: string }
 
 function revalidateBoth(): void {
   revalidatePath('/admin/leads')
@@ -158,4 +161,43 @@ export async function createLeadFromProspectAction(
 
   revalidateBoth()
   return { error: null, ok: true }
+}
+
+/**
+ * Send the demo email again by hand. The engine sends it once per prospect;
+ * the founder may send it a second time (a rejected send, a lead who asked
+ * again). The claim on the prospect is cleared first so sendDemoEmailOnce
+ * takes it fresh, and the attempt is logged both as a lead event and here.
+ */
+export async function resendDemoEmailAction(
+  _prev: LeadActionState | null,
+  formData: FormData
+): Promise<LeadActionState> {
+  const session = await requirePlatformSession('growth.write')
+
+  const parsed = z.object({ prospectId: z.string().uuid() }).safeParse({ prospectId: formData.get('prospectId') })
+  if (!parsed.success) return { error: 'INVALID_INPUT' }
+
+  const db = createServiceRoleClient()
+  const { data } = await db.from('outbound_prospects').select('*').eq('id', parsed.data.prospectId).maybeSingle()
+  const prospect = (data as Prospect | null) ?? null
+  if (!prospect) return { error: 'NOT_FOUND' }
+  if (prospect.status === 'suppressed' || prospect.status === 'unsubscribed') return { error: 'SUPPRESSED' }
+
+  await db.from('outbound_prospects').update({ demo_email_sent_at: null }).eq('id', prospect.id)
+  const outcome = await sendDemoEmailOnce({ ...prospect, demo_email_sent_at: null })
+
+  if (prospect.platform_lead_id) {
+    await addLeadEvent(prospect.platform_lead_id, 'demo_email_resent', { prospectId: prospect.id, outcome }, session.profileId)
+  }
+  await recordAdminAction({
+    actorProfileId: session.profileId,
+    action: 'outbound.demo_resend',
+    targetType: 'outbound_prospects',
+    targetId: prospect.id,
+    metadata: { outcome },
+  })
+
+  revalidateBoth()
+  return outcome === 'sent' ? { error: null, ok: true } : { error: 'DEMO_SEND_FAILED', detail: outcome }
 }

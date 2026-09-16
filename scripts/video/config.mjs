@@ -26,7 +26,11 @@ const tenant = (prefix, ownerEmail) => ({
 })
 
 export const TENANTS = {
-  he: tenant('d3000000', 'video-owner@demo.getlessio.com'),
+  he: {
+    ...tenant('d3000000', 'video-owner@demo.getlessio.com'),
+    // עדי הרוש — the teacher the center video logs in as (scripts/video/stage-center.ts).
+    teacherEmail: 'ofek.staff37@demo.getlessio.com',
+  },
   en: tenant('d4000000', 'video-owner-en@demo.getlessio.com'),
 }
 

@@ -74,13 +74,18 @@ export function motion(page) {
     async scrollTo(locator, { extra = -80, ms = 700 } = {}) {
       const box = await locator.boundingBox()
       if (!box) return
-      const target = await page.evaluate(() => window.scrollY) + box.y + extra
-      await smoothScroll(page, Math.max(0, target), ms)
+      await page.evaluate(defineScroller)
+      // box.y is viewport-relative; the scroller's own top offset turns it into a scroll delta.
+      const delta = await page.evaluate(([y, ex]) => {
+        const el = window.__lessioScroller()
+        const top = el === document.scrollingElement ? 0 : el.getBoundingClientRect().top
+        return y - top + ex
+      }, [box.y, extra])
+      await smoothScroll(page, delta, ms)
     },
 
     async scrollBy(dy, ms = 700) {
-      const from = await page.evaluate(() => window.scrollY)
-      await smoothScroll(page, Math.max(0, from + dy), ms)
+      await smoothScroll(page, dy, ms)
     },
 
     async hideCursor() {
@@ -94,24 +99,44 @@ export function motion(page) {
   return m
 }
 
-async function smoothScroll(page, target, ms) {
+/**
+ * Scroll by a delta on whatever actually scrolls. The dashboard shell is
+ * h-screen with an inner overflow-y-auto column, so window.scrollY never moves
+ * there; the tallest scrollable element is the one the viewer sees scroll.
+ */
+function defineScroller() {
+  window.__lessioScroller ??= () => {
+    const candidates = [...document.querySelectorAll('main *, main')].filter((el) => {
+      const s = getComputedStyle(el).overflowY
+      return (s === 'auto' || s === 'scroll') && el.scrollHeight > el.clientHeight + 4
+    })
+    candidates.sort((a, b) => b.clientHeight - a.clientHeight)
+    return candidates[0] ?? document.scrollingElement
+  }
+}
+
+async function smoothScroll(page, dy, ms) {
+  await page.evaluate(defineScroller)
   await page.evaluate(
-    ([to, dur]) =>
+    ([d, dur]) =>
       new Promise((resolve) => {
-        const from = window.scrollY
+        const el = window.__lessioScroller()
+        const from = el.scrollTop
+        const max = el.scrollHeight - el.clientHeight
+        const to = Math.max(0, Math.min(max, from + d))
         const delta = to - from
         if (Math.abs(delta) < 2) return resolve()
         const t0 = performance.now()
         const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
         const step = (now) => {
           const p = Math.min(1, (now - t0) / dur)
-          window.scrollTo(0, from + delta * ease(p))
+          el.scrollTop = from + delta * ease(p)
           if (p < 1) requestAnimationFrame(step)
           else resolve()
         }
         requestAnimationFrame(step)
       }),
-    [target, ms]
+    [dy, ms]
   )
   await page.waitForTimeout(120)
 }

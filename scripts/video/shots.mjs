@@ -26,6 +26,34 @@ const play = async (m, page, steps) => {
   }
 }
 
+/**
+ * The "one cancellation" story, staged by scripts/video/stage-story.ts in the
+ * center demo tenant. Hebrew only for now.
+ */
+const STORY = {
+  studentId: 'd3000001-0003-4000-8000-00000000009c',
+  teacherId: 'd3000001-0001-4000-8000-000000000009',
+  parentName: 'אייל אזולאי',
+  teacherName: 'ליאת נחמיאס',
+  studentFirst: 'ניצן',
+  lessonDate: '2026-09-16',
+  billingMonth: '2026-09',
+}
+const storyBill = `/billing/${STORY.studentId}?month=${STORY.billingMonth}`
+/** Week view defaults to the current week, which holds the story lesson while filming on 15.09. */
+const storyWeek = (cancelled) => `/lessons?view=week${cancelled ? '&cancelled=1' : ''}`
+/** The large-center video, staged by scripts/video/stage-center.ts (עדי הרוש's roster). */
+const CENTER = {
+  teacherId: 'd3000001-0001-4000-8000-000000000024',
+  groupLessonId: 'd3000001-0006-4000-8000-00000000098d',
+  parentName: 'ליאם כץ',
+  /** A day with 3 scheduled lessons for the teacher and no override — the overrides preview. */
+  impactDate: '2026-09-22',
+  week: (cancelled) => `/lessons?view=week${cancelled ? '&cancelled=1' : ''}`,
+}
+/** Hand-paced: point, pause on it, one click, give the result a beat. */
+const deliberate = { ms: 900, dwellMs: 900, afterMs: 1500 }
+
 /** The language toggle reads "English" in he and "עברית" in en. */
 const localeToggle = (page) =>
   page.locator('button:has-text("English"), button:has-text("עברית")').first()
@@ -381,6 +409,411 @@ export const SHOTS = [
       const firstCard = page.locator('button, [role="button"]').filter({ hasText: /\S/ }).nth(1)
       await m.click(firstCard, { ms: 700, afterMs: 1800 }).catch(() => {})
       await m.hold(2200)
+    },
+  },
+
+  // ── Story: one cancellation, end to end (edit order = this order) ─────────
+  // Film read-only shots first; story-cancel-confirm → story-bill-recalc →
+  // story-bill-approve are writes and must be taken in that order
+  // (stage-story.ts --rearm resets them for a retake).
+  {
+    id: 'story-dash',
+    beat: 'story',
+    shell: 'dashboard',
+    route: '/dashboard',
+    nominalMs: 7000,
+    action: async (m, { byKey }) => {
+      await m.hold(1600)
+      await m.scrollTo(byKey('dashboard.attention.title'), { extra: -110, ms: 1100 })
+      await m.hold(2000)
+    },
+  },
+  {
+    id: 'story-calendar-busy',
+    beat: 'story',
+    shell: 'dashboard',
+    route: storyWeek(false),
+    nominalMs: 7000,
+    // No scroll: each day column scrolls on its own, so a page scroll would move one day.
+    action: async (m, { page }) => {
+      await m.hold(1600)
+      await m.to(page.getByText(STORY.teacherName).first(), { ms: 1400 }).catch(() => {})
+      await m.hold(2000)
+    },
+  },
+  {
+    id: 'story-wa-cancel',
+    beat: 'story',
+    shell: 'mockup',
+    viewport: 'phone',
+    route: (deps) => mockUrl('01-cancel-flow', deps.locale),
+    nominalMs: 20000,
+    still: 'end',
+    action: async (m, { page }) => {
+      await m.hold(700)
+      await play(m, page, [900, 1500, 1400, 1600, 900, 1400, 1500, 1600, 1200, 900, 2400])
+    },
+  },
+  {
+    id: 'story-inbox',
+    beat: 'story',
+    shell: 'dashboard',
+    route: '/messages',
+    nominalMs: 11500,
+    action: async (m, { page, byKey }) => {
+      await m.hold(1000)
+      await m.click(page.getByText(STORY.parentName).first(), { ...deliberate, afterMs: 300 })
+      // The thread is a navigation; hold on it only once it has actually rendered.
+      await byKey('inbox.thread.takeOver', 'button').waitFor({ timeout: 10000 })
+      await m.hold(2600)
+    },
+  },
+  {
+    id: 'story-policy',
+    beat: 'story',
+    shell: 'dashboard',
+    route: '/settings/cancellation-policy',
+    nominalMs: 6500,
+    action: async (m) => {
+      await m.hold(2200)
+      await m.scrollBy(160, 900)
+      await m.hold(1600)
+    },
+  },
+  {
+    id: 'story-calendar-after',
+    beat: 'story',
+    shell: 'dashboard',
+    route: storyWeek(true),
+    nominalMs: 9000,
+    action: async (m, { page }) => {
+      await m.hold(1200)
+      await m.to(page.getByText(STORY.studentFirst).first(), { ms: 1100 }).catch(() => {})
+      await m.hold(2400)
+    },
+  },
+  {
+    id: 'story-family',
+    beat: 'story',
+    shell: 'dashboard',
+    route: '/parents',
+    nominalMs: 11500,
+    action: async (m, { page }) => {
+      await m.hold(1000)
+      await m.click(page.getByText(STORY.parentName).first(), { ...deliberate, afterMs: 1800 })
+      await m.hold(2200)
+    },
+  },
+  {
+    id: 'story-teacher-vacation',
+    beat: 'story',
+    shell: 'dashboard',
+    route: '/teachers',
+    nominalMs: 19500,
+    // Two navigations make the action ~16.6s; the default 2.4s tail leaves the trim short.
+    tailPadMs: 4500,
+    action: async (m, { page, byKey }) => {
+      await m.hold(900)
+      await m.click(page.getByText(STORY.teacherName).first(), deliberate)
+      await m.click(byKey('teachers.overridesLink'), { ...deliberate, afterMs: 2400 })
+      await m.hold(1800)
+    },
+  },
+  {
+    id: 'story-cancel-confirm',
+    beat: 'story',
+    shell: 'dashboard',
+    route: storyBill,
+    nominalMs: 11000,
+    prep: async ({ byKey }) => {
+      await byKey('billing.detail.cancellationsBreakdown').scrollIntoViewIfNeeded().catch(() => {})
+    },
+    action: async (m, { page }) => {
+      await m.hold(1400)
+      const pendingRow = page.locator('tbody tr').filter({ hasText: 'ממתין' }).first()
+      await m.click(pendingRow.getByRole('button', { name: 'אשר חיוב' }), { ...deliberate, afterMs: 2000 })
+      await m.hold(1800)
+    },
+  },
+  {
+    id: 'story-bill-recalc',
+    beat: 'story',
+    shell: 'dashboard',
+    route: storyBill,
+    nominalMs: 11000,
+    action: async (m, { byKey }) => {
+      await m.hold(1200)
+      await m.click(byKey('billing.detail.recalculate', 'button'), { ...deliberate, afterMs: 2600 })
+      await m.hold(1800)
+    },
+  },
+  {
+    id: 'story-bill-approve',
+    beat: 'story',
+    shell: 'dashboard',
+    route: storyBill,
+    nominalMs: 16000,
+    action: async (m, { page, byKey }) => {
+      await m.hold(1000)
+      await m.click(page.getByRole('button', { name: 'אשר חיוב', exact: true }).first(), { ...deliberate, afterMs: 1200 })
+      await m.click(byKey('billing.approveConfirm.confirm', 'button'), { ...deliberate, afterMs: 2600 })
+      await m.hold(1600)
+    },
+  },
+  {
+    id: 'story-month-report',
+    beat: 'story',
+    shell: 'dashboard',
+    route: '/reports/revenue',
+    nominalMs: 6500,
+    settleMs: 1800,
+    // No scroll: the table scrolls inside its own box and cuts its header.
+    action: async (m) => {
+      await m.hold(1600)
+      await m.moveTo(1240, 330, 1400)
+      await m.hold(2200)
+    },
+  },
+  {
+    id: 'story-end-card',
+    beat: 'story',
+    shell: 'mockup',
+    route: () => pathToFileURL(resolve('video-assets/whatsapp/05-end-card-he.html')).href,
+    nominalMs: 5000,
+    action: async (m) => {
+      await m.hold(3800)
+    },
+  },
+
+  // ── Center: staff and operations control (edit order = this order) ────────
+  // Staged by scripts/video/stage-center.ts. center-teacher-outcome writes (the
+  // teacher confirms the reopened group lesson) — film it after every read-only
+  // center shot, then center-lesson-after. Never click "חסום ובטל", "אני אענה"
+  // or any send button.
+  {
+    id: 'center-dash',
+    beat: 'center',
+    shell: 'dashboard',
+    route: '/dashboard',
+    nominalMs: 8000,
+    action: async (m, { page }) => {
+      await m.hold(1800)
+      await m.scrollTo(page.getByText('החודש', { exact: true }).first(), { extra: -110, ms: 1400 })
+      await m.hold(2200)
+    },
+  },
+  {
+    id: 'center-calendar',
+    beat: 'center',
+    shell: 'dashboard',
+    route: CENTER.week(false),
+    nominalMs: 8500,
+    action: async (m) => {
+      await m.hold(1400)
+      await m.moveTo(1100, 560, 1600)
+      await m.hold(2000)
+    },
+  },
+  {
+    id: 'center-wa-cancel',
+    beat: 'center',
+    shell: 'mockup',
+    viewport: 'phone',
+    route: () => pathToFileURL(resolve('video-assets/whatsapp/06-center-cancel-he.html')).href,
+    nominalMs: 14000,
+    still: 'end',
+    action: async (m, { page }) => {
+      await m.hold(700)
+      await play(m, page, [1300, 900, 1500, 1500, 1600, 900, 2600])
+    },
+  },
+  {
+    id: 'center-inbox',
+    beat: 'center',
+    shell: 'dashboard',
+    route: '/messages',
+    nominalMs: 12500,
+    action: async (m, { page, byKey }) => {
+      await m.hold(1200)
+      await m.to(page.getByText(CENTER.parentName).first(), { ms: 1000 })
+      await m.hold(1200)
+      await m.click(page.getByText(CENTER.parentName).first(), { ...deliberate, afterMs: 300 })
+      await byKey('inbox.thread.takeOver', 'button').waitFor({ timeout: 10000 })
+      await m.hold(2400)
+    },
+  },
+  {
+    id: 'center-inbox-owner',
+    beat: 'center',
+    shell: 'dashboard',
+    route: '/messages',
+    nominalMs: 15000,
+    // The seeded takeover has expired, so "בטיפול ידני" filters to nothing. Show
+    // oversight instead: the teacher chip on a row, then everything waiting for a reply.
+    action: async (m, { page }) => {
+      await m.hold(1200)
+      await m.to(page.getByText('עדי הרוש', { exact: true }).first(), { ms: 1100 })
+      await m.hold(1300)
+      await m.click(page.getByText(/^ממתינות למענה/).first(), { ...deliberate, afterMs: 2200 })
+      await m.hold(1800)
+    },
+  },
+  {
+    id: 'center-teacher-inbox',
+    beat: 'center',
+    shell: 'teacher',
+    route: '/messages',
+    nominalMs: 9500,
+    action: async (m) => {
+      await m.hold(1800)
+      await m.moveTo(1300, 420, 1400)
+      await m.hold(2200)
+    },
+  },
+  {
+    id: 'center-calendar-status',
+    beat: 'center',
+    shell: 'dashboard',
+    route: CENTER.week(true),
+    nominalMs: 10500,
+    action: async (m) => {
+      await m.hold(1400)
+      await m.moveTo(1040, 520, 1600)
+      await m.hold(2000)
+    },
+  },
+  {
+    id: 'center-teacher-vacation',
+    beat: 'center',
+    shell: 'dashboard',
+    // אביגיל נוי has a seeded full-day "חופשה" block on 04/10 — read-only.
+    route: '/teachers/d3000001-0001-4000-8000-00000000001b/overrides',
+    nominalMs: 10000,
+    action: async (m, { page }) => {
+      await m.hold(1600)
+      await m.to(page.getByText('חופשה', { exact: true }).first(), { ms: 1300 }).catch(() => {})
+      await m.hold(2600)
+    },
+  },
+  {
+    id: 'center-overrides-impact',
+    beat: 'center',
+    shell: 'dashboard',
+    route: `/teachers/${CENTER.teacherId}/overrides`,
+    nominalMs: 24000,
+    tailPadMs: 3500,
+    action: async (m, { page, byKey }) => {
+      await m.hold(1000)
+      await m.click(byKey('teacherSelf.overrides.blockDates', 'button'), { ...deliberate, afterMs: 900 })
+      const dates = page.locator('input[type="date"]')
+      await m.click(dates.nth(0), { ms: 700, dwellMs: 300, afterMs: 200 })
+      await dates.nth(0).fill(CENTER.impactDate)
+      await m.click(dates.nth(1), { ms: 600, dwellMs: 300, afterMs: 200 })
+      await dates.nth(1).fill(CENTER.impactDate)
+      await m.click(byKey('teacherSelf.overrides.add', 'button'), { ...deliberate, afterMs: 300 })
+      // The first submit saves nothing: it lists the lessons in range. Stop there.
+      await byKey('teacherSelf.overrides.confirmBlockOnly', 'button').waitFor({ timeout: 10000 })
+      await m.hold(3000)
+    },
+  },
+  {
+    id: 'center-groups',
+    beat: 'center',
+    shell: 'dashboard',
+    route: '/students',
+    nominalMs: 15000,
+    action: async (m, { page }) => {
+      await m.hold(1200)
+      // The section tab is a plain link with an icon, not a role=tab/button.
+      await m.click(page.getByText('קבוצות', { exact: true }).first(), { ...deliberate, afterMs: 2200 })
+      await m.moveTo(1200, 480, 1200)
+      await m.hold(1800)
+    },
+  },
+  {
+    id: 'center-economics',
+    beat: 'center',
+    shell: 'dashboard',
+    route: '/reports/economics',
+    nominalMs: 9500,
+    settleMs: 1800,
+    // No scroll: the page fits the viewport and only the teacher table scrolls
+    // inside its own box, so any scroll cuts the table header. The edit crops the
+    // data-quality box out with a slight zoom on the KPIs and table.
+    action: async (m) => {
+      await m.hold(1600)
+      await m.moveTo(1180, 505, 1300)
+      await m.hold(3000)
+    },
+  },
+  {
+    id: 'center-economics-teacher',
+    beat: 'center',
+    shell: 'dashboard',
+    route: `/reports/economics/${CENTER.teacherId}`,
+    nominalMs: 12500,
+    settleMs: 1800,
+    action: async (m) => {
+      await m.hold(2400)
+      await m.moveTo(1150, 300, 1400)
+      await m.hold(2600)
+    },
+  },
+  {
+    id: 'center-charges',
+    beat: 'center',
+    shell: 'dashboard',
+    route: '/charges',
+    nominalMs: 9500,
+    action: async (m) => {
+      await m.hold(1800)
+      await m.moveTo(1150, 280, 1400)
+      await m.hold(2000)
+    },
+  },
+  {
+    id: 'center-end',
+    beat: 'center',
+    shell: 'mockup',
+    route: () => pathToFileURL(resolve('video-assets/whatsapp/07-center-end-card-he.html')).href,
+    nominalMs: 5000,
+    action: async (m) => {
+      await m.hold(3800)
+    },
+  },
+  // ── Center writes: film only after the read-only center shots are approved ─
+  {
+    id: 'center-teacher-outcome',
+    beat: 'center',
+    shell: 'teacher',
+    route: `/teacher/schedule/${CENTER.groupLessonId}`,
+    nominalMs: 20000,
+    tailPadMs: 3500,
+    action: async (m, { page, byKey }) => {
+      await m.hold(1600)
+      const select = page.locator('select').first()
+      await m.to(select, { ms: 1000 })
+      await select.selectOption('completed')
+      await m.hold(900)
+      // The outcome form's own button — the page has other submit buttons earlier in the DOM.
+      await m.click(byKey('lessons.updateOutcome', 'button'), { ...deliberate, afterMs: 400 })
+      // Hold on the result only once the server action has landed — closing the
+      // context mid-action dropped the save on a previous take.
+      // Visible text only — the <select> also holds a hidden "הושלם" <option>.
+      await page.locator('text="הושלם" >> visible=true').first().waitFor({ timeout: 20000 })
+      await m.hold(2200)
+    },
+  },
+  {
+    id: 'center-lesson-after',
+    beat: 'center',
+    shell: 'dashboard',
+    route: `/lessons/${CENTER.groupLessonId}`,
+    nominalMs: 9000,
+    action: async (m) => {
+      await m.hold(1800)
+      await m.moveTo(1250, 330, 1300)
+      await m.hold(2000)
     },
   },
 ]

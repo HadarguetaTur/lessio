@@ -51,7 +51,12 @@ export async function newShotContext(browser, opts) {
 
   // Login writes `locale` from profiles.preferred_locale, so a restored
   // storageState already carries he. Overwrite it after every restore.
-  await ctx.addCookies([{ name: 'locale', value: loc.cookie, url: BASE }])
+  await ctx.addCookies([
+    { name: 'locale', value: loc.cookie, url: BASE },
+    // A decided consent cookie (necessary only) — otherwise the cookie banner
+    // sits over the bottom of every take. Format: src/lib/tracking/consent.ts.
+    { name: 'ls_consent', value: encodeURIComponent('00.2026-09-15T00:00:00.000Z'), url: BASE },
+  ])
   if (opts.extraCookies?.length) await ctx.addCookies(opts.extraCookies)
 
   await ctx.addInitScript(QUIET_INIT)

@@ -19,7 +19,7 @@ import { launch, newShotContext, instrument } from './browser.mjs'
 import { motion } from './motion.mjs'
 import { quietSettled, liftCurtain } from './quiet.mjs'
 import { makeT, makeByKey } from './i18n.mjs'
-import { loadEnvLocal, ownerState, portalCookie, bookingToken } from './auth.mjs'
+import { loadEnvLocal, loginState, ownerState, portalCookie, bookingToken } from './auth.mjs'
 import { SHOTS } from './shots.mjs'
 import { BASE, OUT, LOCALES, TENANTS } from './config.mjs'
 
@@ -62,7 +62,15 @@ async function runShot(browser, shot, loc, ctxDeps) {
   rmSync(videoDir, { recursive: true, force: true })
 
   const extraCookies = shot.shell === 'portal' ? [await ctxDeps.portalCookie(ctxDeps.locale)] : []
-  const storageState = shot.shell === 'dashboard' ? ctxDeps.owner.state : undefined
+  const loginState =
+    shot.shell === 'dashboard' ? ctxDeps.owner.state : shot.shell === 'teacher' ? ctxDeps.teacher?.state : undefined
+  if (shot.shell === 'teacher' && !loginState) throw new Error(`${shot.id}: no teacher login (TENANTS.${loc}.teacherEmail)`)
+  // Login writes a `locale` cookie from profiles.preferred_locale (a demo teacher
+  // can be "en"), and the app reads that cookie first. Drop it so the context's
+  // own locale cookie is the only one.
+  const storageState = loginState
+    ? { ...loginState, cookies: loginState.cookies.filter((c) => c.name !== 'locale') }
+    : undefined
 
   const ctx = await newShotContext(browser, {
     viewport: shot.viewport,
@@ -162,7 +170,13 @@ async function main() {
     log(`=== locale ${loc} — ${shots.length} shot(s) ===`)
     const owner = await ownerState(browser, loc)
     log(`logged in as ${TENANTS[loc].ownerEmail} → ${owner.landed}`)
-    const deps = { owner, portalCookie, bookingToken, locale: loc, tenant: TENANTS[loc] }
+    // The teacher shell is a separate auth context — logged in only when a shot needs it.
+    let teacher = null
+    if (shots.some((s) => s.shell === 'teacher') && TENANTS[loc].teacherEmail) {
+      teacher = await loginState(browser, { email: TENANTS[loc].teacherEmail, password: process.env.VIDEO_DEMO_PASSWORD, locale: loc })
+      log(`logged in as ${TENANTS[loc].teacherEmail} → ${teacher.landed}`)
+    }
+    const deps = { owner, teacher, portalCookie, bookingToken, locale: loc, tenant: TENANTS[loc] }
 
     const results = []
     for (const shot of shots) {

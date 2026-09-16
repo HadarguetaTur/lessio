@@ -93,10 +93,9 @@ function menuScene(loc: Locale): Msg[] {
  * would have vanished in a thread becomes a policy-priced charge, hands-free.
  */
 function cancelFlow(loc: Locale): Msg[] {
-  const chargeLine =
-    loc === 'he'
-      ? `\n\nחיוב ביטול חלקי: ₪${F.cancelCharge}`
-      : `\n\nPartial cancellation charge: ₪${F.cancelCharge}`
+  // Exactly what webhook/cancellation.ts chargeLineFor() sends in a monthly org:
+  // the fee is pending the monthly bill, so the parent is not quoted a number.
+  const chargeLine = `\n${botString('charge_pending', loc)}`
   return [
     ...menuScene(loc),
     { kind: 'out', text: botString('menu_cancel', loc), time: F.time2 },
@@ -238,7 +237,7 @@ const esc = (s: string) =>
 
 function render(scene: string, loc: Locale, msgs: Msg[]): string {
   const dir = loc === 'he' ? 'rtl' : 'ltr'
-  const header = loc === 'he' ? 'סטודיו מיכל למוזיקה' : 'Harmony Music Studio'
+  const header = F.orgName[loc]
 
   const items = msgs
     .map((m, i) => {
@@ -368,14 +367,88 @@ ${items}
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Scene 6 — the large-center video. The same real cancellation flow as scene 1,
+ * for the center story family; in a monthly org the parent is told the fee is
+ * pending the monthly bill, never quoted a number.
+ */
+function centerCancelFlow(loc: Locale): Msg[] {
+  const C = F.center
+  const vars = { student_name: C.studentName[loc], teacher_name: C.teacherName[loc], date: C.lessonDate[loc], time: C.lessonTime }
+  return [
+    { kind: 'out', text: botString('menu_cancel', loc), time: C.time1 },
+    { kind: 'typing' },
+    { kind: 'list', text: botString('cancellation_list_header', loc), time: C.time1, button: botString('cancel_list_button', loc) },
+    {
+      kind: 'sheet',
+      title: botString('cancel_list_button', loc),
+      rows: [{ title: `${C.studentName[loc]} — ${C.lessonDate[loc]}`, desc: `${C.lessonTime} · ${C.teacherName[loc]}` }],
+    },
+    {
+      kind: 'buttons',
+      text: botString('cancel_confirm_body', loc, vars),
+      time: C.time2,
+      buttons: [botString('cancel_confirm_yes', loc), botString('cancel_confirm_no', loc)],
+    },
+    { kind: 'typing' },
+    {
+      kind: 'in',
+      text: T(loc, 'cancellation_confirmation', { ...vars, charge_line: `\n${botString('charge_pending', loc)}` }),
+      time: C.time3,
+    },
+  ]
+}
+
 const SCENES: Record<string, (loc: Locale) => Msg[]> = {
   '01-cancel-flow': cancelFlow,
   '02-payment-request': paymentRequest,
   '03-copilot': copilot,
   '04-booking': booking,
+  '06-center-cancel': centerCancelFlow,
+}
+
+/**
+ * The end card. Not a chat — but it lives here so the video's generated HTML
+ * comes from one place, with the same embedded Heebo as the mockups.
+ */
+function renderEndCard(name: string, headline: string): string {
+  return `<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>${name} · he</title>
+<style>
+${fontFace()}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'HeeboEmbedded',-apple-system,'Segoe UI',sans-serif;background:#0b1220;color:#fff;
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+.card{text-align:center;display:flex;flex-direction:column;align-items:center;gap:34px}
+.logo{font-size:132px;font-weight:700;letter-spacing:-2px;line-height:1}
+.bar{width:132px;height:6px;border-radius:3px;background:linear-gradient(90deg,#14B8A6,#7C3AED)}
+.head{font-size:64px;font-weight:700;line-height:1.1}
+.url{font-size:40px;font-weight:400;opacity:.82;direction:ltr}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Lessio</div>
+  <div class="bar"></div>
+  <div class="head">${esc(headline)}</div>
+  <div class="url">getlessio.com</div>
+</div>
+</body>
+</html>`
 }
 
 mkdirSync(OUT_DIR, { recursive: true })
+for (const [name, headline] of [
+  ['05-end-card', '30 יום ניסיון · בלי כרטיס אשראי'],
+  ['07-center-end-card', 'ניהול שמחזיק מרכז שלם'],
+] as const) {
+  writeFileSync(`${OUT_DIR}/${name}-he.html`, renderEndCard(name, headline))
+  console.log(`  ✓ ${OUT_DIR}/${name}-he.html`)
+}
 let n = 0
 for (const [name, build] of Object.entries(SCENES)) {
   for (const loc of ['he', 'en'] as Locale[]) {

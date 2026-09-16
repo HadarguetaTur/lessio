@@ -40,7 +40,8 @@ export async function loginState(browser, { email, password, locale }) {
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', password)
   await page.click('button[type="submit"]')
-  await page.waitForURL((u) => !u.pathname.endsWith('/login'), { timeout: 60000 })
+  // 'commit': the streaming dashboard can hold the load event open well past a minute.
+  await page.waitForURL((u) => !u.pathname.endsWith('/login'), { timeout: 60000, waitUntil: 'commit' })
   const state = await ctx.storageState()
   const landed = new URL(page.url()).pathname
   await ctx.close()
@@ -49,7 +50,10 @@ export async function loginState(browser, { email, password, locale }) {
 
 export async function ownerState(browser, locale) {
   const t = TENANTS[locale]
-  return loginState(browser, { email: t.ownerEmail, password: t.password, locale })
+  // Read at call time: config.mjs is evaluated before capture.mjs runs
+  // loadEnvLocal(), so TENANTS.password holds the fallback, not .env.local.
+  const password = process.env.VIDEO_DEMO_PASSWORD ?? t.password
+  return loginState(browser, { email: t.ownerEmail, password, locale })
 }
 
 /**

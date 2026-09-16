@@ -1,0 +1,82 @@
+# Path → risk label for actions/labeler v5 (see .github/workflows/labeler.yml).
+#
+# This is a MARKER, not a gate. A PR can carry more than one label; the class
+# of the PR is the highest one present: any risk:red → RED, else any
+# risk:yellow → YELLOW, else GREEN. A reviewer may raise the class, never lower
+# it. Keep in sync with CODEOWNERS and docs/ops/agent-policy.md.
+
+'risk:red':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - '.claude/settings.json'
+          - '.env*'
+          - 'vercel.json'
+          - 'supabase/config.toml'
+          - 'scripts/setup-crons.sql'
+          - 'scripts/**'
+          - 'src/proxy.ts'
+          - 'src/lib/cron/**'
+          - 'src/lib/crypto/**'
+          - 'src/lib/payments/factory.ts'
+          - 'src/lib/receipts/factory.ts'
+          - 'src/lib/saas/sumit.ts'
+          - 'src/lib/saas/sumitParse.ts'
+          - 'docs/ops/**'
+
+'risk:yellow':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'supabase/migrations/**'
+          - 'supabase/functions/**'
+          - 'src/lib/billing/**'
+          - 'src/lib/charges/**'
+          - 'src/lib/cancellation-flow/**'
+          - 'src/lib/cancellation-policy/**'
+          - 'src/lib/scheduling/**'
+          - 'src/lib/availability/**'
+          - 'src/lib/availability-overrides/**'
+          - 'src/lib/lessons/**'
+          - 'src/lib/booking/**'
+          - 'src/lib/whatsapp/**'
+          - 'src/app/api/whatsapp/**'
+          - 'src/app/api/payments/**'
+          - 'src/app/api/sumit/**'
+          - 'src/app/api/internal/**'
+          - 'src/lib/ai-assistant/**'
+          - 'src/lib/auth/**'
+          - 'src/lib/jwt/**'
+          - 'src/lib/portal/**'
+          - 'src/lib/support-session/**'
+          - 'src/lib/saas/**'
+          - 'src/lib/payments/**'
+          - 'src/lib/receipts/**'
+          - 'src/lib/telemetry/**'
+          - 'src/lib/env.ts'
+          - 'next.config.ts'
+          - 'instrumentation.ts'
+          - 'CLAUDE.md'
+          - 'AGENTS.md'
+
+'risk:green':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - 'messages/**'
+          - 'src/components/**'
+          - 'src/app/**'
+          - 'src/lib/**'
+          - '**/*.test.ts'
+          - '**/*.test.tsx'
+          - 'README.md'
+          - 'public/**'
+
+'needs-migration':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'supabase/migrations/**'
+
+'needs-edge-deploy':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'supabase/functions/**'

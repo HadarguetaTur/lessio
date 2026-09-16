@@ -1,0 +1,54 @@
+name: Bug report
+description: Something in Lessio behaves wrongly (customer-reported or found by hand)
+labels: ['bug', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Auto-filed errors come from the `error-monitor` cron with the `auto-filed` label. Use this form for everything else.
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Route or screen, e.g. `/billing/[studentId]`, WhatsApp bot, parent portal, cron
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: 1. … 2. … 3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: Include the on-screen "Error ID" (digest) if one was shown — it matches a row in the error feed.
+    validations:
+      required: true
+  - type: input
+    id: tenant
+    attributes:
+      label: Organization / tenant
+      description: Org name or id prefix (e.g. `a1000000-` real customer, `d2000000-` review demo, `d3000000-` video demo). Never paste secrets or parent phone numbers.
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Likely risk class (reviewer may raise it)
+      options:
+        - green (UI / copy / docs / isolated)
+        - yellow (billing, scheduling, WhatsApp, auth, schema)
+        - red (production state, secrets, crons, Meta, payments)
+  - type: checkboxes
+    id: agent
+    attributes:
+      label: Agent handling
+      options:
+        - label: OK for an AI agent to take this after triage (`agent-ok`)

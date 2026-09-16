@@ -170,3 +170,16 @@ The Sprint-27 internal PDF invoice/credit-note generator was removed on 2026-09-
 
 **Feature gate enforcement (Sprint 27 hardening):**
 `requireFeature(orgId, feature)` must be called in every plan-gated server action — not just UI sidebar filtering. Never inside try/catch (uses `redirect()`). All gated actions audited and enforced since Sprint 27.
+
+---
+
+## Agent boundary (docs/ops/agent-policy.md)
+
+Adopted 2026-09-16. An AI coding agent in this repo:
+
+- **Works on a branch in its own worktree, never on `main`.** `main` accepts only merged PRs (ruleset: PR + `ci` check + one approval + Code Owners). Merging `main` deploys to production via Vercel — there is no other deploy step for app code.
+- **Never holds a production credential.** `.env.local` points at the dev/preview Supabase project (`LESSIO_DEV_SUPABASE_REF`); production values exist only in Vercel and Supabase secrets. Prod CLI work (migrations, `functions deploy`, crons, secrets, ops scripts) is human-only from the `lessio-ops` session.
+- **Takes issues by risk class, escalate-only:** GREEN (docs/copy/tests/presentational UI) and YELLOW (billing, scheduling, WhatsApp, auth, additive migrations, edge functions — regression test required, Hadar reviews as code owner). RED (production state/config: `scripts/`, `.github/`, `proxy.ts`, crypto, crons, provider config, real-tenant data) is investigate-and-propose only. A PR touching several classes is the highest one; a reviewer may raise a class, never lower it.
+- **Follows the bug-fix contract** in the PR template: evidence → root cause → failing-then-passing regression test → smallest fix → lint/tsc/vitest/build → PR with "what was NOT tested" and "ops needed after merge".
+- **Never mass-adds untracked files.** Other sessions edit this repository concurrently; trace an untracked file to its feature before committing it.
+- `.claude/settings.json` is versioned defence-in-depth — the boundary above holds without it.

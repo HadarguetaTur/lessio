@@ -32,6 +32,7 @@ import { createClient } from '@supabase/supabase-js'
 import { encryptToken } from '../src/lib/crypto'
 import { subscribeAppToWABA, getSubscribedApps } from '../src/lib/whatsapp/subscribeApp'
 import { META_API_VERSION } from '../src/lib/whatsapp/graphVersion'
+import { assertSafeTarget } from './_lib/target'
 
 const GRAPH_BASE = `https://graph.facebook.com/${META_API_VERSION}`
 const DEFAULT_WABA_ID = '1066332709132512'
@@ -104,6 +105,7 @@ async function graph(
 
 async function main(): Promise<void> {
   loadEnvLocal()
+  assertSafeTarget()
 
   const token =
     process.env.WHATSAPP_SYSTEM_USER_TOKEN ?? process.env.WHATSAPP_DEMO_ACCESS_TOKEN

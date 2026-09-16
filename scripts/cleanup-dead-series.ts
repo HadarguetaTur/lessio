@@ -27,6 +27,7 @@
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
+import { assertSafeTarget } from './_lib/target'
 
 function loadEnvLocal(): void {
   const envPath = resolve(process.cwd(), '.env.local')
@@ -49,6 +50,7 @@ function loadEnvLocal(): void {
 }
 
 loadEnvLocal()
+assertSafeTarget()
 
 const apply = process.argv.includes('--apply')
 const includeOrphans = process.argv.includes('--orphans')

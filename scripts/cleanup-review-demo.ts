@@ -21,9 +21,11 @@
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { assertSafeTarget } from './_lib/target'
 
 // The variant decides which copy gets deleted, so env must load first.
 loadEnvLocal()
+assertSafeTarget()
 
 /**
  * REVIEW_DEMO_VARIANT (digit 1-9) targets the side-by-side copy that
@@ -106,6 +108,7 @@ async function findUserByEmail(db: SupabaseClient, email: string): Promise<strin
 
 async function main(): Promise<void> {
   loadEnvLocal()
+  assertSafeTarget()
 
   if (!process.argv.includes('--yes')) {
     fail(

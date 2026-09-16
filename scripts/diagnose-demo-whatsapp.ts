@@ -8,6 +8,7 @@ import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { getSubscribedApps } from '../src/lib/whatsapp/subscribeApp'
 import { META_API_VERSION } from '../src/lib/whatsapp/graphVersion'
+import { assertSafeTarget } from './_lib/target'
 
 const OWNER_EMAIL = process.env.DEMO_ORG_OWNER_EMAIL ?? 'reviewer@getlessio.com'
 const EXPECTED_PNID = '1338080832713619'
@@ -33,6 +34,7 @@ function loadEnvLocal(): void {
 
 async function main(): Promise<void> {
   loadEnvLocal()
+  assertSafeTarget()
   const db = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

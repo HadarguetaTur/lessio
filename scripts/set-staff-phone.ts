@@ -27,6 +27,7 @@ import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { normalizePhone, PhoneNormalizationError } from '../src/lib/phone'
+import { assertSafeTarget } from './_lib/target'
 
 const DEFAULT_STAFF_EMAIL = 'reviewer@getlessio.com'
 
@@ -94,6 +95,7 @@ async function findConflicts(
 
 async function main(): Promise<void> {
   loadEnvLocal()
+  assertSafeTarget()
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY

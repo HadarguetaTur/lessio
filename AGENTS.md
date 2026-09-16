@@ -15,4 +15,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
+# Agent boundary
+
+Read `docs/ops/agent-policy.md` before your first commit. Branch only, PR only,
+no production credentials, risk classes escalate-only, bug-fix contract in the
+PR template. Base every worktree on `origin/main`, not on the remote HEAD.
+
 <!-- END:nextjs-agent-rules -->

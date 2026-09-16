@@ -34,6 +34,7 @@ import { createClient } from '@supabase/supabase-js'
 import { encryptToken } from '../src/lib/crypto'
 import { subscribeAppToWABA, getSubscribedApps } from '../src/lib/whatsapp/subscribeApp'
 import { META_API_VERSION } from '../src/lib/whatsapp/graphVersion'
+import { assertSafeTarget } from './_lib/target'
 
 const GRAPH_BASE = `https://graph.facebook.com/${META_API_VERSION}`
 
@@ -115,6 +116,7 @@ async function verifyGraphToken(
 
 async function main(): Promise<void> {
   loadEnvLocal()
+  assertSafeTarget()
   const { orgId: orgIdArg, ownerEmail, phoneNumberId, wabaId } = parseArgs()
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

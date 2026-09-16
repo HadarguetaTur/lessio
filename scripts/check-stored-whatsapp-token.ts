@@ -19,6 +19,7 @@ import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { decryptToken } from '../src/lib/crypto'
 import { META_API_VERSION } from '../src/lib/whatsapp/graphVersion'
+import { assertSafeTarget } from './_lib/target'
 
 const DEFAULT_OWNER_EMAIL = 'reviewer@getlessio.com'
 
@@ -53,6 +54,7 @@ function formatUnix(value: unknown): string {
 
 async function main(): Promise<void> {
   loadEnvLocal()
+  assertSafeTarget()
 
   const ownerEmail = (process.argv[2] ?? process.env.DEMO_ORG_OWNER_EMAIL ?? DEFAULT_OWNER_EMAIL).toLowerCase()
 

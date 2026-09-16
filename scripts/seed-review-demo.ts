@@ -31,11 +31,13 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { DateTime } from 'luxon'
 import { buildStudentMonth } from '../src/lib/billing/monthly/buildStudentMonth'
 import { isMissingFieldsError } from '../src/lib/billing/monthly/types'
+import { assertSafeTarget } from './_lib/target'
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 
 // The variant decides the identity constants below, so env must load first.
 loadEnvLocal()
+assertSafeTarget()
 
 /**
  * REVIEW_DEMO_VARIANT (single digit 1-9) builds a parallel copy of the tenant —
@@ -238,6 +240,7 @@ async function ensureAuthUser(
 
 async function main(): Promise<void> {
   loadEnvLocal()
+  assertSafeTarget()
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY

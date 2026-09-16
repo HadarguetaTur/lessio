@@ -6,7 +6,21 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: this job only needs to read the checkout. It never touches
+# a real environment — every value below is a placeholder so the build can
+# validate env presence without holding a secret.
+permissions:
+  contents: read
+
+# One run per ref: a newer push cancels the older run so the required check
+# always reflects the latest commit of the PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # The job name `ci` is the required status check on the main ruleset.
+  # Renaming it silently disables the gate — change both together.
   ci:
     runs-on: ubuntu-latest
 
@@ -55,3 +69,9 @@ jobs:
           RESEND_FROM_EMAIL: ci@example.com
           NEXT_PUBLIC_ONBOARDING_PAID_CHECKOUT: placeholder
           NEXT_PUBLIC_SENTRY_DSN: https://placeholder@sentry.io/0
+
+      # Advisory only — not part of the required check's pass/fail until the
+      # backlog of existing advisories is known. Surfaces new high/critical
+      # vulnerabilities in the log without blocking a fix from shipping.
+      - name: Audit (advisory)
+        run: npm audit --audit-level=high || true

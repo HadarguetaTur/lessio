@@ -34,6 +34,7 @@ import { resolve } from 'path'
 import { createInterface } from 'readline'
 import { createClient } from '@supabase/supabase-js'
 import { encryptSaasPaymentToken, decryptSaasPaymentToken } from '../src/lib/crypto'
+import { assertSafeTarget } from './_lib/target'
 
 function loadEnvLocal(): void {
   const envPath = resolve(process.cwd(), '.env.local')
@@ -74,6 +75,7 @@ async function confirm(question: string): Promise<boolean> {
 
 async function main(): Promise<void> {
   loadEnvLocal()
+  assertSafeTarget()
 
   const dryRun = process.argv.includes('--dry-run')
   const assumeYes = process.argv.includes('--yes')

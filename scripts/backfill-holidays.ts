@@ -18,6 +18,7 @@ import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { DateTime } from 'luxon'
 import { computeUpcomingHolidays } from '../src/lib/holidays/hebrewHolidays'
+import { assertSafeTarget } from './_lib/target'
 
 function loadEnvLocal(): void {
   const envPath = resolve(process.cwd(), '.env.local')
@@ -41,6 +42,7 @@ function loadEnvLocal(): void {
 }
 
 loadEnvLocal()
+assertSafeTarget()
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY

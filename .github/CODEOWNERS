@@ -1,0 +1,53 @@
+# Paths where the human owner must review before merge (docs/ops/agent-policy.md).
+# Everything not listed is GREEN by path — still PR + CI + one approval, just no
+# code-owner requirement. The ruleset on main enforces "require review from
+# Code Owners", so a match here is what turns a review into a hard gate.
+
+# ── RED: production state / configuration ──────────────────────────────────
+/.github/                                  @HadarguetaTur
+/.claude/settings.json                     @HadarguetaTur
+/.env.local.example                        @HadarguetaTur
+/vercel.json                               @HadarguetaTur
+/supabase/config.toml                      @HadarguetaTur
+/scripts/setup-crons.sql                   @HadarguetaTur
+/scripts/                                  @HadarguetaTur
+/src/proxy.ts                              @HadarguetaTur
+/src/lib/cron/                             @HadarguetaTur
+/src/lib/crypto/                           @HadarguetaTur
+/src/lib/payments/factory.ts               @HadarguetaTur
+/src/lib/receipts/factory.ts               @HadarguetaTur
+/src/lib/saas/sumit.ts                     @HadarguetaTur
+/src/lib/saas/sumitParse.ts                @HadarguetaTur
+/docs/ops/                                 @HadarguetaTur
+
+# ── YELLOW: money, messaging, scheduling, auth, schema, edge ───────────────
+/supabase/migrations/                      @HadarguetaTur
+/supabase/functions/                       @HadarguetaTur
+/src/lib/billing/                          @HadarguetaTur
+/src/lib/charges/                          @HadarguetaTur
+/src/lib/cancellation-flow/                @HadarguetaTur
+/src/lib/cancellation-policy/              @HadarguetaTur
+/src/lib/scheduling/                       @HadarguetaTur
+/src/lib/availability/                     @HadarguetaTur
+/src/lib/availability-overrides/           @HadarguetaTur
+/src/lib/lessons/                          @HadarguetaTur
+/src/lib/booking/                          @HadarguetaTur
+/src/lib/whatsapp/                         @HadarguetaTur
+/src/app/api/whatsapp/                     @HadarguetaTur
+/src/app/api/payments/                     @HadarguetaTur
+/src/app/api/sumit/                        @HadarguetaTur
+/src/app/api/internal/                     @HadarguetaTur
+/src/lib/ai-assistant/                     @HadarguetaTur
+/src/lib/auth/                             @HadarguetaTur
+/src/lib/jwt/                              @HadarguetaTur
+/src/lib/portal/                           @HadarguetaTur
+/src/lib/support-session/                  @HadarguetaTur
+/src/lib/saas/                             @HadarguetaTur
+/src/lib/payments/                         @HadarguetaTur
+/src/lib/receipts/                         @HadarguetaTur
+/src/lib/telemetry/                        @HadarguetaTur
+/src/lib/env.ts                            @HadarguetaTur
+/next.config.ts                            @HadarguetaTur
+/instrumentation.ts                        @HadarguetaTur
+/CLAUDE.md                                 @HadarguetaTur
+/AGENTS.md                                 @HadarguetaTur

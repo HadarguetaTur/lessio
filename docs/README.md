@@ -56,6 +56,7 @@ changing that area's logic.
 | [`google-oauth-verification-submission.md`](google-oauth-verification-submission.md) | The Google OAuth verification runbook — login, Gmail and Calendar under one client. Not yet submitted; `gmail.send` is sensitive, so no CASA is needed |
 | [`whatsapp-embedded-signup-manual-test.md`](whatsapp-embedded-signup-manual-test.md) | Manual E2E test of the Connect-WhatsApp flow |
 | [`integrations-make-setup.md`](integrations-make-setup.md) | User-facing Hebrew setup guide for the `make` payment provider (the Grow API-fee workaround) |
+| [`outbound-discovery-qualification.md`](outbound-discovery-qualification.md) | Strict 2–5 teacher cold-outreach eligibility, business deduplication memory, and migration rollout |
 | [`outbound-gmail-setup.md`](outbound-gmail-setup.md) | The cold-email engine's transport: service account + domain-wide delegation, the mailbox pool, the two crons, the first-run checklist |
 
 ## Audits

@@ -822,6 +822,22 @@ Workspace's outreach mailboxes. No Make.com / n8n layer.
 
 Setup: `docs/outbound-gmail-setup.md`.
 
+### Amendment 2026-09-17 — cold discovery eligibility and business memory
+
+Founder-approved: cold discovery targets only Israeli tutoring businesses with
+source-confirmed teams of 2–5 teachers. The 6+ teacher segment remains inbound.
+Unknown size and failed qualification never enter the proposals list. Previously
+queued/contacted or rejected businesses cannot return under another email or
+campaign. Minimal identity memory survives candidate/prospect deletion. Both
+approval paths recheck qualification and business history in the database.
+
+This closes the gap between the marketing audience definition and discovery,
+which previously accepted subject keywords without checking team size and only
+checked exact prospect email duplicates during promotion. See
+`docs/outbound-discovery-qualification.md` for identity rules and rollout.
+
+---
+
 ## 41. An Exam Day Has a Default Hour, Not a Required Time
 
 **Date:** 2026-09-08

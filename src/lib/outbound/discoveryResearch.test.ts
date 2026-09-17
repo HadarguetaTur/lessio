@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { extractPublicEmails, extractResearchFacts, researchGate, researchUrls, researchWebsite, scoreDiscoveryCandidate } from './discoveryResearch'
+import { teacherCountGate, extractPublicEmails, extractResearchFacts, researchGate, researchUrls, researchWebsite, scoreDiscoveryCandidate } from './discoveryResearch'
 import { robotsAllows } from './researchRobots'
 import { businessHost, isPublicAddress, type ResearchResponse } from './researchFetch'
 
@@ -21,10 +21,10 @@ describe('research extraction', () => {
   it('rejects dummy and noreply addresses', () => {
     expect(extractPublicEmails('<p>hello@example.com noreply@tutor.test</p>')).toEqual([])
   })
-  it('keeps home in the four-page budget and prefers contact over later about/services links', () => {
+  it('keeps home in the four-page budget and prioritizes team evidence and contact over services', () => {
     const links = ['about', 'services', 'team', 'contact'].map((p) => '<a href="/' + p + '">' + p + '</a>').join('')
     expect(researchUrls(home, links + '<a href="https://other.test/contact">Contact</a>')).toEqual([
-      home, home + 'contact', home + 'about', home + 'services',
+      home, home + 'team', home + 'contact', home + 'about',
     ])
   })
   it('records distinct evidence and avoids negated teaching claims', () => {
@@ -125,4 +125,34 @@ describe('public fetch boundaries', () => {
     expect(businessHost('https://user:pass@tutor.test')).toBeNull()
     expect(businessHost('https://www.tutor.test/contact')).toBe('tutor.test')
   })
+})
+
+
+describe('strict cold outreach teacher count', () => {
+  it.each([2,3,4,5])('accepts a source-backed team of %s teachers', (count) => {
+    expect(teacherCountGate(extractResearchFacts('צוות של ' + count + ' מורים', home),home)).toBeNull()
+  })
+  it.each([1,6,10,46])('rejects a team of %s teachers', (count) => {
+    expect(teacherCountGate(extractResearchFacts('צוות של ' + count + ' מורים',home),home)).toBe('TEAM_SIZE_OUT_OF_RANGE')
+  })
+  it.each(['צוות מורים','קבוצות של 3 תלמידים','3 שנות ניסיון','בעבר צוות של 3 מורים','צוות של מעל 3 מורים','במרכז מלמדים 3 מורים למתמטיקה','הצוות כולל 3 מורים לאנגלית'])('does not infer team size from %s', (text) => {
+    expect(teacherCountGate(extractResearchFacts(text,home),home)).toBe('TEAM_SIZE_UNKNOWN')
+  })
+  it('holds contradictory counts and evidence from another site', () => {
+    expect(teacherCountGate(extractResearchFacts('צוות של 3 מורים. צוות של 8 מורים',home),home)).toBe('TEAM_SIZE_CONFLICT')
+    expect(teacherCountGate(extractResearchFacts('צוות של 3 מורים','https://other.test/'),home)).toBe('TEAM_SIZE_UNKNOWN')
+  })
+  it('preserves contradictory counts across pages', async () => {
+    const result = await researchWebsite(home,site({
+      [home]: response('צוות של 3 מורים<a href="/team">צוות</a>'),
+      [home+'team']: response('צוות של 8 מורים'),
+    }))
+    expect(teacherCountGate(result.facts,home)).toBe('TEAM_SIZE_CONFLICT')
+  })
+})
+
+
+it('understands explicit Hebrew number words without treating class size as team size', () => {
+  expect(teacherCountGate(extractResearchFacts('צוות של שלושה מורים',home),home)).toBeNull()
+  expect(teacherCountGate(extractResearchFacts('צוות המורים מונה שש מורות',home),home)).toBe('TEAM_SIZE_OUT_OF_RANGE')
 })

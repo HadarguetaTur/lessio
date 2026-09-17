@@ -9,7 +9,7 @@ const PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
 const CITIES = ['תל אביב', 'ירושלים', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'באר שבע', 'נתניה', 'רחובות', 'רמת גן', 'חולון', 'אשדוד', 'כפר סבא', 'הרצליה', 'מודיעין']
 type Place = {
   id: string; displayName?: { text?: string }; formattedAddress?: string
-  websiteUri?: string; nationalPhoneNumber?: string; primaryTypeDisplayName?: { text?: string }
+  websiteUri?: string; addressComponents?: { types?: string[]; shortText?: string }[]; nationalPhoneNumber?: string; primaryTypeDisplayName?: { text?: string }
 }
 export type DiscoveryCandidate = {
   id: string; business_name: string; email: string | null; phone: string | null
@@ -28,7 +28,7 @@ export function discoveryQueries(now = new Date()): string[] {
   const day = DateTime.fromJSDate(now).setZone('Asia/Jerusalem').ordinal
   const city = CITIES[day % CITIES.length]!
   const second = CITIES[(day + 7) % CITIES.length]!
-  return ['מורה פרטי מתמטיקה ' + city, 'מרכז למידה ' + city, 'הוראה מתקנת ' + second, 'מרכז תגבור לימודים ' + second]
+  return ['מרכז למידה צוות מורים ' + city, 'מרכז למידה ' + city, 'מרכז הוראה מתקנת ' + second, 'מרכז תגבור לימודים ' + second]
 }
 
 async function searchPlaces(query: string): Promise<Place[]> {
@@ -38,7 +38,7 @@ async function searchPlaces(query: string): Promise<Place[]> {
     method: 'POST', signal: AbortSignal.timeout(12_000),
     headers: {
       'Content-Type': 'application/json', 'X-Goog-Api-Key': key,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.primaryTypeDisplayName',
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.addressComponents,places.nationalPhoneNumber,places.primaryTypeDisplayName',
     },
     body: JSON.stringify({ textQuery: query, languageCode: 'he', regionCode: 'IL', pageSize: 20 }),
   })
@@ -47,8 +47,7 @@ async function searchPlaces(query: string): Promise<Place[]> {
 }
 
 export async function listDiscoveryCandidates(limit = 100): Promise<DiscoveryCandidate[]> {
-  const { data, error } = await createServiceRoleClient().from('outbound_candidates')
-    .select('*').order('created_at', { ascending: false }).limit(limit)
+  const { data, error } = await createServiceRoleClient().rpc('list_eligible_outbound_candidates', { p_limit: limit })
   if (error) throw new Error('[outbound/discovery] list failed: ' + error.message)
   return (data ?? []) as DiscoveryCandidate[]
 }
@@ -79,7 +78,7 @@ export async function saveDiscoveryAutomation(input: DiscoveryAutomation & { act
 export async function runDiscovery(): Promise<{ found: number; ready: number; skipped: number; budget_left: number }> {
   const queries = discoveryQueries()
   const batches = await Promise.all(queries.map(searchPlaces))
-  const places = [...new Map(batches.flat().filter((p) => p.id && p.displayName?.text).map((p) => [p.id, p])).values()]
+  const places = [...new Map(batches.flat().filter((p) => p.id && p.displayName?.text && p.addressComponents?.some((part) => part.types?.includes('country') && part.shortText === 'IL')).map((p) => [p.id, p])).values()]
   const { data, error } = await createServiceRoleClient().rpc('reserve_outbound_candidates', {
     p_queries: queries,
     p_places: places.map((place) => ({
@@ -128,17 +127,19 @@ export async function deleteDiscoveryCandidates(candidateIds: string[]): Promise
  */
 export async function updateDiscoveryCandidate(input: { id: string; businessName: string; email: string | null }): Promise<'ok' | 'DUPLICATE_EMAIL' | 'NOT_EDITABLE'> {
   const db = createServiceRoleClient()
-  const { data: current } = await db.from('outbound_candidates').select('email, email_source_url').eq('id', input.id).is('prospect_id', null).maybeSingle()
+  const { data: current } = await db.from('outbound_candidates').select('email, email_source_url').eq('id', input.id).is('prospect_id', null).in('review_status', ['new', 'ready_for_review']).maybeSingle()
   if (!current) return 'NOT_EDITABLE'
   const emailChanged = (input.email ?? null) !== (current.email ?? null)
-  const { error } = await db.from('outbound_candidates').update({
+  const { data: updated, error } = await db.from('outbound_candidates').update({
     business_name: input.businessName,
     email: input.email,
     email_source_url: emailChanged ? (input.email ? 'manual' : null) : current.email_source_url,
-    ...(emailChanged ? { rejection_reason: null, review_status: 'new' } : {}),
-  }).eq('id', input.id).is('prospect_id', null)
+    rejection_reason: null, review_status: 'new',
+    research_requested_at: new Date().toISOString(), research_claimed_at: null, research_attempts: 0,
+    personal_line: null, opener_status: 'pending', opener_fact_ids: [],
+  }).eq('id', input.id).is('prospect_id', null).in('review_status', ['new', 'ready_for_review']).select('id')
   if (error) return error.code === '23505' ? 'DUPLICATE_EMAIL' : (() => { throw new Error('[outbound/discovery] update failed: ' + error.message) })()
-  return 'ok'
+  return updated?.length ? 'ok' : 'NOT_EDITABLE'
 }
 
 export async function approveDiscoveryCandidates(input: { candidateIds: string[]; actorProfileId: string }): Promise<{ approved: number; skipped: number }> {
@@ -183,7 +184,7 @@ export async function runCandidateResearch(): Promise<{ researched: number; read
       const research = await researchWebsite(candidate.website_url)
       if (candidate.email_source_url === 'manual' && candidate.email) { research.email = candidate.email; research.emailSourceUrl = 'manual' }
       const quality = scoreDiscoveryCandidate({
-        businessName: candidate.business_name, websiteUrl: candidate.website_url,
+        businessName: candidate.business_name, category: candidate.category, websiteUrl: candidate.website_url,
         email: research.email, phone: candidate.phone, facts: research.facts,
       })
       let reason = quality.excluded ? 'EXCLUDED_BUSINESS' : research.failure ?? researchGate({
@@ -200,7 +201,7 @@ export async function runCandidateResearch(): Promise<{ researched: number; read
           email: research.email, email_source_url: research.emailSourceUrl,
           research_facts: research.facts, quality_score: quality.score, quality_reasons: quality.reasons,
           research_status: research.pages.length ? 'researched' : 'failed',
-          review_status: reason === 'SUPPRESSED' || reason === 'EXCLUDED_BUSINESS' ? 'rejected' : ready ? 'ready_for_review' : 'new',
+          review_status: ['SUPPRESSED', 'EXCLUDED_BUSINESS', 'TEAM_SIZE_OUT_OF_RANGE'].includes(reason ?? '') ? 'rejected' : ready ? 'ready_for_review' : 'new',
           rejection_reason: reason, personal_line: opener?.ok ? opener.text : null,
           opener_status: opener?.ok ? 'generated' : openerError ? 'failed' : 'skipped',
           opener_error: openerError, opener_fact_ids: opener?.ok ? opener.factIds : [],

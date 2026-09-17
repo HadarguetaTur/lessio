@@ -84,13 +84,11 @@ export function OutboundCandidateReview({
   const t = useTranslations('admin.outbound.discovery')
   const [selected, setSelected] = useState<string[]>([])
   const [editing, setEditing] = useState<string | null>(null)
-  const [filter, setFilter] = useState('all')
   const [discoverState, discover, discovering] = useActionState(discoverAction, null)
   const [approveState, approve, approving] = useActionState(approveAction, null)
   const [automationState, saveAutomation, savingAutomation] = useActionState(automationAction, null)
   const retryable = candidates.filter((c) => ['new', 'ready_for_review'].includes(c.review_status))
-  const visible = candidates.filter((c) => filter === 'all' || (filter === 'ready' ? ready(c) :
-    filter === 'approved' ? c.review_status === 'approved' : ['new', 'rejected', 'duplicate'].includes(c.review_status)))
+  const visible = candidates
   const selectable = visible.filter(editable)
   const activeSelection = selected.filter((id) => selectable.some((c) => c.id === id))
   const approvable = activeSelection.filter((id) => candidates.some((c) => c.id === id && ready(c))).slice(0, 50)
@@ -142,12 +140,7 @@ export function OutboundCandidateReview({
       {discoverState?.error && <p role="alert" className="text-xs text-destructive">{t(discoverState.error === 'DAILY_BUDGET_FULL' ? 'budgetFull' : 'collectFailed')}</p>}
       {discoverState?.ok && <p role="status" className="text-xs">{t('collected', { count: Number(discoverState.detail ?? 0) })}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="text-sm">{t('show')}{' '}
-          <select value={filter} onChange={(event) => { setFilter(event.target.value); clearSelection() }} className="rounded-md border bg-background p-2">
-            <option value="all">{t('all', { count: candidates.length })}</option><option value="ready">{t('ready')}</option>
-            <option value="approved">{t('approved')}</option><option value="blocked">{t('blocked')}</option>
-          </select>
-        </label>
+        <p className="text-sm">{t('all', { count: candidates.length })}</p>
         <ResearchButton ids={retryable.slice(0, 50).map((c) => c.id)} action={researchAction}>{t('researchMany')}</ResearchButton>
       </div>
       {selectable.length > 0 && (

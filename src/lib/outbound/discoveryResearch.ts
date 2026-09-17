@@ -8,6 +8,24 @@ const NON_BUSINESS_HOSTS = ['facebook.com', 'instagram.com', 'linkedin.com', 'le
 const FILE_EXTENSION = /\.(?:png|jpe?g|gif|webp|svg|ico|css|js|woff2?|pdf)$/i
 
 export type ResearchFact = { label: string; value: string; sourceUrl: string; quote: string }
+// Explicit total-team statements only, never class sizes or partial staff lists.
+// Keep the database qualification gate in sync with this pattern.
+const TEAM_NUMBER_WORDS: Record<string, number> = { שני: 2, שתי: 2, שלושה: 3, שלוש: 3, ארבעה: 4, ארבע: 4, חמישה: 5, חמש: 5, שישה: 6, שש: 6, שבעה: 7, שבע: 7, שמונה: 8, תשעה: 9, תשע: 9, עשרה: 10, עשר: 10 }
+const teamNumber = (value: string) => TEAM_NUMBER_WORDS[value] ?? Number(value)
+const TEAM_COUNT = /(?:צוות(?:\s+המורים)?\s+(?:של|מונה)|our\s+team\s+consists of)\s+(\d{1,3}|שני|שתי|שלושה|שלוש|ארבעה|ארבע|חמישה|חמש|שישה|שש|שבעה|שבע|שמונה|תשעה|תשע|עשרה|עשר)\s+(?:מורים|מורות|teachers)(?![\p{L}\p{N}])/giu
+
+export function teacherCountGate(facts: ResearchFact[], websiteUrl?: string | null): string | null {
+  const counts = new Set<number>()
+  for (const fact of facts.filter((f) => f.label === 'מספר מורים')) {
+    if (!businessHost(fact.sourceUrl) || (websiteUrl && businessHost(fact.sourceUrl) !== businessHost(websiteUrl))) continue
+    for (const match of fact.quote.matchAll(new RegExp(TEAM_COUNT))) counts.add(teamNumber(match[1]!))
+  }
+  if (!counts.size) return 'TEAM_SIZE_UNKNOWN'
+  if (counts.size !== 1) return 'TEAM_SIZE_CONFLICT'
+  const count = [...counts][0]!
+  return count >= 2 && count <= 5 ? null : 'TEAM_SIZE_OUT_OF_RANGE'
+}
+
 export type ResearchPage = { url: string; kind: 'website' | 'contact_page'; text: string }
 export type WebsiteResearch = {
   pages: ResearchPage[]
@@ -59,7 +77,7 @@ export function htmlToText(html: string): string {
     .replace(/\s+/g, ' ').trim()
 }
 
-/** Home is always counted; contact page first among the three remaining pages. */
+/** Home is always counted; team evidence, then contact, get the remaining page budget. */
 export function researchUrls(homeUrl: string, html: string): string[] {
   let origin: string
   try { origin = new URL(homeUrl).origin } catch { return [] }
@@ -76,7 +94,7 @@ export function researchUrls(homeUrl: string, html: string): string[] {
       if (url.origin !== origin || FILE_EXTENSION.test(url.pathname)) continue
       url.hash = ''
       if (url.toString() === homeUrl) continue
-      urls.set(url.toString(), /contact|צור\s*קשר/i.test(label + ' ' + decoded) ? 2 : 1)
+      urls.set(url.toString(), /team|צוות|המורים/i.test(label + ' ' + decoded) ? 3 : /contact|צור\s*קשר/i.test(label + ' ' + decoded) ? 2 : 1)
     } catch { /* malformed link */ }
   }
   return [homeUrl, ...[...urls.entries()].sort((a, b) => b[1] - a[1]).slice(0, MAX_RESEARCH_PAGES - 1).map(([url]) => url)]
@@ -102,13 +120,18 @@ export function extractResearchFacts(text: string, sourceUrl: string): ResearchF
   add('צוות מורים', 'עבודה עם צוות מורים', /צוות מורים|המורים שלנו|מספר מורים/i)
   const years = text.match(/((?:מעל|יותר מ[- ]?)?\s*\d{1,2})\s*(?:שנות?|שנים)\s*(?:ניסיון בהוראה|בהוראה)/i)
   if (years) add('ניסיון', years[1]!.trim() + ' שנות ניסיון בהוראה', /\d{1,2}\s*(?:שנות?|שנים)\s*(?:ניסיון בהוראה|בהוראה)/i)
+  for (const match of text.matchAll(new RegExp(TEAM_COUNT))) {
+    const prefix = text.slice(Math.max(0, match.index! - 25), match.index)
+    if (/(?:לא|אין|בעבר|עד לאחרונה)\s*$/.test(prefix)) continue
+    facts.push({ label: 'מספר מורים', value: 'צוות של ' + teamNumber(match[1]!) + ' מורים', sourceUrl, quote: match[0] })
+  }
   return facts
 }
 
-export function scoreDiscoveryCandidate(input: { businessName: string; websiteUrl: string | null; email: string | null; phone: string | null; facts: ResearchFact[] }): { score: number; reasons: string[]; excluded: boolean } {
+export function scoreDiscoveryCandidate(input: { businessName: string; category?: string | null; websiteUrl: string | null; email: string | null; phone: string | null; facts: ResearchFact[] }): { score: number; reasons: string[]; excluded: boolean } {
   const host = input.websiteUrl ? businessHost(input.websiteUrl) : null
   if ((host && NON_BUSINESS_HOSTS.some((blocked) => host === blocked || host.endsWith('.' + blocked))) ||
-    /אינדקס|מאגר מורים|בית[ -]?ספר|אוניברסיט|מכלל|רשת\s|קידום אתרים|יואל גבע|אנקורי|היי[ -]?קיו/i.test(input.businessName)) {
+    /אינדקס|מאגר מורים|בית[ -]?ספר|אוניברסיט|מכלל|רשת\s|קידום אתרים|יואל גבע|אנקורי|היי[ -]?קיו|college|university|school/i.test(input.businessName + ' ' + (input.category ?? ''))) {
     return { score: 0, reasons: ['EXCLUDED'], excluded: true }
   }
   // A tutoring business names itself by what it teaches at least as often as by "teacher".
@@ -131,7 +154,7 @@ export function researchGate(input: { email: string | null; emailSourceUrl: stri
   if (!input.email || !normalizePublicEmail(input.email) || !input.emailSourceUrl) return 'NO_CONTACT'
   if (new Set(input.facts.filter((f) => f.quote && businessHost(f.sourceUrl)).map((f) => f.label)).size < 2) return 'INSUFFICIENT_FACTS'
   if (input.score < 70) return 'LOW_QUALITY'
-  return null
+  return teacherCountGate(input.facts)
 }
 
 /** Contact pages on the same business host only; robots checked on every hop. */
@@ -193,7 +216,7 @@ export async function researchWebsite(website: string | null, fetchPage: (url: s
     result.pages.push({ url: page.url, kind: page.url === home.url ? 'website' : 'contact_page', text })
     for (const email of extractPublicEmails(page.html)) if (!emails.has(email)) emails.set(email, page.url)
     for (const fact of extractResearchFacts(text, page.url)) {
-      if (!result.facts.some((existing) => existing.label === fact.label)) result.facts.push(fact)
+      if (!result.facts.some((existing) => existing.label === fact.label && (fact.label !== 'מספר מורים' || existing.quote === fact.quote))) result.facts.push(fact)
     }
   }
   // Prefer a business-domain contact; ambiguous addresses wait for a person.

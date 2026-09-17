@@ -268,7 +268,7 @@ export function Sidebar({
         {/* Teacher section */}
         {isTeacher && (
           <div className="space-y-0.5">
-            <p className="px-3 pb-1.5 text-[10px] font-semibold text-sidebar-foreground/70 uppercase tracking-widest">
+            <p className="px-3 pb-1.5 text-[10px] font-semibold text-sidebar-foreground/85 uppercase tracking-widest">
               {t('teacherSection')}
             </p>
             {teacherItems.filter(({ roles }) => !roles || roles.includes(userRole)).map(({ href, label, icon: Icon }) => {
@@ -373,7 +373,7 @@ export function Sidebar({
                 <p className="text-[13px] font-medium text-sidebar-foreground truncate leading-tight">
                   {userName}
                 </p>
-                <p className="text-[11px] text-sidebar-foreground/70 leading-tight">
+                <p className="text-[11px] text-sidebar-foreground/85 leading-tight">
                   {tc(`roles.${userRole}`) ?? userRole}
                 </p>
               </div>

@@ -214,7 +214,7 @@ export function WeekViewClient({
                   </span>
                   <span className={cn('truncate block', lesson.status === 'cancelled' && 'pen-strike')}>{title}</span>
                   {showTeacherName && (
-                    <span className="truncate block text-[10px] opacity-75">
+                    <span className="truncate block text-[10px] opacity-90">
                       {lesson.teacher.full_name}
                     </span>
                   )}

@@ -449,7 +449,7 @@ function Headline({ hero, links, compact = false }: { hero: LandingContent['hero
           {hero.headline.less}
           {hero.headline.lessRest}
         </span>
-        {hero.headline.more || hero.headline.moreRest ? (
+        {`${hero.headline.more}${hero.headline.moreRest}` ? (
           <span className="block">
             {hero.headline.more}
             {hero.headline.moreRest}

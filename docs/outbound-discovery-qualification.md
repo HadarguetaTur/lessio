@@ -108,3 +108,19 @@ candidates none quoted a team size, because tutoring sites almost never write
   reason) and ruled out, so a collection that yields no proposal is visible.
 
 Business memory and deduplication are unchanged.
+
+## Search relevance (2026-09-17)
+
+Probing Google Places showed that bare queries ("מרכז למידה", "שיעורים פרטיים",
+"צוות מורים") return colleges, gyms, music and driving teachers, while a subject
+anchors the results on tutoring. Queries are now subject-anchored and rotate city
+and subject daily; "הכנה לבגרות" is used with maths only (other subjects returned
+0-2 places). Collection drops off-target Google primary types (gym, university,
+medical_clinic, ...) before the research queue.
+
+Exclusion is by business name only (migration 20260917180000). Google files
+private tutors under "בית ספר" / school, so the earlier name+category rule ruled
+out the target audience at insert time. The name list also covers music, driving,
+dance, fitness and English-course franchises. A Facebook, Instagram or directory
+page now counts as "no website" (held for a manual email) instead of a permanent
+exclusion. Candidates wrongly ruled out by the old rule were requeued.

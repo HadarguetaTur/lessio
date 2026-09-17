@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { teacherCountGate, teamSizeStatus, extractPublicEmails, extractResearchFacts, researchGate, researchUrls, researchWebsite, scoreDiscoveryCandidate } from './discoveryResearch'
+import { isNonBusinessHost, teacherCountGate, teamSizeStatus, extractPublicEmails, extractResearchFacts, researchGate, researchUrls, researchWebsite, scoreDiscoveryCandidate } from './discoveryResearch'
 import { robotsAllows } from './researchRobots'
 import { businessHost, isPublicAddress, type ResearchResponse } from './researchFetch'
 
@@ -41,8 +41,18 @@ describe('research extraction', () => {
     expect(scoreDiscoveryCandidate({ businessName: name, websiteUrl: home, email: 'hi@tutor.test', phone: '123', facts: [] }).excluded).toBe(true)
   })
   it('matches directory hosts precisely, not arbitrary substrings', () => {
-    expect(scoreDiscoveryCandidate({ businessName: 'מורה פרטי', websiteUrl: 'https://www.d.co.il/123', email: null, phone: null, facts: [] }).excluded).toBe(true)
-    expect(scoreDiscoveryCandidate({ businessName: 'מורה פרטי', websiteUrl: 'https://had.co.il', email: null, phone: null, facts: [] }).excluded).toBe(false)
+    expect(isNonBusinessHost('https://www.d.co.il/123')).toBe(true)
+    expect(isNonBusinessHost('https://had.co.il')).toBe(false)
+  })
+  it('holds a business whose only site is a social or directory page instead of ruling it out', async () => {
+    const listed = scoreDiscoveryCandidate({ businessName: 'בר הצלחה מרכז למידה', websiteUrl: 'https://www.instagram.com/bar', email: null, phone: '03-1234567', facts: [] })
+    expect(listed).toMatchObject({ excluded: false, reasons: ['TARGET', 'PHONE'] })
+    expect((await researchWebsite('https://www.instagram.com/bar', site({}))).failure).toBe('NO_WEBSITE')
+  })
+  it('excludes by name, never by the category Google assigns', () => {
+    const score = (businessName: string, category: string | null = null) => scoreDiscoveryCandidate({ businessName, category, websiteUrl: 'https://tutor.test', email: null, phone: null, facts: [] }).excluded
+    expect(score('ערן כהן - מרכז למידה למתמטיקה', 'בית ספר')).toBe(false)
+    for (const name of ['המכללה האקדמית רמת גן', 'בית הספר לאיפור', 'מורה נהיגה בחיפה', 'מורה לפסנתר', 'Coding Academy Israel']) expect(score(name)).toBe(true)
   })
 })
 describe('multi-page research', () => {

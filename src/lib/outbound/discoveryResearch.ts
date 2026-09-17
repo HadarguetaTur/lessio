@@ -4,6 +4,16 @@ import { robotsAllows } from './researchRobots'
 
 const MAX_RESEARCH_PAGES = 4
 const CONTACT_LINK = /contact|about|services|team|צור\s*קשר|אודות|שירותים|צוות|שיעורים/i
+/** A profile or directory listing is not a site we can research, but the business behind it may be real. */
+export function isNonBusinessHost(url: string | null): boolean {
+  const host = url ? businessHost(url) : null
+  return !!host && NON_BUSINESS_HOSTS.some((blocked) => host === blocked || host.endsWith('.' + blocked))
+}
+/**
+ * By name only. Google files private tutors under "school" / "בית ספר", so its category
+ * must never exclude. Keep in sync with outbound_excluded_business() in SQL.
+ */
+export const EXCLUDED_BUSINESS_NAME = /אינדקס|מאגר מורים|בית[ -]?ה?ספר|ביה"ס|אוניברסיט|מכלל|רשת\s|קידום אתרים|יואל גבע|אנקורי|היי[ -]?קיו|נהיגה|פסנתר|גיטרה|תופים|פיתוח קול|מוזיקה|ריקוד|מחול|יוגה|פילאטיס|כושר|איפור|ברלינגטון|וול סטריט|הלן דורון|ברליץ|wall street|berlitz|college|university|academy|school/i
 const NON_BUSINESS_HOSTS = ['facebook.com', 'instagram.com', 'linkedin.com', 'lessoons.co.il', 'limudnaim.co.il', 'd.co.il', 'b144.co.il', 'easy.co.il']
 const FILE_EXTENSION = /\.(?:png|jpe?g|gif|webp|svg|ico|css|js|woff2?|pdf)$/i
 
@@ -136,11 +146,9 @@ export function extractResearchFacts(text: string, sourceUrl: string): ResearchF
 }
 
 export function scoreDiscoveryCandidate(input: { businessName: string; category?: string | null; websiteUrl: string | null; email: string | null; phone: string | null; facts: ResearchFact[] }): { score: number; reasons: string[]; excluded: boolean } {
-  const host = input.websiteUrl ? businessHost(input.websiteUrl) : null
-  if ((host && NON_BUSINESS_HOSTS.some((blocked) => host === blocked || host.endsWith('.' + blocked))) ||
-    /אינדקס|מאגר מורים|בית[ -]?ספר|אוניברסיט|מכלל|רשת\s|קידום אתרים|יואל גבע|אנקורי|היי[ -]?קיו|college|university|school/i.test(input.businessName + ' ' + (input.category ?? ''))) {
-    return { score: 0, reasons: ['EXCLUDED'], excluded: true }
-  }
+  // A Facebook or directory page counts as no website: held for a manual email, not ruled out for good.
+  const host = input.websiteUrl && !isNonBusinessHost(input.websiteUrl) ? businessHost(input.websiteUrl) : null
+  if (EXCLUDED_BUSINESS_NAME.test(input.businessName)) return { score: 0, reasons: ['EXCLUDED'], excluded: true }
   // A tutoring business names itself by what it teaches at least as often as by "teacher".
   const target = /מרכז למידה|מור(?:ה|ים|ות)|הוראה|תגבור|בגרות|שיעורים|לימוד|מתמטיקה|אנגלית|פיזיקה|פסיכומטרי|tutor|learning/i.test(input.businessName) ||
     input.facts.some((fact) => ['מרכז למידה', 'הוראה מתקנת', 'הוראה פרטנית', 'צוות מורים', 'מתמטיקה', 'הכנה לבגרות'].includes(fact.label))
@@ -169,7 +177,7 @@ export function researchGate(input: { email: string | null; emailSourceUrl: stri
 export async function researchWebsite(website: string | null, fetchPage: (url: string) => Promise<ResearchResponse> = fetchResearchPage): Promise<WebsiteResearch> {
   const result: WebsiteResearch = { pages: [], email: null, emailSourceUrl: null, facts: [], failure: null }
   const host = website && businessHost(website)
-  if (!website || !host) return { ...result, failure: 'NO_WEBSITE' }
+  if (!website || !host || isNonBusinessHost(website)) return { ...result, failure: 'NO_WEBSITE' }
   const policies = new Map<string, string | null>()
   const sameSite = (url: string) => businessHost(url) === host
   const deadline = Date.now() + 55_000

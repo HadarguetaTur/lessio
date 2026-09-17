@@ -3,13 +3,14 @@ import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { findSuppressed } from './suppressions'
 import { generateCandidateOpener } from './candidateOpener'
-import { researchGate, researchWebsite, scoreDiscoveryCandidate, teamSizeStatus, type ResearchFact, type TeamSizeStatus } from './discoveryResearch'
+import { EXCLUDED_BUSINESS_NAME, researchGate, researchWebsite, scoreDiscoveryCandidate, teamSizeStatus, type ResearchFact, type TeamSizeStatus } from './discoveryResearch'
 
 const PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
+const SUBJECTS = ['מתמטיקה', 'אנגלית', 'פיזיקה']
 const CITIES = ['תל אביב', 'ירושלים', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'באר שבע', 'נתניה', 'רחובות', 'רמת גן', 'חולון', 'אשדוד', 'כפר סבא', 'הרצליה', 'מודיעין']
 type Place = {
   id: string; displayName?: { text?: string }; formattedAddress?: string
-  websiteUri?: string; addressComponents?: { types?: string[]; shortText?: string }[]; nationalPhoneNumber?: string; primaryTypeDisplayName?: { text?: string }
+  websiteUri?: string; primaryType?: string; addressComponents?: { types?: string[]; shortText?: string }[]; nationalPhoneNumber?: string; primaryTypeDisplayName?: { text?: string }
 }
 export type DiscoveryCandidate = {
   id: string; business_name: string; email: string | null; phone: string | null
@@ -29,7 +30,18 @@ export function discoveryQueries(now = new Date()): string[] {
   const day = DateTime.fromJSDate(now).setZone('Asia/Jerusalem').ordinal
   const city = CITIES[day % CITIES.length]!
   const second = CITIES[(day + 7) % CITIES.length]!
-  return ['מרכז למידה צוות מורים ' + city, 'מרכז למידה ' + city, 'מרכז הוראה מתקנת ' + second, 'מרכז תגבור לימודים ' + second]
+  const subject = SUBJECTS[day % SUBJECTS.length]!
+  const other = SUBJECTS[(day + 1) % SUBJECTS.length]!
+  // A subject anchors Google on tutoring. Bare "מרכז למידה" or "שיעורים פרטיים" returned
+  // colleges, gyms, music and driving teachers (probed against Places, 2026-09-17).
+  // "הכנה לבגרות" only pays off with maths; with English or physics it returned 0-2 places.
+  return ['הכנה לבגרות מתמטיקה ' + city, 'שיעורים פרטיים ' + subject + ' ' + city, 'מרכז למידה ' + other + ' ' + second, 'שיעורים פרטיים ' + other + ' ' + second]
+}
+
+/** Google's machine type, not the display name. Tutors come back as school / educational_institution / service / none. */
+const OFF_TARGET_TYPES = new Set(['university', 'gym', 'yoga_studio', 'sports_school', 'sports_club', 'fitness_center', 'medical_clinic', 'doctor', 'health', 'place_of_worship', 'synagogue', 'coworking_space', 'community_center', 'cultural_center', 'non_profit_organization', 'association_or_organization', 'store', 'driving_school', 'preschool', 'primary_school', 'secondary_school', 'library', 'employment_agency', 'beauty_salon'])
+export function isCollectable(place: { displayName?: { text?: string }; primaryType?: string }): boolean {
+  return !OFF_TARGET_TYPES.has(place.primaryType ?? '') && !EXCLUDED_BUSINESS_NAME.test(place.displayName?.text ?? '')
 }
 
 async function searchPlaces(query: string): Promise<Place[]> {
@@ -39,7 +51,7 @@ async function searchPlaces(query: string): Promise<Place[]> {
     method: 'POST', signal: AbortSignal.timeout(12_000),
     headers: {
       'Content-Type': 'application/json', 'X-Goog-Api-Key': key,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.addressComponents,places.nationalPhoneNumber,places.primaryTypeDisplayName',
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.primaryType,places.addressComponents,places.nationalPhoneNumber,places.primaryTypeDisplayName',
     },
     body: JSON.stringify({ textQuery: query, languageCode: 'he', regionCode: 'IL', pageSize: 20 }),
   })
@@ -90,7 +102,7 @@ export async function saveDiscoveryAutomation(input: DiscoveryAutomation & { act
 export async function runDiscovery(): Promise<{ found: number; ready: number; skipped: number; budget_left: number }> {
   const queries = discoveryQueries()
   const batches = await Promise.all(queries.map(searchPlaces))
-  const places = [...new Map(batches.flat().filter((p) => p.id && p.displayName?.text && p.addressComponents?.some((part) => part.types?.includes('country') && part.shortText === 'IL')).map((p) => [p.id, p])).values()]
+  const places = [...new Map(batches.flat().filter((p) => p.id && p.displayName?.text && p.addressComponents?.some((part) => part.types?.includes('country') && part.shortText === 'IL') && isCollectable(p)).map((p) => [p.id, p])).values()]
   const { data, error } = await createServiceRoleClient().rpc('reserve_outbound_candidates', {
     p_queries: queries,
     p_places: places.map((place) => ({

@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { PGlite } from '@electric-sql/pglite'
 import { readFile } from 'node:fs/promises'
 import { renderFactOpener } from './candidateOpener'
-import { extractResearchFacts } from './discoveryResearch'
+import { EXCLUDED_BUSINESS_NAME, extractResearchFacts } from './discoveryResearch'
 
 let db: PGlite
 const actor = '00000000-0000-4000-8000-000000000001'
@@ -16,6 +16,7 @@ const migrations = [
   '20260916142000_outbound_candidate_research_quality.sql', '20260916143000_outbound_quality_automation.sql',
   '20260917140000_outbound_business_qualification.sql',
   '20260917160000_outbound_team_size_advisory.sql',
+  '20260917180000_outbound_exclusion_by_name.sql',
 ]
 async function scalar<T>(sql: string, params: unknown[] = []): Promise<T> {
   return Object.values((await db.query<Record<string, T>>(sql, params)).rows[0]!)[0]!
@@ -137,6 +138,13 @@ describe('business identity and strict proposal eligibility', () => {
   it('never collects a college', async () => {
     expect((await scalar<{found:number}>('SELECT reserve_outbound_candidates($1,$2)',[JSON.stringify([{provider_place_id:'iitc',business_name:'מכללת IITC'}]),'[]'])).found).toBe(0)
   })
+  it('collects a tutor Google files under school, and agrees with the TypeScript name rule', async () => {
+    const places=[{provider_place_id:'eran',business_name:'ערן כהן - מרכז למידה למתמטיקה',category:'בית ספר'},{provider_place_id:'drive',business_name:'מורה נהיגה בחיפה',category:'מוסד חינוכי'}]
+    expect((await scalar<{found:number}>('SELECT reserve_outbound_candidates($1,$2)',[JSON.stringify(places),'[]'])).found).toBe(1)
+    for (const name of ['מני פורת- מורה פרטי','המכללה האקדמית רמת גן','בית הספר לאיפור','Coding Academy Israel','מרכז הלמידה של רועי גבע','ביה"ס לערבית','מורה לפסנתר','וול סטריט לימודי אנגלית','Winglish - מרכז לימוד לאנגלית']) {
+      expect(await scalar('SELECT outbound_excluded_business($1)',[name])).toBe(EXCLUDED_BUSINESS_NAME.test(name))
+    }
+  })
   it('shows an unknown-size business to a person but never promotes it automatically', async () => {
     const id=await candidate()
     await db.query('UPDATE outbound_candidates SET research_facts=$2 WHERE id=$1',[id,JSON.stringify(facts.slice(0,3))])
@@ -204,11 +212,11 @@ it('upgrades existing data without losing sent history or returning old proposal
   const legacy = new PGlite()
   try {
     await legacy.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role; CREATE TABLE profiles(id uuid PRIMARY KEY); CREATE TABLE organizations(id uuid PRIMARY KEY); CREATE FUNCTION update_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at := now(); RETURN NEW; END $$;")
-    for (const file of migrations.slice(0,-2)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
+    for (const file of migrations.slice(0,-3)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
     await legacy.query("INSERT INTO outbound_campaigns(id,name,subject,body_text) VALUES ($1,'old','hello','hello')",[campaign])
     await legacy.query("INSERT INTO outbound_prospects(campaign_id,email,company,unsubscribe_token,status,sent_at) VALUES ($1,'sent@old.test','Old business','12345678901234567890123456789012','sent',now())",[campaign])
     await legacy.exec("INSERT INTO outbound_candidates(business_name,email,website_url,review_status) VALUES ('מרכז למידה ישן','other@old.test','https://old.test','ready_for_review'),('מרכז למידה חדש','new@new.test','https://new.test','ready_for_review'),('מרכז למידה פסול','no@rejected.test','https://rejected.test','rejected')")
-    for (const file of migrations.slice(-2)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
+    for (const file of migrations.slice(-3)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
     const rows=(await legacy.query<{email:string;review_status:string;research_requested_at:unknown}>('SELECT email,review_status,research_requested_at FROM outbound_candidates ORDER BY email')).rows
     expect(rows.find(r=>r.email==='other@old.test')?.review_status).toBe('duplicate')
     expect(rows.find(r=>r.email==='new@new.test')).toMatchObject({review_status:'new',research_requested_at:expect.anything()})

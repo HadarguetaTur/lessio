@@ -906,7 +906,22 @@ const landingHeCore = {
   },
 } as const
 
-export type LandingContent = (typeof landingEnCore | typeof landingHeCore) & {
+/**
+ * The cores are `as const`, so their strings are literals. Widened here so a
+ * second page (src/lib/marketing/tutorsCopy.ts) can reuse the same shape with
+ * its own sentences; image keys and chat/diary entries keep their real types.
+ */
+type Widen<T> = T extends LandingImageKey
+  ? LandingImageKey
+  : T extends string
+    ? string
+    : T extends LandingChatMessage | LandingDiaryEntry
+      ? T
+      : T extends object
+        ? { readonly [K in keyof T]: Widen<T[K]> }
+        : T
+
+export type LandingContent = Widen<typeof landingEnCore | typeof landingHeCore> & {
   links: {
     login: string
     signup: string
@@ -927,7 +942,10 @@ export function getLandingContent(locale: string): LandingContent {
   }
 }
 
-export function getLandingMetadata(locale: string): {
+export function getLandingMetadata(
+  locale: string,
+  content: LandingContent = getLandingContent(locale)
+): {
   title: string
   description: string
   openGraph: {
@@ -942,8 +960,7 @@ export function getLandingMetadata(locale: string): {
     description: string
   }
 } {
-  const c = getLandingContent(locale)
-  const { title, description } = c.meta
+  const { title, description } = content.meta
 
   return {
     title,

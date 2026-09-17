@@ -16,11 +16,14 @@ export function LandingPricing({
   rows,
   locale,
   signupHref,
+  featuredPlan = 'studio',
 }: {
   copy: LandingContent['pricing']
   rows: PublicPricingRow[]
   locale: string
   signupHref: string
+  /** The tier that carries the pen note and the highlighted action. */
+  featuredPlan?: 'solo' | 'studio'
 }) {
   const isHe = locale === 'he'
   const money = (n: number) =>
@@ -50,8 +53,9 @@ export function LandingPricing({
 
       <div className="rule-t mt-14 grid sm:grid-cols-3">
         {rows.map((row, i) => {
-          // Studio is the tier most centres land on, so it carries the pen note.
-          const featured = row.name === 'studio'
+          // Studio is the tier most centres land on, so it carries the pen note;
+          // /tutors moves it to Solo.
+          const featured = row.name === featuredPlan
           return (
             <div
               key={row.name}

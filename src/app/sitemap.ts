@@ -7,6 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const base = getShareableBaseUrl()
   return [
     { url: `${base}/`, changeFrequency: 'weekly', priority: 1 },
+    { url: `${base}/tutors`, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${base}/privacy`, changeFrequency: 'monthly', priority: 0.3 },
     { url: `${base}/terms`, changeFrequency: 'monthly', priority: 0.3 },
     { url: `${base}/data-deletion`, changeFrequency: 'monthly', priority: 0.2 },

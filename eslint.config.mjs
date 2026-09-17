@@ -67,6 +67,8 @@ const HEBREW_ALLOWED = [
   "src/app/opengraph-image.tsx",
   // Bilingual via getLandingContent(locale).
   "src/lib/marketing/landingCopy.ts",
+  // Same, via getTutorsContent(locale) — the /tutors overrides of the above.
+  "src/lib/marketing/tutorsCopy.ts",
   // Bilingual he/en branches already. Listed file-by-file, not by directory —
   // their siblings (payment-request/autoSend.ts, cancellation-flow/
   // executeCancellation.ts) do still leak Hebrew and must stay covered.

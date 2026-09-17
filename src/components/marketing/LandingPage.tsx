@@ -117,12 +117,14 @@ export function LandingPage({
   locale,
   pricingRows = [],
   siteContact = { address: '', supportEmail: '', phone: '', registrationNumber: '' },
+  featuredPlan,
 }: {
   content: LandingContent
   dir: 'rtl' | 'ltr'
   locale: string
   pricingRows?: PublicPricingRow[]
   siteContact?: SiteContact
+  featuredPlan?: 'solo' | 'studio'
 }) {
   const { hero, chain, problem, capabilities, implementation, israel, trust, audience, pricing, faq, finalCta, footer, links, nav } =
     content
@@ -401,7 +403,7 @@ export function LandingPage({
         {/* ── Plans ─────────────────────────────────────────────────────── */}
         {pricingRows.length > 0 ? (
           <Page id="pricing">
-            <LandingPricing copy={pricing} rows={pricingRows} locale={locale} signupHref={links.signup} />
+            <LandingPricing copy={pricing} rows={pricingRows} locale={locale} signupHref={links.signup} featuredPlan={featuredPlan} />
           </Page>
         ) : null}
 

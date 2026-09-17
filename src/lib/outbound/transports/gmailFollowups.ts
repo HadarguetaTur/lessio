@@ -119,7 +119,7 @@ async function sendOne(
   mailbox: MailboxWithUsage,
   now: Date
 ): Promise<{ ok: boolean; reason?: string }> {
-  const track = trackFor(prospect.status)
+  const track = trackFor(prospect.status, prospect.demo_email_sent_at)
   if (!track) {
     await stopFollowups(db, prospect.id)
     return { ok: false, reason: 'wrong_status' }

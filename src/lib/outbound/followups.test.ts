@@ -27,6 +27,12 @@ describe('trackFor', () => {
       expect(trackFor(s)).toBeNull()
     }
   })
+
+  it('a demo that already went out puts a replied prospect on the interested track', () => {
+    expect(trackFor('replied', '2026-09-16T14:44:06Z')).toBe('interested')
+    expect(trackFor('interested', '2026-09-16T14:44:06Z')).toBe('interested')
+    expect(trackFor('converted', '2026-09-16T14:44:06Z')).toBeNull()
+  })
 })
 
 describe('replySubject', () => {
@@ -40,21 +46,21 @@ describe('replySubject', () => {
 describe('followupMessage', () => {
   const vars = { firstName: 'דנה', signupUrl: 'https://x.test/signup', subject: 'שאלה על הסטודיו', gender: null }
 
-  it('the first touch asks about the demo, the second is a last note with the link', () => {
+  it('the first touch hands over the video link, the second is a last note with the trial link', () => {
     const first = followupMessage('interested', 0, vars, 'he')
     expect(first.subject).toBe('Re: שאלה על הסטודיו')
     expect(first.text).toContain('היי דנה,')
-    expect(first.text).toContain('הדמו')
+    expect(first.text).toContain('https://youtu.be/')
     expect(first.text).not.toContain(vars.signupUrl)
 
     const last = followupMessage('interested', 1, vars, 'he')
-    expect(last.text).toContain('האחרונה')
+    expect(last.text).toContain('הודעה אחרונה')
     expect(last.text).toContain(vars.signupUrl)
   })
 
   it('the clarification asks for a yes', () => {
     const m = followupMessage('replied', 0, vars, 'he')
-    expect(m.text).toContain('דמו')
+    expect(m.text).toContain('הסרטון')
     expect(m.text).toContain('"כן"')
   })
 
@@ -62,10 +68,10 @@ describe('followupMessage', () => {
     const f = followupMessage('interested', 0, { ...vars, gender: 'f' }, 'he')
     const m = followupMessage('interested', 0, { ...vars, gender: 'm' }, 'he')
     const x = followupMessage('interested', 0, { ...vars, gender: null }, 'he')
-    expect(f.text).toContain('הספקת לראות')
-    expect(m.text).toContain('הספקת לראות')
-    // Neutral phrasing must not address the reader with a gendered verb.
-    expect(x.text).toContain('יצא לראות')
+    expect(f.text).toContain('מדיניות הביטולים שלך')
+    expect(m.text).toContain('מדיניות הביטולים שלך')
+    // Neutral phrasing must not address the reader at all.
+    expect(x.text).toContain('מדיניות הביטולים של העסק')
     expect(x.text).not.toContain('שלך')
   })
 

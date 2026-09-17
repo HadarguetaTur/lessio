@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { teacherCountGate, extractPublicEmails, extractResearchFacts, researchGate, researchUrls, researchWebsite, scoreDiscoveryCandidate } from './discoveryResearch'
+import { teacherCountGate, teamSizeStatus, extractPublicEmails, extractResearchFacts, researchGate, researchUrls, researchWebsite, scoreDiscoveryCandidate } from './discoveryResearch'
 import { robotsAllows } from './researchRobots'
 import { businessHost, isPublicAddress, type ResearchResponse } from './researchFetch'
 
@@ -148,6 +148,14 @@ describe('strict cold outreach teacher count', () => {
       [home+'team']: response('צוות של 8 מורים'),
     }))
     expect(teacherCountGate(result.facts,home)).toBe('TEAM_SIZE_CONFLICT')
+  })
+  it('lets an unknown size through to a person and stops only a proven out-of-range team', () => {
+    const base = extractResearchFacts('מרכז למידה עם צוות מורים בקבוצות קטנות', home)
+    const gate = (facts: typeof base) => researchGate({ email: 'hi@tutor.test', emailSourceUrl: home, facts, score: 90, excluded: false })
+    expect(gate(base)).toBeNull()
+    expect(teamSizeStatus(base, home)).toBe('unknown')
+    expect(gate([...base, ...extractResearchFacts('צוות של 8 מורים', home)])).toBe('TEAM_SIZE_OUT_OF_RANGE')
+    expect(teamSizeStatus(extractResearchFacts('צוות של 3 מורים', home), home)).toBe('verified')
   })
 })
 

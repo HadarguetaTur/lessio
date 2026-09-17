@@ -91,3 +91,20 @@ run showed only those two pending; the code followed on main (8573a9f).
 Right after the migration: 152 identity keys in outbound_business_history,
 4 candidates requeued for research, 0 eligible proposals. An empty list is the
 expected starting state until the research cron requalifies candidates.
+
+## Amendment, same day: team size is advisory for a person
+
+The first production collection showed the strict rule hides everything: of 37
+candidates none quoted a team size, because tutoring sites almost never write
+"צוות של X מורים". Migration 20260917160000 changes the rule:
+
+- A proven out-of-range team (1 or 6+) is still rejected and never listed.
+- Unknown or conflicting size no longer blocks research. The candidate gets an
+  opener, appears in the proposals list flagged "team size not verified", and a
+  person decides. `outbound_team_status()` (SQL) and `teamSizeStatus()` (TS)
+  return verified / unknown / conflict / out_of_range and must stay in sync.
+- Automatic promotion still requires a verified 2-5 team.
+- The tab shows the pipeline under the proposals: in research, stopped (with the
+  reason) and ruled out, so a collection that yields no proposal is visible.
+
+Business memory and deduplication are unchanged.

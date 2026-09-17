@@ -15,6 +15,7 @@ const migrations = [
   '20260916141000_outbound_daily_permission_limit.sql',
   '20260916142000_outbound_candidate_research_quality.sql', '20260916143000_outbound_quality_automation.sql',
   '20260917140000_outbound_business_qualification.sql',
+  '20260917160000_outbound_team_size_advisory.sql',
 ]
 async function scalar<T>(sql: string, params: unknown[] = []): Promise<T> {
   return Object.values((await db.query<Record<string, T>>(sql, params)).rows[0]!)[0]!
@@ -133,12 +134,25 @@ describe('outbound discovery database invariants', () => {
 
 
 describe('business identity and strict proposal eligibility', () => {
-  it('never shows a zero-score college or an unknown-size business', async () => {
-    const id=await candidate()
-    await db.query("UPDATE outbound_candidates SET research_facts='[]' WHERE id=$1",[id])
-    expect(await scalar('SELECT count(*)::int FROM list_eligible_outbound_candidates()')).toBe(0)
-    expect(await promote(id,false)).toBe('quality_blocked')
+  it('never collects a college', async () => {
     expect((await scalar<{found:number}>('SELECT reserve_outbound_candidates($1,$2)',[JSON.stringify([{provider_place_id:'iitc',business_name:'מכללת IITC'}]),'[]'])).found).toBe(0)
+  })
+  it('shows an unknown-size business to a person but never promotes it automatically', async () => {
+    const id=await candidate()
+    await db.query('UPDATE outbound_candidates SET research_facts=$2 WHERE id=$1',[id,JSON.stringify(facts.slice(0,3))])
+    expect(await scalar('SELECT outbound_team_status(research_facts,website_url) FROM outbound_candidates WHERE id=$1',[id])).toBe('unknown')
+    expect(await scalar('SELECT count(*)::int FROM list_eligible_outbound_candidates()')).toBe(1)
+    await enable()
+    expect(await promote(id)).toBe('quality_blocked')
+    expect(await promote(id,false)).toBe('approved')
+  })
+  it('lets a person decide on conflicting counts, not automation', async () => {
+    const id=await candidate()
+    await db.query('UPDATE outbound_candidates SET research_facts=$2 WHERE id=$1',[id,JSON.stringify([...facts,...extractResearchFacts('צוות של 8 מורים','https://tutor.test/')])])
+    expect(await scalar('SELECT outbound_team_status(research_facts,website_url) FROM outbound_candidates WHERE id=$1',[id])).toBe('conflict')
+    expect(await scalar('SELECT count(*)::int FROM list_eligible_outbound_candidates()')).toBe(1)
+    await enable()
+    expect(await promote(id)).toBe('quality_blocked')
   })
   it('blocks large teams even with a perfect quality score', async () => {
     const id=await candidate()
@@ -190,11 +204,11 @@ it('upgrades existing data without losing sent history or returning old proposal
   const legacy = new PGlite()
   try {
     await legacy.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role; CREATE TABLE profiles(id uuid PRIMARY KEY); CREATE TABLE organizations(id uuid PRIMARY KEY); CREATE FUNCTION update_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at := now(); RETURN NEW; END $$;")
-    for (const file of migrations.slice(0,-1)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
+    for (const file of migrations.slice(0,-2)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
     await legacy.query("INSERT INTO outbound_campaigns(id,name,subject,body_text) VALUES ($1,'old','hello','hello')",[campaign])
     await legacy.query("INSERT INTO outbound_prospects(campaign_id,email,company,unsubscribe_token,status,sent_at) VALUES ($1,'sent@old.test','Old business','12345678901234567890123456789012','sent',now())",[campaign])
     await legacy.exec("INSERT INTO outbound_candidates(business_name,email,website_url,review_status) VALUES ('מרכז למידה ישן','other@old.test','https://old.test','ready_for_review'),('מרכז למידה חדש','new@new.test','https://new.test','ready_for_review'),('מרכז למידה פסול','no@rejected.test','https://rejected.test','rejected')")
-    await legacy.exec(await readFile('supabase/migrations/'+migrations.at(-1)!,'utf8'))
+    for (const file of migrations.slice(-2)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
     const rows=(await legacy.query<{email:string;review_status:string;research_requested_at:unknown}>('SELECT email,review_status,research_requested_at FROM outbound_candidates ORDER BY email')).rows
     expect(rows.find(r=>r.email==='other@old.test')?.review_status).toBe('duplicate')
     expect(rows.find(r=>r.email==='new@new.test')).toMatchObject({review_status:'new',research_requested_at:expect.anything()})

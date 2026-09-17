@@ -75,9 +75,9 @@ function EditForm({ candidate, action, onClose }: { candidate: DiscoveryCandidat
 }
 
 export function OutboundCandidateReview({
-  candidates, discoverAction, approveAction, researchAction, automationAction, rejectAction, deleteAction, updateAction, automation, campaigns,
+  candidates, held, discoverAction, approveAction, researchAction, automationAction, rejectAction, deleteAction, updateAction, automation, campaigns,
 }: {
-  candidates: DiscoveryCandidate[]; discoverAction: Action; approveAction: Action
+  candidates: DiscoveryCandidate[]; held: DiscoveryCandidate[]; discoverAction: Action; approveAction: Action
   researchAction: Action; automationAction: Action; rejectAction: Action; deleteAction: Action; updateAction: Action
   automation: DiscoveryAutomation; campaigns: { id: string; name: string }[]
 }) {
@@ -87,13 +87,52 @@ export function OutboundCandidateReview({
   const [discoverState, discover, discovering] = useActionState(discoverAction, null)
   const [approveState, approve, approving] = useActionState(approveAction, null)
   const [automationState, saveAutomation, savingAutomation] = useActionState(automationAction, null)
-  const retryable = candidates.filter((c) => ['new', 'ready_for_review'].includes(c.review_status))
+  const retryable = [...candidates, ...held].filter((c) => ['new', 'ready_for_review'].includes(c.review_status))
+  const inResearch = held.filter((c) => c.review_status === 'new' && c.research_requested_at)
+  const stopped = held.filter((c) => c.review_status === 'new' && !c.research_requested_at)
+  const ruledOut = held.filter((c) => c.review_status !== 'new')
   const visible = candidates
   const selectable = visible.filter(editable)
   const activeSelection = selected.filter((id) => selectable.some((c) => c.id === id))
   const approvable = activeSelection.filter((id) => candidates.some((c) => c.id === id && ready(c))).slice(0, 50)
   const clearSelection = () => setSelected([])
 
+  const row = (c: DiscoveryCandidate) => (
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="font-medium">{c.business_name} <span className="text-sm text-muted-foreground">{t('score', { score: c.quality_score })}</span></p>
+                  {c.website_url && <SourceLink href={c.website_url}>{t('website')}</SourceLink>}
+                </div>
+                <p className="text-xs">{c.quality_reasons.map((code) => t.has('quality.' + code) ? t('quality.' + code, { count: c.research_facts.length }) : code).join(' · ')}</p>
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <span dir="ltr">{c.email ?? t('noEmail')}</span>
+                  {c.email_source_url && <SourceLink href={c.email_source_url}>{t('emailSource')}</SourceLink>}
+                </div>
+                {c.research_facts.length > 0 && <ul className="space-y-1 text-sm">
+                  {c.research_facts.map((fact) => <li key={fact.label}>
+                    {fact.value}{' '}<SourceLink href={fact.sourceUrl}>{t('source')}</SourceLink>
+                    <p className="text-xs text-muted-foreground">{fact.quote}</p>
+                  </li>)}
+                </ul>}
+                {c.review_status !== 'rejected' && c.team_status !== 'verified' && c.research_completed_at && <p className="text-xs text-amber-700">{t('team.' + c.team_status)}</p>}
+                {c.team_status === 'verified' && <p className="text-xs text-emerald-700">{t('team.verified')}</p>}
+                {c.personal_line && <p className="rounded-md bg-muted px-3 py-2 text-sm">{c.personal_line}</p>}
+                {c.review_status === 'approved' && <p className="text-xs text-emerald-700">{t('promoted', { mode: t(c.approval_mode === 'automatic' ? 'automatic' : 'manual') })}</p>}
+                {c.review_status === 'duplicate' && <p className="text-xs">{t('duplicate')}</p>}
+                {c.research_requested_at && <p className="text-xs">{t(c.research_claimed_at ? 'researchRunning' : 'researchPending')} · {t('attempt', { count: c.research_attempts })}</p>}
+                {c.research_claimed_at && c.research_attempts >= 3 && <p className="text-xs text-amber-700">{t('researchStuck')}</p>}
+                {c.rejection_reason && <p className="text-xs text-amber-700">{t.has('reasons.' + c.rejection_reason) ? t('reasons.' + c.rejection_reason) : c.rejection_reason}</p>}
+                {c.opener_error && <p className="text-xs text-destructive">{t.has('reasons.' + c.opener_error) ? t('reasons.' + c.opener_error) : c.opener_error} <span dir="ltr">({c.opener_error})</span></p>}
+                {editing === c.id ? <EditForm candidate={c} action={updateAction} onClose={() => setEditing(null)} /> : editable(c) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {retryable.some((item) => item.id === c.id) && <ResearchButton ids={[c.id]} action={researchAction}>{t('researchOne')}</ResearchButton>}
+                    {retryable.some((item) => item.id === c.id) && <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(c.id)}><Pencil size={14} />{t('edit')}</Button>}
+                    {c.review_status !== 'rejected' && <IdsButton ids={[c.id]} action={rejectAction} doneKey="rejected" icon={<Ban size={14} />} label={t('reject')} variant="ghost" />}
+                    <IdsButton ids={[c.id]} action={deleteAction} doneKey="deleted" icon={<Trash2 size={14} />} label={t('delete')} variant="ghost" confirm={t('deleteConfirm')} />
+                  </div>
+                )}
+              </div>
+  )
   function toggle(id: string) {
     setSelected((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])
   }
@@ -170,42 +209,23 @@ export function OutboundCandidateReview({
             <li key={c.id} className="flex gap-3 py-4">
               <input aria-label={t('select', { name: c.business_name })} type="checkbox" className="mt-1 self-start"
                 disabled={!editable(c)} checked={activeSelection.includes(c.id)} onChange={() => toggle(c.id)} />
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-medium">{c.business_name} <span className="text-sm text-muted-foreground">{t('score', { score: c.quality_score })}</span></p>
-                  {c.website_url && <SourceLink href={c.website_url}>{t('website')}</SourceLink>}
-                </div>
-                <p className="text-xs">{c.quality_reasons.map((code) => t.has('quality.' + code) ? t('quality.' + code, { count: c.research_facts.length }) : code).join(' · ')}</p>
-                <div className="flex flex-wrap items-center gap-3 text-xs">
-                  <span dir="ltr">{c.email ?? t('noEmail')}</span>
-                  {c.email_source_url && <SourceLink href={c.email_source_url}>{t('emailSource')}</SourceLink>}
-                </div>
-                {c.research_facts.length > 0 && <ul className="space-y-1 text-sm">
-                  {c.research_facts.map((fact) => <li key={fact.label}>
-                    {fact.value}{' '}<SourceLink href={fact.sourceUrl}>{t('source')}</SourceLink>
-                    <p className="text-xs text-muted-foreground">{fact.quote}</p>
-                  </li>)}
-                </ul>}
-                {c.personal_line && <p className="rounded-md bg-muted px-3 py-2 text-sm">{c.personal_line}</p>}
-                {c.review_status === 'approved' && <p className="text-xs text-emerald-700">{t('promoted', { mode: t(c.approval_mode === 'automatic' ? 'automatic' : 'manual') })}</p>}
-                {c.review_status === 'duplicate' && <p className="text-xs">{t('duplicate')}</p>}
-                {c.research_requested_at && <p className="text-xs">{t(c.research_claimed_at ? 'researchRunning' : 'researchPending')} · {t('attempt', { count: c.research_attempts })}</p>}
-                {c.research_claimed_at && c.research_attempts >= 3 && <p className="text-xs text-amber-700">{t('researchStuck')}</p>}
-                {c.rejection_reason && <p className="text-xs text-amber-700">{t.has('reasons.' + c.rejection_reason) ? t('reasons.' + c.rejection_reason) : c.rejection_reason}</p>}
-                {c.opener_error && <p className="text-xs text-destructive">{t.has('reasons.' + c.opener_error) ? t('reasons.' + c.opener_error) : c.opener_error} <span dir="ltr">({c.opener_error})</span></p>}
-                {editing === c.id ? <EditForm candidate={c} action={updateAction} onClose={() => setEditing(null)} /> : editable(c) && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {retryable.some((item) => item.id === c.id) && <ResearchButton ids={[c.id]} action={researchAction}>{t('researchOne')}</ResearchButton>}
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(c.id)}><Pencil size={14} />{t('edit')}</Button>
-                    {c.review_status !== 'rejected' && <IdsButton ids={[c.id]} action={rejectAction} doneKey="rejected" icon={<Ban size={14} />} label={t('reject')} variant="ghost" />}
-                    <IdsButton ids={[c.id]} action={deleteAction} doneKey="deleted" icon={<Trash2 size={14} />} label={t('delete')} variant="ghost" confirm={t('deleteConfirm')} />
-                  </div>
-                )}
-              </div>
+              {row(c)}
             </li>
           ))}
         </ul>
       )}
+      <div className="space-y-2 border-t pt-4">
+        <p className="text-sm font-medium">{t('pipeline', { research: inResearch.length, stopped: stopped.length, ruledOut: ruledOut.length })}</p>
+        <p className="text-xs text-muted-foreground">{t('pipelineHint')}</p>
+        {([['heldResearch', inResearch], ['heldStopped', stopped], ['heldRuledOut', ruledOut]] as const).map(([key, rows]) => rows.length > 0 && (
+          <details key={key} className="rounded-lg border p-3">
+            <summary className="cursor-pointer text-sm">{t(key, { count: rows.length })}</summary>
+            <ul className="mt-2 divide-y divide-border">
+              {rows.map((c) => <li key={c.id} className="flex gap-3 py-4">{row(c)}</li>)}
+            </ul>
+          </details>
+        ))}
+      </div>
     </section>
   )
 }

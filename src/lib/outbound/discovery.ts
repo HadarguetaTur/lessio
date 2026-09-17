@@ -3,7 +3,7 @@ import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { findSuppressed } from './suppressions'
 import { generateCandidateOpener } from './candidateOpener'
-import { researchGate, researchWebsite, scoreDiscoveryCandidate, type ResearchFact } from './discoveryResearch'
+import { researchGate, researchWebsite, scoreDiscoveryCandidate, teamSizeStatus, type ResearchFact, type TeamSizeStatus } from './discoveryResearch'
 
 const PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
 const CITIES = ['תל אביב', 'ירושלים', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'באר שבע', 'נתניה', 'רחובות', 'רמת גן', 'חולון', 'אשדוד', 'כפר סבא', 'הרצליה', 'מודיעין']
@@ -21,6 +21,7 @@ export type DiscoveryCandidate = {
   research_requested_at: string | null; research_claimed_at: string | null
   research_attempts: number; research_completed_at: string | null
   approval_mode: 'manual' | 'automatic' | null; opener_fact_ids: number[]
+  team_status: TeamSizeStatus
 }
 export type DiscoveryAutomation = { auto_approve: boolean; campaign_id: string | null }
 
@@ -49,7 +50,18 @@ async function searchPlaces(query: string): Promise<Place[]> {
 export async function listDiscoveryCandidates(limit = 100): Promise<DiscoveryCandidate[]> {
   const { data, error } = await createServiceRoleClient().rpc('list_eligible_outbound_candidates', { p_limit: limit })
   if (error) throw new Error('[outbound/discovery] list failed: ' + error.message)
-  return (data ?? []) as DiscoveryCandidate[]
+  return ((data ?? []) as DiscoveryCandidate[]).map(withTeamStatus)
+}
+
+const withTeamStatus = (c: DiscoveryCandidate): DiscoveryCandidate => ({ ...c, team_status: teamSizeStatus(c.research_facts ?? [], c.website_url) })
+
+/** Everything collected that is not a proposal: still in research, held, or ruled out. Newest first. */
+export async function listHeldDiscoveryCandidates(limit = 200): Promise<DiscoveryCandidate[]> {
+  const { data, error } = await createServiceRoleClient().from('outbound_candidates').select('*')
+    .is('prospect_id', null).in('review_status', ['new', 'rejected', 'duplicate'])
+    .order('created_at', { ascending: false }).limit(limit)
+  if (error) throw new Error('[outbound/discovery] held list failed: ' + error.message)
+  return ((data ?? []) as DiscoveryCandidate[]).map(withTeamStatus)
 }
 
 export async function getDiscoveryAutomation(): Promise<DiscoveryAutomation> {

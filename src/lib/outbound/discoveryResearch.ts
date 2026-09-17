@@ -26,6 +26,13 @@ export function teacherCountGate(facts: ResearchFact[], websiteUrl?: string | nu
   return count >= 2 && count <= 5 ? null : 'TEAM_SIZE_OUT_OF_RANGE'
 }
 
+export type TeamSizeStatus = 'verified' | 'unknown' | 'conflict' | 'out_of_range'
+/** Mirrors outbound_team_status() in SQL. Only a proven out-of-range team blocks a person's approval. */
+export function teamSizeStatus(facts: ResearchFact[], websiteUrl?: string | null): TeamSizeStatus {
+  const gate = teacherCountGate(facts, websiteUrl)
+  return gate === null ? 'verified' : gate === 'TEAM_SIZE_UNKNOWN' ? 'unknown' : gate === 'TEAM_SIZE_CONFLICT' ? 'conflict' : 'out_of_range'
+}
+
 export type ResearchPage = { url: string; kind: 'website' | 'contact_page'; text: string }
 export type WebsiteResearch = {
   pages: ResearchPage[]
@@ -154,7 +161,8 @@ export function researchGate(input: { email: string | null; emailSourceUrl: stri
   if (!input.email || !normalizePublicEmail(input.email) || !input.emailSourceUrl) return 'NO_CONTACT'
   if (new Set(input.facts.filter((f) => f.quote && businessHost(f.sourceUrl)).map((f) => f.label)).size < 2) return 'INSUFFICIENT_FACTS'
   if (input.score < 70) return 'LOW_QUALITY'
-  return teacherCountGate(input.facts)
+  // Few sites state a team size: unknown or conflicting counts go to a person, not to a dead end.
+  return teacherCountGate(input.facts) === 'TEAM_SIZE_OUT_OF_RANGE' ? 'TEAM_SIZE_OUT_OF_RANGE' : null
 }
 
 /** Contact pages on the same business host only; robots checked on every hop. */

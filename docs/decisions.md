@@ -836,6 +836,11 @@ which previously accepted subject keywords without checking team size and only
 checked exact prospect email duplicates during promotion. See
 `docs/outbound-discovery-qualification.md` for identity rules and rollout.
 
+Same-day correction: sites almost never state a team size, so the strict rule
+hid every proposal. Unknown or conflicting size is now shown, flagged, for a
+manual decision; only a proven out-of-range team is rejected, and automatic
+promotion still requires a verified 2–5 team.
+
 ---
 
 ## 41. An Exam Day Has a Default Hour, Not a Required Time

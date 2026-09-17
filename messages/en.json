@@ -4393,7 +4393,7 @@
       "discovery": {
         "title": "New outreach proposals",
         "tab": "Candidates",
-        "criteria": "Only tutoring businesses with source-confirmed teams of 2–5 teachers appear here. Previously contacted or rejected businesses are excluded. A sourced email, two facts and a grounded opener are also required. ",
+        "criteria": "Shows tutoring businesses you have not contacted or ruled out, with a sourced email, two facts and a grounded personal line. A business proven to have one teacher or 6+ is ruled out; when the site states no team size the proposal is flagged and the call is yours. Automatic queueing requires a verified 2–5 team. ",
         "limits": "Up to 50 new candidates and 50 initial emails per day.",
         "collect": "Discover candidates",
         "automationStatus": "Automatic queue entry: {status}",
@@ -4424,7 +4424,7 @@
         "approve": "Approve for queue ({count})",
         "approveFailed": "Approval was not saved. Try again.",
         "approvedCount": "Added {count} candidates to the queue.",
-        "empty": "No proposals currently pass all eligibility checks. Businesses with unverified team sizes remain outside this list.",
+        "empty": "No proposals are ready right now. Collected candidates appear below until their research finishes.",
         "select": "Approve {name}",
         "score": "Score {score}/100",
         "website": "Business website",
@@ -4488,7 +4488,20 @@
           "MODEL_UNAVAILABLE": "Writing service temporarily unavailable",
           "MODEL_FAILED": "Writing service failed",
           "INVALID_MODEL_OUTPUT": "Model returned invalid output",
-          "UNGROUNDED_OPENER": "Opening line failed the evidence check"
+          "UNGROUNDED_OPENER": "Opening line failed the evidence check",
+          "TEAM_SIZE_OUT_OF_RANGE": "Team size is outside 2–5 teachers",
+          "KNOWN_BUSINESS": "A business already contacted, ruled out or deleted"
+        },
+        "pipeline": "In the pipeline: {research} in research · {stopped} stopped · {ruledOut} ruled out",
+        "pipelineHint": "Collected candidates that are not proposals yet. Research runs in the background, three candidates every five minutes.",
+        "heldResearch": "In research ({count})",
+        "heldStopped": "Stopped, needs attention ({count})",
+        "heldRuledOut": "Ruled out or duplicate ({count})",
+        "team": {
+          "verified": "Team size verified: 2–5 teachers",
+          "unknown": "Team size is not stated on the site. Check before approving.",
+          "conflict": "The site states conflicting teacher counts. Check before approving.",
+          "out_of_range": "Team size is outside 2–5"
         }
       }
     },

@@ -46,7 +46,7 @@ import {
   deleteCandidatesAction,
   updateCandidateAction,
 } from './actions'
-import { listDiscoveryCandidates, getDiscoveryAutomation } from '@/lib/outbound/discovery'
+import { listDiscoveryCandidates, listHeldDiscoveryCandidates, getDiscoveryAutomation } from '@/lib/outbound/discovery'
 import {
   createLeadFromProspectAction,
   resendDemoEmailAction,
@@ -117,7 +117,7 @@ export default async function AdminOutboundPage({
     .limit(500)
   if (statusFilter) prospectsQuery = prospectsQuery.eq('status', statusFilter)
 
-  const [prospectsRes, openers, replies, suppressions, card, candidates, automation] = await Promise.all([
+  const [prospectsRes, openers, replies, suppressions, card, candidates, automation, heldCandidates] = await Promise.all([
     tab === 'queue' ? prospectsQuery : Promise.resolve({ data: [] as ProspectListRow[] }),
     tab === 'openers' ? listOpenersToReview() : Promise.resolve([]),
     tab === 'replies' ? listInboundReplies(100) : Promise.resolve([]),
@@ -125,6 +125,7 @@ export default async function AdminOutboundPage({
     open ? getLeadCardData({ prospectId: open }) : Promise.resolve(null),
     tab === 'candidates' ? listDiscoveryCandidates() : Promise.resolve([]),
     tab === 'candidates' ? getDiscoveryAutomation() : Promise.resolve(null),
+    tab === 'candidates' ? listHeldDiscoveryCandidates() : Promise.resolve([]),
   ])
   const prospects = (prospectsRes.data ?? []) as ProspectListRow[]
 
@@ -253,6 +254,7 @@ export default async function AdminOutboundPage({
       {tab === 'candidates' && (
         <OutboundCandidateReview
           candidates={candidates}
+          held={heldCandidates}
           automation={automation!}
           campaigns={campaigns.filter((c) => c.is_active && c.locale === 'he' && c.body_text.includes('{{personal_line}}'))}
           researchAction={researchCandidatesAction}

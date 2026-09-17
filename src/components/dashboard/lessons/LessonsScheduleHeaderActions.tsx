@@ -42,6 +42,7 @@ export function LessonsScheduleHeaderActions({
         <Button
           type="button"
           size="sm"
+          variant="mark"
           className="shrink-0"
           onClick={() => openNewLessonFromHeader()}
         >

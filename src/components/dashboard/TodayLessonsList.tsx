@@ -79,7 +79,7 @@ export async function TodayLessonsList({
   return (
     <section
       aria-label={t('today.title')}
-      className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+      className="overflow-hidden rounded-xl border border-border bg-card"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-4 pt-4 pb-2 sm:px-5">
         <h2 className="text-base font-semibold text-foreground">{t('today.title')}</h2>

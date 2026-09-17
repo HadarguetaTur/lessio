@@ -99,7 +99,7 @@ export async function AttentionPanel({
     return (
       <section aria-label={t('attention.title')}>
         <h2 className="mb-3 text-base font-semibold text-foreground">{t('attention.title')}</h2>
-        <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-5 shadow-sm">
+        <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-5">
           <CheckCircle2
             size={18}
             className={`shrink-0 ${hasStudents ? 'text-emerald-500' : 'text-muted-foreground'}`}

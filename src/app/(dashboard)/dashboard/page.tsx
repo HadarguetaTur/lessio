@@ -72,7 +72,7 @@ export default async function DashboardPage() {
         title={t('title')}
         subtitle={todayLabel}
         actions={
-          <Button asChild size="sm">
+          <Button asChild size="sm" variant="mark">
             <Link href="/lessons/new">
               <Plus size={14} className="me-1.5" />
               {t('newLesson')}

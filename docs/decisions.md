@@ -1106,6 +1106,45 @@ not as a parallel payment path. Plan: `scalable-greeting-token.md`.
   attributes what their no-show was billed (`no_show_charge`), or list value
   when the absence burned a punch, or nothing.
 
+## 48. The Product Wears the Diary's Materials, Not Its Costume
+
+✅ DECIDED (17 Sep 2026, Hadar): the public surfaces (landing, auth, legal) are
+"the teacher's week diary" (DESIGN.md). The authenticated product corresponds
+with it without imitating it. (#47 is the lesson time change, on its own branch.)
+
+* **Same materials.** White paper and ink, hairline borders in the ruling's
+  blue-grey, the cover teal as `--primary` and as the sidebar, one UI family
+  (Assistant, which also fixes Hebrew falling back to the operating system's
+  font under Geist), radius 0.3rem, no card shadows. Tokens live in
+  `src/app/globals.css`; faces in `src/lib/fonts.ts`; the L mark in
+  `src/components/brand/LessioMark.tsx`.
+* **One highlighter.** `--highlight` marks the ONE primary action of a screen
+  (`Button variant="mark"`), the selected item (the sidebar's active rail,
+  today's column) and an amount that needs attention (`.mark-highlight`). Ink
+  text only. Everything else that is a button is teal or outline.
+* **One red pen.** `--pen` is for what was cancelled, is overdue or is
+  destructive. A cancelled lesson's name is struck with `.pen-strike`.
+* **One status palette.** `src/lib/ui/statusTone.ts`: planned (ruling blue),
+  done (cover teal), waiting (highlighter), problem (red pen), off (ink grey).
+  Badges, calendar cards and legends read from it; a status never wears two
+  colours on two screens. Decision #44 stands: status is the background, the
+  teacher is the stripe.
+* **No costume.** Inside the product there is no handwriting in labels, no
+  fields written on a ruling, no ruled-paper backgrounds, no drawing
+  animations, and Secular One appears only in the page title and the
+  wordmark. Standard form controls stay standard (Operate surfaces).
+* **Four diary moments** are the exceptions, because they are where the
+  product does what the landing page promised: (1) a cancelled lesson on the
+  calendar is struck by the red pen, with its cancellation fee highlighted;
+  (2) approving a monthly bill is marked "approved" in the pen's hand; (3)
+  empty states and onboarding carry a pen doodle and one handwritten line;
+  (4) "needs attention" reads as margin notes: hairline rows, counts in red
+  pen, amounts highlighted.
+* **Rollout.** Foundations and two proof screens (`/dashboard`, `/lessons`)
+  ship first. The rest of the product still paints with raw Tailwind palette
+  classes in ~270 files; those move to tokens screen by screen, not in one
+  codemod. Dark mode remains inert (the `.dark` class is never applied).
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

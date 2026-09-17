@@ -10,14 +10,10 @@ import type { Lesson, LessonStatus } from '@/lib/lessons/types'
 import type { AppLocale } from '@/lib/i18n/locale'
 import { TEACHER_COLOR_CLASSES, resolveTeacherColor } from '@/lib/teachers/color'
 import { cn } from '@/lib/utils'
+import { LESSON_STATUS_STYLES, STATUS_TONE } from '@/lib/ui/statusTone'
 import { CALENDAR_DENSITY_COMPACT, CALENDAR_DENSITY_PARAM } from './calendarParams'
 
-const STATUS_STYLES: Record<LessonStatus, string> = {
-  scheduled: 'bg-blue-50 text-blue-700 border border-blue-200',
-  completed: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  cancelled: 'bg-muted text-muted-foreground border border-border line-through',
-  no_show: 'bg-amber-50 text-amber-700 border border-amber-200',
-}
+const STATUS_STYLES: Record<LessonStatus, string> = LESSON_STATUS_STYLES
 
 interface Holiday {
   date: string
@@ -117,7 +113,7 @@ export function WeekViewClient({
     const headerInner = (
       <>
         <p className="text-[10px] text-muted-foreground md:text-[10px]">{dayNames[i]}</p>
-        <p className={cn('text-sm font-bold', isToday ? 'text-primary' : 'text-foreground')}>
+        <p className="text-sm font-bold text-foreground">
           {dayNum}
         </p>
       </>
@@ -128,7 +124,8 @@ export function WeekViewClient({
     const headerClass = cn(
       'px-2 text-center border-b',
       isCompact ? 'py-1' : 'py-1.5',
-      isToday ? 'border-primary/20' : 'border-border'
+      'border-border',
+      isToday && 'border-t-[3px] border-t-highlight bg-highlight/15'
     )
 
     return (
@@ -138,7 +135,7 @@ export function WeekViewClient({
         className={cn(
           'rounded-lg border min-w-0 text-start',
           isCompact ? 'min-h-28' : 'min-h-36',
-          isToday ? 'border-primary/30 bg-primary/5' : 'border-border bg-card',
+          'border-border bg-card',
           pickable && 'cursor-pointer transition-colors hover:bg-muted/30'
         )}
       >
@@ -171,7 +168,7 @@ export function WeekViewClient({
         )}
 
         {holidayDates.has(dateStr) && (
-          <div className="px-1.5 py-0.5 mx-1 mt-1 text-xs text-center text-purple-600 bg-purple-50 rounded border border-purple-100 truncate">
+          <div className={cn('mx-1 mt-1 truncate rounded-sm border px-1.5 py-0.5 text-center text-xs', STATUS_TONE.planned)}>
             {holidays.find((h) => h.date === dateStr)?.name}
           </div>
         )}
@@ -215,7 +212,7 @@ export function WeekViewClient({
                     </span>
                     {lesson.series_id && <Repeat size={10} className="shrink-0 opacity-70" />}
                   </span>
-                  <span className="truncate block">{title}</span>
+                  <span className={cn('truncate block', lesson.status === 'cancelled' && 'pen-strike')}>{title}</span>
                   {showTeacherName && (
                     <span className="truncate block text-[10px] opacity-75">
                       {lesson.teacher.full_name}
@@ -252,19 +249,19 @@ export function WeekViewClient({
 
       <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground flex-wrap">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-blue-50 border border-blue-200 inline-block" />
+          <span className={cn('inline-block size-3 rounded-sm border', STATUS_TONE.planned)} />
           {legend.scheduled}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-200 inline-block" />
+          <span className={cn('inline-block size-3 rounded-sm border', STATUS_TONE.done)} />
           {legend.completed}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-amber-100 border border-amber-200 inline-block" />
+          <span className={cn('inline-block size-3 rounded-sm border', STATUS_TONE.waiting)} />
           {legend.noShow}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-muted border border-border inline-block" />
+          <span className={cn('inline-block size-3 rounded-sm border', STATUS_TONE.off)} />
           {legend.cancelled}
         </span>
       </div>

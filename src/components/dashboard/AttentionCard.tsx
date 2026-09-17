@@ -1,17 +1,23 @@
 import React from 'react'
 import Link from 'next/link'
-import { CheckCircle2, type LucideIcon } from 'lucide-react'
+import { type LucideIcon } from 'lucide-react'
+import { PenCheck } from '@/components/brand/PenMarks'
 import { cn } from '@/lib/utils'
 import { AttentionCheckRow, type AttentionRowCheck } from './AttentionRowCheckbox'
 
 export type AttentionTone = 'neutral' | 'amber' | 'rose' | 'blue' | 'violet'
 
+/**
+ * The tones are kept for callers, but a bucket no longer wears a colour of its
+ * own: every open bucket counts in the red pen, the way a note in the margin
+ * would, and an empty one goes quiet.
+ */
 const TONE_STYLES: Record<AttentionTone, string> = {
-  neutral: 'bg-muted text-muted-foreground',
-  amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',
-  rose: 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400',
-  blue: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400',
-  violet: 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400',
+  neutral: 'text-muted-foreground',
+  amber: 'text-pen',
+  rose: 'text-pen',
+  blue: 'text-pen',
+  violet: 'text-pen',
 }
 
 interface AttentionCardProps {
@@ -48,23 +54,16 @@ export function AttentionCard({
   const isEmpty = count === 0
 
   return (
-    <section className="flex h-full min-w-0 flex-col rounded-xl border border-border bg-card shadow-sm">
+    <section className="flex h-full min-w-0 flex-col rounded-xl border border-border bg-card">
       <Link href={href} className="group/head flex items-center gap-2.5 px-4 pt-4 pb-2">
-        <span
-          className={cn(
-            'flex size-7 shrink-0 items-center justify-center rounded-lg',
-            isEmpty ? TONE_STYLES.neutral : TONE_STYLES[tone]
-          )}
-        >
-          <Icon size={14} />
-        </span>
+        <Icon size={15} className="shrink-0 text-muted-foreground" aria-hidden />
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground transition-colors group-hover/head:text-primary">
           {title}
         </h3>
         <span
           className={cn(
-            'shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
-            isEmpty ? 'bg-muted text-muted-foreground' : TONE_STYLES[tone]
+            'shrink-0 text-sm font-bold tabular-nums',
+            isEmpty ? TONE_STYLES.neutral : TONE_STYLES[tone]
           )}
         >
           {count}
@@ -74,7 +73,7 @@ export function AttentionCard({
       <div className="flex-1 px-2 pb-2">
         {isEmpty ? (
           <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
-            <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
+            <PenCheck className="size-4 shrink-0 text-primary" />
             {emptyLabel}
           </div>
         ) : (
@@ -135,10 +134,10 @@ export function AttentionRow({
         <span
           className={cn(
             'shrink-0 text-xs text-muted-foreground',
-            trailingStrong && 'text-sm font-semibold text-foreground'
+            trailingStrong && 'text-sm font-semibold tabular-nums text-foreground'
           )}
         >
-          {trailing}
+          {trailingStrong ? <span className="mark-highlight">{trailing}</span> : trailing}
         </span>
       )}
     </>
@@ -155,7 +154,7 @@ export function AttentionRow({
   return (
     <Link
       href={href}
-      className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/50"
+      className="flex items-center gap-2 rounded-sm border-t border-border/70 px-2 py-1.5 transition-colors first:border-t-0 hover:bg-muted/50"
     >
       {content}
     </Link>

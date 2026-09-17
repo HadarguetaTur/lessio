@@ -6,13 +6,9 @@ import type { Lesson, LessonStatus } from '@/lib/lessons'
 import { formatTime, getLessonTitle } from '@/lib/lessons'
 import { TEACHER_COLOR_CLASSES, resolveTeacherColor } from '@/lib/teachers/color'
 import { cn } from '@/lib/utils'
+import { LESSON_STATUS_STYLES } from '@/lib/ui/statusTone'
 
-const STATUS_STYLES: Record<LessonStatus, string> = {
-  scheduled: 'bg-blue-50 text-blue-700 border border-blue-200',
-  completed: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  cancelled: 'bg-muted text-muted-foreground border border-border line-through',
-  no_show: 'bg-amber-50 text-amber-700 border border-amber-200',
-}
+const STATUS_STYLES: Record<LessonStatus, string> = LESSON_STATUS_STYLES
 
 interface Holiday {
   date: string

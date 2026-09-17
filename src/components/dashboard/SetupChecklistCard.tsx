@@ -2,7 +2,8 @@
 
 import { useCallback, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, Circle, X } from 'lucide-react'
+import { Circle, X } from 'lucide-react'
+import { PenCheck } from '@/components/brand/PenMarks'
 
 export interface SetupChecklistItem {
   key: string
@@ -55,7 +56,7 @@ export function SetupChecklistCard({
   return (
     <section
       aria-label={title}
-      className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 sm:p-5"
+      className="rounded-xl border border-border bg-card p-4 sm:p-5"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
@@ -72,7 +73,7 @@ export function SetupChecklistCard({
               /* non-persistent dismiss is still a dismiss */
             }
           }}
-          className="inline-flex min-h-8 items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-blue-100 hover:text-foreground transition-colors"
+          className="inline-flex min-h-8 items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <X size={13} aria-hidden />
           {dismissLabel}
@@ -86,16 +87,16 @@ export function SetupChecklistCard({
               key={item.key}
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground"
             >
-              <CheckCircle2 size={16} className="shrink-0 text-green-600" aria-hidden />
+              <PenCheck className="size-4 shrink-0 text-primary" />
               <s className="decoration-muted-foreground/50">{item.label}</s>
             </li>
           ) : (
             <li key={item.key}>
               <Link
                 href={item.href}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-100 transition-colors"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold text-primary hover:bg-muted transition-colors"
               >
-                <Circle size={16} className="shrink-0 text-blue-400" aria-hidden />
+                <Circle size={16} className="shrink-0 text-input" aria-hidden />
                 {item.label}
               </Link>
             </li>

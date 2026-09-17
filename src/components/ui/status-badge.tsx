@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
+import { STATUS_TONE } from '@/lib/ui/statusTone'
 
 type StatusVariant = string
 
@@ -30,20 +31,6 @@ const STATUS_KEY_MAP: Record<string, string> = {
   approved:          'billingStatus.approved',
   pending_approval:  'billingStatus.pending_approval',
 }
-
-/**
- * One palette for every status in the product, drawn from the diary's
- * materials: ruling blue for what is planned or in flight, cover teal for what
- * is done or paid, the highlighter for what is waiting on someone, the red pen
- * for what was cancelled or is overdue, ink grey for what no longer counts.
- */
-export const STATUS_TONE = {
-  planned: 'bg-[#eaf1f8] text-[#2c5580] border-[#c4d6e8]',
-  done: 'bg-[#e3f1ef] text-[#0c4744] border-[#b5d8d3]',
-  waiting: 'bg-[#fff6c2] text-[#4a3f00] border-[#f0dc6a]',
-  problem: 'bg-[#fbe9ec] text-[#9b0c24] border-[#f1bcc5]',
-  off: 'bg-muted text-muted-foreground border-border',
-} as const
 
 export const STATUS_CLASS_MAP: Record<string, string> = {
   scheduled:   STATUS_TONE.planned,

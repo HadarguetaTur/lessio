@@ -6,11 +6,11 @@ type KpiVariant = 'default' | 'revenue' | 'debt' | 'students' | 'lessons' | 'war
 
 const VARIANT_STYLES: Record<KpiVariant, { icon: string; card: string }> = {
   default:  { icon: 'bg-muted text-muted-foreground', card: '' },
-  revenue:  { icon: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400', card: '' },
-  debt:     { icon: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',         card: 'border-amber-200 dark:border-amber-900' },
-  students: { icon: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400',             card: '' },
-  lessons:  { icon: 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400',     card: '' },
-  warning:  { icon: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',         card: 'border-amber-200 dark:border-amber-900' },
+  revenue:  { icon: 'bg-muted text-muted-foreground', card: '' },
+  debt:     { icon: 'bg-muted text-muted-foreground',         card: 'border-amber-200 dark:border-amber-900' },
+  students: { icon: 'bg-muted text-muted-foreground',             card: '' },
+  lessons:  { icon: 'bg-muted text-muted-foreground',     card: '' },
+  warning:  { icon: 'bg-muted text-muted-foreground',         card: 'border-amber-200 dark:border-amber-900' },
 }
 
 interface Trend {
@@ -69,7 +69,7 @@ export function KpiCard({
           {label}
         </p>
         {Icon && (
-          <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-150 hover:scale-110', size === 'lg' && 'w-9 h-9', styles.icon)}>
+          <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', size === 'lg' && 'w-9 h-9', styles.icon)}>
             <Icon size={size === 'lg' ? 18 : 16} />
           </div>
         )}
@@ -91,14 +91,14 @@ export function KpiCard({
 
       {trend && (
         <div className="flex items-center gap-1">
-          {trend.direction === 'up' && <TrendingUp size={12} className="text-emerald-500" />}
-          {trend.direction === 'down' && <TrendingDown size={12} className="text-red-600" />}
+          {trend.direction === 'up' && <TrendingUp size={12} className="text-success" />}
+          {trend.direction === 'down' && <TrendingDown size={12} className="text-pen" />}
           {trend.direction === 'neutral' && <Minus size={12} className="text-muted-foreground" />}
           <span
             className={cn(
               'text-xs',
-              trend.direction === 'up' && 'text-emerald-700 dark:text-emerald-400',
-              trend.direction === 'down' && 'text-red-600',
+              trend.direction === 'up' && 'text-success',
+              trend.direction === 'down' && 'text-pen',
               trend.direction === 'neutral' && 'text-muted-foreground'
             )}
           >

@@ -42,7 +42,7 @@ export function CenterPlanInquiryDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) setResult(null) }}>
       <DialogTrigger asChild>
-        <Button type="button" className={cn('h-11 w-full font-semibold', className)}>{copy.cta}</Button>
+        <Button type="button" data-cta="pricing-center-enquiry" className={cn('h-11 w-full font-semibold', className)}>{copy.cta}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md" dir={isHe ? 'rtl' : 'ltr'}>
         <DialogHeader>
@@ -59,7 +59,7 @@ export function CenterPlanInquiryDialog({
             <label className="block text-sm font-medium">{copy.name}<input required name="name" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3" /></label>
             <label className="block text-sm font-medium">{copy.phone}<input required name="phone" type="tel" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3" /></label>
             {result && !('ok' in result) ? <p className="text-sm text-destructive">{copy.error}</p> : null}
-            <Button className="w-full" disabled={pending} type="submit">{copy.submit}</Button>
+            <Button className="w-full" disabled={pending} type="submit" data-cta="center-enquiry-submit">{copy.submit}</Button>
           </form>
         )}
       </DialogContent>

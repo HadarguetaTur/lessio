@@ -30,6 +30,8 @@ export type AdminAuditAction =
   | 'staff.reactivate'
   | 'tracking.destination_save'
   | 'tracking.destination_delete'
+  | 'attribution.link_create'
+  | 'attribution.link_archive'
   | 'outbound.import'
   | 'outbound.campaign_save'
   | 'outbound.suppression_add'

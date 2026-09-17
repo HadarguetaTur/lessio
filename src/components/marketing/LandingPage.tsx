@@ -4,8 +4,7 @@ import Link from 'next/link'
 
 import { DiaryFooter } from '@/components/diary/DiaryFooter'
 import { DiaryHeader } from '@/components/diary/DiaryHeader'
-import { DiaryShell } from '@/components/diary/DiaryShell'
-import { LandingCtaTracker } from '@/components/marketing/LandingCtaTracker'
+import { DIARY_SCROLL_ROOT_ID, DiaryShell } from '@/components/diary/DiaryShell'
 import { LandingFaqAccordion } from '@/components/marketing/LandingFaqAccordion'
 import {
   PenCheck,
@@ -19,8 +18,11 @@ import {
 } from '@/components/marketing/LandingPenMarks'
 import { LandingPricing } from '@/components/marketing/LandingPricing'
 import { LandingStickyCta } from '@/components/marketing/LandingStickyCta'
+import { LandingTracker } from '@/components/marketing/LandingTracker'
 import { LandingWeekSpread } from '@/components/marketing/LandingWeekSpread'
 import { LandingWhatsAppChat } from '@/components/marketing/LandingWhatsAppChat'
+import { ClarityScript } from '@/components/tracking/ClarityScript'
+import { LANDING_PATHS } from '@/lib/landing-analytics/sections'
 import { cn } from '@/lib/utils'
 import type { PublicPricingRow } from '@/lib/marketing/publicPricing'
 import {
@@ -163,7 +165,7 @@ export function LandingPage({
         }
         actions={
           <>
-            <Link href={links.login} className="min-h-9 text-sm font-semibold leading-9 hover:underline">
+            <Link href={links.login} data-cta="nav-login" className="min-h-9 text-sm font-semibold leading-9 hover:underline">
               {nav.login}
             </Link>
             <Link href={links.signup} data-cta="nav-signup" className="hl-cta !text-[1rem]">
@@ -421,7 +423,7 @@ export function LandingPage({
         </Page>
 
         {/* ── The inside back cover ─────────────────────────────────────── */}
-        <section className="cover">
+        <section id="final" className="cover">
           <div className="mx-auto grid w-full max-w-7xl gap-14 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-20 lg:px-8 lg:py-28">
             <div className="text-center sm:text-start">
               <h2 className="display mx-auto max-w-[22ch] text-[2rem] sm:mx-0 sm:text-[2.75rem] lg:text-[3.25rem]">{finalCta.title}</h2>
@@ -443,7 +445,8 @@ export function LandingPage({
       <DiaryFooter copy={footer} siteContact={siteContact} className="pb-24 sm:pb-10" />
 
       <LandingStickyCta href={links.signup} label={hero.ctaPrimary} note={pricing.trialNote} />
-      <LandingCtaTracker />
+      <LandingTracker locale={locale === 'he' ? 'he' : 'en'} scrollRootId={DIARY_SCROLL_ROOT_ID} />
+      <ClarityScript allowedPaths={LANDING_PATHS} />
     </DiaryShell>
   )
 }

@@ -262,7 +262,13 @@ export async function createOrgWithOwner(
  */
 export async function createOrgForExistingUser(
   input: GoogleSignupInput,
-  errors: Omit<SignupFlowServerErrors, 'emailTaken' | 'accountFailed'>
+  errors: Omit<SignupFlowServerErrors, 'emailTaken' | 'accountFailed'>,
+  /** Same contract as createOrgWithOwner: where this signup came from, if known. */
+  attribution?: {
+    attribution: Record<string, unknown> | null
+    visitorId: string | null
+    email?: string | null
+  }
 ): Promise<SignupResult> {
   const db = createServiceRoleClient()
   const { userId, org_name, full_name } = input
@@ -279,6 +285,8 @@ export async function createOrgForExistingUser(
       min_booking_notice_hours: 0,
       billing_mode: 'monthly',
       onboarding_completed: true,
+      attribution: attribution?.attribution ?? null,
+      attribution_visitor_id: attribution?.visitorId ?? null,
     })
     .select('id')
     .single()
@@ -318,10 +326,12 @@ export async function createOrgForExistingUser(
     return { success: false, error: errors.profileFailed }
   }
 
-  // No email or visitor id here: GoogleSignupInput carries neither, and the
-  // OAuth round trip has already left our origin. The events still fire with
-  // the org id — only Meta's match quality is weaker on this path.
-  if (!(await provisionProgressiveSetup(db, orgId, userId))) {
+  if (
+    !(await provisionProgressiveSetup(db, orgId, userId, {
+      email: attribution?.email ?? null,
+      visitorId: attribution?.visitorId ?? null,
+    }))
+  ) {
     await db.from('organizations').delete().eq('id', orgId)
     return { success: false, error: errors.orgFailed }
   }

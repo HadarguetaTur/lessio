@@ -4197,7 +4197,8 @@
         "gtm": "Google Tag Manager",
         "google_ads": "Google Ads",
         "tiktok": "TikTok",
-        "linkedin": "LinkedIn"
+        "linkedin": "LinkedIn",
+        "clarity": "Microsoft Clarity (recordings and heatmaps)"
       },
       "categories": {
         "necessary": "Necessary",
@@ -4220,6 +4221,139 @@
         "INVALID_INPUT": "Check the provider, name and id.",
         "PROVIDER_ALREADY_ENABLED": "Another destination for this provider is already enabled.",
         "MISSING_ENCRYPTION_KEY": "TRACKING_CONFIG_ENCRYPTION_KEY is not set on the server."
+      }
+    },
+    "attribution": {
+      "title": "Attribution and funnel",
+      "description": "Which post brought visitors to the landing page, how far they scrolled, how long they stayed and what they clicked. Measured for every visitor, anonymously, independent of the cookie banner.",
+      "range": "{days} days",
+      "pages": {
+        "all": "All pages"
+      },
+      "empty": "No visits in this range yet. Create a link below, post it, and the numbers show up here.",
+      "truncated": "Showing only the latest {cap} visits. Shorten the range; this is also the signal to move the aggregation into the database.",
+      "bySource": "By source",
+      "bySourceHint": "One row per short link or UTM combination. Percentages are of that source's visits. \"Clicks\" are counted on the short link itself, so a wide gap against \"Visits\" means something is blocking measurement.",
+      "cards": {
+        "visits": "Visits",
+        "uniques": "{count} unique visitors",
+        "engaged": "Median reading time",
+        "scroll": "Median scroll {pct}%",
+        "ctaRate": "Clicked a button",
+        "ctaVisits": "{count} visits with a click",
+        "signups": "Signups",
+        "leads": "{count} centre enquiries"
+      },
+      "columns": {
+        "source": "Source",
+        "clicks": "Clicks",
+        "visits": "Visits",
+        "uniques": "Uniques",
+        "chain": "Reached chain",
+        "pricing": "Reached pricing",
+        "final": "Reached the end",
+        "engaged": "Reading time",
+        "ctaRate": "Clicked",
+        "topCta": "Top button",
+        "signups": "Signups",
+        "leads": "Enquiries"
+      },
+      "sources": {
+        "direct": "Direct, no source",
+        "kind": {
+          "link": "Short link",
+          "utm": "UTM tagged",
+          "referrer": "Referred by another site",
+          "direct": "Typed address or untagged link"
+        }
+      },
+      "funnel": {
+        "title": "How far they got",
+        "hint": "Share of visits that saw each part of the page. The red number is the drop from the part before it: that is where the page loses people."
+      },
+      "sections": {
+        "week": "Opening (the week)",
+        "chain": "The chain",
+        "problem": "The problem",
+        "centre": "Capabilities",
+        "rollout": "Rollout",
+        "trust": "Trust",
+        "audience": "Who it is for",
+        "pricing": "Pricing",
+        "faq": "FAQ",
+        "final": "Closing call to action"
+      },
+      "ctaTable": {
+        "title": "What they clicked",
+        "hint": "Out of all visits in the range.",
+        "cta": "Button",
+        "clicks": "Clicks",
+        "share": "Of visits"
+      },
+      "ctas": {
+        "nav-signup": "Sign up in the top bar",
+        "nav-login": "Sign in in the top bar",
+        "hero-primary": "Main button in the opening",
+        "chain-primary": "Sign up after the chain",
+        "chain-video": "Watch the video",
+        "pricing-solo": "Pricing: Solo",
+        "pricing-studio": "Pricing: Studio",
+        "pricing-center-enquiry": "Pricing: open centre enquiry",
+        "center-enquiry-submit": "Send centre enquiry",
+        "final-cta": "Button at the end of the page",
+        "sticky-mobile": "Floating mobile button"
+      },
+      "builder": {
+        "title": "New link for a post",
+        "description": "One link per post. That is how you see exactly which group and which wording brought people who read and sign up.",
+        "label": "Where it is posted",
+        "labelPlaceholder": "e.g. Private tutors Tel Aviv",
+        "note": "Which post",
+        "notePlaceholder": "e.g. cancellations wording, 18.09",
+        "channel": "Channel",
+        "channels": {
+          "facebookGroup": "Facebook group",
+          "facebookPage": "Facebook page or profile",
+          "instagram": "Instagram",
+          "whatsapp": "WhatsApp",
+          "email": "Email",
+          "other": "Other"
+        },
+        "target": "Landing page",
+        "targets": {
+          "home": "Home page, for centres and studios",
+          "tutors": "/tutors, for solo tutors"
+        },
+        "slug": "Link ending (optional)",
+        "slugHint": "Latin letters, digits and hyphens. Leave empty and one is generated.",
+        "campaign": "Campaign",
+        "create": "Create link",
+        "created": "Created:",
+        "errors": {
+          "INVALID_INPUT": "A name is missing, or one of the fields is invalid.",
+          "INVALID_SLUG": "The ending must be Latin letters, digits and hyphens.",
+          "SLUG_TAKEN": "That ending is already in use. Pick another.",
+          "SLUG_RESERVED": "That ending is reserved. Pick another.",
+          "SAVE_FAILED": "Saving failed. Try again."
+        }
+      },
+      "links": {
+        "title": "Your links",
+        "empty": "No links yet. Create the first one above.",
+        "label": "Post",
+        "url": "Short link",
+        "target": "Target",
+        "clicks": "Clicks (all time)",
+        "visits": "Visits in range",
+        "copyShort": "Copy the short link",
+        "copyFull": "Copy the full link with UTM",
+        "archive": "Archive (the link keeps working)"
+      },
+      "noTrack": {
+        "off": "Your visits from this browser are counted. A browser signed in to Lessio is never counted; mark your phone and the incognito window you check posts in as well.",
+        "on": "This browser is excluded from measurement.",
+        "enable": "Do not measure this browser",
+        "disable": "Measure again"
       }
     },
     "outbound": {

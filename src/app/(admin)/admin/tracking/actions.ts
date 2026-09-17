@@ -52,6 +52,12 @@ export async function saveDestinationAction(
   })
   if (!parsed.success) return { error: 'INVALID_INPUT' }
 
+  // Clarity records the screen. It never loads as "necessary", whatever the
+  // form says — decision #49: a third party always waits for the banner.
+  if (parsed.data.provider === 'clarity' && parsed.data.consentCategory === 'necessary') {
+    parsed.data.consentCategory = 'analytics'
+  }
+
   const result = await saveDestination({
     ...parsed.data,
     testEventCode: parsed.data.testEventCode?.trim() || null,

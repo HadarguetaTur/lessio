@@ -177,8 +177,8 @@ export function PrivacyEn({
               items={[
                 'Google Analytics 4 (GA4) — analysing traffic and usage patterns on the website and in the system.',
                 'Meta Pixel — tracking advertising conversions and improving campaigns.',
-                'PostHog — analysing user behaviour and improving the product experience.',
-                'Hotjar — mapping the user experience (heatmaps, session recordings).',
+                'Microsoft Clarity — mapping the user experience on the marketing pages (heatmaps, session recordings). Loaded only after consent to analytics cookies.',
+                'Lessio\'s own anonymous measurement — on the marketing pages we count visits ourselves, with no third party: which link the visit came from, which parts of the page were viewed, how long it lasted and which buttons were clicked. It relies on a random identifier stored in a cookie, does not store an IP address, a name, a phone number or the full address of the referring site, and is deleted after 180 days.',
                 'Sentry — monitoring errors and detecting technical faults in real time.',
               ]}
             />
@@ -476,15 +476,18 @@ export function PrivacyEn({
           <Ul
             items={[
               'Essential cookies — required to operate the system and manage the sign-in session. These cannot be disabled.',
-              'Analytics cookies — Google Analytics 4 and PostHog for usage analysis and product improvement; Hotjar for mapping the user experience.',
-              'Marketing cookies — Meta Pixel for tracking advertising conversions.',
+              'Anonymous measurement cookie — a random visitor identifier set by Lessio itself, used to count visits to the marketing pages and to link a signup to the source it came from. It does not identify a person, is not shared with any third party, and operates regardless of the choice made in the banner.',
+              'Analytics cookies — Google Analytics 4 for usage analysis and product improvement; Microsoft Clarity for mapping the user experience. Loaded only after consent.',
+              'Marketing cookies — Meta Pixel for tracking advertising conversions. Loaded only after consent.',
               'Error-monitoring cookies — Sentry for detecting and recording technical faults.',
             ]}
           />
           <p>
-            You can manage your cookie preferences through your browser settings. Using the website and
-            the system after registering constitutes consent to essential cookies. Analytics and marketing
-            cookies can be restricted through browser settings.
+            Third-party analytics and marketing cookies are chosen in the banner shown on your first
+            visit: you can reject all of them, accept analytics only, or accept everything, and none of
+            them load before you choose. To change an earlier choice, clear this site&apos;s cookies in your
+            browser and the banner is shown again. Using the website and the system after registering
+            constitutes consent to essential cookies.
           </p>
         </Section>
 

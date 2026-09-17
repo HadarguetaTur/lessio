@@ -55,6 +55,11 @@ function isDashboardRoute(pathname: string): boolean {
 function captureAttribution(request: NextRequest, response: NextResponse): void {
   if (request.method !== 'GET') return
   if (request.nextUrl.pathname.startsWith('/api/')) return
+  // /go/<slug> only redirects. Capturing here would write a first touch made of
+  // the referrer alone — and the first touch is never overwritten, so the UTM
+  // values on the redirect target would be lost for good. The target request
+  // arrives with both (browsers keep the Referer across a redirect).
+  if (request.nextUrl.pathname.startsWith('/go/')) return
   if (request.headers.get('sec-fetch-dest') === 'empty') return
   if (!request.headers.get('accept')?.includes('text/html')) return
 
@@ -156,6 +161,10 @@ export async function proxy(request: NextRequest) {
     // /u/<token> — the one-click unsubscribe every cold email carries. The
     // token is the credential, and the row it names is deleted when it is used.
     request.nextUrl.pathname.startsWith('/u/') ||
+    // /go/<slug> — short marketing links. A redirect to the landing page and
+    // nothing else, so a Supabase round-trip in front of it is pure latency on
+    // the first thing a prospect ever waits for.
+    request.nextUrl.pathname.startsWith('/go/') ||
     // Client error reports. Unauthenticated on purpose: the boundary that most
     // needs to report is the one that fired because the session or the shell
     // itself broke, and an auth round-trip here would silently drop exactly

@@ -4,6 +4,9 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { normalizePhone, PhoneNormalizationError } from '@/lib/phone'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { readRequestAttribution } from '@/lib/attribution/server'
+import { stampLandingConversion } from '@/lib/landing-analytics/conversion'
+import type { AttributionTouch } from '@/lib/attribution'
 
 const inquirySchema = z.object({
   contactName: z.string().trim().min(1).max(200),
@@ -13,10 +16,21 @@ const inquirySchema = z.object({
 export type CenterInquiryInput = z.infer<typeof inquirySchema>
 export type CenterInquiryResult = { ok: true } | { error: 'INVALID_INPUT' | 'INVALID_PHONE' | 'SAVE_FAILED' }
 
+/** Where an anonymous enquiry came from. Never accepted from the client. */
+type InquiryOrigin = { touch: AttributionTouch | null; visitorId: string | null }
+
 /** Records a Center enquiry in the platform CRM, optionally tied to an existing org. */
 export async function createCenterPlanInquiry(
   input: CenterInquiryInput,
   organizationId: string | null = null
+): Promise<CenterInquiryResult> {
+  return saveInquiry(input, organizationId, null)
+}
+
+async function saveInquiry(
+  input: CenterInquiryInput,
+  organizationId: string | null,
+  origin: InquiryOrigin | null
 ): Promise<CenterInquiryResult> {
   const parsed = inquirySchema.safeParse(input)
   if (!parsed.success) return { error: 'INVALID_INPUT' }
@@ -52,16 +66,29 @@ export async function createCenterPlanInquiry(
     }
   }
 
-  const { error } = await db.from('platform_leads').insert({
-    name: parsed.data.contactName,
-    phone,
-    status: 'new',
-    source: 'plan_inquiry',
-    medium: 'website',
-    notes: note,
-    organization_id: organizationId,
-  })
-  if (error) return { error: 'SAVE_FAILED' }
+  // `source` stays 'plan_inquiry' — it names the form, and the dedupe above keys
+  // on it. Which post the visitor arrived from goes in medium/campaign/content.
+  const touch = origin?.touch ?? null
+  const cameFrom = [touch?.source, touch?.medium].filter(Boolean).join(' / ')
+  const { data: lead, error } = await db
+    .from('platform_leads')
+    .insert({
+      name: parsed.data.contactName,
+      phone,
+      status: 'new',
+      source: 'plan_inquiry',
+      medium: cameFrom || 'website',
+      campaign: touch?.campaign ?? null,
+      content: touch?.content ?? null,
+      visitor_id: origin?.visitorId ?? null,
+      notes: note,
+      organization_id: organizationId,
+    })
+    .select('id')
+    .single()
+  if (error || !lead) return { error: 'SAVE_FAILED' }
+
+  await stampLandingConversion({ visitorId: origin?.visitorId ?? null, leadId: lead.id as string })
 
   revalidatePath('/admin/leads')
   return { ok: true }
@@ -69,5 +96,6 @@ export async function createCenterPlanInquiry(
 
 /** Public landing-page action: intentionally has no session requirement. */
 export async function submitPublicCenterPlanInquiry(input: CenterInquiryInput): Promise<CenterInquiryResult> {
-  return createCenterPlanInquiry(input)
+  const { lastTouch, visitorId } = await readRequestAttribution()
+  return saveInquiry(input, null, { touch: lastTouch, visitorId })
 }

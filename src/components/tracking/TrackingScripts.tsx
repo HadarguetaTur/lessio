@@ -78,6 +78,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
         // google_ads, tiktok and linkedin are registered so an operator can
         // record the id, but their tags are expected to be fired through GTM.
+        // clarity is rendered by ClarityScript, on the marketing pages only.
         return null
       })}
     </>

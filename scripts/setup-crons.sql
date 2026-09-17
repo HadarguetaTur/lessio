@@ -175,6 +175,26 @@ begin
   end loop;
 end $$;
 
+-- Pure-SQL jobs: no HTTP, no secret, nothing to substitute.
+--
+--   landing-pageviews-retention — the first-party landing measurement
+--                                 (decision #49) is promised to visitors as
+--                                 deleted after 180 days. Daily 03:17 UTC,
+--                                 off the hour so it does not pile onto the
+--                                 Edge crons above.
+do $$
+begin
+  if exists (select 1 from cron.job where jobname = 'landing-pageviews-retention') then
+    perform cron.unschedule('landing-pageviews-retention');
+  end if;
+
+  perform cron.schedule(
+    'landing-pageviews-retention',
+    '17 3 * * *',
+    $cmd$delete from public.landing_pageviews where started_at < now() - interval '180 days'$cmd$
+  );
+end $$;
+
 -- Verify. Read `command` too, not just the schedule: a job can be registered,
 -- active, and 401'ing on every run because it sends the wrong header. Every
 -- Edge Function row must contain 'apikey'; every Next.js row must contain

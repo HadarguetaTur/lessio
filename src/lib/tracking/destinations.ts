@@ -20,6 +20,9 @@ export const TRACKING_PROVIDERS = [
   'google_ads',
   'tiktok',
   'linkedin',
+  // Rendered by ClarityScript on the marketing pages only, never by the root
+  // layout's TrackingScripts: it records the screen. See that component.
+  'clarity',
 ] as const
 
 export type TrackingProvider = (typeof TRACKING_PROVIDERS)[number]

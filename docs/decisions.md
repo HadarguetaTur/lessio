@@ -1172,6 +1172,41 @@ with it without imitating it. (#47 is the lesson time change, on its own branch.
   classes in ~270 files; those move to tokens screen by screen, not in one
   codemod. Dark mode remains inert (the `.dark` class is never applied).
 
+## 49. Landing Pages Are Measured First-Party, Anonymously, Without Waiting for Consent
+
+✅ DECIDED (17 Sep 2026, Hadar): before any paid media, organic posts in
+Facebook groups are the acquisition channel, and the question is which post
+brings people who read and sign up. The consent-gated pixels (Sprint 34 § C)
+cannot answer it: a few hundred visits arrive through the Facebook in-app
+browser, most never touch the banner, and GA4 would see almost none of them.
+
+* **What runs without consent.** Our own measurement on the marketing pages
+  (`/`, `/tutors`): one row per pageview in `landing_pageviews` — the source
+  (short link / UTM / referrer host), which sections were seen, scroll depth,
+  engaged time, which CTA was clicked, device class. Keyed on the random
+  `ls_vid` cookie the proxy already sets. Client: `LandingTracker`; intake:
+  `POST /api/telemetry/pageview`; screen: `/admin/attribution`.
+* **What is never stored.** No IP (it is only an in-memory rate-limit key when
+  the visitor cookie is missing), no name or phone, no full referrer URL (host
+  only — a Facebook path names the group), no click-id values (flags only).
+  Rows are deleted after 180 days. Signed-in browsers, bots and a browser
+  marked "do not measure" are dropped at intake.
+* **What still waits for consent.** Everything third-party: Meta Pixel, GA4,
+  GTM, Microsoft Clarity. Clarity is additionally scoped to the marketing
+  pages and stopped on leaving them — it records the screen, and the dashboard
+  shows students' and parents' details.
+* **This is Hadar's call, recorded as made.** Anonymous first-party statistics
+  without consent is a defensible reading, not a settled one; the privacy
+  policy (§ 4.7, § 14) describes it plainly so the practice and the promise
+  match. Reopen this if the measurement ever gains an identifier, a third
+  party, or a use beyond improving the pages.
+* **Short links.** `/go/<slug>` (table `marketing_links`) redirects to the
+  landing page with the link's UTM values. One link per post; the slug doubles
+  as `utm_content`. Archiving hides a link from the admin list and never
+  breaks the redirect — the post is still out there.
+* `attribution_touches` (Sprint 34 M1) stays unwritten; `landing_pageviews`
+  supersedes it.
+
 ## Schema Changes Summary by Sprint
 
 | Sprint | Table | Change | Status |

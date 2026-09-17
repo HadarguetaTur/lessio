@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { createOrgForExistingUser } from '@/lib/auth/createOrgWithOwner'
+import { readRequestAttribution } from '@/lib/attribution/server'
+import { stampLandingConversion } from '@/lib/landing-analytics/conversion'
 import { z } from 'zod'
 
 const CompleteSignupSchema = z.object({
@@ -30,14 +32,20 @@ export async function completeGoogleSignup(
   }
 
   const tSrv = await getTranslations('auth.signupServerErrors')
+  // The attribution cookies are first-party and SameSite=Lax, so they survive
+  // the round trip to Google and back — this path used to drop them anyway.
+  const { attribution, visitorId } = await readRequestAttribution()
   const result = await createOrgForExistingUser(
     { ...parsed.data, userId: user.id },
-    { orgFailed: tSrv('orgFailed'), profileFailed: tSrv('profileFailed') }
+    { orgFailed: tSrv('orgFailed'), profileFailed: tSrv('profileFailed') },
+    { attribution, visitorId, email: user.email ?? null }
   )
 
   if (!result.success) {
     return { error: result.error }
   }
+
+  await stampLandingConversion({ visitorId, organizationId: result.orgId })
 
   redirect('/dashboard')
 }

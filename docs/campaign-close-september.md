@@ -253,10 +253,12 @@ Lessio
 | Meta רימרקטינג | `/tutors?utm_source=meta&utm_medium=paid&utm_campaign=close-september&utm_content=retarget` |
 | Google — מרכז | `/?utm_source=google&utm_medium=cpc&utm_campaign=close-september&utm_content=center` |
 | Google — מורה | `/tutors?utm_source=google&utm_medium=cpc&utm_campaign=close-september&utm_content=tutor` |
-| קבוצות פייסבוק | `/tutors?utm_source=fb-group&utm_medium=social&utm_campaign=close-september` |
+| קבוצות פייסבוק | **לא לינק קבוע.** יוצרים לינק קצר לכל פוסט ב-`/admin/attribution` (`getlessio.com/go/<slug>` → `utm_source=facebook&utm_medium=group&utm_content=<slug>`) |
 | הפניות מרז | `/?utm_source=raz&utm_medium=referral&utm_campaign=close-september` |
 
 הייחוס נשמר אוטומטית על הארגון בהרשמה (`src/lib/attribution/index.ts`), חלון 90 יום.
+
+**פוסטים אורגניים נמדדים לפני ההרשמה, לא רק בה** (החלטה #49). `/admin/attribution` מראה לכל לינק קצר: קליקים, ביקורים, עד איזה חלק בדף הגיעו, זמן קריאה חציוני, על איזה כפתור לחצו, והרשמות. המדידה הזו שלנו, אנונימית, ואינה תלויה בבאנר העוגיות או בפיקסל, כך שהיא עובדת גם לפני ש-Meta/GA4 מוגדרים. כלל עבודה: לינק אחד לכל פוסט (קבוצה + נוסח), אחרת אי אפשר להשוות בין נוסחים.
 
 ---
 

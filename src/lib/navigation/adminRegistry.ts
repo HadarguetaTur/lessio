@@ -27,6 +27,7 @@ import {
   Megaphone,
   ScrollText,
   Send,
+  Route,
   ShieldCheck,
   SlidersHorizontal,
   UserPlus,
@@ -78,6 +79,13 @@ export const ADMIN_NAV: AdminNavEntry[] = [
     icon: Send,
     capability: 'growth.read',
     synonyms: ['outbound', 'cold email', 'campaign', 'prospects', 'mailbox', 'gmail', 'suppression'],
+  },
+  {
+    href: '/admin/attribution',
+    navKey: 'attribution',
+    icon: Route,
+    capability: 'growth.read',
+    synonyms: ['attribution', 'utm', 'links', 'short link', 'funnel', 'landing', 'scroll', 'facebook', 'posts'],
   },
   {
     href: '/admin/tracking',
@@ -178,8 +186,8 @@ export const ADMIN_CATEGORIES: AdminCategory[] = [
     id: 'growth',
     sectionKey: 'sections.growth',
     icon: Megaphone,
-    // Campaigns and attribution join in § D.
-    items: ['/admin/leads', '/admin/outbound', '/admin/tracking'].map(entryOf),
+    // Campaigns (spend, CAC) join in § D.
+    items: ['/admin/leads', '/admin/outbound', '/admin/attribution', '/admin/tracking'].map(entryOf),
   },
   {
     id: 'customers',

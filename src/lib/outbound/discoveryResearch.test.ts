@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { isNonBusinessHost, teacherCountGate, teamSizeStatus, extractPublicEmails, extractResearchFacts, researchGate, researchUrls, researchWebsite, scoreDiscoveryCandidate } from './discoveryResearch'
+import { classifySegment, isNonBusinessHost, teacherCountGate, teamSizeStatus, extractPublicEmails, extractResearchFacts, researchGate, researchUrls, researchWebsite, scoreDiscoveryCandidate } from './discoveryResearch'
 import { robotsAllows } from './researchRobots'
 import { businessHost, isPublicAddress, type ResearchResponse } from './researchFetch'
 
@@ -142,7 +142,7 @@ describe('strict cold outreach teacher count', () => {
   it.each([2,3,4,5])('accepts a source-backed team of %s teachers', (count) => {
     expect(teacherCountGate(extractResearchFacts('צוות של ' + count + ' מורים', home),home)).toBeNull()
   })
-  it.each([1,6,10,46])('rejects a team of %s teachers', (count) => {
+  it.each([6,10,46])('rejects a team of %s teachers', (count) => {
     expect(teacherCountGate(extractResearchFacts('צוות של ' + count + ' מורים',home),home)).toBe('TEAM_SIZE_OUT_OF_RANGE')
   })
   it.each(['צוות מורים','קבוצות של 3 תלמידים','3 שנות ניסיון','בעבר צוות של 3 מורים','צוות של מעל 3 מורים','במרכז מלמדים 3 מורים למתמטיקה','הצוות כולל 3 מורים לאנגלית'])('does not infer team size from %s', (text) => {
@@ -158,6 +158,22 @@ describe('strict cold outreach teacher count', () => {
       [home+'team']: response('צוות של 8 מורים'),
     }))
     expect(teacherCountGate(result.facts,home)).toBe('TEAM_SIZE_CONFLICT')
+  })
+  it('reads one teacher as the solo segment, not a rejection', () => {
+    const one = extractResearchFacts('צוות של 1 מורים', home)
+    expect(teamSizeStatus(one, home)).toBe('solo')
+    expect(researchGate({ email: 'hi@tutor.test', emailSourceUrl: home, facts: [...extractResearchFacts('מרכז למידה עם צוות מורים', home), ...one], score: 90, excluded: false })).toBeNull()
+  })
+  it.each([
+    ['מרכז הלמידה של רועי גבע', 'team'], ['מני פורת- מורה פרטי', 'solo'], ['דיאנה מורה פרטית למתמטיקה', 'solo'],
+    ['מורה לסטטיסטיקה בתל אביב', 'solo'], ['גיא קורן - מתמטיקה ופיזיקה', 'unknown'], ['מרכז הלמידה 10- מורים פרטיים', 'team'],
+  ] as const)('classifies %s as %s', (name, segment) => {
+    expect(classifySegment(name, [], home)).toBe(segment)
+  })
+  it('lets the site settle the segment, and leaves mixed signals to a person', () => {
+    expect(classifySegment('גיא קורן', extractResearchFacts('צוות של 3 מורים', home), home)).toBe('team')
+    expect(classifySegment('גיא קורן', extractResearchFacts('אנחנו מרכז למידה עם צוות מורים', home), home)).toBe('team')
+    expect(classifySegment('יוסי - מורה פרטי', extractResearchFacts('צוות מורים מנוסה', home), home)).toBe('unknown')
   })
   it('lets an unknown size through to a person and stops only a proven out-of-range team', () => {
     const base = extractResearchFacts('מרכז למידה עם צוות מורים בקבוצות קטנות', home)

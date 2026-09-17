@@ -3,11 +3,21 @@ import { DateTime } from 'luxon'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { findSuppressed } from './suppressions'
 import { generateCandidateOpener } from './candidateOpener'
-import { EXCLUDED_BUSINESS_NAME, researchGate, researchWebsite, scoreDiscoveryCandidate, teamSizeStatus, type ResearchFact, type TeamSizeStatus } from './discoveryResearch'
+import { EXCLUDED_BUSINESS_NAME, classifySegment, researchGate, researchWebsite, scoreDiscoveryCandidate, teamSizeStatus, type DiscoverySegment, type ResearchFact, type TeamSizeStatus } from './discoveryResearch'
 
 const PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
 const SUBJECTS = ['מתמטיקה', 'אנגלית', 'פיזיקה']
-const CITIES = ['תל אביב', 'ירושלים', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'באר שבע', 'נתניה', 'רחובות', 'רמת גן', 'חולון', 'אשדוד', 'כפר סבא', 'הרצליה', 'מודיעין']
+const CITIES_PER_DAY = 4
+const MAX_PAGES = 2
+// Ordered so that any four consecutive entries span different regions.
+const CITIES = [
+  'תל אביב', 'ירושלים', 'חיפה', 'באר שבע', 'ראשון לציון', 'נתניה', 'קריית אתא', 'אשדוד', 'פתח תקווה', 'מודיעין', 'נהריה', 'אשקלון',
+  'רמת גן', 'כפר סבא', 'קריית ביאליק', 'קריית גת', 'חולון', 'רעננה', 'עפולה', 'אילת', 'בת ים', 'הוד השרון', 'טבריה', 'דימונה',
+  'גבעתיים', 'הרצליה', 'כרמיאל', 'נתיבות', 'בני ברק', 'רמת השרון', 'נוף הגליל', 'שדרות', 'רחובות', 'חדרה', 'קריית מוצקין', 'ערד',
+  'נס ציונה', 'זכרון יעקב', 'קריית ים', 'אופקים', 'יבנה', 'פרדס חנה', 'צפת', 'קריית מלאכי', 'לוד', 'קיסריה', 'קריית שמונה', 'גדרה',
+  'רמלה', 'אבן יהודה', 'טירת כרמל', 'מבשרת ציון', 'ראש העין', 'כפר יונה', 'נשר', 'מעלה אדומים', 'יהוד', 'תל מונד', 'יקנעם', 'בית שמש',
+  'אור יהודה', 'קדימה צורן', 'מגדל העמק', 'גבעת שמואל', 'שוהם', 'קריית אונו', 'גני תקווה', 'אריאל', 'מזכרת בתיה', 'גן יבנה', 'באר יעקב', 'קריית טבעון',
+]
 type Place = {
   id: string; displayName?: { text?: string }; formattedAddress?: string
   websiteUri?: string; primaryType?: string; addressComponents?: { types?: string[]; shortText?: string }[]; nationalPhoneNumber?: string; primaryTypeDisplayName?: { text?: string }
@@ -22,20 +32,26 @@ export type DiscoveryCandidate = {
   research_requested_at: string | null; research_claimed_at: string | null
   research_attempts: number; research_completed_at: string | null
   approval_mode: 'manual' | 'automatic' | null; opener_fact_ids: number[]
-  team_status: TeamSizeStatus
+  team_status: TeamSizeStatus; segment: DiscoverySegment
 }
-export type DiscoveryAutomation = { auto_approve: boolean; campaign_id: string | null }
+export type DiscoveryAutomation = { auto_approve: boolean; campaign_id: string | null; solo_campaign_id: string | null }
 
 export function discoveryQueries(now = new Date()): string[] {
-  const day = DateTime.fromJSDate(now).setZone('Asia/Jerusalem').ordinal
-  const city = CITIES[day % CITIES.length]!
-  const second = CITIES[(day + 7) % CITIES.length]!
+  const local = DateTime.fromJSDate(now).setZone('Asia/Jerusalem')
+  const day = local.year * 366 + local.ordinal
+  const city = (offset: number) => CITIES[(day * CITIES_PER_DAY + offset) % CITIES.length]!
   const subject = SUBJECTS[day % SUBJECTS.length]!
   const other = SUBJECTS[(day + 1) % SUBJECTS.length]!
   // A subject anchors Google on tutoring. Bare "מרכז למידה" or "שיעורים פרטיים" returned
   // colleges, gyms, music and driving teachers (probed against Places, 2026-09-17).
   // "הכנה לבגרות" only pays off with maths; with English or physics it returned 0-2 places.
-  return ['הכנה לבגרות מתמטיקה ' + city, 'שיעורים פרטיים ' + subject + ' ' + city, 'מרכז למידה ' + other + ' ' + second, 'שיעורים פרטיים ' + other + ' ' + second]
+  // Four cities a day, two subject-anchored shapes each: the whole list comes round in about 18 days.
+  return [
+    'הכנה לבגרות מתמטיקה ' + city(0), 'שיעורים פרטיים ' + subject + ' ' + city(0),
+    'מרכז למידה ' + subject + ' ' + city(1), 'שיעורים פרטיים ' + other + ' ' + city(1),
+    'הכנה לבגרות מתמטיקה ' + city(2), 'הוראה מתקנת ' + city(2),
+    'מרכז למידה ' + other + ' ' + city(3), 'שיעורים פרטיים ' + subject + ' ' + city(3),
+  ]
 }
 
 /** Google's machine type, not the display name. Tutors come back as school / educational_institution / service / none. */
@@ -44,19 +60,32 @@ export function isCollectable(place: { displayName?: { text?: string }; primaryT
   return !OFF_TARGET_TYPES.has(place.primaryType ?? '') && !EXCLUDED_BUSINESS_NAME.test(place.displayName?.text ?? '')
 }
 
-async function searchPlaces(query: string): Promise<Place[]> {
+export async function searchPlaces(query: string): Promise<Place[]> {
   const key = process.env.GOOGLE_PLACES_API_KEY?.trim()
   if (!key) throw new Error('GOOGLE_PLACES_API_KEY is not configured')
+  const places: Place[] = []
+  let pageToken: string | undefined
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const batch = await searchPlacesPage(query, key, pageToken)
+    places.push(...batch.places)
+    pageToken = batch.nextPageToken
+    if (!pageToken) break
+  }
+  return places
+}
+
+async function searchPlacesPage(query: string, key: string, pageToken?: string): Promise<{ places: Place[]; nextPageToken?: string }> {
   const response = await fetch(PLACES_URL, {
     method: 'POST', signal: AbortSignal.timeout(12_000),
     headers: {
       'Content-Type': 'application/json', 'X-Goog-Api-Key': key,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.primaryType,places.addressComponents,places.nationalPhoneNumber,places.primaryTypeDisplayName',
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.primaryType,places.addressComponents,places.nationalPhoneNumber,places.primaryTypeDisplayName,nextPageToken',
     },
-    body: JSON.stringify({ textQuery: query, languageCode: 'he', regionCode: 'IL', pageSize: 20 }),
+    body: JSON.stringify({ textQuery: query, languageCode: 'he', regionCode: 'IL', pageSize: 20, ...(pageToken ? { pageToken } : {}) }),
   })
   if (!response.ok) throw new Error('Google Places returned ' + response.status)
-  return ((await response.json()) as { places?: Place[] }).places ?? []
+  const body = (await response.json()) as { places?: Place[]; nextPageToken?: string }
+  return { places: body.places ?? [], nextPageToken: body.nextPageToken }
 }
 
 export async function listDiscoveryCandidates(limit = 100): Promise<DiscoveryCandidate[]> {
@@ -78,21 +107,24 @@ export async function listHeldDiscoveryCandidates(limit = 200): Promise<Discover
 
 export async function getDiscoveryAutomation(): Promise<DiscoveryAutomation> {
   const { data, error } = await createServiceRoleClient().from('outbound_discovery_settings')
-    .select('auto_approve, campaign_id').eq('id', true).single()
+    .select('auto_approve, campaign_id, solo_campaign_id').eq('id', true).single()
   if (error) throw new Error('[outbound/discovery] settings failed: ' + error.message)
   return data as DiscoveryAutomation
 }
 
 export async function saveDiscoveryAutomation(input: DiscoveryAutomation & { actorProfileId: string }): Promise<void> {
   const db = createServiceRoleClient()
-  if (input.auto_approve) {
-    if (!input.campaign_id) throw new Error('CAMPAIGN_REQUIRED')
+  if (input.auto_approve && !input.campaign_id && !input.solo_campaign_id) throw new Error('CAMPAIGN_REQUIRED')
+  if (input.campaign_id && input.campaign_id === input.solo_campaign_id) throw new Error('CAMPAIGNS_MUST_DIFFER')
+  // Whichever campaign is chosen must be able to carry the grounded opener.
+  for (const id of [input.campaign_id, input.solo_campaign_id]) {
+    if (!id) continue
     const { data, error } = await db.from('outbound_campaigns').select('id, body_text')
-      .eq('id', input.campaign_id).eq('is_active', true).eq('locale', 'he').maybeSingle()
+      .eq('id', id).eq('is_active', true).eq('locale', 'he').maybeSingle()
     if (error || !data || !data.body_text.includes('{{personal_line}}')) throw new Error('CAMPAIGN_REQUIRES_PERSONAL_LINE')
   }
   const { error } = await db.from('outbound_discovery_settings').update({
-    auto_approve: input.auto_approve, campaign_id: input.campaign_id,
+    auto_approve: input.auto_approve, campaign_id: input.campaign_id, solo_campaign_id: input.solo_campaign_id,
     updated_by: input.actorProfileId, updated_at: new Date().toISOString(),
   }).eq('id', true)
   if (error) throw new Error('SETTINGS_SAVE_FAILED')
@@ -124,6 +156,15 @@ export async function requestCandidateResearch(candidateIds: string[]): Promise<
   }).in('id', [...new Set(candidateIds)].slice(0, 50))
     .in('review_status', ['new', 'ready_for_review']).is('prospect_id', null).select('id')
   if (error) throw new Error('[outbound/research] requeue failed: ' + error.message)
+  return data?.length ?? 0
+}
+
+/** The operator settles which audience a candidate belongs to; a later research pass with clear evidence may still correct it. */
+export async function setCandidateSegment(candidateIds: string[], segment: 'team' | 'solo'): Promise<number> {
+  const { data, error } = await createServiceRoleClient().from('outbound_candidates').update({ segment })
+    .in('id', [...new Set(candidateIds)].slice(0, 50)).is('prospect_id', null)
+    .in('review_status', ['new', 'ready_for_review']).select('id')
+  if (error) throw new Error('[outbound/discovery] segment failed: ' + error.message)
   return data?.length ?? 0
 }
 
@@ -229,6 +270,7 @@ export async function runCandidateResearch(): Promise<{ researched: number; read
           rejection_reason: reason, personal_line: opener?.ok ? opener.text : null,
           opener_status: opener?.ok ? 'generated' : openerError ? 'failed' : 'skipped',
           opener_error: openerError, opener_fact_ids: opener?.ok ? opener.factIds : [],
+          segment: classifySegment(candidate.business_name, research.facts, candidate.website_url),
           retry: TRANSIENT_ERRORS.has(reason ?? openerError ?? ''),
         },
         p_evidence: research.pages.map((page) => ({ source_url: page.url, kind: page.kind, excerpt: page.text.slice(0, 3000) })),

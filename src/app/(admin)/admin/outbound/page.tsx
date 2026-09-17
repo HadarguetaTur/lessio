@@ -44,7 +44,7 @@ import {
   saveDiscoveryAutomationAction,
   rejectCandidatesAction,
   deleteCandidatesAction,
-  updateCandidateAction,
+  updateCandidateAction, setCandidateSegmentAction,
 } from './actions'
 import { listDiscoveryCandidates, listHeldDiscoveryCandidates, getDiscoveryAutomation } from '@/lib/outbound/discovery'
 import {
@@ -261,6 +261,7 @@ export default async function AdminOutboundPage({
           rejectAction={rejectCandidatesAction}
           deleteAction={deleteCandidatesAction}
           updateAction={updateCandidateAction}
+          segmentAction={setCandidateSegmentAction}
           automationAction={saveDiscoveryAutomationAction}
           discoverAction={runDiscoveryAction}
           approveAction={approveDiscoveryCandidatesAction}

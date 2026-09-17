@@ -841,6 +841,12 @@ hid every proposal. Unknown or conflicting size is now shown, flagged, for a
 manual decision; only a proven out-of-range team is rejected, and automatic
 promotion still requires a verified 2–5 team.
 
+Amendment 2026-09-18: solo tutors join cold discovery as their own segment with
+their own campaign and message (the solo plan's audience, and most of what
+Google Places returns). Teams of 2–5 keep theirs; 6+ remains inbound only. An
+undecided segment needs a person before approval. Collection grows to 150
+candidates a day; the 50-a-day send cap does not move.
+
 ---
 
 ## 41. An Exam Day Has a Default Hour, Not a Required Time

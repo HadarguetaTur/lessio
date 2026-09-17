@@ -13,7 +13,7 @@ import { approveOpener, regenerateOpener } from '@/lib/outbound/opener'
 import { saveMailbox } from '@/lib/outbound/mailboxes'
 import {
   approveDiscoveryCandidates, runDiscovery, requestCandidateResearch, saveDiscoveryAutomation,
-  rejectDiscoveryCandidates, deleteDiscoveryCandidates, updateDiscoveryCandidate,
+  rejectDiscoveryCandidates, deleteDiscoveryCandidates, updateDiscoveryCandidate, setCandidateSegment,
 } from '@/lib/outbound/discovery'
 import { isServiceAccountConfigured, sendAsUser } from '@/lib/gmail/serviceAccount'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -510,6 +510,24 @@ export async function rejectCandidatesAction(
   } catch { return { error: 'SAVE_FAILED' } }
 }
 
+/** Which audience, and so which campaign, a candidate belongs to. */
+export async function setCandidateSegmentAction(
+  _prev: OutboundActionState | null,
+  formData: FormData,
+): Promise<OutboundActionState> {
+  const session = await requirePlatformSession('growth.write')
+  const ids = parseCandidateIds(formData)
+  const segment = z.enum(['team', 'solo']).safeParse(formData.get('segment'))
+  if (!ids || !segment.success) return { error: 'INVALID_INPUT' }
+  try {
+    const count = await setCandidateSegment(ids, segment.data)
+    await recordAdminAction({ actorProfileId: session.profileId, action: 'outbound.candidate_segment',
+      targetType: 'outbound_candidates', metadata: { ids, segment: segment.data, count } })
+    revalidatePath('/admin/outbound')
+    return { ok: true, detail: String(count) }
+  } catch { return { error: 'SAVE_FAILED' } }
+}
+
 export async function deleteCandidatesAction(
   _prev: OutboundActionState | null,
   formData: FormData,
@@ -558,8 +576,9 @@ export async function saveDiscoveryAutomationAction(
   formData: FormData,
 ): Promise<OutboundActionState> {
   const session = await requirePlatformSession('growth.write')
-  const parsed = z.object({ auto_approve: z.boolean(), campaign_id: z.string().uuid().nullable() }).safeParse({
+  const parsed = z.object({ auto_approve: z.boolean(), campaign_id: z.string().uuid().nullable(), solo_campaign_id: z.string().uuid().nullable() }).safeParse({
     auto_approve: formData.get('autoApprove') === 'on', campaign_id: formData.get('campaignId') || null,
+    solo_campaign_id: formData.get('soloCampaignId') || null,
   })
   if (!parsed.success) return { error: 'INVALID_INPUT' }
   try {
@@ -570,6 +589,6 @@ export async function saveDiscoveryAutomationAction(
     return { ok: true }
   } catch (error) {
     const code = error instanceof Error ? error.message : ''
-    return { error: ['CAMPAIGN_REQUIRED', 'CAMPAIGN_REQUIRES_PERSONAL_LINE'].includes(code) ? code : 'SAVE_FAILED' }
+    return { error: ['CAMPAIGN_REQUIRED', 'CAMPAIGN_REQUIRES_PERSONAL_LINE', 'CAMPAIGNS_MUST_DIFFER'].includes(code) ? code : 'SAVE_FAILED' }
   }
 }

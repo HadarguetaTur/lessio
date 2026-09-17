@@ -4393,8 +4393,8 @@
       "discovery": {
         "title": "New outreach proposals",
         "tab": "Candidates",
-        "criteria": "Shows tutoring businesses you have not contacted or ruled out, with a sourced email, two facts and a grounded personal line. A business proven to have one teacher or 6+ is ruled out; when the site states no team size the proposal is flagged and the call is yours. Automatic queueing requires a verified 2–5 team. ",
-        "limits": "Up to 50 new candidates and 50 initial emails per day.",
+        "criteria": "Shows teaching businesses you have not contacted or ruled out, with a sourced email, two facts and a grounded personal line. Each proposal belongs to an audience — a team of 2–5 teachers or a solo tutor — and is sent with that audience's campaign. A business proven to have 6+ teachers is ruled out. ",
+        "limits": "Up to 150 candidates are collected a day and up to 50 first emails are sent a day.",
         "collect": "Discover candidates",
         "automationStatus": "Automatic queue entry: {status}",
         "on": "On",
@@ -4402,14 +4402,14 @@
         "automationDescription": "When enabled, candidates who pass all quality checks join the selected campaign without further approval.",
         "pauseDescription": "Turning this off also pauses queued automatic outreach. A send already in progress may finish.",
         "enable": "Enable automatic queue entry",
-        "campaign": "Campaign",
+        "campaign": "Campaign for teams (2–5 teachers)",
         "chooseCampaign": "Choose a campaign",
         "save": "Save mode",
         "campaignRequired": "An active Hebrew campaign that includes the personal opening line is required.",
         "saved": "Setting saved.",
         "saveFailed": "Could not save. To enable automation, choose an active Hebrew campaign that includes the opening line.",
         "collectFailed": "Could not discover candidates.",
-        "budgetFull": "Today's cap of 50 candidates is already used. Collection resumes tomorrow.",
+        "budgetFull": "Today's quota of 150 candidates is full. You can collect more tomorrow.",
         "collected": "Added {count} new candidates. Research runs in the background; refresh later for results.",
         "show": "Show",
         "all": "Eligible proposals ({count})",
@@ -4489,7 +4489,7 @@
           "MODEL_FAILED": "Writing service failed",
           "INVALID_MODEL_OUTPUT": "Model returned invalid output",
           "UNGROUNDED_OPENER": "Opening line failed the evidence check",
-          "TEAM_SIZE_OUT_OF_RANGE": "Team size is outside 2–5 teachers",
+          "TEAM_SIZE_OUT_OF_RANGE": "The site shows 6+ teachers — an inbound audience, not a cold-email one",
           "KNOWN_BUSINESS": "A business already contacted, ruled out or deleted"
         },
         "pipeline": "In the pipeline: {research} in research · {stopped} stopped · {ruledOut} ruled out",
@@ -4499,9 +4499,20 @@
         "heldRuledOut": "Ruled out or duplicate ({count})",
         "team": {
           "verified": "Team size verified: 2–5 teachers",
+          "solo": "The site says one teacher works here",
           "unknown": "Team size is not stated on the site. Check before approving.",
           "conflict": "The site states conflicting teacher counts. Check before approving.",
-          "out_of_range": "Team size is outside 2–5"
+          "out_of_range": "Team size is out of range"
+        },
+        "soloCampaign": "Campaign for solo tutors",
+        "soloCampaignMissing": "No campaign is chosen for solo tutors yet. Until one is, those candidates wait in the list and are not queued.",
+        "campaignsMustDiffer": "Each audience needs its own campaign. Choose two different campaigns.",
+        "segment": {
+          "team": "Audience: teaching team",
+          "solo": "Audience: solo tutor",
+          "unknown": "Unclear whether this is a team or a solo tutor. Choose before approving:",
+          "set_team": "It is a team",
+          "set_solo": "It is a solo tutor"
         }
       }
     },

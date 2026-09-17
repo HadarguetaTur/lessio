@@ -1017,4 +1017,7 @@ Durable business identity memory survives deletion; existing unpromoted proposal
 are reassessed by the migration. Sent history and existing prospect queues stay intact.
 
 See [outbound-discovery-qualification.md](outbound-discovery-qualification.md).
+Follow-ups the same week: team size advisory (`20260917160000`), exclusion by name and
+subject-anchored queries (`20260917180000`), team/solo segments with a campaign each and a
+150-a-day collection budget (`20260918090000`).
 Migration: `20260917140000_outbound_business_qualification.sql` — applied to production 2026-09-17.

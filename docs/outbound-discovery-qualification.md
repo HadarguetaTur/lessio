@@ -5,6 +5,9 @@ The staging-first gate was skipped by founder decision; see the last section.
 
 ## Eligibility
 
+> Superseded in part on 2026-09-17/18: team size became advisory for a person, and
+> solo tutors joined cold discovery as their own segment. See the last sections.
+
 Cold discovery targets Israeli tutoring businesses with exactly 2–5 teachers.
 The secondary 6+ teacher Center audience remains an inbound audience, not a cold
 collection target. Solo tutors, colleges, schools, universities and large chains
@@ -124,3 +127,30 @@ out the target audience at insert time. The name list also covers music, driving
 dance, fitness and English-course franchises. A Facebook, Instagram or directory
 page now counts as "no website" (held for a manual email) instead of a permanent
 exclusion. Candidates wrongly ruled out by the old rule were requeued.
+
+## Two segments and a larger collection (2026-09-18)
+
+Founder decision: cold discovery serves two audiences, each with its own campaign.
+The email itself works (47 first emails, 4 "interested"); supply was the limit, and
+most of what Google Places returns are solo tutors, the audience of the solo plan.
+
+- `outbound_candidates.segment` is team, solo or unknown. `classifySegment()` decides
+  at research time: a quoted team size wins (2-5 is team, 1 is solo), then the
+  business name and the site's own words; mixed or missing signals stay unknown.
+- An unknown candidate cannot be approved until a person picks the segment in the
+  card. A later research pass changes a segment only when it has clear evidence.
+- `outbound_discovery_settings.campaign_id` is the team campaign and
+  `solo_campaign_id` the solo one. Promotion queues into the campaign of the
+  candidate's segment; with no solo campaign chosen, solo candidates wait.
+- Automatic promotion: a team still needs the verified 2-5 quote; a solo tutor needs
+  only its segment. Automatic prospects send while automation is on and their
+  campaign is still one of the two chosen.
+- 6+ teachers stays an inbound audience and is ruled out of cold discovery.
+
+Collection: 72 localities, four a day, two subject-anchored queries each, up to two
+result pages per query (16 requests a day, inside the Places free tier). The daily
+collection budget is 150 candidates. The send cap stays at 50 first emails a day:
+that one is a deliverability limit. Businesses without a public email stay held;
+a manual or WhatsApp channel was considered and declined.
+
+Migration: `20260918090000_outbound_segments.sql`, before code.

@@ -33,14 +33,31 @@ export function teacherCountGate(facts: ResearchFact[], websiteUrl?: string | nu
   if (!counts.size) return 'TEAM_SIZE_UNKNOWN'
   if (counts.size !== 1) return 'TEAM_SIZE_CONFLICT'
   const count = [...counts][0]!
-  return count >= 2 && count <= 5 ? null : 'TEAM_SIZE_OUT_OF_RANGE'
+  // One teacher is the solo segment, not a rejection; only 6+ is out of range.
+  return count >= 2 && count <= 5 ? null : count === 1 ? 'TEAM_SIZE_SOLO' : 'TEAM_SIZE_OUT_OF_RANGE'
 }
 
-export type TeamSizeStatus = 'verified' | 'unknown' | 'conflict' | 'out_of_range'
+export type TeamSizeStatus = 'verified' | 'solo' | 'unknown' | 'conflict' | 'out_of_range'
 /** Mirrors outbound_team_status() in SQL. Only a proven out-of-range team blocks a person's approval. */
 export function teamSizeStatus(facts: ResearchFact[], websiteUrl?: string | null): TeamSizeStatus {
   const gate = teacherCountGate(facts, websiteUrl)
-  return gate === null ? 'verified' : gate === 'TEAM_SIZE_UNKNOWN' ? 'unknown' : gate === 'TEAM_SIZE_CONFLICT' ? 'conflict' : 'out_of_range'
+  return gate === null ? 'verified' : gate === 'TEAM_SIZE_SOLO' ? 'solo' : gate === 'TEAM_SIZE_UNKNOWN' ? 'unknown' : gate === 'TEAM_SIZE_CONFLICT' ? 'conflict' : 'out_of_range'
+}
+
+export type DiscoverySegment = 'team' | 'solo' | 'unknown'
+const TEAM_NAME = /מרכז|מכון|צוות|מורים|מורות|center|centre|institute/i
+const SOLO_NAME = /מורה פרטית?|מורה ל|מורה ב|שיעורים פרטיים (?:ב|ל)|private tutor/i
+/**
+ * Which campaign speaks to this business. A quoted team size decides; otherwise the name and
+ * the site's own words. Mixed or missing signals stay 'unknown' for a person to settle.
+ */
+export function classifySegment(businessName: string, facts: ResearchFact[], websiteUrl?: string | null): DiscoverySegment {
+  const size = teamSizeStatus(facts, websiteUrl)
+  if (size === 'verified') return 'team'
+  if (size === 'solo') return 'solo'
+  const team = TEAM_NAME.test(businessName) || facts.some((fact) => ['צוות מורים', 'מרכז למידה'].includes(fact.label))
+  const solo = SOLO_NAME.test(businessName)
+  return team === solo ? 'unknown' : team ? 'team' : 'solo'
 }
 
 export type ResearchPage = { url: string; kind: 'website' | 'contact_page'; text: string }

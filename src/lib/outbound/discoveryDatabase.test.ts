@@ -2,11 +2,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { PGlite } from '@electric-sql/pglite'
 import { readFile } from 'node:fs/promises'
 import { renderFactOpener } from './candidateOpener'
-import { EXCLUDED_BUSINESS_NAME, extractResearchFacts } from './discoveryResearch'
+import { EXCLUDED_BUSINESS_NAME, extractResearchFacts, teamSizeStatus } from './discoveryResearch'
 
 let db: PGlite
 const actor = '00000000-0000-4000-8000-000000000001'
 const campaign = '00000000-0000-4000-8000-000000000002'
+const soloCampaign = '00000000-0000-4000-8000-000000000003'
 const facts = extractResearchFacts('מרכז למידה עם צוות מורים בקבוצות קטנות. צוות של 3 מורים', 'https://tutor.test/')
 const opener = renderFactOpener(facts, [0, 2])!
 const migrations = [
@@ -17,14 +18,15 @@ const migrations = [
   '20260917140000_outbound_business_qualification.sql',
   '20260917160000_outbound_team_size_advisory.sql',
   '20260917180000_outbound_exclusion_by_name.sql',
+  '20260918090000_outbound_segments.sql',
 ]
 async function scalar<T>(sql: string, params: unknown[] = []): Promise<T> {
   return Object.values((await db.query<Record<string, T>>(sql, params)).rows[0]!)[0]!
 }
-async function candidate(email = 'office@tutor.test') {
+async function candidate(email = 'office@tutor.test', segment = 'team') {
   return scalar<string>(
-    "INSERT INTO outbound_candidates(business_name, email, website_url, email_source_url, source_url, research_facts, quality_score, personal_line, opener_status, opener_fact_ids, review_status) VALUES ('מרכז למידה', $1, 'https://tutor.test/', 'https://tutor.test/contact', 'https://tutor.test/', $2, 90, $3, 'generated', '{0,2}', 'ready_for_review') RETURNING id",
-    [email, JSON.stringify(facts), opener],
+    "INSERT INTO outbound_candidates(business_name, email, website_url, email_source_url, source_url, research_facts, quality_score, personal_line, opener_status, opener_fact_ids, review_status, segment) VALUES ('מרכז למידה', $1, 'https://tutor.test/', 'https://tutor.test/contact', 'https://tutor.test/', $2, 90, $3, 'generated', '{0,2}', 'ready_for_review', $4) RETURNING id",
+    [email, JSON.stringify(facts), opener, segment],
   )
 }
 async function promote(id: string, automatic = true) {
@@ -46,13 +48,13 @@ afterEach(async () => { await db.exec('ROLLBACK') })
 
 describe('outbound discovery database invariants', () => {
   it('caps NEW candidates at 50/day and never overwrites reviewed candidates', async () => {
-    const places = Array.from({ length: 80 }, (_, i) => ({ provider_place_id: 'p' + i, business_name: 'מורה ' + i }))
+    const places = Array.from({ length: 200 }, (_, i) => ({ provider_place_id: 'p' + i, business_name: 'מורה ' + i }))
     const reserve = () => scalar<{ found: number }>('SELECT reserve_outbound_candidates($1, $2)', [JSON.stringify(places), '[]'])
-    expect((await reserve()).found).toBe(50)
+    expect((await reserve()).found).toBe(150)
     await db.exec("UPDATE outbound_candidates SET review_status = 'rejected' WHERE provider_place_id = 'p0'")
     expect((await reserve()).found).toBe(0)
     expect(await scalar("SELECT review_status FROM outbound_candidates WHERE provider_place_id = 'p0'")).toBe('rejected')
-    expect(await scalar('SELECT count(*)::int FROM outbound_candidates')).toBe(50)
+    expect(await scalar('SELECT count(*)::int FROM outbound_candidates')).toBe(150)
   })
   it('claims three jobs at a time, skips live leases and ignores stale completion', async () => {
     for (let i = 0; i < 5; i++) await db.query("INSERT INTO outbound_candidates(business_name,research_requested_at) VALUES ('Tutor', now())")
@@ -145,6 +147,35 @@ describe('business identity and strict proposal eligibility', () => {
       expect(await scalar('SELECT outbound_excluded_business($1)',[name])).toBe(EXCLUDED_BUSINESS_NAME.test(name))
     }
   })
+  it('queues each segment into its own campaign and refuses an undecided one', async () => {
+    await db.query("INSERT INTO outbound_campaigns(id, name, subject, body_text) VALUES ($1, 'Solo', 'hello', '{{personal_line}} Teaching alone?')", [soloCampaign])
+    // All three exist before any promotion: a queued prospect makes its business host known.
+    const solo=await candidate('solo@solo.test','solo'), undecided=await candidate('who@unknown.test','unknown'), team=await candidate('team@team.test')
+    await db.query("UPDATE outbound_candidates SET website_url='https://solo.test/',source_url='https://solo.test/' WHERE id=$1",[solo])
+    await db.query("UPDATE outbound_candidates SET website_url='https://unknown.test/',source_url='https://unknown.test/' WHERE id=$1",[undecided])
+    expect(await promote(undecided,false)).toBe('segment_required')
+    expect(await promote(solo,false)).toBe('no_campaign')
+    await db.query('UPDATE outbound_discovery_settings SET solo_campaign_id=$1',[soloCampaign])
+    expect(await promote(solo,false)).toBe('approved')
+    expect(await scalar('SELECT campaign_id FROM outbound_prospects WHERE email=$1',['solo@solo.test'])).toBe(soloCampaign)
+    await db.query("UPDATE outbound_candidates SET website_url='https://team.test/',source_url='https://team.test/' WHERE id=$1",[team])
+    expect(await promote(team,false)).toBe('approved')
+    expect(await scalar('SELECT campaign_id FROM outbound_prospects WHERE email=$1',['team@team.test'])).toBe(campaign)
+  })
+  it('promotes a solo tutor automatically without a team-size quote, and sends it while automation is on', async () => {
+    await db.query("INSERT INTO outbound_campaigns(id, name, subject, body_text) VALUES ($1, 'Solo', 'hello', '{{personal_line}} Teaching alone?')", [soloCampaign])
+    await db.query('UPDATE outbound_discovery_settings SET auto_approve=true, campaign_id=$1, solo_campaign_id=$2',[campaign,soloCampaign])
+    const id=await candidate('solo@solo.test','solo')
+    await db.query('UPDATE outbound_candidates SET research_facts=$2 WHERE id=$1',[id,JSON.stringify(facts.slice(0,3))])
+    expect(await promote(id)).toBe('approved')
+    expect(await scalar("SELECT count(*)::int FROM claim_next_outbound_prospects(now(),interval '30 minutes',5,NULL,date_trunc('day',now()),50)")).toBe(1)
+  })
+  it('reads one teacher as solo in SQL exactly as in TypeScript', async () => {
+    for (const text of ['צוות של 1 מורים','צוות של 3 מורים','צוות של 8 מורים','מרכז למידה']) {
+      const found=extractResearchFacts(text,'https://tutor.test/')
+      expect(await scalar('SELECT outbound_team_status($1,$2)',[JSON.stringify(found),'https://tutor.test/'])).toBe(teamSizeStatus(found,'https://tutor.test/'))
+    }
+  })
   it('shows an unknown-size business to a person but never promotes it automatically', async () => {
     const id=await candidate()
     await db.query('UPDATE outbound_candidates SET research_facts=$2 WHERE id=$1',[id,JSON.stringify(facts.slice(0,3))])
@@ -200,7 +231,7 @@ describe('business identity and strict proposal eligibility', () => {
     }
   })
   it('prevents privileged callers bypassing the new gate via the old function', async () => {
-    expect(await scalar("SELECT has_function_privilege('service_role','promote_outbound_candidate_quality_v1(uuid,uuid,boolean)','EXECUTE')")).toBe(false)
+    expect(await scalar("SELECT has_function_privilege('service_role','promote_outbound_candidate_quality_v2(uuid,uuid,boolean,uuid)','EXECUTE')")).toBe(false)
     for (const role of ['anon','authenticated']) {
       expect(await scalar('SELECT has_function_privilege($1,$2,$3)',[role,'list_eligible_outbound_candidates(integer)','EXECUTE'])).toBe(false)
     }
@@ -212,11 +243,11 @@ it('upgrades existing data without losing sent history or returning old proposal
   const legacy = new PGlite()
   try {
     await legacy.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role; CREATE TABLE profiles(id uuid PRIMARY KEY); CREATE TABLE organizations(id uuid PRIMARY KEY); CREATE FUNCTION update_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at := now(); RETURN NEW; END $$;")
-    for (const file of migrations.slice(0,-3)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
+    for (const file of migrations.slice(0,-4)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
     await legacy.query("INSERT INTO outbound_campaigns(id,name,subject,body_text) VALUES ($1,'old','hello','hello')",[campaign])
     await legacy.query("INSERT INTO outbound_prospects(campaign_id,email,company,unsubscribe_token,status,sent_at) VALUES ($1,'sent@old.test','Old business','12345678901234567890123456789012','sent',now())",[campaign])
     await legacy.exec("INSERT INTO outbound_candidates(business_name,email,website_url,review_status) VALUES ('מרכז למידה ישן','other@old.test','https://old.test','ready_for_review'),('מרכז למידה חדש','new@new.test','https://new.test','ready_for_review'),('מרכז למידה פסול','no@rejected.test','https://rejected.test','rejected')")
-    for (const file of migrations.slice(-3)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
+    for (const file of migrations.slice(-4)) await legacy.exec(await readFile('supabase/migrations/'+file,'utf8'))
     const rows=(await legacy.query<{email:string;review_status:string;research_requested_at:unknown}>('SELECT email,review_status,research_requested_at FROM outbound_candidates ORDER BY email')).rows
     expect(rows.find(r=>r.email==='other@old.test')?.review_status).toBe('duplicate')
     expect(rows.find(r=>r.email==='new@new.test')).toMatchObject({review_status:'new',research_requested_at:expect.anything()})

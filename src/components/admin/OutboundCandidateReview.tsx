@@ -11,7 +11,7 @@ type Action = (prev: OutboundActionState | null, formData: FormData) => Promise<
 function ready(c: DiscoveryCandidate) {
   return c.review_status === 'ready_for_review' && c.quality_score >= 70 && c.email && c.email_source_url &&
     c.research_facts.length >= 2 && c.personal_line && c.opener_status === 'generated' &&
-    !c.research_requested_at && !c.research_claimed_at && !c.rejection_reason
+    !c.research_requested_at && !c.research_claimed_at && !c.rejection_reason && c.segment !== 'unknown'
 }
 /** Anything not yet in the send queue is the operator's to reject, delete or correct. */
 function editable(c: DiscoveryCandidate) {
@@ -51,6 +51,19 @@ function IdsButton({ ids, action, label, doneKey, confirm, icon, variant = 'outl
     {state?.error && <span role="alert" className="text-xs text-destructive">{t('actionFailed')}</span>}
   </form>
 }
+/** Team or solo decides which campaign the candidate is queued into; 'unknown' must be settled before approval. */
+function SegmentPicker({ candidate, action }: { candidate: DiscoveryCandidate; action: Action }) {
+  const t = useTranslations('admin.outbound.discovery')
+  const [state, submit, pending] = useActionState(action, null)
+  return <form action={submit} className="flex flex-wrap items-center gap-2 text-xs">
+    <input type="hidden" name="candidateIds" value={JSON.stringify([candidate.id])} />
+    <span className={candidate.segment === 'unknown' ? 'text-amber-700' : 'text-muted-foreground'}>{t('segment.' + candidate.segment)}</span>
+    {(['team', 'solo'] as const).filter((segment) => segment !== candidate.segment).map((segment) => (
+      <Button key={segment} type="submit" name="segment" value={segment} variant="outline" size="sm" disabled={pending}>{t('segment.set_' + segment)}</Button>
+    ))}
+    {state?.error && <span role="alert" className="text-destructive">{t('actionFailed')}</span>}
+  </form>
+}
 function EditForm({ candidate, action, onClose }: { candidate: DiscoveryCandidate; action: Action; onClose: () => void }) {
   const t = useTranslations('admin.outbound.discovery')
   const [state, submit, pending] = useActionState(action, null)
@@ -75,10 +88,10 @@ function EditForm({ candidate, action, onClose }: { candidate: DiscoveryCandidat
 }
 
 export function OutboundCandidateReview({
-  candidates, held, discoverAction, approveAction, researchAction, automationAction, rejectAction, deleteAction, updateAction, automation, campaigns,
+  candidates, held, discoverAction, approveAction, researchAction, automationAction, rejectAction, deleteAction, updateAction, segmentAction, automation, campaigns,
 }: {
   candidates: DiscoveryCandidate[]; held: DiscoveryCandidate[]; discoverAction: Action; approveAction: Action
-  researchAction: Action; automationAction: Action; rejectAction: Action; deleteAction: Action; updateAction: Action
+  researchAction: Action; automationAction: Action; rejectAction: Action; deleteAction: Action; updateAction: Action; segmentAction: Action
   automation: DiscoveryAutomation; campaigns: { id: string; name: string }[]
 }) {
   const t = useTranslations('admin.outbound.discovery')
@@ -116,6 +129,7 @@ export function OutboundCandidateReview({
                 </ul>}
                 {c.review_status !== 'rejected' && c.team_status !== 'verified' && c.research_completed_at && <p className="text-xs text-amber-700">{t('team.' + c.team_status)}</p>}
                 {c.team_status === 'verified' && <p className="text-xs text-emerald-700">{t('team.verified')}</p>}
+                {retryable.some((item) => item.id === c.id) && c.research_completed_at && <SegmentPicker candidate={c} action={segmentAction} />}
                 {c.personal_line && <p className="rounded-md bg-muted px-3 py-2 text-sm">{c.personal_line}</p>}
                 {c.review_status === 'approved' && <p className="text-xs text-emerald-700">{t('promoted', { mode: t(c.approval_mode === 'automatic' ? 'automatic' : 'manual') })}</p>}
                 {c.review_status === 'duplicate' && <p className="text-xs">{t('duplicate')}</p>}
@@ -164,6 +178,13 @@ export function OutboundCandidateReview({
             {t('enable')}
           </label>
           <label className="flex items-center gap-2 text-sm">
+            {t('soloCampaign')}
+            <select key={'solo' + (automation.solo_campaign_id ?? '')} name="soloCampaignId" defaultValue={automation.solo_campaign_id ?? ''} className="max-w-full rounded-md border bg-background p-2">
+              <option value="">{t('chooseCampaign')}</option>
+              {campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
             {t('campaign')}
             <select key={automation.campaign_id ?? ''} name="campaignId" defaultValue={automation.campaign_id ?? ''} className="max-w-full rounded-md border bg-background p-2">
               <option value="">{t('chooseCampaign')}</option>
@@ -174,7 +195,8 @@ export function OutboundCandidateReview({
         </div>
         {!campaigns.length && <p className="text-xs text-amber-700">{t('campaignRequired')}</p>}
         {automationState?.ok && <p role="status" className="text-xs">{t('saved')}</p>}
-        {automationState?.error && <p role="alert" className="text-xs text-destructive">{t('saveFailed')}</p>}
+        {automationState?.error && <p role="alert" className="text-xs text-destructive">{t(automationState.error === 'CAMPAIGNS_MUST_DIFFER' ? 'campaignsMustDiffer' : 'saveFailed')}</p>}
+        {!automation.solo_campaign_id && <p className="text-xs text-amber-700">{t('soloCampaignMissing')}</p>}
       </form>
       {discoverState?.error && <p role="alert" className="text-xs text-destructive">{t(discoverState.error === 'DAILY_BUDGET_FULL' ? 'budgetFull' : 'collectFailed')}</p>}
       {discoverState?.ok && <p role="status" className="text-xs">{t('collected', { count: Number(discoverState.detail ?? 0) })}</p>}

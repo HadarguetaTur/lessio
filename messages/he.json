@@ -402,7 +402,8 @@
       "nextBadge": "הבא",
       "hiddenCancelled": "{count} שיעורים מבוטלים מוסתרים",
       "viewAll": "לכל השיעורים של היום ({count})",
-      "emptyAction": "קביעת שיעור"
+      "emptyAction": "קביעת שיעור",
+      "emptyNote": "יום פנוי"
     },
     "attention": {
       "title": "משימות וחריגים",

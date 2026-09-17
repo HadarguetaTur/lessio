@@ -47,8 +47,8 @@ export function MiniRevenueChart({ data, locale = 'he' }: MiniRevenueChartProps)
         >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
             </linearGradient>
           </defs>
           <XAxis
@@ -63,7 +63,7 @@ export function MiniRevenueChart({ data, locale = 'he' }: MiniRevenueChartProps)
           <Area
             type="monotone"
             dataKey="amount"
-            stroke="#10b981"
+            stroke="var(--chart-1)"
             strokeWidth={2}
             fill={`url(#${gradientId})`}
           />

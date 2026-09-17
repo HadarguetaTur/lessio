@@ -402,7 +402,8 @@
       "nextBadge": "Next",
       "hiddenCancelled": "{count} cancelled lessons are hidden",
       "viewAll": "All today's lessons ({count})",
-      "emptyAction": "Schedule a lesson"
+      "emptyAction": "Schedule a lesson",
+      "emptyNote": "A free day"
     },
     "attention": {
       "title": "Tasks and exceptions",

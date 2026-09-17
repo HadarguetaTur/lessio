@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { CalendarDays } from 'lucide-react'
 import { DateTime } from 'luxon'
 import { getTranslations } from 'next-intl/server'
+import { PenCheckbox } from '@/components/brand/PenMarks'
 import { filterCalendarLessons, formatTime, getLessonTitle, type Lesson } from '@/lib/lessons'
 import { findNextLessonId } from '@/lib/lessons/nextLesson'
 import type { AppLocale } from '@/lib/i18n/locale'
@@ -64,6 +65,8 @@ export async function TodayLessonsList({
         <h2 className="mb-3 text-base font-semibold text-foreground">{t('today.title')}</h2>
         <EmptyState
           icon={CalendarDays}
+          doodle={<PenCheckbox className="size-11" />}
+          note={t('today.emptyNote')}
           title={tc('emptyStates.noLessonsToday')}
           className="py-12"
           action={

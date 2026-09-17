@@ -77,19 +77,19 @@ export type LandingChatMessage = {
 
 const landingEnCore = {
   hero: {
-    forLine: 'For tutoring centres with 2 to 5 teachers that bill monthly.',
+    forLine: '',
     headline: {
-      less: 'Every cancellation',
-      lessRest: ' is priced and collected.',
-      more: 'Every month',
-      moreRest: ' closes with one approval.',
+      less: 'Why does every WhatsApp message from a parent',
+      lessRest: ' become another task for you?',
+      more: '',
+      moreRest: '',
     },
     subheadline:
-      'A parent cancels on WhatsApp. Your policy prices the cancellation and the parent confirms the amount. At month end each student’s bill is already built from lessons, subscriptions and cancellations. You approve, and the payment request goes out.',
+      'A cancellation, a booking, a question about a payment. Each one ends up on your desk: the calendar, the spreadsheet, a note to yourself. Lessio connects WhatsApp to the calendar, lessons and billing, so what was settled in the conversation is already updated in the business.',
     ctaPrimary: 'Try Lessio free',
-    ctaPrimaryNote: '30 days with every feature unlocked. No credit card.',
     ctaSecondary: 'See how it works',
-    trustLine: "Built on Meta's official WhatsApp Business Platform",
+    /** Rendered under the primary action. */
+    trustLine: "30 days free, no credit card, on Meta's official WhatsApp.",
     outcomes: ['The parent confirms', 'The charge is recorded', 'The calendar updates'],
     diary: {
       weekLabel: 'Week of 30 Aug – 3 Sep',
@@ -151,7 +151,7 @@ const landingEnCore = {
   },
   chain: {
     title: 'How Lessio handles the everyday work while you teach',
-    intro: 'A cancellation is only one example. This is what happens when one WhatsApp message needs to update the whole business.',
+    intro: 'A cancellation is the simple example. This is how one WhatsApp message travels through the calendar, the charge, the monthly bill and the payment.',
     cta: 'Try Lessio free',
     videoLink: 'See it in 75 seconds',
     beats: [
@@ -177,10 +177,41 @@ const landingEnCore = {
       },
       {
         title: 'At month end, it is all there',
-        body: 'Each student’s bill builds itself from lessons, subscriptions and cancellations. You approve, the parent gets a payment request on WhatsApp, the receipt goes out on its own.',
+        body: 'Each student’s bill builds itself from lessons, subscriptions and cancellations. You approve once, and the payment request goes out to every parent on WhatsApp.',
         image: 'billing-detail' as const,
       },
+      {
+        title: 'The parent pays. You stop chasing.',
+        body: 'The payment request carries a checkout link. The parent pays, the charge is marked paid, and the receipt is issued on its own and kept in the parent portal. Anyone who has not paid gets a reminder.',
+        // Rendered as the paymentChat printout below, not a screenshot: the
+        // wa-payment-request capture still carries raw {{placeholders}}.
+        image: null,
+      },
     ],
+    /** Beat 6. Mirrors the payment_request and receipt_notification templates, with the worked example's numbers. */
+    paymentChat: {
+      messages: [
+        {
+          from: 'business',
+          lines: [
+            'Hi Ronit 👋',
+            'Here is a payment request for ₪540, for Noa’s August bill.',
+            '• Piano lessons 4 × ₪120: ₪480',
+            '• Cancellation 31/08: ₪60',
+            'Paying is secure and takes under a minute.',
+            'Thank you 🙏',
+          ],
+          time: '09:12',
+          buttons: ['Pay securely'],
+        },
+        {
+          from: 'business',
+          lines: ['Thank you for your payment! 🙏', 'Your receipt for ₪540 is here'],
+          time: '09:26',
+          highlight: true,
+        },
+      ] as readonly LandingChatMessage[],
+    },
     policyCard: {
       title: 'Cancellation policy',
       rules: ['Up to 24 hours: full charge', 'Up to 2 hours: 50%'],
@@ -197,7 +228,7 @@ const landingEnCore = {
     },
   },
   problem: {
-    title: 'Without a system, that same cancellation becomes your job.',
+    title: 'Without a system, all of it stays with you.',
     items: [
       {
         title: 'The charge never goes out',
@@ -215,41 +246,41 @@ const landingEnCore = {
     closing: 'What does not close in the system is lost in the day-to-day.',
   },
   capabilities: {
-    title: 'Three places to run the centre from one system',
+    title: 'The calendar, the money and the parents. In one place.',
     intro:
-      'Every lesson, payment and parent message lands in the same record, so the right person can act without rebuilding the story first.',
+      'Every lesson, payment and message is recorded on the same student, so whoever opens the system sees what happened without asking anyone.',
     items: [
       {
-        title: 'Control the day-to-day',
-        body: 'Lessons, availability, cancellations and make-up sessions, tied to the right teacher, student and group.',
+        title: 'The calendar',
+        body: 'Lessons, availability, cancellations and make-up sessions, tied to the right teacher and student. Every teacher sees their own day.',
         image: 'calendar-week' as const,
       },
       {
-        title: 'Control the money',
-        body: 'Bills build from activity. Open balances stay visible until they close, and payment requests start from one approval.',
+        title: 'The money',
+        body: 'Charges build from activity. The parent pays through a link, the charge is marked paid, and the receipt goes out on its own. Whatever is still open stays in view until it closes.',
         image: 'billing-table' as const,
       },
       {
-        title: 'Control parent communication',
-        body: 'Reminders, payment requests, homework and the parent portal, through official WhatsApp or one secure link, with nothing to install.',
+        title: 'The parents',
+        body: 'Reminders, payment requests, homework and receipts arrive on WhatsApp, and the parent portal shows all of it. Nothing to install.',
         image: 'portal-payments' as const,
       },
     ],
   },
   implementation: {
     title: 'You do not replace the way you work in a day. You start with what already works.',
-    intro: 'Move the centre in gradually. Lessio works before WhatsApp is connected, so the longest setup step never stops the rest of the business.',
+    intro: 'Move over gradually. Lessio works before WhatsApp is connected, so the longest setup step does not hold up the rest.',
     steps: [
       ['Bring in the foundation', 'Import students, parents and lessons from a spreadsheet instead of retyping them.'],
-      ['Set the centre rules', 'Add teachers, availability, cancellation policy and billing settings once.'],
-      ['Turn it on gradually', 'Start with your calendar and billing; connect WhatsApp when you are ready.'],
+      ['Set the rules', 'Teachers, availability, cancellation policy, payment provider and receipts. Once.'],
+      ['Turn it on gradually', 'Start with the calendar and billing. Connect WhatsApp when you are ready.'],
     ],
   },
   israel: {
     title: 'Built for how tutoring businesses work in Israel',
     items: [
-      'Bit, PayBox, Cardcom, PayPlus, Stripe and Grow',
-      'Receipts through licensed Israeli providers',
+      'Payments through Bit, PayBox, Cardcom, PayPlus, Stripe or Grow',
+      'Receipts through Green Invoice, iCount or Sumit',
       'A bot that answers in Hebrew and English',
       'Jewish holidays load themselves into the calendar',
       'Cancellation policies from the lessons world, not retail',
@@ -282,9 +313,9 @@ const landingEnCore = {
       'For the moment teaching has become a business: dozens of students, several teachers, and billing you can no longer keep in your head.',
     forTitle: 'Good fit',
     forBullets: [
-      'A centre with 2 to 5 teachers that bills monthly',
-      'Several teachers or several rooms under one roof',
-      'A business that is growing and needs infrastructure that keeps pace',
+      '2 to 5 teachers and monthly billing',
+      'Parents who pay by Bit, bank transfer and cash, and a month that has to close every time',
+      'A business that is growing, and a spreadsheet that no longer holds it',
       'You want orderly billing without chasing payments yourself',
     ] as const,
     notForTitle: 'Not a fit',
@@ -301,7 +332,7 @@ const landingEnCore = {
   pricing: {
     title: 'One price per business, by number of teachers',
     intro:
-      'Every plan includes WhatsApp, billing, receipts, the parent portal and homework. What changes is how many teachers you run.',
+      'Every plan includes everything: WhatsApp, payments, receipts, the parent portal and homework. The only difference is the number of teachers.',
     monthlyLabel: 'Monthly',
     yearlyLabel: 'Yearly',
     perMonth: '/ month',
@@ -314,7 +345,7 @@ const landingEnCore = {
     teachersOne: '1 teacher',
     teachersUpTo: 'Up to {count} teachers',
     teachersUnlimited: 'Unlimited teachers',
-    featuredLabel: 'For centres with 2 to 5 teachers',
+    featuredLabel: '2 to 5 teachers',
     featureLine: 'All features included',
     cta: 'Try Lessio free',
     trialNote: '30 days with every feature unlocked. No credit card.',
@@ -327,7 +358,7 @@ const landingEnCore = {
       name: 'Full name',
       phone: 'Phone',
       submit: 'Send details',
-      success: 'Thanks — we will be in touch shortly.',
+      success: 'Thanks, we will be in touch shortly.',
       error: 'We could not save your details. Please try again.',
     },
   },
@@ -378,6 +409,13 @@ const landingEnCore = {
         ],
       },
       {
+        question: 'How do parents pay?',
+        opening: 'Through a link, from WhatsApp.',
+        rest: [
+          'The payment request carries a link to your payment provider. After payment the charge is marked paid, the receipt is issued through your receipt provider and kept in the parent portal. Cash and bank transfers are marked by hand, and the receipt goes out the same way.',
+        ],
+      },
+      {
         question: 'I do not have time to roll this out right now.',
         opening: 'In most cases, that is exactly the point.',
         rest: [
@@ -393,11 +431,30 @@ const landingEnCore = {
       },
     ],
   },
+  /**
+   * The cover beside the login / signup note. The visitor has already decided,
+   * so this does not re-ask the hero's question: it shows the morning after.
+   */
+  authCover: {
+    headline: ['The calendar is up to date.', 'The bills are closed.', 'No message is waiting for you.'],
+    body: 'A parent cancelled last night, and the slot is already open. A parent paid, and the receipt is already with them. You come in and see only what actually needs you.',
+    mobileLine: 'The calendar is up to date. The bills are closed.',
+    morning: {
+      title: 'This morning, 08:00',
+      rows: [
+        ['Noa cancelled last night at 21:40', 'Charged ₪60'],
+        ['The 14:00 slot', 'Open on the calendar'],
+        ['Noa’s August bill', 'Paid'],
+        ['Receipt', 'Sent to the parent'],
+      ],
+      note: 'And you did not touch a thing.',
+    },
+  },
   finalCta: {
-    title: 'Your centre is already working hard. The system should work with it.',
-    body: 'Start with one real workflow and see what remains of the operational load when everything is connected.',
+    title: 'The business already runs. Now let the system run with it.',
+    body: 'Start with one cancellation or one month of billing, and see what is left of the load.',
     cta: 'Try Lessio free',
-    note: '30 days with every feature unlocked. No credit card.',
+    note: "30 days free, no credit card, on Meta's official WhatsApp.",
   },
   footer: {
     statusLabel: 'System live',
@@ -418,9 +475,9 @@ const landingEnCore = {
     /** The diary's thumb index: one tab per page, in page order. */
     tabs: {
       week: 'This week',
-      chain: 'One cancellation',
+      chain: 'One message',
       problem: 'Without a system',
-      centre: 'The centre',
+      centre: 'Day to day',
       rollout: 'Rollout',
       trust: 'Trust',
       audience: 'Who it is for',
@@ -429,27 +486,27 @@ const landingEnCore = {
     },
   },
   meta: {
-    title: 'LESSIO | Every cancellation priced and collected',
+    title: 'LESSIO | WhatsApp, calendar and billing in one place',
     description:
-      'For tutoring centres with 2 to 5 teachers. A parent cancels on WhatsApp, your policy prices it, the charge lands on the monthly bill. 30 days free, no credit card.',
+      'For tutoring businesses with several teachers. What is settled with the parent on WhatsApp is updated in the calendar and the monthly bill, the parent pays through a link and the receipt goes out on its own. 30 days free, no credit card.',
   },
 } as const
 
 const landingHeCore = {
   hero: {
-    forLine: 'למרכזי למידה עם 2 עד 5 מורים שגובים חודשית.',
+    forLine: '',
     headline: {
-      less: 'כל ביטול',
-      lessRest: ' מתומחר ונגבה.',
-      more: 'כל חודש',
-      moreRest: ' נסגר באישור אחד.',
+      less: 'למה כל הודעה מהורה בוואטסאפ',
+      lessRest: ' הופכת לעוד משימה שלכם?',
+      more: '',
+      moreRest: '',
     },
     subheadline:
-      'הורה מבטל בוואטסאפ. המדיניות שלכם מתמחרת את הביטול, וההורה מאשר את הסכום. בסוף החודש החשבון של כל תלמיד כבר בנוי משיעורים, מנויים וביטולים. מאשרים, ובקשת התשלום יוצאת.',
+      'ביטול, קביעת שיעור, שאלה על תשלום. כל אחת מהן נגמרת אצלכם ביומן, בטבלה ובתזכורת לעצמכם. Lessio מחברת את הוואטסאפ ליומן, לשיעורים ולגבייה, ומה שנסגר בשיחה כבר מעודכן בעסק.',
     ctaPrimary: 'נסו את Lessio בחינם',
-    ctaPrimaryNote: '30 יום עם כל היכולות פתוחות. בלי כרטיס אשראי.',
     ctaSecondary: 'איך זה עובד',
-    trustLine: 'מחוברת ל-WhatsApp Business Platform הרשמית של Meta',
+    /** Rendered under the primary action. */
+    trustLine: '30 יום בחינם, בלי כרטיס אשראי, על הוואטסאפ הרשמי של Meta.',
     outcomes: ['ההורה מאשר', 'החיוב נרשם', 'היומן מתעדכן'],
     diary: {
       weekLabel: 'שבוע 30.08 – 03.09',
@@ -511,7 +568,7 @@ const landingHeCore = {
   },
   chain: {
     title: 'ככה Lessio מטפלת בשוטף בזמן שאתם מלמדים',
-    intro: 'ביטול הוא רק דוגמה אחת. כך הודעה אחת ב־WhatsApp מעדכנת את כל מה שצריך במרכז.',
+    intro: 'ביטול הוא הדוגמה הפשוטה. ככה הודעה אחת בוואטסאפ עוברת דרך היומן, החיוב, החשבון החודשי והתשלום.',
     cta: 'נסו את Lessio בחינם',
     videoLink: 'לראות את זה ב-75 שניות',
     beats: [
@@ -537,10 +594,41 @@ const landingHeCore = {
       },
       {
         title: 'בסוף החודש הכול כבר שם',
-        body: 'החשבון של כל תלמיד נבנה לבד משיעורים, מנויים וביטולים. מאשרים, ההורה מקבל בקשת תשלום בוואטסאפ, והקבלה יוצאת לבד.',
+        body: 'החשבון של כל תלמיד נבנה לבד משיעורים, מנויים וביטולים. מאשרים פעם אחת, ובקשת התשלום יוצאת לכל ההורים בוואטסאפ.',
         image: 'billing-detail' as const,
       },
+      {
+        title: 'ההורה משלם, ואתם לא רודפים',
+        body: 'בקשת התשלום מגיעה עם קישור לסליקה. ההורה משלם, החיוב מסומן כשולם, והקבלה יוצאת לבד ונשמרת בפורטל ההורים. מי שלא שילם מקבל תזכורת.',
+        // Rendered as the paymentChat printout below, not a screenshot: the
+        // wa-payment-request capture still carries raw {{placeholders}}.
+        image: null,
+      },
     ],
+    /** Beat 6. Mirrors the payment_request and receipt_notification templates, with the worked example's numbers. */
+    paymentChat: {
+      messages: [
+        {
+          from: 'business',
+          lines: [
+            'היי רונית 👋',
+            'בקשת תשלום על סך 540₪ עבור חשבון אוגוסט של נועה.',
+            '• 4 שיעורי פסנתר: 480₪',
+            '• ביטול 31/08: 60₪',
+            'התשלום מאובטח ולוקח פחות מדקה.',
+            'תודה 🙏',
+          ],
+          time: '09:12',
+          buttons: ['לתשלום מאובטח'],
+        },
+        {
+          from: 'business',
+          lines: ['תודה על התשלום! 🙏', 'הקבלה על 540₪ זמינה כאן'],
+          time: '09:26',
+          highlight: true,
+        },
+      ] as readonly LandingChatMessage[],
+    },
     policyCard: {
       title: 'מדיניות ביטולים',
       rules: ['עד 24 שעות: חיוב מלא', 'עד שעתיים: 50%'],
@@ -557,7 +645,7 @@ const landingHeCore = {
     },
   },
   problem: {
-    title: 'ובלי מערכת? אותו ביטול הופך לעוד משימה שלך.',
+    title: 'ובלי מערכת, כל זה נשאר אצלכם.',
     items: [
       {
         title: 'החיוב לא יוצא',
@@ -575,41 +663,41 @@ const landingHeCore = {
     closing: 'מה שלא נסגר במערכת, הולך לאיבוד בשוטף.',
   },
   capabilities: {
-    title: 'שלושה מוקדי שליטה, מערכת אחת למרכז',
+    title: 'היומן, הכסף וההורים. באותו מקום.',
     intro:
-      'כל שיעור, תשלום והודעה מהורה נרשמים באותו הקשר, כדי שהאדם הנכון יוכל לפעול בלי לבנות מחדש את הסיפור.',
+      'כל שיעור, תשלום והודעה נרשמים על אותו תלמיד, אז מי שפותח את המערכת רואה מה קרה בלי לשאול אף אחד.',
     items: [
       {
-        title: 'שליטה בשוטף',
-        body: 'שיעורים, זמינות, ביטולים והשלמות מחוברים למורה, לתלמיד ולקבוצה הנכונים.',
+        title: 'היומן',
+        body: 'שיעורים, זמינות, ביטולים והשלמות, מחוברים למורה ולתלמיד הנכונים. כל מורה רואה את היום שלו.',
         image: 'calendar-week' as const,
       },
       {
-        title: 'שליטה בכסף',
-        body: 'החיובים נבנים מהפעילות. יתרות פתוחות נשארות מול העיניים עד שהן נסגרות, ובקשת תשלום מתחילה מאישור אחד.',
+        title: 'הכסף',
+        body: 'החיובים נבנים מהפעילות. ההורה משלם בקישור, החיוב מסומן כשולם, והקבלה יוצאת לבד. מה שעוד פתוח נשאר מול העיניים עד שנסגר.',
         image: 'billing-table' as const,
       },
       {
-        title: 'שליטה בתקשורת עם הורים',
-        body: 'תזכורות, בקשות תשלום, שיעורי בית ופורטל הורים זמינים ב־WhatsApp הרשמי או בקישור מאובטח, בלי להתקין כלום.',
+        title: 'ההורים',
+        body: 'תזכורות, בקשות תשלום, שיעורי בית וקבלות מגיעים בוואטסאפ, ובפורטל ההורים רואים הכול. בלי להתקין כלום.',
         image: 'portal-payments' as const,
       },
     ],
   },
   implementation: {
     title: 'לא מחליפים שיטה ביום אחד. מתחילים ממה שכבר עובד.',
-    intro: 'מעבירים את המרכז בהדרגה. Lessio עובדת גם לפני חיבור WhatsApp, כך ששלב ההגדרה הארוך לא עוצר את שאר העסק.',
+    intro: 'עוברים בהדרגה. Lessio עובדת גם לפני שהוואטסאפ מחובר, אז השלב הארוך בהקמה לא עוצר את השאר.',
     steps: [
       ['מייבאים את הבסיס', 'תלמידים, הורים ושיעורים נכנסים מאקסל, לא בהקלדה מחדש.'],
-      ['מגדירים את כללי המרכז', 'מורים, זמינות, מדיניות ביטולים והגדרות גבייה נקבעים פעם אחת.'],
-      ['מפעילים בהדרגה', 'מתחילים ביומן ובחיובים; מחברים WhatsApp כשמוכנים.'],
+      ['מגדירים את הכללים', 'מורים, זמינות, מדיניות ביטולים, ספק סליקה וקבלות. פעם אחת.'],
+      ['מפעילים בהדרגה', 'מתחילים ביומן ובחיובים. מחברים וואטסאפ כשמוכנים.'],
     ],
   },
   israel: {
     title: 'בנויה לאיך שעסק הוראה עובד בישראל',
     items: [
-      'Bit, PayBox, Cardcom, PayPlus, Stripe ו-Grow',
-      'קבלות דרך ספקים ישראליים מורשים',
+      'סליקה דרך Bit, PayBox, Cardcom, PayPlus, Stripe או Grow',
+      'קבלות דרך חשבונית ירוקה, iCount או Sumit',
       'בוט שעונה בעברית ובאנגלית',
       'חגי ישראל נטענים לבד ליומן',
       'מדיניות ביטולים של עולם השיעורים, לא של חנות',
@@ -642,9 +730,9 @@ const landingHeCore = {
       'לרגע שבו ההוראה כבר הפכה לעסק: עשרות תלמידים, כמה מורים וגבייה שאי אפשר להחזיק בראש.',
     forTitle: 'מתאים',
     forBullets: [
-      'מרכז עם 2 עד 5 מורים וגבייה חודשית',
-      'כמה מורים או כמה חדרים תחת קורת גג אחת',
-      'עסק שגדל וצריך תשתית שתעמוד בקצב',
+      '2 עד 5 מורים וגבייה חודשית',
+      'הורים שמשלמים בביט, בהעברה ובמזומן, וצריך לסגור את זה כל חודש',
+      'עסק שגדל, והטבלה כבר לא מחזיקה',
       'מי שרוצה גבייה מסודרת בלי לרדוף בעצמו',
     ] as const,
     notForTitle: 'פחות מתאים',
@@ -659,7 +747,7 @@ const landingHeCore = {
   pricing: {
     title: 'מחיר אחד לעסק, לפי מספר המורים',
     intro:
-      'בכל המסלולים יש וואטסאפ, גבייה, קבלות, פורטל הורים ושיעורי בית. מה שמשתנה הוא כמה מורים העסק מריץ.',
+      'כל המסלולים כוללים הכול: וואטסאפ, סליקה, קבלות, פורטל הורים ושיעורי בית. ההבדל היחיד הוא מספר המורים.',
     monthlyLabel: 'חודשי',
     yearlyLabel: 'שנתי',
     perMonth: '/ לחודש',
@@ -671,8 +759,8 @@ const landingHeCore = {
     teachersOne: 'מורה אחד',
     teachersUpTo: 'עד {count} מורים',
     teachersUnlimited: 'מורים ללא הגבלה',
-    featuredLabel: 'למרכז עם 2 עד 5 מורים',
-    featureLine: 'כל הפיצ׳רים כלולים',
+    featuredLabel: '2 עד 5 מורים',
+    featureLine: 'כל היכולות כלולות',
     cta: 'נסו את Lessio בחינם',
     trialNote: '30 יום עם כל היכולות פתוחות. בלי כרטיס אשראי.',
     trialIncludes: 'הניסיון כולל את מסלול סטודיו המלא.',
@@ -735,6 +823,13 @@ const landingHeCore = {
         ],
       },
       {
+        question: 'איך ההורים משלמים?',
+        opening: 'בקישור, מתוך הוואטסאפ.',
+        rest: [
+          'בקשת התשלום מגיעה עם קישור לספק הסליקה שלכם. אחרי התשלום החיוב מסומן כשולם, הקבלה יוצאת דרך ספק הקבלות ונשמרת בפורטל ההורים. מי שמשלם במזומן או בהעברה, מסמנים ידנית והקבלה יוצאת באותה דרך.',
+        ],
+      },
+      {
         question: 'אין לי זמן להטמיע עכשיו.',
         opening: 'ברוב המקרים, זאת בדיוק הנקודה.',
         rest: [
@@ -750,11 +845,30 @@ const landingHeCore = {
       },
     ],
   },
+  /**
+   * הכריכה שליד פתק הכניסה / ההרשמה. מי שהגיע לכאן כבר החליט, אז לא שואלים
+   * שוב את שאלת ה-hero: מראים את הבוקר שאחרי.
+   */
+  authCover: {
+    headline: ['היומן מעודכן.', 'החשבונות סגורים.', 'אף הודעה לא מחכה לכם.'],
+    body: 'הורה ביטל בלילה, והמשבצת כבר התפנתה. הורה שילם, והקבלה כבר אצלו. אתם נכנסים בבוקר ורואים רק את מה שבאמת צריך אתכם.',
+    mobileLine: 'היומן מעודכן. החשבונות סגורים.',
+    morning: {
+      title: 'הבוקר, 08:00',
+      rows: [
+        ['נועה ביטלה אתמול ב-21:40', 'חויב 60₪'],
+        ['המשבצת של 14:00', 'פנויה ביומן'],
+        ['חשבון אוגוסט של נועה', 'שולם'],
+        ['קבלה', 'נשלחה להורה'],
+      ],
+      note: 'ולא נגעתם בכלום.',
+    },
+  },
   finalCta: {
-    title: 'המרכז שלכם כבר עובד קשה. הגיע הזמן שהמערכת תעבוד איתו.',
-    body: 'התחילו בתהליך אמיתי אחד, וראו מה נשאר מהעומס כשהכול מחובר.',
+    title: 'העסק כבר רץ. עכשיו שהמערכת תרוץ איתו.',
+    body: 'התחילו מביטול אחד או מחודש אחד של גבייה, ותראו מה נשאר מהעומס.',
     cta: 'נסו את Lessio בחינם',
-    note: '30 יום עם כל היכולות פתוחות. בלי כרטיס אשראי.',
+    note: '30 יום בחינם, בלי כרטיס אשראי, על הוואטסאפ הרשמי של Meta.',
   },
   footer: {
     statusLabel: 'מערכת פעילה',
@@ -775,9 +889,9 @@ const landingHeCore = {
     /** לשוניות היומן: לשונית לכל עמוד, לפי סדר העמודים. */
     tabs: {
       week: 'השבוע',
-      chain: 'ביטול אחד',
+      chain: 'הודעה אחת',
       problem: 'בלי מערכת',
-      centre: 'המרכז',
+      centre: 'השוטף',
       rollout: 'הטמעה',
       trust: 'אמון',
       audience: 'למי',
@@ -786,9 +900,9 @@ const landingHeCore = {
     },
   },
   meta: {
-    title: 'LESSIO | כל ביטול מתומחר ונגבה',
+    title: 'LESSIO | הוואטסאפ, היומן והגבייה במקום אחד',
     description:
-      'למרכזי למידה עם 2 עד 5 מורים. הורה מבטל בוואטסאפ, המדיניות שלכם מתמחרת, והחיוב נכנס לחשבון החודשי. 30 יום ניסיון ללא כרטיס אשראי.',
+      'לעסקי הוראה עם כמה מורים. מה שנסגר עם ההורה בוואטסאפ מעודכן ביומן ובחשבון החודשי, ההורה משלם בקישור והקבלה יוצאת לבד. 30 יום ניסיון בלי כרטיס אשראי.',
   },
 } as const
 

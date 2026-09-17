@@ -243,6 +243,11 @@ export function LandingPage({
                 <div className="ps-12 lg:ps-0">
                   {index === 1 ? (
                     <PolicyTable card={chain.policyCard} />
+                  ) : index === 5 ? (
+                    <div className="clip tilt-b mx-auto w-full max-w-[18rem]">
+                      <PenClip className="paperclip" />
+                      <LandingWhatsAppChat contactName={hero.chat.contactName} statusLabel={hero.chat.statusLabel} messages={chain.paymentChat.messages} />
+                    </div>
                   ) : beat.image ? (
                     <Clip
                       locale={locale}

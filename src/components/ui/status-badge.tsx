@@ -31,24 +31,38 @@ const STATUS_KEY_MAP: Record<string, string> = {
   pending_approval:  'billingStatus.pending_approval',
 }
 
-const STATUS_CLASS_MAP: Record<string, string> = {
-  scheduled:   'bg-blue-50 text-blue-700 border-blue-200',
-  completed:   'bg-emerald-50 text-emerald-700 border-emerald-200',
-  cancelled:   'bg-red-50 text-red-700 border-red-200',
-  no_show:     'bg-amber-50 text-amber-700 border-amber-200',
-  pending:     'bg-amber-50 text-amber-700 border-amber-200',
-  invoiced:    'bg-blue-50 text-blue-700 border-blue-200',
-  paid:        'bg-emerald-50 text-emerald-700 border-emerald-200',
-  waived:      'bg-slate-100 text-slate-600 border-slate-200',
-  voided:      'bg-slate-100 text-slate-600 border-slate-200 line-through',
-  done:        'bg-emerald-50 text-emerald-700 border-emerald-200',
-  overdue:     'bg-red-50 text-red-700 border-red-200',
-  new:         'bg-purple-50 text-purple-700 border-purple-200',
-  in_progress: 'bg-blue-50 text-blue-700 border-blue-200',
-  converted:   'bg-emerald-50 text-emerald-700 border-emerald-200',
-  closed:      'bg-gray-100 text-gray-600 border-gray-200',
-  approved:         'bg-emerald-50 text-emerald-700 border-emerald-200',
-  pending_approval: 'bg-amber-50 text-amber-700 border-amber-200',
+/**
+ * One palette for every status in the product, drawn from the diary's
+ * materials: ruling blue for what is planned or in flight, cover teal for what
+ * is done or paid, the highlighter for what is waiting on someone, the red pen
+ * for what was cancelled or is overdue, ink grey for what no longer counts.
+ */
+export const STATUS_TONE = {
+  planned: 'bg-[#eaf1f8] text-[#2c5580] border-[#c4d6e8]',
+  done: 'bg-[#e3f1ef] text-[#0c4744] border-[#b5d8d3]',
+  waiting: 'bg-[#fff6c2] text-[#4a3f00] border-[#f0dc6a]',
+  problem: 'bg-[#fbe9ec] text-[#9b0c24] border-[#f1bcc5]',
+  off: 'bg-muted text-muted-foreground border-border',
+} as const
+
+export const STATUS_CLASS_MAP: Record<string, string> = {
+  scheduled:   STATUS_TONE.planned,
+  completed:   STATUS_TONE.done,
+  cancelled:   STATUS_TONE.problem,
+  no_show:     STATUS_TONE.waiting,
+  pending:     STATUS_TONE.waiting,
+  invoiced:    STATUS_TONE.planned,
+  paid:        STATUS_TONE.done,
+  waived:      STATUS_TONE.off,
+  voided:      `${STATUS_TONE.off} line-through`,
+  done:        STATUS_TONE.done,
+  overdue:     STATUS_TONE.problem,
+  new:         STATUS_TONE.waiting,
+  in_progress: STATUS_TONE.planned,
+  converted:   STATUS_TONE.done,
+  closed:      STATUS_TONE.off,
+  approved:         STATUS_TONE.done,
+  pending_approval: STATUS_TONE.waiting,
 }
 
 interface StatusBadgeProps {
@@ -63,12 +77,12 @@ export function StatusBadge({ status, label, className }: StatusBadgeProps) {
   const translationKey = STATUS_KEY_MAP[status]
   const autoLabel = translationKey ? tc(translationKey as Parameters<typeof tc>[0]) : status
   const displayLabel = label ?? autoLabel
-  const colorClass = STATUS_CLASS_MAP[status] ?? 'bg-gray-100 text-gray-600 border-gray-200'
+  const colorClass = STATUS_CLASS_MAP[status] ?? STATUS_TONE.off
 
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border',
+        'inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-semibold border',
         colorClass,
         className
       )}

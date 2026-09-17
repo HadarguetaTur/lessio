@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 
+import { LessioMark } from '@/components/brand/LessioMark'
 import { DiaryLocaleToggle } from '@/components/diary/DiaryLocaleToggle'
 
 /**
@@ -29,9 +30,7 @@ export function DiaryHeader({
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-3">
           <Link href={wordmarkHref} aria-label={wordmarkLabel} className="flex min-w-0 items-center gap-3 no-underline hover:no-underline">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-violet-600 shadow-sm ring-1 ring-white/15">
-              <span className="text-sm font-bold leading-none text-white">L</span>
-            </span>
+            <LessioMark />
             <span className="display text-lg tracking-wide">LESSIO</span>
           </Link>
           {nav}

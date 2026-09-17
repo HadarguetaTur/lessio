@@ -25,7 +25,7 @@ export function PageHeader({ title, subtitle, actions, mobileCentered, className
           mobileCentered && 'flex w-full flex-col items-center sm:block sm:w-auto sm:items-start',
         )}
       >
-        <h1 className="text-2xl font-bold text-foreground leading-tight">{title}</h1>
+        <h1 className="font-title text-[1.75rem] font-normal leading-tight text-foreground">{title}</h1>
         {subtitle && (
           <p className="text-sm text-muted-foreground mt-0.5 break-words">{subtitle}</p>
         )}

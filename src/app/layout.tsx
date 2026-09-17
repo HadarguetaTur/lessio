@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
+import { fontVars } from "@/lib/fonts";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { NextIntlClientProvider } from "next-intl";
@@ -8,11 +9,6 @@ import { ROOT_MESSAGE_NAMESPACES, pickMessages } from "@/i18n/clientMessages";
 import { getShareableBaseUrl } from "@/lib/url/appUrl";
 import { ConsentBanner } from "@/components/tracking/ConsentBanner";
 import { TrackingScripts } from "@/components/tracking/TrackingScripts";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -52,7 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#0d9488",
+  themeColor: "#115e59",
 };
 
 export default async function RootLayout({
@@ -68,7 +64,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       dir={dir}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fontVars} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-full overflow-hidden flex flex-col">
         {/* Only the namespaces used outside the route groups; each group

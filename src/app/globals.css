@@ -7,9 +7,17 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-text);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-heading: var(--font-text);
+  /* The display voice: page titles and the wordmark only. */
+  --font-title: var(--font-display);
+  /* The pen: the four diary moments inside the product. */
+  --font-hand: var(--font-pen);
+  --color-highlight: var(--highlight);
+  --color-highlight-deep: var(--highlight-deep);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-pen: var(--pen);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -56,55 +64,62 @@
 }
 
 :root {
-  /* Page canvas — subtle cool blue-gray, not pure white */
-  --background: oklch(0.955 0.008 255);
-  --foreground: oklch(0.145 0 0);
-  /* Cards pop against the canvas */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  /* Brand blue */
-  --primary: oklch(0.52 0.19 255);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.94 0.01 255);
-  --secondary-foreground: oklch(0.35 0.1 255);
-  --muted: oklch(0.945 0.006 255);
+  /* Page canvas: a second neutral layer tinted from the diary's ruling */
+  --background: oklch(0.975 0.006 240);
+  --foreground: #141618;
+  /* Paper */
+  --card: #ffffff;
+  --card-foreground: #141618;
+  --popover: #ffffff;
+  --popover-foreground: #141618;
+  /* The diary's cover teal (white text on it measures 7:1) */
+  --primary: #115e59;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.95 0.012 200);
+  --secondary-foreground: #0c4744;
+  --muted: oklch(0.962 0.006 240);
   /* 0.45, not 0.5: secondary text also sits on the tinted app background
      (--background), where 0.5 lands at 4.2:1 and fails WCAG AA. */
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.93 0.015 255);
-  --accent-foreground: oklch(0.35 0.12 255);
+  --muted-foreground: #4a5058;
+  --accent: oklch(0.95 0.012 200);
+  --accent-foreground: #0c4744;
   /* L lowered from 0.577: destructive text on its own 5% tint measured 4.35:1,
      under the 4.5 AA floor, on the login error — the first thing a locked-out
      user reads. 0.55 measures 4.70:1 there and improves white-on-fill to 5.15. */
-  --destructive: oklch(0.55 0.245 27.325);
-  --border: oklch(0.89 0.005 255);
-  --input: oklch(0.89 0.005 255);
-  --ring: oklch(0.52 0.19 255);
+  --destructive: #c8102e;
+  --border: #d5e0ea;
+  --input: #a9c4db;
+  --ring: #115e59;
   /* Semantic colors */
-  --success: oklch(0.52 0.15 155);
+  --success: #0f766e;
   --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.72 0.16 65);
   --warning-foreground: oklch(0.985 0 0);
-  --info: oklch(0.52 0.19 255);
+  --info: #3b6ea5;
   --info-foreground: oklch(0.985 0 0);
   /* Charts */
-  --chart-1: oklch(0.52 0.19 255);
-  --chart-2: oklch(0.52 0.15 155);
-  --chart-3: oklch(0.72 0.16 65);
-  --chart-4: oklch(0.62 0.18 330);
-  --chart-5: oklch(0.62 0.18 25);
-  --radius: 0.5rem;
-  /* Sidebar — dark navy (Pipedrive/Linear style) */
-  --sidebar: oklch(0.19 0.04 255);
-  --sidebar-foreground: oklch(0.82 0 0);
-  --sidebar-primary: oklch(0.68 0.19 255);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.28 0.05 255);
-  --sidebar-accent-foreground: oklch(0.88 0 0);
-  --sidebar-border: oklch(0.27 0.03 255);
-  --sidebar-ring: oklch(0.68 0.19 255);
+  --chart-1: #115e59;
+  --chart-2: #3b6ea5;
+  --chart-3: #c99700;
+  --chart-4: #c8102e;
+  --chart-5: #6b7280;
+  --radius: 0.3rem;
+  /* Sidebar: the diary's cover; the active item is marked in highlighter */
+  --sidebar: #115e59;
+  --sidebar-foreground: #f2f7f5;
+  --sidebar-primary: #ffe34d;
+  --sidebar-primary-foreground: #141618;
+  --sidebar-accent: #0c4744;
+  --sidebar-accent-foreground: #f2f7f5;
+  --sidebar-border: oklch(1 0 0 / 14%);
+  --sidebar-ring: #ffe34d;
+  /* The highlighter: the one primary action of a screen, the selected item,
+     an amount that needs attention. Ink text only. */
+  --highlight: #ffe34d;
+  --highlight-deep: #ffd60a;
+  --highlight-foreground: #141618;
+  /* The red pen: cancellations, debt, destructive actions. */
+  --pen: #c8102e;
 }
 
 .dark {
@@ -172,11 +187,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.68 0.12 255 / 0.55);
+  background: oklch(0.72 0.05 240 / 0.7);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.58 0.14 255 / 0.85);
+  background: oklch(0.55 0.05 240 / 0.9);
 }
 ::-webkit-scrollbar-corner {
   background: transparent;
@@ -185,7 +200,7 @@
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: oklch(0.68 0.12 255 / 0.55) transparent;
+  scrollbar-color: oklch(0.72 0.05 240 / 0.7) transparent;
 }
 
 /* Keep touch/drag scroll but hide track (e.g. horizontal tab strips) */
@@ -206,3 +221,22 @@
 [dir="rtl"] [class*="overflow-auto"] {
   direction: rtl;
 }
+
+/* ── Diary moments inside the product ─────────────────────────────────── */
+/* A highlighter mark behind a number or phrase (ink text only). */
+.mark-highlight {
+  background: linear-gradient(to bottom, transparent 10%, var(--highlight) 10%, var(--highlight) 88%, transparent 88%);
+  color: var(--highlight-foreground);
+  padding-inline: 0.2em;
+  margin-inline: -0.2em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+/* Struck out by the red pen: a cancelled lesson. */
+.pen-strike {
+  text-decoration: line-through;
+  text-decoration-color: var(--pen);
+  text-decoration-thickness: 2px;
+}
+
+/* theme: the diary materials (2026-09-17) */

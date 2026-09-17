@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { LessioMark } from '@/components/brand/LessioMark'
 
 interface NavItem {
   href: string
@@ -64,7 +65,7 @@ function NavLink({ href, label, icon: Icon, active, indent }: NavLinkProps) {
         indent ? 'px-3 py-1.5' : 'px-3 py-2'
       } ${
         active
-          ? 'bg-sidebar-accent text-sidebar-primary font-medium'
+          ? 'bg-sidebar-accent text-white font-semibold'
           : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground font-normal'
       }`}
     >
@@ -73,7 +74,7 @@ function NavLink({ href, label, icon: Icon, active, indent }: NavLinkProps) {
       )}
       <Icon
         size={14}
-        className={`shrink-0 transition-transform duration-150 group-hover:scale-110 ${
+        className={`shrink-0 ${
           active ? 'text-sidebar-primary' : 'text-sidebar-foreground/60'
         }`}
       />
@@ -257,10 +258,8 @@ export function Sidebar({
         href={isTeacher ? '/teacher/dashboard' : '/dashboard'}
         className="h-14 flex items-center px-4 gap-2.5 shrink-0 border-b border-sidebar-border hover:opacity-80 transition-opacity"
       >
-        <div className="w-7 h-7 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
-          <span className="text-white text-xs font-bold leading-none">L</span>
-        </div>
-        <span className="text-[15px] font-semibold text-white tracking-tight">LESSIO</span>
+        <LessioMark size="sm" />
+        <span className="font-title text-[1.05rem] tracking-wide text-white">LESSIO</span>
       </Link>
 
       {/* Nav */}
@@ -366,7 +365,7 @@ export function Sidebar({
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-md hover:bg-sidebar-accent transition-colors duration-150 group">
               <Avatar className="w-7 h-7 shrink-0">
-                <AvatarFallback className="bg-sidebar-primary/30 text-sidebar-foreground text-[11px] font-bold">
+                <AvatarFallback className="bg-white/15 text-sidebar-foreground text-[11px] font-bold">
                   {initials}
                 </AvatarFallback>
               </Avatar>

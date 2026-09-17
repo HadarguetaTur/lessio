@@ -37,7 +37,7 @@ export function TopBar({ currentLocale, userRole, saasFeatures, mobileNavigation
   const page = pageKey ? t(pageKey as Parameters<typeof t>[0]) : (pathname.split('/').pop() ?? '')
 
   return (
-    <div className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+    <div className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-border bg-card px-4 sm:px-6 lg:px-8">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         {mobileNavigation && (
           <Sheet key={pathname}>

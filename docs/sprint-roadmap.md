@@ -1010,11 +1010,11 @@ These do not change across any sprint:
 
 ## Cold discovery qualification (2026-09-17)
 
-**Status:** Built locally, not deployed. Founder-approved: cold collection is only
+**Status:** Deployed to production 2026-09-17 (migration, then code). Founder-approved: cold collection is only
 for businesses with a verified team of 2–5 teachers. Proposals exclude known,
 contacted, rejected and duplicate businesses across campaigns and email changes.
 Durable business identity memory survives deletion; existing unpromoted proposals
 are reassessed by the migration. Sent history and existing prospect queues stay intact.
 
 See [outbound-discovery-qualification.md](outbound-discovery-qualification.md).
-Migration: `20260917140000_outbound_business_qualification.sql`, before code.
+Migration: `20260917140000_outbound_business_qualification.sql` — applied to production 2026-09-17.

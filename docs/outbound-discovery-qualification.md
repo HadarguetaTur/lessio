@@ -1,6 +1,7 @@
 # Cold discovery qualification
 
-Status: implemented locally on 2026-09-17; not deployed. Founder-approved scope.
+Status: deployed to production on 2026-09-17 (migration first, then code). Founder-approved scope.
+The staging-first gate was skipped by founder decision; see the last section.
 
 ## Eligibility
 
@@ -81,3 +82,12 @@ the migration there with synthetic data, and deploy a dedicated Vercel Preview
 with deployment-specific database credentials. Do not copy production cron jobs
 or enable outbound email transport. The paid branch requires owner approval
 before provisioning. Do not change the shared Production/Preview variables.
+
+## Production release (2026-09-17)
+
+The founder chose to skip the staging branch. Migrations 20260917120000 and
+20260917140000 were applied to production with `supabase db push` after a dry
+run showed only those two pending; the code followed on main (8573a9f).
+Right after the migration: 152 identity keys in outbound_business_history,
+4 candidates requeued for research, 0 eligible proposals. An empty list is the
+expected starting state until the research cron requalifies candidates.
